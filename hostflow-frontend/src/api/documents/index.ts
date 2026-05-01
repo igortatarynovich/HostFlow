@@ -80,6 +80,8 @@ export {
   getRulesetDiff,
   getRulesetUsage,
 } from "./ruleset";
+export { getDocumentNextAction } from "./nextAction";
+export type { DocumentNextActionDTO } from "./nextAction";
 
 // Re-export normalization functions (for advanced use cases)
 export {

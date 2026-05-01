@@ -13,6 +13,7 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { useCurrentTenantId } from '../../contexts/CurrentTenant'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -44,7 +45,7 @@ function sanitizeTenant(raw: string | null | undefined): string | null {
   return first
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(tenantOverride?: string | null) {
   const token =
     (safeStorageGet('access_token') ||
       safeStorageGet('accessToken') ||
@@ -52,6 +53,7 @@ function getAuthHeaders() {
       '') as string
 
   const candidates = [
+    sanitizeTenant(tenantOverride ?? null),
     sanitizeTenant(((import.meta as any).env?.VITE_TENANT_ID as string) ?? null),
     sanitizeTenant(safeStorageGet('X-Tenant-Id')),
     sanitizeTenant(safeStorageGet('x-tenant-id')),
@@ -67,7 +69,7 @@ function getAuthHeaders() {
   return headers
 }
 
-async function getJSON<T = any>(path: string, params?: Record<string, any>): Promise<T> {
+async function getJSON<T = any>(path: string, params?: Record<string, any>, tenantOverride?: string | null): Promise<T> {
   const cleanPath = path.startsWith('/') ? path.slice(1) : path
   const url = new URL(cleanPath, API_BASE_URL)
   if (params) {
@@ -77,7 +79,7 @@ async function getJSON<T = any>(path: string, params?: Record<string, any>): Pro
   }
   const res = await fetch(url.toString(), {
     credentials: 'include',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(tenantOverride),
   })
   if (!res.ok) {
     const raw = await res.text()
@@ -103,13 +105,13 @@ async function getJSON<T = any>(path: string, params?: Record<string, any>): Pro
   return res.json()
 }
 
-async function patchJSON<T = any>(path: string, body: Record<string, any>): Promise<T> {
+async function patchJSON<T = any>(path: string, body: Record<string, any>, tenantOverride?: string | null): Promise<T> {
   const cleanPath = path.startsWith('/') ? path.slice(1) : path
   const url = new URL(cleanPath, API_BASE_URL).toString()
   const res = await fetch(url, {
     method: 'PATCH',
     credentials: 'include',
-    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    headers: { ...getAuthHeaders(tenantOverride), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   if (!res.ok) {
@@ -166,15 +168,26 @@ type ListResponse = {
 }
 
 function StatusBadge({ value, archived, label }: { value?: string; archived?: boolean; label: string }) {
-  const v = archived ? 'archived' : (value || '')
+  const v = archived ? 'archived' : (value || '').toLowerCase()
+  // Phase 2.6.D Stage C — `filled` and `cancelled` are canonical
+  // terminal codes (`docs/specs/vacancy-statuses.md`). `filled`
+  // celebrates a successful hire (success-blue), `cancelled` is a
+  // soft negative (ghost) — distinct from `closed` which is a generic
+  // shutdown. Legacy `paused` is normalized at the API boundary but
+  // we still recognise it here as defence-in-depth for the rollout
+  // window before the Stage B alembic backfill runs.
   const badgeClass = archived
     ? 'badge badge-ghost'
     : v === 'open'
     ? 'badge badge-success'
-    : v === 'on_hold'
+    : v === 'on_hold' || v === 'paused'
     ? 'badge badge-warning'
     : v === 'closed'
     ? 'badge badge-error'
+    : v === 'filled'
+    ? 'badge badge-info'
+    : v === 'cancelled'
+    ? 'badge badge-ghost'
     : 'badge'
   return <span className={badgeClass}>{label}</span>
 }
@@ -222,7 +235,9 @@ function toCSV(rows: any[], headers: { key: string; label: string }[]) {
 export default function VacancyList() {
   const [search, setSearch] = useSearchParams()
   const navigate = useNavigate()
-  const { preferences, updatePreferences } = useAuth()
+  const { me, preferences, updatePreferences } = useAuth()
+  const currentTenantId = useCurrentTenantId()
+  const effectiveTenantId = (currentTenantId || '').trim() || null
   const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
@@ -238,6 +253,13 @@ export default function VacancyList() {
       { value: 'open', label: t('app.vacancies.list.status.open') },
       { value: 'on_hold', label: t('app.vacancies.list.status.on_hold') },
       { value: 'closed', label: t('app.vacancies.list.status.closed') },
+      // Phase 2.6.D Stage C — surface the new canonical terminals
+      // alongside `closed`. `archived` stays at the bottom because
+      // it's an orthogonal boolean (soft-delete) rather than a
+      // status, and is rendered last to match the badge ordering
+      // operators are used to.
+      { value: 'filled', label: t('app.vacancies.list.status.filled') },
+      { value: 'cancelled', label: t('app.vacancies.list.status.cancelled') },
       { value: 'archived', label: t('app.vacancies.list.status.archived') },
     ],
     [t]
@@ -247,6 +269,8 @@ export default function VacancyList() {
       open: t('app.vacancies.list.status.open'),
       on_hold: t('app.vacancies.list.status.on_hold'),
       closed: t('app.vacancies.list.status.closed'),
+      filled: t('app.vacancies.list.status.filled'),
+      cancelled: t('app.vacancies.list.status.cancelled'),
       archived: t('app.vacancies.list.status.archived'),
     }),
     [t]
@@ -330,6 +354,8 @@ export default function VacancyList() {
   }, [q, status, company, sort, dir, limit, offset])
 
   useEffect(() => {
+    const role = String(me?.role || '').trim().toLowerCase()
+    if (role === 'superadmin') return
     const defaultCompanyId = preferences?.defaults?.company_id
     if (defaultCompanyId && !company) {
       const next = new URLSearchParams(search)
@@ -337,13 +363,13 @@ export default function VacancyList() {
       next.set('page', '1')
       setSearch(next, { replace: true })
     }
-  }, [preferences?.defaults?.company_id, company, search, setSearch])
+  }, [me?.role, preferences?.defaults?.company_id, company, search, setSearch])
 
   // load
   useEffect(() => {
     setLoading(true)
     setError(null)
-    getJSON<ListResponse | Vacancy[]>('/vacancies/', params)
+    getJSON<ListResponse | Vacancy[]>('/vacancies/', params, effectiveTenantId)
       .then((data) => {
         if (Array.isArray(data)) {
           setData({ items: data, total: data.length, limit, offset })
@@ -377,7 +403,7 @@ export default function VacancyList() {
         setLoading(false)
         setSelected([])
       })
-  }, [params, refreshTick, planLimitModal, t])
+  }, [params, refreshTick, planLimitModal, t, effectiveTenantId])
 
 
   // client-side сортировка (fallback)
@@ -491,12 +517,18 @@ export default function VacancyList() {
     URL.revokeObjectURL(url)
   }
 
-  const bulkSetStatus = async (status: 'open'|'on_hold'|'closed') => {
+  const bulkSetStatus = async (status: 'open'|'on_hold'|'closed'|'filled'|'cancelled') => {
     if (selected.length === 0) return
     // optimistic UI
     setData(prev => ({...prev, items: (prev.items || []).map(v => selected.includes(v.id) ? {...v, status, is_archived: false} : v)}))
     try{
-      await Promise.allSettled(selected.map(id => patchJSON(`/vacancies/${id}`, { status })))
+      await Promise.allSettled(
+        selected.map((id) => {
+          const row = (data.items || []).find((v) => v.id === id)
+          const tenantForRow = String(row?.tenant_id || '').trim() || effectiveTenantId
+          return patchJSON(`/vacancies/${id}`, { status }, tenantForRow)
+        }),
+      )
     } catch (_){}
     setSelected([])
     refresh()
@@ -506,7 +538,13 @@ export default function VacancyList() {
     if (selected.length === 0) return
     setData(prev => ({...prev, items: (prev.items || []).map(v => selected.includes(v.id) ? {...v, is_archived: true} : v)}))
     try{
-      await Promise.allSettled(selected.map(id => patchJSON(`/vacancies/${id}`, { is_archived: true })))
+      await Promise.allSettled(
+        selected.map((id) => {
+          const row = (data.items || []).find((v) => v.id === id)
+          const tenantForRow = String(row?.tenant_id || '').trim() || effectiveTenantId
+          return patchJSON(`/vacancies/${id}`, { is_archived: true }, tenantForRow)
+        }),
+      )
     } catch(_){}
     setSelected([])
     refresh()
@@ -614,7 +652,7 @@ export default function VacancyList() {
   )
 
   const vacancyHero = (
-    <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+    <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">

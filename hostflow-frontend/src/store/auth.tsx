@@ -1,9 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import { useLocation } from 'react-router-dom'
 import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
+import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
 import { api, setToken, settings as tenantSettings } from '../api/client'
 import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
+import { bindUserContext } from '../lib/observability'
+import { useI18n, type LocaleCode } from '../i18n'
+import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 const IMPERSONATION_BACKUP_KEY = 'hf:platform-session-backup'
 export const LOGIN_NOTICE_STORAGE_KEY = 'hf:last-login-notice'
@@ -79,6 +83,7 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null)
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const { setLocale } = useI18n()
   const location = useLocation()
   const [me, setMe] = useState<WhoAmI | null>(null)
   const [loading, setLoading] = useState(true)
@@ -120,7 +125,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const computedFullName = profile.first_name || profile.last_name
         ? `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim()
         : null
-      const effectiveRole = whoami.role || profile.role || null
+      const jwtRole = whoami.role ?? null
+      const profileRole = profile.role ?? null
+      const effectiveRole =
+        isPlatformSuperadminRole(jwtRole) || isPlatformSuperadminRole(profileRole)
+          ? 'superadmin'
+          : jwtRole || profileRole || null
       const effectiveTenantId = whoami.tenant_id || profile.tenant_id || null
       const resolvedTenantId = effectiveTenantId ?? whoami.tenant_id ?? profile.tenant_id ?? ''
       const merged: WhoAmI = {
@@ -140,18 +150,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
         avatar_url: profile.avatar_url ?? whoami.avatar_url,
         preferences: meEnvelope.preferences,
         security: meEnvelope.security,
+        is_solo_admin: meEnvelope.is_solo_admin ?? false,
       }
 
       setMe(merged)
       if (resolvedTenantId) {
-        tenantSettings.set(String(resolvedTenantId))
+        const isPlatformSuperadmin = isPlatformSuperadminRole(effectiveRole)
+        const storedTenantId = String(tenantSettings.get() || '').trim()
+        // Keep explicit cross-tenant context for platform superadmin instead of
+        // snapping back to JWT tenant on each refresh.
+        const shouldKeepStoredTenant =
+          isPlatformSuperadmin &&
+          storedTenantId.length > 0 &&
+          storedTenantId !== String(resolvedTenantId)
+        tenantSettings.set(shouldKeepStoredTenant ? storedTenantId : String(resolvedTenantId))
       }
       setPreferences(meEnvelope.preferences)
       setSecurity(meEnvelope.security)
+      const preferredLocale = String(meEnvelope.preferences?.ui?.locale || '').trim().toLowerCase()
+      const shortLocale = preferredLocale.split('-')[0]
+      if (shortLocale === 'ru' || shortLocale === 'en' || shortLocale === 'pl') {
+        setLocale(shortLocale as LocaleCode)
+      }
       applyTheme(meEnvelope.preferences?.ui?.theme)
       clearLoginNotice()
       try {
-        const { bindUserContext } = await import('../lib/observability')
         bindUserContext({
           userId: merged.sub ? String(merged.sub) : null,
           tenantId: resolvedTenantId ? String(resolvedTenantId) : null,
@@ -180,7 +203,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } finally {
       setLoading(false)
     }
-  }, [applyTheme])
+  }, [applyTheme, setLocale])
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -203,6 +226,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const logout = useCallback(() => {
     invalidateBillingSubscriptionCache()
+    invalidateBillingQuotaHeadroomCache()
     setToken(null)
     setMe(null)
     setPreferences(null)

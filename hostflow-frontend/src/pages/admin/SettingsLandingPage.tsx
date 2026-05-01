@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
@@ -23,10 +23,7 @@ import type { TenantModuleSettings } from '../../api/types'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { useAuth } from '../../store/useAuth'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { CRM_CONTOUR_NAV_ITEMS } from '../../nav/crmContourNav'
 import { PageBreadcrumb } from '../../components/nav/PageBreadcrumb'
-import { isSettingsAreaKey, settingsAreaHref } from '../../nav/settingsAreaNav'
-import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 
 type SettingsSectionKey =
   | 'workspace'
@@ -78,10 +75,6 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
 
 export default function SettingsLandingPage() {
   const { t } = useI18n()
-  const { entityPlural: clientsNavLabel } = useBusinessTerminology()
-  const [searchParams] = useSearchParams()
-  const sectionParam = searchParams.get('section')
-  const activeArea = isSettingsAreaKey(sectionParam) ? sectionParam : null
   const { role, can } = usePermissions()
   const { me } = useAuth()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
@@ -159,6 +152,14 @@ export default function SettingsLandingPage() {
         section: 'team',
       },
       {
+        key: 'team_modules',
+        label: t('admin.settings.cards.team_modules.label'),
+        description: t('admin.settings.cards.team_modules.description'),
+        target: CRM_APP_PATHS.settingsTeam,
+        roles: ['administrator'],
+        section: 'team',
+      },
+      {
         key: 'tenants',
         label: t('admin.settings.cards.tenants.label'),
         description: t('admin.settings.cards.tenants.description'),
@@ -172,7 +173,7 @@ export default function SettingsLandingPage() {
         label: t('app.nav.items.my_company'),
         description: t('admin.settings.cards.my_company.description'),
         target: CRM_APP_PATHS.myCompany,
-        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer'],
+        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
         section: 'workspace',
         requiresCompaniesView: true,
       },
@@ -230,6 +231,15 @@ export default function SettingsLandingPage() {
         requiresModules: ['documents'],
       },
       {
+        key: 'merge_templates',
+        label: t('admin.settings.cards.merge_templates.label'),
+        description: t('admin.settings.cards.merge_templates.description'),
+        target: CRM_APP_PATHS.settingsMergeTemplates,
+        roles: ['administrator', 'supervisor'],
+        section: 'crm_setup',
+        requiresModules: ['documents'],
+      },
+      {
         key: 'funnels',
         label: t('admin.settings.cards.funnels.label', { defaultValue: 'Funnels' }),
         description: t('admin.settings.cards.funnels.description', { defaultValue: 'Candidate and lead stages.' }),
@@ -243,7 +253,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.hiring_gates.label'),
         description: t('admin.settings.cards.hiring_gates.description'),
         target: CRM_APP_PATHS.settingsHiringPipelineGates,
-        roles: ['administrator', 'supervisor', 'recruiter', 'viewer'],
+        roles: ['administrator', 'supervisor', 'recruiter', 'compliance_officer', 'hr_officer', 'viewer'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -261,7 +271,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.candidate_profiles.label'),
         description: t('admin.settings.cards.candidate_profiles.description'),
         target: CRM_APP_PATHS.settingsCandidateProfiles,
-        roles: ['administrator'],
+        roles: ['administrator', 'supervisor'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -328,7 +338,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.profile.label', { defaultValue: 'My profile' }),
         description: t('admin.settings.cards.profile.description', { defaultValue: 'Personal profile, language, security and local preferences.' }),
         target: CRM_APP_PATHS.profile,
-        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer'],
+        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
         section: 'personal',
       },
     ],
@@ -362,12 +372,6 @@ export default function SettingsLandingPage() {
         return true
       }),
     [allCards, can, canUseCommunicationsFeature, isSuperAdmin, modules, role],
-  )
-
-  const contourLinks = useMemo(
-    () =>
-      CRM_CONTOUR_NAV_ITEMS.filter((item) => !item.permission || can(item.permission)),
-    [can],
   )
 
   const grouped = useMemo(
@@ -404,83 +408,22 @@ export default function SettingsLandingPage() {
     <div className="space-y-4">
       <section className="card p-6">
         <header className="mb-4">
+          <PageBreadcrumb className="mb-3" />
           <h2 className="text-xl font-semibold text-slate-900">{t('admin.settings.title')}</h2>
           <p className="text-sm text-slate-500">{t('admin.settings.subtitle')}</p>
         </header>
-
-        {!activeArea ? (
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/80 to-white p-5">
-              <h3 className="text-sm font-semibold text-slate-900">{t('admin.settings.crm_contours.title')}</h3>
-              <p className="mt-1 text-sm text-slate-600">{t('admin.settings.crm_contours.intro')}</p>
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {contourLinks.map((item) => (
-                  <li key={item.key}>
-                    <Link
-                      to={item.path}
-                      className="block rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 text-left shadow-sm transition hover:border-brand-200 hover:shadow"
-                    >
-                      <span className="text-sm font-medium text-slate-900">
-                        {item.labelKey === 'app.nav.items.clients' ? clientsNavLabel : t(item.labelKey)}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">{t(item.descriptionKey)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-4 text-xs text-slate-500">
-                {t('admin.settings.crm_contours.checklist_prompt')}{' '}
-                <Link to={CRM_APP_PATHS.onboardingGettingStarted} className="font-medium text-brand-700 hover:underline">
-                  {t('admin.settings.crm_contours.checklist_link')}
-                </Link>
-              </p>
-            </div>
-            <p className="text-sm text-slate-600">{t('admin.settings.areas_intro')}</p>
-            <ul className="grid gap-4 sm:grid-cols-2">
-              {grouped.map((section) => (
-                <li key={section.key}>
-                  <Link
-                    to={settingsAreaHref(section.key)}
-                    className="block h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-300 hover:shadow-md"
-                  >
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">{section.label}</h3>
-                    <p className="mt-2 text-sm text-slate-600">{section.description}</p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-700">
-                      <IconLink size={15} stroke={2} />
-                      {t('admin.settings.actions.open_area', { defaultValue: 'Open area' })}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Link
-              to={CRM_APP_PATHS.settings}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
-            >
-              <span aria-hidden>←</span>
-              {t('admin.settings.actions.back_to_areas', { defaultValue: 'All settings areas' })}
-            </Link>
-            <PageBreadcrumb className="max-w-4xl" />
-            {(() => {
-              const section = grouped.find((g) => g.key === activeArea)
-              if (!section || section.items.length === 0) {
-                return <p className="text-sm text-slate-500">{t('admin.settings.area_empty', { defaultValue: 'Nothing to configure here for your role.' })}</p>
-              }
-              return (
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">{section.label}</h3>
-                    <p className="mt-1 text-sm text-slate-500">{section.description}</p>
-                  </div>
-                  <ul className="grid gap-4 md:grid-cols-2">{section.items.map((item) => renderCard(item))}</ul>
-                </div>
-              )
-            })()}
-          </div>
-        )}
+        <div className="space-y-6">
+          <p className="text-sm text-slate-600">{t('admin.settings.areas_intro')}</p>
+          {grouped.map((section) => (
+            <section key={section.key} className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">{section.label}</h3>
+                <p className="mt-1 text-sm text-slate-500">{section.description}</p>
+              </div>
+              <ul className="grid gap-4 md:grid-cols-2">{section.items.map((item) => renderCard(item))}</ul>
+            </section>
+          ))}
+        </div>
       </section>
     </div>
   )

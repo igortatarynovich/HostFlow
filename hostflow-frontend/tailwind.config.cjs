@@ -30,7 +30,6 @@ module.exports = {
       },
       boxShadow: {
         sm: "0 1px 2px 0 rgb(16 24 40 / 0.06)",
-        card: "0 6px 24px rgb(16 24 40 / 0.06)",
       },
     },
   },

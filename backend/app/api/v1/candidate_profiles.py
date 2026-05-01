@@ -11,6 +11,10 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.hiring_workspace_roles import (
+    HIRING_CANDIDATE_PROFILE_READ_ROLES,
+    HIRING_CANDIDATE_PROFILE_WRITE_ROLES,
+)
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
 from backend.app.models.candidate_profile import CandidateProfile
@@ -468,13 +472,7 @@ async def list_candidate_profiles(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(
-        Role.admin,
-        Role.supervisor,
-        Role.recruiter,
-        Role.client_processor,
-        Role.client_manager,
-    )),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
 ) -> List[CandidateProfileOut]:
     """List candidate profiles for the tenant.
     
@@ -504,7 +502,7 @@ async def create_candidate_profile(
     payload: CandidateProfileIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
 ) -> CandidateProfileOut:
     """Create a new candidate profile."""
     db, tenant_id = db_tenant
@@ -572,7 +570,7 @@ DRIVER_CE_DEFAULT_CODE = "driver_ce_default"
 async def fix_orphaned_vacancies(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
 ) -> Dict[str, Any]:
     """Set candidate_profile_id to driver_ce_default for vacancies that have none or reference a missing/inactive profile. Runs for all tenants that have driver_ce_default."""
     db, _tenant_id = db_tenant
@@ -646,13 +644,13 @@ async def fix_orphaned_vacancies(
 async def get_profile_limits(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
 ) -> Dict[str, Any]:
     """Get profile field limits for the tenant."""
     from backend.app.services.profile_limits import (
         get_tenant_plan,
         get_plan_limits,
-        calculate_field_counts,
+        get_tenant_profile_usage_counts,
         FIELD_CATEGORIES,
     )
 
@@ -661,23 +659,10 @@ async def get_profile_limits(
     plan = await get_tenant_plan(db, str(tenant_id))
     simple_limit, medium_limit, resource_limit, total_custom_limit = get_plan_limits(plan)
 
-    stmt = select(CandidateProfile).where(
-        CandidateProfile.tenant_id == str(tenant_id),
-        CandidateProfile.is_active == True,
+    total_simple, total_medium, total_resource, total_custom = await get_tenant_profile_usage_counts(
+        db,
+        str(tenant_id),
     )
-    result = await db.execute(stmt)
-    profiles = result.scalars().all()
-
-    total_simple = 0
-    total_medium = 0
-    total_resource = 0
-    total_custom = 0
-    for profile in profiles:
-        s, m, r, t = calculate_field_counts(profile.config or {})
-        total_simple += s
-        total_medium += m
-        total_resource += r
-        total_custom += t
 
     return {
         "plan": plan or "free",
@@ -704,13 +689,7 @@ async def get_candidate_profile_field_contract(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(
-        Role.admin,
-        Role.supervisor,
-        Role.recruiter,
-        Role.client_processor,
-        Role.client_manager,
-    )),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
 ) -> CandidateProfileFieldContractOut:
     """Get normalized field ownership contract for intake/card deduplication."""
     db, tenant_id = db_tenant
@@ -730,13 +709,7 @@ async def get_candidate_profile(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(
-        Role.admin,
-        Role.supervisor,
-        Role.recruiter,
-        Role.client_processor,
-        Role.client_manager,
-    )),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
 ) -> CandidateProfileOut:
     """Get a single candidate profile by ID (includes inactive, so vacancy references keep working).
     Same-tenant profile is returned; for client tenants, agency profile is allowed when linked via TenantLink.
@@ -754,7 +727,7 @@ async def update_candidate_profile(
     payload: CandidateProfileIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
 ) -> CandidateProfileOut:
     """Update an existing candidate profile."""
     db, tenant_id = db_tenant
@@ -852,7 +825,7 @@ async def delete_candidate_profile(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
 ) -> None:
     """Delete (deactivate) a candidate profile."""
     db, tenant_id = db_tenant
@@ -927,7 +900,7 @@ async def get_profile_history(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of history entries to return"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
 ) -> List[Dict[str, Any]]:
     """Get history of changes for a candidate profile."""
     db, tenant_id = db_tenant

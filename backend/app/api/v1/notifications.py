@@ -45,7 +45,7 @@ class NotificationTemplateListResponse(BaseModel):
 
 
 class NotificationOut(BaseModel):
-    id: UUID
+    id: str
     event_type: str
     channel: str
     priority: str = Field(description="UOS attention tier: critical | high | normal (canonical).")
@@ -63,7 +63,7 @@ class NotificationListResponse(BaseModel):
 
 
 class NotificationReadRequest(BaseModel):
-    ids: Optional[List[UUID]] = None
+    ids: Optional[List[str]] = None
     mark_all: bool = False
 
 
@@ -124,6 +124,13 @@ async def list_notifications(
     limit: int = Query(50, ge=1, le=200),
     include_read: bool = Query(False),
     scope: Literal["all", "direct"] = Query("direct"),
+    include_completed_entities: bool = Query(
+        False,
+        description=(
+            "When false (default) hides bell rows tied to candidates in terminal "
+            "stages (rejected/declined/employed/probation_ok) or soft-deleted."
+        ),
+    ),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> NotificationListResponse:
@@ -142,11 +149,12 @@ async def list_notifications(
         limit=limit,
         include_read=include_read,
         scope=scope,
+        include_completed_entities=include_completed_entities,
     )
     return NotificationListResponse(
         items=[
             NotificationOut(
-                id=UUID(n.id),
+                id=str(n.id),
                 event_type=n.event_type,
                 channel=n.channel,
                 priority=notification_out_priority(n),

@@ -143,6 +143,7 @@ try:
     from backend.app.api.v1 import contact_attempts as contact_attempts_router
     from backend.app.api.v1 import handoffs as handoffs_router
     from backend.app.api.v1 import global_search as global_search_router
+    from backend.app.api.v1.fleet.router import router as fleet_router
     from backend.app.api.v1 import onboarding as onboarding_router
 except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import meta as meta_router  # type: ignore[no-redef]
@@ -222,6 +223,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import contact_attempts as contact_attempts_router  # type: ignore[no-redef]
     from .api.v1 import handoffs as handoffs_router  # type: ignore[no-redef]
     from .api.v1 import global_search as global_search_router  # type: ignore[no-redef]
+    from .api.v1.fleet.router import router as fleet_router  # type: ignore[no-redef]
     from .api.v1 import onboarding as onboarding_router  # type: ignore[no-redef]
 
 try:
@@ -788,6 +790,7 @@ app.include_router(invoices_router, prefix="/api/v1", tags=["invoices"])
 # Домен
 app.include_router(companies_router, prefix="/api/v1", tags=["companies"])
 app.include_router(vacancies_router, prefix="/api/v1", tags=["vacancies"])
+app.include_router(fleet_router, prefix="/api/v1", tags=["fleet"])
 app.include_router(own_companies_router, prefix="/api/v1", tags=["own-companies"])
 app.include_router(own_companies_legacy_router, prefix="/api/v1", tags=["own-companies"])
 app.include_router(recruiters_router, prefix="/api/v1", tags=["recruiters"])

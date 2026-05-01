@@ -64,6 +64,8 @@ import {
   CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX,
 } from '../modules/candidates/constants'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
+import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type {
   DateRangeFilter,
@@ -948,6 +950,8 @@ export default function Candidates(){
   const outerScrollRef = useRef<HTMLElement | null>(null)
   const { can } = usePermissions()
   const planLimitModal = usePlanLimitModal()
+  const { warningFor: quotaWarningFor } = useBillingQuotaWarnings()
+  const candidatesQuotaWarning = quotaWarningFor('candidates_active')
   const canManage = can('candidates.manage')
   const canViewActivities = can('notifications.view')
   const [recentlyOpenedId, setRecentlyOpenedId] = useState<string | null>(null)
@@ -1136,23 +1140,34 @@ export default function Candidates(){
   )
 
   const stagePresence = useMemo(() => {
-    // Используем все enrichedItems, а не отфильтрованные
-    const set = new Set<string>(stageFilter)
+    // Only stages actually present in current data set.
+    const set = new Set<string>()
     enrichedItems.forEach((item) => {
       if (item.stage) set.add(String(item.stage))
     })
     return set
-  }, [enrichedItems, stageFilter])
+  }, [enrichedItems])
 
-  const stageFilterOptions = useMemo(
-    () =>
-      stageOptions
-        .filter((code) => stagePresence.has(code))
-        .map((code) => ({
-          value: code,
-          label: translateStageLabel(t, code, stageLabelMap[code] || code),
-        })),
-    [stageOptions, stagePresence, stageLabelMap, t]
+  const stageFilterOptions = useMemo(() => {
+    const selected = new Set(stageFilter.map((s) => String(s || '').trim().toLowerCase()).filter(Boolean))
+    return stageOptions
+      .filter((code) => {
+        const c = String(code || '').trim().toLowerCase()
+        return stagePresence.has(code) || (c && selected.has(c))
+      })
+      .map((code) => ({
+        value: code,
+        label: translateStageLabel(t, code, stageLabelMap[code] || code),
+      }))
+  }, [stageOptions, stagePresence, stageLabelMap, t, stageFilter])
+
+  const pruneSelectionByOptions = useCallback(
+    (selected: string[], options: Array<{ value: string }>) => {
+      if (!selected.length) return selected
+      const allowed = new Set(options.map((opt) => String(opt.value)))
+      return selected.filter((value) => allowed.has(String(value)))
+    },
+    [],
   )
 
   const filteredItems = useMemo(() => {
@@ -1421,6 +1436,97 @@ export default function Candidates(){
     docsOrderedFilter, docsHasFilesFilter, preferredChannelFilter,
     inPolandFilter, opsModeFilter, polandBasisFilter, trailerTypesFilter,
   })
+
+  const quickStageOptions = useMemo(
+    () => stageFilterOptions.map((option) => option.value),
+    [stageFilterOptions],
+  )
+  const quickManagers = useMemo(
+    () => managerFilterOptions.map((option) => ({ id: option.value, name: option.label })),
+    [managerFilterOptions],
+  )
+  const quickVacancies = useMemo(
+    () => vacancyFilterOptions.map((option) => ({ id: option.value, title: option.label })),
+    [vacancyFilterOptions],
+  )
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(stageFilter, stageFilterOptions)
+    if (next.length !== stageFilter.length) setStageFilter(next)
+  }, [stageFilter, stageFilterOptions, setStageFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(vacancyFilter, vacancyFilterOptions)
+    if (next.length !== vacancyFilter.length) setVacancyFilter(next)
+  }, [vacancyFilter, vacancyFilterOptions, setVacancyFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(managerFilter, managerFilterOptions)
+    if (next.length !== managerFilter.length) setManagerFilter(next)
+  }, [managerFilter, managerFilterOptions, setManagerFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(statusReasonFilter, reasonFilterOptions)
+    if (next.length !== statusReasonFilter.length) setStatusReasonFilter(next)
+  }, [statusReasonFilter, reasonFilterOptions, setStatusReasonFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(docsStatusFilter, docsStatusFilterOptions)
+    if (next.length !== docsStatusFilter.length) setDocsStatusFilter(next)
+  }, [docsStatusFilter, docsStatusFilterOptions, setDocsStatusFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(docsOrderedFilter, docsOrderFilterOptions)
+    if (next.length !== docsOrderedFilter.length) setDocsOrderedFilter(next)
+  }, [docsOrderedFilter, docsOrderFilterOptions, setDocsOrderedFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(docsHasFilesFilter, docsHasFilesOptions)
+    if (next.length !== docsHasFilesFilter.length) setDocsHasFilesFilter(next)
+  }, [docsHasFilesFilter, docsHasFilesOptions, setDocsHasFilesFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(preferredChannelFilter, preferredChannelOptions)
+    if (next.length !== preferredChannelFilter.length) setPreferredChannelFilter(next)
+  }, [preferredChannelFilter, preferredChannelOptions, setPreferredChannelFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(inPolandFilter, inPolandOptions)
+    if (next.length !== inPolandFilter.length) setInPolandFilter(next)
+  }, [inPolandFilter, inPolandOptions, setInPolandFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const allowed = new Set(opsModeOptions.map((option) => String(option.value)))
+    const next = opsModeFilter.filter((value) => allowed.has(String(value)))
+    if (next.length !== opsModeFilter.length) setOpsModeFilter(next)
+  }, [opsModeFilter, opsModeOptions, setOpsModeFilter])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(polandBasisFilter, polandBasisOptions)
+    if (next.length !== polandBasisFilter.length) setPolandBasisFilter(next)
+  }, [polandBasisFilter, polandBasisOptions, setPolandBasisFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(trailerTypesFilter, trailerTypesOptions)
+    if (next.length !== trailerTypesFilter.length) setTrailerTypesFilter(next)
+  }, [trailerTypesFilter, trailerTypesOptions, setTrailerTypesFilter, pruneSelectionByOptions])
+
+  const tagOptions = useMemo(() => {
+    const all = new Set<string>()
+    enrichedItems.forEach((item) => {
+      const tags = Array.isArray(item.tags) ? item.tags : []
+      tags.forEach((tag) => {
+        const value = String(tag || '').trim()
+        if (value) all.add(value)
+      })
+    })
+    return Array.from(all).sort().map((value) => ({ value, label: value }))
+  }, [enrichedItems])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(tagsFilter, tagOptions)
+    if (next.length !== tagsFilter.length) setTagsFilter(next)
+  }, [tagsFilter, tagOptions, setTagsFilter, pruneSelectionByOptions])
 
   // Функция для рендеринга содержимого заголовка колонки
   const columnHeaderCtx = useMemo(() => ({
@@ -1973,6 +2079,7 @@ export default function Candidates(){
     setManagerFilter,
     setCreatedRange,
     setHandoffStatusFilter,
+    setStageFilter,
   })
 
   // Reusable secondary button style for top/filter actions
@@ -2285,6 +2392,15 @@ export default function Candidates(){
             </button>
           </div>
 
+          {candidatesQuotaWarning ? (
+            <div className="mx-4 mb-2 shrink-0">
+              <QuotaNearLimitBanner
+                kind="candidates_active"
+                percentUsed={candidatesQuotaWarning.percentUsed}
+              />
+            </div>
+          ) : null}
+
           <CandidatesFiltersToolbar
             t={t}
             locale={locale}
@@ -2302,10 +2418,10 @@ export default function Candidates(){
             savedViews={savedViews}
             applyView={applyView}
             deleteView={deleteView}
-            stageOptions={stageOptions}
+            stageOptions={quickStageOptions}
             stageLabelMap={stageLabelMap}
-            managers={managers}
-            vacancies={vacancies}
+            managers={quickManagers}
+            vacancies={quickVacancies}
             stageFilter={stageFilter}
             setStageFilter={setStageFilter}
             managerFilter={managerFilter}
@@ -2599,6 +2715,14 @@ export default function Candidates(){
                           })
                         : t('app.candidates.table.empty_no_data_desc', {
                             defaultValue: 'Add the first lead or candidate to start pipeline operations.',
+                          })
+                    }
+                    whyHint={
+                      hasActiveTableFilters
+                        ? undefined
+                        : t('app.candidates.table.empty_why', {
+                            defaultValue:
+                              'Candidates are people you actively work with — qualified leads, contacted prospects, hires in pipeline. Convert a lead from the Leads inbox or import a list to start.',
                           })
                     }
                     primaryAction={

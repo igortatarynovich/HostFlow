@@ -23,6 +23,16 @@ from backend.app.models.tenant import Tenant, TenantType
 from backend.app.services.tenant_links import get_tenant_link, is_handoff_enabled, list_links_for_agency
 
 
+def _extract_session(db_like) -> AsyncSession:
+    if isinstance(db_like, AsyncSession):
+        return db_like
+    if isinstance(db_like, tuple):
+        for item in db_like:
+            if isinstance(item, AsyncSession):
+                return item
+    raise TypeError("AsyncSession not found in provided dependency")
+
+
 async def get_pending_handoff(
     db: AsyncSession,
     candidate_id: str,
@@ -190,61 +200,21 @@ async def client_has_accepted_handoff(
 
 async def is_client_tenant(db: AsyncSession, tenant_id: str) -> bool:
     """True if tenant is a client (company type)."""
-    tenant = await db.get(Tenant, tenant_id)
+    session = _extract_session(db)
+    tenant = await session.get(Tenant, tenant_id)
     if not tenant:
         return False
     return getattr(tenant, "type", None) == TenantType.company
 
 
 async def is_client_tenant_for_list(db: AsyncSession, tenant_id: str) -> bool:
-    """True if tenant should be treated as **client** for list scope and PII masking.
+    """True if tenant should be treated as client in candidates list scope.
 
-    Проверяет:
-    1. Tenant.type == TenantType.company (основной способ)
-    2. Если тип не company, проверяет наличие TenantLink где client_tenant_id == tenant_id (fallback)
-    
-    Это гарантирует, что:
-    - агентство (`Tenant.type = agency`) всегда использует "агентский" скоуп (см. repo._candidate_scope_clause),
-      видит полный список своих и клиентских кандидатов;
-    - клиент (company-tenant или tenant в TenantLink как client) использует "клиентский" скоуп с маскированием PII.
+    Important: we intentionally rely only on tenant type.
+    `TenantLink` records configure handoff/link access, but must not globally
+    flip an agency workspace into client view.
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Основная проверка: тип tenant
-    is_type_company = await is_client_tenant(db, tenant_id)
-    if is_type_company:
-        logger.debug("is_client_tenant_for_list: tenant_id=%s is company type, returning True", tenant_id)
-        return True
-    
-    # Fallback: проверяем, является ли tenant клиентом через TenantLink
-    from backend.app.models.tenant import TenantLink
-    from sqlalchemy import select
-    
-    stmt = select(TenantLink).where(
-        TenantLink.client_tenant_id == tenant_id,
-        TenantLink.status == "active",
-    ).limit(1)
-    result = await db.execute(stmt)
-    link = result.scalar_one_or_none()
-    
-    if link:
-        # Если tenant фигурирует как client_tenant_id в активном TenantLink, это клиентский тенант
-        logger.debug("is_client_tenant_for_list: tenant_id=%s found in TenantLink as client_tenant_id, returning True", tenant_id)
-        return True
-    
-    # Дополнительная диагностика: проверяем тип tenant для логирования
-    tenant = await db.get(Tenant, tenant_id)
-    tenant_type = getattr(tenant, "type", None) if tenant else None
-    logger.debug(
-        "is_client_tenant_for_list: tenant_id=%s tenant_type=%s is_type_company=%s has_tenant_link=%s, returning False",
-        tenant_id,
-        tenant_type,
-        is_type_company,
-        link is not None,
-    )
-    
-    return False
+    return await is_client_tenant(db, tenant_id)
 
 
 async def has_pending_handoff_for_client(

@@ -1,37 +1,157 @@
 import clsx from 'clsx'
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type ClipboardEvent, FormEvent, type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
-import { completeActivity, createActivity, listActivities, listManagers, snoozeActivity } from '../api/client'
+import {
+  completeActivity,
+  createActivity,
+  getActivity,
+  listActivities,
+  listManagers,
+  snoozeActivity,
+  updateReminder,
+} from '../api/client'
 import { ACTIVITY_TEMPLATES } from '../modules/candidates/activityTemplates'
 import {
   createCommunicationPlannerEvent,
+  getCommunicationPlannerEvent,
   getMyWorkingHours,
+  getMyNotificationSettings,
+  getCommunicationsSettings,
   listCommunicationPlannerEvents,
   listCommunicationTimeOffRequests,
   patchCommunicationPlannerEvent,
+  upsertMyNotificationSettings,
   type CommunicationPlannerEvent,
+  type NotificationSettings,
+  type AvailabilityState,
   type CommunicationTimeOffRequest,
   type WorkingHoursSchedule,
 } from '../api/communications'
+import { cancelCalendarItem, listCalendarItems, patchCalendarItem, type CalendarItem as IntegratedCalendarItem } from '../api/calendarIntegrations'
 import { useI18n } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { useAuth } from '../store/useAuth'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
-type CalendarSourceFilter = 'all' | 'timeoff' | 'reminders' | 'planner'
+type CalendarSourceFilter = 'all' | 'timeoff' | 'reminders' | 'planner' | 'integrated'
 type TimeOffStatusFilter = 'approved' | 'pending' | 'all'
 type ViewMode = 'month' | 'week' | 'day'
 type PlannerRepeatMode = 'none' | 'daily' | 'weekdays'
 type BatchSelectStatusFilter = '' | 'planned' | 'in_progress' | 'done' | 'cancelled'
 type WeekSlotMinutes = 15 | 30 | 60
+type TaskKind = 'task' | 'followup' | 'call'
+type EventModalParticipant = { id: string; name: string; email: string; response_status: '' | 'accepted' | 'tentative' | 'declined' }
+
+function normalizeParticipantEmail(email: string): string {
+  return String(email || '').trim().toLowerCase()
+}
+
+function isValidParticipantEmail(email: string): boolean {
+  const s = String(email || '').trim()
+  if (!s || s.length > 254) return false
+  // Pragmatic RFC5322-ish check (good enough for UI validation)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
+}
+
+/** Extract likely emails from pasted text (handles comma / semicolon / newline lists). */
+function extractEmailsFromClipboardText(text: string): string[] {
+  const raw = String(text || '')
+  const tokenRe = /[^\s,;<>\r\n]+@[^\s,;<>\r\n]+/g
+  const tokens = raw.match(tokenRe) || []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (let t of tokens) {
+    t = t.replace(/^[<(]+/, '').replace(/[)>.,;:]+$/, '').trim()
+    if (!isValidParticipantEmail(t)) continue
+    const k = normalizeParticipantEmail(t)
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(t)
+  }
+  return out
+}
+
+function dedupeParticipants(rows: EventModalParticipant[]): EventModalParticipant[] {
+  const seen = new Set<string>()
+  const out: EventModalParticipant[] = []
+  for (const row of rows) {
+    const key = normalizeParticipantEmail(row.email)
+    if (!key) {
+      out.push(row)
+      continue
+    }
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(row)
+  }
+  return out
+}
+
+function mergeBulkEmailsAtRow(prev: EventModalParticipant[], rowId: string, emails: string[]): EventModalParticipant[] {
+  const cleaned = emails.map((e) => e.trim()).filter((e) => isValidParticipantEmail(e))
+  if (cleaned.length === 0) return prev
+  const idx = prev.findIndex((r) => r.id === rowId)
+  if (idx === -1) {
+    const additions = cleaned.map((email, i) => ({
+      id: `p-paste-${Date.now()}-${i}-${normalizeParticipantEmail(email)}`,
+      name: '',
+      email,
+      response_status: '' as const,
+    }))
+    return dedupeParticipants([...prev, ...additions])
+  }
+  const row = prev[idx]
+  const first = cleaned[0]
+  const rest = cleaned.slice(1)
+  const updatedFirst: EventModalParticipant = { ...row, email: first }
+  const inserted = rest.map((email, i) => ({
+    id: `p-paste-${Date.now()}-${idx}-${i}-${normalizeParticipantEmail(email)}`,
+    name: '',
+    email,
+    response_status: '' as const,
+  }))
+  return dedupeParticipants([...prev.slice(0, idx), updatedFirst, ...inserted, ...prev.slice(idx + 1)])
+}
 
 const CALENDAR_BATCH_STORAGE_KEY = 'hf:calendar:batch:v1'
 const CALENDAR_UI_STORAGE_KEY = 'hf:calendar:ui:v2'
+const CALENDAR_TASK_PREFS_STORAGE_KEY = 'hf:calendar:task-prefs:v1'
+const TASK_KIND_OPTIONS: Array<{ value: TaskKind; label: string }> = [
+  { value: 'task', label: 'Task' },
+  { value: 'followup', label: 'Follow-up' },
+  { value: 'call', label: 'Call' },
+]
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  default_reminder_minutes: 30,
+  channels: { in_app: true, push: true, email: false },
+  quiet_hours_enabled: false,
+  quiet_hours_start: '22:00',
+  quiet_hours_end: '08:00',
+  timezone: 'UTC',
+}
+
+function readTaskPrefs(): { defaultTaskKind: TaskKind; defaultRemindMinutes: number } {
+  if (typeof window === 'undefined') return { defaultTaskKind: 'task', defaultRemindMinutes: 30 }
+  try {
+    const raw = window.localStorage.getItem(CALENDAR_TASK_PREFS_STORAGE_KEY)
+    if (!raw) return { defaultTaskKind: 'task', defaultRemindMinutes: 30 }
+    const p = JSON.parse(raw) as { defaultTaskKind?: string; defaultRemindMinutes?: number }
+    const defaultTaskKind: TaskKind = ['task', 'followup', 'call'].includes(String(p.defaultTaskKind || ''))
+      ? (p.defaultTaskKind as TaskKind)
+      : 'task'
+    const mins = Number(p.defaultRemindMinutes)
+    const defaultRemindMinutes = [0, 5, 10, 15, 30, 60].includes(mins) ? mins : 30
+    return { defaultTaskKind, defaultRemindMinutes }
+  } catch {
+    return { defaultTaskKind: 'task', defaultRemindMinutes: 30 }
+  }
+}
 
 function readInitialCalendarUi(): { source: CalendarSourceFilter; view: ViewMode } {
   if (typeof window === 'undefined') return { source: 'all', view: 'month' }
@@ -40,7 +160,7 @@ function readInitialCalendarUi(): { source: CalendarSourceFilter; view: ViewMode
     if (!raw) return { source: 'all', view: 'month' }
     const p = JSON.parse(raw) as { sourceFilter?: string; viewMode?: string }
     const source: CalendarSourceFilter =
-      p.sourceFilter === 'all' || p.sourceFilter === 'timeoff' || p.sourceFilter === 'reminders' || p.sourceFilter === 'planner'
+      p.sourceFilter === 'all' || p.sourceFilter === 'timeoff' || p.sourceFilter === 'reminders' || p.sourceFilter === 'planner' || p.sourceFilter === 'integrated'
         ? p.sourceFilter
         : 'all'
     const view: ViewMode =
@@ -54,7 +174,7 @@ function readInitialCalendarUi(): { source: CalendarSourceFilter; view: ViewMode
 type UnifiedCalendarEvent = {
   id: string
   dateKey: string
-  source: 'timeoff' | 'reminder' | 'planner'
+  source: 'timeoff' | 'reminder' | 'planner' | 'integrated'
   status: 'approved' | 'pending' | 'overdue' | 'due' | 'info'
   title: string
   subtitle?: string
@@ -69,6 +189,7 @@ type UnifiedCalendarEvent = {
   reminderId?: string | null
   plannerStatus?: string | null
   reminderStatus?: string | null
+  integratedItemId?: string | null
   tags?: string[]
 }
 
@@ -198,6 +319,7 @@ function weekSlotStart(slotIndex: number, slotMinutes: WeekSlotMinutes): { hour:
 function sourceBadgeClass(source: UnifiedCalendarEvent['source']): string {
   if (source === 'timeoff') return 'bg-rose-100 text-rose-800'
   if (source === 'reminder') return 'bg-amber-100 text-amber-800'
+  if (source === 'integrated') return 'bg-blue-100 text-blue-800'
   return 'bg-violet-100 text-violet-800'
 }
 
@@ -232,8 +354,10 @@ function plannerKindTone(kind?: string | null): string {
   return 'bg-slate-50 text-slate-700 border-slate-200'
 }
 
-export default function CommunicationsCalendarPage() {
+export default function CommunicationsCalendarPage(props: { embedded?: boolean } = {}) {
+  const embedded = Boolean(props.embedded)
   const { t } = useI18n()
+  const { me } = useAuth()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const planLimitModal = usePlanLimitModal()
 
@@ -246,11 +370,16 @@ export default function CommunicationsCalendarPage() {
   const [timeOffRows, setTimeOffRows] = useState<CommunicationTimeOffRequest[]>([])
   const [reminders, setReminders] = useState<any[]>([])
   const [plannerEvents, setPlannerEvents] = useState<CommunicationPlannerEvent[]>([])
+  const [integratedCalendarItems, setIntegratedCalendarItems] = useState<IntegratedCalendarItem[]>([])
+  /** When ``?event_id=`` points to a planner row outside the default list window, fetch merges here (G-6). */
+  const [focusInjectPlanner, setFocusInjectPlanner] = useState<CommunicationPlannerEvent | null>(null)
+  /** Same for reminders/activities resolved by UUID. */
+  const [focusInjectReminder, setFocusInjectReminder] = useState<Record<string, unknown> | null>(null)
   const [labels, setLabels] = useState<Map<string, string>>(new Map())
   const [managers, setManagers] = useState<Array<{ id: string; label: string }>>([])
 
   const [monthCursor, setMonthCursor] = useState<Date>(() => startOfMonth(new Date()))
-  const [selectedDay, setSelectedDay] = useState<string>(() => dateIso(new Date()))
+  const [selectedDay, setSelectedDay] = useState<string>(() => localDayKeyFromDate(new Date()))
   const [weekCursor, setWeekCursor] = useState<Date>(() => startOfWeek(new Date()))
   const [statusFilter, setStatusFilter] = useState<TimeOffStatusFilter>('approved')
   const [sourceFilter, setSourceFilter] = useState<CalendarSourceFilter>(() => readInitialCalendarUi().source)
@@ -258,6 +387,28 @@ export default function CommunicationsCalendarPage() {
   const [activityTypeFilter, setActivityTypeFilter] = useState('')
   const [plannerKindFilter, setPlannerKindFilter] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>(() => readInitialCalendarUi().view)
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false)
+  const [eventModalOpen, setEventModalOpen] = useState(false)
+  const [eventModalEvent, setEventModalEvent] = useState<UnifiedCalendarEvent | null>(null)
+  const [eventModalType, setEventModalType] = useState<'meeting' | 'task'>('task')
+  const [eventModalTitle, setEventModalTitle] = useState('')
+  const [eventModalKind, setEventModalKind] = useState('meeting')
+  const [eventModalStartAt, setEventModalStartAt] = useState(toLocalInput(new Date(Date.now() + 30 * 60_000).toISOString()))
+  const [eventModalEndAt, setEventModalEndAt] = useState(toLocalInput(new Date(Date.now() + 90 * 60_000).toISOString()))
+  const [eventModalAllDay, setEventModalAllDay] = useState(false)
+  const [eventModalDescription, setEventModalDescription] = useState('')
+  const [eventModalLocation, setEventModalLocation] = useState('')
+  const [eventModalParticipants, setEventModalParticipants] = useState<EventModalParticipant[]>([])
+  const [eventModalParticipantErrors, setEventModalParticipantErrors] = useState<Record<string, string>>({})
+  const [eventModalMeetingLink, setEventModalMeetingLink] = useState('')
+  const [eventModalOnlineMeeting, setEventModalOnlineMeeting] = useState(false)
+  const [eventModalAssigneeId, setEventModalAssigneeId] = useState('')
+  const [taskPrefs, setTaskPrefs] = useState(() => readTaskPrefs())
+  const [eventModalRemindMinutes, setEventModalRemindMinutes] = useState(() => readTaskPrefs().defaultRemindMinutes)
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS)
+  const [notificationSettingsSaving, setNotificationSettingsSaving] = useState(false)
+  const [teamStateByManager, setTeamStateByManager] = useState<Record<string, AvailabilityState>>({})
+  const [eventModalAllowUnavailableAssignee, setEventModalAllowUnavailableAssignee] = useState(false)
   const [dragPlannerEvent, setDragPlannerEvent] = useState<UnifiedCalendarEvent | null>(null)
   const [resizePlannerEvent, setResizePlannerEvent] = useState<UnifiedCalendarEvent | null>(null)
   const [activePlannerMenuId, setActivePlannerMenuId] = useState<string | null>(null)
@@ -270,6 +421,18 @@ export default function CommunicationsCalendarPage() {
   const [weekSlotMinutes, setWeekSlotMinutes] = useState<WeekSlotMinutes>(30)
   const [workingHours, setWorkingHours] = useState<WorkingHoursSchedule | null>(null)
   const [allowOutsideHours, setAllowOutsideHours] = useState(false)
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const deepLinkHandledRef = useRef<string | null>(null)
+  const deepLinkFetchAttemptRef = useRef<string | null>(null)
+  const [highlightUnifiedId, setHighlightUnifiedId] = useState<string | null>(null)
+  const managerLabelWithState = useCallback(
+    (managerId: string, fallbackLabel: string) => {
+      const state = teamStateByManager[String(managerId)] || 'available'
+      return state === 'available' ? fallbackLabel : `${fallbackLabel} (${state})`
+    },
+    [teamStateByManager],
+  )
 
   const [plannerForm, setPlannerForm] = useState({
     title: '',
@@ -301,6 +464,7 @@ export default function CommunicationsCalendarPage() {
       const needTimeoff = sourceFilter === 'all' || sourceFilter === 'timeoff'
       const needActivities = sourceFilter === 'all' || sourceFilter === 'reminders'
       const needPlanner = sourceFilter === 'all' || sourceFilter === 'planner'
+      const needIntegrated = sourceFilter === 'all' || sourceFilter === 'integrated'
 
       const range =
         viewMode === 'day'
@@ -323,7 +487,7 @@ export default function CommunicationsCalendarPage() {
                 return { start, end }
               })()
 
-      const [timeOffRes, remRes, plannerRes, mgrs, wh] = await Promise.all([
+      const [timeOffRes, remRes, plannerRes, integratedRes, mgrs, wh, notif, commSettings] = await Promise.all([
         needTimeoff
           ? listCommunicationTimeOffRequests({
               limit: 500,
@@ -341,8 +505,16 @@ export default function CommunicationsCalendarPage() {
         needPlanner
           ? listCommunicationPlannerEvents({ limit: 200 }).catch(() => ({ items: [] }))
           : Promise.resolve({ items: [] } as any),
+        needIntegrated
+          ? listCalendarItems({
+              start: range.start.toISOString(),
+              end: range.end.toISOString(),
+            }).catch(() => [] as IntegratedCalendarItem[])
+          : Promise.resolve([] as IntegratedCalendarItem[]),
         listManagers().catch(() => []),
         getMyWorkingHours().catch(() => null),
+        getMyNotificationSettings().catch(() => DEFAULT_NOTIFICATION_SETTINGS),
+        getCommunicationsSettings().catch(() => null),
       ])
       const normalizedManagers = (Array.isArray(mgrs) ? mgrs : []).map((m: any) => ({ id: String(m.id), label: String(m.label || m.full_name || m.email || m.id) }))
       setManagers(normalizedManagers)
@@ -351,7 +523,21 @@ export default function CommunicationsCalendarPage() {
       setTimeOffRows(Array.isArray(timeOffRes.items) ? timeOffRes.items : [])
       setReminders(Array.isArray((remRes as any)?.items) ? (remRes as any).items : [])
       setPlannerEvents(Array.isArray(plannerRes?.items) ? plannerRes.items : [])
+      setIntegratedCalendarItems(Array.isArray(integratedRes) ? integratedRes : [])
       if (wh) setWorkingHours(wh)
+      setNotificationSettings({ ...DEFAULT_NOTIFICATION_SETTINGS, ...(notif || {}) })
+      const queueItems = Array.isArray((commSettings as any)?.managerQueue?.items) ? (commSettings as any).managerQueue.items : []
+      const nextStateMap: Record<string, AvailabilityState> = {}
+      for (const raw of queueItems) {
+        if (!raw || typeof raw !== 'object') continue
+        const mid = String((raw as any).managerId || '').trim()
+        if (!mid) continue
+        const st = String((raw as any)?.availability?.state || 'available').trim().toLowerCase()
+        if (st === 'available' || st === 'busy' || st === 'offline' || st === 'break' || st === 'meeting') {
+          nextStateMap[mid] = st as AvailabilityState
+        }
+      }
+      setTeamStateByManager(nextStateMap)
     } catch (err: any) {
       if (
         !planLimitModal?.showPlanLimitIfNeeded(
@@ -376,6 +562,13 @@ export default function CommunicationsCalendarPage() {
   }, [])
 
   useEffect(() => {
+    // Keep calendar predictable: start from visible "all sources" state.
+    setSourceFilter('all')
+    setAssigneeFilter('')
+    setStatusFilter('all')
+  }, [])
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(
         CALENDAR_UI_STORAGE_KEY,
@@ -385,6 +578,25 @@ export default function CommunicationsCalendarPage() {
       // ignore
     }
   }, [sourceFilter, viewMode])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CALENDAR_TASK_PREFS_STORAGE_KEY, JSON.stringify(taskPrefs))
+    } catch {
+      // ignore
+    }
+  }, [taskPrefs])
+
+  useEffect(() => {
+    const mins = Number(notificationSettings.default_reminder_minutes || 0)
+    if (![0, 5, 10, 15, 30, 60].includes(mins)) return
+    setTaskPrefs((prev) => ({ ...prev, defaultRemindMinutes: mins }))
+  }, [notificationSettings.default_reminder_minutes])
+
+  useEffect(() => {
+    if (!embedded) return
+    setSourceFilter('all')
+  }, [embedded])
 
   const monthMeta = useMemo(() => {
     const start = startOfMonth(monthCursor)
@@ -397,6 +609,20 @@ export default function CommunicationsCalendarPage() {
     }
   }, [monthCursor])
 
+  const plannerEventsEffective = useMemo(() => {
+    if (!focusInjectPlanner) return plannerEvents
+    const byId = new Map(plannerEvents.map((e) => [e.id, e]))
+    byId.set(focusInjectPlanner.id, focusInjectPlanner)
+    return Array.from(byId.values())
+  }, [plannerEvents, focusInjectPlanner])
+
+  const remindersEffective = useMemo(() => {
+    if (!focusInjectReminder) return reminders
+    const byId = new Map(reminders.map((r: any) => [String(r.id), r]))
+    byId.set(String(focusInjectReminder.id), focusInjectReminder as any)
+    return Array.from(byId.values())
+  }, [reminders, focusInjectReminder])
+
   const unifiedEvents = useMemo<UnifiedCalendarEvent[]>(() => {
     const nowTs = Date.now()
     const events: UnifiedCalendarEvent[] = []
@@ -408,8 +634,8 @@ export default function CommunicationsCalendarPage() {
       if (!cur || !end) continue
       while (cur <= end) {
         events.push({
-          id: `timeoff:${row.id}:${dateIso(cur)}`,
-          dateKey: dateIso(cur),
+          id: `timeoff:${row.id}:${localDayKeyFromDate(cur)}`,
+          dateKey: localDayKeyFromDate(cur),
           source: 'timeoff',
           status: row.status === 'approved' ? 'approved' : 'pending',
           title: labels.get(String(row.requester_user_id)) || row.requester_label || row.requester_user_id,
@@ -422,7 +648,7 @@ export default function CommunicationsCalendarPage() {
       }
     }
 
-    for (const rem of reminders) {
+    for (const rem of remindersEffective) {
       const dueAt = rem?.due_at || rem?.remind_at || null
       const dt = parseDate(dueAt)
       if (!dt) continue
@@ -432,7 +658,7 @@ export default function CommunicationsCalendarPage() {
         id: `rem:${String(rem?.id || '')}:${String(dueAt)}`,
         reminderId: String(rem?.id || ''),
         reminderStatus: rem?.status ? String(rem.status) : null,
-        dateKey: dateIso(dt),
+        dateKey: localDayKeyFromDate(dt),
         source: 'reminder',
         status: sourceStatus,
         title: String(rem?.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' })),
@@ -452,7 +678,7 @@ export default function CommunicationsCalendarPage() {
       })
     }
 
-    for (const pe of plannerEvents) {
+    for (const pe of plannerEventsEffective) {
       const dt = parseDate(pe.start_at)
       if (!dt) continue
       const s = String(pe.status || '').toLowerCase()
@@ -460,7 +686,7 @@ export default function CommunicationsCalendarPage() {
         id: `planner:${pe.id}:${pe.start_at}`,
         plannerId: pe.id,
         plannerStatus: String(pe.status || ''),
-        dateKey: dateIso(dt),
+        dateKey: localDayKeyFromDate(dt),
         source: 'planner',
         status: s === 'done' || s === 'cancelled' ? 'info' : 'due',
         title: pe.title,
@@ -475,18 +701,42 @@ export default function CommunicationsCalendarPage() {
       })
     }
 
+    for (const ci of integratedCalendarItems) {
+      const fromPlannerBridge = String((ci.payload as any)?.created_from || '') === 'communications_planner'
+      if (fromPlannerBridge) continue
+      const dt = parseDate(ci.starts_at)
+      if (!dt) continue
+      const statusRaw = String(ci.status || '').toLowerCase()
+      if (statusRaw === 'cancelled' || statusRaw === 'canceled' || statusRaw === 'deleted') continue
+      events.push({
+        id: `integrated:${ci.id}:${ci.starts_at}`,
+        integratedItemId: ci.id,
+        dateKey: localDayKeyFromDate(dt),
+        source: 'integrated',
+        status: statusRaw === 'cancelled' ? 'info' : 'due',
+        title: ci.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' }),
+        subtitle: `${ci.kind || 'event'} · ${ci.source || 'calendar'}`,
+        detail: ci.description || undefined,
+        at: ci.starts_at,
+        endAt: ci.ends_at || null,
+        assigneeId: ci.assignee_id ? String(ci.assignee_id) : null,
+        kind: ci.kind || 'event',
+      })
+    }
+
     return events.sort((a, b) => {
       const ad = a.at || `${a.dateKey}T00:00:00`
       const bd = b.at || `${b.dateKey}T00:00:00`
       return ad.localeCompare(bd) || a.title.localeCompare(b.title)
     })
-  }, [labels, plannerEvents, reminders, t, timeOffRows])
+  }, [integratedCalendarItems, labels, plannerEventsEffective, remindersEffective, t, timeOffRows])
 
   const filteredEvents = useMemo(() => {
     return unifiedEvents.filter((e) => {
       if (sourceFilter === 'timeoff' && e.source !== 'timeoff') return false
       if (sourceFilter === 'reminders' && e.source !== 'reminder') return false
       if (sourceFilter === 'planner' && e.source !== 'planner') return false
+      if (sourceFilter === 'integrated' && e.source !== 'integrated') return false
       if (assigneeFilter && String(e.assigneeId || '') !== assigneeFilter) return false
       if (activityTypeFilter && e.source === 'reminder' && String(e.kind || '') !== activityTypeFilter) return false
       if (plannerKindFilter && e.source === 'planner' && String(e.kind || '') !== plannerKindFilter) return false
@@ -508,8 +758,8 @@ export default function CommunicationsCalendarPage() {
     [eventsByDay, selectedDay],
   )
   const plannerById = useMemo(() => {
-    return new Map(plannerEvents.map((x) => [x.id, x]))
-  }, [plannerEvents])
+    return new Map(plannerEventsEffective.map((x) => [x.id, x]))
+  }, [plannerEventsEffective])
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => addDays(weekCursor, i))
@@ -528,12 +778,12 @@ export default function CommunicationsCalendarPage() {
   }, [nowTs])
 
   const loadByAssigneeToday = useMemo(() => {
-    const rows = new Map<string, { label: string; total: number; meetings: number; tasks: number; overdue: number }>()
+    const rows = new Map<string, { id: string; label: string; total: number; meetings: number; tasks: number; overdue: number }>()
     for (const event of selectedEvents) {
       const key = String(event.assigneeId || '')
       if (!key) continue
       if (!rows.has(key)) {
-        rows.set(key, { label: labels.get(key) || key, total: 0, meetings: 0, tasks: 0, overdue: 0 })
+        rows.set(key, { id: key, label: labels.get(key) || key, total: 0, meetings: 0, tasks: 0, overdue: 0 })
       }
       const row = rows.get(key)!
       row.total += 1
@@ -543,6 +793,20 @@ export default function CommunicationsCalendarPage() {
     }
     return Array.from(rows.values()).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label))
   }, [labels, selectedEvents])
+  const recommendedAssigneeId = useMemo(() => {
+    if (!managers.length) return ''
+    const loadMap = new Map<string, number>(loadByAssigneeToday.map((r) => [r.id, r.total]))
+    const available = managers.filter((m) => (teamStateByManager[m.id] || 'available') === 'available')
+    const pool = available.length ? available : managers
+    return pool
+      .slice()
+      .sort((a, b) => {
+        const la = Number(loadMap.get(a.id) || 0)
+        const lb = Number(loadMap.get(b.id) || 0)
+        if (la !== lb) return la - lb
+        return a.label.localeCompare(b.label)
+      })[0]?.id || ''
+  }, [loadByAssigneeToday, managers, teamStateByManager])
 
   const dayPlannerEvents = useMemo(() => {
     return selectedEvents.filter((e) => e.source === 'planner' && e.plannerId && e.at)
@@ -570,10 +834,12 @@ export default function CommunicationsCalendarPage() {
 
   const stats = useMemo(() => {
     const planner = unifiedEvents.filter((e) => e.source === 'planner')
+    const integrated = unifiedEvents.filter((e) => e.source === 'integrated')
     return {
       timeOff: unifiedEvents.filter((e) => e.source === 'timeoff').length,
       reminders: unifiedEvents.filter((e) => e.source === 'reminder').length,
       planner: planner.length,
+      integrated: integrated.length,
       meetings: planner.filter((e) => String(e.kind || '').toLowerCase() === 'meeting').length,
       tasks: planner.filter((e) => ['task', 'followup', 'call'].includes(String(e.kind || '').toLowerCase())).length,
       overdue: unifiedEvents.filter((e) => e.status === 'overdue').length,
@@ -582,9 +848,81 @@ export default function CommunicationsCalendarPage() {
   }, [eventsByDay.size, unifiedEvents])
 
   const upcoming = useMemo(() => {
-    const today = dateIso(new Date())
+    const today = localDayKeyFromDate(new Date())
     return filteredEvents.filter((e) => e.dateKey >= today).slice(0, 25)
   }, [filteredEvents])
+
+  // G-6 — ``/app/calendar?event_id=<uuid>`` (planner event id or activity/reminder id).
+  useEffect(() => {
+    const raw = (searchParams.get('event_id') || searchParams.get('eventId') || '').trim()
+    if (!raw || loading) return
+    if (deepLinkHandledRef.current === raw) return
+
+    const match = unifiedEvents.find((e) => e.plannerId === raw || e.reminderId === raw)
+    if (match) {
+      deepLinkFetchAttemptRef.current = null
+      deepLinkHandledRef.current = raw
+      const dayKey = match.dateKey
+      const dayDate = parseDate(`${dayKey}T12:00:00`) || new Date()
+      setSelectedDay(dayKey)
+      setMonthCursor(startOfMonth(dayDate))
+      setWeekCursor(startOfWeek(dayDate))
+      setViewMode('day')
+      setSourceFilter('all')
+      setAssigneeFilter('')
+      setActivityTypeFilter('')
+      setPlannerKindFilter('')
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`hf-cal-ev-${match.id}`)
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          if (match.plannerId) {
+            setActivePlannerMenuId(match.plannerId)
+          }
+          setHighlightUnifiedId(match.id)
+          window.setTimeout(() => setHighlightUnifiedId(null), 4500)
+          setSearchParams(
+            (prev) => {
+              const next = new URLSearchParams(prev)
+              next.delete('event_id')
+              next.delete('eventId')
+              return next
+            },
+            { replace: true },
+          )
+        })
+      })
+      return
+    }
+
+    // Wait for an in-flight fetch that will merge ``focusInject*`` into unifiedEvents.
+    if (deepLinkFetchAttemptRef.current === raw) return
+    deepLinkFetchAttemptRef.current = raw
+    void (async () => {
+      try {
+        const pe = await getCommunicationPlannerEvent(raw)
+        setFocusInjectPlanner(pe)
+        deepLinkFetchAttemptRef.current = null
+        return
+      } catch {
+        /* try activity */
+      }
+      try {
+        const act = await getActivity(raw)
+        setFocusInjectReminder(act as Record<string, unknown>)
+        deepLinkFetchAttemptRef.current = null
+      } catch {
+        deepLinkHandledRef.current = raw
+        deepLinkFetchAttemptRef.current = null
+      }
+    })()
+  }, [
+    loading,
+    searchParams,
+    unifiedEvents,
+    setSearchParams,
+  ])
 
   const findSchedulingConflict = useCallback((params: {
     assigneeId?: string | null
@@ -632,7 +970,7 @@ export default function CommunicationsCalendarPage() {
       }
     }
 
-    for (const pe of plannerEvents) {
+    for (const pe of plannerEventsEffective) {
       if (String(pe.assignee_id || '') !== assigneeId) continue
       if (params.ignorePlannerId && pe.id === params.ignorePlannerId) continue
       const status = String(pe.status || '').toLowerCase()
@@ -647,11 +985,14 @@ export default function CommunicationsCalendarPage() {
     }
 
     return null
-  }, [plannerEvents, timeOffRows])
+  }, [plannerEventsEffective, timeOffRows])
 
   const createPlanner = useCallback(async (e: FormEvent) => {
     e.preventDefault()
-    if (!plannerForm.title.trim() || !plannerForm.startAt) return
+    if (!plannerForm.title.trim() || !plannerForm.startAt) {
+      setCalendarError(friendlyFormHintError(t('app.communications.calendar.errors.fill_required', { defaultValue: 'Please fill title and start date/time' }), t))
+      return
+    }
     const startBase = new Date(plannerForm.startAt)
     if (Number.isNaN(startBase.getTime())) {
       setCalendarError(friendlyFormHintError(t('app.communications.calendar.errors.invalid_start_datetime', { defaultValue: 'Invalid start datetime' }), t))
@@ -668,6 +1009,7 @@ export default function CommunicationsCalendarPage() {
     try {
       let created = 0
       let skipped = 0
+      let firstCreatedAt: Date | null = null
 
       for (let i = 0; i < safeRepeatCount; i += 1) {
         if (plannerForm.repeatMode === 'none' && i > 0) break
@@ -732,6 +1074,7 @@ export default function CommunicationsCalendarPage() {
           },
         })
         created += 1
+        if (!firstCreatedAt) firstCreatedAt = new Date(startShifted)
       }
       setPlannerForm((p) => ({ ...p, title: '', description: '', repeatMode: 'none', repeatCount: 1 }))
       await load()
@@ -742,9 +1085,21 @@ export default function CommunicationsCalendarPage() {
         setInfoText(`Created ${created} event(s). Skipped ${skipped} due to conflicts or working hours.`)
       } else if (created > 1) {
         setInfoText(`Created ${created} recurring events.`)
+      } else if (created === 1) {
+        setInfoText(t('app.communications.calendar.messages.created_one', { defaultValue: 'Event created.' }))
       } else {
         setInfoText(null)
       }
+      if (firstCreatedAt) {
+        const dayKey = localDayKeyFromDate(firstCreatedAt)
+        setSelectedDay(dayKey)
+        setMonthCursor(startOfMonth(firstCreatedAt))
+        setWeekCursor(startOfWeek(firstCreatedAt))
+        setViewMode('day')
+      }
+      setSourceFilter('all')
+      setAssigneeFilter('')
+      setStatusFilter('all')
     } catch (err: any) {
       if (
         !planLimitModal?.showPlanLimitIfNeeded(
@@ -761,6 +1116,316 @@ export default function CommunicationsCalendarPage() {
     }
   }, [allowOutsideHours, findSchedulingConflict, load, planLimitModal, plannerForm, t, workingHours])
 
+  const openCreateEventModal = useCallback((dayKey: string, hour = 9, minute = 0) => {
+    const base = parseDate(`${dayKey}T00:00:00`) || new Date()
+    base.setHours(hour, minute, 0, 0)
+    const end = new Date(base.getTime() + 60 * 60_000)
+    setEventModalEvent(null)
+    setEventModalType('task')
+    setEventModalTitle('')
+    setEventModalKind(taskPrefs.defaultTaskKind)
+    setEventModalAssigneeId(String((me as any)?.id || (me as any)?.sub || '').trim())
+    setEventModalStartAt(toLocalInput(base.toISOString()))
+    setEventModalEndAt(toLocalInput(end.toISOString()))
+    setEventModalAllDay(false)
+    setEventModalDescription('')
+    setEventModalLocation('')
+    setEventModalParticipants([])
+    setEventModalParticipantErrors({})
+    setEventModalMeetingLink('')
+    setEventModalOnlineMeeting(false)
+    setEventModalAllowUnavailableAssignee(false)
+    setEventModalRemindMinutes(taskPrefs.defaultRemindMinutes)
+    setEventModalOpen(true)
+  }, [me, taskPrefs.defaultRemindMinutes, taskPrefs.defaultTaskKind])
+
+  const openEventDetailsModal = useCallback((event: UnifiedCalendarEvent) => {
+    const start = parseDate(event.at || `${event.dateKey}T09:00:00`) || new Date()
+    const end = parseDate(event.endAt || null) || new Date(start.getTime() + 60 * 60_000)
+    setEventModalEvent(event)
+    const inferredType: 'meeting' | 'task' =
+      event.source === 'reminder' || ['task', 'followup'].includes(String(event.kind || '').toLowerCase())
+        ? 'task'
+        : 'meeting'
+    setEventModalType(inferredType)
+    setEventModalTitle(event.title || '')
+    setEventModalKind(String(event.kind || (inferredType === 'task' ? 'task' : 'meeting')))
+    setEventModalAssigneeId(String(event.assigneeId || ''))
+    setEventModalStartAt(toLocalInput(start.toISOString()))
+    setEventModalEndAt(toLocalInput(end.toISOString()))
+    setEventModalAllDay(!event.at)
+    setEventModalDescription(event.detail || '')
+    let srcPayload: Record<string, any> = {}
+    if (event.plannerId) {
+      const planner = plannerById.get(event.plannerId)
+      srcPayload = (planner?.payload || {}) as Record<string, any>
+    } else if (event.integratedItemId) {
+      const integrated = integratedCalendarItems.find((x) => String(x.id) === String(event.integratedItemId))
+      srcPayload = (integrated?.payload || {}) as Record<string, any>
+    }
+    setEventModalLocation(String(srcPayload.location || srcPayload.meeting_location || ''))
+    const attendeesRaw = Array.isArray(srcPayload.attendees) ? srcPayload.attendees : []
+    setEventModalParticipants(
+      dedupeParticipants(
+        attendeesRaw
+          .map((row: any, idx: number) => {
+            if (typeof row === 'string') {
+              const email = String(row || '').trim()
+              if (!email) return null
+              return { id: `p-${idx}-${email}`, name: '', email, response_status: '' as const }
+            }
+            if (!row || typeof row !== 'object') return null
+            const email = String(row.email || row.address || '').trim()
+            if (!email) return null
+            const name = String(row.name || row.displayName || '').trim()
+            const rsRaw = String(row.response_status || row.responseStatus || row.status || '').trim().toLowerCase()
+            const response_status: '' | 'accepted' | 'tentative' | 'declined' =
+              rsRaw === 'accepted' || rsRaw === 'tentative' || rsRaw === 'declined' ? (rsRaw as any) : ''
+            return { id: `p-${idx}-${email}`, name, email, response_status }
+          })
+          .filter((x): x is EventModalParticipant => x !== null),
+      ),
+    )
+    setEventModalParticipantErrors({})
+    setEventModalMeetingLink(String(srcPayload.meeting_link || srcPayload.meetingLink || srcPayload.hangoutLink || ''))
+    setEventModalOnlineMeeting(Boolean(srcPayload.is_online_meeting || srcPayload.online_meeting))
+    setEventModalAllowUnavailableAssignee(false)
+    setEventModalRemindMinutes(30)
+    setEventModalOpen(true)
+  }, [integratedCalendarItems, plannerById])
+
+  const onParticipantEmailPaste = useCallback((rowId: string, e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text/plain') || ''
+    const emails = extractEmailsFromClipboardText(text)
+    const looksLikeList = text.includes('\n') || /[,;]/.test(text) || emails.length >= 2
+    if (!looksLikeList || emails.length === 0) return
+    e.preventDefault()
+    setEventModalParticipantErrors((prev) => {
+      const next = { ...prev }
+      delete next[rowId]
+      return next
+    })
+    setEventModalParticipants((prev) => mergeBulkEmailsAtRow(prev, rowId, emails))
+  }, [])
+
+  const onParticipantEmailKeyDown = useCallback((rowId: string, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const email = e.currentTarget.value.trim()
+    if (email && !isValidParticipantEmail(email)) {
+      setEventModalParticipantErrors((prev) => ({
+        ...prev,
+        [rowId]: t('app.communications.calendar.errors.invalid_attendee_email', { defaultValue: 'Invalid email address' }),
+      }))
+      return
+    }
+    setEventModalParticipantErrors((prev) => {
+      const next = { ...prev }
+      delete next[rowId]
+      return next
+    })
+    const nu: EventModalParticipant = { id: `p-new-${Date.now()}`, name: '', email: '', response_status: '' }
+    setEventModalParticipants((prev) => {
+      const idx = prev.findIndex((x) => x.id === rowId)
+      if (idx === -1) return [...prev, nu]
+      return [...prev.slice(0, idx + 1), nu, ...prev.slice(idx + 1)]
+    })
+  }, [t])
+
+  const submitEventModal = useCallback(async (e: FormEvent) => {
+    e.preventDefault()
+    if (!eventModalTitle.trim() || !eventModalStartAt) {
+      setCalendarError(friendlyFormHintError(t('app.communications.calendar.errors.fill_required', { defaultValue: 'Please fill title and start date/time' }), t))
+      return
+    }
+    try {
+      setBusy(true)
+      const participantErrors: Record<string, string> = {}
+      for (const p of eventModalParticipants) {
+        const email = String(p.email || '').trim()
+        if (email && !isValidParticipantEmail(email)) {
+          participantErrors[p.id] = t('app.communications.calendar.errors.invalid_attendee_email', { defaultValue: 'Invalid email address' })
+        }
+      }
+      if (Object.keys(participantErrors).length > 0) {
+        setEventModalParticipantErrors(participantErrors)
+        setCalendarError(
+          friendlyFormHintError(
+            t('app.communications.calendar.errors.attendees_invalid', { defaultValue: 'Fix invalid attendee emails before saving.' }),
+            t,
+          ),
+        )
+        return
+      }
+      setEventModalParticipantErrors({})
+
+      const start = new Date(eventModalStartAt)
+      const end = eventModalAllDay || !eventModalEndAt ? null : new Date(eventModalEndAt)
+      const remindAt = new Date(start.getTime() - Math.max(0, Number(eventModalRemindMinutes || 0)) * 60_000)
+      const assigneeId = String(eventModalAssigneeId || (me as any)?.id || (me as any)?.sub || '').trim() || undefined
+      const attendeesPayload = dedupeParticipants(eventModalParticipants)
+        .map((p) => ({
+          email: String(p.email || '').trim(),
+          name: String(p.name || '').trim() || undefined,
+          response_status: String(p.response_status || '').trim() || undefined,
+        }))
+        .filter((p) => p.email)
+      const taskKind: TaskKind = ['task', 'followup', 'call'].includes(String(eventModalKind || '').toLowerCase())
+        ? (String(eventModalKind).toLowerCase() as TaskKind)
+        : taskPrefs.defaultTaskKind
+      if (eventModalEvent) {
+        if (eventModalEvent.plannerId) {
+          const planner = plannerById.get(eventModalEvent.plannerId)
+          const nextPayload: Record<string, any> = { ...((planner?.payload || {}) as Record<string, any>) }
+          nextPayload.location = eventModalLocation.trim() || undefined
+          nextPayload.attendees = attendeesPayload
+          nextPayload.meeting_link = eventModalMeetingLink.trim() || undefined
+          nextPayload.is_online_meeting = Boolean(eventModalOnlineMeeting)
+          nextPayload.online_meeting_provider = eventModalOnlineMeeting ? 'teamsForBusiness' : undefined
+          nextPayload.reminder_minutes = eventModalRemindMinutes
+          await patchCommunicationPlannerEvent(eventModalEvent.plannerId, {
+            title: eventModalTitle.trim(),
+            description: eventModalDescription.trim() || null,
+            start_at: start.toISOString(),
+            end_at: end?.toISOString() || null,
+            all_day: eventModalAllDay,
+            assignee_id: assigneeId || null,
+            payload: nextPayload,
+            allow_unavailable_assignee: eventModalAllowUnavailableAssignee,
+          })
+          window.dispatchEvent(new CustomEvent('planner-event-updated'))
+        } else if (eventModalEvent.integratedItemId) {
+          await patchCalendarItem(eventModalEvent.integratedItemId, {
+            title: eventModalTitle.trim(),
+            description: eventModalDescription.trim() || '',
+            starts_at: start.toISOString(),
+            ends_at: end?.toISOString(),
+            all_day: eventModalAllDay,
+            assignee_id: assigneeId || null,
+            payload: {
+              location: eventModalLocation.trim() || undefined,
+              attendees: attendeesPayload,
+              meeting_link: eventModalMeetingLink.trim() || undefined,
+              is_online_meeting: Boolean(eventModalOnlineMeeting),
+              online_meeting_provider: eventModalOnlineMeeting ? 'teamsForBusiness' : undefined,
+              reminder_minutes: eventModalRemindMinutes,
+            },
+          })
+        } else if (eventModalEvent.reminderId) {
+          await updateReminder(eventModalEvent.reminderId, {
+            title: eventModalTitle.trim(),
+            description: eventModalDescription.trim() || undefined,
+            due_at: start.toISOString(),
+            assignee_id: assigneeId || undefined,
+            allow_unavailable_assignee: eventModalAllowUnavailableAssignee,
+          })
+          window.dispatchEvent(new CustomEvent('reminder-updated'))
+        }
+        setEventModalOpen(false)
+        await load()
+        return
+      }
+      if (eventModalType === 'task') {
+        await createActivity({
+          title: eventModalTitle.trim(),
+          description: eventModalDescription.trim() || undefined,
+          type: taskKind,
+          entity_type: 'calendar',
+          entity_id: localDayKeyFromDate(start),
+          assignee_id: assigneeId,
+          due_at: start.toISOString(),
+          remind_at: eventModalRemindMinutes > 0 ? remindAt.toISOString() : undefined,
+          source: 'communications_calendar_modal',
+          allow_unavailable_assignee: eventModalAllowUnavailableAssignee,
+          payload: { priority: 'normal', remind_minutes: eventModalRemindMinutes, task_kind: taskKind },
+        })
+        window.dispatchEvent(new CustomEvent('reminder-updated'))
+      } else {
+        const createdPlanner = await createCommunicationPlannerEvent({
+          title: eventModalTitle.trim(),
+          kind: eventModalKind || 'meeting',
+          priority: 'normal',
+          assignee_id: assigneeId,
+          start_at: start.toISOString(),
+          end_at: end?.toISOString(),
+          all_day: eventModalAllDay,
+          allow_unavailable_assignee: eventModalAllowUnavailableAssignee,
+          description: eventModalDescription.trim() || undefined,
+          payload: {
+            source: 'communications_calendar_modal',
+            location: eventModalLocation.trim() || undefined,
+            attendees: attendeesPayload,
+            meeting_link: eventModalMeetingLink.trim() || undefined,
+            is_online_meeting: eventModalOnlineMeeting,
+            online_meeting_provider: eventModalOnlineMeeting ? 'teamsForBusiness' : undefined,
+            visibility: 'private',
+            reminder_minutes: eventModalRemindMinutes,
+          },
+        })
+        setFocusInjectPlanner(createdPlanner)
+        await createActivity({
+          title: eventModalTitle.trim(),
+          description: eventModalDescription.trim() || undefined,
+          type: 'custom',
+          entity_type: 'planner_event',
+          entity_id: String((createdPlanner as any)?.id || ''),
+          assignee_id: assigneeId,
+          due_at: start.toISOString(),
+          remind_at: eventModalRemindMinutes > 0 ? remindAt.toISOString() : undefined,
+          source: 'communications_calendar_meeting_alert',
+          payload: {
+            priority: 'normal',
+            planner_event_id: String((createdPlanner as any)?.id || ''),
+            remind_minutes: eventModalRemindMinutes,
+          },
+        }).catch(() => undefined)
+        window.dispatchEvent(new CustomEvent('planner-event-updated'))
+        window.dispatchEvent(new CustomEvent('reminder-updated'))
+      }
+      setEventModalOpen(false)
+      await load()
+      setSelectedDay(localDayKeyFromDate(start))
+      setViewMode('day')
+    } catch (err: any) {
+      setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.create_planner_failed', { defaultValue: 'Failed to create planner event' }), t))
+    } finally {
+      setBusy(false)
+    }
+  }, [eventModalAllDay, eventModalAllowUnavailableAssignee, eventModalAssigneeId, eventModalDescription, eventModalEndAt, eventModalEvent, eventModalKind, eventModalLocation, eventModalMeetingLink, eventModalOnlineMeeting, eventModalParticipants, eventModalRemindMinutes, eventModalStartAt, eventModalTitle, eventModalType, load, me, plannerById, t, taskPrefs.defaultTaskKind])
+
+  const cancelUnifiedEvent = useCallback(async (event: UnifiedCalendarEvent) => {
+    try {
+      setBusy(true)
+      if (event.plannerId) {
+        await patchCommunicationPlannerEvent(event.plannerId, { status: 'cancelled' })
+        window.dispatchEvent(new CustomEvent('planner-event-updated'))
+      } else if (event.integratedItemId) {
+        await cancelCalendarItem(event.integratedItemId)
+      } else {
+        return
+      }
+      setEventModalOpen(false)
+      await load()
+    } catch (err: any) {
+      setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.update_planner_failed', { defaultValue: 'Failed to update planner event' }), t))
+    } finally {
+      setBusy(false)
+    }
+  }, [load, t])
+
+  const saveNotificationSettings = useCallback(async () => {
+    try {
+      setNotificationSettingsSaving(true)
+      const saved = await upsertMyNotificationSettings(notificationSettings)
+      setNotificationSettings({ ...DEFAULT_NOTIFICATION_SETTINGS, ...(saved || {}) })
+      setInfoText(t('app.communications.calendar.messages.settings_saved', { defaultValue: 'Settings saved.' }))
+    } catch (err: any) {
+      setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.save_failed', { defaultValue: 'Failed to save settings' }), t))
+    } finally {
+      setNotificationSettingsSaving(false)
+    }
+  }, [notificationSettings, t])
+
   const createDayReminder = useCallback(async (e: FormEvent) => {
     e.preventDefault()
     if (!reminderForm.title.trim() || !reminderForm.dueAt) return
@@ -774,7 +1439,7 @@ export default function CommunicationsCalendarPage() {
         type: reminderForm.type || 'custom',
         entity_type: 'calendar',
         entity_id: selectedDay,
-        assignee_id: reminderForm.assigneeId || undefined,
+        assignee_id: reminderForm.assigneeId || String((me as any)?.id || (me as any)?.sub || '').trim() || undefined,
         due_at: due.toISOString(),
         remind_at: remindAt.toISOString(),
         source: 'communications_calendar',
@@ -1282,8 +1947,18 @@ export default function CommunicationsCalendarPage() {
     setSelectedDay(day)
   }, [])
 
+  // G-7 stage 1: drag-to-reschedule for both planner events AND reminders.
+  // Same UX entrypoint, but the underlying patch differs:
+  //   - planner → `patchCommunicationPlannerEvent` with { start_at, end_at }
+  //   - reminder → `updateReminder` with { due_at }
+  // Reminders have no end_at (no duration concept), so the conflict check
+  // is skipped on the reminder branch — there's nothing to overlap with.
+  // The dispatch happens inside this single function so the three drop
+  // handlers (week grid, day timeline, day buckets) stay source-agnostic.
   const movePlannerEventToDateTime = useCallback(async (event: UnifiedCalendarEvent, targetStart: Date, dayKeyAfterMove?: string) => {
-    if (!event.plannerId || !event.at) return
+    const isReminderSource = event.source === 'reminder' && Boolean(event.reminderId)
+    const isPlannerSource = event.source === 'planner' && Boolean(event.plannerId)
+    if (!event.at || (!isReminderSource && !isPlannerSource)) return
     const start = parseDate(event.at)
     if (!start) return
     const movedStart = new Date(targetStart)
@@ -1291,32 +1966,48 @@ export default function CommunicationsCalendarPage() {
     const end = parseDate(event.endAt || null)
     const movedEnd = end ? new Date(movedStart.getTime() + (end.getTime() - start.getTime())) : null
 
-    const conflictReason = findSchedulingConflict({
-      assigneeId: event.assigneeId || null,
-      startAt: movedStart,
-      endAt: movedEnd,
-      allDay: false,
-      ignorePlannerId: event.plannerId,
-    })
-    if (conflictReason) {
-      setCalendarError(
-        friendlyFormHintError(
-          t('app.communications.calendar.errors.cannot_move', {
-            defaultValue: 'Cannot move: {reason}.',
-            values: { reason: conflictReason },
-          }),
-          t,
-        ),
-      )
-      return
+    if (isPlannerSource) {
+      // Conflict check only applies to planner-events because reminders
+      // are zero-duration (a single point in time, no overlap surface).
+      const conflictReason = findSchedulingConflict({
+        assigneeId: event.assigneeId || null,
+        startAt: movedStart,
+        endAt: movedEnd,
+        allDay: false,
+        ignorePlannerId: event.plannerId,
+      })
+      if (conflictReason) {
+        setCalendarError(
+          friendlyFormHintError(
+            t('app.communications.calendar.errors.cannot_move', {
+              defaultValue: 'Cannot move: {reason}.',
+              values: { reason: conflictReason },
+            }),
+            t,
+          ),
+        )
+        return
+      }
     }
 
     setBusy(true)
     try {
-      await patchCommunicationPlannerEvent(event.plannerId, {
-        start_at: movedStart.toISOString(),
-        end_at: movedEnd?.toISOString() || null,
-      })
+      if (isReminderSource && event.reminderId) {
+        // PATCH /reminders/{id} accepts due_at directly; no new endpoint
+        // needed despite the spec's earlier assumption.
+        await updateReminder(event.reminderId, { due_at: movedStart.toISOString() })
+        // Reminder rows on this page come from `listActivities` (the
+        // alias of /reminders). The Topbar bell + per-entity badges
+        // listen on these events to refetch — keep them in sync.
+        try {
+          window.dispatchEvent(new CustomEvent('reminder-updated', { detail: { reminderId: event.reminderId } }))
+        } catch {}
+      } else if (isPlannerSource && event.plannerId) {
+        await patchCommunicationPlannerEvent(event.plannerId, {
+          start_at: movedStart.toISOString(),
+          end_at: movedEnd?.toISOString() || null,
+        })
+      }
       await load()
       if (dayKeyAfterMove) setSelectedDay(dayKeyAfterMove)
       setCalendarError(null)
@@ -1404,40 +2095,30 @@ export default function CommunicationsCalendarPage() {
     await movePlannerEventToDateTime(event, target, dayKey)
   }, [movePlannerEventToDateTime])
 
+  // G-7 stage 1: drag-eligibility helper. Both planner events (have
+  // `plannerId`) and reminders (have `reminderId`) can be dragged to a
+  // new slot now. Resize stays planner-only because reminders are
+  // zero-duration. The variable name keeps `dragPlannerEvent` for diff
+  // size — semantically it now means "the dragged calendar item, of
+  // either source".
+  const isCalendarEventDraggable = useCallback(
+    (event: UnifiedCalendarEvent | null | undefined): boolean =>
+      Boolean(event && (event.plannerId || (event.source === 'reminder' && event.reminderId))),
+    [],
+  )
+  const isDragActive = isCalendarEventDraggable(dragPlannerEvent)
+
   return (
     <div className="space-y-4">
-      <WorkspaceTopNav active="calendar" />
-      <PageBreadcrumb className="max-w-4xl" />
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
-        <p className="text-sm text-slate-500">
-          {t('app.communications.ia.calendar_subtitle', {
-            defaultValue:
-              'Time view of tasks and activities (same data as Tasks). Optional layers: planner blocks and team time-off. For triage and SLA queue, use Tasks — not a second worklist here.',
-          })}
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <Link to={CRM_APP_PATHS.tasks} className="font-medium text-brand-700 hover:underline">
-            {t('app.communications.calendar.tasks_queue_link', { defaultValue: 'Open full task queue' })}
-          </Link>
-          {canUseCommunicationsFeature('myAvailability') && (
-            <Link to={CRM_APP_PATHS.myAvailability} className="text-slate-600 hover:text-brand-700 hover:underline">
-              {t('app.communications.calendar.scheduling.my_availability', { defaultValue: 'My availability' })}
-            </Link>
-          )}
-          {canUseCommunicationsFeature('teamAvailability') && (
-            <Link to={CRM_APP_PATHS.teamAvailability} className="text-slate-600 hover:text-brand-700 hover:underline">
-              {t('app.communications.calendar.scheduling.team_availability', { defaultValue: 'Team availability' })}
-            </Link>
-          )}
-          {canUseCommunicationsFeature('timeOffRequests') && (
-            <Link to={CRM_APP_PATHS.timeOff} className="text-slate-600 hover:text-brand-700 hover:underline">
-              {t('app.communications.calendar.scheduling.time_off', { defaultValue: 'Time off' })}
-            </Link>
-          )}
+      {!embedded && <WorkspaceTopNav active="calendar" />}
+      {!embedded && <PageBreadcrumb className="max-w-4xl" />}
+      {!embedded && (
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
         </div>
-      </div>
+      )}
 
+      {showAdvancedTools && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{t('app.communications.calendar.stats.time_off', { defaultValue: 'Time-off: {count}', values: { count: stats.timeOff } })}</div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.calendar.stats.activities', { defaultValue: 'Activities: {count}', values: { count: stats.reminders } })}</div>
@@ -1447,6 +2128,7 @@ export default function CommunicationsCalendarPage() {
         <div className="rounded-lg border border-rose-200 bg-white p-3 text-sm text-rose-700">{t('app.communications.calendar.stats.overdue', { defaultValue: 'Overdue: {count}', values: { count: stats.overdue } })}</div>
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.calendar.stats.days', { defaultValue: 'Days: {count}', values: { count: stats.daysWithEvents } })}</div>
       </div>
+      )}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -1472,6 +2154,23 @@ export default function CommunicationsCalendarPage() {
             {t('app.communications.calendar.views.week', { defaultValue: 'Week view' })}
           </button>
 
+          <button type="button" onClick={() => void load()} className="btn-secondary">
+            {t('common.actions.refresh')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAdvancedTools((v) => !v)}
+            className="btn-secondary"
+          >
+            {showAdvancedTools
+              ? t('common.actions.hide', { defaultValue: 'Hide' })
+              : t('common.actions.show', { defaultValue: 'Show' })}{' '}
+            {t('app.communications.calendar.filters.advanced_panel', { defaultValue: 'Advanced filters' })}
+          </button>
+        </div>
+        {showAdvancedTools && (
+        <>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as CalendarSourceFilter)} className="input">
             <option value="all">{t('app.communications.calendar.filters.sources.all', { defaultValue: 'All sources' })}</option>
             <option value="timeoff">{t('app.communications.calendar.filters.sources.timeoff', { defaultValue: 'Time-off' })}</option>
@@ -1479,27 +2178,23 @@ export default function CommunicationsCalendarPage() {
               {t('app.communications.calendar.filters.sources.activities', { defaultValue: 'Tasks & deadlines' })}
             </option>
             <option value="planner">{t('app.communications.calendar.filters.sources.planner', { defaultValue: 'Planner' })}</option>
+            <option value="integrated">{t('app.communications.calendar.filters.sources.integrated', { defaultValue: 'Connected calendars' })}</option>
           </select>
-
-          <button type="button" onClick={() => void load()} className="btn-secondary">
-            {t('common.actions.refresh')}
-          </button>
+          <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="input">
+            <option value="">{t('app.communications.calendar.filters.managers.all', { defaultValue: 'All managers' })}</option>
+            {managers.map((m) => <option key={m.id} value={m.id}>{managerLabelWithState(m.id, m.label)}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TimeOffStatusFilter)} className="input">
+            <option value="approved">{t('app.communications.calendar.filters.timeoff.approved_only', { defaultValue: 'Time-off approved only' })}</option>
+            <option value="pending">{t('app.communications.calendar.filters.timeoff.pending_only', { defaultValue: 'Time-off pending only' })}</option>
+            <option value="all">{t('app.communications.calendar.filters.timeoff.all', { defaultValue: 'Time-off approved + pending' })}</option>
+          </select>
         </div>
         <details className="mt-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2">
           <summary className="cursor-pointer text-sm font-medium text-slate-800">
             {t('app.communications.calendar.filters.advanced_panel', { defaultValue: 'Advanced filters' })}
           </summary>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TimeOffStatusFilter)} className="input">
-              <option value="approved">{t('app.communications.calendar.filters.timeoff.approved_only', { defaultValue: 'Time-off approved only' })}</option>
-              <option value="pending">{t('app.communications.calendar.filters.timeoff.pending_only', { defaultValue: 'Time-off pending only' })}</option>
-              <option value="all">{t('app.communications.calendar.filters.timeoff.all', { defaultValue: 'Time-off approved + pending' })}</option>
-            </select>
-
-            <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="input">
-              <option value="">{t('app.communications.calendar.filters.managers.all', { defaultValue: 'All managers' })}</option>
-              {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
             <select value={activityTypeFilter} onChange={(e) => setActivityTypeFilter(e.target.value)} className="input">
               <option value="">{t('app.communications.calendar.filters.activity_types.all', { defaultValue: 'All activity types' })}</option>
               {Array.from(new Set(reminders.map((r) => String(r?.type || '')).filter(Boolean))).sort().map((opt) => (
@@ -1516,6 +2211,8 @@ export default function CommunicationsCalendarPage() {
             </select>
           </div>
         </details>
+        </>
+        )}
         {calendarError && (
           <div className="mt-3">
             <ErrorRecoveryBanner
@@ -1535,7 +2232,7 @@ export default function CommunicationsCalendarPage() {
         {loading && <div className="mt-3 text-sm text-slate-500">{t('common.loading')}</div>}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className={clsx('grid gap-4', showAdvancedTools && 'xl:grid-cols-[1.25fr_0.75fr]')}>
         <div className="space-y-4">
           {viewMode === 'month' && (
             <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -1564,7 +2261,7 @@ export default function CommunicationsCalendarPage() {
 
               <div className="grid grid-cols-7 gap-1">
                 {monthMeta.days.map((day) => {
-                  const key = dateIso(day)
+                  const key = localDayKeyFromDate(day)
                   const inMonth = day.getMonth() === monthMeta.start.getMonth()
                   const dayEvents = eventsByDay.get(key) || []
                   const counts = {
@@ -1574,7 +2271,7 @@ export default function CommunicationsCalendarPage() {
                     planner: dayEvents.filter((e) => e.source === 'planner').length,
                   }
                   const isSelected = key === selectedDay
-                  const isToday = key === dateIso(new Date())
+                  const isToday = key === localDayKeyFromDate(new Date())
                   return (
                     <button
                       key={key}
@@ -1582,7 +2279,7 @@ export default function CommunicationsCalendarPage() {
                       onClick={() => {
                         setSelectedDay(key)
                         setWeekCursor(startOfWeek(day))
-                        setViewMode('day')
+                        openCreateEventModal(key, 9, 0)
                       }}
                       className={clsx('min-h-[96px] overflow-hidden rounded-lg border px-2 py-2 text-left', isSelected ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:bg-slate-50', !inMonth && 'opacity-45')}
                     >
@@ -1619,7 +2316,7 @@ export default function CommunicationsCalendarPage() {
                   <div className="text-sm font-semibold text-slate-900">
                     {t('app.communications.calendar.week.range', {
                       defaultValue: 'Week: {from} - {to}',
-                      values: { from: formatDayLabel(dateIso(weekDays[0])), to: formatDayLabel(dateIso(weekDays[6])) },
+                      values: { from: formatDayLabel(localDayKeyFromDate(weekDays[0])), to: formatDayLabel(localDayKeyFromDate(weekDays[6])) },
                     })}
                   </div>
                   <button type="button" className="btn-secondary" onClick={() => setWeekCursor((d) => addDays(d, 7))}>
@@ -1645,7 +2342,7 @@ export default function CommunicationsCalendarPage() {
                   <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b border-slate-200">
                     <div className="px-2 py-2 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.week.time', { defaultValue: 'Time' })}</div>
                     {weekDays.map((day) => {
-                      const key = dateIso(day)
+                      const key = localDayKeyFromDate(day)
                       return (
                         <button
                           key={`week-head-${key}`}
@@ -1669,7 +2366,7 @@ export default function CommunicationsCalendarPage() {
                   <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b border-slate-200">
                     <div className="px-2 py-2 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.week.all_day', { defaultValue: 'All-day' })}</div>
                     {weekDays.map((day) => {
-                      const key = dateIso(day)
+                      const key = localDayKeyFromDate(day)
                       const allDayEvents = (eventsByDay.get(key) || []).filter((event) => !event.at).slice(0, 3)
                       return (
                         <div key={`week-all-${key}`} className="min-h-[46px] border-l border-slate-200 px-1 py-1">
@@ -1698,7 +2395,7 @@ export default function CommunicationsCalendarPage() {
                         <div key={`week-hour-${slotIndex}`} className={clsx('grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b', majorLine ? 'border-slate-200' : 'border-slate-100')}>
                           <div className={clsx('px-2 py-2 text-[11px]', majorLine ? 'text-slate-500' : 'text-slate-400')}>{hourLabel}</div>
                           {weekDays.map((day) => {
-                            const key = dateIso(day)
+                            const key = localDayKeyFromDate(day)
                             const cellEvents = (eventsByDay.get(key) || [])
                               .filter((event) => {
                                 const dt = parseDate(event.at || null)
@@ -1710,14 +2407,17 @@ export default function CommunicationsCalendarPage() {
                                 key={`week-cell-${key}-${slotIndex}`}
                                 className={clsx(
                                   'relative min-h-[44px] border-l border-slate-100 px-1 py-1',
-                                  dragPlannerEvent?.plannerId ? 'hover:bg-brand-50/40' : '',
+                                  isDragActive ? 'hover:bg-brand-50/40' : '',
                                 )}
+                                onClick={() => {
+                                  if (!isDragActive) openCreateEventModal(key, slot.hour, slot.minute)
+                                }}
                                 onDragOver={(e) => {
-                                  if (dragPlannerEvent?.plannerId) e.preventDefault()
+                                  if (isDragActive) e.preventDefault()
                                 }}
                                 onDrop={(e) => {
                                   e.preventDefault()
-                                  if (!dragPlannerEvent?.plannerId) return
+                                  if (!isDragActive || !dragPlannerEvent) return
                                   const target = parseDate(`${key}T00:00:00`)
                                   if (!target) return
                                   target.setHours(slot.hour, slot.minute, 0, 0)
@@ -1734,13 +2434,17 @@ export default function CommunicationsCalendarPage() {
                                   {cellEvents.map((event) => (
                                     <div
                                       key={`week-item-${event.id}`}
-                                      draggable={Boolean(event.plannerId)}
+                                      draggable={isCalendarEventDraggable(event)}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openEventDetailsModal(event)
+                                      }}
                                       onDragStart={() => {
-                                        if (event.plannerId) setDragPlannerEvent(event)
+                                        if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
                                       }}
                                       onDragEnd={() => setDragPlannerEvent(null)}
-                                      className={clsx('badge border', plannerKindTone(event.kind), 'block w-full overflow-hidden', event.plannerId ? 'cursor-move' : '')}
-                                      title={event.plannerId ? t('app.communications.calendar.week.drag_to_slot', { defaultValue: 'Drag to another slot' }) : undefined}
+                                      className={clsx('badge border', plannerKindTone(event.kind), 'block w-full overflow-hidden', isCalendarEventDraggable(event) ? 'cursor-move' : '')}
+                                      title={isCalendarEventDraggable(event) ? t('app.communications.calendar.week.drag_to_slot', { defaultValue: 'Drag to another slot' }) : undefined}
                                     >
                                       <div className="truncate font-medium">{event.title}</div>
                                       <div className="truncate text-slate-600">{formatDateTime(event.at)}</div>
@@ -1844,7 +2548,7 @@ export default function CommunicationsCalendarPage() {
                       <div className="flex gap-1">
                         <select value={batchAssigneeId} onChange={(e) => setBatchAssigneeId(e.target.value)} className="w-full input">
                           <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
-                          {managers.map((m) => <option key={`batch-assignee-${m.id}`} value={m.id}>{m.label}</option>)}
+                          {managers.map((m) => <option key={`batch-assignee-${m.id}`} value={m.id}>{managerLabelWithState(m.id, m.label)}</option>)}
                         </select>
                         <button type="button" onClick={() => void runBatchAssign()} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.apply', { defaultValue: 'Apply' })}</button>
                       </div>
@@ -1883,7 +2587,7 @@ export default function CommunicationsCalendarPage() {
                     </button>
                   )}
                 </div>
-                <div className="max-h-56 space-y-1 overflow-auto">
+                <div className="max-h-[62vh] space-y-1 overflow-auto">
                   {Array.from({ length: 24 }).map((_, hour) => {
                     const slotLabel = `${String(hour).padStart(2, '0')}:00`
                     const isCurrentHour = selectedDay === nowMeta.dayKey && nowMeta.hours === hour
@@ -1896,11 +2600,14 @@ export default function CommunicationsCalendarPage() {
                         key={`slot-${hour}`}
                         className={clsx(
                           'relative rounded border border-slate-200 px-2 py-1 text-xs',
-                          dragPlannerEvent?.plannerId ? 'hover:border-brand-300 hover:bg-brand-50/40' : '',
+                          isDragActive ? 'hover:border-brand-300 hover:bg-brand-50/40' : '',
                           isCurrentHour ? 'border-rose-200 bg-rose-50/30' : '',
                         )}
+                        onClick={() => {
+                          if (!isDragActive) openCreateEventModal(selectedDay, hour, 0)
+                        }}
                         onDragOver={(e) => {
-                          if (dragPlannerEvent?.plannerId) e.preventDefault()
+                          if (isDragActive) e.preventDefault()
                         }}
                         onDrop={(e) => {
                           e.preventDefault()
@@ -1908,7 +2615,7 @@ export default function CommunicationsCalendarPage() {
                             void resizePlannerEventToHour(resizePlannerEvent, selectedDay, hour + 1)
                             return
                           }
-                          if (dragPlannerEvent?.plannerId) {
+                          if (isDragActive && dragPlannerEvent) {
                             const target = parseDate(`${selectedDay}T00:00:00`)
                             if (!target) return
                             target.setHours(hour, 0, 0, 0)
@@ -1927,12 +2634,16 @@ export default function CommunicationsCalendarPage() {
                           {slotEvents.map((event) => (
                             <div
                               key={`slot-item-${event.id}`}
-                              draggable={Boolean(event.plannerId)}
+                              draggable={isCalendarEventDraggable(event)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openEventDetailsModal(event)
+                              }}
                               onDragStart={() => {
-                                if (event.plannerId) setDragPlannerEvent(event)
+                                if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
                               }}
                               onDragEnd={() => setDragPlannerEvent(null)}
-                              className={clsx('badge border', plannerKindTone(event.kind), 'cursor-move')}
+                              className={clsx('badge border', plannerKindTone(event.kind), isCalendarEventDraggable(event) ? 'cursor-move' : '')}
                               title={t('app.communications.calendar.timeline.drag_to_hour_or_day', { defaultValue: 'Drag to another hour/day' })}
                             >
                               <span>{event.title}</span>
@@ -1959,7 +2670,11 @@ export default function CommunicationsCalendarPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
+              <details className="mt-3 rounded border border-slate-200">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-slate-700">
+                  {t('app.communications.calendar.day.advanced_buckets', { defaultValue: 'Advanced buckets' })}
+                </summary>
+                <div className="grid gap-3 p-3 md:grid-cols-3">
                 {[
                   { key: 'morning', label: t('app.communications.calendar.day_buckets.morning', { defaultValue: 'Morning (00:00-11:59)' }), items: dayBoard.morning },
                   { key: 'midday', label: t('app.communications.calendar.day_buckets.midday', { defaultValue: 'Day (12:00-16:59)' }), items: dayBoard.midday },
@@ -1971,13 +2686,20 @@ export default function CommunicationsCalendarPage() {
                       {bucket.items.map((event) => (
                         <div
                           key={event.id}
-                          draggable={Boolean(event.plannerId)}
+                          id={`hf-cal-ev-${event.id}`}
+                          draggable={isCalendarEventDraggable(event)}
+                          onClick={() => openEventDetailsModal(event)}
                           onDragStart={() => {
-                            if (event.plannerId) setDragPlannerEvent(event)
+                            if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
                           }}
                           onDragEnd={() => setDragPlannerEvent(null)}
-                          className={clsx('rounded-lg border px-2 py-2 text-xs', plannerKindTone(event.kind), event.plannerId ? 'cursor-move' : '')}
-                          title={event.plannerId ? t('app.communications.calendar.timeline.drag_to_timeline_or_week', { defaultValue: 'Drag to timeline or week days' }) : undefined}
+                          className={clsx(
+                            'rounded-lg border px-2 py-2 text-xs',
+                            plannerKindTone(event.kind),
+                            isCalendarEventDraggable(event) ? 'cursor-move' : '',
+                            highlightUnifiedId === event.id ? 'ring-2 ring-brand-500 ring-offset-2' : '',
+                          )}
+                          title={isCalendarEventDraggable(event) ? t('app.communications.calendar.timeline.drag_to_timeline_or_week', { defaultValue: 'Drag to timeline or week days' }) : undefined}
                         >
                           <div className="flex items-center gap-2">
                             {event.plannerId && (
@@ -1993,6 +2715,19 @@ export default function CommunicationsCalendarPage() {
                           <div className="mt-1 text-slate-600">{event.at ? formatDateTime(event.at) : formatDayLabel(event.dateKey)}</div>
                           {event.subtitle && <div className="mt-1 text-slate-600">{event.subtitle}</div>}
                           <div className="mt-2 flex flex-wrap gap-1">
+                            {(event.plannerId || event.integratedItemId) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void cancelUnifiedEvent(event)
+                                }}
+                                disabled={busy}
+                                className="btn-danger btn-xs disabled:opacity-50"
+                              >
+                                ×
+                              </button>
+                            )}
                             <span className={clsx('badge', sourceBadgeClass(event.source))}>{event.source}</span>
                             <span className={clsx('badge', statusBadgeClass(event.status))}>{event.status}</span>
                             {event.priority && <span className="badge bg-slate-100 text-slate-700">{event.priority}</span>}
@@ -2068,7 +2803,7 @@ export default function CommunicationsCalendarPage() {
                                   className="w-full input disabled:bg-slate-100"
                                 >
                                   <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
-                                  {managers.map((m) => <option key={`${event.id}:mgr:${m.id}`} value={m.id}>{m.label}</option>)}
+                                  {managers.map((m) => <option key={`${event.id}:mgr:${m.id}`} value={m.id}>{managerLabelWithState(m.id, m.label)}</option>)}
                                 </select>
                               </div>
                               <div className="mb-1 flex flex-wrap gap-1">
@@ -2096,7 +2831,8 @@ export default function CommunicationsCalendarPage() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              </details>
               <div className="mt-3 rounded border border-slate-200 p-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t('app.communications.calendar.team_load.title', { defaultValue: 'Team load for selected day' })}</div>
                 <div className="mt-2 space-y-1">
@@ -2118,7 +2854,7 @@ export default function CommunicationsCalendarPage() {
           )}
         </div>
 
-        <div className="space-y-4">
+        {showAdvancedTools && <div className="space-y-4">
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-2 text-sm font-semibold text-slate-900">
               {t('app.communications.calendar.forms.create_planner', { defaultValue: 'Create meeting / task' })}
@@ -2141,7 +2877,7 @@ export default function CommunicationsCalendarPage() {
               </div>
               <select value={plannerForm.assigneeId} onChange={(e) => setPlannerForm((p) => ({ ...p, assigneeId: e.target.value }))} className="w-full input">
                 <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
-                {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                {managers.map((m) => <option key={m.id} value={m.id}>{managerLabelWithState(m.id, m.label)}</option>)}
               </select>
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={plannerForm.allDay} onChange={(e) => setPlannerForm((p) => ({ ...p, allDay: e.target.checked }))} />
@@ -2233,7 +2969,7 @@ export default function CommunicationsCalendarPage() {
               <div className="grid grid-cols-2 gap-2">
                 <select value={reminderForm.assigneeId} onChange={(e) => setReminderForm((p) => ({ ...p, assigneeId: e.target.value }))} className="input">
                   <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
-                  {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  {managers.map((m) => <option key={m.id} value={m.id}>{managerLabelWithState(m.id, m.label)}</option>)}
                 </select>
                 <select value={reminderForm.priority} onChange={(e) => setReminderForm((p) => ({ ...p, priority: e.target.value }))} className="input">
                   <option value="low">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</option>
@@ -2246,6 +2982,90 @@ export default function CommunicationsCalendarPage() {
                 {busy ? t('common.loading') : t('common.actions.create', { defaultValue: 'Create' })}
               </button>
             </form>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-2 text-sm font-semibold text-slate-900">
+              {t('app.communications.calendar.settings.notifications', { defaultValue: 'Notification settings' })}
+            </div>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-sm text-slate-700">
+                  {t('app.communications.calendar.forms.default_reminder', { defaultValue: 'Default reminder' })}
+                </label>
+                <select
+                  value={Number(notificationSettings.default_reminder_minutes || 30)}
+                  onChange={(e) => setNotificationSettings((p) => ({ ...p, default_reminder_minutes: Number(e.target.value || 30) }))}
+                  className="input"
+                >
+                  <option value={0}>{t('app.communications.calendar.forms.remind_none', { defaultValue: 'No reminder' })}</option>
+                  <option value={5}>5 min</option>
+                  <option value={10}>10 min</option>
+                  <option value={15}>15 min</option>
+                  <option value={30}>30 min</option>
+                  <option value={60}>60 min</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(notificationSettings.channels?.in_app)}
+                    onChange={(e) =>
+                      setNotificationSettings((p) => ({ ...p, channels: { ...(p.channels || DEFAULT_NOTIFICATION_SETTINGS.channels), in_app: e.target.checked } }))
+                    }
+                  />
+                  In-app
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(notificationSettings.channels?.push)}
+                    onChange={(e) =>
+                      setNotificationSettings((p) => ({ ...p, channels: { ...(p.channels || DEFAULT_NOTIFICATION_SETTINGS.channels), push: e.target.checked } }))
+                    }
+                  />
+                  Push
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(notificationSettings.channels?.email)}
+                    onChange={(e) =>
+                      setNotificationSettings((p) => ({ ...p, channels: { ...(p.channels || DEFAULT_NOTIFICATION_SETTINGS.channels), email: e.target.checked } }))
+                    }
+                  />
+                  Email
+                </label>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={Boolean(notificationSettings.quiet_hours_enabled)}
+                  onChange={(e) => setNotificationSettings((p) => ({ ...p, quiet_hours_enabled: e.target.checked }))}
+                />
+                {t('app.communications.calendar.settings.quiet_hours', { defaultValue: 'Quiet hours' })}
+              </label>
+              {notificationSettings.quiet_hours_enabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="time"
+                    value={String(notificationSettings.quiet_hours_start || '22:00')}
+                    onChange={(e) => setNotificationSettings((p) => ({ ...p, quiet_hours_start: e.target.value }))}
+                    className="input"
+                  />
+                  <input
+                    type="time"
+                    value={String(notificationSettings.quiet_hours_end || '08:00')}
+                    onChange={(e) => setNotificationSettings((p) => ({ ...p, quiet_hours_end: e.target.value }))}
+                    className="input"
+                  />
+                </div>
+              )}
+              <button type="button" onClick={() => void saveNotificationSettings()} disabled={notificationSettingsSaving} className="btn-secondary disabled:opacity-50">
+                {notificationSettingsSaving ? t('common.loading') : t('common.actions.save', { defaultValue: 'Save' })}
+              </button>
+            </div>
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -2271,8 +3091,299 @@ export default function CommunicationsCalendarPage() {
               </Link>
             </div>
           </section>
-        </div>
+        </div>}
       </div>
+
+      {eventModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-base font-semibold text-slate-900">
+                {eventModalEvent
+                  ? t('app.communications.calendar.modal.event_details', { defaultValue: 'Event details' })
+                  : t('app.communications.calendar.modal.create_event', { defaultValue: 'Create event' })}
+              </div>
+              <button type="button" onClick={() => setEventModalOpen(false)} className="btn-secondary btn-xs">×</button>
+            </div>
+            <form className="space-y-2" onSubmit={submitEventModal}>
+              {!eventModalEvent && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEventModalType('task')
+                      setEventModalKind(taskPrefs.defaultTaskKind)
+                    }}
+                    className={clsx('btn-secondary', eventModalType === 'task' && 'border-brand-500 bg-brand-50 text-brand-700')}
+                  >
+                    {t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEventModalType('meeting')
+                      if (['task', 'followup'].includes(String(eventModalKind || '').toLowerCase())) {
+                        setEventModalKind('meeting')
+                      }
+                    }}
+                    className={clsx('btn-secondary', eventModalType === 'meeting' && 'border-brand-500 bg-brand-50 text-brand-700')}
+                  >
+                    {t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}
+                  </button>
+                </div>
+              )}
+              <input
+                value={eventModalTitle}
+                onChange={(e) => setEventModalTitle(e.target.value)}
+                className="w-full input"
+                placeholder={t('common.actions.title', { defaultValue: 'Title' })}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                {eventModalType === 'task' ? (
+                  <select
+                    value={eventModalKind}
+                    onChange={(e) => setEventModalKind(e.target.value)}
+                    className="input"
+                  >
+                    {TASK_KIND_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{t(`app.communications.calendar.kinds.${opt.value}` as any, { defaultValue: opt.label })}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={eventModalKind}
+                    onChange={(e) => setEventModalKind(e.target.value)}
+                    className="input"
+                  >
+                    <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
+                    <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
+                  </select>
+                )}
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={eventModalAllDay}
+                    onChange={(e) => setEventModalAllDay(e.target.checked)}
+                  />
+                  {t('app.communications.calendar.forms.all_day', { defaultValue: 'All day' })}
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type={eventModalAllDay ? 'date' : 'datetime-local'}
+                  value={eventModalStartAt}
+                  onChange={(e) => setEventModalStartAt(e.target.value)}
+                  className="input"
+                />
+                <input
+                  type={eventModalAllDay ? 'date' : 'datetime-local'}
+                  value={eventModalEndAt}
+                  onChange={(e) => setEventModalEndAt(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <select
+                  value={eventModalAssigneeId}
+                  onChange={(e) => setEventModalAssigneeId(e.target.value)}
+                  className="input"
+                >
+                  <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
+                  {managers.map((m) => <option key={`modal-assignee-${m.id}`} value={m.id}>{managerLabelWithState(m.id, m.label)}</option>)}
+                </select>
+                <button type="button" className="btn-secondary" onClick={() => setEventModalAssigneeId(recommendedAssigneeId || '')}>
+                  {t('app.communications.calendar.actions.best_assignee', { defaultValue: 'Best available' })}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-sm text-slate-700">
+                  {t('app.communications.calendar.forms.remind_before', { defaultValue: 'Remind before' })}
+                </label>
+                <select
+                  value={eventModalRemindMinutes}
+                  onChange={(e) => setEventModalRemindMinutes(Number(e.target.value || 0))}
+                  className="input"
+                >
+                  <option value={0}>{t('app.communications.calendar.forms.remind_none', { defaultValue: 'No reminder' })}</option>
+                  <option value={5}>5 min</option>
+                  <option value={10}>10 min</option>
+                  <option value={15}>15 min</option>
+                  <option value={30}>30 min</option>
+                  <option value={60}>60 min</option>
+                </select>
+              </div>
+              {eventModalType === 'meeting' && (
+                <div className="grid grid-cols-1 gap-2">
+                  <input
+                    value={eventModalLocation}
+                    onChange={(e) => setEventModalLocation(e.target.value)}
+                    className="w-full input"
+                    placeholder={t('app.communications.calendar.forms.location', { defaultValue: 'Location / link' })}
+                  />
+                  <div className="space-y-2 rounded border border-slate-200 p-2">
+                    {eventModalParticipants.map((p) => (
+                      <div key={p.id} className="space-y-1">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-start">
+                          <input
+                            value={p.name}
+                            onChange={(e) => setEventModalParticipants((prev) => prev.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)))}
+                            className="input"
+                            placeholder={t('app.communications.calendar.forms.attendee_name', { defaultValue: 'Name' })}
+                          />
+                          <input
+                            value={p.email}
+                            onChange={(e) => {
+                              setEventModalParticipants((prev) => prev.map((x) => (x.id === p.id ? { ...x, email: e.target.value } : x)))
+                              setEventModalParticipantErrors((er) => {
+                                if (!er[p.id]) return er
+                                const n = { ...er }
+                                delete n[p.id]
+                                return n
+                              })
+                            }}
+                            onPaste={(e) => onParticipantEmailPaste(p.id, e)}
+                            onKeyDown={(e) => onParticipantEmailKeyDown(p.id, e)}
+                            className={clsx('input', eventModalParticipantErrors[p.id] && 'border-red-500 ring-1 ring-red-200')}
+                            placeholder={t('app.communications.calendar.forms.attendee_email', { defaultValue: 'Email' })}
+                          />
+                          <select
+                            value={p.response_status}
+                            onChange={(e) =>
+                              setEventModalParticipants((prev) =>
+                                prev.map((x) => (x.id === p.id ? { ...x, response_status: e.target.value as EventModalParticipant['response_status'] } : x)),
+                              )
+                            }
+                            className="input"
+                          >
+                            <option value="">{t('app.communications.calendar.rsvp.needs_action', { defaultValue: 'Needs action' })}</option>
+                            <option value="accepted">{t('app.communications.calendar.rsvp.accepted', { defaultValue: 'Accepted' })}</option>
+                            <option value="tentative">{t('app.communications.calendar.rsvp.tentative', { defaultValue: 'Tentative' })}</option>
+                            <option value="declined">{t('app.communications.calendar.rsvp.declined', { defaultValue: 'Declined' })}</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              setEventModalParticipants((prev) => prev.filter((x) => x.id !== p.id))
+                              setEventModalParticipantErrors((er) => {
+                                if (!er[p.id]) return er
+                                const n = { ...er }
+                                delete n[p.id]
+                                return n
+                              })
+                            }}
+                          >
+                            {t('common.actions.remove', { defaultValue: 'Remove' })}
+                          </button>
+                        </div>
+                        {eventModalParticipantErrors[p.id] ? (
+                          <p className="text-xs text-red-600 sm:col-span-4">{eventModalParticipantErrors[p.id]}</p>
+                        ) : null}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn-secondary btn-xs"
+                      onClick={() =>
+                        setEventModalParticipants((prev) => [
+                          ...prev,
+                          { id: `p-new-${Date.now()}`, name: '', email: '', response_status: '' },
+                        ])
+                      }
+                    >
+                      {t('common.actions.add', { defaultValue: 'Add' })} attendee
+                    </button>
+                  </div>
+                  <input
+                    value={eventModalMeetingLink}
+                    onChange={(e) => setEventModalMeetingLink(e.target.value)}
+                    className="w-full input"
+                    placeholder={t('app.communications.calendar.forms.meeting_link', { defaultValue: 'Meeting link (Google Meet / Teams)' })}
+                  />
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={eventModalOnlineMeeting}
+                      onChange={(e) => setEventModalOnlineMeeting(e.target.checked)}
+                    />
+                    {t('app.communications.calendar.forms.online_meeting', { defaultValue: 'Online meeting' })}
+                  </label>
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={eventModalAllowUnavailableAssignee}
+                  onChange={(e) => setEventModalAllowUnavailableAssignee(e.target.checked)}
+                />
+                {t('app.communications.calendar.forms.allow_unavailable_assignee', { defaultValue: 'Allow assignment if team member is unavailable' })}
+              </label>
+              {!eventModalEvent && (
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-sm text-slate-700">
+                    {t('app.communications.calendar.forms.default_task_type', { defaultValue: 'Default task type' })}
+                  </label>
+                  <select
+                    value={taskPrefs.defaultTaskKind}
+                    onChange={(e) => setTaskPrefs((p) => ({ ...p, defaultTaskKind: e.target.value as TaskKind }))}
+                    className="input"
+                  >
+                    {TASK_KIND_OPTIONS.map((opt) => (
+                      <option key={`pref-kind-${opt.value}`} value={opt.value}>{t(`app.communications.calendar.kinds.${opt.value}` as any, { defaultValue: opt.label })}</option>
+                    ))}
+                  </select>
+                  <label className="text-sm text-slate-700">
+                    {t('app.communications.calendar.forms.default_reminder', { defaultValue: 'Default reminder' })}
+                  </label>
+                  <select
+                    value={taskPrefs.defaultRemindMinutes}
+                    onChange={(e) => setTaskPrefs((p) => ({ ...p, defaultRemindMinutes: Number(e.target.value || 30) }))}
+                    className="input"
+                  >
+                    <option value={0}>{t('app.communications.calendar.forms.remind_none', { defaultValue: 'No reminder' })}</option>
+                    <option value={5}>5 min</option>
+                    <option value={10}>10 min</option>
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={60}>60 min</option>
+                  </select>
+                </div>
+              )}
+              <textarea
+                rows={3}
+                value={eventModalDescription}
+                onChange={(e) => setEventModalDescription(e.target.value)}
+                className="w-full textarea"
+                placeholder={t('app.communications.calendar.forms.description', { defaultValue: 'Description' })}
+              />
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setEventModalOpen(false)} className="btn-secondary">
+                    {t('common.actions.close', { defaultValue: 'Close' })}
+                  </button>
+                  {eventModalEvent && (eventModalEvent.plannerId || eventModalEvent.integratedItemId) && (
+                    <button
+                      type="button"
+                      onClick={() => void cancelUnifiedEvent(eventModalEvent)}
+                      disabled={busy}
+                      className="btn-danger disabled:opacity-50"
+                    >
+                      {t('app.communications.calendar.actions.cancel', { defaultValue: 'Cancel' })}
+                    </button>
+                  )}
+                </div>
+                <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">
+                  {busy
+                    ? t('common.loading')
+                    : eventModalEvent
+                      ? t('common.actions.save', { defaultValue: 'Save' })
+                      : t('common.actions.create', { defaultValue: 'Create' })}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -22,7 +22,7 @@ Target time to first operation: 10-15 minutes.
 ## 3) Information architecture
 
 ### 3.1 User-facing workspaces
-- Messages Inbox (`/app/messages`): all non-email channels, live threads, assignment, reply.
+- Messages Inbox (`/app/inbox?channel=messages`): all non-email channels, live threads, assignment, reply.
 - Email Inbox (`/app/email`): mailbox threads, inbound/outbound email operations.
 - Planner (`/app/planner`): tasks, calls, meetings, shifts.
 - Calendar (`/app/calendar`): unified timeline (messages SLA, reminders, planner, time-off).

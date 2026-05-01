@@ -98,11 +98,11 @@ export default function HiringPipelineGatesSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="settings-page-shell-narrow">
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.settings.subpage.kicker_workspace_setup')}
+        kicker={t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' })}
         title={t('admin.hiring_gates.title', { defaultValue: 'Hiring pipeline gates' })}
         subtitle={t('admin.hiring_gates.blurb', {
           defaultValue:
@@ -114,7 +114,7 @@ export default function HiringPipelineGatesSettingsPage() {
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
       ) : (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="settings-panel">
             <div className="text-sm font-semibold text-slate-800">
               {t('admin.hiring_gates.effective_non_overridable', {
                 defaultValue: 'Effective non-waivable document types (read-only)',
@@ -207,7 +207,7 @@ export default function HiringPipelineGatesSettingsPage() {
               onChange: setNonOverridableExtra,
             },
           ].map((field) => (
-            <label key={field.key} className="block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <label key={field.key} className="block settings-panel">
               <div className="text-sm font-semibold text-slate-800">{field.label}</div>
               <p className="mt-1 text-xs text-slate-600">{field.hint}</p>
               <textarea

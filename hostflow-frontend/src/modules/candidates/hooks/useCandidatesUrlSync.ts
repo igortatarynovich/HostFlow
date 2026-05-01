@@ -96,7 +96,16 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     const vacancyParam = searchParams.get('vacancy_id') || searchParams.get('vacancy')
     const reasonParam = searchParams.get('status_reason')
     const citizenshipParam = searchParams.get('citizenship')
-    const managerParam = searchParams.get('manager_id') || searchParams.get('manager')
+    // G-6 Stage 2c / G-5 Stage F follow-up — canonical drill-down param
+    // is `?recruiter_id=<uuid>`; keep `manager_id` and the even older
+    // `manager` alias so pre-existing bookmarks / digest URLs still work.
+    // Internal filter state stays `managerFilter` (one string), so the
+    // translation to the canonical backend query param happens in
+    // `useCandidatesTableData` via the feature flag.
+    const managerParam =
+      searchParams.get('recruiter_id') ||
+      searchParams.get('manager_id') ||
+      searchParams.get('manager')
     const preferredChannelParam = searchParams.get('preferred_channel')
     const opsModeParam = searchParams.get('ops_mode') || searchParams.get('opsMode')
     const inPolandParam = searchParams.get('in_poland')

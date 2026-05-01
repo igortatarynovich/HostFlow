@@ -12,15 +12,17 @@ import {
 } from '../../api/tenantLinks'
 import { useToast } from '../../components/Toast'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
+import { useCurrentTenantId } from '../../contexts/CurrentTenant'
 
 export default function TenantLinksSettingsPage() {
   const { t } = useI18n()
   const { me } = useAuth()
+  const currentTenantId = useCurrentTenantId()
   const { notify } = useToast()
   const meta = useMetaStages()
   const stageOptions = meta?.order || meta?.codes || []
 
-  const tenantId = (me as { tenant_id?: string })?.tenant_id
+  const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id)?.trim()
   const [links, setLinks] = useState<TenantLink[]>([])
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -124,7 +126,7 @@ export default function TenantLinksSettingsPage() {
 
   if (!tenantId) {
     return (
-      <div className="card p-6">
+      <div className="settings-panel">
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
       </div>
     )
@@ -132,7 +134,7 @@ export default function TenantLinksSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <section className="card p-6">
+      <section className="settings-panel">
         <div className="mb-4">
           <SettingsSubpageHeader
             backLabel={t('admin.settings.subpage.back_all')}
@@ -146,7 +148,7 @@ export default function TenantLinksSettingsPage() {
           <p className="text-sm text-slate-500">{t('common.loading')}</p>
         ) : (
           <>
-            <div className="mb-4">
+            <div className="settings-toolbar mb-4">
               <button
                 type="button"
                 onClick={() => setAddOrgOpen((o) => !o)}
@@ -249,7 +251,7 @@ function LinkRow({
   const companyLabel = link.company_name || link.client_company_id || '—'
 
   return (
-    <li className="card rounded-2xl border-brand-50 bg-brand-50/30 p-4">
+    <li className="card border-slate-200 bg-brand-50/30 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="font-medium text-slate-900">{companyLabel}</div>

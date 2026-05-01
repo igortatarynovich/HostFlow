@@ -52,6 +52,8 @@ type ToastInput = Omit<ToastMessage, 'id'>
 type ToastContextValue = {
   notify: (message: ToastInput) => string
   dismiss: (id: string) => void
+  /** Alias for `notify` (legacy call sites expect toast.push). */
+  push: (message: ToastInput) => string
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -88,7 +90,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [dismiss],
   )
 
-  const value = useMemo(() => ({ notify, dismiss }), [notify, dismiss])
+  const value = useMemo(() => ({ notify, dismiss, push: notify }), [notify, dismiss])
 
   return (
     <ToastContext.Provider value={value}>

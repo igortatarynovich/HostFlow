@@ -1,49 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { listDocuments } from '../api/documents'
-import { createReminder } from '../api/client'
 import type { Document } from '../api/types'
+import type { DocumentProcessType } from '../api/types/document'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
+import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { useAuth } from '../store/auth'
+import { RegistryDocumentPreview } from '../modules/documents/RegistryDocumentPreview'
+import { PROCESS_LABEL_KEYS } from '../modules/documents/constants'
+import {
+  documentProcessNeedsAttention,
+  hasWorkflowOverdueStep,
+  isProcessAssignedToUser,
+  isProcessDocument,
+} from '../modules/documents/workflowUtils'
 
 const QUICK_FILTERS = ['missing', 'requested', 'in_progress', 'ready'] as const
+const QUEUE_FILTERS = ['all', 'process', 'my_process', 'wf_overdue'] as const
+type QueueFilter = (typeof QUEUE_FILTERS)[number]
 const PAGE_SIZE = 20
 
 export default function DocumentsRegistryPage() {
   const { t } = useI18n()
+  const { me } = useAuth()
   const planLimitModal = usePlanLimitModal()
-  const [searchParams] = useSearchParams()
-  const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<typeof QUICK_FILTERS[number] | null>('missing')
+  const { warningFor: quotaWarningFor } = useBillingQuotaWarnings()
+  const storageQuotaWarning = quotaWarningFor('storage')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState(() => (searchParams.get('q') || '').trim())
+  const [activeFilter, setActiveFilter] = useState<typeof QUICK_FILTERS[number] | null>(() => {
+    const quick = (searchParams.get('quick') || '').trim()
+    if (quick && (QUICK_FILTERS as readonly string[]).includes(quick)) {
+      return quick as (typeof QUICK_FILTERS)[number]
+    }
+    if ((searchParams.get('status') || '').trim()) return null
+    return 'missing'
+  })
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
-  const [docTypeFilter, setDocTypeFilter] = useState('')
-  const [ownerKindFilter, setOwnerKindFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [docTypeFilter, setDocTypeFilter] = useState(() => (searchParams.get('doc_type') || '').trim())
+  const [ownerKindFilter, setOwnerKindFilter] = useState(() => (searchParams.get('owner_kind') || '').trim())
+  const [statusFilter, setStatusFilter] = useState(() => (searchParams.get('status') || '').trim())
+  const [mineOnly, setMineOnly] = useState(() => searchParams.get('mine') === '1')
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>(() => {
+    const q = (searchParams.get('queue') || 'all').trim()
+    return (QUEUE_FILTERS as readonly string[]).includes(q) ? (q as QueueFilter) : 'all'
+  })
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
   const [page, setPage] = useState(1)
   const [nowTs, setNowTs] = useState(() => Date.now())
-  const [reminderDocId, setReminderDocId] = useState('')
-  const [reminderTitle, setReminderTitle] = useState('Напомнить по документу')
-  const [reminderDueAt, setReminderDueAt] = useState(() => {
-    const dt = new Date(Date.now() + 60 * 60 * 1000)
-    return dt.toISOString().slice(0, 16)
-  })
-  const [reminderOffset, setReminderOffset] = useState(15)
-  const [reminderStatus, setReminderStatus] = useState<string | null>(null)
+  const registryMode = searchParams.get('view') === 'registry'
+  const workTab = searchParams.get('tab') === 'mine' ? 'mine' : 'attention'
+  const listViewMode: 'table' | 'cards' = registryMode ? viewMode : 'table'
 
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
     setError(null)
-    listDocuments({ limit: 200, signal: controller.signal })
+    const isRegistry = searchParams.get('view') === 'registry'
+    const kind =
+      !isRegistry ? 'process' : queueFilter === 'all' ? undefined : ('process' as const)
+    listDocuments({
+      limit: 300,
+      kind,
+      signal: controller.signal,
+    })
       .then((items) => setDocuments(items))
       .catch((err) => {
         if (controller.signal.aborted) return
@@ -58,12 +87,32 @@ export default function DocumentsRegistryPage() {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [reloadKey, planLimitModal, t])
+  }, [reloadKey, queueFilter, searchParams, planLimitModal, t])
 
   useEffect(() => {
     // refresh relative time calculations when data changes
     setNowTs(Date.now())
   }, [documents])
+
+  useEffect(() => {
+    if (searchParams.get('view') === 'registry') return
+    const legacyRegistryIntent =
+      Boolean(searchParams.get('quick')) ||
+      Boolean(searchParams.get('status')) ||
+      Boolean(searchParams.get('doc_type')) ||
+      Boolean(searchParams.get('owner_kind')) ||
+      searchParams.get('mine') === '1' ||
+      Boolean(searchParams.get('queue'))
+    if (!legacyRegistryIntent) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('view', 'registry')
+        return next
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const quick = (searchParams.get('quick') || '').trim()
@@ -72,10 +121,17 @@ export default function DocumentsRegistryPage() {
     const ownerKind = (searchParams.get('owner_kind') || '').trim()
     const q = (searchParams.get('q') || '').trim()
 
-    if (q) setQuery(q)
-    if (docType) setDocTypeFilter(docType)
-    if (ownerKind) setOwnerKindFilter(ownerKind)
+    setQuery(q)
+    setDocTypeFilter(docType)
+    setOwnerKindFilter(ownerKind)
     setStatusFilter(status)
+    setMineOnly(searchParams.get('mine') === '1')
+    const queueRaw = (searchParams.get('queue') || 'all').trim()
+    if ((QUEUE_FILTERS as readonly string[]).includes(queueRaw)) {
+      setQueueFilter(queueRaw as QueueFilter)
+    } else {
+      setQueueFilter('all')
+    }
     if (quick && (QUICK_FILTERS as readonly string[]).includes(quick)) {
       setActiveFilter(quick as (typeof QUICK_FILTERS)[number])
     } else if (status) {
@@ -83,54 +139,118 @@ export default function DocumentsRegistryPage() {
     }
   }, [searchParams])
 
-  const handleCreateReminder = async () => {
-    if (!reminderDocId || !reminderTitle || !reminderDueAt) {
-      setReminderStatus('Заполните все поля')
-      return
-    }
-    try {
-      const due = new Date(reminderDueAt)
-      const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
-      await createReminder({
-        title: reminderTitle,
-        type: 'custom',
-        entity_type: 'document',
-        entity_id: reminderDocId,
-        due_at: due.toISOString(),
-        remind_at: remindAt.toISOString(),
-        priority: 'normal',
-      })
-      setReminderStatus('Создано')
-    } catch (err: any) {
-      if (
-        planLimitModal?.showPlanLimitIfNeeded(
-          err,
-          t('admin.documents.registry.reminder_error', { defaultValue: 'Could not create reminder' }),
-        )
-      ) {
-        return
-      }
-      setReminderStatus('Ошибка создания')
-    }
-  }
+  useEffect(() => {
+    const isRegistry = searchParams.get('view') === 'registry'
+    const q = query.trim()
+    const st = statusFilter.trim()
+    const nextQuick = activeFilter || ''
+    const sel = (searchParams.get('sel') || '').trim()
+    const queueNorm = (queueFilter || 'all') as QueueFilter
+    const tabMine = searchParams.get('tab') === 'mine'
 
-  const stats = useMemo(() => {
-    if (!documents.length) return { ready: 0, pending: 0, overdue: 0 }
-    let ready = 0
-    let pending = 0
-    let overdue = 0
+    const registryNoise =
+      Boolean(searchParams.get('quick')) ||
+      Boolean(searchParams.get('status')) ||
+      Boolean(searchParams.get('doc_type')) ||
+      Boolean(searchParams.get('owner_kind')) ||
+      searchParams.get('mine') === '1' ||
+      Boolean(searchParams.get('queue'))
+
+    let same =
+      (searchParams.get('q') || '') === q &&
+      (searchParams.get('sel') || '') === sel
+
+    if (isRegistry) {
+      const queueInUrl = ((searchParams.get('queue') || 'all').trim() || 'all') as QueueFilter
+      same =
+        same &&
+        searchParams.get('view') === 'registry' &&
+        (searchParams.get('quick') || '') === nextQuick &&
+        (searchParams.get('status') || '') === st &&
+        (searchParams.get('doc_type') || '') === docTypeFilter &&
+        (searchParams.get('owner_kind') || '') === ownerKindFilter &&
+        (searchParams.get('mine') || '') === (mineOnly ? '1' : '') &&
+        queueInUrl === queueNorm &&
+        !tabMine
+    } else {
+      same =
+        same &&
+        searchParams.get('view') !== 'registry' &&
+        !registryNoise &&
+        (tabMine ? searchParams.get('tab') === 'mine' : !searchParams.get('tab'))
+    }
+
+    if (same) return
+
+    const next = new URLSearchParams()
+    if (q) next.set('q', q)
+    if (sel) next.set('sel', sel)
+
+    if (isRegistry) {
+      next.set('view', 'registry')
+      if (activeFilter) next.set('quick', activeFilter)
+      if (st) next.set('status', st)
+      if (docTypeFilter) next.set('doc_type', docTypeFilter)
+      if (ownerKindFilter) next.set('owner_kind', ownerKindFilter)
+      if (mineOnly) next.set('mine', '1')
+      if (queueFilter && queueFilter !== 'all') next.set('queue', queueFilter)
+    } else if (tabMine) {
+      next.set('tab', 'mine')
+    }
+
+    setSearchParams(next, { replace: true })
+  }, [
+    query,
+    activeFilter,
+    docTypeFilter,
+    ownerKindFilter,
+    statusFilter,
+    mineOnly,
+    queueFilter,
+    searchParams,
+    setSearchParams,
+  ])
+
+  const processQueueStats = useMemo(() => {
+    let process = 0
+    let my = 0
+    let od = 0
     documents.forEach((doc) => {
-      const readiness = doc.readiness_state?.toLowerCase()
-      if (doc.status === 'approved' || readiness === 'ready') {
-        ready += 1
-      } else if (doc.status === 'expired' || (doc.expires_at && Date.parse(doc.expires_at) < nowTs)) {
-        overdue += 1
-      } else {
-        pending += 1
-      }
+      if (!isProcessDocument(doc)) return
+      process += 1
+      if (me?.id && String(doc.owner_id) === String(me.id)) my += 1
+      if (hasWorkflowOverdueStep(doc, nowTs)) od += 1
     })
-    return { ready, pending, overdue }
-  }, [documents, nowTs])
+    return { process, my, overdue: od }
+  }, [documents, me?.id, nowTs])
+
+  const workQueueStats = useMemo(() => {
+    if (!me?.id) return { attention: 0, mine: 0 }
+    let mine = 0
+    let attention = 0
+    documents.forEach((doc) => {
+      if (!isProcessAssignedToUser(doc, me.id)) return
+      mine += 1
+      if (documentProcessNeedsAttention(doc, nowTs)) attention += 1
+    })
+    return { attention, mine }
+  }, [documents, me?.id, nowTs])
+
+  const translateStatus = useCallback(
+    (s: string) => t(`admin.documents.status_labels.${s}`, { defaultValue: s }),
+    [t],
+  )
+  const translateProcess = useCallback(
+    (v: string | null | undefined) => {
+      if (!v) return null
+      const key = PROCESS_LABEL_KEYS[v as DocumentProcessType]
+      return key ? t(key) : v
+    },
+    [t],
+  )
+  const handleDocPatched = useCallback((next: Document) => {
+    setDocuments((prev) => prev.map((d) => (String(d.id) === String(next.id) ? next : d)))
+  }, [])
 
   const docTypeOptions = useMemo(() => {
     const set = new Set<string>()
@@ -150,6 +270,48 @@ export default function DocumentsRegistryPage() {
 
   const filteredDocs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
+
+    const matchesSearch = (doc: Document) => {
+      if (!normalizedQuery) return true
+      const title = (doc.custom_name || doc.title || doc.meta?.title || doc.doc_type || '').toLowerCase()
+      const owner =
+        (
+          doc.meta?.candidate_name ||
+          doc.meta?.company_name ||
+          doc.extra?.owner_name ||
+          doc.owner_id ||
+          ''
+        ).toLowerCase()
+      const processQ = (documentProcessListLabel(doc, translateProcess) || '').toLowerCase()
+      if (
+        title.includes(normalizedQuery) ||
+        owner.includes(normalizedQuery) ||
+        processQ.includes(normalizedQuery)
+      ) {
+        return true
+      }
+      if (registryMode && doc.id?.toLowerCase().includes(normalizedQuery)) return true
+      return false
+    }
+
+    const sortByUpdated = (a: Document, b: Document) => {
+      const aTime = Date.parse(a.updated_at || a.created_at || '')
+      const bTime = Date.parse(b.updated_at || b.created_at || '')
+      return (bTime || 0) - (aTime || 0)
+    }
+
+    if (!registryMode) {
+      return documents
+        .filter((doc) => {
+          if (!me?.id) return false
+          if (!isProcessAssignedToUser(doc, me.id)) return false
+          if (workTab === 'attention' && !documentProcessNeedsAttention(doc, nowTs)) return false
+          return true
+        })
+        .filter(matchesSearch)
+        .sort(sortByUpdated)
+    }
+
     return documents
       .filter((doc) => {
         if (!activeFilter) return true
@@ -159,39 +321,120 @@ export default function DocumentsRegistryPage() {
         }
         return doc.status === activeFilter || readiness === activeFilter
       })
-      .filter((doc) => {
-        if (!normalizedQuery) return true
-        const title = (doc.custom_name || doc.title || doc.meta?.title || doc.doc_type || '').toLowerCase()
-        const owner =
-          (
-            doc.meta?.candidate_name ||
-            doc.meta?.company_name ||
-            doc.extra?.owner_name ||
-            doc.owner_id ||
-            ''
-          ).toLowerCase()
-        return (
-          title.includes(normalizedQuery) ||
-          owner.includes(normalizedQuery) ||
-          doc.id?.toLowerCase().includes(normalizedQuery)
-        )
-      })
+      .filter(matchesSearch)
       .filter((doc) => {
         if (docTypeFilter && doc.doc_type !== docTypeFilter) return false
         if (ownerKindFilter && doc.kind !== ownerKindFilter) return false
         if (statusFilter && String(doc.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false
+        if (mineOnly && me?.id && doc.responsible_user_id !== me.id) return false
+        if (queueFilter === 'process') {
+          if (!isProcessDocument(doc)) return false
+        } else if (queueFilter === 'my_process') {
+          if (!isProcessDocument(doc) || !me?.id || String(doc.owner_id) !== String(me.id)) return false
+        } else if (queueFilter === 'wf_overdue') {
+          if (!hasWorkflowOverdueStep(doc, nowTs)) return false
+        }
         return true
       })
-      .sort((a, b) => {
-        const aTime = Date.parse(a.updated_at || a.created_at || '')
-        const bTime = Date.parse(b.updated_at || b.created_at || '')
-        return (bTime || 0) - (aTime || 0)
-      })
-  }, [documents, activeFilter, query, docTypeFilter, ownerKindFilter, statusFilter])
+      .sort(sortByUpdated)
+  }, [
+    documents,
+    registryMode,
+    workTab,
+    activeFilter,
+    query,
+    docTypeFilter,
+    ownerKindFilter,
+    statusFilter,
+    mineOnly,
+    me,
+    queueFilter,
+    nowTs,
+    translateProcess,
+  ])
+
+  const selectedId = (searchParams.get('sel') || '').trim()
+  const selectedDoc = useMemo(
+    () => filteredDocs.find((d) => String(d.id) === selectedId) ?? null,
+    [filteredDocs, selectedId],
+  )
+
+  const selectDocument = useCallback(
+    (id: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (id) next.set('sel', id)
+          else next.delete('sel')
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setWorkTabParam = useCallback(
+    (tab: 'attention' | 'mine') => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (tab === 'mine') next.set('tab', 'mine')
+          else next.delete('tab')
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const openFullRegistry = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('view', 'registry')
+        next.delete('tab')
+        return next
+      },
+      { replace: true },
+    )
+  }, [setSearchParams])
+
+  const openMyWork = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('view')
+        next.delete('quick')
+        next.delete('status')
+        next.delete('doc_type')
+        next.delete('owner_kind')
+        next.delete('mine')
+        next.delete('queue')
+        return next
+      },
+      { replace: true },
+    )
+  }, [setSearchParams])
+
+  useEffect(() => {
+    if (!selectedId) return
+    if (!filteredDocs.some((d) => String(d.id) === selectedId)) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('sel')
+          return next
+        },
+        { replace: true },
+      )
+    }
+  }, [filteredDocs, selectedId, setSearchParams])
 
   useEffect(() => {
     setPage(1)
-  }, [query, activeFilter, docTypeFilter, ownerKindFilter])
+  }, [query, activeFilter, docTypeFilter, ownerKindFilter, statusFilter, mineOnly, queueFilter, workTab, registryMode])
 
   const totalPages = Math.max(1, Math.ceil(filteredDocs.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
@@ -199,54 +442,89 @@ export default function DocumentsRegistryPage() {
   const currentDocs = filteredDocs.slice(pageStart, pageStart + PAGE_SIZE)
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-6 lg:gap-8">
-      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 px-5 py-6 text-white shadow-none sm:px-6 sm:py-7 lg:px-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-2">
-            <p className="text-2xl font-semibold">{t('admin.documents.registry.title')}</p>
-            <p className="max-w-3xl text-sm text-white/80">{t('admin.documents.registry.hero')}</p>
+    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-4 lg:gap-6">
+      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 px-5 py-4 text-white shadow-none sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-lg font-semibold sm:text-xl">
+              {registryMode ? t('admin.documents.registry.title') : t('admin.documents.registry.work.title')}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 md:justify-end">
+            {registryMode ? (
+              <button
+                type="button"
+                className="rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
+                onClick={openMyWork}
+              >
+                {t('admin.documents.registry.work.back_to_my_work')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
+                onClick={openFullRegistry}
+              >
+                {t('admin.documents.registry.work.open_full_registry')}
+              </button>
+            )}
           </div>
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {[
-            { label: t('admin.documents.registry.stats.ready'), value: stats.ready },
-            { label: t('admin.documents.registry.stats.pending'), value: stats.pending },
-            { label: t('admin.documents.registry.stats.overdue'), value: stats.overdue },
-          ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-white/30 bg-white/10 p-3 text-sm">
-              <div className="text-white/70">{item.label}</div>
-              <div className="text-2xl font-semibold">{item.value}</div>
-            </div>
-          ))}
-        </div>
+        {registryMode ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              { label: t('admin.documents.registry.stats.process_all'), value: processQueueStats.process },
+              { label: t('admin.documents.registry.stats.process_mine'), value: processQueueStats.my },
+              { label: t('admin.documents.registry.stats.process_sla_due'), value: processQueueStats.overdue },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-xs sm:text-sm">
+                <div className="text-white/75">{item.label}</div>
+                <div className="text-xl font-semibold tabular-nums">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {[
+              { label: t('admin.documents.registry.work.stats.attention'), value: workQueueStats.attention },
+              { label: t('admin.documents.registry.work.stats.mine_total'), value: workQueueStats.mine },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs sm:text-sm">
+                <div className="text-white/75">{item.label}</div>
+                <div className="text-xl font-semibold tabular-nums">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="px-5 sm:px-6 lg:px-8">
-        <PageBreadcrumb />
+        {storageQuotaWarning ? (
+          <div className="mt-3">
+            <QuotaNearLimitBanner kind="storage" percentUsed={storageQuotaWarning.percentUsed} />
+          </div>
+        ) : null}
       </div>
 
-      <section className="app-surface flex flex-col gap-6 border-x-0 border-t-0 border-b border-slate-200 px-5 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex flex-1 flex-col gap-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('admin.documents.registry.search_label')}
-            </label>
-            <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                className="input pl-10"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t('admin.documents.registry.placeholder')}
-              />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-dashed border-brand-100/70 bg-brand-50/40 p-4 text-sm text-slate-700">
-            {t('admin.documents.registry.note')}
+      <section className="app-surface flex flex-col gap-3 border-x-0 border-t-0 border-b border-slate-200 px-5 py-3 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              className="input w-full pl-10 text-sm"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={
+                registryMode
+                  ? t('admin.documents.registry.placeholder')
+                  : t('admin.documents.registry.work.search_placeholder')
+              }
+              aria-label={t('admin.documents.registry.search_label')}
+            />
           </div>
           <button
             type="button"
-            className="btn-secondary self-start"
+            className="btn-secondary btn-sm shrink-0"
             onClick={() => setReloadKey((prev) => prev + 1)}
             disabled={loading}
           >
@@ -254,159 +532,253 @@ export default function DocumentsRegistryPage() {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {QUICK_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter((prev) => (prev === filter ? null : filter))}
-              className={[
-                'rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition',
-                activeFilter === filter ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
-              ].join(' ')}
+        {registryMode ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+            <select
+              className="input max-w-[200px] text-sm"
+              aria-label={t('admin.documents.registry.preset_filter')}
+              value={activeFilter ?? ''}
+              onChange={(event) => {
+                const v = event.target.value
+                setActiveFilter(v === '' ? null : (v as (typeof QUICK_FILTERS)[number]))
+              }}
             >
-              {t(`admin.documents.status_labels.${filter}`)}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('admin.documents.registry.filter_type')}
-            </span>
-            <select className="input" value={docTypeFilter} onChange={(event) => setDocTypeFilter(event.target.value)}>
-              <option value="">{t('common.actions.reset')}</option>
+              <option value="">{t('admin.documents.registry.table.all')}</option>
+              {QUICK_FILTERS.map((filter) => (
+                <option key={filter} value={filter}>
+                  {t(`admin.documents.status_labels.${filter}`)}
+                </option>
+              ))}
+            </select>
+            <div className="flex flex-wrap gap-1" role="group" aria-label={t('admin.documents.registry.queue_filter')}>
+              {QUEUE_FILTERS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setQueueFilter(q)}
+                  className={[
+                    'rounded border px-2 py-1 text-xs font-medium transition',
+                    queueFilter === q
+                      ? 'border-teal-600 bg-teal-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                  ].join(' ')}
+                >
+                  {t(`admin.documents.registry.queue.${q}`)}
+                </button>
+              ))}
+            </div>
+            <select
+              className="input max-w-[180px] text-sm"
+              aria-label={t('admin.documents.registry.filter_type')}
+              value={docTypeFilter}
+              onChange={(event) => setDocTypeFilter(event.target.value)}
+            >
+              <option value="">{t('admin.documents.registry.filter_type')}</option>
               {docTypeOptions.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('admin.documents.registry.filter_kind')}
-            </span>
             <select
-              className="input"
+              className="input max-w-[160px] text-sm"
+              aria-label={t('admin.documents.registry.filter_kind')}
               value={ownerKindFilter}
               onChange={(event) => setOwnerKindFilter(event.target.value)}
             >
-              <option value="">{t('common.actions.reset')}</option>
+              <option value="">{t('admin.documents.registry.filter_kind')}</option>
               {ownerKindOptions.map((kind) => (
                 <option key={kind} value={kind}>
                   {t(`admin.documents.kinds.${kind}`, { defaultValue: kind })}
                 </option>
               ))}
             </select>
-          </label>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('admin.documents.registry.view.label')}
-            </span>
-            <div className="inline-flex rounded-lg border border-brand-200 bg-white p-1 text-sm font-medium">
-              <button
-                type="button"
-                className={[
-                  'rounded-md px-3 py-1.5',
-                  viewMode === 'table' ? 'bg-brand-600 text-white shadow' : 'text-brand-700',
-                ].join(' ')}
-                onClick={() => setViewMode('table')}
-              >
-                {t('admin.documents.registry.view.table')}
-              </button>
-              <button
-                type="button"
-                className={[
-                  'rounded-md px-3 py-1.5',
-                  viewMode === 'cards' ? 'bg-brand-600 text-white shadow' : 'text-brand-700',
-                ].join(' ')}
-                onClick={() => setViewMode('cards')}
-              >
-                {t('admin.documents.registry.view.cards')}
-              </button>
-            </div>
+            <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-700">
+              <input
+                type="checkbox"
+                className="rounded border-slate-300"
+                checked={mineOnly}
+                onChange={(event) => setMineOnly(event.target.checked)}
+              />
+              {t('admin.documents.registry.mine_only')}
+            </label>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setWorkTabParam('attention')}
+              className={[
+                'rounded-lg border px-2.5 py-1 text-sm font-medium transition',
+                workTab === 'attention'
+                  ? 'border-teal-600 bg-teal-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+              ].join(' ')}
+            >
+              {t('admin.documents.registry.work.tab.attention')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkTabParam('mine')}
+              className={[
+                'rounded-lg border px-2.5 py-1 text-sm font-medium transition',
+                workTab === 'mine'
+                  ? 'border-teal-600 bg-teal-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+              ].join(' ')}
+            >
+              {t('admin.documents.registry.work.tab.mine')}
+            </button>
+          </div>
+        )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="card space-y-4 p-5 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
+      <section className="flex flex-col gap-4 px-5 pb-8 sm:px-6 lg:flex-row lg:items-start lg:gap-6 lg:px-8">
+        <div className="order-1 min-w-0 flex-1 space-y-4">
+        <div className="card space-y-3 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
               <p className="text-base font-semibold text-slate-900">{t('admin.documents.registry.table.title')}</p>
-              <p className="text-sm text-slate-500">{t('admin.documents.registry.table.subtitle')}</p>
+              <span className="text-xs tabular-nums text-slate-500">{filteredDocs.length}</span>
             </div>
-            <span className="rounded-md bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-              {activeFilter ? t(`admin.documents.status_labels.${activeFilter}`) : t('admin.documents.registry.table.all')}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {registryMode ? (
+                <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs font-medium">
+                  <button
+                    type="button"
+                    className={[
+                      'rounded px-2 py-1',
+                      viewMode === 'table' ? 'bg-slate-800 text-white' : 'text-slate-600',
+                    ].join(' ')}
+                    onClick={() => setViewMode('table')}
+                  >
+                    {t('admin.documents.registry.view.table')}
+                  </button>
+                  <button
+                    type="button"
+                    className={[
+                      'rounded px-2 py-1',
+                      viewMode === 'cards' ? 'bg-slate-800 text-white' : 'text-slate-600',
+                    ].join(' ')}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    {t('admin.documents.registry.view.cards')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {error && (
             <ErrorRecoveryBanner
               info={error}
               onRetry={() => setReloadKey((prev) => prev + 1)}
-              retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
-              {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.documents, t('app.nav.items.documents', { defaultValue: 'Documents' }))}
+              retryLabel={t('common.actions.retry')}
+              {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.documents, t('app.nav.items.documents'))}
               compact
             />
           )}
           {loading ? (
             <div className="text-sm text-slate-500">{t('admin.documents.registry.loading')}</div>
           ) : currentDocs.length ? (
-            viewMode === 'cards' ? (
+            listViewMode === 'cards' ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                {currentDocs.map((doc) => (
-                  <article key={doc.id} className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-slate-900">
-                          {doc.custom_name || doc.title || doc.doc_type || t('common.labels.not_available')}
-                        </p>
-                        <p className="text-xs text-slate-500">{doc.doc_type}</p>
+                {currentDocs.map((doc) => {
+                  const deadline = documentDeadlineParts(doc, nowTs)
+                  const isSel = String(doc.id) === selectedId
+                  return (
+                    <article
+                      key={doc.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => selectDocument(doc.id ? String(doc.id) : null)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          selectDocument(doc.id ? String(doc.id) : null)
+                        }
+                      }}
+                      className={[
+                        'rounded-2xl border bg-white/90 p-4 text-left shadow-sm outline-none transition',
+                        isSel ? 'border-brand-400 ring-1 ring-brand-200' : 'border-slate-100',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-base font-semibold text-slate-900">
+                            {doc.custom_name || doc.title || doc.doc_type || t('common.labels.not_available')}
+                          </p>
+                          <p className="text-xs text-slate-500">{doc.doc_type}</p>
+                        </div>
+                        <StatusChip
+                          tone={doc.status}
+                          label={t(`admin.documents.status_labels.${doc.status}`, {
+                            defaultValue: doc.status,
+                          })}
+                        />
                       </div>
-                      <StatusChip
-                        tone={doc.status}
-                        label={t(`admin.documents.status_labels.${doc.status}`, {
-                          defaultValue: doc.status,
-                        })}
-                      />
-                    </div>
-                    <dl className="mt-3 space-y-1 text-sm text-slate-600">
-                      <div>
-                        <dt className="text-xs uppercase tracking-wide text-slate-400">
-                          {t('admin.documents.registry.table.owner')}
-                        </dt>
-                        <dd className="font-medium text-slate-900">
-                          {doc.meta?.candidate_name ||
-                            doc.meta?.company_name ||
-                            doc.extra?.owner_name ||
-                            doc.owner_id ||
-                            t('common.labels.not_available')}
-                        </dd>
-                      </div>
-                      {doc.readiness_state && (
+                      <dl className="mt-3 space-y-1 text-sm text-slate-600">
                         <div>
                           <dt className="text-xs uppercase tracking-wide text-slate-400">
-                            {t('admin.documents.registry.table.status')}
+                            {t('admin.documents.registry.table.owner')}
                           </dt>
-                          <dd>
-                            {t(`admin.documents.readiness_labels.${doc.readiness_state}`, {
-                              defaultValue: doc.readiness_state,
-                            })}
+                          <dd className="font-medium text-slate-900">
+                            {doc.meta?.candidate_name ||
+                              doc.meta?.company_name ||
+                              doc.extra?.owner_name ||
+                              (registryMode ? doc.owner_id : null) ||
+                              t('common.labels.not_available')}
                           </dd>
                         </div>
-                      )}
-                      <div>
-                        <dt className="text-xs uppercase tracking-wide text-slate-400">
-                          {t('admin.documents.registry.table.updated')}
-                        </dt>
-                        <dd>{formatDate(doc.updated_at || doc.created_at)}</dd>
-                      </div>
-                    </dl>
-                  </article>
-                ))}
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-400">
+                            {t('admin.documents.registry.table.responsible')}
+                          </dt>
+                          <dd className="font-medium text-slate-900">{documentResponsibleLabel(doc)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-400">
+                            {t('admin.documents.registry.table.process')}
+                          </dt>
+                          <dd className="font-medium text-slate-800">
+                            {documentProcessListLabel(doc, translateProcess)}
+                          </dd>
+                        </div>
+                        {doc.readiness_state && (
+                          <div>
+                            <dt className="text-xs uppercase tracking-wide text-slate-400">
+                              {t('admin.documents.registry.table.status')}
+                            </dt>
+                            <dd>
+                              {t(`admin.documents.readiness_labels.${doc.readiness_state}`, {
+                                defaultValue: doc.readiness_state,
+                              })}
+                            </dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-400">
+                            {t('admin.documents.registry.table.updated')}
+                          </dt>
+                          <dd>{formatDate(doc.updated_at || doc.created_at)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase tracking-wide text-slate-400">
+                            {t('admin.documents.registry.table.deadline')}
+                          </dt>
+                          <dd className={deadline.overdue ? 'font-medium text-amber-800' : 'text-slate-900'}>
+                            {deadline.text}
+                            {deadline.overdue ? (
+                              <span className="ml-1 text-[11px] text-amber-700">
+                                ({t('admin.documents.registry.table.deadline_overdue')})
+                              </span>
+                            ) : null}
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  )
+                })}
               </div>
             ) : (
               <table className="w-full text-sm text-slate-700">
@@ -414,57 +786,91 @@ export default function DocumentsRegistryPage() {
                   <tr className="bg-slate-50/90 text-left">
                     <th className="border-b border-r border-slate-200 py-2 pl-3 pr-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.doc')}</th>
                     <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.owner')}</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.responsible')}</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.process')}</th>
                     <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.status')}</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.deadline')}</th>
                     <th className="border-b border-slate-200 py-2 pl-2 pr-3 text-right text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.updated')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentDocs.map((doc) => (
-                    <tr key={doc.id} className="border-t border-slate-100">
-                      <td className="border-r border-slate-200 py-3 pl-3 pr-2">
-                        <p className="font-semibold text-slate-900">
-                          {doc.custom_name || doc.title || doc.doc_type || t('common.labels.not_available')}
-                        </p>
-                        <p className="text-xs text-slate-500">{doc.doc_type}</p>
-                      </td>
-                      <td className="border-r border-slate-200 py-3 px-2">
-                        <p className="font-medium text-slate-900">
-                          {doc.meta?.candidate_name ||
-                            doc.meta?.company_name ||
-                            doc.extra?.owner_name ||
-                            doc.owner_id ||
-                            t('common.labels.not_available')}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {doc.kind ? t(`admin.documents.kinds.${doc.kind}`) : doc.owner_type || '—'}
-                        </p>
-                      </td>
-                      <td className="border-r border-slate-200 py-3 px-2">
-                        <StatusChip
-                          tone={doc.status}
-                          label={t(`admin.documents.status_labels.${doc.status}`, {
-                            defaultValue: doc.status,
-                          })}
-                        />
-                        {doc.readiness_state && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {t(`admin.documents.readiness_labels.${doc.readiness_state}`, {
-                              defaultValue: doc.readiness_state,
+                  {currentDocs.map((doc) => {
+                    const deadline = documentDeadlineParts(doc, nowTs)
+                    const isSel = String(doc.id) === selectedId
+                    return (
+                      <tr
+                        key={doc.id}
+                        className={[
+                          'cursor-pointer border-t border-slate-100 transition',
+                          isSel ? 'bg-brand-50/90' : 'hover:bg-slate-50/80',
+                        ].join(' ')}
+                        onClick={() => selectDocument(doc.id ? String(doc.id) : null)}
+                      >
+                        <td className="border-r border-slate-200 py-3 pl-3 pr-2">
+                          <p className="font-semibold text-slate-900">
+                            {doc.custom_name || doc.title || doc.doc_type || t('common.labels.not_available')}
+                          </p>
+                          <p className="text-xs text-slate-500">{doc.doc_type}</p>
+                        </td>
+                        <td className="border-r border-slate-200 py-3 px-2">
+                          <p className="font-medium text-slate-900">
+                            {doc.meta?.candidate_name ||
+                              doc.meta?.company_name ||
+                              doc.extra?.owner_name ||
+                              (registryMode ? doc.owner_id : null) ||
+                              t('common.labels.not_available')}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {doc.kind ? t(`admin.documents.kinds.${doc.kind}`) : doc.owner_type || '—'}
+                          </p>
+                        </td>
+                        <td className="border-r border-slate-200 py-3 px-2 text-slate-800">
+                          {documentResponsibleLabel(doc)}
+                        </td>
+                        <td className="border-r border-slate-200 py-3 px-2 text-slate-700">
+                          {documentProcessListLabel(doc, translateProcess)}
+                        </td>
+                        <td className="border-r border-slate-200 py-3 px-2">
+                          <StatusChip
+                            tone={doc.status}
+                            label={t(`admin.documents.status_labels.${doc.status}`, {
+                              defaultValue: doc.status,
                             })}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 pl-2 pr-3 text-right text-slate-600">
-                        {formatDate(doc.updated_at || doc.created_at)}
-                      </td>
-                    </tr>
-                  ))}
+                          />
+                          {doc.readiness_state && (
+                            <div className="mt-1 text-xs text-slate-500">
+                              {t(`admin.documents.readiness_labels.${doc.readiness_state}`, {
+                                defaultValue: doc.readiness_state,
+                              })}
+                            </div>
+                          )}
+                        </td>
+                        <td className="border-r border-slate-200 py-3 px-2 text-slate-600">
+                          <span className={deadline.overdue ? 'font-medium text-amber-800' : ''}>{deadline.text}</span>
+                          {deadline.overdue ? (
+                            <span className="ml-1 text-[11px] text-amber-700">
+                              ({t('admin.documents.registry.table.deadline_overdue')})
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-3 pl-2 pr-3 text-right text-slate-600">
+                          {formatDate(doc.updated_at || doc.created_at)}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             )
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-              {t('admin.documents.registry.table.empty')}
+              {!registryMode && !me?.id
+                ? t('admin.documents.registry.work.empty.no_session')
+                : !registryMode && workTab === 'attention'
+                  ? t('admin.documents.registry.work.empty.attention')
+                  : !registryMode
+                    ? t('admin.documents.registry.work.empty.mine')
+                    : t('admin.documents.registry.table.empty')}
             </div>
           )}
 
@@ -482,7 +888,7 @@ export default function DocumentsRegistryPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="btn-secondary btn-sm"
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
@@ -493,7 +899,7 @@ export default function DocumentsRegistryPage() {
                 </span>
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="btn-secondary btn-sm"
                   onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
                 >
@@ -503,73 +909,40 @@ export default function DocumentsRegistryPage() {
             </div>
           )}
         </div>
-        <div className="card space-y-3 p-5">
-          <p className="text-base font-semibold text-slate-900">{t('admin.documents.registry.automation.title')}</p>
-          <p className="text-sm text-slate-600">{t('admin.documents.registry.automation.description')}</p>
-          <button type="button" className="btn-primary w-full">
-            {t('admin.documents.registry.automation.action')}
-          </button>
+
         </div>
 
-        <div className="card space-y-3 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-semibold text-slate-900">Быстрое напоминание</p>
-              <p className="text-sm text-slate-500">По выбранному документу</p>
+        <aside className="order-2 w-full shrink-0 lg:order-2 lg:w-[min(100%,380px)] lg:sticky lg:top-6">
+          <div className="card space-y-3 border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{t('admin.documents.registry.preview.title')}</p>
+              </div>
+              {selectedId ? (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-brand-700 hover:underline"
+                  onClick={() => selectDocument(null)}
+                >
+                  {t('admin.documents.registry.preview.clear')}
+                </button>
+              ) : null}
             </div>
+            {selectedDoc ? (
+              <RegistryDocumentPreview
+                doc={selectedDoc}
+                nowTs={nowTs}
+                meId={me?.id ? String(me.id) : null}
+                onPatched={handleDocPatched}
+                planLimitError={(err, fb) => planLimitModal?.showPlanLimitIfNeeded(err, fb) ?? false}
+                translateStatus={translateStatus}
+                translateProcess={translateProcess}
+              />
+            ) : (
+              <p className="text-sm text-slate-500">{t('admin.documents.registry.preview.empty')}</p>
+            )}
           </div>
-          <label className="text-sm text-slate-700">
-            Документ
-            <select
-              className="input mt-1"
-              value={reminderDocId}
-              onChange={(e) => setReminderDocId(e.target.value)}
-            >
-              <option value="">Выберите документ</option>
-              {documents.map((doc) => (
-                <option key={doc.id} value={doc.id || ''}>
-                  {(doc.custom_name || doc.title || doc.doc_type || 'Документ') +
-                    (doc.meta?.candidate_name ? ` — ${doc.meta.candidate_name}` : '')}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm text-slate-700">
-            Заголовок
-            <input
-              className="input mt-1"
-              value={reminderTitle}
-              onChange={(e) => setReminderTitle(e.target.value)}
-              placeholder="Позвонить, отправить письмо..."
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            Срок
-            <input
-              type="datetime-local"
-              className="input mt-1"
-              value={reminderDueAt}
-              onChange={(e) => setReminderDueAt(e.target.value)}
-            />
-          </label>
-          <label className="text-sm text-slate-700">
-            Напомнить за
-            <select
-              className="input mt-1"
-              value={reminderOffset}
-              onChange={(e) => setReminderOffset(Number(e.target.value))}
-            >
-              <option value={5}>5 мин</option>
-              <option value={15}>15 мин</option>
-              <option value={30}>30 мин</option>
-              <option value={60}>1 час</option>
-            </select>
-          </label>
-          <button type="button" className="btn-primary" onClick={handleCreateReminder}>
-            Создать напоминание
-          </button>
-          {reminderStatus && <p className="text-xs text-slate-600">{reminderStatus}</p>}
-        </div>
+        </aside>
       </section>
     </div>
   )
@@ -598,7 +971,7 @@ const STATUS_TONES: Record<string, string> = {
 function StatusChip({ label, tone }: { label: string; tone: string }) {
   const toneClass = STATUS_TONES[tone] ?? 'bg-slate-100 text-slate-700'
   return (
-    <span className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-medium ${toneClass}`}>
+    <span className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>
       {label}
     </span>
   )
@@ -609,4 +982,30 @@ function formatDate(value?: string | null) {
   const ts = Date.parse(value)
   if (Number.isNaN(ts)) return value
   return new Date(ts).toLocaleString()
+}
+
+function documentResponsibleLabel(doc: Document): string {
+  const n = doc.responsible_name?.trim()
+  if (n) return n
+  return '—'
+}
+
+function documentProcessListLabel(
+  doc: Document,
+  translateProcess: (v: string | null | undefined) => string | null,
+): string {
+  if (!isProcessDocument(doc)) return '—'
+  const raw = doc.workflow?.process_type ?? doc.process_type
+  if (!raw || raw === 'none') return '—'
+  return translateProcess(raw) || String(raw)
+}
+
+function documentDeadlineParts(doc: Document, nowTs: number): { text: string; overdue: boolean } {
+  const raw = doc.expires_at || doc.expire_date
+  if (!raw) return { text: '—', overdue: false }
+  const ts = Date.parse(raw)
+  const text = formatDate(raw)
+  if (Number.isNaN(ts)) return { text, overdue: false }
+  const overdue = ts < nowTs || doc.status === 'expired'
+  return { text, overdue }
 }

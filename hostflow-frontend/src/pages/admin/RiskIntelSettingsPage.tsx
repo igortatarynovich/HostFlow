@@ -164,11 +164,11 @@ export default function RiskIntelSettingsPage() {
   )
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="settings-page-shell-narrow">
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.settings.subpage.kicker_workspace_setup')}
+        kicker={t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' })}
         title={t('admin.risk_intel.settings.title', { defaultValue: 'Risk intelligence (v1)' })}
         subtitle={t('admin.risk_intel.settings.blurb', {
           defaultValue:
@@ -180,7 +180,7 @@ export default function RiskIntelSettingsPage() {
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
       ) : (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="settings-panel">
             <div className="text-sm font-semibold text-slate-800">
               {t('admin.risk_intel.settings.overrides_title', { defaultValue: 'Stored tenant overrides (read-only)' })}
             </div>
@@ -194,7 +194,7 @@ export default function RiskIntelSettingsPage() {
             </pre>
           </div>
 
-          <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <label className="settings-panel flex items-center gap-2">
             <input
               type="checkbox"
               checked={hourlyJobEnabled}
@@ -214,7 +214,7 @@ export default function RiskIntelSettingsPage() {
             </div>
           </label>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="settings-panel">
             <div className="text-sm font-semibold text-slate-800">
               {t('admin.risk_intel.settings.stage_gate', { defaultValue: 'Stage gate' })}
             </div>
@@ -252,7 +252,7 @@ export default function RiskIntelSettingsPage() {
             </label>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="settings-panel">
             <div className="text-sm font-semibold text-slate-800">
               {t('admin.risk_intel.settings.digest', { defaultValue: 'Shadow digest email' })}
             </div>
@@ -330,7 +330,7 @@ export default function RiskIntelSettingsPage() {
             </label>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="settings-panel">
             <div className="text-sm font-semibold text-slate-800">
               {t('admin.risk_intel.settings.automations', { defaultValue: 'Risk-band automations' })}
             </div>

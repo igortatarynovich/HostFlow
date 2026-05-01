@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
@@ -44,7 +44,14 @@ class CommunicationThread(Base, TimestampMixin):
     linked_candidate_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
 
     owner_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    assignee_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    # Phase 2.6.G-5 Stage E — FK ``users.id ON DELETE SET NULL`` added via
+    # Alembic ``202604190002_owner_fk_set_null`` so a deleted user no
+    # longer leaves ghost-assignees on communication threads.
+    assignee_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     queue_assigned_by: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)  # manual/round_robin/...
     priority: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
     sla_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -199,7 +206,15 @@ class CommunicationPlannerEvent(Base, TimestampMixin):
     all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     owner_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    assignee_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+    # Phase 2.6.G-5 Stage E — FK ``users.id ON DELETE SET NULL`` added via
+    # Alembic ``202604190002_owner_fk_set_null`` so planner events do not
+    # keep a dangling assignee after the user is deleted.
+    assignee_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     entity_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     entity_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     linked_candidate_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)

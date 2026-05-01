@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
@@ -14,6 +15,7 @@ from backend.app.auth.deps import Role, require_roles
 from backend.app.db.deps import get_db_with_tenant as get_db_with_tenant
 from backend.app.services.handoff import is_client_tenant, can_agency_edit, can_client_edit
 from backend.app.models.candidate import Candidate
+from backend.app.services.audit import log_activity
 
 # backend/app/api/v1/candidate_profile.py
 
@@ -36,6 +38,7 @@ except Exception:
     _extractors = None  # type: ignore[assignment]
 
 router = APIRouter(prefix="/candidate-profile", tags=["candidate-profile"])
+_cp_log = logging.getLogger(__name__)
 
 
 # ====== безопасные обёртки над извлекателями ======
@@ -353,6 +356,7 @@ async def patch_profile(
     prof = _get_profile(extra)
 
     base_updates: Dict[str, Any] = {}
+    old_stage_snapshot = str(getattr(c, "stage", None) or "").strip().lower()
     for f in ["first_name", "last_name", "email", "phone", "stage", "manager", "note"]:
         val = getattr(payload, f)
         if val is not None:
@@ -399,6 +403,44 @@ async def patch_profile(
 
     await db.commit()
     await db.refresh(c)
+
+    if "stage" in base_updates:
+        new_stage_snapshot = str(getattr(c, "stage", None) or "").strip().lower()
+        from backend.app.services import workforce_employees as _we
+
+        if _we.should_workforce_handoff_on_stage_change(old_stage_snapshot, new_stage_snapshot):
+            try:
+                emp = await _we.handoff_from_candidate(
+                    db,
+                    tenant_id_str,
+                    c,
+                    hire_date=None,
+                    actor_user_id="candidate_profile",
+                )
+                await log_activity(
+                    db,
+                    tenant_id=tenant_id_str,
+                    action="workforce.handoff_from_candidate",
+                    actor_id=None,
+                    target_type="workforce_employee",
+                    target_id=emp.id,
+                    payload={
+                        "candidate_id": str(candidate_id),
+                        "trigger": f"candidate_profile_stage_{new_stage_snapshot}",
+                    },
+                )
+                await db.commit()
+            except Exception:
+                _cp_log.exception(
+                    "workforce handoff on profile employment stage tenant=%s candidate=%s",
+                    tenant_id_str,
+                    candidate_id,
+                )
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+
     return _candidate_to_profile(c, _safe_json_load(c.extra))
 
 

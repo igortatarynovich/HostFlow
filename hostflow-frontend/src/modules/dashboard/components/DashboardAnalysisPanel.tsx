@@ -54,6 +54,13 @@ export function DashboardAnalysisPanel({
   opsCounters,
   documentBlockerAnalytics,
 }: DashboardAnalysisPanelProps) {
+  const pipelineSteps = funnelSteps.filter((step) => step.outcome === 'pipeline')
+  const outcomeSteps = funnelSteps.filter((step) => step.outcome !== 'pipeline')
+  const topBottlenecks = pipelineSteps
+    .filter((step) => step.lossCount > 0 && step.dropoff != null && !step.lowSample)
+    .sort((a, b) => b.lossCount - a.lossCount)
+    .slice(0, 3)
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-6">
       <div>
@@ -66,7 +73,7 @@ export function DashboardAnalysisPanel({
           {t('app.dashboard.analytics.funnel.badge')}
         </div>
         <p className="mt-1 text-xs text-slate-500">{t('app.dashboard.analytics.funnel.hint')}</p>
-        {funnelSteps.length === 0 ? (
+        {pipelineSteps.length === 0 ? (
           <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.analytics.funnel.empty')}</div>
         ) : (
           <div className="mt-3 overflow-x-auto">
@@ -80,7 +87,7 @@ export function DashboardAnalysisPanel({
                 </tr>
               </thead>
               <tbody>
-                {funnelSteps.map((step) => (
+                {pipelineSteps.map((step) => (
                   <tr key={step.key} className="border-t border-slate-100">
                     <td className="py-2 pr-4">
                       <Link
@@ -92,7 +99,7 @@ export function DashboardAnalysisPanel({
                     </td>
                     <td className="py-2 pr-4 text-right">{formatNumber(step.count)}</td>
                     <td className="py-2 pr-4 text-right text-slate-600">
-                      {step.stepConv != null ? `${step.stepConv.toFixed(1)}%` : '—'}
+                      {step.lowSample ? '—' : step.stepConv != null ? `${step.stepConv.toFixed(1)}%` : '—'}
                     </td>
                     <td className="py-2 text-right text-slate-600">
                       {step.avgDays != null ? `${step.avgDays}d` : '—'}
@@ -103,6 +110,33 @@ export function DashboardAnalysisPanel({
             </table>
           </div>
         )}
+        {outcomeSteps.length > 0 ? (
+          <div className="mt-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Outcomes</div>
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase text-slate-500">
+                    <th className="py-2 pr-4">{t('app.dashboard.analytics.funnel.col_stage')}</th>
+                    <th className="py-2 text-right">{t('app.dashboard.analytics.funnel.col_count')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {outcomeSteps.map((step) => (
+                    <tr key={step.key} className="border-t border-slate-100">
+                      <td className="py-2 pr-4">
+                        <Link to={makeCandidatesHref({ stage: step.key })} className="font-medium text-brand-700 hover:underline">
+                          {step.label}
+                        </Link>
+                      </td>
+                      <td className="py-2 text-right">{formatNumber(step.count)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div>
@@ -187,6 +221,22 @@ export function DashboardAnalysisPanel({
           {t('app.dashboard.analytics.problems.badge')}
         </div>
         <p className="mt-1 text-xs text-slate-500">{t('app.dashboard.analytics.problems.hint')}</p>
+        {topBottlenecks.length > 0 ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {topBottlenecks.map((step) => (
+              <Link
+                key={`bottleneck-${step.key}`}
+                to={makeCandidatesHref({ stage: step.key })}
+                className="flex items-center justify-between rounded-lg border border-rose-100 bg-rose-50/60 px-3 py-2 text-sm hover:border-rose-200"
+              >
+                <span>{step.label}</span>
+                <span className="font-semibold text-rose-800">
+                  -{formatNumber(step.lossCount)}{step.dropoff != null ? ` (${step.dropoff.toFixed(1)}%)` : ''}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : null}
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             to={CRM_APP_DRILLDOWN_HREFS.tasksOverdueReminders}

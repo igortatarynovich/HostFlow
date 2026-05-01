@@ -21,6 +21,7 @@ import {
   createBillingCheckoutSession,
   createBillingPortalLink,
   createPortalCandidatesPackCheckout,
+  getBillingQuotaHeadroom,
   getBillingSummary,
   reactivateBillingSubscription,
   simulateBillingCheckoutResolution,
@@ -37,13 +38,14 @@ import {
   dispatchBillingSubscriptionUpdated,
   primeBillingSubscriptionCache,
 } from '../../api/billingSubscriptionCache'
+import { primeBillingQuotaHeadroomCache } from '../../api/billingQuotaHeadroomCache'
 import { ACTIVATION_PATHS } from '../../app/activationRoutes'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { listCompanies } from '../../api/client'
 import { recordTtvStepCompleted } from '../../api/analytics'
 
-type PlanCode = 'starter' | 'team' | 'pro'
+type PlanCode = 'starter' | 'team' | 'pro' | 'enterprise'
 type CheckoutState = 'idle' | 'success' | 'cancel' | 'error' | 'incomplete'
 
 type PlanDef = {
@@ -79,7 +81,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 function getPlanCode(value: string | null | undefined): PlanCode {
   const plan = (value || '').trim().toLowerCase()
-  if (plan === 'team' || plan === 'pro') return plan
+  if (plan === 'team' || plan === 'pro' || plan === 'enterprise') return plan
   return 'starter'
 }
 
@@ -247,8 +249,12 @@ export default function BillingWorkspacePage() {
   }, [])
 
   const reloadSummary = useCallback(async () => {
-    const data = await getBillingSummary()
+    const [data, headroom] = await Promise.all([
+      getBillingSummary(),
+      getBillingQuotaHeadroom().catch(() => null),
+    ])
     setSummary(data)
+    if (headroom) primeBillingQuotaHeadroomCache(headroom)
     setSubscription(data.subscription)
     setCheckoutState(normalizeSubscriptionState(data.subscription))
     broadcastSubscription(data.subscription)
@@ -1026,7 +1032,7 @@ export default function BillingWorkspacePage() {
 
   return (
     <div className="space-y-4">
-      <header className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <header className="settings-panel">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <IconCreditCard size={18} stroke={1.9} />
           {t('app.settings.billing.badge')}
@@ -1047,6 +1053,9 @@ export default function BillingWorkspacePage() {
                   <IconExternalLink size={15} stroke={1.9} />
                   <span>{t('app.settings.billing.portal')}</span>
                 </button>
+                <Link to={CRM_APP_PATHS.settingsBillingPlan} className="btn-secondary">
+                  <span>Compare plans</span>
+                </Link>
               </div>
             }
           />
@@ -1277,7 +1286,7 @@ export default function BillingWorkspacePage() {
       ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="settings-panel">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1381,7 +1390,7 @@ export default function BillingWorkspacePage() {
           </div>
         </article>
 
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="settings-panel">
           <h3 className="text-base font-semibold text-slate-900">
             {t('app.settings.billing.manage_title')}
           </h3>

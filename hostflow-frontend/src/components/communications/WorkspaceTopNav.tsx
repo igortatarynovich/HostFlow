@@ -10,7 +10,7 @@ type Props = {
 }
 
 const ITEMS: Array<{ key: Exclude<WorkspaceSection, null>; to: string; labelKey: string; defaultLabel: string }> = [
-  { key: 'calendar', to: CRM_APP_PATHS.calendar, labelKey: 'app.nav.items.calendar', defaultLabel: 'Calendar' },
+  { key: 'calendar', to: CRM_APP_PATHS.workCalendar, labelKey: 'app.nav.items.calendar', defaultLabel: 'Calendar' },
   { key: 'tasks', to: CRM_APP_PATHS.tasks, labelKey: 'app.nav.items.tasks', defaultLabel: 'Tasks' },
   { key: 'messages', to: CRM_APP_PATHS.inboxMessagesScoped, labelKey: 'app.nav.items.messages', defaultLabel: 'Messages' },
   { key: 'email', to: CRM_APP_PATHS.inboxEmailScoped, labelKey: 'app.nav.items.email', defaultLabel: 'Email' },

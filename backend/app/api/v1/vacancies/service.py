@@ -4,10 +4,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 from backend.app.api.v1.candidates.acl import CandidateACL
+from backend.app.models.vacancy import VacancyStatus
 from .repo import VacancyRepo
 from .schemas import VacancyIn, VacancyOut, VacancyPatch
 from .mappers import vacancy_to_out
-from .rules import validate_status_transition
+from .rules import validate_vacancy_status_transition
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
@@ -181,14 +182,30 @@ class VacancyService:
 
         status_val = _pick("status", "status_alt1", "status_alt2")
         if status_val is not None:
-            validate_status_transition(getattr(obj, "status", "new"), status_val)
-            values["status"] = status_val
-            normalized_status = str(status_val).strip().lower()
-            if payload.is_archived is None:
-                if normalized_status == "archived":
+            # Phase 2.6.D Stage G — `archived` is no longer a canonical
+            # status. Treat the legacy alias as "closed + is_archived=True"
+            # so old clients keep working but the row we persist stays
+            # canonical (status ∈ {open,on_hold,closed,filled,cancelled}).
+            # The pydantic normaliser keeps `archived` as a passthrough so
+            # we can detect it here and make this rewrite explicit.
+            raw_status_normalized = str(status_val).strip().lower()
+            current_status = getattr(obj, "status", VacancyStatus.open.value)
+            if raw_status_normalized == "archived":
+                target_status = VacancyStatus.closed.value
+                values["status"] = target_status
+                if payload.is_archived is None:
                     values["is_archived"] = True
                     values.setdefault("is_active", False)
-                else:
+                # Skip transition validation for the alias path: the
+                # operator's intent is "archive this", not a generic
+                # status move. The is_archived branch handles consistency.
+            else:
+                # Phase 2.6.D Stage D — strict transition matrix.
+                # ``validate_vacancy_status_transition`` raises ValueError
+                # for disallowed moves; the router maps that to HTTP 409.
+                validate_vacancy_status_transition(current_status, status_val)
+                values["status"] = status_val
+                if payload.is_archived is None:
                     values["is_archived"] = False
                     values.setdefault("is_active", True)
 
@@ -227,7 +244,23 @@ class VacancyService:
             values["is_archived"] = archived_flag
             if archived_flag:
                 values.setdefault("is_active", False)
-                values.setdefault("status", "archived")
+                # Phase 2.6.D Stage G — archive is "soft-delete + close".
+                # If the row is currently in an active status we move it
+                # to canonical `closed`; terminals (closed/filled/cancelled)
+                # keep their semantic, archived is just a visibility flag
+                # on top.
+                current_status_norm = (
+                    str(getattr(obj, "status", "") or "").strip().lower()
+                )
+                if current_status_norm in {
+                    VacancyStatus.open.value,
+                    VacancyStatus.on_hold.value,
+                    "paused",  # legacy alias, see Stage A
+                    "",
+                }:
+                    values.setdefault("status", VacancyStatus.closed.value)
+                else:
+                    values.setdefault("status", current_status_norm)
             else:
                 values.setdefault("is_active", True)
                 values.setdefault("status", getattr(obj, "status", "open") or "open")

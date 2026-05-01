@@ -76,6 +76,7 @@ export default function CommunicationsQueueSettingsPage() {
 
   const queue = settings?.managerQueue || null
   const sla = settings?.sla || null
+  const smartOpsFromPlan = Boolean(settings?.plan?.smartOperations)
 
   const saveQueueSettings = useCallback(async (nextQueue: any) => {
     setSaveBusy(true)
@@ -183,7 +184,7 @@ export default function CommunicationsQueueSettingsPage() {
           defaultValue: 'Manager allocation strategy, queue flags and diagnostics.',
         })}
         actions={
-          <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
+          <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
             {t('admin.communications_queue.actions.open_messages', { defaultValue: 'Open messages' })}
           </Link>
         }
@@ -252,6 +253,36 @@ export default function CommunicationsQueueSettingsPage() {
                 </label>
               ))}
             </div>
+            {queue.respectAvailability && !loading && settings && (
+              <div
+                className={
+                  smartOpsFromPlan
+                    ? 'rounded border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900'
+                    : 'rounded border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950'
+                }
+              >
+                {smartOpsFromPlan ? (
+                  <span>
+                    {t('admin.communications_queue.smart_routing.active', {
+                      defaultValue:
+                        'When someone is unavailable, planner and task assignees use load-aware fallback (weighted day load).',
+                    })}
+                  </span>
+                ) : (
+                  <span>
+                    {t('admin.communications_queue.smart_routing.starter', {
+                      defaultValue:
+                        'On this plan, fallback uses queue order only. Team+ adds weighted load for the same flow.',
+                    })}{' '}
+                    <Link to={CRM_APP_PATHS.settingsBilling} className="font-medium underline">
+                      {t('admin.communications_queue.smart_routing.billing_cta', {
+                        defaultValue: 'Billing & plans',
+                      })}
+                    </Link>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-sm text-slate-500">{t('common.loading')}</div>

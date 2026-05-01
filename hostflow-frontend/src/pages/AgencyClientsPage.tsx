@@ -18,12 +18,14 @@ import EmptyStatePanel from '../components/EmptyStatePanel'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { useCurrentTenantId } from '../contexts/CurrentTenant'
 export default function AgencyClientsPage() {
   const { t } = useI18n()
   const { entitySingular, entityPlural, openEntityLabel } = useBusinessTerminology()
   const { me } = useAuth()
+  const currentTenantId = useCurrentTenantId()
   const { notify } = useToast()
-  const tenantId = (me as { tenant_id?: string })?.tenant_id ?? ''
+  const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id ?? '').trim()
   const entitySingularLower = entitySingular.toLowerCase()
   const entityPluralLower = entityPlural.toLowerCase()
 
@@ -103,6 +105,10 @@ export default function AgencyClientsPage() {
             description={t('app.clients.empty_desc', {
               defaultValue: 'Add the first {entity} to enable handoff, visibility rules and shared workflows.',
               values: { entity: entitySingularLower },
+            })}
+            whyHint={t('app.clients.empty_why', {
+              defaultValue:
+                'Clients are companies you place candidates with (or sell services to). Once linked they unlock handoff, shared dashboards and access rules — your CRM becomes multi-tenant by client.',
             })}
             primaryAction={{
               label: t('app.clients.add_entity_dynamic', {
@@ -268,13 +274,6 @@ function ClientRow({
             {link.client_company_id ? (
               <Link
                 to={`${CRM_APP_PATHS.agencyClients}/${link.client_company_id}`}
-                className="text-sm text-brand-600 hover:underline"
-              >
-                {t('app.clients.open_profile', { defaultValue: 'Профиль' })}
-              </Link>
-            ) : link.client_tenant_id ? (
-              <Link
-                to={`${CRM_APP_PATHS.clientsLinkBase}/${link.id}`}
                 className="text-sm text-brand-600 hover:underline"
               >
                 {t('app.clients.open_profile', { defaultValue: 'Профиль' })}

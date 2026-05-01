@@ -82,3 +82,10 @@ export function parseISODateMaybe(v?: string) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Build `tel:` href from a display phone string (digits only). */
+export function telHrefFromDisplay(display: string | null | undefined): string | undefined {
+  if (!display) return undefined;
+  const digits = String(display).replace(/[\s()-]/g, '');
+  return digits ? `tel:${digits}` : undefined;
+}
+

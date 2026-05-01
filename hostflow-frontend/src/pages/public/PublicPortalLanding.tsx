@@ -87,7 +87,7 @@ export default function PublicPortalLanding() {
   return (
     <PublicPageShell maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
       <div className="space-y-16">
-        <section className="overflow-hidden rounded-[32px] border border-brand-100 bg-white/95 shadow-card backdrop-blur">
+        <section className="card overflow-hidden backdrop-blur">
           <div className="grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.portal.hero.title')}</p>
@@ -134,7 +134,7 @@ export default function PublicPortalLanding() {
                 </div>
               )}
             </div>
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg">
+            <div className="relative overflow-hidden rounded-xl bg-slate-900 text-white shadow-lg">
               <img
                 src="/assets/image_truck.png"
                 alt={t('public.portal.hero.image_alt')}
@@ -151,7 +151,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section className="cv-auto grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
+        <section className="card cv-auto grid gap-6 bg-white/90 p-6 lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{t('public.portal.landing.steps.title')}</h2>
             <ol className="mt-4 space-y-3 text-slate-700">
@@ -176,7 +176,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section className="cv-auto grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
+        <section className="card cv-auto grid gap-6 bg-white/90 p-6 lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{t('public.portal.landing.why.title')}</h2>
             <ul className="mt-4 space-y-2 text-slate-700">
@@ -204,7 +204,7 @@ export default function PublicPortalLanding() {
         </section>
 
         <section id="apply" className="cv-auto grid gap-6 lg:grid-cols-2">
-          <div className="relative overflow-hidden rounded-3xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100 p-6 shadow-2xl">
+          <div className="relative overflow-hidden rounded-xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100 p-6 shadow-lg">
             <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden>
               <div className="absolute -left-10 top-6 h-32 w-32 rounded-full bg-white mix-blend-overlay" />
             </div>
@@ -230,7 +230,7 @@ export default function PublicPortalLanding() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
+          <div className="card p-6">
             <p className="text-xs uppercase tracking-wide text-emerald-600">{t('public.portal.cards.resume.badge')}</p>
             <h2 className="mt-2 text-xl font-semibold text-slate-900">{t('public.portal.cards.resume.title')}</h2>
             <p className="mt-2 text-sm text-slate-600">
@@ -244,7 +244,7 @@ export default function PublicPortalLanding() {
                   type="text"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-brand-100 bg-white px-4 py-3 font-mono text-sm tracking-wide text-slate-900 focus:border-brand-400 focus:outline-none focus:ring"
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm tracking-wide text-slate-900 focus:border-brand-400 focus:outline-none focus:ring"
                   placeholder={t('public.portal.cards.resume.placeholder')}
                   autoComplete="off"
                 />

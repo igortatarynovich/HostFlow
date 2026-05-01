@@ -59,7 +59,7 @@ from backend.app.services.events import EventAudience, emit_event
 from backend.app.models.user import Role
 from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.tenant_quota import (
-    ensure_active_candidate_quota,
+    ensure_active_records_quota,
     ensure_tenant_document_quota,
     ensure_tenant_storage_bytes_fits,
     sum_file_entries_bytes,
@@ -2383,7 +2383,7 @@ async def create_public_intake(
         )
 
     token = _generate_token()
-    await ensure_active_candidate_quota(db, str(tenant_id))
+    await ensure_active_records_quota(db, str(tenant_id))
     intake_source = normalize_candidate_source(payload.source, default="Анкета")
     candidate = Candidate(
         id=str(uuid4()),

@@ -6,9 +6,9 @@ from backend.app.models.tenant import TenantLicense
 from backend.app.services.lead_quota import resolve_monthly_leads_cap
 
 
-def test_resolve_monthly_leads_trial_uses_starter_cap() -> None:
+def test_resolve_monthly_leads_trial_uses_trial_cap() -> None:
     cap = resolve_monthly_leads_cap({"status": "trial", "plan_code": "pro"}, None)
-    assert cap == 200
+    assert cap == 50
 
 
 def test_resolve_monthly_leads_active_uses_plan_code() -> None:

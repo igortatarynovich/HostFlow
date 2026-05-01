@@ -22,6 +22,8 @@ __all__ = [
     "WorkingHoursDayIn",
     "WorkingHoursScheduleIn",
     "WorkingHoursScheduleOut",
+    "NotificationSettingsIn",
+    "NotificationSettingsOut",
     "CommunicationThreadOut",
     "CommunicationMessageOut",
     "CommunicationThreadListResponse",
@@ -114,6 +116,24 @@ class WorkingHoursScheduleIn(BaseModel):
 class WorkingHoursScheduleOut(BaseModel):
     tz: str | None = None
     days: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class NotificationSettingsIn(BaseModel):
+    default_reminder_minutes: int = Field(default=30, ge=0, le=1440)
+    channels: Dict[str, bool] = Field(default_factory=lambda: {"in_app": True, "push": True, "email": False})
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: str | None = None
+    quiet_hours_end: str | None = None
+    timezone: str | None = None
+
+
+class NotificationSettingsOut(BaseModel):
+    default_reminder_minutes: int = Field(default=30, ge=0, le=1440)
+    channels: Dict[str, bool] = Field(default_factory=dict)
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: str | None = None
+    quiet_hours_end: str | None = None
+    timezone: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -704,6 +724,16 @@ class CommunicationPlannerEventCreate(BaseModel):
     linked_company_id: str | None = Field(default=None, max_length=36)
     source: str = Field(default="manual", max_length=32)
     payload: Dict[str, Any] = Field(default_factory=dict)
+    # G-4 stage 3: opt-out of working-hours validation. Default False
+    # means "respect the assignee's working_hours_v1 schedule" (when
+    # the tenant has working-hours validation enabled). Pass True to
+    # explicitly schedule outside hours (after-hours interview, weekend
+    # shift cover, etc.). The flag is consumed by the route handler
+    # and never persisted on the row.
+    allow_outside_hours: bool = False
+    # Team-state guard: by default disallow assignment to managers marked
+    # unavailable in communications.managerQueue (offline/break/meeting/busy).
+    allow_unavailable_assignee: bool = False
 
 
 class CommunicationPlannerEventPatch(BaseModel):
@@ -721,6 +751,12 @@ class CommunicationPlannerEventPatch(BaseModel):
     linked_candidate_id: str | None = Field(default=None, max_length=36)
     linked_company_id: str | None = Field(default=None, max_length=36)
     payload: Dict[str, Any] | None = None
+    # G-4 stage 3: same semantics as on Create. Required when PATCHing
+    # `start_at`/`end_at` to a value outside the assignee's hours;
+    # ignored on patches that don't move the time window.
+    allow_outside_hours: bool = False
+    # Same semantics as on Create: explicit override for unavailable assignee.
+    allow_unavailable_assignee: bool = False
 
 
 class TimeOffRequestOut(BaseModel):

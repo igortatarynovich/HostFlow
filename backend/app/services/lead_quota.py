@@ -12,14 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.lead import Lead
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services.billing_pack_addons import MONTHLY_LEADS_CAP, pack_addon_int
+from backend.app.services.plan_feature_gates import TRIAL_LEADS_MONTHLY_CAP
 
-PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro")
+PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro", "enterprise")
 
 # Canonical monthly inbound leads cap; billing summary imports resolve_monthly_leads_cap from here.
 PLAN_LEADS_MONTHLY_LIMIT: dict[str, int] = {
     "starter": 200,
     "team": 1500,
     "pro": 5000,
+    "enterprise": 5000,
 }
 
 
@@ -39,7 +41,7 @@ def resolve_monthly_leads_cap(
 ) -> int:
     status = str(subscription.get("status") or "").strip().lower()
     if status == "trial":
-        leads_plan = "starter"
+        leads_plan = "trial"
     else:
         raw = str(subscription.get("plan_code") or "").strip().lower()
         if raw in PLAN_CODES:
@@ -49,7 +51,10 @@ def resolve_monthly_leads_cap(
             leads_plan = lp if lp in PLAN_CODES else "starter"
         else:
             leads_plan = "starter"
-    base = int(PLAN_LEADS_MONTHLY_LIMIT.get(leads_plan, PLAN_LEADS_MONTHLY_LIMIT["starter"]))
+    if leads_plan == "trial":
+        base = TRIAL_LEADS_MONTHLY_CAP
+    else:
+        base = int(PLAN_LEADS_MONTHLY_LIMIT.get(leads_plan, PLAN_LEADS_MONTHLY_LIMIT["starter"]))
     addon = pack_addon_int(tenant_settings, MONTHLY_LEADS_CAP) if tenant_settings else 0
     return base + addon
 

@@ -200,6 +200,15 @@ class CandidateOut(BaseModel):
     vacancy_title: Optional[str] = None
     manager_short: Optional[str] = None
     manager_name: Optional[str] = None
+    # Phase 2.6.G-5 Stage F — canonical owner columns exposed on the wire
+    # alongside the legacy ``manager*`` fields. The runtime payload built
+    # by ``_serialize_candidate_row`` has always carried them (joined from
+    # ``users`` via ``Candidate.recruiter_id``); declaring them on the
+    # Pydantic schema makes the OpenAPI contract match reality so the
+    # generated TypeScript types stop falling back to ``any``/``unknown``.
+    recruiter_id: Optional[str] = None
+    recruiter_name: Optional[str] = None
+    recruiter_short: Optional[str] = None
     country_code: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
@@ -240,6 +249,8 @@ class CandidateOut(BaseModel):
         vacancy_title: Optional[str] = None,
         manager_short: Optional[str] = None,
         manager_name: Optional[str] = None,
+        recruiter_short: Optional[str] = None,
+        recruiter_name: Optional[str] = None,
     ) -> "CandidateOut":
         # normalize languages from model (list[str] | comma-separated str | None)
         langs = getattr(c, "languages", None)
@@ -327,6 +338,13 @@ class CandidateOut(BaseModel):
             vacancy_title=vacancy_title,
             manager_short=manager_short,
             manager_name=manager_name,
+            # Phase 2.6.G-5 Stage F — always mirror the canonical
+            # recruiter_id from the model onto the wire. ``manager`` column
+            # is still populated (shadow-write per Stage D) but downstream
+            # consumers should prefer ``recruiter_id`` going forward.
+            recruiter_id=_str_or_none(getattr(c, "recruiter_id", None)),
+            recruiter_name=recruiter_name,
+            recruiter_short=recruiter_short,
             country_code=country_code_val,
             city=city_val,
             address=address_val,

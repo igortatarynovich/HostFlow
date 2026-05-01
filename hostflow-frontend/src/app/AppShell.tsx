@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
 import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
+import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
 import { getCurrentTenant } from '../api/tenants'
 import { getOnboardingStatus, settings, type OnboardingStatus } from '../api/client'
 import { setTenantId } from '../api/http'
@@ -17,6 +18,8 @@ import WorkContextTabs from '../components/nav/WorkContextTabs'
 import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
 import { TrialStatusBanner } from '../components/TrialStatusBanner'
+import { WizardSetupRail } from '../components/onboarding/WizardSetupRail'
+import { isOnboardingWizardEnabled } from '../utils/featureFlags'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
@@ -24,6 +27,7 @@ import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
 import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 import { CRM_APP_PATHS } from './crmAppPaths'
+import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -39,6 +43,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const path = location.pathname
   const isOnboardingPage = location.pathname.startsWith(ACTIVATION_PATHS.onboarding)
   const isSettingsArea = location.pathname.startsWith(CRM_APP_PATHS.settings)
+  const onboardingWizardEnabled = isOnboardingWizardEnabled()
   /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
   const isCrmWorkspace = path.startsWith(CRM_APP_PATHS.appShellPrefix) && !isOnboardingPage
   /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + таблица) ломают hit-testing/клики. */
@@ -72,15 +77,22 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
   // Sync X-Tenant-Id from JWT as soon as me is available so list/analytics use correct tenant before getCurrentTenant() resolves
   useEffect(() => {
-    const id = me?.tenant_id ? String(me.tenant_id).trim() : ''
-    if (id) {
-      settings.set(id)
-      setTenantId(id)
-    }
-  }, [me?.tenant_id])
+    const jwtTenantId = me?.tenant_id ? String(me.tenant_id).trim() : ''
+    if (!jwtTenantId) return
+    const isPlatformSuperadmin = isPlatformSuperadminRole(me?.role)
+    const storedTenantId = String(settings.get() || '').trim()
+    // For superadmin we preserve manually selected tenant context.
+    const effectiveTenantId =
+      isPlatformSuperadmin && storedTenantId && storedTenantId !== jwtTenantId
+        ? storedTenantId
+        : jwtTenantId
+    settings.set(effectiveTenantId)
+    setTenantId(effectiveTenantId)
+  }, [me?.role, me?.tenant_id])
 
   useEffect(() => {
     invalidateBillingSubscriptionCache()
+    invalidateBillingQuotaHeadroomCache()
   }, [me?.tenant_id])
 
   useEffect(() => {
@@ -102,8 +114,19 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
         if (!cancelled) {
           setTenant(info)
           if (info?.id) {
-            settings.set(info.id)
-            setTenantId(info.id)
+            const infoTenantId = String(info.id).trim()
+            const jwtTenantId = me?.tenant_id ? String(me.tenant_id).trim() : ''
+            const isPlatformSuperadmin = isPlatformSuperadminRole(me?.role)
+            const storedTenantId = String(settings.get() || '').trim()
+            const effectiveTenantId =
+              isPlatformSuperadmin &&
+              storedTenantId &&
+              storedTenantId !== jwtTenantId &&
+              storedTenantId !== infoTenantId
+                ? storedTenantId
+                : infoTenantId
+            settings.set(effectiveTenantId)
+            setTenantId(effectiveTenantId)
           }
         }
       } catch (err) {
@@ -137,8 +160,13 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const currentTenantId = tenant?.id ? String(tenant.id) : (me?.tenant_id ? String(me.tenant_id) : null)
 
   const role = String(me?.role || '').toLowerCase()
-  const isSuperAdmin = role === 'superadmin'
-  const canOpenBilling = role === 'administrator' || role === 'superadmin' || role === 'owner' || role === 'admin'
+  const isSuperAdmin = isPlatformSuperadminRole(me?.role)
+  const canOpenBilling =
+    role === 'administrator' ||
+    role === 'superadmin' ||
+    role === 'super_admin' ||
+    role === 'owner' ||
+    role === 'admin'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const guidedTrialWorkspace = Boolean(!isSuperAdmin && role === 'administrator' && isTrialTenant)
   const setupTarget = getActivationSetupTarget(onboardingStatus)
@@ -159,14 +187,13 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     setTrialBannerDismissed(false)
   }, [currentTenantId])
 
-  if (!isOnboardingPage && onboardingStatus?.onboarding_required === true) {
+  if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
     return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
   }
-  if (
-    guidedTrialWorkspace &&
-    path.startsWith(CRM_APP_PATHS.settings) &&
-    path !== ACTIVATION_PATHS.billing
-  ) {
+  /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
+  const isTrialAllowedSettingsPath =
+    path === ACTIVATION_PATHS.billing || path === CRM_APP_PATHS.settingsTeam
+  if (guidedTrialWorkspace && path.startsWith(CRM_APP_PATHS.settings) && !isTrialAllowedSettingsPath) {
     return <Navigate to={ACTIVATION_PATHS.overview} replace />
   }
 
@@ -186,9 +213,10 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
           />
 
           <div className="flex flex-1 flex-col overflow-hidden">
-            <LicenseExpiredBanner visible={licenseExpired} validUntil={validUntil} />
+            <LicenseExpiredBanner visible={licenseExpired && !isSuperAdmin} validUntil={validUntil} />
             <TrialStatusBanner
               visible={
+                !isSuperAdmin &&
                 isTrialTenant &&
                 !licenseExpired &&
                 !isOnboardingPage &&
@@ -209,6 +237,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
               onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
               compact={isCrmWorkspace}
             />
+            <WizardSetupRail hidden={!onboardingWizardEnabled || isOnboardingPage || !me?.tenant_id} />
 
             <main
               className={
@@ -233,7 +262,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                 {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && (
                   <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
                 )}
-                {isSettingsArea && (
+                {isSettingsArea && location.pathname !== CRM_APP_PATHS.settings && (
                   <SettingsChrome
                     pathname={location.pathname}
                     search={location.search}

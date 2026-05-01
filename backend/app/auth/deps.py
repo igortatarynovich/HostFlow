@@ -23,6 +23,8 @@ class Role(str, Enum):
     recruiter = "recruiter"
     client_manager = "client_manager"
     client_processor = "client_processor"  # Handoff: accepts/processes candidates from agency
+    compliance_officer = "compliance_officer"  # Process documents (work permit, residence card, tacho, etc.)
+    hr_officer = "hr_officer"  # HR / people workspace (employees, isolated from recruitment)
     viewer = "viewer"
     admin = administrator
     owner = administrator
@@ -46,6 +48,11 @@ ROLE_ALIASES = {
     "client_manager": Role.client_manager.value,
     "client_processor": Role.client_processor.value,
     "processor": Role.client_processor.value,
+    "compliance_officer": Role.compliance_officer.value,
+    "compliance": Role.compliance_officer.value,
+    "docs_officer": Role.compliance_officer.value,
+    "hr_officer": Role.hr_officer.value,
+    "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
 

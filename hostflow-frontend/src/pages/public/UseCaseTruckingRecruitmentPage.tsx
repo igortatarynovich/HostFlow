@@ -44,7 +44,7 @@ export default function UseCaseTruckingRecruitmentPage() {
   return (
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.use_case_trucking_recruitment.hero.badge', { defaultValue: 'Use-case' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
             {t('public.marketing.use_case_trucking_recruitment.hero.title', { defaultValue: 'CRM for Trucking Recruitment' })}
@@ -62,7 +62,7 @@ export default function UseCaseTruckingRecruitmentPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.use_case_trucking_recruitment.challenges.title', { defaultValue: 'Operational challenges' })}</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
             <li>{t('public.marketing.use_case_trucking_recruitment.challenges.items.1', { defaultValue: 'High candidate volume with multi-step qualification.' })}</li>
@@ -71,7 +71,7 @@ export default function UseCaseTruckingRecruitmentPage() {
           </ul>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.use_case_trucking_recruitment.flow.title', { defaultValue: 'Recommended flow in HostFlow' })}</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
             <li>{t('public.marketing.use_case_trucking_recruitment.flow.items.1', { defaultValue: 'Capture and qualify incoming driver leads.' })}</li>
@@ -81,7 +81,7 @@ export default function UseCaseTruckingRecruitmentPage() {
           </ol>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.common.faq', { defaultValue: 'FAQ' })}</h2>
           <div className="mt-3 space-y-3">
             {faq.map((item) => (
@@ -93,7 +93,7 @@ export default function UseCaseTruckingRecruitmentPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.use_case_trucking_recruitment.related.title', { defaultValue: 'Related guides' })}</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('related_pipeline', '/features/candidate-pipeline')}>

@@ -23,6 +23,16 @@ export type CandidateSnapshot = {
   manager_id?: string | null;
   manager_name?: string | null;
   manager_short?: string | null;
+  /**
+   * Phase 2.6.G-5 Stage F — canonical assignee columns alongside the
+   * legacy ``manager*`` ones. The backend joins ``users`` via
+   * ``Candidate.recruiter_id`` and serialises both triplets; declaring
+   * them here lets dashboard drill-down helpers read the canonical id
+   * without falling through to ``any``.
+   */
+  recruiter_id?: string | null;
+  recruiter_name?: string | null;
+  recruiter_short?: string | null;
   status_reason_codes?: string[];
   status_reason_labels?: string[];
   reason_stage?: string | null;
@@ -155,6 +165,8 @@ export type StageLabelConfig = {
   hired: string[];
   rejected: string[];
   declined: string[];
+  /** Late hiring / HR paperwork (excluded from «hired» KPI). */
+  employment_pending?: string[];
 };
 
 export type StageOutcome = 'hired' | 'rejected' | 'declined' | 'pipeline';

@@ -44,7 +44,7 @@ export default function FeatureCandidatePipelinePage() {
   return (
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.feature_candidate_pipeline.hero.badge', { defaultValue: 'Feature' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
             {t('public.marketing.feature_candidate_pipeline.hero.title', { defaultValue: 'Candidate Pipeline CRM for Recruitment Teams' })}
@@ -62,14 +62,14 @@ export default function FeatureCandidatePipelinePage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.feature_candidate_pipeline.problem.title', { defaultValue: 'What this solves' })}</h2>
           <p className="mt-2 text-sm text-slate-700">
             {t('public.marketing.feature_candidate_pipeline.problem.body', { defaultValue: 'Teams lose time when candidate status lives across chats and spreadsheets. HostFlow centralizes stages, ownership, and reminders, so recruiters and managers work from the same source of truth.' })}
           </p>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.feature_candidate_pipeline.flow.title', { defaultValue: 'How the workflow runs' })}</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
             <li>{t('public.marketing.feature_candidate_pipeline.flow.items.1', { defaultValue: 'Create or import candidates into the pipeline.' })}</li>
@@ -79,7 +79,7 @@ export default function FeatureCandidatePipelinePage() {
           </ol>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.common.faq', { defaultValue: 'FAQ' })}</h2>
           <div className="mt-3 space-y-3">
             {faq.map((item) => (
@@ -91,7 +91,7 @@ export default function FeatureCandidatePipelinePage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.feature_candidate_pipeline.related.title', { defaultValue: 'Related guides' })}</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('related_document_control', '/features/document-control')}>

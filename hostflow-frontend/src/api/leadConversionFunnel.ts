@@ -64,9 +64,18 @@ export type LeadConversionFunnelSliceQuery = {
   vacancyId?: string
   funnelId?: string
   assigneeUserId?: string
-  /** §2.12 stretch: last N days by Lead.created_at (Team+). */
+  /** §2.12 stretch: last N days by Lead.created_at (Team+). Mutually exclusive with cohort date bounds. */
   cohortWindowDays?: number
   cohortComparePrior?: boolean
+  /**
+   * Inclusive lower bound for `Lead.created_at` (ISO 8601). Use with `cohortCreatedBeforeExclusive`.
+   * Mutually exclusive with `cohortWindowDays` on the API.
+   */
+  cohortCreatedAfter?: string
+  /**
+   * Exclusive upper bound for `Lead.created_at` (ISO 8601). Maps to query `cohort_created_before`.
+   */
+  cohortCreatedBeforeExclusive?: string
 }
 
 export async function fetchLeadConversionFunnel(
@@ -79,6 +88,10 @@ export async function fetchLeadConversionFunnel(
   if (slices?.assigneeUserId?.trim()) params.assignee_user_id = slices.assigneeUserId.trim()
   if (slices?.cohortWindowDays != null && slices.cohortWindowDays > 0) {
     params.cohort_window_days = slices.cohortWindowDays
+  }
+  if (slices?.cohortCreatedAfter?.trim() && slices?.cohortCreatedBeforeExclusive?.trim()) {
+    params.cohort_created_after = slices.cohortCreatedAfter.trim()
+    params.cohort_created_before = slices.cohortCreatedBeforeExclusive.trim()
   }
   if (slices?.cohortComparePrior) params.cohort_compare_prior = true
   const { data } = await api.get<LeadConversionFunnelResponse>('/leads/conversion-funnel', {

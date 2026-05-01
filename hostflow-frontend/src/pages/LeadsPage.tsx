@@ -51,6 +51,8 @@ import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
+import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
+import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import {
   CRM_STAGE_VALUES,
@@ -172,6 +174,8 @@ export default function LeadsPage() {
   const { t, locale } = useI18n()
   const { notify } = useToast()
   const planLimitModal = usePlanLimitModal()
+  const { warningFor: quotaWarningFor } = useBillingQuotaWarnings()
+  const leadQuotaWarning = quotaWarningFor('leads_monthly')
   const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1206,6 +1210,9 @@ export default function LeadsPage() {
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-5">
+      {leadQuotaWarning ? (
+        <QuotaNearLimitBanner kind="leads_monthly" percentUsed={leadQuotaWarning.percentUsed} className="mx-1 sm:mx-0" />
+      ) : null}
       <header className="space-y-4 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white py-4 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -1666,6 +1673,10 @@ export default function LeadsPage() {
                         compact
                         title={emptyTitle}
                         description={emptyDescription}
+                        whyHint={t('app.leads.states.empty_why', {
+                          defaultValue:
+                            'Leads is your inbox of potential candidates and clients. Connect a channel (Meta, public form, webhook) so HostFlow auto-creates a row + NBA reminder for each new request.',
+                        })}
                         primaryAction={{
                           label: t('app.leads.states.empty_cta_connect'),
                           to: CRM_APP_PATHS.settingsIntegrationsMeta,

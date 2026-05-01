@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 
+import logging
 from typing import Optional, TYPE_CHECKING, List
 from uuid import uuid4
 from enum import Enum
@@ -17,11 +18,109 @@ if TYPE_CHECKING:
     from .vacancy_recruiter import VacancyRecruiter
 
 
+logger = logging.getLogger(__name__)
+
 
 class EmploymentType(str, Enum):
     full_time = "full_time"
     part_time = "part_time"
     b2b = "b2b"
+
+
+class VacancyStatus(str, Enum):
+    """Canonical vacancy lifecycle states.
+
+    See `docs/specs/vacancy-statuses.md` for full semantics:
+
+    - `open`        — accepting candidates (default for new rows).
+    - `on_hold`     — temporarily paused; not closed, but not actively
+                      sourced. (`paused` is a legacy alias normalized to
+                      this value at the API layer.)
+    - `closed`      — pipeline finished without a hire (client cancelled,
+                      priorities shifted).
+    - `filled`      — closed via successful hire(s). Reserved for the
+                      future auto-flip on `Candidate.employed`; today set
+                      manually only.
+    - `cancelled`   — vacancy was cancelled (created by mistake, or
+                      cancelled by the client before work started).
+
+    DB column `vacancies.status` remains free-string TEXT (see migration
+    `202512090002_vacancies_status_text.py`) — validation lives in the
+    Pydantic layer via `normalize_vacancy_status`.
+
+    `is_archived` is an orthogonal boolean (soft-delete from default
+    lists) and can co-exist with any non-`open` status.
+    """
+
+    open = "open"
+    on_hold = "on_hold"
+    closed = "closed"
+    filled = "filled"
+    cancelled = "cancelled"
+
+
+# Legacy aliases — accepted as INPUT, normalized to canonical on write.
+# Kept here so writers, readers and analytics share one source of truth.
+_VACANCY_STATUS_ALIASES: dict[str, str] = {
+    "paused": VacancyStatus.on_hold.value,
+}
+
+# Statuses that historically existed but are no longer canonical. They are
+# preserved here so the normalizer can emit a single warning the first time
+# they are encountered (helps spot dirty rows during the Phase 2.6.D
+# migration window). After the alembic backfill they should disappear.
+_VACANCY_STATUS_LEGACY_PASSTHROUGH: frozenset[str] = frozenset({
+    # `archived` historically doubled as a status — `VacancyService.patch`
+    # converts it to `is_archived=True`. We accept it as INPUT but the
+    # alembic migration in Stage B rewrites stored rows to `closed` +
+    # `is_archived=true`.
+    "archived",
+})
+
+
+def normalize_vacancy_status(raw: object | None) -> str:
+    """Normalize an arbitrary input value to a canonical `VacancyStatus`.
+
+    Rules (deterministic, idempotent):
+
+    1. `None`/empty/whitespace            → `"open"` (default for new rows).
+    2. Already canonical                   → returned as-is (lowercased).
+    3. Known alias (`paused`)              → mapped to canonical.
+    4. Legacy passthrough (`archived`)     → returned unchanged so the
+       service layer can keep its existing translation to `is_archived`.
+       Will be cleaned up by the Stage B alembic migration.
+    5. Unknown value                       → clamped to `"open"` and a
+       single warning is logged (so dirty data is observable in tests
+       and prod, but does not 422 a request).
+
+    The function is **never** rejecting — it always returns a string.
+    Strict transition validation is a separate concern (Stage D in
+    `docs/specs/vacancy-statuses.md`) and lives in `vacancies/rules.py`.
+    """
+
+    if raw is None:
+        return VacancyStatus.open.value
+    # `str(SomeEnum.member)` historically returned `"SomeEnum.member"`
+    # rather than the underlying value. Normalize defensively before the
+    # lowercase/strip step so callers can pass an enum member, a `str`,
+    # or any custom subclass without surprises.
+    if isinstance(raw, VacancyStatus):
+        return raw.value
+    text_val = str(raw).strip().lower()
+    if not text_val:
+        return VacancyStatus.open.value
+    if text_val in {member.value for member in VacancyStatus}:
+        return text_val
+    aliased = _VACANCY_STATUS_ALIASES.get(text_val)
+    if aliased is not None:
+        return aliased
+    if text_val in _VACANCY_STATUS_LEGACY_PASSTHROUGH:
+        return text_val
+    logger.warning(
+        "vacancy.status.unknown_value_clamped_to_open",
+        extra={"raw_value": text_val},
+    )
+    return VacancyStatus.open.value
 
 
 class Vacancy(Base, TimestampMixin):

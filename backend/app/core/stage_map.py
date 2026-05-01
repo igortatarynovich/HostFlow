@@ -48,6 +48,8 @@ _STAGE_TO_STATUS = {
     "red_paper": "hiring",
     "trip_plan": "hiring",
     "at_client": "hiring",
+    "employment_pending": "hiring",
+    "на трудоустройстве": "hiring",
     "on_trip": "hiring",
     # Трудоустроен
     "трудоустроен": "employed",

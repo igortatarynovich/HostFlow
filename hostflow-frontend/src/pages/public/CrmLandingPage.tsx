@@ -336,7 +336,7 @@ export default function CrmLandingPage() {
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-16 md:space-y-20">
         {/* HERO */}
-        <section className="cv-auto overflow-hidden rounded-[32px] border border-brand-100 bg-white/95 p-6 shadow-card sm:p-8 lg:p-10">
+        <section className="card cv-auto overflow-hidden p-6 sm:p-8 lg:p-10">
           <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center">
             <div className="space-y-5">
               <h1 className="text-balance text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
@@ -406,7 +406,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* ROI */}
-        <section className="cv-auto overflow-hidden rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 p-6 shadow-sm sm:p-8">
+        <section className="cv-auto overflow-hidden rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 p-6 shadow-sm sm:p-8">
           {sectionTitle('roi')}
           <h2 className="mt-2 text-balance text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.roi.title')}</h2>
           <div className="mt-4 space-y-4 text-base leading-relaxed text-slate-700">
@@ -449,7 +449,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* SOLUTION */}
-        <section className="cv-auto space-y-5 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+        <section className="card cv-auto space-y-5 p-6 sm:p-8">
           {sectionTitle('solution')}
           <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.solution.title')}</h2>
           <p className="max-w-3xl text-base leading-relaxed text-slate-600">{t('public.crm_landing.solution.body')}</p>
@@ -497,7 +497,7 @@ export default function CrmLandingPage() {
 
         {/* BEFORE / AFTER */}
         <section className="cv-auto grid gap-6 md:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-6">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-6">
             {sectionTitle('before_after')}
             <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">{t('public.crm_landing.before_after.title')}</h2>
             <p className="mt-4 text-sm font-bold uppercase tracking-wide text-slate-500">{t('public.crm_landing.before_after.before_title')}</p>
@@ -507,7 +507,7 @@ export default function CrmLandingPage() {
               ))}
             </ul>
           </div>
-          <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t('public.crm_landing.before_after.after_badge')}</p>
             <p className="mt-2 text-sm font-bold uppercase tracking-wide text-emerald-800">{t('public.crm_landing.before_after.after_title')}</p>
             <ul className="mt-2 space-y-2 text-sm text-slate-800">
@@ -519,7 +519,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* SEGMENTS */}
-        <section className="cv-auto rounded-3xl border border-brand-100 bg-brand-50/40 p-6 sm:p-8">
+        <section className="cv-auto rounded-xl border border-brand-100 bg-brand-50/40 p-6 sm:p-8">
           {sectionTitle('segments')}
           <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.crm_landing.segments.title')}</h2>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -642,7 +642,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* CONVICTION */}
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+        <section className="card cv-auto p-6 sm:p-8">
           {sectionTitle('conviction')}
           <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.crm_landing.conviction.title')}</h2>
           <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-600">{t('public.crm_landing.conviction.body')}</p>
@@ -656,7 +656,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* FAQ */}
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6 sm:p-8">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.crm_landing.faq.title')}</h2>
           <div className="mt-4 space-y-3">
             {faq.map((item) => (
@@ -669,7 +669,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* GUIDES */}
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.crm_landing.guides.title')}</h2>
           <p className="mt-2 text-sm text-slate-600">{t('public.crm_landing.guides.subtitle')}</p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -695,7 +695,7 @@ export default function CrmLandingPage() {
         </section>
 
         {/* FINAL CTA */}
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-white p-8 text-center shadow-sm">
+        <section className="card cv-auto p-8 text-center">
           <h2 className="text-balance text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.final_cta.title')}</h2>
           <p className="mt-3 text-sm text-slate-600 sm:text-base">{t('public.crm_landing.final_cta.subtitle')}</p>
           <div className="mt-6 flex justify-center">

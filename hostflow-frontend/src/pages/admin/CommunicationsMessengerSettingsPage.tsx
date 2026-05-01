@@ -1259,7 +1259,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
             defaultValue: 'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.',
           })}
           actions={
-            <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
+            <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
               {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
             </Link>
           }
@@ -1600,7 +1600,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
             {t('admin.communications_messengers.templates.how_used_1', {
               defaultValue: 'Message templates appear as quick buttons in composer on',
             })}{' '}
-            <code>{CRM_APP_PATHS.messages}</code>.
+            <code>{CRM_APP_PATHS.inboxMessagesScoped}</code>.
           </li>
           <li>
             {t('admin.communications_messengers.templates.how_used_2', {
@@ -1696,7 +1696,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
           </li>
           <li>
             {t('admin.communications_messengers.templates.command_desc_2_before', { defaultValue: 'Now applied in' })}{' '}
-            <code>{CRM_APP_PATHS.email}</code>{' '}
+            <code>{CRM_APP_PATHS.inboxEmailScoped}</code>{' '}
             {t('admin.communications_messengers.templates.command_desc_2_after', {
               defaultValue: 'for selected threads via',
             })}{' '}
@@ -1704,7 +1704,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
           </li>
           <li>
             {t('admin.communications_messengers.templates.command_desc_3_before', { defaultValue: 'For' })}{' '}
-            <code>{CRM_APP_PATHS.messages}</code>{' '}
+            <code>{CRM_APP_PATHS.inboxMessagesScoped}</code>{' '}
             {t('admin.communications_messengers.templates.command_desc_3_after', {
               defaultValue: 'they are prepared and can be wired next as one-click actions.',
             })}

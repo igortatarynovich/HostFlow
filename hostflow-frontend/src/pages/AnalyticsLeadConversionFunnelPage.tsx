@@ -26,12 +26,27 @@ const PRIOR_STAGE_LOST_COMBOS = [
   { lost_from_crm_stage: 'contacted' as const, lost_reason_code: 'no_response' as const },
 ] as const
 
-type CohortMode = 'all' | 'rolling7' | 'rolling7_wow'
+type CohortMode = 'all' | 'rolling7' | 'rolling7_wow' | 'custom'
 
 function formatCohortBound(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString()
+}
+
+/** `datetime-local` value in local timezone (no UTC offset in string). */
+function formatForDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Parse `datetime-local` to ISO UTC for API (backend expects timezone-aware instants). */
+function datetimeLocalToIso(local: string): string | null {
+  const t = local?.trim()
+  if (!t) return null
+  const d = new Date(t)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
 }
 
 export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: { embedded?: boolean } = {}) {
@@ -41,6 +56,8 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
   const [funnelData, setFunnelData] = useState<LeadConversionFunnelResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [cohortMode, setCohortMode] = useState<CohortMode>('all')
+  const [customRange, setCustomRange] = useState({ start: '', end: '' })
+  const [customWow, setCustomWow] = useState(false)
   const [funnelSliceDraft, setFunnelSliceDraft] = useState({
     source: '',
     vacancyId: '',
@@ -70,15 +87,24 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
         funnelSliceQuery.funnelId?.trim() ||
         funnelSliceQuery.assigneeUserId?.trim(),
     )
-    const cohortOn = cohortMode !== 'all'
+    const customAfter = datetimeLocalToIso(customRange.start)
+    const customBefore = datetimeLocalToIso(customRange.end)
+    const customValid =
+      cohortMode === 'custom' &&
+      Boolean(customAfter && customBefore && new Date(customAfter) < new Date(customBefore))
+    const cohortOn = cohortMode !== 'all' && (cohortMode !== 'custom' || customValid)
     if (!hasSlices && !cohortOn) return null
     const next: LeadConversionFunnelSliceQuery = { ...funnelSliceQuery }
-    if (cohortOn) {
+    if (cohortMode === 'rolling7' || cohortMode === 'rolling7_wow') {
       next.cohortWindowDays = 7
       next.cohortComparePrior = cohortMode === 'rolling7_wow'
+    } else if (cohortMode === 'custom' && customAfter && customBefore && new Date(customAfter) < new Date(customBefore)) {
+      next.cohortCreatedAfter = customAfter
+      next.cohortCreatedBeforeExclusive = customBefore
+      next.cohortComparePrior = customWow
     }
     return next
-  }, [cohortMode, funnelSliceQuery])
+  }, [cohortMode, funnelSliceQuery, customRange.start, customRange.end, customWow])
 
   const refresh = useCallback(() => {
     setLoading(true)
@@ -327,12 +353,23 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                     { mode: 'all' as const, labelKey: 'app.analytics.lead_conversion.cohort_all' },
                     { mode: 'rolling7' as const, labelKey: 'app.analytics.lead_conversion.cohort_7d' },
                     { mode: 'rolling7_wow' as const, labelKey: 'app.analytics.lead_conversion.cohort_7d_wow' },
+                    { mode: 'custom' as const, labelKey: 'app.analytics.lead_conversion.cohort_custom' },
                   ] as const
                 ).map(({ mode, labelKey }) => (
                   <button
                     key={mode}
                     type="button"
-                    onClick={() => setCohortMode(mode)}
+                    onClick={() => {
+                      if (mode === 'custom') {
+                        setCustomRange((r) => {
+                          if (r.start.trim() && r.end.trim()) return r
+                          const end = new Date()
+                          const start = new Date(end.getTime() - 7 * 86400000)
+                          return { start: formatForDatetimeLocal(start), end: formatForDatetimeLocal(end) }
+                        })
+                      }
+                      setCohortMode(mode)
+                    }}
                     className={`rounded-md px-2.5 py-1 text-xs font-medium ${
                       cohortMode === mode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                     }`}
@@ -341,6 +378,37 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                   </button>
                 ))}
               </div>
+              {cohortMode === 'custom' ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                  <label className="flex min-w-[10rem] flex-col gap-0.5 text-[11px] text-slate-600">
+                    <span className="font-medium text-slate-700">{t('app.analytics.lead_conversion.cohort_custom_from')}</span>
+                    <input
+                      type="datetime-local"
+                      value={customRange.start}
+                      onChange={(e) => setCustomRange((r) => ({ ...r, start: e.target.value }))}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
+                    />
+                  </label>
+                  <label className="flex min-w-[10rem] flex-col gap-0.5 text-[11px] text-slate-600">
+                    <span className="font-medium text-slate-700">{t('app.analytics.lead_conversion.cohort_custom_to')}</span>
+                    <input
+                      type="datetime-local"
+                      value={customRange.end}
+                      onChange={(e) => setCustomRange((r) => ({ ...r, end: e.target.value }))}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
+                    />
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-600 sm:pb-1">
+                    <input
+                      type="checkbox"
+                      checked={customWow}
+                      onChange={(e) => setCustomWow(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    {t('app.analytics.lead_conversion.cohort_custom_wow')}
+                  </label>
+                </div>
+              ) : null}
               {leadNba && leadNba.nba_tier !== 'team' ? (
                 <p className="mt-2 text-[11px] text-slate-500">{t('app.analytics.lead_conversion.cohort_team_only')}</p>
               ) : null}

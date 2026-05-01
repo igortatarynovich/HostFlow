@@ -9,6 +9,7 @@ import {
   listAdminUsers,
   listTenantManagers,
   revokeRefreshTokens,
+  revokeUserInvite,
   setUserActive,
   updateUserSupervisor,
   updateUserCompanies,
@@ -287,7 +288,7 @@ function UserDetailCard({
             retryLabel={t('common.actions.refresh')}
             {...friendlyErrorBannerSecondary(
               detailLoadErrorBanner,
-              CRM_APP_PATHS.settingsTeam,
+              CRM_APP_PATHS.settingsUsers,
               t('common.navigation.settings'),
             )}
             compact
@@ -520,7 +521,7 @@ function UserDetailCard({
               retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 auditTabErrorBanner,
-                CRM_APP_PATHS.settingsTeam,
+                CRM_APP_PATHS.settingsUsers,
                 t('app.admin.users.detail.tabs.audit'),
               )}
               compact
@@ -596,6 +597,7 @@ export default function UsersPage() {
   const [audit, setAudit] = useState<AuditState>(EMPTY_AUDIT)
   const [overrideTenant, setOverrideTenant] = useState<PlatformTenant | null>(null)
   const [overrideError, setOverrideError] = useState<string | null>(null)
+  const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null)
   const sortedUsers = useMemo(() => {
     const roleOrder: Record<UserRole, number> = {
       administrator: 0,
@@ -603,7 +605,9 @@ export default function UsersPage() {
       recruiter: 2,
       client_manager: 3,
       client_processor: 4,
-      viewer: 5,
+      compliance_officer: 5,
+      hr_officer: 6,
+      viewer: 7,
     }
     return [...users].sort((a, b) => {
       const aOrder = roleOrder[a.role] ?? 9
@@ -940,6 +944,28 @@ export default function UsersPage() {
     [formatError, loadUsers, planLimitModal, t, tenantOptions],
   )
 
+  const handleRevokeInvite = useCallback(
+    async (inviteId: string) => {
+      setError(null)
+      setRevokingInviteId(inviteId)
+      try {
+        await revokeUserInvite(inviteId, tenantOptions)
+        if (detail?.invite_id === inviteId) {
+          setDetail(null)
+          setSelectedUserId(null)
+        }
+        await loadUsers()
+      } catch (err) {
+        console.error('[UsersPage] revoke invite error', err)
+        const detail = extractErrorDetail(err)
+        setError(formatError('app.admin.users.errors.invite', detail))
+      } finally {
+        setRevokingInviteId(null)
+      }
+    },
+    [detail?.invite_id, formatError, loadUsers, tenantOptions],
+  )
+
   const handleCreateUser = useCallback(
     async (values: {
       email: string
@@ -1132,7 +1158,7 @@ export default function UsersPage() {
           retryLabel={t('app.admin.users.page.refresh.action')}
           {...friendlyErrorBannerSecondary(
             usersListErrorBanner,
-            CRM_APP_PATHS.settingsTeam,
+            CRM_APP_PATHS.settingsUsers,
             t('common.navigation.settings'),
           )}
           compact
@@ -1140,7 +1166,7 @@ export default function UsersPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(260px,340px),minmax(0,1fr)]">
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <section className="settings-panel">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -1218,6 +1244,23 @@ export default function UsersPage() {
                         {invitedLabel && <span>{invitedLabel}</span>}
                         {invitedLabel && createdLabel && <span className="mx-1 text-slate-400">•</span>}
                         {createdLabel && <span>{createdLabel}</span>}
+                      </div>
+                    )}
+                    {user.status === 'invited' && user.invite_id && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-xs"
+                          disabled={revokingInviteId === user.invite_id}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void handleRevokeInvite(user.invite_id!)
+                          }}
+                        >
+                          {revokingInviteId === user.invite_id
+                            ? t('common.loading')
+                            : t('app.admin.users.table.actions.revoke_invite', { defaultValue: 'Revoke invite' })}
+                        </button>
                       </div>
                     )}
                   </button>

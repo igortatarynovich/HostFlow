@@ -16,6 +16,10 @@ from backend.app.api.v1.candidates.pipeline_overrides_service import (
     revoke_override,
 )
 from backend.app.auth.deps import Role, get_current_user, require_roles, UserCtx
+from backend.app.auth.hiring_workspace_roles import (
+    HIRING_CANDIDATE_MUTATE_ROLES,
+    HIRING_CANDIDATE_VIEW_ROLES,
+)
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.audit import log_audit_event
@@ -24,23 +28,8 @@ from backend.app.services.handoff import is_client_tenant_for_list
 
 router = APIRouter()
 
-# Keep in sync with candidates/router.py (avoid circular imports).
-_ALLOW_MANAGER_ROLES = (
-    Role.manager,
-    Role.admin,
-    Role.recruiter,
-    Role.administrator,
-)
-_CANDIDATE_VIEW_ROLES = (
-    *_ALLOW_MANAGER_ROLES,
-    Role.client_manager,
-    Role.client_processor,
-)
-_ACL_RESTRICTED_ROLES = {
-    Role.recruiter.value,
-    Role.supervisor.value,
-    Role.manager.value,
-}
+_ALLOW_MANAGER_ROLES = HIRING_CANDIDATE_MUTATE_ROLES
+_CANDIDATE_VIEW_ROLES = HIRING_CANDIDATE_VIEW_ROLES
 
 APPROVE_OVERRIDE_ROLES = (Role.manager, Role.administrator, Role.superadmin)
 
@@ -92,8 +81,7 @@ async def get_pipeline_overrides(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in _ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
     if role in (Role.client_manager.value, Role.client_processor.value):
@@ -130,8 +118,7 @@ async def post_pipeline_override(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in _ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
     if role in (Role.client_manager.value, Role.client_processor.value):
@@ -194,8 +181,7 @@ async def post_pipeline_override_approve(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in _ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
     if role in (Role.client_manager.value, Role.client_processor.value):
@@ -258,8 +244,7 @@ async def post_pipeline_override_reject(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in _ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
     if role in (Role.client_manager.value, Role.client_processor.value):
@@ -317,8 +302,7 @@ async def post_pipeline_override_revoke(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in _ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
     if role in (Role.client_manager.value, Role.client_processor.value):

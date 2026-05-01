@@ -1,7 +1,7 @@
 // src/pages/Companies.tsx
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, getOnboardingStatus } from '../api/client'
+import { api, getOnboardingStatus, getOwnCompany, patchOwnCompany } from '../api/client'
 import { recordTtvStepCompleted } from '../api/analytics'
 import type { Company, CompanyReadiness } from '../api/types'
 import { listAdminUsers } from '../api/users'
@@ -65,6 +65,10 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { listVacancies } from '../api/vacancies'
+import { createPortalLink, listTenantLinks, revokePortalLink, updateTenantLink, type TenantLink } from '../api/tenantLinks'
+import { useCurrentTenantId } from '../contexts/CurrentTenant'
+import { useAuth } from '../store/useAuth'
+import { useToast } from '../components/Toast'
 
 // Helper functions used only in this file
 function parseBoolean(value: unknown, fallback = false): boolean {
@@ -111,6 +115,35 @@ function getCompanyRoleFromAny(company: AnyRecord): 'operating' | 'client' {
     extra.role ??
     extra.entity_role
   return String(raw ?? '').trim().toLowerCase() === 'operating' ? 'operating' : 'client'
+}
+
+function ownCompanyToCompany(own: AnyRecord): Company {
+  const extra = asRecord(own?.extra)
+  const businessType = normalizeOperatingCompanyType(extra.business_type)
+  return {
+    id: String(own?.id || '') as any,
+    name: String(own?.name || '').trim(),
+    legal_name: (own?.legal_name as string | null | undefined) ?? null,
+    tax_id: (own?.tax_id as string | null | undefined) ?? null,
+    phone: (own?.phone as string | null | undefined) ?? null,
+    email: (own?.email as string | null | undefined) ?? null,
+    website: (own?.website as string | null | undefined) ?? null,
+    notes: (own?.notes as string | null | undefined) ?? null,
+    is_archived: Boolean(own?.is_archived),
+    country_code: (own?.country_code as string | null | undefined) ?? null,
+    country: (own?.country as string | null | undefined) ?? null,
+    city: (own?.city as string | null | undefined) ?? null,
+    address: (own?.address as string | null | undefined) ?? null,
+    contacts: asRecord(own?.contacts),
+    extra: {
+      ...extra,
+      company_role: 'operating',
+      company_kind: 'counterparty',
+      company_type: businessType,
+    },
+    created_at: (own?.created_at as string | null | undefined) ?? null,
+    updated_at: (own?.updated_at as string | null | undefined) ?? null,
+  } as Company
 }
 
 function getCompanyKindFromAny(company: AnyRecord): 'client' | 'counterparty' {
@@ -163,6 +196,10 @@ type ClientWorkspaceTab = (typeof CLIENT_WORKSPACE_TABS)[number]
 
 export default function Companies(){
   const { t } = useI18n()
+  const { me } = useAuth()
+  const { notify } = useToast()
+  const currentTenantId = useCurrentTenantId()
+  const tenantIdForLinks = (currentTenantId ?? (me as { tenant_id?: string } | null)?.tenant_id ?? '').trim()
   const planLimitModal = usePlanLimitModal()
   const location = useLocation()
   const untitledNameRef = useRef(t('app.companies.detail.defaults.untitled'))
@@ -237,6 +274,10 @@ export default function Companies(){
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [clientAccessLink, setClientAccessLink] = useState<TenantLink | null>(null)
+  const [clientAccessLoading, setClientAccessLoading] = useState(false)
+  const [clientAccessSaving, setClientAccessSaving] = useState(false)
+  const [clientPortalBusy, setClientPortalBusy] = useState(false)
 
   // list filters/sort
   const [query, setQuery] = useState('')
@@ -1198,7 +1239,26 @@ export default function Companies(){
       payload.contacts = contactsPayload
       payload.extra = extraPayload
 
-      await api.put(`/companies/${currentAny.id}`, payload)
+      if (isOperatingProfileRoute) {
+        const ownPayload: AnyRecord = {
+          name: payload.name,
+          legal_name: payload.legal_name,
+          tax_id: payload.tax_id,
+          phone: payload.phone,
+          email: payload.email,
+          website: payload.website,
+          notes: payload.notes,
+          country_code: payload.country_code,
+          city: payload.city,
+          address: payload.address,
+          is_archived: payload.is_archived,
+          contacts: payload.contacts,
+          extra: payload.extra,
+        }
+        await patchOwnCompany(String(currentAny.id), ownPayload)
+      } else {
+        await api.put(`/companies/${currentAny.id}`, payload)
+      }
       await loadOne(currentAny.id as string)
       setIsDirty(false)
       setSaveSuccess(true)
@@ -1226,7 +1286,7 @@ export default function Companies(){
     } finally {
       setSaving(false)
     }
-  }, [currentAny, detailForm, loadOne, planLimitModal, t])
+  }, [currentAny, detailForm, isOperatingProfileRoute, loadOne, planLimitModal, t])
 
   const setContactField = useCallback(
     (index: number, patch: Partial<ContactForm>) => {
@@ -1517,6 +1577,12 @@ export default function Companies(){
   }, [planLimitModal, t])
 
   const loadReadiness = useCallback(async (companyId: string) => {
+    if (isOperatingProfileRoute) {
+      setReadiness(null)
+      setReadinessUnavailable(true)
+      setReadinessError(null)
+      return
+    }
     if (!companyId) return
     setReadinessLoading(true)
     setReadinessError(null)
@@ -1536,7 +1602,7 @@ export default function Companies(){
     } finally {
       setReadinessLoading(false)
     }
-  }, [])
+  }, [isOperatingProfileRoute])
 
   async function loadList(){
     setLoading(true)
@@ -1556,6 +1622,14 @@ export default function Companies(){
     setReadinessError(null)
     setCompanyVacanciesFromApi([])
     try{
+      if (isOperatingProfileRoute) {
+        const own = await getOwnCompany(companyId)
+        setCurrent(ownCompanyToCompany(asRecord(own)))
+        setReadiness(null)
+        setReadinessUnavailable(true)
+        setReadinessError(null)
+        return
+      }
       const { data } = await api.get(`/companies/${companyId}`, {
         params: { include_service_metrics: true, include_recruitment_metrics: true },
       })
@@ -1585,6 +1659,90 @@ export default function Companies(){
       void loadList()
     }
   }, [id, isOperatingProfileRoute, navigate])
+
+  useEffect(() => {
+    if (isOperatingProfileRoute || !id || id === 'new' || !tenantIdForLinks) {
+      setClientAccessLink(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      setClientAccessLoading(true)
+      try {
+        const links = await listTenantLinks(tenantIdForLinks)
+        if (cancelled) return
+        const match = links.find(
+          (link) =>
+            String(link.client_company_id || '').trim() === String(id).trim() ||
+            String(link.handoff_include_company_id || '').trim() === String(id).trim(),
+        )
+        setClientAccessLink(match || null)
+      } catch {
+        if (!cancelled) {
+          setClientAccessLink(null)
+        }
+      } finally {
+        if (!cancelled) setClientAccessLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [id, isOperatingProfileRoute, tenantIdForLinks])
+
+  const handleClientAccessToggle = useCallback(
+    async (patch: { handoff_enabled?: boolean; see_vacancies?: boolean; see_reduced_profiles?: boolean }) => {
+      if (!tenantIdForLinks || !clientAccessLink) return
+      setClientAccessSaving(true)
+      try {
+        const updated = await updateTenantLink(tenantIdForLinks, clientAccessLink.id, patch)
+        setClientAccessLink(updated)
+        notify({ title: t('common.saved', { defaultValue: 'Saved' }), variant: 'success' })
+      } catch (err: any) {
+        console.error('[Companies] client access update failed', err)
+        const detail = err?.response?.data?.detail
+        const message = typeof detail === 'string' ? detail : t('app.companies.messages.save_error')
+        notify({ title: message, variant: 'error' })
+      } finally {
+        setClientAccessSaving(false)
+      }
+    },
+    [tenantIdForLinks, clientAccessLink, notify, t],
+  )
+
+  const handleCreateClientPortalLink = useCallback(async () => {
+    if (!tenantIdForLinks || !clientAccessLink) return
+    setClientPortalBusy(true)
+    try {
+      const out = await createPortalLink(tenantIdForLinks, clientAccessLink.id)
+      setClientAccessLink((prev) => (prev ? { ...prev, portal_token: out.token, portal_expires_at: out.expires_at } : prev))
+      notify({ title: t('app.clients.portal_created', { defaultValue: 'Ссылка создана' }), variant: 'success' })
+    } catch (err: any) {
+      console.error('[Companies] create client portal link failed', err)
+      const detail = err?.response?.data?.detail
+      const message = typeof detail === 'string' ? detail : t('app.companies.messages.save_error')
+      notify({ title: message, variant: 'error' })
+    } finally {
+      setClientPortalBusy(false)
+    }
+  }, [tenantIdForLinks, clientAccessLink, notify, t])
+
+  const handleRevokeClientPortalLink = useCallback(async () => {
+    if (!tenantIdForLinks || !clientAccessLink) return
+    setClientPortalBusy(true)
+    try {
+      await revokePortalLink(tenantIdForLinks, clientAccessLink.id)
+      setClientAccessLink((prev) => (prev ? { ...prev, portal_token: null, portal_expires_at: null } : prev))
+      notify({ title: t('app.clients.portal_revoked', { defaultValue: 'Ссылка отозвана' }), variant: 'success' })
+    } catch (err: any) {
+      console.error('[Companies] revoke client portal link failed', err)
+      const detail = err?.response?.data?.detail
+      const message = typeof detail === 'string' ? detail : t('app.companies.messages.save_error')
+      notify({ title: message, variant: 'error' })
+    } finally {
+      setClientPortalBusy(false)
+    }
+  }, [tenantIdForLinks, clientAccessLink, notify, t])
 
   useEffect(() => {
     let cancelled = false
@@ -2065,7 +2223,7 @@ export default function Companies(){
 
     return (
       <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0 pb-0">
-        <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+        <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="text-xs text-white/80">
@@ -2107,12 +2265,14 @@ export default function Companies(){
                     </Link>
                   </>
                 ) : (
-                  <Link
-                    to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
-                    className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
-                  >
-                    {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
-                  </Link>
+                  <>
+                    <Link
+                      to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
+                      className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                    >
+                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                    </Link>
+                  </>
                 )}
                 <button
                   className="btn-primary bg-white text-brand-700 hover:bg-white/90"
@@ -2173,6 +2333,93 @@ export default function Companies(){
 
             {clientWorkspaceTab === 'overview' && (
               <>
+                <SectionCard
+                  title={t('app.clients.settings', { defaultValue: 'Настройки доступа' })}
+                  description={t('app.clients.subtitle_dynamic', {
+                    defaultValue: 'Manage client-facing access without technical details.',
+                    values: { entityPlural: 'clients' },
+                  })}
+                >
+                  {clientAccessLoading ? (
+                    <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+                  ) : !clientAccessLink ? (
+                    <p className="text-sm text-slate-500">
+                      {t('app.clients.empty_desc', {
+                        defaultValue: 'Client access link is not configured yet.',
+                        values: { entity: 'client' },
+                      })}
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-6">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(clientAccessLink.handoff_enabled)}
+                            disabled={clientAccessSaving}
+                            onChange={(e) => void handleClientAccessToggle({ handoff_enabled: e.target.checked })}
+                          />
+                          <span className="text-sm">{t('app.clients.handoff_label', { defaultValue: 'Передача кандидатов' })}</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(clientAccessLink.see_vacancies)}
+                            disabled={clientAccessSaving}
+                            onChange={(e) => void handleClientAccessToggle({ see_vacancies: e.target.checked })}
+                          />
+                          <span className="text-sm">{t('app.clients.see_vacancies_label', { defaultValue: 'Видеть вакансии' })}</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(clientAccessLink.see_reduced_profiles)}
+                            disabled={clientAccessSaving}
+                            onChange={(e) => void handleClientAccessToggle({ see_reduced_profiles: e.target.checked })}
+                          />
+                          <span className="text-sm">{t('app.clients.see_reduced_label', { defaultValue: 'Урезанные профили' })}</span>
+                        </label>
+                      </div>
+                      <div className="border-t border-slate-100 pt-3">
+                        <p className="mb-2 text-sm font-medium text-slate-700">
+                          {t('app.clients.portal_access', { defaultValue: 'Доступ по ссылке' })}
+                        </p>
+                        {clientAccessLink.portal_token ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className="btn-secondary btn-sm"
+                              onClick={() => {
+                                const url = `${window.location.origin}/client-portal?token=${clientAccessLink.portal_token}`
+                                void navigator.clipboard.writeText(url)
+                              }}
+                            >
+                              {t('common.copy', { defaultValue: 'Копировать' })}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-danger btn-sm"
+                              disabled={clientPortalBusy}
+                              onClick={() => void handleRevokeClientPortalLink()}
+                            >
+                              {t('app.clients.revoke_link', { defaultValue: 'Отозвать' })}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={clientPortalBusy}
+                            onClick={() => void handleCreateClientPortalLink()}
+                          >
+                            {t('app.clients.create_portal_link', { defaultValue: 'Создать ссылку' })}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </SectionCard>
+
                 <SectionCard
                   title={t('app.companies.detail.overview.title')}
                   description={t('app.companies.detail.overview.subtitle')}

@@ -58,6 +58,11 @@ ROLE_ALIAS = {
     "client_manager": Role.client_manager.value,
     "client_processor": Role.client_processor.value,
     "processor": Role.client_processor.value,
+    "compliance_officer": Role.compliance_officer.value,
+    "compliance": Role.compliance_officer.value,
+    "docs_officer": Role.compliance_officer.value,
+    "hr_officer": Role.hr_officer.value,
+    "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
 
@@ -110,6 +115,8 @@ async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
 def _quota_attr_for_tenant_role(role: str) -> Optional[str]:
     mapping = {
         Role.recruiter.value: "max_recruiters",
+        Role.compliance_officer.value: "max_recruiters",
+        Role.hr_officer.value: "max_recruiters",
         Role.supervisor.value: "max_supervisors",
         Role.client_manager.value: "max_client_managers",
         Role.client_processor.value: "max_client_managers",
@@ -300,6 +307,8 @@ def _apply_global_role(user: User, tenant_role: str) -> None:
         Role.administrator.value: Role.administrator,
         Role.client_manager.value: Role.client_manager,
         Role.client_processor.value: Role.client_processor,
+        Role.compliance_officer.value: Role.compliance_officer,
+        Role.hr_officer.value: Role.hr_officer,
         Role.superadmin.value: Role.superadmin,
     }
     user.role = mapping.get(tenant_role, Role.viewer)
@@ -746,6 +755,48 @@ async def create_invite(
     )
 
     return invite, raw_token
+
+
+async def revoke_invite(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+    invite_id: str,
+) -> UserInvite:
+    invite = await db.get(UserInvite, invite_id)
+    if not invite or invite.tenant_id != tenant_id:
+        raise UserServiceError("Invite not found", 404)
+    if invite.accepted_at is not None:
+        raise UserServiceError("Invite already accepted", 409)
+    if invite.revoked_at is not None:
+        return invite
+
+    invite.revoked_at = _now()
+    await db.flush()
+
+    await record_user_audit(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        target_user_id=invite.invited_user_id,
+        action="user.invite_revoked",
+        payload={
+            "invite_id": invite.id,
+            "email": invite.email,
+            "role": invite.role,
+        },
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="user.invite_revoked",
+        target_type="user",
+        target_id=invite.invited_user_id,
+        payload={"invite_id": invite.id, "email": invite.email},
+    )
+    return invite
 
 
 async def create_user(
@@ -1917,6 +1968,43 @@ async def _build_security_summary(
     }
 
 
+async def _count_active_tenant_members(db: AsyncSession, tenant_id: str) -> int:
+    """Users with a membership row in this tenant, active and not soft-deleted.
+
+    Falls back to ``User.tenant_id`` count when no membership rows exist yet
+    (legacy / partially migrated tenants) so solo-operator detection still works.
+    """
+    membership = user_memberships.alias("um")
+    stmt = (
+        select(func.count())
+        .select_from(User)
+        .join(
+            membership,
+            sa.and_(
+                membership.c.user_id == User.id,
+                membership.c.tenant_id == tenant_id,
+            ),
+        )
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    n = int((await db.execute(stmt)).scalar_one() or 0)
+    if n > 0:
+        return n
+    stmt_fb = (
+        select(func.count())
+        .select_from(User)
+        .where(User.tenant_id == tenant_id)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    return int((await db.execute(stmt_fb)).scalar_one() or 0)
+
+
+def _is_owner_class_role(role: Role) -> bool:
+    return role in (Role.administrator, Role.superadmin)
+
+
 async def get_user_me(
     db: AsyncSession,
     *,
@@ -1927,7 +2015,14 @@ async def get_user_me(
     preferences = _ensure_preferences_structure(user.preferences)
     profile = _extract_profile_dict(user)
     security = await _build_security_summary(db, tenant_id=tenant_id, user=user)
-    return {"profile": profile, "preferences": preferences, "security": security}
+    member_count = await _count_active_tenant_members(db, tenant_id)
+    is_solo_admin = bool(_is_owner_class_role(user.role) and member_count == 1)
+    return {
+        "profile": profile,
+        "preferences": preferences,
+        "security": security,
+        "is_solo_admin": is_solo_admin,
+    }
 
 
 async def patch_user_me(

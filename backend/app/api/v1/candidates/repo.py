@@ -506,7 +506,14 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
 
     manager = filters.get("manager")
     if manager:
-        conds.append(Candidate.manager == manager)
+        # Phase 2.6.G-5 Stage D — while ``Candidate.manager`` is the
+        # primary filter column (UI ``?manager=<user>``), the canonical
+        # ownership column is ``Candidate.recruiter_id``. Until Stage F
+        # swaps the UI filter to ``?recruiter_id=`` we OR across both so
+        # legacy rows (where bulk-set-manager wrote only to ``manager``)
+        # and new rows (written through ``record_candidate_reassignment``
+        # which mirrors into both) are both visible to the same filter.
+        conds.append(or_(Candidate.manager == manager, Candidate.recruiter_id == manager))
 
     if filters.get("recruiter_unassigned"):
         term_sl = func.lower(func.coalesce(Candidate.stage, ""))
@@ -557,7 +564,9 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     if not is_client and (allowed_company_ids or allowed_vacancy_ids or allowed_manager_ids):
         acl_conditions = []
         if allowed_manager_ids:
-            acl_conditions.append(Candidate.manager.in_(allowed_manager_ids))
+            acl_conditions.append(
+                or_(Candidate.manager.in_(allowed_manager_ids), Candidate.recruiter_id.in_(allowed_manager_ids)),
+            )
         if allowed_company_ids:
             acl_conditions.append(Candidate.company_id.in_(allowed_company_ids))
         if allowed_vacancy_ids:

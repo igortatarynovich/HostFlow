@@ -85,7 +85,7 @@ export default function LegalDocumentsPage() {
         is_active: true,
       }
       await createLegalDocument(payload)
-      notify({ title: t('admin.legal.created', { defaultValue: 'Utworzono' }), variant: 'success' })
+      notify({ title: t('admin.legal.created'), variant: 'success' })
       setShowForm(null)
       setFormVersionId('')
       setFormContentUrl('')
@@ -105,7 +105,7 @@ export default function LegalDocumentsPage() {
     setSaving(true)
     try {
       await updateLegalDocument(doc.id, { is_active: true })
-      notify({ title: t('admin.legal.activated', { defaultValue: 'Ustawiono jako aktywny' }), variant: 'success' })
+      notify({ title: t('admin.legal.activated'), variant: 'success' })
       await load()
     } catch (e: unknown) {
       notify({
@@ -124,12 +124,12 @@ export default function LegalDocumentsPage() {
       const items = await fetchBillingLegalDrafts()
       const hit = items.find((i) => i.type === showForm)
       if (!hit) {
-        notify({ title: t('admin.legal.billing.draft_not_found', { defaultValue: 'Draft not found' }), variant: 'error' })
+        notify({ title: t('admin.legal.billing.draft_not_found'), variant: 'error' })
         return
       }
       setFormVersionId(hit.version_id)
       setFormContentHtml(hit.content_html)
-      notify({ title: t('admin.legal.billing.draft_loaded', { defaultValue: 'Draft loaded' }), variant: 'success' })
+      notify({ title: t('admin.legal.billing.draft_loaded'), variant: 'success' })
     } catch (e: unknown) {
       notify({
         title: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error',
@@ -148,12 +148,12 @@ export default function LegalDocumentsPage() {
     const isBilling = BILLING_KINDS.has(value)
 
     return (
-      <div key={value} className="mb-6 last:mb-0">
-        <h3 className="text-sm font-semibold text-slate-700">{typeLabel}</h3>
+      <div key={value} className="mb-4 last:mb-0">
+        <h3 className="text-sm font-semibold text-slate-800">{typeLabel}</h3>
         {activeDoc ? (
           <div className="alert-success mt-2">
             <span className="font-medium">
-              {t('admin.legal.active', { defaultValue: 'Aktywny' })}: {activeDoc.version_id}
+              {t('admin.legal.active')}: {activeDoc.version_id}
               {activeDoc.content_url && (
                 <a
                   href={activeDoc.content_url}
@@ -161,7 +161,7 @@ export default function LegalDocumentsPage() {
                   rel="noopener noreferrer"
                   className="ml-2 text-brand-600 hover:underline"
                 >
-                  {t('admin.legal.link', { defaultValue: 'Link' })}
+                  {t('admin.legal.link')}
                 </a>
               )}
             </span>
@@ -175,13 +175,13 @@ export default function LegalDocumentsPage() {
             {typeDocs.map((d) => (
               <li
                 key={d.id}
-                className="flex items-center justify-between rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm"
               >
                 <span>
                   {d.version_id}
                   {d.is_active && (
                     <span className="badge ml-2 bg-emerald-100 text-emerald-800">
-                      {t('admin.legal.active', { defaultValue: 'Aktywny' })}
+                      {t('admin.legal.active')}
                     </span>
                   )}
                   {d.content_url && (
@@ -202,7 +202,7 @@ export default function LegalDocumentsPage() {
                     disabled={saving}
                     className="btn-secondary btn-sm"
                   >
-                    {t('admin.legal.set_active', { defaultValue: 'Ustaw jako aktywny' })}
+                    {t('admin.legal.set_active')}
                   </button>
                 )}
               </li>
@@ -211,8 +211,8 @@ export default function LegalDocumentsPage() {
         )}
 
         {showForm === value ? (
-          <div className="mt-3 rounded-xl border border-brand-100 bg-white p-4">
-            <label className="label">{t('admin.legal.version_id', { defaultValue: 'Wersja (np. 2025-01-01)' })}</label>
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+            <label className="label">{t('admin.legal.version_id')}</label>
             <input
               type="text"
               value={formVersionId}
@@ -220,9 +220,7 @@ export default function LegalDocumentsPage() {
               placeholder="2025-01-01"
               className="input mt-1"
             />
-            <label className="label mt-3">
-              {t('admin.legal.content_url', { defaultValue: 'URL dokumentu (PDF lub strona)' })}
-            </label>
+            <label className="label mt-3">{t('admin.legal.content_url')}</label>
             <input
               type="url"
               value={formContentUrl}
@@ -230,11 +228,7 @@ export default function LegalDocumentsPage() {
               placeholder="https://..."
               className="input mt-1"
             />
-            <label className="label mt-3">
-              {t('admin.legal.content_html', {
-                defaultValue: 'HTML body (optional — e.g. for hosted terms or email)',
-              })}
-            </label>
+            <label className="label mt-3">{t('admin.legal.content_html')}</label>
             <textarea
               value={formContentHtml}
               onChange={(e) => setFormContentHtml(e.target.value)}
@@ -243,17 +237,17 @@ export default function LegalDocumentsPage() {
             />
             {isBilling && (
               <button type="button" onClick={() => void loadBillingDraft()} disabled={saving} className="btn-secondary btn-sm mt-2">
-                {t('admin.legal.billing.load_draft', { defaultValue: 'Load English draft (§2.16)' })}
+                {t('admin.legal.billing.load_draft')}
               </button>
             )}
-            <div className="mt-4 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => void handleCreate()}
                 disabled={saving || !formVersionId.trim()}
-                className="btn-primary"
+                className="btn-primary btn-sm"
               >
-                {saving ? t('common.saving', { defaultValue: 'Zapisywanie...' }) : t('common.save', { defaultValue: 'Zapisz' })}
+                {saving ? t('common.saving') : t('common.actions.save')}
               </button>
               <button
                 type="button"
@@ -264,7 +258,7 @@ export default function LegalDocumentsPage() {
                   setFormContentHtml('')
                 }}
                 disabled={saving}
-                className="btn-secondary"
+                className="btn-secondary btn-sm"
               >
                 {t('common.actions.cancel')}
               </button>
@@ -281,7 +275,7 @@ export default function LegalDocumentsPage() {
             }}
             className="btn-secondary btn-sm mt-2"
           >
-            + {t('admin.legal.add_version', { defaultValue: 'Dodaj wersję' })}
+            + {t('admin.legal.add_version')}
           </button>
         )}
       </div>
@@ -289,40 +283,32 @@ export default function LegalDocumentsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <SettingsSubpageHeader
-        backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.legal.header_kicker')}
-        title={t('admin.legal.title', { defaultValue: 'Dokumenty prawne (RODO, polityka prywatności)' })}
-        subtitle={t('admin.legal.subtitle', {
-          defaultValue:
-            'Skonfiguruj aktywną klauzulę RODO i politykę prywatności. Bez aktywnej klauzuli RODO nie można wysyłać informacji RODO do kandydatów.',
-        })}
-      />
+    <div className="space-y-3">
+      <div className="mb-1">
+        <SettingsSubpageHeader
+          backLabel={t('admin.settings.subpage.back_all')}
+          kicker={t('admin.legal.header_kicker')}
+          title={t('admin.legal.title')}
+          subtitle={t('admin.legal.subtitle')}
+        />
+      </div>
       {loading ? (
-        <section className="card p-6">
-          <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Ładowanie...' })}</p>
+        <section className="settings-panel">
+          <p className="text-sm text-slate-500">{t('common.loading')}</p>
         </section>
       ) : (
         <>
-          <section className="card p-6">
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {t('admin.legal.section_candidates', { defaultValue: 'Candidates' })}
+          <section className="settings-panel">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('admin.legal.section_candidates')}
             </h3>
             {CANDIDATE_DOC_TYPES.map(renderTypeBlock)}
           </section>
 
-          <section className="card p-6">
-            <header className="mb-4">
-              <h2 className="text-xl font-semibold text-slate-900">
-                {t('admin.legal.billing.section_title', { defaultValue: 'Billing & subscription exhibits' })}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {t('admin.legal.billing.section_subtitle', {
-                  defaultValue:
-                    'Draft clauses aligned with SSOT §2.16 (trial, downgrade, overage consent, retention, automation/mapping). Must be reviewed by counsel; use “Load English draft” then adapt.',
-                })}
-              </p>
+          <section className="settings-panel">
+            <header className="mb-3">
+              <h2 className="text-lg font-semibold text-slate-900">{t('admin.legal.billing.section_title')}</h2>
+              <p className="mt-1 text-xs text-slate-600">{t('admin.legal.billing.section_subtitle')}</p>
             </header>
             {BILLING_DOC_TYPES.map(renderTypeBlock)}
           </section>
@@ -331,4 +317,3 @@ export default function LegalDocumentsPage() {
     </div>
   )
 }
-

@@ -17,6 +17,8 @@ import type { ReminderRecord } from '../api/types/notification'
 import LeadMetaProblemPanel from '../components/leads/LeadMetaProblemPanel'
 import LeadQualificationSuggestionPanel from '../components/leads/LeadQualificationSuggestionPanel'
 import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
+import { NextActionBadge } from '../components/candidate/NextActionBadge'
+import { useLeadNextAction } from '../components/lead/useLeadNextAction'
 import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -166,6 +168,18 @@ export default function LeadDetailPage() {
   const [patching, setPatching] = useState(false)
   const [lostStagePrompt, setLostStagePrompt] = useState<{ previousStage: string | null } | null>(null)
   const [deletingLead, setDeletingLead] = useState(false)
+  const [quickRemindBusy, setQuickRemindBusy] = useState(false)
+
+  // G-8 stage 2.0: refresh tick the page bumps after a stage / process /
+  // assignment mutation so the per-lead next-action badge re-resolves
+  // without holding a `refetch` reference. Keeps the hook surface read-only.
+  const [nextActionTick, setNextActionTick] = useState(0)
+  const bumpNextActionTick = useCallback(() => setNextActionTick((n) => n + 1), [])
+  const {
+    data: leadNextAction,
+    loading: leadNextActionLoading,
+    error: leadNextActionError,
+  } = useLeadNextAction(leadId ?? null, nextActionTick)
 
   const isServicesTenant = onboardingBusinessType === 'services'
   const canDeleteLead = Boolean(me?.role && me.role !== 'viewer')
@@ -330,6 +344,39 @@ export default function LeadDetailPage() {
     }
   }, [leadId, loadLeadReminders, notify, planLimitModal, reminderDueAt, reminderOffset, reminderTitle, t])
 
+  const handleQuickRemindClient = useCallback(async () => {
+    if (!leadId) return
+    setQuickRemindBusy(true)
+    try {
+      const due = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
+      await createActivity({
+        title: t('app.leads.detail.remind_client.default_title'),
+        description: '',
+        type: 'custom',
+        entity_type: 'lead',
+        entity_id: leadId,
+        due_at: due.toISOString(),
+        remind_at: remindAt.toISOString(),
+        priority: 'normal',
+        source: 'manual',
+      })
+      await loadLeadReminders()
+      notify({ title: t('app.reminders.messages.created'), variant: 'success' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) {
+        return
+      }
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.reminders.errors.create')
+      notify({ title: typeof detail === 'string' ? detail : String(detail), variant: 'error' })
+    } finally {
+      setQuickRemindBusy(false)
+    }
+  }, [leadId, loadLeadReminders, notify, planLimitModal, reminderOffset, t])
+
   const handleCompleteReminder = useCallback(
     async (id: string) => {
       try {
@@ -399,6 +446,7 @@ export default function LeadDetailPage() {
       const result = await processLead(lead.id)
       await loadLead({ silent: true })
       void loadTimeline()
+      bumpNextActionTick()
       if (result?.status === 'needs_routing') {
         notify({
           title: t('app.leads.messages.needs_routing'),
@@ -436,7 +484,7 @@ export default function LeadDetailPage() {
     } finally {
       setProcessing(false)
     }
-  }, [lead?.id, loadLead, loadTimeline, notify, planLimitModal, t])
+  }, [lead?.id, loadLead, loadTimeline, notify, planLimitModal, t, bumpNextActionTick])
 
   const handleDetailStageChange = useCallback(
     async (nextRaw: string) => {
@@ -448,6 +496,7 @@ export default function LeadDetailPage() {
       try {
         const updated = (await updateLeadStage(lead.id, { stage: next })) as Lead
         setLead(updated)
+        bumpNextActionTick()
         notify({
           title: t('app.leads.inbox.stage_updated'),
           variant: 'success',
@@ -467,7 +516,7 @@ export default function LeadDetailPage() {
         setPatching(false)
       }
     },
-    [lead, loadTimeline, notify, planLimitModal, t],
+    [lead, loadTimeline, notify, planLimitModal, t, bumpNextActionTick],
   )
 
   const handleDetailStageSelect = useCallback(
@@ -498,6 +547,7 @@ export default function LeadDetailPage() {
         })) as Lead
         setLostStagePrompt(null)
         setLead(updated)
+        bumpNextActionTick()
         notify({
           title: t('app.leads.inbox.stage_updated'),
           variant: 'success',
@@ -517,7 +567,7 @@ export default function LeadDetailPage() {
         setPatching(false)
       }
     },
-    [lead?.id, loadTimeline, notify, planLimitModal, t],
+    [lead?.id, loadTimeline, notify, planLimitModal, t, bumpNextActionTick],
   )
 
   const handleDeleteLead = useCallback(async () => {
@@ -617,7 +667,15 @@ export default function LeadDetailPage() {
         <>
           <header className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-slate-900">{t('app.leads.detail.title')}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold text-slate-900">{t('app.leads.detail.title')}</h1>
+                <NextActionBadge
+                  dto={leadNextAction}
+                  loading={leadNextActionLoading}
+                  error={leadNextActionError}
+                  inverse={false}
+                />
+              </div>
               <p className="mt-1 font-mono text-xs text-slate-500">{lead.id}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -626,6 +684,15 @@ export default function LeadDetailPage() {
                   {processing ? t('common.loading') : t('app.leads.actions.process')}
                 </button>
               ) : null}
+              <button
+                type="button"
+                className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
+                disabled={quickRemindBusy || patching || processing || deletingLead}
+                onClick={() => void handleQuickRemindClient()}
+                title={t('app.leads.detail.remind_client.hint')}
+              >
+                {quickRemindBusy ? t('app.leads.detail.remind_client.busy') : t('app.leads.detail.remind_client.cta')}
+              </button>
               {!isServicesTenant && lead.candidate_id ? (
                 <Link
                   to={`${CRM_APP_PATHS.candidates}/${lead.candidate_id}`}

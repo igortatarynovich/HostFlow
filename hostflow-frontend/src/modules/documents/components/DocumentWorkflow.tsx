@@ -6,7 +6,8 @@ import { memo, useEffect, useState } from "react";
 import clsx from "clsx";
 import type { Document, DocumentWorkflow as DocumentWorkflowState, DocumentWorkflowStep, DocumentStatus } from "../../../api/types";
 import { DOCUMENT_STATUS_META } from "../constants";
-import { formatDateTime } from "../documentUtils";
+import { formatDate } from "../documentUtils";
+import { isWorkflowStepDone } from "../workflowUtils";
 import { useI18n } from "../../../i18n";
 
 interface DocumentWorkflowProps {
@@ -38,12 +39,12 @@ export const DocumentWorkflow = memo(function DocumentWorkflow({
   const steps = Array.isArray(workflow?.steps) ? workflow!.steps : [];
   if (!steps.length) return null;
 
-  const completed = steps.filter((step) => String(step.status).toLowerCase() === "done").length;
+  const completed = steps.filter((step) => isWorkflowStepDone(step)).length;
   const total = steps.length;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
   const processLabel = translateProcess(workflow?.process_type ?? doc.process_type) ?? doc.process_type;
   const hasActive = steps.some((step) => String(step.status || "").toLowerCase() === "in_progress");
-  const unfinishedExists = steps.some((step) => String(step.status || "").toLowerCase() !== "done");
+  const unfinishedExists = steps.some((step) => !isWorkflowStepDone(step));
   const canStart = canModify && !hasActive && unfinishedExists;
 
   return (
@@ -64,55 +65,90 @@ export const DocumentWorkflow = memo(function DocumentWorkflow({
       <div className="space-y-1">
         {steps.map((step: DocumentWorkflowStep) => {
           const rawStatus = String(step.status || "pending").toLowerCase();
-          const isDone = rawStatus === "done";
+          const isDone = isWorkflowStepDone(step);
+          const stepTitle =
+            t(`documents.workflow.step.${step.code}`, { defaultValue: "" }) || step.title || step.code;
           const badge = DOCUMENT_STATUS_META[step.status as DocumentStatus]?.color ?? "bg-slate-100 text-slate-600";
           const dueAtDate = step.due_at ? new Date(step.due_at) : null;
           const overdue = Boolean(dueAtDate && nowMs !== null && dueAtDate.getTime() < nowMs && !isDone);
+          const metaBeforeDue: string[] = [];
+          if (step.ordered_at) {
+            const d = formatDate(step.ordered_at);
+            if (d)
+              metaBeforeDue.push(
+                t("admin.documents.workflow.ordered_at", { values: { datetime: d } }),
+              );
+          }
+          let dueMeta: string | null = null;
+          if (step.due_at) {
+            const d = formatDate(step.due_at);
+            if (d)
+              dueMeta = t("admin.documents.workflow.due_at", { values: { datetime: d } });
+          }
+          const metaAfterDue: string[] = [];
+          if (
+            typeof step.due_in_hours === "number" &&
+            !Number.isNaN(step.due_in_hours) &&
+            !step.due_at
+          ) {
+            metaAfterDue.push(
+              t("admin.documents.workflow.due_in_hours", { values: { hours: step.due_in_hours } }),
+            );
+          }
+          if (step.completed_at) {
+            const d = formatDate(step.completed_at);
+            if (d)
+              metaAfterDue.push(
+                t("admin.documents.workflow.completed_at", { values: { datetime: d } }),
+              );
+          }
+          const hasMeta =
+            metaBeforeDue.length > 0 || Boolean(dueMeta) || metaAfterDue.length > 0;
+
           return (
             <div key={step.code} className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-slate-700">{step.title || step.code}</span>
-                <span className={clsx("inline-flex items-center gap-1 rounded-full px-2 py-0.5", badge)}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-medium text-slate-700">{stepTitle}</span>
+                <span className={clsx("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5", badge)}>
                   {translateStatus(step.status || rawStatus)}
                 </span>
-                {step.ordered_at && (
-                  <span className="text-slate-500">
-                    {t("admin.documents.workflow.ordered_at", {
-                      values: { datetime: formatDateTime(step.ordered_at) ?? "" },
-                    })}
+                {hasMeta ? (
+                  <span className="min-w-0 tabular-nums">
+                    {metaBeforeDue.length > 0 ? (
+                      <span className="text-slate-500">{metaBeforeDue.join(" · ")}</span>
+                    ) : null}
+                    {dueMeta ? (
+                      <>
+                        {metaBeforeDue.length > 0 ? <span className="text-slate-300"> · </span> : null}
+                        <span className={clsx(overdue ? "font-medium text-rose-600" : "text-slate-500")}>
+                          {dueMeta}
+                        </span>
+                      </>
+                    ) : null}
+                    {metaAfterDue.length > 0 ? (
+                      <>
+                        {(metaBeforeDue.length > 0 || dueMeta) ? <span className="text-slate-300"> · </span> : null}
+                        <span className="text-slate-500">{metaAfterDue.join(" · ")}</span>
+                      </>
+                    ) : null}
                   </span>
-                )}
-                {step.due_at && (
-                  <span className={clsx("text-slate-500", overdue && "text-rose-600 font-semibold")}>
-                    {t("admin.documents.workflow.due_at", {
-                      values: { datetime: formatDateTime(step.due_at) ?? "" },
-                    })}
-                  </span>
-                )}
-                {typeof step.due_in_hours === "number" && !Number.isNaN(step.due_in_hours) && (
-                  <span className="text-slate-400">
-                    {t("admin.documents.workflow.due_in_hours", { values: { hours: step.due_in_hours } })}
-                  </span>
-                )}
-                {step.completed_at && (
-                  <span className="text-slate-500">
-                    {t("admin.documents.workflow.completed_at", {
-                      values: { datetime: formatDateTime(step.completed_at) ?? "" },
-                    })}
-                  </span>
-                )}
+                ) : null}
                 {overdue && (
-                  <span className="rounded bg-rose-100 px-2 py-0.5 text-rose-700">
+                  <span className="shrink-0 rounded bg-rose-100 px-2 py-0.5 text-rose-700">
                     {t("admin.documents.badges.overdue")}
                   </span>
                 )}
                 {canModify && !isDone && (
-                  <button className="btn-secondary btn-xs" onClick={() => onCompleteStep(doc, step.code)}>
+                  <button type="button" className="btn-secondary btn-xs shrink-0" onClick={() => onCompleteStep(doc, step.code)}>
                     {t("admin.documents.actions.mark_done")}
                   </button>
                 )}
               </div>
-              {step.notes && <div className="mt-1 text-slate-500">{step.notes}</div>}
+              {step.notes ? (
+                <div className="mt-1 line-clamp-2 text-slate-500" title={step.notes}>
+                  {step.notes}
+                </div>
+              ) : null}
             </div>
           );
         })}

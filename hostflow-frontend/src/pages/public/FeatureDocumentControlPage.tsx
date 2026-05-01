@@ -44,7 +44,7 @@ export default function FeatureDocumentControlPage() {
   return (
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.feature_document_control.hero.badge', { defaultValue: 'Feature' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
             {t('public.marketing.feature_document_control.hero.title', { defaultValue: 'Document Control for Recruitment Operations' })}
@@ -62,14 +62,14 @@ export default function FeatureDocumentControlPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.feature_document_control.problem.title', { defaultValue: 'Why teams need this' })}</h2>
           <p className="mt-2 text-sm text-slate-700">
             {t('public.marketing.feature_document_control.problem.body', { defaultValue: 'Manual tracking of passports, permits, and certificates creates risk and delays. HostFlow organizes required documents by workflow stage and alerts users before issues become blockers.' })}
           </p>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.feature_document_control.outcome.title', { defaultValue: 'Workflow outcome' })}</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
             <li>{t('public.marketing.feature_document_control.outcome.items.1', { defaultValue: 'Standardized checklist for required files.' })}</li>
@@ -79,7 +79,7 @@ export default function FeatureDocumentControlPage() {
           </ul>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.common.faq', { defaultValue: 'FAQ' })}</h2>
           <div className="mt-3 space-y-3">
             {faq.map((item) => (
@@ -91,7 +91,7 @@ export default function FeatureDocumentControlPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.feature_document_control.related.title', { defaultValue: 'Related guides' })}</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('related_pipeline', '/features/candidate-pipeline')}>

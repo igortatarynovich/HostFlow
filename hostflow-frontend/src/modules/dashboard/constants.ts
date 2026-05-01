@@ -22,6 +22,7 @@ export const DEFAULT_STAGE_CODES = [
   'red_paper',
   'trip_plan',
   'at_client',
+  'employment_pending',
   'on_trip',
   'probation_ok',
   'employed',

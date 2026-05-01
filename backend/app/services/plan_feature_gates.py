@@ -7,6 +7,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.tenant import Tenant, TenantLicense
+from backend.app.models.lead import MetaLeadCredential, MetaLeadSettings
+from backend.app.models.tenant_lead_form import TenantLeadForm
+from backend.app.constants.hostflow_canonical_tenants import is_focus_personnel_tenant
 from backend.app.services.billing_pack_addons import (
     AUTOMATION_RULES_ENABLED_CAP,
     LEAD_CUSTOM_FIELD_DEFINITIONS_CAP,
@@ -21,50 +24,134 @@ _STARTER_TIER_MAX_LEAD_CUSTOM_FIELD_DEFINITIONS = 10
 # §2.11: Meta field mapping rules + integration "slots" on low tiers (SSOT monetization table).
 _STARTER_TIER_MAX_META_FIELD_MAPPING_RULES = 25
 _STARTER_TIER_MAX_META_LEAD_CREDENTIALS = 1
+TRIAL_LEADS_MONTHLY_CAP = 50
+TRIAL_CONVERSION_ACTIONS_CAP = 20
+TRIAL_PORTAL_SHARES_CAP = 2
+TRIAL_AUTOMATION_RUNS_CAP = 5
+TRIAL_CONVERSION_ACTIONS_METRIC = "conversion_actions"
+TRIAL_AUTOMATION_RUNS_METRIC = "automation_runs"
 
 
-def plan_allows_team_tier_features(plan: str) -> bool:
+def plan_allows_team_tier_features(plan: str, *, tenant_id: str | None = None) -> bool:
+    if is_focus_personnel_tenant(tenant_id):
+        return True
     p = (plan or "").strip().lower() or "starter"
     return p not in _TEAM_TIER_BLOCKED_PLANS
 
 
-def plan_is_pro_tier(plan: str) -> bool:
-    """Highest public tier for NBA / distribution upsells (§2.16)."""
-    return (plan or "").strip().lower() == "pro"
+def plan_allows_smart_operations_bundle(plan: str, *, tenant_id: str | None = None) -> bool:
+    """
+    **Умные** сквозные фичи (тот же UX/эндпойнты, что и «ручные»):
+
+    * взвешенная маршрутизация / «умная» ротация в manager queue;
+    * дальше сюда же — расширения «умного планера» и AI-подсказок по той же лицензии.
+
+    Коммерчески сейчас выровнено с Team+ (см. ``_TEAM_TIER_BLOCKED_PLANS``).
+    **Focus Personnel** (канонический tenant id) — всё включено по продуктовой политике.
+    """
+    return plan_allows_team_tier_features(plan, tenant_id=tenant_id)
 
 
-def lead_custom_field_definitions_cap(plan: str) -> int | None:
+def plan_is_pro_tier(plan: str, *, tenant_id: str | None = None) -> bool:
+    """Business+ tier for NBA / distribution upsells (§2.16)."""
+    if is_focus_personnel_tenant(tenant_id):
+        return True
+    return (plan or "").strip().lower() in {"pro", "enterprise"}
+
+
+def lead_custom_field_definitions_cap(plan: str, *, tenant_id: str | None = None) -> int | None:
     """Max active non-system LEAD definitions; None = no cap (Team+)."""
+    if is_focus_personnel_tenant(tenant_id):
+        return None
     p = (plan or "").strip().lower() or "starter"
     if p in _TEAM_TIER_BLOCKED_PLANS:
         return _STARTER_TIER_MAX_LEAD_CUSTOM_FIELD_DEFINITIONS
     return None
 
 
-def lead_meta_field_mapping_rules_cap(plan: str) -> int | None:
+def lead_meta_field_mapping_rules_cap(plan: str, *, tenant_id: str | None = None) -> int | None:
     """Max rows in meta_lead_settings.field_mapping; None = unlimited (Team+)."""
+    if is_focus_personnel_tenant(tenant_id):
+        return None
     p = (plan or "").strip().lower() or "starter"
     if p in _TEAM_TIER_BLOCKED_PLANS:
         return _STARTER_TIER_MAX_META_FIELD_MAPPING_RULES
     return None
 
 
-def lead_meta_credentials_cap(plan: str) -> int | None:
+def lead_meta_credentials_cap(plan: str, *, tenant_id: str | None = None) -> int | None:
     """Max Meta lead credentials per tenant; None = unlimited (Team+)."""
+    if is_focus_personnel_tenant(tenant_id):
+        return None
     p = (plan or "").strip().lower() or "starter"
     if p in _TEAM_TIER_BLOCKED_PLANS:
         return _STARTER_TIER_MAX_META_LEAD_CREDENTIALS
     return None
 
 
-def plan_allows_meta_leads_oauth(plan: str) -> bool:
+def plan_allows_meta_leads_oauth(plan: str, *, tenant_id: str | None = None) -> bool:
     """Facebook Login «quick connect» for Meta Leads (same commercial tier as Team features / generic webhook)."""
-    return plan_allows_team_tier_features(plan)
+    return plan_allows_team_tier_features(plan, tenant_id=tenant_id)
+
+
+def trial_usage_caps() -> dict[str, int]:
+    """SSOT §2.16 trial-only caps (independent from starter paid plan caps)."""
+    return {
+        "leads_monthly": TRIAL_LEADS_MONTHLY_CAP,
+        "conversion_actions": TRIAL_CONVERSION_ACTIONS_CAP,
+        "portal_shares": TRIAL_PORTAL_SHARES_CAP,
+        "automation_runs": TRIAL_AUTOMATION_RUNS_CAP,
+    }
+
+
+async def _tenant_trial_active(db: AsyncSession, tenant_id: str) -> bool:
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is not None and isinstance(tenant.settings, dict):
+        billing = tenant.settings.get("billing")
+        if isinstance(billing, dict):
+            sub = billing.get("subscription")
+            if isinstance(sub, dict):
+                status_code = str(sub.get("status") or "").strip().lower()
+                if status_code == "trial":
+                    return True
+    row = await db.execute(
+        select(TenantLicense.plan).where(TenantLicense.tenant_id == tenant_id).limit(1)
+    )
+    plan = str(row.scalar_one_or_none() or "").strip().lower()
+    return plan == "trial"
+
+
+async def enforce_trial_usage_cap_and_increment(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    metric: str,
+    increment: int = 1,
+) -> None:
+    """Apply trial monthly usage cap for selected metric, then persist increment."""
+    if increment <= 0:
+        return
+    metric_key = str(metric or "").strip().lower()
+    cap = trial_usage_caps().get(metric_key)
+    if cap is None:
+        return
+    if not await _tenant_trial_active(db, tenant_id):
+        return
+    from backend.app.services.tenant_limits import ensure_usage_limit_not_exceeded, increment_tenant_usage
+
+    await ensure_usage_limit_not_exceeded(
+        db,
+        tenant_id,
+        metric_key,
+        limit_per_month=cap,
+        increment=increment,
+    )
+    await increment_tenant_usage(db, tenant_id, metric_key, delta=increment)
 
 
 async def ensure_meta_leads_oauth_allowed(db: AsyncSession, tenant_id: str) -> None:
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    if not plan_allows_meta_leads_oauth(plan):
+    if not plan_allows_meta_leads_oauth(plan, tenant_id=tenant_id):
         raise HTTPException(
             status_code=403,
             detail={
@@ -80,7 +167,7 @@ async def ensure_meta_lead_field_mapping_rows_allowed(
     db: AsyncSession, tenant_id: str, rule_count: int
 ) -> None:
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    cap = lead_meta_field_mapping_rules_cap(plan)
+    cap = lead_meta_field_mapping_rules_cap(plan, tenant_id=tenant_id)
     if cap is None:
         return
     if rule_count > cap:
@@ -103,7 +190,7 @@ async def ensure_meta_lead_credential_create_allowed(db: AsyncSession, tenant_id
     from backend.app.modules.leads import crud as leads_crud
 
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    cap = lead_meta_credentials_cap(plan)
+    cap = lead_meta_credentials_cap(plan, tenant_id=tenant_id)
     if cap is None:
         return
     rows = await leads_crud.list_meta_credentials(db, tenant_id=tenant_id)
@@ -140,7 +227,7 @@ async def count_active_lead_custom_field_definitions(db: AsyncSession, tenant_id
 
 async def ensure_lead_custom_field_definition_create_allowed(db: AsyncSession, tenant_id: str) -> None:
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    cap = lead_custom_field_definitions_cap(plan)
+    cap = lead_custom_field_definitions_cap(plan, tenant_id=tenant_id)
     if cap is None:
         return
     tenant = await db.get(Tenant, tenant_id)
@@ -182,6 +269,8 @@ def plan_bucket_for_limits(plan: str) -> str:
 
 
 async def resolve_plan_bucket_for_limits(db: AsyncSession, tenant_id: str) -> str:
+    if is_focus_personnel_tenant(tenant_id):
+        return "pro"
     return plan_bucket_for_limits(await resolve_tenant_plan_code(db, tenant_id))
 
 
@@ -191,6 +280,85 @@ def communication_channel_accounts_cap_for_bucket(bucket: str) -> int:
     if bucket == "team":
         return 3
     return 1
+
+
+def lead_sources_cap_for_bucket(bucket: str) -> int:
+    """SSOT §2.16: max lead sources per plan bucket (starter/team/pro)."""
+    if bucket == "pro":
+        return 10
+    if bucket == "team":
+        return 3
+    return 1
+
+
+async def count_tenant_lead_sources(db: AsyncSession, tenant_id: str) -> int:
+    """
+    Count configured lead sources:
+    - active/inactive Meta credentials (one source per credential)
+    - generic inbound webhook secret (one source if present)
+    - active lead forms (one source per form)
+    """
+    meta_credentials = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(MetaLeadCredential).where(MetaLeadCredential.tenant_id == tenant_id)
+            )
+        ).scalar_one()
+        or 0
+    )
+    active_lead_forms = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(TenantLeadForm)
+                .where(TenantLeadForm.tenant_id == tenant_id, TenantLeadForm.is_active.is_(True))
+            )
+        ).scalar_one()
+        or 0
+    )
+    webhook_enabled = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(MetaLeadSettings)
+                .where(
+                    MetaLeadSettings.tenant_id == tenant_id,
+                    MetaLeadSettings.generic_inbound_webhook_secret.is_not(None),
+                    MetaLeadSettings.generic_inbound_webhook_secret != "",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    return meta_credentials + active_lead_forms + min(webhook_enabled, 1)
+
+
+async def ensure_lead_source_limit(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    current_count: int | None = None,
+    extra_sources: int = 1,
+) -> None:
+    if extra_sources <= 0:
+        return
+    bucket = await resolve_plan_bucket_for_limits(db, tenant_id)
+    cap = lead_sources_cap_for_bucket(bucket)
+    n = current_count if current_count is not None else await count_tenant_lead_sources(db, tenant_id)
+    if n + extra_sources > cap:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "code": "lead_sources_limit_reached",
+                "message": (
+                    f"Lead source limit reached ({cap} on this plan). "
+                    "Remove a source or upgrade in Billing."
+                ),
+                "plan_bucket": bucket,
+                "limit": cap,
+                "current": n,
+            },
+        )
 
 
 def custom_funnel_definitions_cap_for_bucket(bucket: str) -> int:
@@ -259,7 +427,7 @@ async def ensure_custom_funnel_create_allowed(db: AsyncSession, tenant_id: str) 
 
 async def ensure_automation_rules_mutation_allowed(db: AsyncSession, tenant_id: str) -> None:
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    if not plan_allows_team_tier_features(plan):
+    if not plan_allows_team_tier_features(plan, tenant_id=tenant_id):
         raise HTTPException(
             status_code=403,
             detail={
@@ -270,10 +438,12 @@ async def ensure_automation_rules_mutation_allowed(db: AsyncSession, tenant_id: 
         )
 
 
-def automation_rules_enabled_cap(plan: str) -> int | None:
+def automation_rules_enabled_cap(plan: str, *, tenant_id: str | None = None) -> int | None:
     """Max enabled rules for Team-tier plans; None if tier cannot use rules (caller gates first)."""
+    if is_focus_personnel_tenant(tenant_id):
+        return 10_000
     p = (plan or "").strip().lower() or "starter"
-    if not plan_allows_team_tier_features(p):
+    if not plan_allows_team_tier_features(p, tenant_id=tenant_id):
         return None
     return 10 if p == "team" else 50
 
@@ -301,7 +471,7 @@ async def ensure_automation_rules_enabled_count_allows_transition(
     if not will_be_enabled or was_enabled:
         return
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    cap = automation_rules_enabled_cap(plan)
+    cap = automation_rules_enabled_cap(plan, tenant_id=tenant_id)
     if cap is None:
         return
     tenant = await db.get(Tenant, tenant_id)
@@ -327,7 +497,7 @@ async def ensure_automation_rules_enabled_count_allows_transition(
 async def ensure_leads_generic_inbound_webhook_allowed(db: AsyncSession, tenant_id: str) -> None:
     """§2.11 generic JSON webhook ingest + secret rotation (Team-tier, same slice as funnel slices)."""
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    if not plan_allows_team_tier_features(plan):
+    if not plan_allows_team_tier_features(plan, tenant_id=tenant_id):
         raise HTTPException(
             status_code=403,
             detail={

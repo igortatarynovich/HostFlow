@@ -44,7 +44,7 @@ export default function UseCaseHighVolumeOnboardingPage() {
   return (
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.use_case_high_volume_onboarding.hero.badge', { defaultValue: 'Use-case' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
             {t('public.marketing.use_case_high_volume_onboarding.hero.title', { defaultValue: 'High-Volume Candidate Onboarding' })}
@@ -62,14 +62,14 @@ export default function UseCaseHighVolumeOnboardingPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.use_case_high_volume_onboarding.problem.title', { defaultValue: 'Where teams get stuck' })}</h2>
           <p className="mt-2 text-sm text-slate-700">
             {t('public.marketing.use_case_high_volume_onboarding.problem.body', { defaultValue: 'Volume breaks onboarding when actions are not assigned and document follow-up is manual. HostFlow gives a shared operational layer for recruiters, coordinators, and managers.' })}
           </p>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.use_case_high_volume_onboarding.execution.title', { defaultValue: 'Execution pattern' })}</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
             <li>{t('public.marketing.use_case_high_volume_onboarding.execution.items.1', { defaultValue: 'Standard stage path with ownership at every step.' })}</li>
@@ -79,7 +79,7 @@ export default function UseCaseHighVolumeOnboardingPage() {
           </ul>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.common.faq', { defaultValue: 'FAQ' })}</h2>
           <div className="mt-3 space-y-3">
             {faq.map((item) => (
@@ -91,7 +91,7 @@ export default function UseCaseHighVolumeOnboardingPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.use_case_high_volume_onboarding.related.title', { defaultValue: 'Related guides' })}</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('related_pipeline', '/features/candidate-pipeline')}>

@@ -11,8 +11,8 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { SectionCard } from '../ui/SectionCard'
 import { useI18n } from '../../i18n'
 import type { LocaleCode } from '../../i18n'
-import { EMPLOYMENT_TYPES, createVacancy, getVacancy, updateVacancy } from '../../api/vacancies'
-import type { EmploymentType } from '../../api/vacancies'
+import { EMPLOYMENT_TYPES, VACANCY_STATUSES, createVacancy, getVacancy, normalizeVacancyStatus, updateVacancy } from '../../api/vacancies'
+import type { EmploymentType, VacancyStatus } from '../../api/vacancies'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -20,16 +20,21 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { PageBreadcrumb } from '../nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { servicesWorkspacePath } from '../../modules/services/utils'
+import { NextActionBadge } from '../candidate/NextActionBadge'
+import { useVacancyNextAction } from '../vacancy/useVacancyNextAction'
 
 const primaryBtn = 'btn-primary'
 const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
 
-const STATUS_OPTIONS = ['open', 'paused', 'closed'] as const
+// Phase 2.6.D Stage C — single source of truth for status options;
+// see `docs/specs/vacancy-statuses.md`. Backend `VacancyOut` already
+// normalizes legacy `paused` rows to `on_hold` before they reach us.
+const STATUS_OPTIONS = VACANCY_STATUSES
 const EMPLOYMENT_ENUM = [...EMPLOYMENT_TYPES] as [EmploymentType, ...EmploymentType[]]
 
 const vacancyFormSchema = z.object({
   title: z.string().min(1, 'Название обязательно'),
-  status: z.enum(STATUS_OPTIONS).default('open'),
+  status: z.enum([...STATUS_OPTIONS] as [VacancyStatus, ...VacancyStatus[]]).default('open'),
   company_id: z.string().min(1, 'Компания обязательна'),
   description: z.string().optional().or(z.literal('')),
   location: z.string().optional().or(z.literal('')),
@@ -119,10 +124,11 @@ function ensurePersistedFields(normalized: any, source: any) {
 }
 
 function toFormDefaults(source: any | null): VacancyFormValues {
-  const rawStatus = (source?.status ?? source?.state ?? source?.stage ?? 'open') as string
-  const normalizedStatus = (STATUS_OPTIONS.includes(rawStatus as typeof STATUS_OPTIONS[number])
-    ? (rawStatus as typeof STATUS_OPTIONS[number])
-    : 'open')
+  // Phase 2.6.D Stage C — funnel every status entry point (status /
+  // state / stage) through `normalizeVacancyStatus` so legacy `paused`
+  // is rewritten to `on_hold` before the form schema validates it.
+  const rawStatus = source?.status ?? source?.state ?? source?.stage ?? 'open'
+  const normalizedStatus = normalizeVacancyStatus(rawStatus)
 
   const employment = source?.employment_type
   const normalizedEmployment = EMPLOYMENT_TYPES.includes(employment as EmploymentType)
@@ -263,6 +269,19 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
   const [model, setModel] = useState<any | null>(item ? toModel(item) : null)
   const [tab, setTab] = useState<TabKey>('info')
+
+  // G-8 stage 2.1: per-vacancy primary next-action badge.
+  // `routeId` is available from the URL before `model` arrives; we prefer
+  // it so the badge can fetch as soon as the page mounts. Once `model`
+  // hydrates we still pass the same id (route + model agree by definition).
+  const vacancyIdForBadge = (routeId || model?.id || '') as string
+  const [nextActionTick, setNextActionTick] = useState(0)
+  const bumpNextActionTick = useCallback(() => setNextActionTick((n) => n + 1), [])
+  const {
+    data: vacancyNextAction,
+    loading: vacancyNextActionLoading,
+    error: vacancyNextActionError,
+  } = useVacancyNextAction(vacancyIdForBadge || null, nextActionTick)
 
   useEffect(() => {
     if (tabFromRoute === 'candidates' || tabFromRoute === 'notes' || tabFromRoute === 'info') {
@@ -527,6 +546,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
         setModel(ensured)
         resetForm(toFormDefaults(ensured))
+        bumpNextActionTick()
         setSavedOk(true); setTimeout(() => setSavedOk(false), 2000)
       } catch (err: any) {
         if (
@@ -547,7 +567,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         setSaving(false)
       }
     },
-    [model, planLimitModal, resetForm, t]
+    [model, planLimitModal, resetForm, t, bumpNextActionTick]
   )
 
   const save = useCallback(async () => {
@@ -597,6 +617,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         })
         setPipeCounts(res)
       } catch {}
+      bumpNextActionTick()
     } finally {
       setLoading(false)
     }
@@ -652,7 +673,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   return (
     <div className="h-full min-h-0 w-full flex flex-col gap-4 pb-12">
       {/* Header — unified with Companies style */}
-      <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+      <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <div className="text-xs text-white/80">
@@ -664,6 +685,14 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             {companyName && <div className="text-sm text-white/80">{companyName}</div>}
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {statusText && <StageTag code={String(statusText)} />}
+              {vacancyIdForBadge ? (
+                <NextActionBadge
+                  dto={vacancyNextAction}
+                  loading={vacancyNextActionLoading}
+                  error={vacancyNextActionError}
+                  inverse
+                />
+              ) : null}
               {Object.keys(pipeCounts).length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(pipeCounts).map(([k, v]) => (
@@ -816,7 +845,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label className="block">
               <div className="label">Статус</div>
               <select className="input" {...register('status')}>
-                {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {t(`app.vacancies.list.status.${s}`, { defaultValue: s })}
+                  </option>
+                ))}
               </select>
             </label>
 

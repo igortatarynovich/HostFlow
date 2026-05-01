@@ -15,7 +15,7 @@ from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.services.billing_pack_addons import LEAD_FORMS_ACTIVE_CAP, pack_addon_int
 
 
-_PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro")
+_PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro", "enterprise")
 
 
 async def _plan_code_for_usage_caps(db: AsyncSession, tenant_id: str) -> str:
@@ -47,7 +47,7 @@ async def _plan_code_for_usage_caps(db: AsyncSession, tenant_id: str) -> str:
 def lead_forms_base_cap(plan_code: str) -> int:
     """Included active forms: Solo/starter 1, Team 3, Business (pro) 20."""
     p = (plan_code or "").strip().lower() or "starter"
-    if p == "pro":
+    if p in {"pro", "enterprise"}:
         return 20
     if p == "team":
         return 3

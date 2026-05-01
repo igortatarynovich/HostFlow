@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import { api, listCandidatesNoNextAction, withTenant } from '../../../api/client'
 import { recordPerfMeasurement } from '../../../api/analytics'
+import { isCandidateRecruiterIdCanonEnabled } from '../../../utils/featureFlags'
 import type { CandidatesListInsights, DateRangeFilter, ListResp, UICandidate, CandidateListCacheEntry } from '../types'
 
 function mapNoNextActionRowToUICandidate(row: Record<string, unknown>): UICandidate {
@@ -345,7 +346,14 @@ export function useCandidatesTableData({
               tags: tagsFilter.length > 0 ? tagsFilter : undefined,
               vacancy_id: vacancyFilter.length > 0 ? vacancyFilter[0] : undefined,
               vacancy: vacancyFilter.length > 0 ? vacancyFilter.join(',') : undefined,
-              manager_id: managerFilter.length === 1 ? managerFilter[0] : undefined,
+              // Phase 2.6.G-5 Stage F — canonical filter param is
+              // `recruiter_id`; keep `manager_id` as rollback alias
+              // (backend accepts both for one release cycle).
+              ...(managerFilter.length === 1
+                ? isCandidateRecruiterIdCanonEnabled()
+                  ? { recruiter_id: managerFilter[0] }
+                  : { manager_id: managerFilter[0] }
+                : {}),
               documents_ordered: docsOrderedFilter.length === 1 ? docsOrderedFilter[0] : undefined,
               handoff_status: handoffStatusFilter || undefined,
               contact_attempts: contactAttemptsFilter || undefined,

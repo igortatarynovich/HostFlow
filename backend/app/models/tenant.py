@@ -350,6 +350,8 @@ class TenantUsageMetric(str, Enum):
     candidates_created = "candidates_created"
     notifications_sent = "notifications_sent"
     public_links_created = "public_links_created"
+    conversion_actions = "conversion_actions"
+    automation_runs = "automation_runs"
 
 
 class TenantUsage(Base, TimestampMixin):

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowRight } from '@tabler/icons-react'
 
@@ -6,8 +6,16 @@ import { getOpsCounters, type OpsCounters } from '../api/analytics'
 import { api } from '../api/client'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
 import type { CandidatesListInsights } from '../modules/candidates/types'
+import { HandoffQueuePanel } from '../modules/workHub/HandoffQueuePanel'
+import { MyTasksPanel } from '../modules/workHub/MyTasksPanel'
+import { TodayPlannerPanel } from '../modules/workHub/TodayPlannerPanel'
+import { ManagerLoadPanel } from '../modules/workHub/ManagerLoadPanel'
+import { RiskDigestPanel } from '../modules/workHub/RiskDigestPanel'
+import { useWorkHubProfile } from '../modules/workHub/useWorkHubProfile'
+import type { WorkHubSection } from '../modules/workHub/profile'
 import { usePermissions } from '../hooks/usePermissions'
 import { useI18n } from '../i18n'
+import { useAuth } from '../store/useAuth'
 
 function num(n: number | undefined | null): string {
   if (n == null || Number.isNaN(Number(n))) return '—'
@@ -22,6 +30,7 @@ const HREF_CANDIDATES_UNASSIGNED = `${CRM_APP_PATHS.candidates}?recruiter_unassi
 const HREF_CANDIDATES_OPS = `${CRM_APP_PATHS.candidates}?ops_mode=in_work`
 const HREF_LEADS_STALE = `${CRM_APP_PATHS.leads}?filter=no_first_contact_24h`
 const HREF_TASKS_OVERDUE = `${CRM_APP_PATHS.tasks}?tab=tasks&filter=overdue`
+const HREF_TASKS_UNLINKED = `${CRM_APP_PATHS.tasks}?tab=tasks&t_layout=by_candidate&t_unlinked=1`
 
 async function fetchCandidatesInsightsWorkHub(): Promise<CandidatesListInsights | null> {
   try {
@@ -67,7 +76,9 @@ type ActionRow = {
 
 export default function WorkHubPage() {
   const { t } = useI18n()
+  const { me } = useAuth()
   const { can } = usePermissions()
+  const profile = useWorkHubProfile()
   const [ops, setOps] = useState<OpsCounters | null>(null)
   const [opsLoading, setOpsLoading] = useState(true)
   const [listInsights, setListInsights] = useState<CandidatesListInsights | null>(null)
@@ -129,6 +140,10 @@ export default function WorkHubPage() {
   const showCandidates = can('candidates.view')
   const showLeads = can('leads.view')
   const showTasks = can('notifications.view')
+  const showRiskDigest = useMemo(() => {
+    const r = String((me as { role?: string })?.role ?? '').toLowerCase()
+    return r === 'superadmin' || r === 'administrator' || r === 'supervisor'
+  }, [(me as { role?: string })?.role])
   const dataLoading = opsLoading || (showCandidates && insightsLoading)
 
   const bottleneckSum = useMemo(() => {
@@ -211,6 +226,16 @@ export default function WorkHubPage() {
         tone: 'rose',
       })
     }
+    if (showTasks && (ops?.unlinked_tasks ?? 0) > 0) {
+      rows.push({
+        key: 'tasks_unlinked',
+        count: ops!.unlinked_tasks!,
+        titleKey: 'app.work.hub.crit_tasks_unlinked',
+        titleDefault: 'Tasks without entity link',
+        href: HREF_TASKS_UNLINKED,
+        tone: 'amber',
+      })
+    }
     if (showCandidates && (ops?.no_next_action_candidates ?? 0) > 0) {
       rows.push({
         key: 'nna',
@@ -285,6 +310,261 @@ export default function WorkHubPage() {
     </div>
   )
 
+  // Hero copy varies by role profile. Counter and CTA logic stay shared so we
+  // don't fork data flow per role — only the framing changes.
+  const calmHeroCopy = (() => {
+    switch (profile.hero.variant) {
+      case 'calm_team':
+        return {
+          title: t('app.work.profile.calm_team.title', { defaultValue: 'Team is on track' }),
+          body: t('app.work.profile.calm_team.body', {
+            defaultValue: 'No overdue work for the team right now.',
+          }),
+        }
+      case 'calm_solo':
+        return {
+          title: t('app.work.profile.calm_solo.title', { defaultValue: 'All quiet' }),
+          body: t('app.work.profile.calm_solo.body', {
+            defaultValue: 'Nothing demands your attention — a good time to plan ahead.',
+          }),
+        }
+      case 'calm_client':
+        return {
+          title: t('app.work.profile.calm_client.title', { defaultValue: 'Inbox is empty' }),
+          body: t('app.work.profile.calm_client.body', {
+            defaultValue: 'No handoffs from the agency need a decision right now.',
+          }),
+        }
+      case 'viewer':
+        return {
+          title: t('app.work.profile.viewer.title', { defaultValue: 'Browse-only access' }),
+          body: t('app.work.profile.viewer.body_short', {
+            defaultValue: 'Use the menu to browse data. You cannot make changes here.',
+          }),
+        }
+      case 'calm_personal':
+      default:
+        return {
+          title: t('app.work.hub.hero_all_ok', { defaultValue: 'Everything is under control' }),
+          body: t('app.work.hub.hero_calm_body', {
+            defaultValue: 'No candidates are waiting on your action right now',
+          }),
+        }
+    }
+  })()
+
+  const renderHero = () => (
+    <section
+      key="hero"
+      className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-8"
+    >
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-3 lg:max-w-[70%]">
+          {calm ? (
+            <>
+              <p className="text-xl font-bold text-slate-900 sm:text-2xl">{calmHeroCopy.title}</p>
+              <p className="text-[15px] text-slate-600">{calmHeroCopy.body}</p>
+              <p className="text-[15px] text-slate-500">
+                {t('app.work.hub.hero_new_today', {
+                  defaultValue: 'New leads today: {count}',
+                  values: { count: num(listInsights?.created_today ?? 0) },
+                })}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[3.25rem] font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+                {num(heroNeedCount)}
+              </p>
+              <p className="text-xl font-bold text-slate-900 sm:text-2xl">
+                {t(profile.hero.needHeadlineKey, {
+                  defaultValue: profile.hero.needHeadlineDefault,
+                })}
+              </p>
+              {heroSubtitle ? <p className="text-[15px] text-slate-600">{heroSubtitle}</p> : null}
+            </>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
+          <Link
+            to={HREF_CANDIDATES_ACTION}
+            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+          >
+            {t('app.work.hub.cta_open_candidates', { defaultValue: 'Open candidates' })}
+          </Link>
+          {calm ? (
+            <Link
+              to={CRM_APP_PATHS.candidateNew}
+              className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {t('app.work.hub.cta_create_candidate', { defaultValue: 'Create candidate' })}
+            </Link>
+          ) : (
+            <>
+              {showLeads && ((ops?.leads_needs_routing ?? 0) > 0 || (ops?.leads_new_untouched_24h ?? 0) > 0) ? (
+                <Link
+                  to={
+                    (ops?.leads_needs_routing ?? 0) > 0
+                      ? CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting
+                      : HREF_LEADS_STALE
+                  }
+                  className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  {t('app.work.hub.cta_open_leads', { defaultValue: 'Open leads' })}
+                  <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
+                </Link>
+              ) : null}
+              {showTasks && (ops?.overdue_reminders ?? 0) > 0 ? (
+                <Link
+                  to={HREF_TASKS_OVERDUE}
+                  className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  {t('app.work.hub.cta_open_tasks', { defaultValue: 'Open tasks' })}
+                  <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
+                </Link>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+
+  const renderCritical = () => (
+    <section
+      key="critical"
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+    >
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h2 className="text-base font-bold text-slate-900">
+          {t('app.work.hub.block_critical', { defaultValue: 'Needs attention' })}
+        </h2>
+      </div>
+      <ul>
+        {criticalRows.map((row) => (
+          <li key={row.key} className="group border-b border-slate-100 last:border-b-0">
+            <Link to={row.href} className="flex items-stretch gap-0 transition hover:bg-slate-50/90">
+              <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">
+                    <span className="tabular-nums">{num(row.count)}</span>{' '}
+                    {t(row.titleKey, { defaultValue: row.titleDefault })}
+                  </p>
+                  {row.hintKey ? (
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {t(row.hintKey, { defaultValue: row.hintDefault || '' })}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 text-sm font-semibold text-brand-700 group-hover:text-brand-800">
+                  {t('app.work.hub.row_open', { defaultValue: 'Open' })}
+                  <IconArrowRight size={16} className="ml-1 inline align-text-bottom opacity-70" aria-hidden />
+                </span>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+
+  const renderBottlenecks = () => (
+    <section
+      key="bottlenecks"
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+    >
+      <div className="border-b border-slate-100 px-6 py-4">
+        <h2 className="text-base font-bold text-slate-900">
+          {t('app.work.hub.block_bottlenecks', { defaultValue: 'Bottlenecks' })}
+        </h2>
+      </div>
+      <ul>
+        {bottlenecks.map((row) => (
+          <li key={row.key} className="border-b border-slate-100 last:border-b-0">
+            <Link
+              to={row.href}
+              className="group flex items-stretch gap-0 transition hover:bg-slate-50/90"
+            >
+              <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-3.5">
+                <span className="truncate text-sm font-medium text-slate-800">
+                  {t(row.titleKey, { defaultValue: row.titleDefault })}
+                </span>
+                <span className="tabular-nums text-sm font-bold text-slate-900">{num(row.count)}</span>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+
+  const renderQuickActions = (): JSX.Element | null => null
+
+  // Sections are rendered in the order defined by the active role profile.
+  // Each section may be skipped (returns null) if the underlying data isn't
+  // visible to this user — section order is the layout, not the visibility.
+  const renderSection = (section: WorkHubSection): JSX.Element | null => {
+    switch (section) {
+      case 'hero':
+        return showCandidates ? renderHero() : null
+      case 'critical':
+        return !calm && criticalRows.length > 0 ? renderCritical() : null
+      case 'bottlenecks':
+        return profile.showBottlenecks && !calm && bottlenecks.length > 0
+          ? renderBottlenecks()
+          : null
+      case 'handoffQueue':
+        return profile.showHandoffQueue ? <HandoffQueuePanel key="handoffQueue" /> : null
+      case 'myTasks':
+        // Panel fetches `assignee_scope=mine` — gate on the caller's
+        // notification permission (same as the `tasks` drilldown in the
+        // critical block). Without `notifications.view` the backend
+        // would 403 on every fetch; rendering an error card feels worse
+        // than silently skipping the section.
+        return showTasks ? <MyTasksPanel key="myTasks" /> : null
+      case 'todayPlanner':
+        // Planner events live behind the same `notifications.view`
+        // permission gate as reminders (see `/api/v1/communications/
+        // planner/events` ACL). Gating on `showTasks` keeps behaviour
+        // symmetric with MyTasksPanel and avoids a guaranteed 403 for
+        // viewer-like roles that land on a non-viewer profile.
+        return showTasks ? <TodayPlannerPanel key="todayPlanner" /> : null
+      case 'riskDigest':
+        // Same role gate as Dashboard risk / SLA digest (`canViewRiskOpsUi`).
+        // Panel uses Work Hub `ops` snapshot + manager digest queue API.
+        return showRiskDigest ? <RiskDigestPanel key="riskDigest" ops={ops} /> : null
+      case 'managerLoad':
+        // G-6 Stage 2c — team load distribution. Panel fetches
+        // `/analytics/by-manager`, which already requires a visibility
+        // scope that admin/supervisor have by virtue of being on an
+        // `admin_team` / `supervisor` profile (see `resolveWorkHubProfile`).
+        // Gate on `candidates.view` as a defensive alignment with the
+        // drill-down target (`/app/candidates?recruiter_id=…`) so a role
+        // without list access never sees the panel it can't action.
+        return showCandidates ? <ManagerLoadPanel key="managerLoad" /> : null
+      case 'quickActions':
+        return renderQuickActions()
+      case 'viewerSummary':
+        // Viewer profile has no actionable data; rely on critical block below it
+        // and show a one-line read-only note so the screen isn't empty.
+        return (
+          <section
+            key="viewerSummary"
+            className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm"
+          >
+            {t('app.work.profile.viewer.body', {
+              defaultValue:
+                'Read-only access. Open candidates, leads or vacancies from the side menu to browse data.',
+            })}
+          </section>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-slate-50">
       <div className="mx-auto max-w-[1200px] space-y-6 px-8 py-10">
@@ -314,197 +594,10 @@ export default function WorkHubPage() {
           <Skeleton />
         ) : (
           <>
-            {/* Hero */}
-            {showCandidates ? (
-              <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-8">
-                <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0 space-y-3 lg:max-w-[70%]">
-                    {calm ? (
-                      <>
-                        <p className="text-xl font-bold text-slate-900 sm:text-2xl">
-                          {t('app.work.hub.hero_all_ok', { defaultValue: 'Everything is under control' })}
-                        </p>
-                        <p className="text-[15px] text-slate-600">
-                          {t('app.work.hub.hero_calm_body', {
-                            defaultValue: 'No candidates are waiting on your action right now',
-                          })}
-                        </p>
-                        <p className="text-[15px] text-slate-500">
-                          {t('app.work.hub.hero_new_today', {
-                            defaultValue: 'New leads today: {count}',
-                            values: { count: num(listInsights?.created_today ?? 0) },
-                          })}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-[3.25rem] font-bold leading-none tracking-tight text-slate-900 tabular-nums">
-                          {num(heroNeedCount)}
-                        </p>
-                        <p className="text-xl font-bold text-slate-900 sm:text-2xl">
-                          {t('app.work.hub.hero_need_action_title', { defaultValue: 'Candidates need action' })}
-                        </p>
-                        {heroSubtitle ? <p className="text-[15px] text-slate-600">{heroSubtitle}</p> : null}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
-                    <Link
-                      to={HREF_CANDIDATES_ACTION}
-                      className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
-                    >
-                      {t('app.work.hub.cta_open_candidates', { defaultValue: 'Open candidates' })}
-                    </Link>
-                    {calm ? (
-                      <Link
-                        to={CRM_APP_PATHS.candidateNew}
-                        className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        {t('app.work.hub.cta_create_candidate', { defaultValue: 'Create candidate' })}
-                      </Link>
-                    ) : (
-                      <>
-                        {showLeads && ((ops?.leads_needs_routing ?? 0) > 0 || (ops?.leads_new_untouched_24h ?? 0) > 0) ? (
-                          <Link
-                            to={
-                              (ops?.leads_needs_routing ?? 0) > 0
-                                ? CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting
-                                : HREF_LEADS_STALE
-                            }
-                            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                          >
-                            {t('app.work.hub.cta_open_leads', { defaultValue: 'Open leads' })}
-                            <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
-                          </Link>
-                        ) : null}
-                        {showTasks && (ops?.overdue_reminders ?? 0) > 0 ? (
-                          <Link
-                            to={HREF_TASKS_OVERDUE}
-                            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                          >
-                            {t('app.work.hub.cta_open_tasks', { defaultValue: 'Open tasks' })}
-                            <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
-                          </Link>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            {/* Critical */}
-            {!calm && criticalRows.length > 0 ? (
-              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="border-b border-slate-100 px-6 py-4">
-                  <h2 className="text-base font-bold text-slate-900">
-                    {t('app.work.hub.block_critical', { defaultValue: 'Needs attention' })}
-                  </h2>
-                </div>
-                <ul>
-                  {criticalRows.map((row) => (
-                    <li key={row.key} className="group border-b border-slate-100 last:border-b-0">
-                      <Link
-                        to={row.href}
-                        className="flex items-stretch gap-0 transition hover:bg-slate-50/90"
-                      >
-                        <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
-                        <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-4">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900">
-                              <span className="tabular-nums">{num(row.count)}</span>{' '}
-                              {t(row.titleKey, { defaultValue: row.titleDefault })}
-                            </p>
-                            {row.hintKey ? (
-                              <p className="mt-0.5 text-xs text-slate-500">
-                                {t(row.hintKey, { defaultValue: row.hintDefault || '' })}
-                              </p>
-                            ) : null}
-                          </div>
-                          <span className="shrink-0 text-sm font-semibold text-brand-700 group-hover:text-brand-800">
-                            {t('app.work.hub.row_open', { defaultValue: 'Open' })}
-                            <IconArrowRight size={16} className="ml-1 inline align-text-bottom opacity-70" aria-hidden />
-                          </span>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {/* Bottlenecks */}
-            {!calm && bottlenecks.length > 0 ? (
-              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="border-b border-slate-100 px-6 py-4">
-                  <h2 className="text-base font-bold text-slate-900">
-                    {t('app.work.hub.block_bottlenecks', { defaultValue: 'Bottlenecks' })}
-                  </h2>
-                </div>
-                <ul>
-                  {bottlenecks.map((row) => (
-                    <li key={row.key} className="border-b border-slate-100 last:border-b-0">
-                      <Link
-                        to={row.href}
-                        className="group flex items-stretch gap-0 transition hover:bg-slate-50/90"
-                      >
-                        <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
-                        <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-3.5">
-                          <span className="truncate text-sm font-medium text-slate-800">
-                            {t(row.titleKey, { defaultValue: row.titleDefault })}
-                          </span>
-                          <span className="tabular-nums text-sm font-bold text-slate-900">{num(row.count)}</span>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {/* Quick actions */}
-            {showCandidates ? (
-              <section className="space-y-3">
-                <h2 className="text-base font-bold text-slate-900">
-                  {t('app.work.hub.block_quick', { defaultValue: 'Quick actions' })}
-                </h2>
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-3">
-                  <Link
-                    to={HREF_CANDIDATES_NEW}
-                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 sm:flex-none"
-                  >
-                    {t('app.work.hub.qa_process_new', { defaultValue: 'Process new leads' })}
-                  </Link>
-                  <Link
-                    to={HREF_CANDIDATES_DOCS}
-                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
-                  >
-                    {t('app.work.hub.qa_request_docs', { defaultValue: 'Request documents' })}
-                  </Link>
-                  <Link
-                    to={HREF_CANDIDATES_INTERVIEW}
-                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
-                  >
-                    {t('app.work.hub.qa_schedule_interviews', { defaultValue: 'Schedule interviews' })}
-                  </Link>
-                  <Link
-                    to={CRM_APP_PATHS.candidateNew}
-                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
-                  >
-                    {t('app.work.hub.cta_create_candidate', { defaultValue: 'Create candidate' })}
-                  </Link>
-                </div>
-              </section>
-            ) : !showCandidates && showLeads ? (
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <Link
-                  to={CRM_APP_PATHS.leads}
-                  className="inline-flex h-12 items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700"
-                >
-                  {t('app.work.hub.cta_open_leads', { defaultValue: 'Open leads' })}
-                </Link>
-              </section>
-            ) : null}
+            {profile.sections.map((section) => {
+              const node = renderSection(section)
+              return node ? <Fragment key={section}>{node}</Fragment> : null
+            })}
           </>
         )}
       </div>

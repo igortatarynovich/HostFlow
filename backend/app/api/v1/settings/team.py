@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.db.deps import get_db_with_tenant
@@ -27,14 +28,6 @@ from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
 
 
 router = APIRouter(prefix="/team", tags=["settings-team"], redirect_slashes=False)
-
-
-def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
-    if (ctx.role or "").strip().lower() == Role.superadmin.value:
-        return
-    token_tenant = (ctx.tenant_id or "").strip()
-    if token_tenant and token_tenant != tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for tenant")
 
 
 class TeamOverviewResponse(BaseModel):
@@ -104,7 +97,7 @@ async def get_team_overview(
 ) -> TeamOverviewResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -144,7 +137,7 @@ async def update_branding(
 ) -> TeamTenantSummary:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -176,7 +169,7 @@ async def upload_branding_logo(
 ) -> TeamTenantSummary:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -207,6 +200,8 @@ async def upload_branding_logo(
                 Role.recruiter,
                 Role.client_manager,
                 Role.client_processor,
+                Role.compliance_officer,
+                Role.hr_officer,
                 Role.viewer,
             )
         )
@@ -218,7 +213,7 @@ async def get_module_settings(
 ) -> TenantModuleSettings:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -237,7 +232,7 @@ async def list_vacancy_requirements_presets(
 ) -> VacancyRequirementsPresetListOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -258,7 +253,7 @@ async def upsert_vacancy_requirements_preset(
 ) -> VacancyRequirementsPresetListOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -288,7 +283,7 @@ async def delete_vacancy_requirements_preset(
 ) -> VacancyRequirementsPresetListOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -314,7 +309,7 @@ async def get_module_matrix(
 ) -> TenantRoleModuleMatrix:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -333,6 +328,8 @@ async def get_module_matrix(
                 Role.recruiter,
                 Role.client_manager,
                 Role.client_processor,
+                Role.compliance_officer,
+                Role.hr_officer,
                 Role.viewer,
             )
         )
@@ -344,7 +341,7 @@ async def get_effective_module_permissions(
 ) -> EffectiveRoleModules:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -375,7 +372,7 @@ async def update_module_settings(
 ) -> TenantModuleSettings:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -404,7 +401,7 @@ async def list_seat_requests(
 ) -> List[SeatRequestOut]:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     requests = await tenant_service.list_seat_requests(db, tenant_id, limit=limit)
     return [SeatRequestOut.model_validate(item) for item in requests]
 
@@ -422,7 +419,7 @@ async def create_seat_request(
 ) -> SeatRequestOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     if not ctx.sub:
         raise HTTPException(status_code=400, detail="Missing actor")
     try:
@@ -475,7 +472,7 @@ async def get_risk_model_v1_settings(
 ) -> RiskModelV1SettingsOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -495,7 +492,7 @@ async def patch_risk_model_v1_settings(
 ) -> RiskModelV1SettingsOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")

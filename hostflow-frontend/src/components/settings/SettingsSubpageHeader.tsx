@@ -31,9 +31,22 @@ export function SettingsSubpageHeader({
         <Link to={backHref} className="text-sm font-medium text-brand-600 hover:underline">
           {backLabel}
         </Link>
-        {kicker ? <p className="mt-1 text-sm text-slate-500">{kicker}</p> : null}
-        <h1 className={clsx('text-2xl font-semibold text-slate-900', kicker ? 'mt-1' : 'mt-2')}>{title}</h1>
-        {subtitle ? <div className="mt-1 text-sm text-slate-500">{subtitle}</div> : null}
+        {kicker ? (
+          <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{kicker}</p>
+        ) : null}
+        <h1
+          className={clsx(
+            'text-lg font-semibold leading-tight text-slate-900 sm:text-xl',
+            kicker ? 'mt-1' : 'mt-1.5',
+          )}
+        >
+          {title}
+        </h1>
+        {subtitle ? (
+          <div className="mt-1.5 max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-6">
+            {subtitle}
+          </div>
+        ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>

@@ -70,7 +70,7 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
 
   if (variant === 'card') {
     return (
-      <section className={clsx('rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-card', className)}>
+      <section className={clsx('card p-6', className)}>
         {content}
         <p className="mt-6 text-xs text-slate-500">{copyright}</p>
       </section>

@@ -12,6 +12,7 @@ from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.vacancy import Vacancy
 
 DRIVER_CE_DEFAULT_CODE = "driver_ce_default"
+LEGACY_BASE_PROFILE_CODE = "base"
 
 # Все поля карточки кандидата «без профиля» — видимы, не обязательны (как при отсутствии профиля)
 FULL_FIELD_CONFIGS: list[dict] = [
@@ -59,10 +60,16 @@ DRIVER_CE_DEFAULT_STAGE_CONFIGS: list[dict] = [
     {"stage_code": "docs_submitted_permit", "stage_label": "Złożono dokumenty na zezwolenie", "order": 9, "active": True},
     {"stage_code": "permit_received", "stage_label": "Otrzymano zezwolenie", "order": 10, "active": True},
     {"stage_code": "handoff_returned", "stage_label": "Zwrócony", "order": 11, "active": True},
-    {"stage_code": "on_trip", "stage_label": "W trakcie zatrudnienia", "order": 12, "active": True},
+    {"stage_code": "on_trip", "stage_label": "W trasie", "order": 12, "active": True},
     {"stage_code": "rejected", "stage_label": "Odrzucony", "order": 13, "active": True},
     {"stage_code": "declined", "stage_label": "Kandydat zrezygnował", "order": 14, "active": True},
-    {"stage_code": "employed", "stage_label": "Zatrudniony", "order": 15, "active": True},
+    {
+        "stage_code": "employment_pending",
+        "stage_label": "Dokumentacja przed zatrudnieniem",
+        "order": 15,
+        "active": True,
+    },
+    {"stage_code": "employed", "stage_label": "Zatrudniony", "order": 16, "active": True},
 ]
 
 DRIVER_CE_DEFAULT_STAGE_CODES: list[str] = [
@@ -80,6 +87,7 @@ DRIVER_CE_DEFAULT_STAGE_CODES: list[str] = [
     "on_trip",
     "rejected",
     "declined",
+    "employment_pending",
     "employed",
 ]
 
@@ -89,7 +97,7 @@ DRIVER_CE_DEFAULT_STAGE_COLUMNS: dict[str, list[str]] = {
     "ready": ["ready_for_handoff"],
     "client_process": ["processing_by_client", "docs_submitted_permit", "permit_received"],
     "returned": ["handoff_returned"],
-    "hiring": ["on_trip"],
+    "hiring": ["on_trip", "employment_pending"],
     "rejected": ["rejected", "declined"],
     "employed": ["employed"],
 }
@@ -136,7 +144,12 @@ DRIVER_CE_DEFAULT_STAGE_LABELS: dict[str, dict[str, dict[str, str]]] = {
         "handoff_returned": {"pl": "Zwrócony", "ru": "Возвращен", "en": "Returned"},
     },
     "hiring": {
-        "on_trip": {"pl": "W trakcie zatrudnienia", "ru": "В процессе трудоустройства", "en": "In employment process"},
+        "on_trip": {"pl": "W trasie", "ru": "Выехал в рейс", "en": "On trip"},
+        "employment_pending": {
+            "pl": "Dokumentacja przed zatrudnieniem",
+            "ru": "На трудоустройстве",
+            "en": "On employment",
+        },
     },
     "rejected": {
         "rejected": {"pl": "Odrzucony", "ru": "Отклонен", "en": "Rejected"},
@@ -161,9 +174,10 @@ DRIVER_CE_DEFAULT_FUNNEL_STAGES: list[tuple[str, str, bool]] = [
     ("docs_submitted_permit", "Złożono dokumenty na zezwolenie", False),
     ("permit_received", "Otrzymano zezwolenie", False),
     ("handoff_returned", "Zwrócony", False),
-    ("on_trip", "W trakcie zatrudnienia", False),
+    ("on_trip", "W trasie", False),
     ("rejected", "Odrzucony", True),
     ("declined", "Kandydat zrezygnował", True),
+    ("employment_pending", "Dokumentacja przed zatrudnieniem", False),
     ("employed", "Zatrudniony", True),
 ]
 
@@ -289,76 +303,39 @@ async def ensure_driver_ce_default_profile(db: AsyncSession, tenant_id: str) -> 
     await db.commit()
 
 
-async def ensure_base_candidate_profile(db: AsyncSession, tenant_id: str) -> None:
-    """Create base candidate profile if it doesn't exist for the tenant."""
-    # Check if base profile already exists
+async def cleanup_legacy_base_candidate_profile(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    default_profile_id: str | None = None,
+) -> bool:
+    """Replace legacy system `base` profile with `driver_ce_default` and remove it."""
     stmt = (
         select(CandidateProfile)
         .where(CandidateProfile.tenant_id == tenant_id)
-        .where(CandidateProfile.code == "base")
+        .where(CandidateProfile.code == LEGACY_BASE_PROFILE_CODE)
         .where(CandidateProfile.is_system == True)
     )
-    existing = (await db.execute(stmt)).scalar_one_or_none()
-    
-    if existing:
-        return  # Base profile already exists
-    
-    # Create base profile with minimal configuration
-    from uuid import uuid4
-    
-    base_profile = CandidateProfile(
-        id=str(uuid4()),
-        tenant_id=tenant_id,
-        code="base",
-        name="Базовый профиль",
-        description="Базовый профиль кандидата. Содержит только обязательные поля. Нельзя редактировать.",
-        client_id=None,
-        config={
-            "field_configs": [
-                {
-                    "field_key": "first_name",
-                    "field_type": "text",
-                    "label": "Имя",
-                    "required": True,
-                    "visible": True,
-                    "order": 1,
-                    "is_system": True,
-                },
-                {
-                    "field_key": "last_name",
-                    "field_type": "text",
-                    "label": "Фамилия",
-                    "required": True,
-                    "visible": True,
-                    "order": 2,
-                    "is_system": True,
-                },
-                {
-                    "field_key": "email",
-                    "field_type": "text",
-                    "label": "Email",
-                    "required": False,
-                    "visible": True,
-                    "order": 3,
-                    "is_system": True,
-                },
-                {
-                    "field_key": "phone",
-                    "field_type": "text",
-                    "label": "Телефон",
-                    "required": False,
-                    "visible": True,
-                    "order": 4,
-                    "is_system": True,
-                },
-            ],
-            "document_configs": [],  # No documents by default
-        },
-        is_active=True,
-        is_system=True,
-        owner_user_id=None,
-        notes="Системный базовый профиль. Создается автоматически для каждого тенанта.",
+    legacy_profile = (await db.execute(stmt)).scalar_one_or_none()
+    if legacy_profile is None:
+        return False
+
+    if default_profile_id is None:
+        default_stmt = (
+            select(CandidateProfile.id)
+            .where(CandidateProfile.tenant_id == tenant_id)
+            .where(CandidateProfile.code == DRIVER_CE_DEFAULT_CODE)
+        )
+        default_profile_id = (await db.execute(default_stmt)).scalar_one_or_none()
+    if not default_profile_id:
+        return False
+
+    await db.execute(
+        update(Vacancy)
+        .where(Vacancy.tenant_id == tenant_id)
+        .where(Vacancy.candidate_profile_id == legacy_profile.id)
+        .values(candidate_profile_id=default_profile_id)
     )
-    
-    db.add(base_profile)
+    await db.delete(legacy_profile)
     await db.commit()
+    return True

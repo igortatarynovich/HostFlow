@@ -1,5 +1,4 @@
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { isSettingsAreaKey, settingsAreaHref, type SettingsAreaKey } from './settingsAreaNav'
 
 /** Tabs in `SettingsChrome` — aligned with `SettingsLandingPage` sections (§2.17.14 SSOT). */
 export type SettingsChromeTabKey =
@@ -12,21 +11,6 @@ export type SettingsChromeTabKey =
   | 'billing'
   | 'security'
   | 'personal'
-
-function parseSection(search: string): string | null {
-  const raw = search.startsWith('?') ? search.slice(1) : search
-  return new URLSearchParams(raw).get('section')
-}
-
-const SECTION_TO_TAB: Record<SettingsAreaKey, SettingsChromeTabKey> = {
-  workspace: 'workspace',
-  crm_setup: 'crm_setup',
-  team: 'team',
-  automations: 'automations',
-  integrations: 'integrations',
-  billing: 'billing',
-  personal: 'personal',
-}
 
 /** Longest-prefix wins: path must start with `prefix` (use full path constants). */
 const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] = [
@@ -70,10 +54,6 @@ export function settingsChromeActiveTab(pathname: string, search: string): Setti
   }
 
   if (pathname === CRM_APP_PATHS.settings || pathname === `${CRM_APP_PATHS.settings}/`) {
-    const section = parseSection(search)
-    if (section && isSettingsAreaKey(section)) {
-      return SECTION_TO_TAB[section]
-    }
     return 'overview'
   }
 
@@ -91,15 +71,15 @@ export function settingsChromeTabHref(tab: SettingsChromeTabKey): string {
     case 'overview':
       return CRM_APP_PATHS.settings
     case 'workspace':
-      return settingsAreaHref('workspace')
+      return CRM_APP_PATHS.myCompany
     case 'crm_setup':
-      return settingsAreaHref('crm_setup')
+      return CRM_APP_PATHS.settingsFunnels
     case 'team':
-      return settingsAreaHref('team')
+      return CRM_APP_PATHS.settingsUsers
     case 'automations':
-      return settingsAreaHref('automations')
+      return CRM_APP_PATHS.settingsRuleset
     case 'integrations':
-      return settingsAreaHref('integrations')
+      return CRM_APP_PATHS.settingsIntegrations
     case 'billing':
       return CRM_APP_PATHS.settingsBilling
     case 'security':

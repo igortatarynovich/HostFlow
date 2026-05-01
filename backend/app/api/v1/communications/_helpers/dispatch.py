@@ -37,6 +37,8 @@ from backend.app.models.communication import (
     CommunicationMessage,
     CommunicationThread,
 )
+from backend.app.models.tenant import Tenant
+from backend.app.models.user import User
 from backend.app.modules.documents.storage import get_uploads_root
 from backend.app.services.communications_email_oauth_send import (
     OAuthMailboxSendError,
@@ -51,6 +53,11 @@ from backend.app.services.communications_telegram import (
 from backend.app.services.communications_viber import send_viber_text_message
 from backend.app.services.communications_whatsapp import send_whatsapp_text
 from backend.app.services.tenant_email import send_email_for_tenant
+from backend.app.services.working_hours_window import (
+    is_within_working_hours,
+    next_working_window_after,
+    schedule_applies,
+)
 
 from .channels import (
     _instagram_graph_config_from_account_settings,
@@ -73,6 +80,8 @@ __all__ = [
     "_dispatch_attempt_count",
     "_dispatch_next_retry_at",
     "_schedule_dispatch_retry",
+    "_tenant_defers_outbound_outside_working_hours",
+    "_maybe_defer_outbound_for_working_hours",
     "_resolve_comm_local_attachment_path",
     "_mock_dispatch_outbound_message",
     "_dispatch_email_message_via_tenant_smtp",
@@ -234,6 +243,130 @@ def _schedule_dispatch_retry(
     msg.error_message = reason
     msg.payload = {**_as_dict(msg.payload), "dispatch": dispatch}
     return True
+
+
+# ---------------------------------------------------------------------------
+# G-4.5 — outbound working-hours gate
+#
+# Tenant-level opt-in flag. When ON (and the thread's assignee has a
+# `working_hours_v1` schedule), queued outbound messages that fall
+# outside the assignee's schedule are deferred until the next working
+# window — they stay `queued`, attempt_count is NOT incremented (this
+# is not a transient dispatch failure), and `dispatch.next_retry_at`
+# is set to the start of the next window so the existing
+# `dispatch_queued_messages` loop naturally picks them up on a later
+# tick.
+#
+# Default is OFF: pre-existing tenants see zero behavioural change.
+# `POST /messages/{id}/dispatch` (explicit single-message send)
+# intentionally bypasses this gate — if an operator clicks "send",
+# their intent wins. The gate applies only to the batch loop, which
+# is the path the scheduler / email-worker run unattended.
+#
+# Settings path: tenant.settings["communications"]["defer_outside_working_hours"]
+_COMMS_WORKING_HOURS_SETTINGS_PATH = (
+    "communications",
+    "defer_outside_working_hours",
+)
+
+
+def _tenant_defers_outbound_outside_working_hours(tenant: Optional[Tenant]) -> bool:
+    """Read `tenant.settings.communications.defer_outside_working_hours`.
+
+    Returns False if tenant is None, settings is missing, or the path
+    resolves to a non-truthy value. Mirrors
+    ``services.reminder_tasks._tenant_shifts_reminders`` — same shape,
+    same defensive walk, so operators get a consistent feel across both
+    G-4 surfaces.
+    """
+    if tenant is None:
+        return False
+    settings = tenant.settings if isinstance(tenant.settings, dict) else None
+    if not settings:
+        return False
+    cursor: Any = settings
+    for key in _COMMS_WORKING_HOURS_SETTINGS_PATH:
+        if not isinstance(cursor, dict):
+            return False
+        cursor = cursor.get(key)
+    return bool(cursor)
+
+
+async def _maybe_defer_outbound_for_working_hours(
+    db: AsyncSession,
+    *,
+    tenant: Optional[Tenant],
+    thread: CommunicationThread,
+    msg: CommunicationMessage,
+    now: datetime,
+) -> Optional[datetime]:
+    """Apply the G-4.5 outbound working-hours gate.
+
+    Returns the deferral target (UTC datetime — when the message
+    should be picked up) if the message was deferred, or ``None`` if
+    the message should proceed with dispatch as usual.
+
+    Silent no-op (returns None) when:
+      * tenant flag is OFF;
+      * thread has no assignee (can't pick whose hours to respect);
+      * assignee has no `working_hours_v1` schedule;
+      * `now` is already inside the assignee's working hours.
+
+    When deferral applies, mutates ``msg.payload.dispatch`` in place:
+      * ``dispatch.status = "deferred_working_hours"``;
+      * ``dispatch.next_retry_at = <next window start>`` (same key
+        ``dispatch_queued_messages`` already honours — so the loop
+        picks it up on the next tick without a new branch);
+      * ``dispatch.deferred_until = <next window start>``;
+      * ``dispatch.deferral_reason =
+        "outside_assignee_working_hours"``;
+      * ``dispatch.last_deferred_at = now.isoformat()``;
+      * ``dispatch.deferred_count += 1``.
+
+    Does NOT touch ``attempt_count`` / ``last_error_reason`` — a
+    deferral is not a retry, and lumping it in with failure
+    bookkeeping would eventually hit ``max_attempts`` and fail
+    healthy messages. Keeps ``msg.delivery_status == "queued"`` and
+    leaves ``msg.error_message`` alone.
+    """
+    if not _tenant_defers_outbound_outside_working_hours(tenant):
+        return None
+    assignee_id = getattr(thread, "assignee_id", None)
+    if not assignee_id:
+        return None
+    user = await db.get(User, str(assignee_id))
+    if user is None:
+        return None
+    extra = user.extra if isinstance(user.extra, dict) else {}
+    if not schedule_applies(extra):
+        # No schedule configured for this assignee — treat as "anytime
+        # is fine" (mirrors reminder-shift policy in G-4 stage 2).
+        return None
+    if is_within_working_hours(extra, now):
+        return None
+    deferral_target = next_working_window_after(extra, now)
+    if deferral_target <= now:
+        # Pathological: schedule_applies True but next_working_window_after
+        # couldn't advance the clock. Don't silently loop-defer.
+        return None
+    dispatch = _as_dict(_as_dict(msg.payload).get("dispatch"))
+    try:
+        prev_deferred = max(0, int(dispatch.get("deferred_count") or 0))
+    except Exception:
+        prev_deferred = 0
+    dispatch.update(
+        {
+            "status": "deferred_working_hours",
+            "next_retry_at": deferral_target.isoformat(),
+            "deferred_until": deferral_target.isoformat(),
+            "deferral_reason": "outside_assignee_working_hours",
+            "last_deferred_at": now.isoformat(),
+            "deferred_count": prev_deferred + 1,
+        }
+    )
+    msg.delivery_status = "queued"
+    msg.payload = {**_as_dict(msg.payload), "dispatch": dispatch}
+    return deferral_target
 
 
 def _resolve_comm_local_attachment_path(

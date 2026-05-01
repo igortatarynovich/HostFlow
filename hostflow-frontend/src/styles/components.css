@@ -20,9 +20,9 @@
 
 /* ========= Components ========= */
 @layer components {
-  /* Карточка / контейнер */
+  /* Карточка / контейнер — та же шкала, что у .settings-panel (единый CRM/настройки). */
   .card {
-    @apply bg-white/95 rounded-2xl border border-brand-50 shadow-card ring-1 ring-black/5;
+    @apply bg-white/95 rounded-xl border border-slate-200 shadow-sm ring-1 ring-black/5;
   }
 
   /* Заголовок поля */
@@ -90,7 +90,7 @@
   .tab-active { @apply text-brand-700 border-brand-500; }
 
   .app-surface {
-    @apply bg-white/95 border border-white/60 rounded-3xl shadow-card;
+    @apply bg-white/95 border border-slate-200 rounded-xl shadow-sm;
   }
 
   /* Dropdown */
@@ -212,6 +212,18 @@
      Do not zero space-y/gap on all direct children — integration and settings pages rely on Tailwind stack utilities. */
   .settings-surface {
     @apply w-full min-w-0;
+  }
+  .settings-page-shell {
+    @apply mx-auto w-full max-w-6xl space-y-4;
+  }
+  .settings-page-shell-narrow {
+    @apply mx-auto w-full max-w-4xl space-y-4;
+  }
+  .settings-panel {
+    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
+  }
+  .settings-toolbar {
+    @apply flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
   }
   .settings-surface .card {
     @apply rounded-none border-slate-200 shadow-sm;

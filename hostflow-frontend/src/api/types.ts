@@ -48,9 +48,11 @@ export interface WhoAmI {
   avatar_url?: string | null;
   preferences?: UserPreferences;
   security?: UserSecuritySummary;
+  /** G-6 Stage 2e — true when owner-class role and tenant has one active member (from GET /users/me). */
+  is_solo_admin?: boolean;
 }
 
-export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'viewer';
+export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'compliance_officer' | 'hr_officer' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';
@@ -72,6 +74,7 @@ export interface TenantModuleSettings {
   leads: boolean;
   services: boolean;
   client_portal: boolean;
+  hr: boolean;
 }
 
 export type TenantModuleSettingsPatch = Partial<TenantModuleSettings>;
@@ -82,6 +85,8 @@ export type RoleModuleMatrixRole =
   | 'recruiter'
   | 'client_manager'
   | 'client_processor'
+  | 'compliance_officer'
+  | 'hr_officer'
   | 'viewer';
 
 export interface RoleModulePermissions {
@@ -353,6 +358,8 @@ export interface UserMe {
   profile: UserProfile;
   preferences: UserPreferences;
   security: UserSecuritySummary;
+  /** G-6 Stage 2e — see WhoAmI.is_solo_admin */
+  is_solo_admin?: boolean;
 }
 
 export interface UserSessionInfo {
@@ -643,6 +650,14 @@ export interface CandidateExtra {
     mode?: CandidateOpsMode | null;
     updated_at?: string | null;
     updated_by?: string | null;
+  } | null;
+
+  /** Set by backend when a linked workforce employee is terminated (HR PATCH). */
+  workforce_termination?: {
+    employee_status?: string | null;
+    termination_date?: string | null;
+    recorded_at?: string | null;
+    recorded_by_user_id?: string | null;
   } | null;
 }
 
@@ -1285,6 +1300,8 @@ export interface Document {
   title?: string | null;
   owner_type: string;
   owner_id?: string | null;
+  responsible_user_id?: string | null;
+  responsible_name?: string | null;
   requested_from: DocumentRequestedFrom;
   process_type: DocumentProcessType;
   number?: string | null;

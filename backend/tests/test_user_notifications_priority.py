@@ -12,6 +12,23 @@ def test_resolve_sla_events_critical() -> None:
     assert resolve_notification_priority("communications_thread_escalated", {}) == "critical"
 
 
+def test_resolve_lead_nudges_are_normal_not_sla_critical() -> None:
+    assert (
+        resolve_notification_priority(
+            "lead_no_next_action",
+            {"source": "leads_next_action_sla"},
+        )
+        == "normal"
+    )
+    assert (
+        resolve_notification_priority(
+            "lead_stuck_stage",
+            {"source": "leads_next_action_sla"},
+        )
+        == "normal"
+    )
+
+
 def test_resolve_handoff_high() -> None:
     assert resolve_notification_priority("handoff_requested", {}) == "high"
     assert resolve_notification_priority("reminder_overdue", {}) == "high"

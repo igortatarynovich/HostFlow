@@ -118,6 +118,7 @@ export default function CandidateDocsRailPanel({
   const [loading, setLoading] = useState(false)
   const [documentsError, setDocumentsError] = useState<FriendlyErrorInfo | null>(null)
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!candidateId) return
@@ -363,6 +364,18 @@ export default function CandidateDocsRailPanel({
   )
 
   const primary = Boolean(primaryStepHighlight)
+  const shouldAutoOpenDetails = primary || showMissingList || showInProgressOnly || Boolean(documentsError)
+  const canToggleDetails = !hideEarlyStageDocDetails
+
+  useEffect(() => {
+    if (!canToggleDetails) {
+      setDetailsOpen(false)
+      return
+    }
+    if (shouldAutoOpenDetails) {
+      setDetailsOpen(true)
+    }
+  }, [canToggleDetails, shouldAutoOpenDetails])
 
   return (
     <section
@@ -546,54 +559,73 @@ export default function CandidateDocsRailPanel({
 
       {!hideEarlyStageDocDetails ? (
         <div className="mt-3">
-          {loading ? (
-            <div className="text-xs text-slate-500">{t('common.loading')}</div>
-          ) : documentsError ? (
-            <div className="text-xs text-rose-600">
-              <div>{documentsError.title}</div>
-              {documentsError.detail ? (
-                <div className="mt-0.5 text-[11px] text-rose-700/90">{documentsError.detail}</div>
-              ) : null}
-            </div>
+          {canToggleDetails ? (
+            <button
+              type="button"
+              className="mb-2 text-[11px] text-slate-500 hover:text-slate-700"
+              onClick={() => setDetailsOpen((v) => !v)}
+            >
+              {detailsOpen
+                ? t('common.actions.collapse', { defaultValue: 'Collapse' })
+                : t('common.actions.expand', { defaultValue: 'Expand' })}
+            </button>
+          ) : null}
+          {detailsOpen ? (
+            loading ? (
+              <div className="text-xs text-slate-500">{t('common.loading')}</div>
+            ) : documentsError ? (
+              <div className="text-xs text-rose-600">
+                <div>{documentsError.title}</div>
+                {documentsError.detail ? (
+                  <div className="mt-0.5 text-[11px] text-rose-700/90">{documentsError.detail}</div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {rows.length ? (
+                  rows.map((r, idx) => (
+                    <button
+                      key={`${r.type}-${r.status}-${idx}`}
+                      type="button"
+                      className={clsx(
+                        'w-full rounded-xl border px-2 py-1.5 text-left transition hover:shadow-sm',
+                        statusPill(r.status, { softChecklist: !pipelineBlockingEffective }),
+                      )}
+                      onClick={() => {
+                        if (r.type) onSelectType?.(r.type)
+                        onOpenDocs?.()
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 text-xs font-semibold text-slate-900 truncate">
+                          {labelForType(r.type)}
+                        </div>
+                        <div className="shrink-0 text-[11px] font-semibold">
+                          {r.status === 'missing'
+                            ? pipelineBlockingEffective
+                              ? `→ ${t('app.candidate_card.documents.status.missing', { defaultValue: 'missing' })}`
+                              : `→ ${t('app.candidate_card.documents.status.checklist_not_uploaded', { defaultValue: 'not uploaded yet' })}`
+                            : r.status === 'valid'
+                              ? `→ ${t('app.candidate_card.documents.status.valid', { defaultValue: 'valid' })}`
+                              : r.status === 'expiring'
+                                ? `→ ${t('app.candidate_card.documents.status.expiring', { defaultValue: 'expiring' })}${r.meta ? ` · ${formatExpDate(r.meta)}` : ''}`
+                                : pipelineBlockingEffective
+                                  ? `→ ${t('app.candidate_card.documents.status.in_progress', { defaultValue: 'in progress' })}`
+                                  : `→ ${t('app.candidate_card.documents.status.checklist_in_review', { defaultValue: 'uploaded — review later' })}`}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-xs text-slate-500">{t('app.candidate_card.documents.empty', { defaultValue: 'No document data.' })}</div>
+                )}
+              </div>
+            )
           ) : (
-            <div className="space-y-1">
-              {rows.length ? (
-                rows.map((r, idx) => (
-                  <button
-                    key={`${r.type}-${r.status}-${idx}`}
-                    type="button"
-                    className={clsx(
-                      'w-full rounded-xl border px-2 py-1.5 text-left transition hover:shadow-sm',
-                      statusPill(r.status, { softChecklist: !pipelineBlockingEffective }),
-                    )}
-                    onClick={() => {
-                      if (r.type) onSelectType?.(r.type)
-                      onOpenDocs?.()
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 text-xs font-semibold text-slate-900 truncate">
-                        {labelForType(r.type)}
-                      </div>
-                      <div className="shrink-0 text-[11px] font-semibold">
-                        {r.status === 'missing'
-                          ? pipelineBlockingEffective
-                            ? `→ ${t('app.candidate_card.documents.status.missing', { defaultValue: 'missing' })}`
-                            : `→ ${t('app.candidate_card.documents.status.checklist_not_uploaded', { defaultValue: 'not uploaded yet' })}`
-                          : r.status === 'valid'
-                            ? `→ ${t('app.candidate_card.documents.status.valid', { defaultValue: 'valid' })}`
-                            : r.status === 'expiring'
-                              ? `→ ${t('app.candidate_card.documents.status.expiring', { defaultValue: 'expiring' })}${r.meta ? ` · ${formatExpDate(r.meta)}` : ''}`
-                              : pipelineBlockingEffective
-                                ? `→ ${t('app.candidate_card.documents.status.in_progress', { defaultValue: 'in progress' })}`
-                                : `→ ${t('app.candidate_card.documents.status.checklist_in_review', { defaultValue: 'uploaded — review later' })}`}
-                      </div>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="text-xs text-slate-500">{t('app.candidate_card.documents.empty', { defaultValue: 'No document data.' })}</div>
-              )}
+            <div className="text-xs text-slate-500">
+              {t('app.candidate_card.documents.compact_hint', {
+                defaultValue: 'Document details are collapsed to reduce noise.',
+              })}
             </div>
           )}
         </div>
@@ -607,7 +639,7 @@ export default function CandidateDocsRailPanel({
         </div>
       ) : null}
 
-      {!hideEarlyStageDocDetails ? (
+      {!hideEarlyStageDocDetails && detailsOpen ? (
         <div
           className={clsx(
             'mt-3 rounded-xl border p-3',

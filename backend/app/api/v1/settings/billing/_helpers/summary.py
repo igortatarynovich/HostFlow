@@ -35,6 +35,7 @@ from backend.app.services.billing_pack_addons import LEAD_FORMS_ACTIVE_CAP, pack
 from backend.app.services.lead_forms_quota import count_active_tenant_lead_forms, lead_forms_base_cap
 from backend.app.services.lead_quota import resolve_monthly_leads_cap
 from backend.app.services.operating_company_slots import get_operating_company_slots
+from backend.app.services.plan_feature_gates import trial_usage_caps
 
 from ..schemas import (
     BillingAddonCheckoutOfferOut,
@@ -42,6 +43,7 @@ from ..schemas import (
     BillingFounderProgramOut,
     BillingLeadFormsUsageOut,
     BillingPortalCandidatesUsageOut,
+    BillingTrialCapsOut,
     BillingUsageCapsOut,
 )
 from .plans import (
@@ -56,7 +58,7 @@ from .state import _now_utc
 def _plan_code_for_usage_caps(subscription: dict[str, Any], license_entry: TenantLicense | None) -> str:
     status = str(subscription.get("status") or "").strip().lower()
     if status == "trial":
-        return "starter"
+        return "trial"
     raw = str(subscription.get("plan_code") or "").strip().lower()
     if raw in PLAN_CODES:
         return raw
@@ -72,6 +74,17 @@ def _tenant_settings_dict(tenant: Tenant | None) -> dict[str, Any] | None:
         return None
     s = tenant.settings
     return dict(s) if isinstance(s, dict) else None
+
+
+def _billing_max_storage_gb(license_entry: TenantLicense | None, subscription: dict[str, Any]) -> int:
+    """Same resolution as license row + plan defaults (aligned with TenantLicense limits)."""
+    plan = _plan_code_for_usage_caps(subscription, license_entry)
+    defaults = PLAN_LICENSE_LIMITS.get(plan, PLAN_LICENSE_LIMITS["starter"])
+    if license_entry is not None:
+        v = getattr(license_entry, "max_storage_gb", None)
+        if v is not None:
+            return int(v)
+    return int(defaults.get("max_storage_gb") or 0)
 
 
 def _billing_usage_caps(
@@ -97,6 +110,13 @@ def _billing_usage_caps(
         max_documents=_lim("max_documents"),
         max_public_portal_links=_lim("max_public_portal_links"),
     )
+
+
+def _billing_trial_caps(subscription: dict[str, Any]) -> BillingTrialCapsOut | None:
+    status = str(subscription.get("status") or "").strip().lower()
+    if status != "trial":
+        return None
+    return BillingTrialCapsOut(**trial_usage_caps())
 
 
 def _billing_summary_addon_offers(

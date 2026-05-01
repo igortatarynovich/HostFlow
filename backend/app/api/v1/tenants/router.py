@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,8 +32,19 @@ router = APIRouter(prefix="/tenants", tags=["tenants"], redirect_slashes=False)
 async def get_me(
     ctx: UserCtx = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
 ):
     tenant_id = ctx.tenant_id
+    # Platform superadmin may switch workspace via X-Tenant-Id.
+    # For all other roles we keep JWT tenant to prevent cross-tenant spoofing.
+    if (ctx.role or "").strip().lower() == Role.superadmin.value and tenant_id_header:
+        candidate = str(tenant_id_header).strip()
+        try:
+            candidate_uuid = str(UUID(candidate))
+        except Exception:
+            raise HTTPException(status_code=400, detail="X-Tenant-Id must be a valid UUID")
+        if candidate_uuid:
+            tenant_id = candidate_uuid
     if not tenant_id:
         raise HTTPException(status_code=400, detail="Token missing tenant_id")
     tenant = await service.get_tenant(db, tenant_id)

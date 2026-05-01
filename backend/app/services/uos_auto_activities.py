@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.tenant import Tenant
+from backend.app.services.recruiter_assignment import resolve_vacancy_primary_recruiter
 from backend.app.services.reminder_tasks import create_reminder, refresh_open_typed_reminder_due
 
 _ACTIVE_STATUSES = (
@@ -36,6 +37,7 @@ _ACTIVE_STATUSES = (
     ReminderStatus.sent,
     ReminderStatus.overdue,
 )
+_PRE_CONTACT_CANDIDATE_STAGES = frozenset({"", "new", "no_answer", "to_call", "to_contact"})
 
 
 def _as_dict(m: Optional[Mapping[str, Any]]) -> dict[str, Any]:
@@ -137,6 +139,34 @@ async def _has_active_typed_reminder(
     )
     row = await db.execute(stmt)
     return row.scalar_one_or_none() is not None
+
+
+async def _cancel_open_typed_reminder(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_type: str,
+    entity_id: str,
+    rtype: str,
+) -> int:
+    rows = await db.execute(
+        select(Reminder).where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.entity_type == entity_type,
+            Reminder.entity_id == entity_id,
+            Reminder.type == rtype,
+            Reminder.status.in_(list(_ACTIVE_STATUSES)),
+        )
+    )
+    reminders = list(rows.scalars().all())
+    if not reminders:
+        return 0
+    now = datetime.now(timezone.utc)
+    for reminder in reminders:
+        reminder.status = ReminderStatus.done
+        reminder.completed_at = now
+        reminder.updated_at = now
+    return len(reminders)
 
 
 async def ensure_candidate_created_call_task(
@@ -465,6 +495,16 @@ async def ensure_candidate_stage_follow_up_task(
     old_s = str(old_stage or "").strip() or None
     if not new_s or new_s == old_s:
         return
+    # Once contact is established (or candidate moved further), the initial
+    # "call candidate" reminder is no longer relevant and must disappear.
+    if str(new_s).strip().lower() not in _PRE_CONTACT_CANDIDATE_STAGES:
+        await _cancel_open_typed_reminder(
+            db,
+            tenant_id=tenant_id,
+            entity_type="candidate",
+            entity_id=cid,
+            rtype="uos_candidate_call",
+        )
     if await _tenant_funnel_stage_code_is_terminal(db, tenant_id, new_s):
         return
     assignee = str(
@@ -531,7 +571,16 @@ async def ensure_vacancy_recruiting_follow_up_task(
     if was_recruiting_before:
         return
     act = str(actor_id or "").strip() or "uos-auto"
-    assignee = str(getattr(vacancy, "manager", None) or "").strip() or act
+    # Phase 2.6.G-5 Stage B — resolve the vacancy's primary recruiter through
+    # the canonical helper instead of reading ``vacancy.manager`` directly.
+    # Rationale: the old read silently ignored the ``VacancyRecruiter`` m2m
+    # pool, so a vacancy with an active recruiter pool but ``manager=NULL``
+    # would have its auto-generated follow-up assigned to ``actor_id`` (often
+    # the admin who flipped the stage) instead of the pool member who owns
+    # sourcing. Resolver cascade: m2m least-load pick → vacancy.manager →
+    # None (fall back to ``act``).
+    resolved_assignee = await resolve_vacancy_primary_recruiter(db, tenant_id, vacancy)
+    assignee = (resolved_assignee or "").strip() or act
     due = datetime.now(timezone.utc) + timedelta(hours=72)
     title_part = str(getattr(vacancy, "title", "") or "").strip() or vid
     title = f"Vacancy pipeline: {title_part[:80]}"

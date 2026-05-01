@@ -1,5 +1,7 @@
 import http from './http'
 
+export type BillingPlanCode = 'starter' | 'team' | 'pro' | 'enterprise'
+
 export type BillingGate = {
   side_effects_blocked: boolean
   block_reason: 'past_due' | 'trial_expired' | null
@@ -13,8 +15,8 @@ export type BillingGate = {
 export type BillingSubscription = {
   provider: 'mock' | 'stripe'
   status: string
-  plan_code: 'starter' | 'team' | 'pro'
-  pending_plan_code: 'starter' | 'team' | 'pro' | null
+  plan_code: BillingPlanCode
+  pending_plan_code: BillingPlanCode | null
   pending_update: boolean
   pending_invoice_id: string | null
   pending_invoice_url: string | null
@@ -135,7 +137,7 @@ export type BillingLicense = {
 }
 
 export type BillingPlan = {
-  code: 'starter' | 'team' | 'pro'
+  code: BillingPlanCode
   name: string
   currency?: string
   monthly_price_usd: number
@@ -209,6 +211,30 @@ export type BillingSummary = {
   addon_checkout_offers?: BillingAddonCheckoutOffer[]
 }
 
+export type BillingPlanMatrixFeature = {
+  key: string
+  label: string
+  unit: string | null
+  values: Record<string, number | boolean | string | null>
+  upgrade_checkout_allowed: boolean
+}
+
+export type BillingPlanMatrix = {
+  plans: BillingPlan[]
+  current_plan_code: string
+  features: BillingPlanMatrixFeature[]
+}
+
+/** Minimal usage vs caps for quota banners (any tenant member). SSOT with billing summary caps. */
+export type BillingQuotaHeadroom = {
+  leads_created_this_month: number
+  max_leads_created_per_month: number
+  candidates_active_count: number
+  max_candidates_active: number
+  storage_used_gb: number
+  max_storage_gb: number
+}
+
 export async function getBillingSubscription() {
   const { data } = await http.get<BillingSubscription>('/settings/billing/subscription')
   return data
@@ -219,8 +245,18 @@ export async function getBillingSummary() {
   return data
 }
 
+export async function getBillingQuotaHeadroom() {
+  const { data } = await http.get<BillingQuotaHeadroom>('/settings/billing/quota-headroom')
+  return data
+}
+
+export async function getBillingPlanMatrix() {
+  const { data } = await http.get<BillingPlanMatrix>('/settings/billing/plan-matrix')
+  return data
+}
+
 export async function createBillingCheckoutSession(payload: {
-  plan_code: 'starter' | 'team' | 'pro'
+  plan_code: Exclude<BillingPlanCode, 'enterprise'>
   billing_interval?: 'month' | 'year'
   success_url?: string
   cancel_url?: string
@@ -265,7 +301,7 @@ export async function createBillingPortalLink() {
 }
 
 export async function changeBillingPlan(payload: {
-  plan_code: 'starter' | 'team' | 'pro'
+  plan_code: Exclude<BillingPlanCode, 'enterprise'>
   billing_interval?: 'month' | 'year'
   success_url?: string
   cancel_url?: string

@@ -343,57 +343,55 @@ export default function CandidateProfilesPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.candidate_profiles_page.header_kicker')}
-            title={t('admin.candidate_profiles_page.title')}
-            subtitle={t('admin.candidate_profiles_page.subtitle')}
-            actions={
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <button
-                  className="btn-secondary btn-sm"
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const { updated } = await fixOrphanedVacancies()
-                      if (updated > 0) await loadProfiles()
-                      alert(
-                        updated > 0
-                          ? t('admin.candidate_profiles_page.alerts.fix_orphan_ok', { values: { count: updated } })
-                          : t('admin.candidate_profiles_page.alerts.fix_orphan_none'),
-                      )
-                    } catch (e: any) {
-                      alert(e?.response?.data?.detail ?? t('admin.candidate_profiles_page.alerts.error_generic'))
-                    }
-                  }}
-                >
-                  {t('admin.candidate_profiles_page.fix_orphan_vacancies')}
-                </button>
-                <button className="btn-secondary" type="button" onClick={() => setImportMode(true)}>
-                  {t('admin.candidate_profiles_page.import')}
-                </button>
-                <button className="btn-secondary" type="button" onClick={() => setBulkUpdateMode(true)}>
-                  {t('admin.candidate_profiles_page.bulk_update')}
-                </button>
-                <button
-                  className="btn-primary"
-                  type="button"
-                  onClick={() => {
-                    setNewProfileMode(true)
-                    setEditingProfile(null)
-                  }}
-                >
-                  {t('admin.candidate_profiles_page.create_profile')}
-                </button>
-              </div>
-            }
-          />
-        </div>
+      <SettingsSubpageHeader
+        className="mb-2"
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.candidate_profiles_page.header_kicker')}
+        title={t('admin.candidate_profiles_page.title')}
+        subtitle={t('admin.candidate_profiles_page.subtitle')}
+      />
 
-        {!newProfileMode && !editingProfile && profiles.length > 0 && (
-          <div className="mb-4 space-y-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-slate-200 bg-white p-4">
+        <button
+          className="btn-secondary btn-sm"
+          type="button"
+          onClick={async () => {
+            try {
+              const { updated } = await fixOrphanedVacancies()
+              if (updated > 0) await loadProfiles()
+              alert(
+                updated > 0
+                  ? t('admin.candidate_profiles_page.alerts.fix_orphan_ok', { values: { count: updated } })
+                  : t('admin.candidate_profiles_page.alerts.fix_orphan_none'),
+              )
+            } catch (e: any) {
+              alert(e?.response?.data?.detail ?? t('admin.candidate_profiles_page.alerts.error_generic'))
+            }
+          }}
+        >
+          {t('admin.candidate_profiles_page.fix_orphan_vacancies')}
+        </button>
+        <button className="btn-secondary" type="button" onClick={() => setImportMode(true)}>
+          {t('admin.candidate_profiles_page.import')}
+        </button>
+        <button className="btn-secondary" type="button" onClick={() => setBulkUpdateMode(true)}>
+          {t('admin.candidate_profiles_page.bulk_update')}
+        </button>
+        <button
+          className="btn-primary"
+          type="button"
+          onClick={() => {
+            setNewProfileMode(true)
+            setEditingProfile(null)
+          }}
+        >
+          {t('admin.candidate_profiles_page.create_profile')}
+        </button>
+      </div>
+
+      {!newProfileMode && !editingProfile && profiles.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="space-y-2">
             <div className="flex gap-3">
               <input
                 type="text"
@@ -498,46 +496,47 @@ export default function CandidateProfilesPage() {
               return null
             })()}
           </div>
-        )}
+        </div>
+      )}
 
-        {profilesLoadErrorBanner && (
-          <div className="mb-4">
-            <ErrorRecoveryBanner
-              info={profilesLoadErrorBanner}
-              onRetry={() => void loadProfiles()}
-              retryLabel={t('common.actions.refresh')}
-              {...friendlyErrorBannerSecondary(
-                profilesLoadErrorBanner,
-                CRM_APP_PATHS.settingsCandidateProfiles,
-                t('common.navigation.settings'),
-              )}
-              compact
+      {profilesLoadErrorBanner && (
+        <div className="mb-4">
+          <ErrorRecoveryBanner
+            info={profilesLoadErrorBanner}
+            onRetry={() => void loadProfiles()}
+            retryLabel={t('common.actions.refresh')}
+            {...friendlyErrorBannerSecondary(
+              profilesLoadErrorBanner,
+              CRM_APP_PATHS.settingsCandidateProfiles,
+              t('common.navigation.settings'),
+            )}
+            compact
+          />
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.loading_list')}</div>
+      ) : (
+        <div className="space-y-4">
+          {newProfileMode && (
+            <ProfileForm
+              onSave={handleCreate}
+              onCancel={() => setNewProfileMode(false)}
+              t={t}
+              profiles={profiles}
             />
-          </div>
-        )}
-
-        {loading ? (
-          <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.loading_list')}</div>
-        ) : (
-          <div className="space-y-4">
-            {newProfileMode && (
-              <ProfileForm
-                onSave={handleCreate}
-                onCancel={() => setNewProfileMode(false)}
-                t={t}
-                profiles={profiles}
-              />
-            )}
-            {editingProfile && (
-              <ProfileForm
-                profile={editingProfile}
-                onSave={(payload) => handleUpdate(editingProfile.id, payload)}
-                onCancel={() => setEditingProfile(null)}
-                t={t}
-                profiles={profiles}
-              />
-            )}
-            {!newProfileMode && !editingProfile && (() => {
+          )}
+          {editingProfile && (
+            <ProfileForm
+              profile={editingProfile}
+              onSave={(payload) => handleUpdate(editingProfile.id, payload)}
+              onCancel={() => setEditingProfile(null)}
+              t={t}
+              profiles={profiles}
+            />
+          )}
+          {!newProfileMode && !editingProfile && (() => {
               const filtered = profiles.filter((profile) => {
                 if (searchQuery) {
                   const query = searchQuery.toLowerCase()
@@ -779,9 +778,8 @@ export default function CandidateProfilesPage() {
                 </div>
               )
             })()}
-          </div>
-        )}
-      </section>
+        </div>
+      )}
 
       {previewProfile && (
         <ProfilePreviewModal

@@ -28,6 +28,26 @@ class BillingUsageCapsOut(BaseModel):
     max_public_portal_links: int = 0
 
 
+class BillingQuotaHeadroomOut(BaseModel):
+    """Minimal usage vs caps for module quota banners (any tenant member; SSOT with ``_billing_usage_caps``)."""
+
+    leads_created_this_month: int = 0
+    max_leads_created_per_month: int = 0
+    candidates_active_count: int = 0
+    max_candidates_active: int = 0
+    storage_used_gb: float = 0.0
+    max_storage_gb: int = 0
+
+
+class BillingTrialCapsOut(BaseModel):
+    """SSOT trial-limits snapshot shown in billing summary."""
+
+    leads_monthly: int = 50
+    conversion_actions: int = 20
+    portal_shares: int = 2
+    automation_runs: int = 5
+
+
 class BillingGateOut(BaseModel):
     """Derived billing/trial state for UI (Dashboard banners, §2.18)."""
 
@@ -226,6 +246,7 @@ class BillingSummaryOut(BaseModel):
     license: platform_schemas.TenantLicenseOut | None = None
     usage: platform_schemas.TenantUsageOut
     usage_caps: BillingUsageCapsOut
+    trial_caps: BillingTrialCapsOut | None = None
     company_slots: BillingCompanySlotsOut | None = None
     portal_candidates: BillingPortalCandidatesUsageOut | None = None
     founder_program: BillingFounderProgramOut | None = None
@@ -234,6 +255,20 @@ class BillingSummaryOut(BaseModel):
     history: list[BillingHistoryItemOut] = []
     invoices: list[BillingInvoiceOut] = []
     addon_checkout_offers: list[BillingAddonCheckoutOfferOut] = Field(default_factory=list)
+
+
+class BillingPlanMatrixFeatureOut(BaseModel):
+    key: str
+    label: str
+    unit: str | None = None
+    values: dict[str, int | bool | str | None]
+    upgrade_checkout_allowed: bool = True
+
+
+class BillingPlanMatrixOut(BaseModel):
+    plans: list[BillingPlanOut]
+    current_plan_code: str
+    features: list[BillingPlanMatrixFeatureOut]
 
 
 class BillingChangePlanIn(BaseModel):

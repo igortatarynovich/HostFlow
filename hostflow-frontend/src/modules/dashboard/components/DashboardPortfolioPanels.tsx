@@ -301,7 +301,7 @@ export function DashboardPortfolioPanels(props: DashboardPortfolioPanelsProps) {
               {stageVelocityRows.length ? (
                 <div className="space-y-2">
                   {stageVelocityRows.map((row) => (
-                    <div key={row.stageCode} className="relative overflow-hidden rounded-xl border border-brand-50">
+                    <div key={row.stageCode} className="relative overflow-hidden rounded-xl border border-slate-200">
                       <div
                         className="absolute inset-y-0 left-0 bg-brand-500/20"
                         style={{ width: `${Math.max(row.intensity * 100, 8)}%` }}

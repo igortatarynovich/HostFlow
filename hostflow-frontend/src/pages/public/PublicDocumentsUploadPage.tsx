@@ -59,7 +59,7 @@ export default function PublicDocumentsUploadPage() {
         <div className="flex justify-end">
           <PublicLocaleSwitcher />
         </div>
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <section className="card p-6">
           <h1 className="text-2xl font-semibold text-slate-900">
             {t('public.documents_upload.title', { defaultValue: 'Upload requested documents' })}
           </h1>
@@ -117,7 +117,7 @@ export default function PublicDocumentsUploadPage() {
         {loading && !state ? (
           <p className="text-sm text-slate-500">{t('common.loading')}</p>
         ) : (
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+          <section className="card p-6">
             <h2 className="text-lg font-semibold text-slate-900">
               {t('public.documents_upload.required_list', { defaultValue: 'Requested documents' })}
             </h2>

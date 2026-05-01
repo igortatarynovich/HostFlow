@@ -22,6 +22,10 @@ from backend.app.api.v1.candidates.service import create_candidate_full
 from backend.app.models import Vacancy
 from backend.app.modules.leads import crud
 from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
+from backend.app.services.recruiter_assignment import (
+    record_candidate_reassignment,
+    resolve_vacancy_primary_recruiter,
+)
 
 from ._helpers import (
     LeadProcessingError,
@@ -204,7 +208,17 @@ async def reroute_lead_manual(
     # That function may internally commit/flush which can expire ORM instances.
     # Accessing expired attributes later can cause MissingGreenlet in async SQLAlchemy.
     vacancy_id_for_lead: Optional[str] = str(target_vacancy.id) if target_vacancy else None
-    vacancy_recruiter_id: Optional[str] = getattr(target_vacancy, "recruiter_id", None) if target_vacancy else None
+    # Phase 2.6.G-5 Stage B — mirror the Stage A fix in ``_processing.py``:
+    # the legacy ``getattr(target_vacancy, "recruiter_id", None)`` read targeted a
+    # non-existent column (silent None), forcing every re-routed lead into the
+    # tenant-wide ``fallback_recruiter_id`` even when the new vacancy had its
+    # own active ``VacancyRecruiter`` pool or a populated ``manager`` owner.
+    # Resolver cascades: m2m least-load → ``vacancy.manager`` (active user) → None.
+    vacancy_recruiter_id: Optional[str] = (
+        await resolve_vacancy_primary_recruiter(db, tenant_id, target_vacancy)
+        if target_vacancy
+        else None
+    )
     own_company_id_for_lead: Optional[str] = getattr(lead, "own_company_id", None)
 
     candidate_payload: Dict[str, Any] = {
@@ -279,22 +293,51 @@ async def reroute_lead_manual(
     stamp_rid = _rule_recruiter_id_from_normalized(normalized)
     rule_rid = await validate_tenant_recruiter_id(db, tenant_id, stamp_rid) if stamp_rid else None
     recruiter_id = vacancy_recruiter_id
+    # Phase 2.6.G-5 Stage C — manual re-route now funnels every
+    # ``Candidate.recruiter_id`` mutation through ``record_candidate_reassignment``
+    # so the audit trail reflects which branch (rule / vacancy-resolved /
+    # tenant fallback) picked the new recruiter during a manual re-route.
+    # The endpoint currently has no ``actor_id`` plumbing
+    # (:func:`reroute_lead_manual` is called by an admin router but that
+    # identity is not threaded down yet); history rows are therefore written
+    # with ``actor_kind='system'`` + ``actor=None``. Adding actor propagation
+    # is tracked as part of the Stage D / G-5 follow-up.
     if rule_rid:
-        candidate.recruiter_id = rule_rid
+        await record_candidate_reassignment(
+            db,
+            candidate,
+            new_recruiter_id=rule_rid,
+            reason="lead_reroute_rule",
+            actor=None,
+            actor_kind="system",
+            note=f"lead_id={lead.id};reroute=1",
+        )
         recruiter_id = rule_rid
-        await db.flush()
+    # ``vacancy_recruiter_id`` at this point reflects the value that
+    # ``create_candidate_full`` already wrote during INSERT (via its internal
+    # ``assign_recruiter`` cascade); that initial assignment is captured by
+    # the ``candidate_create`` history row emitted inside
+    # ``create_candidate_full``. Do NOT re-emit a history row here — it would
+    # be a no-op reassignment (same value).
     if not recruiter_id:
         # If we don't have vacancy/recruiter from vacancy, fall back to the tenant-level hint.
         # Avoid reading candidate.recruiter_id here: create_candidate_full() may have expired it.
         fallback_recruiter = await _validate_recruiter_id(db, tenant_id, fallback_recruiter_hint)
         if fallback_recruiter:
-            candidate.recruiter_id = fallback_recruiter
+            await record_candidate_reassignment(
+                db,
+                candidate,
+                new_recruiter_id=fallback_recruiter,
+                reason="lead_reroute_fallback",
+                actor=None,
+                actor_kind="system",
+                note=f"lead_id={lead.id};reroute=1",
+            )
             recruiter_id = fallback_recruiter
-            await db.flush()
 
-    if recruiter_id and not getattr(candidate, "manager", None):
-        candidate.manager = recruiter_id
-        await db.flush()
+    # Phase 2.6.G-5 Stage D — legacy shadow-write removed; the canonical
+    # writer ``record_candidate_reassignment`` now mirrors ``manager`` ↔
+    # ``recruiter_id`` in every re-route branch above.
 
     await crud.update_lead(
         db,

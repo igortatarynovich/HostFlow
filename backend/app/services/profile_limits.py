@@ -141,28 +141,11 @@ async def check_profile_limit(
     # Calculate counts for this profile
     profile_simple, profile_medium, profile_resource, profile_total = calculate_field_counts(config)
     
-    # Calculate total counts of all active profiles (excluding current if editing)
-    stmt = select(CandidateProfile).where(
-        CandidateProfile.tenant_id == tenant_id,
-        CandidateProfile.is_active == True,
+    total_simple, total_medium, total_resource, total_custom = await get_tenant_profile_usage_counts(
+        db,
+        tenant_id,
+        exclude_profile_id=exclude_profile_id,
     )
-    if exclude_profile_id:
-        stmt = stmt.where(CandidateProfile.id != exclude_profile_id)
-    
-    result = await db.execute(stmt)
-    profiles = result.scalars().all()
-    
-    total_simple = 0
-    total_medium = 0
-    total_resource = 0
-    total_custom = 0
-    
-    for profile in profiles:
-        s, m, r, t = calculate_field_counts(profile.config or {})
-        total_simple += s
-        total_medium += m
-        total_resource += r
-        total_custom += t
     
     # Add current profile counts
     total_simple += profile_simple
@@ -187,6 +170,43 @@ async def check_profile_limit(
     plan_name = plan or "free"
     
     return (is_valid, limits_info, plan_name)
+
+
+async def get_tenant_profile_usage_counts(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    exclude_profile_id: Optional[str] = None,
+) -> tuple[int, int, int, int]:
+    """Return aggregate usage counts for tenant-scoped custom profiles.
+
+    System profiles are seeded by the platform and must not consume tenant plan
+    budget, otherwise a single default template can block all custom profile
+    creation for paid tenants.
+    """
+    stmt = select(CandidateProfile).where(
+        CandidateProfile.tenant_id == tenant_id,
+        CandidateProfile.is_active == True,
+        CandidateProfile.is_system == False,
+    )
+    if exclude_profile_id:
+        stmt = stmt.where(CandidateProfile.id != exclude_profile_id)
+
+    result = await db.execute(stmt)
+    profiles = result.scalars().all()
+
+    total_simple = 0
+    total_medium = 0
+    total_resource = 0
+    total_custom = 0
+    for profile in profiles:
+        s, m, r, t = calculate_field_counts(profile.config or {})
+        total_simple += s
+        total_medium += m
+        total_resource += r
+        total_custom += t
+
+    return (total_simple, total_medium, total_resource, total_custom)
 
 
 def get_field_type_label(field_type: str) -> str:
@@ -214,8 +234,8 @@ __all__ = [
     "calculate_field_counts",
     "get_tenant_plan",
     "check_profile_limit",
+    "get_tenant_profile_usage_counts",
     "get_field_type_label",
     "FIELD_CATEGORIES",
     "PLAN_LIMITS",
 ]
-

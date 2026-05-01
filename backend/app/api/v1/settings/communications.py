@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.api.v1.tenants import service as tenant_service
+from backend.app.constants.hostflow_canonical_tenants import is_focus_personnel_tenant
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.communications_access import assert_comm_feature_access
+from backend.app.services.plan_feature_gates import plan_allows_smart_operations_bundle, resolve_tenant_plan_code
 
 
 router = APIRouter(prefix="/communications", tags=["settings-communications"], redirect_slashes=False)
@@ -153,6 +155,12 @@ class CommunicationsEntitlementsSettings(BaseModel):
     modules: Dict[CommModuleKey, CommunicationsModuleEntitlement] = Field(default_factory=dict)
 
 
+class CommunicationsPlanSnapshotOut(BaseModel):
+    """Server-computed subscription signals (not persisted in ``tenant.settings``)."""
+
+    smartOperations: bool = False
+
+
 class CommunicationsRoleAccessSettings(BaseModel):
     messages: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"])
     email: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager"])
@@ -211,6 +219,7 @@ class CommunicationsSettingsOut(BaseModel):
     access: CommunicationsAccessSettings
     commands: CommunicationsCommandsSettings
     messageTemplates: CommunicationsMessageTemplatesSettings
+    plan: CommunicationsPlanSnapshotOut = Field(default_factory=CommunicationsPlanSnapshotOut)
 
 
 class CommunicationsSettingsPatch(BaseModel):
@@ -404,6 +413,31 @@ def _normalize_escalation_targets(raw: Any, *, strict: bool) -> List[str]:
     return out
 
 
+def _apply_focus_personnel_default_features(merged: Dict[str, Any], tenant_id: str) -> None:
+    """
+    Focus Personnel (in-house agency): all communication toggles and module
+    entitlements on by default (merged over stored settings for API responses).
+    """
+    if not is_focus_personnel_tenant(tenant_id):
+        return
+    ch = merged.get("channels")
+    if isinstance(ch, dict) and isinstance(ch.get("channels"), list):
+        for row in ch["channels"]:
+            if isinstance(row, dict):
+                row["enabled"] = True
+                row["inboundEnabled"] = True
+                row["outboundEnabled"] = True
+    em = merged.get("email")
+    if isinstance(em, dict):
+        em["incomingEnabled"] = True
+    ent = merged.get("entitlements")
+    if isinstance(ent, dict) and isinstance(ent.get("modules"), dict):
+        for m in ent["modules"].values():
+            if isinstance(m, dict):
+                m["enabled"] = True
+                m["planRequired"] = None
+
+
 def _extract_settings(tenant_obj: Any) -> Dict[str, Any]:
     tenant_settings = tenant_obj.settings if isinstance(getattr(tenant_obj, "settings", None), dict) else {}
     raw = tenant_settings.get("communications")
@@ -427,6 +461,9 @@ def _extract_settings(tenant_obj: Any) -> Dict[str, Any]:
             merged["sla"].get("escalationTargets"),
             strict=False,
         )
+    tid = str(getattr(tenant_obj, "id", "") or "").strip()
+    if tid:
+        _apply_focus_personnel_default_features(merged, tid)
     return merged
 
 
@@ -460,6 +497,20 @@ def _apply_patch(current: Dict[str, Any], patch: CommunicationsSettingsPatch) ->
     return next_payload
 
 
+async def _communications_settings_out(db: AsyncSession, tenant_id: str, tenant: Any) -> CommunicationsSettingsOut:
+    """Merge stored settings with **server-computed** ``plan`` (subscription signals)."""
+    raw = _extract_settings(tenant)
+    plan_code = await resolve_tenant_plan_code(db, tenant_id)
+    base = CommunicationsSettingsOut.model_validate(raw)
+    return base.model_copy(
+        update={
+            "plan": CommunicationsPlanSnapshotOut(
+                smartOperations=plan_allows_smart_operations_bundle(plan_code, tenant_id=tenant_id)
+            )
+        }
+    )
+
+
 @router.get(
     "",
     response_model=CommunicationsSettingsOut,
@@ -486,8 +537,7 @@ async def get_communications_settings(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
     assert_comm_feature_access(tenant=tenant, current_user=ctx, tenant_id=tenant_id, feature="communicationsAdmin")
-    payload = _extract_settings(tenant)
-    return CommunicationsSettingsOut.model_validate(payload)
+    return await _communications_settings_out(db, tenant_id, tenant)
 
 
 @router.patch(
@@ -512,4 +562,4 @@ async def patch_communications_settings(
     tenant_settings = tenant.settings if isinstance(tenant.settings, dict) else {}
     updated_root = {**tenant_settings, "communications": next_settings}
     tenant = await tenant_service.update_tenant(db, tenant, {"settings": updated_root})
-    return CommunicationsSettingsOut.model_validate(_extract_settings(tenant))
+    return await _communications_settings_out(db, tenant_id, tenant)

@@ -30,6 +30,7 @@ _DEFAULT_VERIFY_UPLOADS: FrozenSet[str] = frozenset(
         "red_paper",
         "trip_plan",
         "at_client",
+        "employment_pending",
         "on_trip",
         "employed",
         "probation_ok",

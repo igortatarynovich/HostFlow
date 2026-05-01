@@ -78,7 +78,7 @@ export default function Login(){
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(94,186,205,0.35),transparent_55%),radial-gradient(circle_at_85%_0%,rgba(25,78,122,0.2),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.92)_0%,#f6fbff_50%,#f8fbff_100%)]" />
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-12">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-3xl border border-white/20 bg-brand-900/95 p-8 text-white shadow-2xl">
+          <div className="rounded-xl border border-white/20 bg-brand-900/95 p-8 text-white shadow-2xl">
             <PublicBrandingLogo showWordmark white />
             <div className="mt-8 space-y-5">
               <h1 className="text-3xl font-semibold">{t('app.login.hero.title', { defaultValue: 'Добро пожаловать' })}</h1>
@@ -94,7 +94,7 @@ export default function Login(){
           </div>
           <form
             onSubmit={onSubmit}
-            className="card w-full space-y-4 rounded-3xl border border-white/70 bg-white/95 p-8 shadow-card backdrop-blur-lg"
+            className="card w-full space-y-4 border-white/70 bg-white/95 p-8 backdrop-blur-lg"
           >
             <h2 className="text-2xl font-semibold text-center text-slate-900">{t('app.login.title')}</h2>
             {notice && (
@@ -153,7 +153,7 @@ export default function Login(){
           </form>
         </div>
 
-        <section className="rounded-3xl border border-white/60 bg-white/90 p-6 shadow-card">
+        <section className="card border-white/60 bg-white/90 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <h3 className="text-xl font-semibold text-slate-900">{t('app.login.value_props.title')}</h3>
             <p className="text-sm text-slate-600">{t('app.login.value_props.subtitle')}</p>
@@ -171,7 +171,7 @@ export default function Login(){
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[32px] border border-brand-100 bg-white/95 shadow-card backdrop-blur">
+        <section className="card overflow-hidden backdrop-blur">
           <div className="grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
@@ -209,7 +209,7 @@ export default function Login(){
                 </Link>
               </div>
             </div>
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg">
+            <div className="relative overflow-hidden rounded-xl bg-slate-900 text-white shadow-lg">
               <img
                 src="/assets/image_truck.png"
                 alt={t('app.login.signup_first.image_alt', { defaultValue: 'CRM onboarding workflow preview' })}

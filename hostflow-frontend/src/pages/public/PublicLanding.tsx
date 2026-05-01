@@ -45,7 +45,7 @@ export default function PublicLanding() {
       maxWidth="lg"
       headerExtra={<PublicLocaleSwitcher />}
     >
-      <div className="mx-auto w-full max-w-xl rounded-3xl border border-slate-200 bg-white/90 px-6 py-8 shadow-lg">
+      <div className="card mx-auto w-full max-w-xl bg-white/90 px-6 py-8 shadow-lg">
         <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('public.landing.title', { defaultValue: 'Начать анкету' })}</h1>
         <p className="text-sm text-slate-600 mb-6">
           {t('public.landing.subtitle', { defaultValue: 'Введите контакты, мы откроем временную ссылку на анкету.' })}

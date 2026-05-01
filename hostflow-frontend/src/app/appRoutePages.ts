@@ -39,6 +39,7 @@ export const DocumentsRegistryPage = lazy(() => loadCrmMore().then((m) => ({ def
 export const AutomationsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationsHubPage })))
 export const AutomationLogPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationLogPage })))
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
+export const FleetModulePage = lazy(() => loadCrmMore().then((m) => ({ default: m.FleetModulePage })))
 
 export const InvoicesPage = lazy(() => loadInvoices().then((m) => ({ default: m.InvoicesPage })))
 export const InvoiceCreatePage = lazy(() => loadInvoices().then((m) => ({ default: m.InvoiceCreatePage })))

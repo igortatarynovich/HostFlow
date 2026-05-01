@@ -18,7 +18,11 @@ if TYPE_CHECKING:
     from backend.app.auth.deps import UserCtx
     from backend.app.models.candidate import Candidate
 
-from backend.app.constants.spa_paths import EMAIL_LEGACY, MESSAGES_LEGACY, spa_candidate_documents
+from backend.app.constants.spa_paths import (
+    INBOX_EMAIL_SCOPED,
+    INBOX_MESSAGES_SCOPED,
+    spa_candidate_documents,
+)
 from backend.app.constants.stages import is_pipeline_completed_stage
 
 logger = logging.getLogger(__name__)
@@ -121,7 +125,8 @@ async def load_candidate_work_panel(
             entity=("candidate", str(candidate_id)),
             status_in=["pending", "new", "overdue"],
         )
-        return [ReminderOut.from_model(r) for r in rows]
+        merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=tenant_id_str, reminders=rows)
+        return [ReminderOut.from_model(r, payload_merge=merges.get(str(r.id))) for r in rows]
 
     profile, timeline_events, reminders = await asyncio.gather(
         _profile_ops(db, tenant_id_str, candidate_id, cand_row),
@@ -156,8 +161,8 @@ async def load_candidate_work_panel(
 
     cid = str(candidate_id)
     comms = CandidateWorkPanelCommsOut(
-        messages_relative_url=f"{MESSAGES_LEGACY}?candidateId={cid}",
-        email_relative_url=f"{EMAIL_LEGACY}?candidateId={cid}",
+        messages_relative_url=f"{INBOX_MESSAGES_SCOPED}&candidateId={cid}",
+        email_relative_url=f"{INBOX_EMAIL_SCOPED}&candidateId={cid}",
         documents_relative_url=spa_candidate_documents(cid),
     )
 

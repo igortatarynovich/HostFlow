@@ -37,7 +37,9 @@ import { useAuth } from '../../store/useAuth'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { communicationsThreadPath, CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { isPlatformSuperadminRole } from '../../utils/platformSuperadmin'
 import { Modal } from '../Modal'
+import { TodayTasksPeek } from './TodayTasksPeek'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 import { isEmailThread, threadRecencyMs, threadTitle } from '../communications/InboxUnifiedThreadList'
 import { formatDistanceToNow } from 'date-fns'
@@ -124,10 +126,54 @@ function computeBellAttentionCount(items: NotificationItem[], pendingHandoffsCou
   return notifPart + handoffPart
 }
 
+const REMINDER_BELL_EVENT_TYPES = new Set(['reminder_due', 'reminder_overdue'])
+
+function isReminderBellItem(item: NotificationItem): boolean {
+  return REMINDER_BELL_EVENT_TYPES.has(String(item.event_type || '').toLowerCase())
+}
+
+function reminderGroupKey(item: NotificationItem): string | null {
+  // Only group reminder_due / reminder_overdue rows that carry both
+  // entity_type and entity_id. Without an entity we have nothing to roll up.
+  if (!isReminderBellItem(item)) return null
+  const et = String(item.entity_type || '').trim().toLowerCase()
+  const eid = String(item.entity_id || '').trim()
+  if (!et || !eid) return null
+  return `${et}:${eid}`
+}
+
+/**
+ * G-9: count reminder bell rows after rolling them up by entity.
+ * Non-reminder notifications count 1:1.
+ * Reminder rows for the same entity collapse into a single "row".
+ */
+function countNotifPanelRowsGrouped(items: NotificationItem[]): number {
+  const seenGroups = new Set<string>()
+  let single = 0
+  for (const item of items) {
+    if (item.is_read) continue
+    const key = reminderGroupKey(item)
+    if (key === null) {
+      single += 1
+      continue
+    }
+    if (seenGroups.has(key)) continue
+    seenGroups.add(key)
+    single += 1
+  }
+  return single
+}
+
 function formatThreadUnreadBadge(n: number): string {
   if (n <= 99) return String(n)
   return '99+'
 }
+
+/** Quick filters for the unified notification + threads panel (Phase 5). */
+type NotifPanelQuickFilter = 'all' | 'sla' | 'tasks' | 'messages' | 'system'
+type NotifPanelQuickSort = 'newest' | 'urgent'
+const NOTIF_PANEL_FILTER_STORAGE_KEY = 'hf:topbar:notif-panel-filter:v1'
+const NOTIF_PANEL_SORT_STORAGE_KEY = 'hf:topbar:notif-panel-sort:v1'
 
 export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
   const navigate = useNavigate()
@@ -168,6 +214,20 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   )
   const [commPollKey, setCommPollKey] = useState(0)
   const [reminderDuePopup, setReminderDuePopup] = useState<NotificationItem | null>(null)
+  const [notifPanelFilter, setNotifPanelFilter] = useState<NotifPanelQuickFilter>(() => {
+    if (typeof window === 'undefined') return 'all'
+    const raw = String(window.localStorage.getItem(NOTIF_PANEL_FILTER_STORAGE_KEY) || '').trim()
+    if (raw === 'sla' || raw === 'tasks' || raw === 'messages' || raw === 'system' || raw === 'all') {
+      return raw
+    }
+    return 'all'
+  })
+  const [notifPanelSort, setNotifPanelSort] = useState<NotifPanelQuickSort>(() => {
+    if (typeof window === 'undefined') return 'urgent'
+    const raw = String(window.localStorage.getItem(NOTIF_PANEL_SORT_STORAGE_KEY) || '').trim()
+    if (raw === 'newest' || raw === 'urgent') return raw
+    return 'urgent'
+  })
 
   const notificationRank = (item: NotificationItem): number => {
     if (item.is_read) return 0
@@ -209,6 +269,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   }, [me])
 
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
+  const isSuperAdmin = isPlatformSuperadminRole(me?.role)
   const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
   const getNotificationTitle = (item: NotificationItem): string => {
@@ -276,22 +337,144 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     type Row =
       | { kind: 'thread'; thread: CommunicationThread; sortAt: number }
       | { kind: 'notif'; item: NotificationItem; sortAt: number }
+      | {
+          kind: 'notif_group'
+          key: string
+          representative: NotificationItem
+          items: NotificationItem[]
+          count: number
+          sortAt: number
+        }
     const threadIds = new Set(panelThreads.map((t) => t.id))
     const rows: Row[] = panelThreads.map((thread) => ({
       kind: 'thread' as const,
       thread,
       sortAt: threadRecencyMs(thread),
     }))
+    // G-9: roll up reminder_due/reminder_overdue rows that share an entity.
+    const groupBuckets = new Map<string, NotificationItem[]>()
+    const ungrouped: NotificationItem[] = []
     for (const item of notifItems) {
       if (item.is_read) continue
       const tid = notificationThreadId(item)
       if (tid && threadIds.has(tid)) continue
+      const key = reminderGroupKey(item)
+      if (key === null) {
+        ungrouped.push(item)
+        continue
+      }
+      const bucket = groupBuckets.get(key)
+      if (bucket) {
+        bucket.push(item)
+      } else {
+        groupBuckets.set(key, [item])
+      }
+    }
+    for (const item of ungrouped) {
       const ms = Date.parse(item.created_at || '') || 0
       rows.push({ kind: 'notif', item, sortAt: ms })
+    }
+    for (const [key, bucket] of groupBuckets) {
+      const sorted = [...bucket].sort(
+        (a, b) => (Date.parse(b.created_at || '') || 0) - (Date.parse(a.created_at || '') || 0),
+      )
+      const representative = sorted[0]
+      const sortAt = Date.parse(representative?.created_at || '') || 0
+      if (bucket.length === 1) {
+        // Single reminder for the entity — render as a normal notif row, no rollup chrome.
+        rows.push({ kind: 'notif', item: representative, sortAt })
+      } else {
+        rows.push({
+          kind: 'notif_group',
+          key,
+          representative,
+          items: sorted,
+          count: bucket.length,
+          sortAt,
+        })
+      }
     }
     rows.sort((a, b) => b.sortAt - a.sortAt)
     return rows
   }, [panelThreads, notifItems])
+
+  const filteredUnifiedPanelRows = useMemo(() => {
+    if (notifPanelFilter === 'all') return unifiedPanelRows
+    return unifiedPanelRows.filter((row) => {
+      if (row.kind === 'thread') return notifPanelFilter === 'messages'
+      const item = row.kind === 'notif' ? row.item : row.representative
+      const g = getNotificationUosGroup(item)
+      if (notifPanelFilter === 'sla') return g === 'sla'
+      if (notifPanelFilter === 'tasks') return g === 'tasks'
+      if (notifPanelFilter === 'messages') return g === 'messages'
+      if (notifPanelFilter === 'system') return g === 'system'
+      return false
+    })
+  }, [unifiedPanelRows, notifPanelFilter])
+
+  const notifPanelFilterCounts = useMemo<Record<NotifPanelQuickFilter, number>>(() => {
+    const counts: Record<NotifPanelQuickFilter, number> = {
+      all: unifiedPanelRows.length,
+      sla: 0,
+      tasks: 0,
+      messages: 0,
+      system: 0,
+    }
+    for (const row of unifiedPanelRows) {
+      if (row.kind === 'thread') {
+        counts.messages += 1
+        continue
+      }
+      const item = row.kind === 'notif' ? row.item : row.representative
+      const g = getNotificationUosGroup(item)
+      if (g === 'sla') counts.sla += 1
+      else if (g === 'tasks') counts.tasks += 1
+      else if (g === 'messages') counts.messages += 1
+      else counts.system += 1
+    }
+    return counts
+  }, [unifiedPanelRows])
+
+  const filteredAndSortedPanelRows = useMemo(() => {
+    if (notifPanelSort === 'newest') return filteredUnifiedPanelRows
+    return [...filteredUnifiedPanelRows].sort((a, b) => {
+      const rankOf = (row: (typeof filteredUnifiedPanelRows)[number]): number => {
+        if (row.kind === 'thread') {
+          const unread = Number(row.thread.unread_count || 0)
+          return 40 + Math.min(Math.max(unread, 0), 20)
+        }
+        if (row.kind === 'notif') return notificationRank(row.item)
+        return notificationRank(row.representative) + Math.min(row.count, 10)
+      }
+      const byRank = rankOf(b) - rankOf(a)
+      if (byRank !== 0) return byRank
+      return b.sortAt - a.sortAt
+    })
+  }, [filteredUnifiedPanelRows, notifPanelSort])
+
+  const visiblePanelTargets = useMemo(() => {
+    const notifIdSet = new Set<string>()
+    const threadIdSet = new Set<string>()
+    for (const row of filteredAndSortedPanelRows) {
+      if (row.kind === 'thread') {
+        threadIdSet.add(String(row.thread.id))
+        continue
+      }
+      if (row.kind === 'notif') {
+        const id = String(row.item.id || '').trim()
+        if (id) notifIdSet.add(id)
+        continue
+      }
+      for (const item of row.items) {
+        const id = String(item.id || '').trim()
+        if (id) notifIdSet.add(id)
+      }
+    }
+    return {
+      notifIds: Array.from(notifIdSet),
+      threadIds: Array.from(threadIdSet),
+    }
+  }, [filteredAndSortedPanelRows])
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -303,6 +486,16 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [notifOpen])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(NOTIF_PANEL_FILTER_STORAGE_KEY, notifPanelFilter)
+  }, [notifPanelFilter])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(NOTIF_PANEL_SORT_STORAGE_KEY, notifPanelSort)
+  }, [notifPanelSort])
 
   useEffect(() => {
     const onVis = () => {
@@ -354,7 +547,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             if (tid && unreadThreadIds.has(tid)) return false
             return true
           })
-          setBellBadgeCount(allowedUnreadThreads.length + dedupedUnreadNotifs.length)
+          // G-9: badge counts the rolled-up rows (3 reminder_due for same entity = 1 row).
+          setBellBadgeCount(allowedUnreadThreads.length + countNotifPanelRowsGrouped(dedupedUnreadNotifs))
           const toastCandidates = items.filter((item) => {
             if (item.is_read) return false
             if (!item.id) return false
@@ -428,6 +622,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     }
     if (can('companies.view')) {
       items.push({ key: 'companies', labelKey: 'app.nav.items.clients', path: CRM_APP_PATHS.clientsDirectory })
+      items.push({ key: 'fleet', labelKey: 'app.nav.items.fleet', path: CRM_APP_PATHS.fleet })
     }
     if (can('vacancies.view')) {
       items.push({ key: 'vacancies', labelKey: 'app.nav.items.vacancies', path: CRM_APP_PATHS.vacancies })
@@ -446,7 +641,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       items.push({ key: 'tasks', labelKey: 'app.nav.items.tasks', path: CRM_APP_PATHS.tasks })
       items.push({ key: 'inbox', labelKey: 'app.nav.items.inbox', path: CRM_APP_PATHS.inbox })
       if (canUseCommunicationsFeature('calendar')) {
-        items.push({ key: 'calendar', labelKey: 'app.nav.items.calendar', path: CRM_APP_PATHS.calendar })
+        items.push({ key: 'calendar', labelKey: 'app.nav.items.calendar', path: CRM_APP_PATHS.workCalendar })
       }
       if (!isClientTenant) {
         items.push({
@@ -516,6 +711,22 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     }
   }
 
+  const dismissNotifGroup = async (ids: string[]) => {
+    if (ids.length === 0) return
+    const idSet = new Set(ids.map(String))
+    try {
+      await markNotificationsRead({ ids })
+      setNotifItems((prev) => prev.filter((i) => !idSet.has(String(i.id))))
+      lastUnreadNotificationsRef.current = lastUnreadNotificationsRef.current.filter(
+        (i) => !idSet.has(String(i.id)),
+      )
+      setBellAttentionCount(computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount))
+      setCommPollKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
+  }
+
   const dismissThread = async (threadId: string) => {
     try {
       await markCommunicationThreadRead(threadId)
@@ -540,6 +751,71 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     } catch {
       // ignore
     }
+  }
+
+  const clearAllNotificationsOnly = async () => {
+    try {
+      await markNotificationsRead({ markAll: true })
+      setNotifItems([])
+      lastUnreadNotificationsRef.current = []
+      setBellAttentionCount(computeBellAttentionCount([], pendingHandoffsCount))
+      setCommPollKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
+  }
+
+  const clearAllThreadsOnly = async () => {
+    const threadsSnap = [...panelThreads]
+    if (threadsSnap.length === 0) return
+    try {
+      await Promise.all(threadsSnap.map((th) => markCommunicationThreadRead(th.id).catch(() => {})))
+      setPanelThreads([])
+      setCommPollKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
+  }
+
+  const clearVisiblePanelItems = async () => {
+    const notifIds = visiblePanelTargets.notifIds
+    const threadIds = visiblePanelTargets.threadIds
+    if (notifIds.length === 0 && threadIds.length === 0) return
+    const notifSet = new Set(notifIds.map(String))
+    const threadSet = new Set(threadIds.map(String))
+    try {
+      if (notifIds.length > 0) {
+        await markNotificationsRead({ ids: notifIds })
+      }
+      if (threadIds.length > 0) {
+        await Promise.all(threadIds.map((id) => markCommunicationThreadRead(id).catch(() => {})))
+      }
+      if (notifIds.length > 0) {
+        setNotifItems((prev) => prev.filter((i) => !notifSet.has(String(i.id))))
+        lastUnreadNotificationsRef.current = lastUnreadNotificationsRef.current.filter(
+          (i) => !notifSet.has(String(i.id)),
+        )
+        setBellAttentionCount(
+          computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount),
+        )
+      }
+      if (threadIds.length > 0) {
+        setPanelThreads((prev) => prev.filter((t) => !threadSet.has(String(t.id))))
+      }
+      setCommPollKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
+  }
+
+  const resetNotifPanelView = () => {
+    setNotifPanelFilter('all')
+    setNotifPanelSort('urgent')
+  }
+
+  const focusSlaNotifPanelView = () => {
+    setNotifPanelFilter('sla')
+    setNotifPanelSort('urgent')
   }
 
   const handleSubmitSearch = () => {
@@ -625,7 +901,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               height={32}
             />
           </a>
-          {isTrialTenant ? (
+          {isTrialTenant && !isSuperAdmin ? (
             <span
               className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800"
               title={t('app.topbar.trial_badge_hint')}
@@ -660,6 +936,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             <span>{t('app.topbar.search.open')}</span>
           </button>
 
+          {can('notifications.view') ? <TodayTasksPeek /> : null}
+
           {can('notifications.view') && (
             <div className="relative" ref={notifRef}>
               <button
@@ -691,11 +969,81 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                         {notifLoading
                           ? t('common.loading')
                           : t('app.topbar.notifications.panel_subtitle', {
-                              values: { count: unifiedPanelRows.length },
+                              values: { count: filteredUnifiedPanelRows.length },
                             })}
                       </p>
                     </div>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('app.topbar.notifications.filter_group_label')}>
+                      {(
+                        [
+                          ['all', 'filter_all'],
+                          ['sla', 'filter_sla'],
+                          ['tasks', 'filter_tasks'],
+                          ['messages', 'filter_messages'],
+                          ['system', 'filter_system'],
+                        ] as const
+                      ).map(([key, labelKey]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={[
+                            'rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition',
+                            notifPanelFilter === key
+                              ? 'border-brand-600 bg-brand-50 text-brand-800'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                          ].join(' ')}
+                          aria-pressed={notifPanelFilter === key}
+                          onClick={() => setNotifPanelFilter(key)}
+                        >
+                          {t(`app.topbar.notifications.${labelKey}`)} ({notifPanelFilterCounts[key]})
+                        </button>
+                      ))}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-[11px] font-semibold">
+                        <button
+                          type="button"
+                          className={[
+                            'rounded-md px-2 py-1',
+                            notifPanelSort === 'urgent'
+                              ? 'bg-brand-600 text-white'
+                              : 'text-slate-600 hover:bg-slate-50',
+                          ].join(' ')}
+                          onClick={() => setNotifPanelSort('urgent')}
+                          aria-pressed={notifPanelSort === 'urgent'}
+                        >
+                          {t('app.topbar.notifications.sort_urgent')}
+                        </button>
+                        <button
+                          type="button"
+                          className={[
+                            'rounded-md px-2 py-1',
+                            notifPanelSort === 'newest'
+                              ? 'bg-brand-600 text-white'
+                              : 'text-slate-600 hover:bg-slate-50',
+                          ].join(' ')}
+                          onClick={() => setNotifPanelSort('newest')}
+                          aria-pressed={notifPanelSort === 'newest'}
+                        >
+                          {t('app.topbar.notifications.sort_newest')}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={focusSlaNotifPanelView}
+                        disabled={notifLoading || (notifPanelFilter === 'sla' && notifPanelSort === 'urgent')}
+                      >
+                        {t('app.topbar.notifications.focus_sla')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={resetNotifPanelView}
+                        disabled={notifLoading || (notifPanelFilter === 'all' && notifPanelSort === 'urgent')}
+                      >
+                        {t('app.topbar.notifications.reset_view')}
+                      </button>
                       <button
                         type="button"
                         className="btn-secondary btn-xs"
@@ -703,6 +1051,34 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                         disabled={notifLoading}
                       >
                         {t('app.reminders.actions.refresh')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={() => void clearVisiblePanelItems()}
+                        disabled={
+                          notifLoading ||
+                          (visiblePanelTargets.notifIds.length === 0 &&
+                            visiblePanelTargets.threadIds.length === 0)
+                        }
+                      >
+                        {t('app.topbar.notifications.clear_visible')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={() => void clearAllNotificationsOnly()}
+                        disabled={notifLoading || notifItems.length === 0}
+                      >
+                        {t('app.topbar.notifications.clear_notifications')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={() => void clearAllThreadsOnly()}
+                        disabled={notifLoading || panelThreads.length === 0}
+                      >
+                        {t('app.topbar.notifications.clear_threads')}
                       </button>
                       <button
                         type="button"
@@ -719,7 +1095,13 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                     {!notifError && unifiedPanelRows.length === 0 && !notifLoading && (
                       <p className="text-sm text-slate-500">{t('app.reminders.states.empty')}</p>
                     )}
-                    {unifiedPanelRows.map((row) => {
+                    {!notifError &&
+                      unifiedPanelRows.length > 0 &&
+                      filteredUnifiedPanelRows.length === 0 &&
+                      !notifLoading && (
+                        <p className="text-sm text-slate-500">{t('app.topbar.notifications.filter_empty')}</p>
+                      )}
+                    {filteredAndSortedPanelRows.map((row) => {
                       const dateLocale = localeMap[locale as keyof typeof localeMap] || enUS
                       if (row.kind === 'thread') {
                         const th = row.thread
@@ -769,6 +1151,74 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                   >
                                     {t('app.topbar.notifications.clear')}
                                   </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      if (row.kind === 'notif_group') {
+                        const repr = row.representative
+                        const when = repr.created_at
+                          ? formatDistanceToNow(new Date(repr.created_at), { addSuffix: true, locale: dateLocale })
+                          : ''
+                        const reprTitle = getNotificationTitle(repr)
+                        const groupTitle = t('app.topbar.notifications.reminder_group_title', {
+                          values: { count: row.count },
+                          defaultValue: `${row.count} pending tasks for this entity`,
+                        })
+                        const description = reprTitle
+                        const openPath = resolveNotificationOpenPath(repr, { canInboxDeepLink })
+                        const ids = row.items.map((n) => String(n.id)).filter(Boolean)
+                        return (
+                          <div
+                            key={`nfgrp-${row.key}`}
+                            className="rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2 shadow-sm"
+                          >
+                            <div className="flex min-w-0 gap-2">
+                              <span className="mt-0.5 shrink-0 text-amber-700" aria-hidden>
+                                <IconChecklist size={20} stroke={1.8} />
+                              </span>
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">
+                                    {groupTitle}
+                                  </p>
+                                  <span className="inline-flex items-center rounded-full bg-amber-200/80 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                                    ×{row.count}
+                                  </span>
+                                </div>
+                                {description ? (
+                                  <p className="break-words text-xs text-slate-600 line-clamp-2">
+                                    {description}
+                                  </p>
+                                ) : null}
+                                <p className="text-[11px] uppercase tracking-wide text-slate-400">{when}</p>
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  {openPath ? (
+                                    <button
+                                      type="button"
+                                      className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+                                      onClick={() => {
+                                        setNotifOpen(false)
+                                        navigate(openPath)
+                                      }}
+                                    >
+                                      {t('app.topbar.notifications.open')}
+                                    </button>
+                                  ) : null}
+                                  {ids.length > 0 ? (
+                                    <button
+                                      type="button"
+                                      className="text-xs font-semibold text-slate-600 hover:text-slate-800"
+                                      onClick={() => void dismissNotifGroup(ids)}
+                                    >
+                                      {t('app.topbar.notifications.clear_group', {
+                                        values: { count: row.count },
+                                        defaultValue: `Clear all (${row.count})`,
+                                      })}
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>

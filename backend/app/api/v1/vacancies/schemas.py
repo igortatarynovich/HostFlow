@@ -2,9 +2,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
 from uuid import UUID
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from backend.app.models.vacancy import EmploymentType
+from backend.app.models.vacancy import EmploymentType, normalize_vacancy_status
+
+
+# Phase 2.6.D Stage A — single normalizer applied to every entry/exit
+# point in the vacancy schema. Aliases (`paused → on_hold`) and unknown
+# values are coerced here so downstream code (NBA, list filters,
+# analytics) can rely on a canonical set without repeating the rules.
+def _normalize_status_field(value: Any) -> Any:
+    if value is None:
+        return None
+    return normalize_vacancy_status(value)
+
 
 class VacancyIn(BaseModel):
     company_id: UUID
@@ -26,6 +37,14 @@ class VacancyIn(BaseModel):
         le=9999,
         description="Planned positions to fill; omit or 0 for none",
     )
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value: Any) -> Any:
+        if value is None:
+            return "open"
+        return normalize_vacancy_status(value)
+
 
 class VacancyOut(BaseModel):
     id: str
@@ -55,6 +74,18 @@ class VacancyOut(BaseModel):
     candidate_count: int = 0
     last_candidate_activity_at: Optional[datetime] = None
     headcount_target: Optional[int] = None
+
+    # Phase 2.6.D Stage A — emit canonical values to clients even when
+    # the row in the database still holds a legacy alias (`paused`). The
+    # alembic migration in Stage B rewrites stored rows; this validator
+    # protects the contract during the rollout window.
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status_out(cls, value: Any) -> Any:
+        if value is None:
+            return "open"
+        return normalize_vacancy_status(value)
+
 
 class VacancyPatch(BaseModel):
     title: Optional[str] = None
@@ -88,3 +119,11 @@ class VacancyPatch(BaseModel):
         description="Set planned headcount; send 0 or null with field present to clear",
     )
     model_config = ConfigDict(validate_by_name=True)
+
+    # Phase 2.6.D Stage A — apply normalization to all three status entry
+    # points so legacy clients sending `state=paused` or `stage=paused`
+    # behave identically to canonical `status=on_hold`.
+    @field_validator("status", "status_alt1", "status_alt2", mode="before")
+    @classmethod
+    def _normalize_status(cls, value: Any) -> Any:
+        return _normalize_status_field(value)

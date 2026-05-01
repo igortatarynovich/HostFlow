@@ -32,7 +32,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates import repo as cand_repo
 from backend.app.api.v1.invoices import crud as invoice_crud
-from backend.app.api.v1.candidates.acl import resolve_candidate_acl
 from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.auth.deps import Role, UserCtx
 from backend.app.modules.companies.service import list_companies_service
@@ -237,7 +236,8 @@ async def _search_candidates_slice(
     q: str,
     limit: int,
 ) -> list[dict[str, Any]]:
-    from backend.app.api.v1.candidates.router import ACL_RESTRICTED_ROLES, _apply_client_view_mask
+    from backend.app.api.v1.candidates.acl import apply_agency_acl_filters
+    from backend.app.api.v1.candidates.router import _apply_client_view_mask
 
     try:
         await db.execute(
@@ -263,14 +263,8 @@ async def _search_candidates_slice(
         return []
     filters["q"] = qs
 
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        acl = await resolve_candidate_acl(db, scope_tenant, current_user)
-        if not client_tenant and acl.is_empty():
-            return []
-        if not client_tenant:
-            filters["allowed_company_ids"] = list(acl.company_ids)
-            filters["allowed_vacancy_ids"] = list(acl.vacancy_ids)
-            filters["allowed_manager_ids"] = list(acl.manager_ids)
+    if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
+        return []
 
     raw_rows: list[Any]
     if client_tenant:

@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 
 from backend.app.constants.spa_paths import SETTINGS_BILLING
 from backend.app.models.tenant import Tenant
+from backend.app.services.plan_feature_gates import TRIAL_PORTAL_SHARES_CAP
 
 _USAGE_ROOT = "usage_v1"
 _MONTH_BUCKET_KEY = "portal_active_candidates_by_month_v1"
@@ -81,28 +82,32 @@ def subscription_dict_from_tenant_settings(tenant: Tenant) -> dict[str, Any]:
 
 
 def resolve_plan_code_for_portal_cap(subscription: dict[str, Any] | None, license_row: Any | None) -> str:
-    """Align with billing._plan_code_for_usage_caps (trial → starter)."""
+    """Align with billing._plan_code_for_usage_caps."""
     sub = subscription if isinstance(subscription, dict) else {}
     st = str(sub.get("status") or "").strip().lower()
     if st == "trial":
-        return "starter"
+        return "trial"
     raw = str(sub.get("plan_code") or "").strip().lower()
-    if raw in ("starter", "team", "pro"):
+    if raw in ("starter", "team", "pro", "enterprise"):
         return raw
     if license_row is not None:
         lic = str(getattr(license_row, "plan", None) or "").strip().lower()
-        if lic in ("starter", "team", "pro"):
+        if lic in ("starter", "team", "pro", "enterprise"):
             return lic
     return "starter"
 
 
 def monthly_cap_for_plan_code(plan_code: str) -> int | None:
     p = (plan_code or "").strip().lower()
+    if p == "trial":
+        return TRIAL_PORTAL_SHARES_CAP
     if p == "starter":
         return None
     if p == "team":
         return 300
     if p == "pro":
+        return 2000
+    if p == "enterprise":
         return 2000
     return None
 

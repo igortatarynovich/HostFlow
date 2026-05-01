@@ -3,7 +3,7 @@ from typing import List, Tuple
 from uuid import UUID
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Body, Header
 from fastapi import Query
 from sqlalchemy import select, func, update, text, or_
 from sqlalchemy import exists
@@ -84,8 +84,14 @@ from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.tenant import Tenant, TenantLicense, TenantLink
 from backend.app.api.v1.candidates.acl import (
     CandidateACL,
+    apply_agency_acl_filters,
     ensure_candidate_access,
     resolve_candidate_acl,
+    candidate_acl_sql_or_clause,
+)
+from backend.app.auth.hiring_workspace_roles import (
+    HIRING_CANDIDATE_MUTATE_ROLES,
+    HIRING_CANDIDATE_VIEW_ROLES,
 )
 from backend.app.services.tenant_visibility import get_tenant_visibility
 from backend.app.services.handoff import (
@@ -119,24 +125,9 @@ from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES, is_pipe
 
 
 router = APIRouter()
-#
-# Роли, которым разрешён доступ к CRUD кандидатов и изменению заметок/статусов
-ALLOW_MANAGER_ROLES = (
-    Role.manager,
-    Role.admin,
-    Role.recruiter,
-    Role.administrator,  # добавлено: токен с ролью "administrator" теперь проходит
-)
-CANDIDATE_VIEW_ROLES = (
-    *ALLOW_MANAGER_ROLES,
-    Role.client_manager,
-    Role.client_processor,
-)
-ACL_RESTRICTED_ROLES = {
-    Role.recruiter.value,
-    Role.supervisor.value,
-    Role.manager.value,
-}
+
+ALLOW_MANAGER_ROLES = HIRING_CANDIDATE_MUTATE_ROLES
+CANDIDATE_VIEW_ROLES = HIRING_CANDIDATE_VIEW_ROLES
 
 # Helpers to read profile fields from extra
 from typing import Any as _Any
@@ -405,6 +396,16 @@ def _detect_candidate_override_changes(
     return changed_fields, diff_payload
 
 
+def _candidate_patch_is_close_action(payload: Dict[str, Any]) -> bool:
+    stage_raw = payload.get("stage")
+    status_raw = payload.get("status")
+    if stage_raw is not None and is_pipeline_completed_stage(str(stage_raw)):
+        return True
+    if status_raw is not None and is_pipeline_completed_stage(str(status_raw)):
+        return True
+    return False
+
+
 def _mask_candidate_pre_handoff(d: Dict[str, Any]) -> Dict[str, Any]:
     """
     RODO mask for client viewing candidates before handoff (no pending/accepted).
@@ -580,7 +581,24 @@ async def list_candidates(
         default=None,
         description="Фильтр по избранным кандидатам.",
     ),
-    manager_id: UUID | None = None,
+    manager_id: UUID | None = Query(
+        default=None,
+        description=(
+            "Legacy filter name for the candidate assignee user id. "
+            "Prefer ``recruiter_id`` (Phase 2.6.G-5 Stage F canon). Both names "
+            "are accepted for one release cycle; if both are supplied, "
+            "``recruiter_id`` wins."
+        ),
+    ),
+    recruiter_id: UUID | None = Query(
+        default=None,
+        description=(
+            "Canonical filter by the candidate assignee user id "
+            "(``Candidate.recruiter_id``). Phase 2.6.G-5 Stage F — replaces "
+            "``manager_id``; during the transition both names funnel into the "
+            "same OR-match on ``Candidate.manager`` / ``Candidate.recruiter_id``."
+        ),
+    ),
     vacancy_id: UUID | None = Query(default=None, alias="vacancy_id"),
     # str (not UUID): frontend sends CSV for multi-select; handler splits below.
     vacancy: str | None = Query(default=None, alias="vacancy"),
@@ -670,10 +688,9 @@ async def list_candidates(
     filters: dict[str, object] = {}
     # Client tenant scope is from tenant_links in repo, not from ACL; avoid returning 0 on empty ACL.
     client_tenant = await is_client_tenant_for_list(db, scope_tenant)
-    # Do not apply own_company filter for client tenants:
-    # handoff candidates can belong to agency/linked company and would be filtered out.
-    if own_company_id and not client_tenant:
-        filters["own_company_id"] = own_company_id
+    # Do not scope the generic candidates list by own company.
+    # The frontend currently sends X-Own-Company-Id globally from persisted
+    # workspace state, which unintentionally shrinks the main tenant-wide list.
     
     # Debug logging для диагностики определения клиентского тенанта
     user_email = (getattr(current_user, "email", None) or "").lower().strip()
@@ -709,15 +726,8 @@ async def list_candidates(
     response.headers["X-Apply-Client-View"] = "1" if apply_client_view else "0"
     response.headers["X-User-Role"] = user_role_lower
 
-    acl: CandidateACL | None = None
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        acl = await resolve_candidate_acl(db, scope_tenant, current_user)
-        if not client_tenant and acl.is_empty():
-            return {"total": 0, "items": []}
-        if not client_tenant:
-            filters["allowed_company_ids"] = list(acl.company_ids)
-            filters["allowed_vacancy_ids"] = list(acl.vacancy_ids)
-            filters["allowed_manager_ids"] = list(acl.manager_ids)
+    if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
+        return {"total": 0, "items": []}
 
     if status:
         s = status.strip()
@@ -776,8 +786,16 @@ async def list_candidates(
     if is_favorite is not None:
         filters["is_favorite"] = is_favorite
 
-    if manager_id:
-        mid = str(manager_id)
+    # Phase 2.6.G-5 Stage F — ``recruiter_id`` is the new canonical query
+    # name; ``manager_id`` stays as a BC alias for one release. When both
+    # are sent, ``recruiter_id`` wins. Either way we funnel into
+    # ``filters["manager"]`` so ``repo._build_conditions`` does the OR
+    # across ``Candidate.manager`` and ``Candidate.recruiter_id`` (Stage D
+    # invariant — the two columns are kept in lock-step by
+    # ``record_candidate_reassignment``).
+    _assignee_id = recruiter_id or manager_id
+    if _assignee_id:
+        mid = str(_assignee_id)
         filters["manager"] = mid
         filters["manager_id"] = mid  # compatibility with legacy consumers
 
@@ -1339,7 +1357,21 @@ async def list_candidates_no_next_action(
     limit: int = 50,
     offset: int = 0,
     stages: Optional[List[str]] = Query(default=None, description="Optional list of stage codes to include."),
-    manager_id: UUID | None = Query(default=None, description="Filter by candidate.manager user id."),
+    manager_id: UUID | None = Query(
+        default=None,
+        description=(
+            "Legacy filter name for the candidate assignee user id. "
+            "Prefer ``recruiter_id`` (Phase 2.6.G-5 Stage F canon)."
+        ),
+    ),
+    recruiter_id: UUID | None = Query(
+        default=None,
+        description=(
+            "Canonical filter by candidate assignee user id "
+            "(``Candidate.recruiter_id``). Phase 2.6.G-5 Stage F — when both "
+            "``recruiter_id`` and ``manager_id`` are sent, ``recruiter_id`` wins."
+        ),
+    ),
     intake_application_kind: str | None = Query(
         default=None,
         description="Same as GET /candidates: client | candidate (public intake).",
@@ -1396,8 +1428,14 @@ async def list_candidates_no_next_action(
         clean = [str(s).strip() for s in stages if str(s).strip()]
         if clean:
             where.append(Candidate.stage.in_(clean))
-    if manager_id:
-        where.append(Candidate.manager == str(manager_id))
+    # Phase 2.6.G-5 Stage F — accept both canonical ``recruiter_id`` and
+    # legacy ``manager_id`` names; the OR on ``Candidate.manager`` /
+    # ``Candidate.recruiter_id`` is kept for transitional data safety
+    # even though Stage D guarantees the two columns are in sync.
+    _assignee_id = recruiter_id or manager_id
+    if _assignee_id:
+        mid = str(_assignee_id)
+        where.append(or_(Candidate.manager == mid, Candidate.recruiter_id == mid))
 
     if intake_application_kind:
         ak = intake_application_kind.strip().lower()
@@ -1407,6 +1445,15 @@ async def list_candidates_no_next_action(
                 where.append(ak_expr == "client")
             else:
                 where.append(ak_expr != "client")
+
+    client_tenant_acl = await is_client_tenant_for_list(db, scope_tenant)
+    acl_no_next = await resolve_candidate_acl(db, scope_tenant, current_user)
+    if not acl_no_next.unrestricted:
+        if not client_tenant_acl and acl_no_next.is_empty():
+            return {"total": 0, "items": []}
+        frag = candidate_acl_sql_or_clause(acl_no_next, client_tenant=client_tenant_acl)
+        if frag is not None:
+            where.append(frag)
 
     count_row = await db.execute(select(func.count()).select_from(Candidate).where(*where))
     total = int(count_row.scalar() or 0)
@@ -1530,9 +1577,8 @@ async def bulk_update_stage(
     if not s:
         raise HTTPException(status_code=422, detail="Stage must not be empty")
 
-    acl: CandidateACL | None = None
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        acl = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl = None if acl_raw.unrestricted else acl_raw
 
     results = await cand_service.bulk_update_stage(
         db=db,
@@ -1559,9 +1605,8 @@ async def bulk_update_manager(
     if not payload.candidate_ids:
         return []
 
-    acl: CandidateACL | None = None
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        acl = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl = None if acl_raw.unrestricted else acl_raw
 
     results = await cand_service.bulk_update_manager(
         db=db,
@@ -1600,9 +1645,8 @@ async def bulk_delete_candidates(
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
-    acl: CandidateACL | None = None
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        acl = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl = None if acl_raw.unrestricted else acl_raw
 
     results = await cand_service.bulk_delete_candidates(
         db=db,
@@ -1674,9 +1718,8 @@ async def create_candidate(
         if data.get(fk) is not None:
             data[fk] = str(data[fk])
 
-    acl: CandidateACL | None = None
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        acl = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
+    acl = None if acl_raw.unrestricted else acl_raw
 
     created = await cand_service.create_candidate_full(
         db=db,
@@ -1736,13 +1779,12 @@ async def get_candidate(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(
-            db,
-            tenant_id_str,
-            str(candidate_id),
-            current_user,
-        )
+    await ensure_candidate_access(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        current_user,
+    )
     # Determine whether this tenant is a "client" for scope purposes
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
     # ВАЖНО: Для клиентских тенантов маскирование применяется ВСЕГДА, независимо от роли
@@ -1846,8 +1888,7 @@ async def get_candidate_work_panel(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
     row = await cand_repo.get_candidate_with_labels(
@@ -1888,8 +1929,7 @@ async def get_candidate_timeline(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     # Ensure candidate exists in scope.
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
@@ -1922,8 +1962,7 @@ async def get_candidate_change_log(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
     row = await cand_repo.get_candidate_with_labels(
@@ -1986,8 +2025,7 @@ async def create_candidate_upload_link(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
     candidate = await cand_repo.get_candidate(
@@ -2055,8 +2093,7 @@ async def notify_candidate(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
     candidate = await cand_repo.get_candidate(
@@ -2128,13 +2165,12 @@ async def get_candidate_stage_history(
     visibility = get_tenant_visibility(db, tenant_id)
     candidate_str = str(candidate_id)
 
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(
-            db,
-            tenant_id,
-            candidate_str,
-            current_user,
-        )
+    await ensure_candidate_access(
+        db,
+        tenant_id,
+        candidate_str,
+        current_user,
+    )
 
     client_tenant = await is_client_tenant(db, tenant_id)
     candidate = await cand_repo.get_candidate(
@@ -2165,7 +2201,7 @@ async def get_candidate_stage_history(
 # Partially update candidate
 @router.patch(
     "/{candidate_id}",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
     summary="Partially update candidate",
 )
 async def patch_candidate(
@@ -2177,15 +2213,14 @@ async def patch_candidate(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    acl: CandidateACL | None = None
-    if current_user.role in ACL_RESTRICTED_ROLES:
-        await ensure_candidate_access(
-            db,
-            tenant_id_str,
-            str(candidate_id),
-            current_user,
-        )
-        acl = await resolve_candidate_acl(db, tenant_id_str, current_user)
+    await ensure_candidate_access(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        current_user,
+    )
+    acl_raw = await resolve_candidate_acl(db, tenant_id_str, current_user)
+    acl: CandidateACL | None = None if acl_raw.unrestricted else acl_raw
 
     # Handoff permissions: agency can edit only if no accepted handoff; client only with accepted
     client_tenant = await is_client_tenant(db, tenant_id_str)
@@ -2215,9 +2250,18 @@ async def patch_candidate(
         "status_reason",
         "company_id",
         "vacancy_id",
-        # accept both "manager" (DB column) and "manager_id" (frontend alias)
+        # Phase 2.6.G-5 Stage F — accept all three names for the assignee:
+        #   * ``recruiter_id``: canonical column (FK to ``users.id``); what
+        #     Stage-F-aware frontends will send.
+        #   * ``manager``: legacy DB column (shadow-written in lock-step).
+        #   * ``manager_id``: legacy frontend alias, mapped to ``manager``
+        #     below. Service layer (``update_candidate_full``) merges the
+        #     three into ``changes["manager"]`` + ``changes["recruiter_id"]``
+        #     via ``record_candidate_reassignment`` — see
+        #     ``docs/specs/manager-assignment.md`` §1.2.1.
         "manager",
         "manager_id",
+        "recruiter_id",
         "notes",
         "note",
         "extra",
@@ -2285,6 +2329,9 @@ async def patch_candidate(
             "vacancy_id",
             "manager",
             "manager_id",
+            # Phase 2.6.G-5 Stage F — canonical assignee name MUST trigger
+            # the same billing / side-effect gate as the legacy names.
+            "recruiter_id",
             "override_reason",
         }
     )
@@ -2294,7 +2341,14 @@ async def patch_candidate(
     ).scalar_one_or_none()
     if billing_restrictions.tenant_billing_blocks_side_effect_writes(tenant_row, lic_row):
         if _candidate_patch_side_effect_fields.intersection(data.keys()):
-            billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
+            if _candidate_patch_is_close_action(data):
+                billing_restrictions.ensure_billing_allows_action(
+                    tenant_row,
+                    lic_row,
+                    action="candidate_close",
+                )
+            else:
+                billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
 
     current_candidate = await cand_repo.get_candidate(
         db,
@@ -2409,5 +2463,7 @@ async def delete_candidate(
 
 
 from backend.app.api.v1.candidates import pipeline_overrides_api as _pipeline_overrides_api  # noqa: E402
+from backend.app.api.v1.candidates import next_action_api as _next_action_api  # noqa: E402
 
 router.include_router(_pipeline_overrides_api.router)
+router.include_router(_next_action_api.router)

@@ -9,9 +9,14 @@ from uuid import uuid4
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.user import User
 from backend.app.models.communication import CommunicationThread
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.user_notification import UserNotification
+from backend.app.services.notification_settings_v1 import (
+    normalize_notification_settings_v1,
+    should_skip_in_app_notification_v1,
+)
 
 NotificationPriority = Literal["critical", "high", "normal"]
 _VALID_PRIORITIES = frozenset({"critical", "high", "normal"})
@@ -64,8 +69,10 @@ def _notification_uos_group(event_type: str, payload: dict[str, Any]) -> str:
 
     if et in ("communications_sla_overdue", "communications_thread_escalated"):
         return "sla"
+    # Lead nudges are actionable work items, not comms SLA breaches — keep below "critical" tier
+    # so quiet hours and drawer grouping behave like tasks.
     if et in ("lead_no_next_action", "lead_stuck_stage"):
-        return "sla"
+        return "tasks"
     if et == "invoice_overdue" or "invoice_overdue" in source:
         return "sla"
     if source in ("leads_next_action_sla", "leads_stuck_stage_sla", "invoice_overdue_sla"):
@@ -196,7 +203,7 @@ async def create_notification(
     delivered_at: Optional[datetime] = None,
     dedupe_window_minutes: Optional[int] = None,
     priority: Optional[str] = None,
-) -> UserNotification:
+) -> Optional[UserNotification]:
     normalized_payload = _normalize_payload(
         event_type=event_type,
         payload=payload,
@@ -213,8 +220,24 @@ async def create_notification(
     normalized_payload["priority"] = resolved_priority
     dedupe_key = str(normalized_payload.get("dedupe_key") or "").strip() or None
 
+    now_utc = datetime.now(timezone.utc)
+    user_row = (
+        await db.execute(select(User).where(User.id == user_id, User.tenant_id == tenant_id).limit(1))
+    ).scalar_one_or_none()
+    if user_row is None:
+        user_row = (await db.execute(select(User).where(User.id == user_id).limit(1))).scalar_one_or_none()
+    extra = user_row.extra if user_row is not None and isinstance(user_row.extra, dict) else {}
+    settings_v1 = normalize_notification_settings_v1(extra.get("notification_settings_v1"))
+    if should_skip_in_app_notification_v1(
+        settings_v1,
+        now_utc=now_utc,
+        resolved_priority=str(resolved_priority),
+        channel=str(channel or "in_app"),
+    ):
+        return None
+
     if dedupe_window_minutes is not None and int(dedupe_window_minutes) > 0:
-        now = datetime.now(timezone.utc)
+        now = now_utc
         since = now - timedelta(minutes=max(1, int(dedupe_window_minutes)))
         base_filters = [
             UserNotification.tenant_id == tenant_id,
@@ -276,6 +299,7 @@ async def list_notifications(
     limit: int = 50,
     include_read: bool = False,
     scope: str = "direct",
+    include_completed_entities: bool = False,
 ) -> List[UserNotification]:
     # Current data model stores only user-bound notifications.
     # Keep `scope` parameter for API compatibility and future expansion.
@@ -291,6 +315,31 @@ async def list_notifications(
     )
     if not include_read:
         stmt = stmt.where(UserNotification.is_read.is_(False))
+    # G-2: hide bell rows for candidates in terminal stages or soft-deleted.
+    if not include_completed_entities:
+        # Late import keeps user_notifications.py free of cyclic imports
+        # (candidate_lifecycle imports UserNotification).
+        from backend.app.services.candidate_lifecycle import (
+            exclude_completed_candidate_entities_clause,
+        )
+        from backend.app.services.lead_lifecycle import (
+            exclude_completed_lead_entities_clause,
+        )
+
+        stmt = stmt.where(
+            and_(
+                exclude_completed_candidate_entities_clause(
+                    tenant_id,
+                    entity_type_col=UserNotification.entity_type,
+                    entity_id_col=UserNotification.entity_id,
+                ),
+                exclude_completed_lead_entities_clause(
+                    tenant_id,
+                    entity_type_col=UserNotification.entity_type,
+                    entity_id_col=UserNotification.entity_id,
+                ),
+            )
+        )
     rows = await db.execute(stmt)
     out = list(rows.scalars().all())
 
@@ -546,6 +595,90 @@ async def cleanup_stale_sla_notifications_for_tenant(
         cleaned_total += int(cleaned or 0)
         processed += 1
     return {"users_processed": processed, "cleaned": cleaned_total}
+
+
+_REMINDER_BELL_EVENT_TYPES: tuple[str, ...] = ("reminder_due", "reminder_overdue")
+
+
+async def mark_reminder_bell_notifications_read(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    reminder: Reminder,
+    reason: str = "reminder_state_changed",
+) -> int:
+    """G-9: silence the bell once a reminder is acted on (complete / snooze / cancel).
+
+    Resolves all unread `reminder_due / reminder_overdue` notifications whose
+    payload pointed at this reminder (by `reminder.id`) — across recipients —
+    and marks them as read.
+
+    Bell + tasks page are two surfaces for the same task; the moment the user
+    acts on one of them the other should stop nagging.
+    """
+    if reminder is None:
+        return 0
+    reminder_id = str(getattr(reminder, "id", "") or "").strip()
+    tenant_id_str = str(tenant_id or "").strip()
+    if not reminder_id or not tenant_id_str:
+        return 0
+
+    entity_type = (reminder.entity_type or "").strip() or None
+    entity_id = (reminder.entity_id or "").strip() or None
+
+    stmt = select(UserNotification).where(
+        UserNotification.tenant_id == tenant_id_str,
+        UserNotification.event_type.in_(_REMINDER_BELL_EVENT_TYPES),
+        UserNotification.is_read.is_(False),
+    )
+    # Narrow by entity when we have one; falls back to event_type-only otherwise.
+    if entity_type and entity_id:
+        stmt = stmt.where(
+            UserNotification.entity_type == entity_type,
+            UserNotification.entity_id == entity_id,
+        )
+
+    rows = await db.execute(stmt)
+    candidates = list(rows.scalars().all())
+    if not candidates:
+        return 0
+
+    ids_to_close: list[str] = []
+    for n in candidates:
+        payload = n.payload if isinstance(n.payload, dict) else {}
+        # Match either via canonical reminder_id field or via dedupe_key suffix.
+        rid = str(payload.get("reminder_id") or "").strip()
+        dedupe_key = str(payload.get("dedupe_key") or "").strip()
+        if rid == reminder_id or (dedupe_key and reminder_id in dedupe_key):
+            ids_to_close.append(str(n.id))
+
+    if not ids_to_close:
+        return 0
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        update(UserNotification)
+        .where(
+            UserNotification.tenant_id == tenant_id_str,
+            UserNotification.id.in_(ids_to_close),
+            UserNotification.is_read.is_(False),
+        )
+        .values(is_read=True, read_at=now, updated_at=now)
+    )
+    closed = int(result.rowcount or 0)
+    if closed:
+        # Stash a reason on the row so /app/tasks explainability can show "auto-closed because reminder snoozed".
+        # Best-effort: ignore failures, this is purely diagnostic.
+        for n in candidates:
+            if str(n.id) not in ids_to_close:
+                continue
+            payload = dict(n.payload) if isinstance(n.payload, dict) else {}
+            meta = dict(payload.get("auto_closed") or {}) if isinstance(payload.get("auto_closed"), dict) else {}
+            meta["reason"] = reason
+            meta["at"] = now.isoformat()
+            payload["auto_closed"] = meta
+            n.payload = payload
+    return closed
 
 
 async def mark_notifications_read(

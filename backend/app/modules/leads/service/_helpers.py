@@ -372,7 +372,7 @@ async def _apply_leads_processing_mode_v1_to_normalized(
     downgrade: Optional[str] = None
     if stored == "automatic":
         plan = await resolve_tenant_plan_code(db, tenant_id)
-        if not plan_allows_team_tier_features(plan):
+        if not plan_allows_team_tier_features(plan, tenant_id=tenant_id):
             effective = "manual"
             downgrade = "team_plan_required"
     normalized["leads_processing_mode_configured_v1"] = stored

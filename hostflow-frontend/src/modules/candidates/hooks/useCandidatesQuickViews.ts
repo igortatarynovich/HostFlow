@@ -10,6 +10,7 @@ type QuickViewKey =
   | 'docs_incomplete'
   | 'ready_for_handoff'
   | 'new_this_week'
+  | 'employment_pending'
 
 type QuickDocFilter = {
   key: string
@@ -37,6 +38,7 @@ type UseCandidatesQuickViewsArgs = {
   setManagerFilter: (value: string[]) => void
   setCreatedRange: (value: DateRangeFilter) => void
   setHandoffStatusFilter: (value: string) => void
+  setStageFilter: (value: string[]) => void
 }
 
 export function useCandidatesQuickViews({
@@ -52,6 +54,7 @@ export function useCandidatesQuickViews({
   setManagerFilter,
   setCreatedRange,
   setHandoffStatusFilter,
+  setStageFilter,
 }: UseCandidatesQuickViewsArgs) {
   type QuickViewParam = QuickViewKey | ''
 
@@ -147,6 +150,10 @@ export function useCandidatesQuickViews({
           setDocsStatusFilter(['ready'])
           break
         }
+        case 'employment_pending': {
+          setStageFilter(['employment_pending'])
+          break
+        }
         default:
           break
       }
@@ -172,6 +179,7 @@ export function useCandidatesQuickViews({
       setHandoffStatusFilter,
       setManagerFilter,
       setSearchParams,
+      setStageFilter,
     ],
   )
 
@@ -184,7 +192,11 @@ export function useCandidatesQuickViews({
       navigate(CANDIDATES_QUICK_VIEW_NAV_PATHS[key], { replace: true })
       return
     }
-    if (['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week'].includes(key)) {
+    if (
+      ['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week', 'employment_pending'].includes(
+        key,
+      )
+    ) {
       applyQuickViewFilters(key, { syncUrl: false })
     }
   }, [applyQuickViewFilters, filtersHydrated, navigate, quickViewParam])

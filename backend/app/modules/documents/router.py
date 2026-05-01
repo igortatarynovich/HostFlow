@@ -32,6 +32,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
+from backend.app.models.user import User
 from ...models.enums import (
     DocumentKind,
     DocumentProcessType,
@@ -121,6 +122,17 @@ from .validators import validate_meta
 
 router = APIRouter(prefix="/db", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+# G-8 stage 2.2: per-document "what to do next" CTA. Mounted as a sub-router
+# so the implementation lives in a small, single-purpose file. Must be
+# included BEFORE the inline `@router.get("/documents/{document_id}")`
+# below — Starlette matches in registration order and the bare
+# `/documents/{document_id}` would otherwise swallow
+# `/documents/{document_id}/next-action` and force FastAPI to validate the
+# literal string `next-action` as a UUID.
+from backend.app.modules.documents import next_action_api as _next_action_api  # noqa: E402
+
+router.include_router(_next_action_api.router)
 
 StatusFilter = Optional[str]
 
@@ -308,6 +320,8 @@ def _build_synthetic_documents(
                 reminders=[],
                 version=None,
                 last_check=None,
+                responsible_user_id=None,
+                responsible_name=None,
             )
         )
     return synthetic_docs
@@ -427,6 +441,42 @@ def _check_to_out(check) -> DocumentCheckOut:
         created_at=getattr(check, "created_at"),
     )
 
+async def _batch_candidate_recruiter_labels(
+    session: AsyncSession,
+    tenant_id: str,
+    candidate_ids: list[str],
+) -> dict[str, tuple[str | None, str | None]]:
+    """Map candidate_id -> (recruiter_user_id, recruiter_display_name) for registry columns."""
+    if not candidate_ids:
+        return {}
+    uniq = list(dict.fromkeys([c for c in candidate_ids if c]))
+    if not uniq:
+        return {}
+    stmt = select(Candidate.id, Candidate.recruiter_id).where(
+        Candidate.tenant_id == tenant_id,
+        Candidate.id.in_(uniq),
+    )
+    rows = (await session.execute(stmt)).all()
+    rid_by_cand: dict[str, str | None] = {
+        str(r[0]): (str(r[1]) if r[1] else None) for r in rows
+    }
+    recruiter_ids = {rid for rid in rid_by_cand.values() if rid}
+    name_by_uid: dict[str, str] = {}
+    if recruiter_ids:
+        ustmt = select(User.id, User.email, User.full_name).where(User.id.in_(recruiter_ids))
+        for uid, email, full_name in (await session.execute(ustmt)).all():
+            label = (full_name or "").strip() or (email or "").strip() or str(uid)
+            name_by_uid[str(uid)] = label
+    out: dict[str, tuple[str | None, str | None]] = {}
+    for cid in uniq:
+        rid = rid_by_cand.get(cid)
+        if not rid:
+            out[cid] = (None, None)
+        else:
+            out[cid] = (rid, name_by_uid.get(rid))
+    return out
+
+
 def _ruleset_to_out(record) -> RulesetVersionOut:
     ruleset_payload = normalize_ruleset_payload(getattr(record, "json_data", None))
     return RulesetVersionOut(
@@ -450,6 +500,8 @@ async def _document_to_out(
     doc,
     *,
     last_check=None,
+    responsible_user_id: str | None = None,
+    responsible_name: str | None = None,
 ) -> DocumentOut:
     await ensure_document_files(session, doc)
     reminders = await _load_reminders(session, doc.tenant_id, doc.id)
@@ -537,6 +589,25 @@ async def _document_to_out(
         reminders=reminders,
         version=getattr(doc, "version", None),
         last_check=last_check_out,
+        responsible_user_id=responsible_user_id,
+        responsible_name=responsible_name,
+    )
+
+
+async def _document_to_out_with_responsible(
+    session: AsyncSession,
+    tenant_id_for_candidate_lookup: str,
+    doc,
+    *,
+    last_check=None,
+) -> DocumentOut:
+    """Attach recruiter (candidate owner) display for single-document responses."""
+    m = await _batch_candidate_recruiter_labels(
+        session, tenant_id_for_candidate_lookup, [str(doc.candidate_id)]
+    )
+    rid, rname = m.get(str(doc.candidate_id), (None, None))
+    return await _document_to_out(
+        session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
     )
 
 
@@ -841,10 +912,18 @@ async def _list_documents_for_candidate(
             doc_tenant_id,
             [str(doc.id) for doc in docs],
         )
+    cand_labels = await _batch_candidate_recruiter_labels(
+        session, doc_tenant_id, [str(d.candidate_id) for d in docs]
+    )
     result: List[DocumentOut] = []
     for doc in docs:
         last_check = last_checks.get(str(doc.id)) if include_last_check else None
-        result.append(await _document_to_out(session, doc, last_check=last_check))
+        rid, rname = cand_labels.get(str(doc.candidate_id), (None, None))
+        result.append(
+            await _document_to_out(
+                session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+            )
+        )
 
     if fill_missing:
         ctx = _owner_context_or_400(owner_context, candidate_id, owner_context_defaults)
@@ -894,10 +973,18 @@ async def _list_documents_for_candidate(
                     doc_tenant_id,
                     [str(doc.id) for doc in docs],
                 )
+            cand_labels = await _batch_candidate_recruiter_labels(
+                session, doc_tenant_id, [str(d.candidate_id) for d in docs]
+            )
             result = []
             for doc in docs:
                 last_check = last_checks.get(str(doc.id)) if include_last_check else None
-                result.append(await _document_to_out(session, doc, last_check=last_check))
+                rid, rname = cand_labels.get(str(doc.candidate_id), (None, None))
+                result.append(
+                    await _document_to_out(
+                        session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+                    )
+                )
 
         serialized = [item.model_dump() for item in result]
         synthetic_docs = _build_synthetic_documents(
@@ -1046,10 +1133,18 @@ async def api_list_documents_legacy(
             last_checks = await get_last_document_checks_map(
                 session, str(tenant_id), [str(doc.id) for doc in docs]
             )
+        cand_labels = await _batch_candidate_recruiter_labels(
+            session, str(tenant_id), [str(d.candidate_id) for d in docs]
+        )
         result: List[DocumentOut] = []
         for doc in docs:
             last_check = last_checks.get(str(doc.id)) if include_last_check else None
-            result.append(await _document_to_out(session, doc, last_check=last_check))
+            rid, rname = cand_labels.get(str(doc.candidate_id), (None, None))
+            result.append(
+                await _document_to_out(
+                    session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+                )
+            )
         return result
 
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
@@ -1174,7 +1269,7 @@ async def api_create_candidate_document(
     )
     await session.commit()
     await session.refresh(doc)
-    return await _document_to_out(session, doc)
+    return await _document_to_out_with_responsible(session, cand_ctx.owner_tenant_id, doc)
 
 
 @router.get(
@@ -1210,7 +1305,7 @@ async def api_get_document(
         )
         last_check = last_map.get(str(document_id))
 
-    out = await _document_to_out(session, doc, last_check=last_check)
+    out = await _document_to_out_with_responsible(session, doc_tenant_id, doc, last_check=last_check)
     if include_checks:
         checks_payload = [_check_to_out(item) for item in checks]
     else:
@@ -1257,7 +1352,7 @@ async def api_patch_document(
     )
     await session.commit()
     await session.refresh(doc)
-    return await _document_to_out(session, doc)
+    return await _document_to_out_with_responsible(session, doc_tenant_id, doc)
 
 
 @router.delete("/documents/{document_id}", status_code=204)
@@ -1460,7 +1555,7 @@ async def api_check_document(
     )
     await session.commit()
     await session.refresh(doc)
-    return await _document_to_out(session, doc, last_check=check)
+    return await _document_to_out_with_responsible(session, doc_tenant_id, doc, last_check=check)
 
 
 async def fetch_candidate_documents_summary_response(
@@ -1512,11 +1607,19 @@ async def fetch_candidate_documents_summary_response(
     last_checks = await get_last_document_checks_map(
         session, cand_ctx.owner_tenant_id, doc_ids
     )
+    resp_pair = await _batch_candidate_recruiter_labels(
+        session, cand_ctx.owner_tenant_id, [str(candidate_id)]
+    )
+    rid, rname = resp_pair.get(str(candidate_id), (None, None))
     serialized_docs: List[Dict[str, Any]] = []
     for doc in docs:
         last_check = last_checks.get(str(doc.id))
         serialized_docs.append(
-            (await _document_to_out(session, doc, last_check=last_check)).model_dump()
+            (
+                await _document_to_out(
+                    session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+                )
+            ).model_dump()
         )
     summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
     checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
@@ -1544,7 +1647,15 @@ async def fetch_candidate_documents_summary_response(
             [str(doc.id) for doc in docs],
         )
         serialized_docs = [
-            (await _document_to_out(session, doc, last_check=last_checks.get(str(doc.id)))).model_dump()
+            (
+                await _document_to_out(
+                    session,
+                    doc,
+                    last_check=last_checks.get(str(doc.id)),
+                    responsible_user_id=rid,
+                    responsible_name=rname,
+                )
+            ).model_dump()
             for doc in docs
         ]
         summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
@@ -1663,8 +1774,20 @@ async def api_export_documents_json(
         cand_ctx.owner_tenant_id,
         [str(doc.id) for doc in docs],
     )
+    resp_pair = await _batch_candidate_recruiter_labels(
+        session, cand_ctx.owner_tenant_id, [str(candidate_id)]
+    )
+    rid, rname = resp_pair.get(str(candidate_id), (None, None))
     serialized = [
-        (await _document_to_out(session, doc, last_check=last_checks.get(str(doc.id)))).model_dump()
+        (
+            await _document_to_out(
+                session,
+                doc,
+                last_check=last_checks.get(str(doc.id)),
+                responsible_user_id=rid,
+                responsible_name=rname,
+            )
+        ).model_dump()
         for doc in docs
     ]
     return {

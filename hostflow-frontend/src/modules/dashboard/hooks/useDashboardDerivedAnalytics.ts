@@ -108,6 +108,8 @@ export interface GroupedReason {
 
 export interface ExecutiveKpis {
   hired: number
+  /** Candidates in HR paperwork stage (not counted as hired). */
+  employmentPending: number
   conversionPct: number
   avgDaysToEmploy: number | null
   pctNoNextQueue: number
@@ -120,7 +122,11 @@ export interface FunnelStep {
   key: string
   label: string
   count: number
+  outcome: StageOutcome
   stepConv: number | null
+  dropoff: number | null
+  lossCount: number
+  lowSample: boolean
   avgDays: number | null
 }
 
@@ -345,12 +351,19 @@ export function useDashboardDerivedAnalytics({
       { label: string; total: number; pipeline: number; managerIdForFilter: string | null }
     >()
     slices.snapshot.forEach((row) => {
+      // Phase 2.6.G-5 Stage F — canonical ids are on ``recruiter_*``;
+      // fall back to the legacy ``manager*`` triplet for snapshot rows
+      // that haven't been refreshed yet (Stage D shadow-write keeps the
+      // values equal so the fallback is a no-op in steady state).
       const label =
+        row.recruiter_name ||
         row.manager_name ||
         row.manager ||
+        row.recruiter_short ||
         row.manager_short ||
         t('app.dashboard.manager_load.unknown')
-      const managerIdForFilter = String(row.manager || row.manager_short || '').trim() || null
+      const managerIdForFilter =
+        String(row.recruiter_id || row.manager || row.manager_short || '').trim() || null
       const canonical = canonicalStageKey(row.stage, row.stage_label)
       const outcome = determineStageOutcome(canonical, stageLabels)
       const entry = rows.get(label) ?? { label, total: 0, pipeline: 0, managerIdForFilter }
@@ -512,6 +525,7 @@ export function useDashboardDerivedAnalytics({
 
   const executiveKpis = useMemo<ExecutiveKpis>(() => {
     const hired = executiveHighlights.hired
+    const employmentPending = executiveHighlights.employmentPending
     const conversionPct = periodTotal > 0 ? (hired / periodTotal) * 100 : 0
     const hiredTimes = (stageMetrics?.stage_time || []).filter((st) => {
       const c = canonicalStageKey(st.stage, st.stage)
@@ -535,6 +549,7 @@ export function useDashboardDerivedAnalytics({
       typeof costRaw === 'number' && Number.isFinite(costRaw) ? costRaw : null
     return {
       hired,
+      employmentPending,
       conversionPct,
       avgDaysToEmploy,
       pctNoNextQueue,
@@ -545,6 +560,7 @@ export function useDashboardDerivedAnalytics({
   }, [
     contactStats?.limit_reached_count,
     executiveHighlights.hired,
+    executiveHighlights.employmentPending,
     executiveHighlights.pipeline,
     opsCounters?.no_next_action_candidates,
     opsCounters?.overdue_reminders,
@@ -557,16 +573,24 @@ export function useDashboardDerivedAnalytics({
 
   const funnelSteps = useMemo<FunnelStep[]>(() => {
     if (!slices?.stages?.length) return []
-    let prev: number | null = null
+    const MIN_SAMPLE = 20
+    let prevPipelineCount: number | null = null
     return slices.stages.map((s) => {
+      const canonical = canonicalStageKey(s.key, s.label)
+      const outcome = determineStageOutcome(canonical, stageLabels)
       const label = translateStageLabel(s.key, s.label) || s.label
       const cnt = s.count ?? 0
-      const stepConv = prev != null && prev > 0 ? (cnt / prev) * 100 : null
-      prev = cnt
+      const canUsePrev = outcome === 'pipeline' && prevPipelineCount != null && prevPipelineCount > 0
+      const lowSample = canUsePrev ? prevPipelineCount < MIN_SAMPLE : false
+      const rawStepConv = canUsePrev ? (cnt / prevPipelineCount) * 100 : null
+      const stepConv = rawStepConv != null ? Math.max(0, Math.min(rawStepConv, 100)) : null
+      const dropoff = stepConv != null ? Math.max(0, 100 - stepConv) : null
+      const lossCount = canUsePrev ? Math.max(prevPipelineCount - cnt, 0) : 0
+      if (outcome === 'pipeline') prevPipelineCount = cnt
       const avgDays = stageMetrics?.stage_time?.find((x) => x.stage === s.key)?.avg_days ?? null
-      return { key: s.key, label, count: cnt, stepConv, avgDays }
+      return { key: s.key, label, count: cnt, outcome, stepConv, dropoff, lossCount, lowSample, avgDays }
     })
-  }, [slices?.stages, stageMetrics?.stage_time, translateStageLabel])
+  }, [slices?.stages, stageMetrics?.stage_time, stageLabels, translateStageLabel])
 
   return {
     sourceStageRows,

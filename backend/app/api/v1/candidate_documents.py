@@ -78,7 +78,7 @@ except Exception:  # pragma: no cover
     DocumentType = None  # type: ignore
 
 router = APIRouter(prefix="/candidates", tags=["candidate-documents"])
-DOCUMENT_ROLES = (Role.manager, Role.admin, Role.recruiter)
+DOCUMENT_ROLES = (Role.manager, Role.admin, Role.recruiter, Role.compliance_officer)
 DOCUMENT_MUTATE_ROLES = (*DOCUMENT_ROLES, Role.client_manager, Role.client_processor)
 
 STATUSES = {status.value for status in DocumentStatus}

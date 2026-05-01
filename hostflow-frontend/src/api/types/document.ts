@@ -79,11 +79,19 @@ export interface DocumentWorkflowStep {
   description?: string | null;
   status: DocumentWorkflowStepStatus;
   started_at?: string | null;
+  /** SLA deadline for the step (ISO). */
+  due_at?: string | null;
+  ordered_at?: string | null;
+  due_in_hours?: number | null;
   completed_at?: string | null;
   assigned_to?: string | null;
+  /** @deprecated use assigned_to; some APIs use assignee */
+  assignee?: string | null;
   notes?: string | null;
   depends_on?: string[] | null;
   blocking?: boolean;
+  actor_id?: string | null;
+  reminder_id?: string | null;
   meta?: Record<string, any> | null;
 }
 
@@ -109,8 +117,12 @@ export type DocumentReadinessState =
 export interface Document {
   id: UUID;
   tenant_id: UUID;
+  candidate_id?: UUID | string | null;
   owner_id: UUID;
   owner_type?: string | null;
+  /** Candidate's assigned recruiter (internal owner). */
+  responsible_user_id?: string | null;
+  responsible_name?: string | null;
   doc_type?: string | null;
   type_code?: string | null;
   kind?: DocumentKind | null;

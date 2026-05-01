@@ -24,10 +24,6 @@ import type {
   DocumentStatus,
   DocumentRequestedFrom,
   DocumentProcessType,
-  DocumentCheck,
-  DocumentWorkflow as DocumentWorkflowState,
-  DocumentWorkflowStep,
-  DocumentReminder,
   CandidateDocumentsSummaryResponse,
 } from "../../api/types";
 import type { CreateCandidateDocumentPayload, DocumentPatchPayload, DocumentOrderInput } from "../../api/documents";
@@ -38,9 +34,6 @@ import { useI18n } from "../../i18n";
 import { usePlanLimitModal } from "../../contexts/PlanLimitModalContext";
 import { formatErrorForDisplay } from "../../utils/errorHandling";
 import { getDocumentConfigs, getRequiredDocumentTypeIds, isDefaultProfileWithEmptyDocumentConfig } from "../../utils/profileUtils";
-import { DocumentWorkflow } from "./components/DocumentWorkflow";
-import { DocumentReminders } from "./components/DocumentReminders";
-import { DocumentLastCheck } from "./components/DocumentLastCheck";
 import { DocumentFieldInput } from "./components/DocumentFieldInput";
 import { DocumentCard } from "./components/DocumentCard";
 import { useDocumentActions } from "./hooks/useDocumentActions";
@@ -1498,16 +1491,6 @@ useEffect(() => {
     void openDoc(candidates[0]);
   }, [candidateId, docs, initialType, openDoc]);
 
-  // renderWorkflow is now a component: DocumentWorkflow
-
-  // renderReminders is now a component: DocumentReminders
-
-  // renderLastCheck is now a component: DocumentLastCheck
-
-  // renderMetadataFieldInput is now a component: DocumentFieldInput
-
-  // getDocumentFieldsConfig is now imported from ./documentFieldsConfig
-
   // Функция для получения значения поля из документа
   const getFieldValue = useCallback((doc: Document, fieldKey: string, metadataValues: MetadataState): any => {
     // Сначала проверяем редактируемые значения
@@ -1749,22 +1732,23 @@ useEffect(() => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {!hideHeader && (
-        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="text-lg font-semibold">{t("admin.documents.table.title")}</div>
-            <div className="text-xs text-slate-500">
-              {loading
-                ? t("admin.documents.status.refreshing")
-                : t("admin.documents.table.showing", { values: { filtered: filteredCount, total: totalDocs } })}
-            </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+            <span className="text-lg font-semibold">{t("admin.documents.table.title")}</span>
+            {!loading ? (
+              <span className="text-xs tabular-nums text-slate-500">
+                {filteredCount}/{totalDocs}
+              </span>
+            ) : null}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {templates.length > 0 && canManageDocuments && (
-              <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {templates.length > 0 && canManageDocuments ? (
+              <>
                 <select
-                  className="input text-sm"
+                  className="input max-w-[13rem] min-w-0 flex-1 text-sm sm:flex-none"
+                  aria-label={t("admin.documents.template.select", { defaultValue: "Template" })}
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
                   disabled={applyingTemplate || loading}
@@ -1779,7 +1763,8 @@ useEffect(() => {
                   ))}
                 </select>
                 <button
-                  className="btn-primary text-sm"
+                  type="button"
+                  className="btn-primary btn-sm shrink-0"
                   onClick={handleApplyTemplate}
                   disabled={!selectedTemplateId || applyingTemplate || loading}
                 >
@@ -1787,79 +1772,78 @@ useEffect(() => {
                     ? t("admin.documents.status.applying", { defaultValue: "Applying..." })
                     : t("admin.documents.actions.apply_template", { defaultValue: "Apply template" })}
                 </button>
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              {canManageDocuments && orderableTypes.length > 0 && (
-                <button
-                  type="button"
-                  className="btn-secondary text-sm"
-                  onClick={openOrderModal}
-                  disabled={loading}
-                >
-                  {t("admin.documents.actions.order_document", { defaultValue: "Order document" })}
-                </button>
-              )}
-              {canManageDocuments && (
-                <button
-                  className="btn-primary text-sm"
-                  onClick={handleNotifyCandidate}
-                  disabled={notifyingCandidate || loading}
-                >
-                  {notifyingCandidate
-                    ? t("admin.documents.status.sending", { defaultValue: "Sending..." })
-                    : t("admin.documents.actions.notify_candidate", { defaultValue: "Notify candidate" })}
-                </button>
-              )}
-              <button 
-                className="btn-secondary" 
-                onClick={handleDownloadProfile} 
-                disabled={downloadingProfile || loading}
+              </>
+            ) : null}
+            {canManageDocuments && orderableTypes.length > 0 ? (
+              <button type="button" className="btn-secondary btn-sm shrink-0" onClick={openOrderModal} disabled={loading}>
+                {t("admin.documents.actions.order_document", { defaultValue: "Order document" })}
+              </button>
+            ) : null}
+            {canManageDocuments ? (
+              <button
+                type="button"
+                className="btn-primary btn-sm shrink-0"
+                onClick={handleNotifyCandidate}
+                disabled={notifyingCandidate || loading}
               >
-                {downloadingProfile 
-                  ? t("admin.documents.status.downloading", { defaultValue: "Downloading..." })
-                  : t("admin.documents.actions.download_profile", { defaultValue: "Download profile" })}
+                {notifyingCandidate
+                  ? t("admin.documents.status.sending", { defaultValue: "Sending..." })
+                  : t("admin.documents.actions.notify_candidate", { defaultValue: "Notify candidate" })}
               </button>
-              <button className="btn-secondary" onClick={loadAll} disabled={loading}>
-                {loading ? t("admin.documents.status.refreshing") : t("admin.documents.actions.refresh")}
-              </button>
-            </div>
+            ) : null}
+            <button
+              type="button"
+              className="btn-secondary btn-sm shrink-0"
+              onClick={handleDownloadProfile}
+              disabled={downloadingProfile || loading}
+            >
+              {downloadingProfile
+                ? t("admin.documents.status.downloading", { defaultValue: "Downloading..." })
+                : t("admin.documents.actions.download_profile", { defaultValue: "Download profile" })}
+            </button>
+            <button type="button" className="btn-secondary btn-sm shrink-0" onClick={loadAll} disabled={loading}>
+              {loading ? t("admin.documents.status.refreshing") : t("admin.documents.actions.refresh")}
+            </button>
           </div>
         </div>
       )}
 
-      {error && <div className="rounded border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">{error}</div>}
-      {info && <div className="rounded border border-green-200 bg-green-50 p-2 text-sm text-green-700">{info}</div>}
+      {error ? (
+        <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-sm text-rose-700">{error}</div>
+      ) : null}
+      {info ? (
+        <div className="rounded border border-green-200 bg-green-50 px-2 py-1.5 text-sm text-green-700">{info}</div>
+      ) : null}
 
       {!hideHeader && upcomingDeadlinesByDate.length > 0 && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-3 text-sm font-medium text-slate-700">
-            {t("admin.documents.upcoming_deadlines.title", { defaultValue: "Upcoming deadlines" })}
-          </div>
-          <div className="space-y-4">
+        <details className="rounded-lg border border-slate-200 bg-white">
+          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50">
+            {t("admin.documents.upcoming_deadlines.title")} ({upcomingDeadlines.length})
+          </summary>
+          <div className="space-y-3 border-t border-slate-100 px-3 py-2">
             {upcomingDeadlinesByDate.map(([dateIso, dateItems]) => {
               const dateStr = formatDate(dateIso);
               return (
                 <div key={dateIso}>
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     {dateStr}
                   </div>
-                  <ul className="space-y-1.5 text-sm text-slate-600">
+                  <ul className="space-y-1 text-sm text-slate-600">
                     {dateItems.map((item, idx) => {
                       const days = daysUntil(item.dateIso);
                       const isExpired = days !== null && days < 0;
                       const subLabel =
                         item.kind === "workflow_step"
-                          ? t("admin.documents.upcoming_deadlines.step_due", { values: { step: item.label }, defaultValue: `Step "${item.label}" due` })
+                          ? t("admin.documents.upcoming_deadlines.step_due", { values: { step: item.label } })
                           : isExpired
-                            ? t("admin.documents.upcoming_deadlines.expired", { defaultValue: "expired" })
+                            ? t("admin.documents.upcoming_deadlines.expired")
                             : days !== null
-                              ? t("admin.documents.upcoming_deadlines.expires_in_days", { values: { days }, defaultValue: `expires in ${days} days` })
+                              ? t("admin.documents.upcoming_deadlines.expires_in_days", { values: { days } })
                               : "";
                       return (
-                        <li key={`${item.docId}-${item.kind}-${item.stepCode ?? ""}-${idx}`} className="flex flex-wrap items-baseline gap-x-2 pl-1">
+                        <li key={`${item.docId}-${item.kind}-${item.stepCode ?? ""}-${idx}`} className="flex flex-wrap items-baseline gap-x-2">
                           <span>{item.docTitle}</span>
-                          {subLabel && <span className="text-slate-500">{subLabel}</span>}
+                          {subLabel ? <span className="text-slate-500">{subLabel}</span> : null}
                         </li>
                       );
                     })}
@@ -1868,112 +1852,82 @@ useEffect(() => {
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
-      {/* Filters */}
       {!hideHeader && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-3 text-sm font-medium text-slate-700">
-            {t("admin.documents.filters.title", { defaultValue: "Filters" })}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <label className="block">
-              <div className="mb-1 text-xs text-slate-600">
-                {t("admin.documents.filters.kind", { defaultValue: "Category" })}
-              </div>
-              <select
-                className="input w-full text-sm"
-                value={kindFilter}
-                onChange={(e) => setKindFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentKind))}
-              >
-                <option value="all">{t("admin.documents.filters.all_kinds", { defaultValue: "All categories" })}</option>
-                {KIND_ORDER.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {translateKind(kind)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <div className="mb-1 text-xs text-slate-600">
-                {t("admin.documents.filters.status", { defaultValue: "Status" })}
-              </div>
-              <select
-                className="input w-full text-sm"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentStatus))}
-              >
-                <option value="all">{t("admin.documents.filters.all_statuses", { defaultValue: "All statuses" })}</option>
-                {Object.entries(DOCUMENT_STATUS_META).map(([value, meta]) => (
-                  <option key={value} value={value}>
-                    {t(meta.labelKey ?? value, { defaultValue: value })}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <div className="mb-1 text-xs text-slate-600">
-                {t("admin.documents.filters.ordered", { defaultValue: "Ordered" })}
-              </div>
-              <select
-                className="input w-full text-sm"
-                value={orderedFilter}
-                onChange={(e) => setOrderedFilter(e.target.value as "all" | "ordered" | "not_ordered")}
-              >
-                <option value="all">{t("admin.documents.filters.all", { defaultValue: "All" })}</option>
-                <option value="ordered">{t("admin.documents.filters.ordered_only", { defaultValue: "Ordered only" })}</option>
-                <option value="not_ordered">{t("admin.documents.filters.not_ordered", { defaultValue: "Not ordered" })}</option>
-              </select>
-            </label>
-            <label className="block">
-              <div className="mb-1 text-xs text-slate-600">
-                {t("admin.documents.filters.search", { defaultValue: "Search" })}
-              </div>
-              <input
-                type="text"
-                className="input w-full text-sm"
-                placeholder={t("admin.documents.filters.search_placeholder", { defaultValue: "Search documents..." })}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </label>
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="rounded border-slate-300"
-                  checked={expiringSoonOnly}
-                  onChange={(e) => setExpiringSoonOnly(e.target.checked)}
-                />
-                <span className="text-xs text-slate-600">
-                  {t("admin.documents.filters.expiring_soon", { defaultValue: "Expiring soon" })}
-                </span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="rounded border-slate-300"
-                  checked={missingOnly}
-                  onChange={(e) => setMissingOnly(e.target.checked)}
-                />
-                <span className="text-xs text-slate-600">
-                  {t("admin.documents.filters.missing_only", { defaultValue: "Missing only" })}
-                </span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="rounded border-slate-300"
-                  checked={passportIncompleteOnly}
-                  onChange={(e) => setPassportIncompleteOnly(e.target.checked)}
-                />
-                <span className="text-xs text-slate-600">
-                  {t("admin.documents.filters.passport_incomplete", { defaultValue: "Incomplete passport" })}
-                </span>
-              </label>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <select
+            className="input max-w-[130px] text-sm"
+            aria-label={t("admin.documents.filters.kind")}
+            value={kindFilter}
+            onChange={(e) => setKindFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentKind))}
+          >
+            <option value="all">{t("admin.documents.filters.all_kinds")}</option>
+            {KIND_ORDER.map((kind) => (
+              <option key={kind} value={kind}>
+                {translateKind(kind)}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input max-w-[130px] text-sm"
+            aria-label={t("admin.documents.filters.status")}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentStatus))}
+          >
+            <option value="all">{t("admin.documents.filters.all_statuses")}</option>
+            {Object.entries(DOCUMENT_STATUS_META).map(([value, meta]) => (
+              <option key={value} value={value}>
+                {t(meta.labelKey ?? value, { defaultValue: value })}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input max-w-[120px] text-sm"
+            aria-label={t("admin.documents.filters.ordered")}
+            value={orderedFilter}
+            onChange={(e) => setOrderedFilter(e.target.value as "all" | "ordered" | "not_ordered")}
+          >
+            <option value="all">{t("admin.documents.filters.all")}</option>
+            <option value="ordered">{t("admin.documents.filters.ordered_only")}</option>
+            <option value="not_ordered">{t("admin.documents.filters.not_ordered")}</option>
+          </select>
+          <input
+            type="search"
+            className="input min-w-[8rem] flex-1 text-sm"
+            aria-label={t("admin.documents.filters.search")}
+            placeholder={t("admin.documents.filters.search_placeholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={expiringSoonOnly}
+              onChange={(e) => setExpiringSoonOnly(e.target.checked)}
+            />
+            {t("admin.documents.filters.expiring_soon")}
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={missingOnly}
+              onChange={(e) => setMissingOnly(e.target.checked)}
+            />
+            {t("admin.documents.filters.missing_only")}
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={passportIncompleteOnly}
+              onChange={(e) => setPassportIncompleteOnly(e.target.checked)}
+            />
+            {t("admin.documents.filters.passport_incomplete")}
+          </label>
         </div>
       )}
 
@@ -2078,7 +2032,7 @@ useEffect(() => {
 
             return (
               <div key={kind} className="space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-slate-200 pb-2">
                   <h3 className="text-base font-semibold text-slate-900">
                     {kindLabel}
                     <span className="ml-2 text-sm font-normal text-slate-500">
@@ -2137,53 +2091,48 @@ useEffect(() => {
           onClick={() => setOrderModalOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-xl"
+            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 text-lg font-semibold text-slate-900">
+            <div className="mb-3 text-base font-semibold text-slate-900">
               {t("admin.documents.actions.order_document", { defaultValue: "Order document" })}
             </div>
-            <div className="space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-xs text-slate-600">
-                  {t("admin.documents.forms.type", { defaultValue: "Document type" })}
-                </span>
-                <select
-                  className="input w-full"
-                  value={orderModalType}
-                  onChange={(e) => {
-                    const code = e.target.value;
-                    setOrderModalType(code);
-                    setOrderModalOrderedAt(orderDraftForType(code).ordered_at || computeTodayIso());
-                    setOrderModalRequestedFrom((orderDraftForType(code).requested_from as string) || "driver");
-                  }}
-                >
-                  <option value="">{t("admin.documents.template.select", { defaultValue: "Select..." })}</option>
-                  {orderableTypes.map((t) => (
-                    <option key={t.code} value={t.code}>
-                      {t.name || t.code}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-slate-600">
-                  {t("admin.documents.forms.ordered_at", { defaultValue: "Ordered at" })}
-                </span>
+            <div className="space-y-3">
+              <select
+                className="input w-full text-sm"
+                aria-label={t("admin.documents.forms.type", { defaultValue: "Document type" })}
+                value={orderModalType}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setOrderModalType(code);
+                  setOrderModalOrderedAt(orderDraftForType(code).ordered_at || computeTodayIso());
+                  setOrderModalRequestedFrom((orderDraftForType(code).requested_from as string) || "driver");
+                }}
+              >
+                <option value="">{t("admin.documents.template.select", { defaultValue: "Select..." })}</option>
+                {orderableTypes.map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.name || t.code}
+                  </option>
+                ))}
+              </select>
+              <div
+                className={clsx(
+                  "grid gap-3",
+                  orderModalType === "work_permit" ? "sm:grid-cols-2" : "grid-cols-1",
+                )}
+              >
                 <input
                   type="date"
-                  className="input w-full"
+                  className="input w-full text-sm"
+                  aria-label={t("admin.documents.forms.ordered_at", { defaultValue: "Ordered at" })}
                   value={orderModalOrderedAt.slice(0, 10)}
                   onChange={(e) => setOrderModalOrderedAt(e.target.value || computeTodayIso())}
                 />
-              </label>
-              {orderModalType === "work_permit" && (
-                <label className="block">
-                  <span className="mb-1 block text-xs text-slate-600">
-                    {t("admin.documents.forms.requested_from", { defaultValue: "Requested from" })}
-                  </span>
+                {orderModalType === "work_permit" ? (
                   <select
-                    className="input w-full"
+                    className="input w-full text-sm"
+                    aria-label={t("admin.documents.forms.requested_from", { defaultValue: "Requested from" })}
                     value={orderModalRequestedFrom}
                     onChange={(e) => setOrderModalRequestedFrom(e.target.value)}
                   >
@@ -2193,10 +2142,10 @@ useEffect(() => {
                       </option>
                     ))}
                   </select>
-                </label>
-              )}
+                ) : null}
+              </div>
             </div>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 className="btn-secondary"
@@ -2221,24 +2170,31 @@ useEffect(() => {
 
       {previewOpen && previewUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4"
           onClick={closePreview}
+          role="presentation"
         >
           <div
-            className="relative h-[90vh] w-full max-w-5xl overflow-hidden rounded bg-white shadow-xl"
+            className="flex h-[min(90vh,920px)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("admin.documents.preview.dialog_aria")}
           >
-            <button
-              className="absolute right-3 top-3 rounded bg-black/40 px-2 py-1 text-xs text-white hover:bg-black/60"
-              onClick={closePreview}
-            >
-              {t("common.actions.close")}
-            </button>
-            <div className="h-full w-full overflow-auto">
+            <div className="flex shrink-0 items-center justify-end border-b border-slate-200 bg-slate-50 px-2 py-1.5">
+              <button type="button" className="btn-secondary btn-xs" onClick={closePreview}>
+                {t("common.actions.close")}
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto bg-slate-100">
               {previewContentType?.includes("pdf") || previewUrl.toLowerCase().endsWith(".pdf") ? (
-                <iframe src={previewUrl} className="h-full w-full" />
+                <iframe title={t("admin.documents.preview.iframe_title")} src={previewUrl} className="h-full min-h-[70vh] w-full" />
               ) : (
-                <img src={previewUrl} alt="preview" className="mx-auto block max-h-[85vh] w-auto" />
+                <img
+                  src={previewUrl}
+                  alt=""
+                  className="mx-auto block h-auto max-h-full min-h-0 w-auto max-w-full object-contain"
+                />
               )}
             </div>
           </div>

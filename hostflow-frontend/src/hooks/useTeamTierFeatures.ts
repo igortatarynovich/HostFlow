@@ -13,6 +13,11 @@ export type TeamTierFeaturesState = {
   planLoading: boolean
   /** Team, Pro, Business, etc. — bulk Meta auto-fix, funnel NBA insights, etc. */
   allowsTeamFeatures: boolean
+  /**
+   * «Умные» операции: load-aware assignee fallback, далее — тот же плановый контур для smart planner / AI.
+   * Сейчас совпадает с Team+ (см. backend ``plan_allows_smart_operations_bundle``).
+   */
+  allowsSmartOperations: boolean
 }
 
 /**
@@ -79,5 +84,10 @@ export function useTeamTierFeatures(): TeamTierFeaturesState {
     return !TEAM_TIER_BLOCKED_PLANS.has(p)
   }, [planCode])
 
-  return { planCode, planLoading, allowsTeamFeatures }
+  const allowsSmartOperations = useMemo(() => {
+    const p = (planCode || 'starter').trim().toLowerCase()
+    return !TEAM_TIER_BLOCKED_PLANS.has(p)
+  }, [planCode])
+
+  return { planCode, planLoading, allowsTeamFeatures, allowsSmartOperations }
 }

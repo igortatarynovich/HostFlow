@@ -18,6 +18,7 @@ import uuid as _uuid
 from types import SimpleNamespace
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
+from backend.app.models.candidate_assignee_history import CandidateAssigneeHistory
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.api.v1.candidates import repo
 from backend.app.api.v1.candidates.acl import CandidateACL
@@ -27,6 +28,7 @@ from fastapi import HTTPException
 from backend.app.constants.stages_adapter import DEFAULT_STAGE_CODE
 from backend.app.constants.stages import LABELS as STAGE_LABELS, STATUS_REASON_CHOICES, STAGE_META
 from backend.app.models import Vacancy
+from backend.app.models.company import Company
 from backend.app.models.user import User
 from backend.app.models.mixins import now_utc as _now_utc
 from backend.app.api.v1.candidates.helpers import (
@@ -40,10 +42,11 @@ from backend.app.api.v1.candidates.helpers import (
     _ensure_short_id,
 )
 from backend.app.services.pipeline_sync import sync_candidate_links
-from backend.app.services.tenant_quota import ensure_active_candidate_quota
+from backend.app.services.tenant_quota import ensure_active_records_quota
 from backend.app.services.recruiter_assignment import (
     AssignmentDecision,
     assign_recruiter as assign_recruiter_service,
+    record_candidate_reassignment,
 )
 from backend.app.services.audit import log_activity
 from backend.app.services import events
@@ -54,6 +57,10 @@ from backend.app.services.rodo import send_rodo_email as _send_rodo_email
 from backend.app.services.rodo import get_first_rodo_sent as _get_first_rodo_sent
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services.handoff import is_client_tenant as _is_client_tenant
+from backend.app.services.candidate_lifecycle import (
+    apply_candidate_deletion_cleanup,
+    maybe_apply_candidate_terminal_cleanup,
+)
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause
 from backend.app.services.tenant_visibility import TenantVisibility
 from backend.app.modules.documents import crud as documents_crud
@@ -228,15 +235,20 @@ def _candidate_matches_acl(
     manager: Optional[str],
     company: Optional[str],
     vacancy: Optional[str],
+    recruiter_id: Optional[str] = None,
 ) -> bool:
     if acl is None or acl.unrestricted:
         return True
 
     manager_val = str(manager) if manager else None
+    recruiter_val = str(recruiter_id) if recruiter_id else None
     company_val = str(company) if company else None
     vacancy_val = str(vacancy) if vacancy else None
 
-    if manager_val and manager_val in acl.manager_ids:
+    mids = acl.manager_ids
+    if manager_val and manager_val in mids:
+        return True
+    if recruiter_val and recruiter_val in mids:
         return True
     if company_val and company_val in acl.company_ids:
         return True
@@ -337,7 +349,7 @@ async def create_candidate_full(
     acl: CandidateACL | None = None,
 ) -> Candidate:
     payload = dict(payload or {})
-    await ensure_active_candidate_quota(db, tenant_id)
+    await ensure_active_records_quota(db, tenant_id)
 
     source_update_present = "source" in payload
     origin_update_present = "origin" in payload
@@ -449,6 +461,21 @@ async def create_candidate_full(
             manager_val = str(UUID(manager_val))
         except Exception:
             raise HTTPException(status_code=422, detail="Invalid manager UUID")
+        # Phase 2.6.G-5 Stage D — validate the manager user exists in
+        # this tenant so we can safely shadow-write it into
+        # ``Candidate.recruiter_id`` (FK to ``users.id``). Without this
+        # guard, a payload-supplied ``manager`` UUID that doesn't exist
+        # as a user row would pass validation here (legacy behaviour)
+        # and then FK-fail when we mirror it into ``recruiter_id``.
+        _mgr_check = await db.execute(
+            select(User.id).where(
+                User.id == manager_val,
+                or_(User.tenant_id.is_(None), User.tenant_id == tenant_id),
+                User.is_active.is_(True),
+            )
+        )
+        if _mgr_check.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Manager user not found")
     if acl and not acl.unrestricted:
         if manager_val is None:
             manager_val = actor_id
@@ -563,8 +590,18 @@ async def create_candidate_full(
         values["source"] = source_val
     if origin_payload is not None:
         values["origin"] = origin_payload
+    # Phase 2.6.G-5 Stage D — shadow-write parity at INSERT time. The
+    # canonical column is ``recruiter_id``; ``manager`` must mirror it.
+    # Precedence: ``assignment.recruiter_id`` (from the vacancy/tenant
+    # cascade in ``assign_recruiter_service``) wins over a payload-supplied
+    # ``manager`` because the former is the system's deterministic choice
+    # and the latter is a legacy UX hint. When no assignment ran we fall
+    # back to ``manager_val`` (already validated against ``users`` above).
     if assignment and assignment.assigned:
         values["recruiter_id"] = assignment.recruiter_id
+        values["manager"] = assignment.recruiter_id
+    elif manager_val:
+        values["recruiter_id"] = manager_val
 
     await db.execute(insert(Candidate).values(**values))
 
@@ -609,6 +646,58 @@ async def create_candidate_full(
                 "strategy": assignment.strategy,
             },
         )
+        # Phase 2.6.G-5 Stage C — emit audit-trail row for the initial
+        # recruiter assignment. The INSERT statement above already wrote
+        # ``recruiter_id = assignment.recruiter_id`` atomically, so we pass
+        # ``write=False`` to avoid a redundant (no-op) UPDATE while still
+        # appending the history row with ``from_user_id=NULL`` +
+        # ``to_user_id=assignment.recruiter_id``. Explainability popover
+        # (G-10) reads this row to render «первое назначение, стратегия X».
+        try:
+            await record_candidate_reassignment(
+                db,
+                c,
+                new_recruiter_id=assignment.recruiter_id,
+                reason="candidate_create",
+                actor=actor_id,
+                actor_kind="user" if actor_id else "system",
+                note=f"strategy={assignment.strategy}",
+                write=False,
+                skip_if_unchanged=False,
+            )
+            await db.commit()
+        except Exception:
+            # Never fail candidate creation because of audit-row write —
+            # the assignment itself already succeeded at INSERT time.
+            await db.rollback()
+            logging.getLogger(__name__).exception(
+                "candidate_assignee_history create failed "
+                "tenant=%s candidate=%s", tenant_id, c.id,
+            )
+    elif manager_val:
+        # Phase 2.6.G-5 Stage D — INSERT-time shadow-write used
+        # ``manager_val`` as the canonical recruiter (no vacancy/tenant
+        # cascade fired). Emit the matching ``candidate_create`` history
+        # row so the audit trail reflects the real first assignment.
+        try:
+            await record_candidate_reassignment(
+                db,
+                c,
+                new_recruiter_id=manager_val,
+                reason="candidate_create",
+                actor=actor_id,
+                actor_kind="user" if actor_id else "system",
+                note="strategy=payload_manager",
+                write=False,
+                skip_if_unchanged=False,
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logging.getLogger(__name__).exception(
+                "candidate_assignee_history create failed (manager-only) "
+                "tenant=%s candidate=%s", tenant_id, c.id,
+            )
     recipient_ids: List[str] = []
     if c.recruiter_id:
         recipient_ids.append(c.recruiter_id)
@@ -774,38 +863,65 @@ async def update_candidate_full(
     if "note" in payload and payload["note"] is not None:
         changes["note"] = payload["note"]
 
+    # Phase 2.6.G-5 Stage D — ``Candidate.manager`` and ``Candidate.recruiter_id``
+    # must stay in lock-step (see ``docs/specs/manager-assignment.md`` §1.2.1).
+    # We parse both payload keys here and funnel them to a single validated
+    # UUID; ``recruiter_id`` is the canonical column (FK to ``users.id``) and
+    # wins when both are present with different values.
     _mgr_present = (payload.get("manager") is not None) or (payload.get("manager_id") is not None)
-    if _mgr_present:
-        _mgr_raw = payload.get("manager") if payload.get("manager") is not None else payload.get("manager_id")
-        _mgr_str = (str(_mgr_raw or "").strip())
-        if _mgr_str == "":
-            pass
+    _mgr_raw = (
+        payload.get("manager") if payload.get("manager") is not None else payload.get("manager_id")
+    )
+    _rec_present = "recruiter_id" in payload
+    _rec_raw = payload.get("recruiter_id") if _rec_present else None
+
+    # Determine which field (if any) the PATCH is attempting to set, and to what.
+    _assignment_provided = False
+    _assignment_value: Optional[str] = None  # validated UUID string, or ``None`` to unassign
+    if _rec_present:
+        _assignment_provided = True
+        if _rec_raw in (None, ""):
+            _assignment_value = None
         else:
             try:
-                changes["manager"] = str(UUID(_mgr_str))
+                _assignment_value = str(UUID(str(_rec_raw).strip()))
+            except Exception:
+                raise HTTPException(status_code=422, detail="Invalid recruiter UUID")
+    elif _mgr_present:
+        _mgr_str = str(_mgr_raw or "").strip()
+        if _mgr_str == "":
+            # Legacy behaviour: empty ``manager`` string was a no-op (not an
+            # unassign). Preserve that to avoid changing PATCH semantics for
+            # callers that send empty strings.
+            pass
+        else:
+            _assignment_provided = True
+            try:
+                _assignment_value = str(UUID(_mgr_str))
             except Exception:
                 raise HTTPException(status_code=422, detail="Invalid manager UUID")
 
-    if "recruiter_id" in payload:
-        recruiter_raw = payload.get("recruiter_id")
-        if recruiter_raw in (None, ""):
-            changes["recruiter_id"] = None
-        else:
-            try:
-                recruiter_uuid = str(UUID(str(recruiter_raw).strip()))
-            except Exception:
-                raise HTTPException(status_code=422, detail="Invalid recruiter UUID")
+    if _assignment_provided:
+        # Validate the target user exists and belongs to the tenant before
+        # we mirror the value into both columns (``recruiter_id`` has an FK
+        # to ``users.id``; ``manager`` has none but we apply the same check
+        # for consistency so the UI never lands on a ghost user).
+        if _assignment_value is not None:
             recruiter_row = await db.execute(
                 select(User).where(
-                    User.id == recruiter_uuid,
+                    User.id == _assignment_value,
                     or_(User.tenant_id.is_(None), User.tenant_id == tenant_id),
                     User.is_active.is_(True),
                 )
             )
-            recruiter_obj = recruiter_row.scalar_one_or_none()
-            if recruiter_obj is None:
+            if recruiter_row.scalar_one_or_none() is None:
                 raise HTTPException(status_code=404, detail="Recruiter not found")
-            changes["recruiter_id"] = recruiter_uuid
+
+        # Shadow-write — write to both columns. When the payload provided
+        # both ``manager`` and ``recruiter_id`` with different values we
+        # canonicalise on ``recruiter_id`` (see branch ordering above).
+        changes["recruiter_id"] = _assignment_value
+        changes["manager"] = _assignment_value
 
     if "languages" in payload and payload["languages"] is not None:
         changes["languages"] = _ensure_langs(payload["languages"])
@@ -1023,12 +1139,19 @@ async def update_candidate_full(
                 acl.vacancy_ids.add(str(v.id))
             changes["vacancy_id"] = str(v.id)
             changes["company_id"] = str(v.company_id)
+            changes["tenant_id"] = str(v.tenant_id)
 
     if "company_id" in payload and payload.get("vacancy_id") is None:
         company_val = str(payload["company_id"]) if payload["company_id"] else None
         if company_val and acl and not acl.unrestricted and company_val not in acl.company_ids:
             raise HTTPException(status_code=403, detail="Forbidden company for recruiter")
         changes["company_id"] = company_val
+        if company_val:
+            company_row = await db.execute(select(Company).where(Company.id == company_val))
+            company = company_row.scalar_one_or_none()
+            if not company:
+                raise HTTPException(status_code=404, detail="Company not found")
+            changes["tenant_id"] = str(company.tenant_id)
 
     if not c.short_id:
         changes["short_id"] = await _generate_unique_short_id(db)
@@ -1036,11 +1159,13 @@ async def update_candidate_full(
     target_manager = changes.get("manager", getattr(c, "manager", None))
     target_company = changes.get("company_id", getattr(c, "company_id", None))
     target_vacancy = changes.get("vacancy_id", getattr(c, "vacancy_id", None))
+    target_recruiter = changes.get("recruiter_id", getattr(c, "recruiter_id", None))
     if acl and not _candidate_matches_acl(
         acl,
         manager=target_manager,
         company=target_company,
         vacancy=target_vacancy,
+        recruiter_id=target_recruiter,
     ):
         raise HTTPException(status_code=403, detail="Forbidden candidate scope for recruiter")
 
@@ -1144,6 +1269,21 @@ async def update_candidate_full(
                 )
 
             changes["updated_at"] = _now_naive()
+            # Phase 2.6.G-5 Stage C — capture the pre-UPDATE recruiter_id so
+            # we can emit an audit row after the UPDATE commits. The row is
+            # appended with ``write=False`` because the ``update(Candidate)``
+            # statement below already applies the new value.
+            recruiter_id_changed = "recruiter_id" in changes
+            recruiter_id_before: Optional[str] = None
+            recruiter_id_after: Optional[str] = None
+            if recruiter_id_changed:
+                recruiter_id_before = (
+                    str(getattr(c, "recruiter_id", None) or "").strip() or None
+                )
+                _raw_after = changes.get("recruiter_id")
+                recruiter_id_after = (
+                    str(_raw_after).strip() if _raw_after else None
+                ) or None
             await db.execute(
                 update(Candidate)
                 .where(Candidate.id == candidate_id, Candidate.deleted_at.is_(None))
@@ -1164,6 +1304,42 @@ async def update_candidate_full(
             await db.commit()
             await db.refresh(c)
             email_after = str(getattr(c, "email", "") or "").strip()
+
+            # Phase 2.6.G-5 Stage C — emit audit-trail row for
+            # ``Candidate.recruiter_id`` reassignments driven by the single-
+            # candidate PATCH endpoint. We write the row AFTER the UPDATE
+            # has committed so the audit trail only reflects persisted
+            # changes; a failed commit rolls back above and never reaches
+            # this block. ``write=False`` because the UPDATE already applied
+            # the new value; ``skip_if_unchanged=False`` because the old
+            # value is supplied explicitly (the refreshed candidate now
+            # holds the new value — if we let the helper auto-detect from
+            # ``candidate.recruiter_id`` it would compare ``new == new`` and
+            # skip).
+            if recruiter_id_changed and recruiter_id_before != recruiter_id_after:
+                try:
+                    history_row = CandidateAssigneeHistory(
+                        id=str(_uuid.uuid4()),
+                        tenant_id=str(tenant_id),
+                        candidate_id=str(candidate_id),
+                        from_user_id=recruiter_id_before,
+                        to_user_id=recruiter_id_after,
+                        reason="manual_single",
+                        actor_user_id=(str(actor_id) if actor_id else None),
+                        actor_kind="user" if actor_id else "system",
+                        note=None,
+                        changed_at=_now_utc(),
+                    )
+                    db.add(history_row)
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    logging.getLogger(__name__).exception(
+                        "candidate_assignee_history update failed "
+                        "tenant=%s candidate=%s",
+                        tenant_id,
+                        candidate_id,
+                    )
 
         except Exception as e:
             await db.rollback()
@@ -1355,6 +1531,70 @@ async def update_candidate_full(
             except Exception:
                 pass
 
+    # G-1 zero-leak: when candidate moves into a terminal stage (rejected / declined / employed /
+    # probation_ok), silence operational signals so the bell, /app/tasks and the calendar don't keep
+    # nagging operators about a closed file. Best-effort — never break the stage transition.
+    if stage_changed and new_stage_code:
+        try:
+            await maybe_apply_candidate_terminal_cleanup(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=candidate_id,
+                old_stage=old_stage_code,
+                new_stage=new_stage_code,
+                actor_id=actor_id,
+            )
+            await db.commit()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "candidate lifecycle cleanup failed tenant=%s candidate=%s",
+                tenant_id,
+                candidate_id,
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+    # Workforce HR row at employment paperwork / final hire (idempotent; best-effort).
+    if stage_changed:
+        try:
+            st_now = str(getattr(c, "stage", None) or "").strip().lower()
+            old_l = (old_stage_code or "").strip().lower()
+            from backend.app.services import workforce_employees as _we
+
+            if _we.should_workforce_handoff_on_stage_change(old_l, st_now):
+                emp = await _we.handoff_from_candidate(
+                    db,
+                    tenant_id,
+                    c,
+                    hire_date=None,
+                    actor_user_id=str(actor_id or "").strip() or "system",
+                )
+                await log_activity(
+                    db,
+                    tenant_id=tenant_id,
+                    action="workforce.handoff_from_candidate",
+                    actor_id=actor_id,
+                    target_type="workforce_employee",
+                    target_id=emp.id,
+                    payload={
+                        "candidate_id": str(candidate_id),
+                        "trigger": f"candidate_stage_{st_now}",
+                    },
+                )
+                await db.commit()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "workforce handoff on employment stage failed tenant=%s candidate=%s",
+                tenant_id,
+                candidate_id,
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
     # Auto-send RODO when candidate has email (art.14 GDPR); send_rodo_email no-ops if already sent
     email_after = locals().get("email_after", "") or ""
     if str(email_after).strip():
@@ -1406,6 +1646,8 @@ async def bulk_update_stage(
     target_stage = _normalize_stage_to_code(stage) or stage
     client_tenant = await _is_client_tenant(db, tenant_id)
     hiring_gates = await resolve_hiring_pipeline_gates(db, tenant_id)
+    from backend.app.services import workforce_employees as _we_handoff
+
     out: list[BulkStageResult] = []
     status_reason_explicit = status_reason is not _UNSET and status_reason is not None
     status_reason_codes_input = (
@@ -1431,6 +1673,7 @@ async def bulk_update_stage(
                 manager=getattr(c, "manager", None),
                 company=getattr(c, "company_id", None),
                 vacancy=getattr(c, "vacancy_id", None),
+                recruiter_id=getattr(c, "recruiter_id", None),
             ):
                 out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": "forbidden"})
                 continue
@@ -1525,6 +1768,8 @@ async def bulk_update_stage(
                 )
                 continue
 
+            old_stage_snapshot = str(getattr(c, "stage", None) or "").strip().lower()
+
             await db.execute(
                 update(Candidate)
                 .where(Candidate.id == cid, Candidate.tenant_id == tenant_id)
@@ -1547,6 +1792,28 @@ async def bulk_update_stage(
             db.add(history_entry)
 
             await db.commit()
+
+            # G-1 zero-leak: silence reminders/notifications/planner for terminal stages.
+            try:
+                await maybe_apply_candidate_terminal_cleanup(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=cid,
+                    old_stage=getattr(c, "stage", None),
+                    new_stage=normalized,
+                    actor_id=actor_id,
+                )
+                await db.commit()
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "bulk candidate lifecycle cleanup failed tenant=%s candidate=%s",
+                    tenant_id,
+                    cid,
+                )
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
 
             await sync_candidate_links(
                 db=db,
@@ -1585,6 +1852,40 @@ async def bulk_update_stage(
                 except Exception:
                     pass
 
+            norm_l = normalized.strip().lower()
+            old_snap_l = (old_stage_snapshot or "").strip().lower()
+
+            if _we_handoff.should_workforce_handoff_on_stage_change(old_snap_l, norm_l):
+                try:
+                    await db.refresh(c)
+                    emp = await _we_handoff.handoff_from_candidate(
+                        db,
+                        tenant_id,
+                        c,
+                        hire_date=None,
+                        actor_user_id=str(actor_id or "").strip() or "system",
+                    )
+                    await log_activity(
+                        db,
+                        tenant_id=tenant_id,
+                        action="workforce.handoff_from_candidate",
+                        actor_id=actor_id,
+                        target_type="workforce_employee",
+                        target_id=emp.id,
+                        payload={"candidate_id": str(cid), "trigger": f"bulk_stage_{norm_l}"},
+                    )
+                    await db.commit()
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "bulk workforce handoff on employment stage failed tenant=%s candidate=%s",
+                        tenant_id,
+                        cid,
+                    )
+                    try:
+                        await db.rollback()
+                    except Exception:
+                        pass
+
             out.append({"candidate_id": cid, "stage": normalized, "ok": True})
         except HTTPException as exc:
             await db.rollback()
@@ -1608,9 +1909,27 @@ async def bulk_update_manager(
     candidate_ids: list[str],
     manager_id: str,
     *,
-    actor_id: Optional[str] = None,  # kept for future audit trail
+    actor_id: Optional[str] = None,
     acl: CandidateACL | None = None,
 ) -> list[BulkManagerResult]:
+    """Bulk-reassign the «responsible» user for a set of candidates.
+
+    Phase 2.6.G-5 Stage D — this endpoint historically wrote only to
+    ``Candidate.manager`` (``update(Candidate).values(manager=...)``) in a
+    single SQL statement, which (a) left ``Candidate.recruiter_id``
+    unchanged — causing the NBA/notifications/bell to keep showing the old
+    recruiter (the split-brain documented in
+    ``docs/specs/manager-assignment.md`` §1.2.1), and (b) produced no audit
+    trail. Stage D funnels every candidate through
+    :func:`record_candidate_reassignment` so the shadow-write invariant
+    (``manager == recruiter_id``) and the ``candidate_assignee_history``
+    row are both guaranteed.
+
+    Trade-off: the single bulk ``UPDATE`` is replaced with one flush per
+    candidate (inside the helper). ``bulk_update_manager`` is a user-action
+    on a visible selection (typical N < 100), so the per-row cost is
+    acceptable and the correctness guarantees outweigh it.
+    """
     manager_value = (manager_id or "").strip()
     try:
         manager_value = str(UUID(manager_value))
@@ -1618,7 +1937,6 @@ async def bulk_update_manager(
         raise HTTPException(status_code=422, detail="Invalid manager UUID") from exc
 
     results: list[BulkManagerResult] = []
-    allowed_indexes: list[int] = []
 
     if not candidate_ids:
         return results
@@ -1632,6 +1950,7 @@ async def bulk_update_manager(
     )
     found = {str(c.id): c for c in rows.scalars().all()}
 
+    applied_at_least_one = False
     for cid in candidate_ids:
         entry: BulkManagerResult = {"candidate_id": cid, "manager": manager_value}
         candidate_row = found.get(cid)
@@ -1645,37 +1964,44 @@ async def bulk_update_manager(
             manager=getattr(candidate_row, "manager", None),
             company=getattr(candidate_row, "company_id", None),
             vacancy=getattr(candidate_row, "vacancy_id", None),
+            recruiter_id=getattr(candidate_row, "recruiter_id", None),
         ):
             entry["ok"] = False
             entry["error"] = "forbidden"
             results.append(entry)
             continue
-        allowed_indexes.append(len(results))
+
+        try:
+            await record_candidate_reassignment(
+                db,
+                candidate_row,
+                new_recruiter_id=manager_value,
+                reason="manual_bulk",
+                actor=actor_id,
+                actor_kind="user" if actor_id else "system",
+                note=None,
+            )
+            # Ensure ``updated_at`` reflects the change even if the helper
+            # short-circuited (no-op on unchanged recruiter_id) — bulk-set
+            # semantics expect a touch on every selected candidate.
+            candidate_row.updated_at = _now_naive()
+            await db.flush()
+            entry["ok"] = True
+            applied_at_least_one = True
+        except Exception as exc:  # pragma: no cover - defensive
+            entry["ok"] = False
+            entry["error"] = f"update_failed: {exc}"
         results.append(entry)
 
-    if not allowed_indexes:
-        return results
-
-    try:
-        await db.execute(
-            update(Candidate)
-            .where(
-                Candidate.tenant_id == tenant_id,
-                Candidate.deleted_at.is_(None),
-                Candidate.id.in_([results[idx]["candidate_id"] for idx in allowed_indexes]),
-            )
-            # updated_at should remain timezone-naive to match DB schema
-            .values(manager=manager_value, updated_at=_now_naive())
-        )
-        await db.commit()
-        for idx in allowed_indexes:
-            results[idx]["ok"] = True
-            results[idx].pop("error", None)
-    except Exception as exc:  # pragma: no cover - defensive
-        await db.rollback()
-        for idx in allowed_indexes:
-            results[idx]["ok"] = False
-            results[idx]["error"] = f"update_failed: {exc}"
+    if applied_at_least_one:
+        try:
+            await db.commit()
+        except Exception as exc:  # pragma: no cover - defensive
+            await db.rollback()
+            for entry in results:
+                if entry.get("ok"):
+                    entry["ok"] = False
+                    entry["error"] = f"commit_failed: {exc}"
     return results
 
 
@@ -1716,6 +2042,7 @@ async def bulk_delete_candidates(
             manager=getattr(candidate_row, "manager", None),
             company=getattr(candidate_row, "company_id", None),
             vacancy=getattr(candidate_row, "vacancy_id", None),
+            recruiter_id=getattr(candidate_row, "recruiter_id", None),
         ):
             entry["ok"] = False
             entry["error"] = "forbidden"
@@ -1764,6 +2091,27 @@ async def delete_candidate_full(
         .values(deleted_at=_now_naive(), updated_at=_now_naive())
     )
     await db.commit()
+
+    # G-1 zero-leak: cancel pending reminders / mark notifications read / cancel future planner
+    # events for this candidate. Runs unconditionally on delete (any prior stage is irrelevant).
+    try:
+        await apply_candidate_deletion_cleanup(
+            db,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            actor_id=None,
+        )
+        await db.commit()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "candidate deletion lifecycle cleanup failed tenant=%s candidate=%s",
+            tenant_id,
+            candidate_id,
+        )
+        try:
+            await db.rollback()
+        except Exception:
+            pass
 
     try:
         await sync_candidate_links(

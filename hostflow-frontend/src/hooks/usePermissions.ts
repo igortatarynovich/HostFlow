@@ -31,6 +31,9 @@ export type Permission =
   | 'services.orders.manage'
   | 'services.catalog.manage'
   | 'services.overrideRequirements'
+  /** HR workspace (`/app/hr/*`) — employees, separate from recruitment. */
+  | 'workforce.view'
+  | 'workforce.manage'
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   administrator: ['*'],
@@ -54,6 +57,8 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'admin.metaLeads',
     'services.view',
     'services.orders.manage',
+    'workforce.view',
+    'workforce.manage',
   ],
   recruiter: [
     'companies.view',
@@ -90,6 +95,24 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'notifications.view',
     'settings.view',
   ],
+  /**
+   * Сопровождение процессных документов (zezwolenie, karta pobytu, tacho, …): полный рабочий контур
+   * в зоне ACL — карточка кандидата, воронка, документы, контекст лидов/услуг без админки.
+   */
+  compliance_officer: [
+    'companies.view',
+    'leads.view',
+    'notifications.view',
+    'vacancies.view',
+    'candidates.view',
+    'candidates.manage',
+    'candidates.pipeline',
+    'documents.manage',
+    'services.view',
+    'services.orders.manage',
+  ],
+  /** People / HR: no recruitment or CRM modules — only the HR workspace. */
+  hr_officer: ['notifications.view', 'workforce.view', 'workforce.manage'],
 }
 
 const ROLE_ALIAS: Record<string, string> = {
@@ -107,6 +130,11 @@ const ROLE_ALIAS: Record<string, string> = {
   client_processor: 'client_processor',
   processor: 'client_processor',
   client_manager: 'client_manager',
+  compliance_officer: 'compliance_officer',
+  compliance: 'compliance_officer',
+  docs_officer: 'compliance_officer',
+  hr_officer: 'hr_officer',
+  people_ops: 'hr_officer',
 }
 
 const MODULE_DEFAULTS: TenantModuleSettings = {
@@ -117,6 +145,7 @@ const MODULE_DEFAULTS: TenantModuleSettings = {
   leads: true,
   services: true,
   client_portal: true,
+  hr: true,
 }
 
 const VIEW_PERMISSION_TO_MODULE: Partial<Record<Permission, keyof TenantModuleSettings>> = {
@@ -126,6 +155,7 @@ const VIEW_PERMISSION_TO_MODULE: Partial<Record<Permission, keyof TenantModuleSe
   'candidates.view': 'candidates',
   'candidates.pipeline': 'candidates',
   'services.view': 'services',
+  'workforce.view': 'hr',
 }
 
 const EDIT_PERMISSION_TO_MODULE: Partial<Record<Permission, keyof TenantModuleSettings>> = {
@@ -137,6 +167,7 @@ const EDIT_PERMISSION_TO_MODULE: Partial<Record<Permission, keyof TenantModuleSe
   'services.orders.manage': 'services',
   'services.catalog.manage': 'services',
   'services.overrideRequirements': 'services',
+  'workforce.manage': 'hr',
 }
 
 export function usePermissions() {

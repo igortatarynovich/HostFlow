@@ -1,5 +1,6 @@
 import axios, { AxiosHeaders } from "axios";
 import type { Lead } from "./types";
+import { isCandidateRecruiterIdCanonEnabled } from "../utils/featureFlags";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
 export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
@@ -619,6 +620,44 @@ export async function setActiveOwnCompany(ownCompanyId: string) {
   return data
 }
 
+export async function getOwnCompany(ownCompanyId: string): Promise<OwnCompanyRecord> {
+  try {
+    const { data } = await api.get<{ items: OwnCompanyRecord[] }>(`/own-companies`)
+    const items = Array.isArray(data?.items) ? data.items : []
+    const found = items.find((item) => String(item?.id || '') === String(ownCompanyId))
+    if (!found) {
+      const err: any = new Error('Own company not found')
+      err.response = { status: 404 }
+      throw err
+    }
+    return found
+  } catch (e: any) {
+    if (e?.response?.status !== 404) throw e
+    const { data } = await api.get<{ items: OwnCompanyRecord[] }>(`/own_companies`)
+    const items = Array.isArray(data?.items) ? data.items : []
+    const found = items.find((item) => String(item?.id || '') === String(ownCompanyId))
+    if (!found) {
+      const err: any = new Error('Own company not found')
+      err.response = { status: 404 }
+      throw err
+    }
+    return found
+  }
+}
+
+export async function patchOwnCompany(ownCompanyId: string, payload: Record<string, any>) {
+  try {
+    const { data } = await api.patch<OwnCompanyRecord>(`/own-companies/${ownCompanyId}`, payload)
+    return data
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      const { data } = await api.patch<OwnCompanyRecord>(`/own_companies/${ownCompanyId}`, payload)
+      return data
+    }
+    throw e
+  }
+}
+
 export async function createClientCompany(payload: Record<string, any>) {
   const body = { ...payload, company_role: payload.company_role ?? 'client' };
   const { data } = await api.post(`/companies/`, body);
@@ -661,6 +700,87 @@ export type OnboardingClearDemoResult = {
 
 export async function clearOnboardingDemoData(): Promise<OnboardingClearDemoResult> {
   const { data } = await api.post<OnboardingClearDemoResult>('/onboarding/clear-demo-data');
+  return data;
+}
+
+// Phase 2 onboarding wizard (5-step «first value in 5 minutes»)
+export type OnboardingWizardStepKey =
+  | 'type'
+  | 'channel'
+  | 'client'
+  | 'vacancy'
+  | 'first_lead';
+
+export type OnboardingWizardChannel =
+  | 'meta'
+  | 'public_intake'
+  | 'webhook'
+  | 'manual'
+  | 'skipped';
+
+export type OnboardingWizardState = {
+  current_step: OnboardingWizardStepKey
+  completed_steps: OnboardingWizardStepKey[]
+  channel: OnboardingWizardChannel | null
+  skipped_steps: OnboardingWizardStepKey[]
+  started_at: string | null
+  completed_at: string | null
+  step_data: Record<string, unknown>
+  finished: boolean
+};
+
+export type OnboardingWizardStepIn = {
+  step: OnboardingWizardStepKey
+  completed?: boolean
+  skipped?: boolean
+  next_step?: OnboardingWizardStepKey | null
+  channel?: OnboardingWizardChannel | null
+  data?: Record<string, unknown> | null
+  finished?: boolean
+};
+
+export async function getOnboardingWizard(): Promise<OnboardingWizardState> {
+  const { data } = await api.get<OnboardingWizardState>('/onboarding/wizard');
+  return data;
+}
+
+export async function postOnboardingWizardStep(
+  payload: OnboardingWizardStepIn,
+): Promise<OnboardingWizardState> {
+  const { data } = await api.post<OnboardingWizardState>('/onboarding/wizard/step', payload);
+  return data;
+}
+
+export type OnboardingWizardFirstLead = {
+  has_lead: boolean
+  lead_id: string | null
+  title: string | null
+  source: string | null
+  stage: string | null
+  created_at: string | null
+  is_demo: boolean
+  nba_title: string | null
+  nba_due_at: string | null
+  nba_id: string | null
+  leads_url: string
+  demo_seeded: boolean
+};
+
+export async function getOnboardingWizardFirstLead(): Promise<OnboardingWizardFirstLead> {
+  const { data } = await api.get<OnboardingWizardFirstLead>('/onboarding/wizard/first-lead');
+  return data;
+}
+
+export type OnboardingDemoSeedResult = {
+  seeded: boolean
+  already_active: boolean
+  summary: Record<string, unknown>
+  business_type: string
+  own_company_id: string | null
+}
+
+export async function seedOnboardingDemo(): Promise<OnboardingDemoSeedResult> {
+  const { data } = await api.post<OnboardingDemoSeedResult>('/onboarding/demo/seed');
   return data;
 }
 
@@ -958,11 +1078,18 @@ export async function getInvoicePdf(invoiceId: string): Promise<Blob> {
 }
 
 // Notifications ---------------------------------------------------------------
-export async function listNotifications(opts?: { limit?: number; includeRead?: boolean; scope?: 'all' | 'direct' }) {
+export async function listNotifications(opts?: {
+  limit?: number;
+  includeRead?: boolean;
+  scope?: 'all' | 'direct';
+  /** Set true to include rows attached to candidates in terminal stages (rejected/employed/etc) or soft-deleted. */
+  includeCompletedEntities?: boolean;
+}) {
   const params: Record<string, any> = {};
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.includeRead) params.include_read = true;
   if (opts?.scope) params.scope = opts.scope;
+  if (opts?.includeCompletedEntities) params.include_completed_entities = true;
   const { data } = await api.get(`/notifications`, { params });
   return data;
 }
@@ -1002,6 +1129,8 @@ export async function listReminders(opts?: {
   /** Substring match on title, description, or message (backend; uses assignee scope). */
   q?: string;
   limit?: number;
+  /** Set true to include rows attached to candidates in terminal stages (rejected/employed/etc) or soft-deleted. */
+  includeCompletedEntities?: boolean;
   signal?: AbortSignal;
 }) {
   const params: Record<string, any> = {};
@@ -1015,6 +1144,7 @@ export async function listReminders(opts?: {
   if (opts?.dueTo) params.due_to = opts.dueTo;
   if (opts?.q) params.q = opts.q;
   if (opts?.limit != null) params.limit = opts.limit;
+  if (opts?.includeCompletedEntities) params.include_completed_entities = true;
   const { data } = await api.get(`/reminders`, { params, signal: opts?.signal });
   return data;
 }
@@ -1087,6 +1217,12 @@ export async function listActivities(opts?: {
   return data;
 }
 
+/** Single activity/reminder — calendar ``/app/calendar?event_id=`` (G-6 focus-by-id). */
+export async function getActivity(id: string) {
+  const { data } = await api.get(`/activities/${encodeURIComponent(id)}`)
+  return data
+}
+
 export async function createActivity(payload: Record<string, any>) {
   const { data } = await api.post(`/activities`, payload);
   return data;
@@ -1131,6 +1267,15 @@ export async function listCandidatesNoNextAction(opts?: {
   limit?: number
   offset?: number
   stages?: string[]
+  /**
+   * Canonical filter: user id of the assignee (Phase 2.6.G-5 Stage F).
+   * Accepts `managerId` as a deprecated alias so in-flight callers keep
+   * working during the migration — they now all funnel into the same
+   * `?recruiter_id=` / `?manager_id=` request param (the BE accepts both
+   * for one release cycle, with `recruiter_id` winning).
+   */
+  recruiterId?: string
+  /** @deprecated Phase 2.6.G-5 Stage F — pass `recruiterId` instead. */
   managerId?: string
   assigneeId?: string
   scopeTenantId?: string
@@ -1140,7 +1285,19 @@ export async function listCandidatesNoNextAction(opts?: {
   if (opts?.limit != null) params.limit = opts.limit
   if (opts?.offset != null) params.offset = opts.offset
   if (opts?.stages && opts.stages.length) params.stages = opts.stages
-  if (opts?.managerId) params.manager_id = opts.managerId
+  // Stage F canonical — `recruiterId` takes precedence, legacy
+  // `managerId` mapped to `manager_id` for the transition window.
+  const assigneeIdForFilter = opts?.recruiterId ?? opts?.managerId
+  if (assigneeIdForFilter) {
+    // Outgoing param name is gated on the FE flag (Stage F §5): default
+    // ON sends the canonical `recruiter_id`; OFF reverts to legacy
+    // `manager_id` for emergency rollback.
+    if (isCandidateRecruiterIdCanonEnabled()) {
+      params.recruiter_id = assigneeIdForFilter
+    } else {
+      params.manager_id = assigneeIdForFilter
+    }
+  }
   if (opts?.assigneeId) params.assignee_id = opts.assigneeId
   if (opts?.scopeTenantId) params.scope_tenant_id = opts.scopeTenantId
   if (opts?.intakeApplicationKind === 'client' || opts?.intakeApplicationKind === 'candidate') {

@@ -9,7 +9,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.company import Company
 from backend.app.models.document import Document
+from backend.app.models.lead import Lead
 from backend.app.models.vacancy import Vacancy
 from backend.app.services.tenant_limits import get_tenant_limits
 
@@ -81,17 +83,71 @@ async def count_active_candidates(db: AsyncSession, tenant_id: str) -> int:
     return int((await db.execute(stmt)).scalar_one() or 0)
 
 
-async def ensure_active_candidate_quota(db: AsyncSession, tenant_id: str) -> None:
+async def count_active_leads(db: AsyncSession, tenant_id: str) -> int:
+    stmt = select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def count_active_client_companies(db: AsyncSession, tenant_id: str) -> int:
+    """
+    Count non-archived client companies.
+
+    `companies.extra.company_role == "operating"` is own-company lane and must
+    not consume active-records quota.
+    """
+    stmt = select(Company.extra).where(
+        Company.tenant_id == tenant_id,
+        Company.is_archived.is_(False),
+    )
+    rows = (await db.execute(stmt)).all()
+    total = 0
+    for (extra,) in rows:
+        payload = extra if isinstance(extra, dict) else {}
+        role = str(payload.get("company_role") or "").strip().lower()
+        if role == "operating":
+            continue
+        total += 1
+    return total
+
+
+async def count_active_records(db: AsyncSession, tenant_id: str) -> dict[str, int]:
+    leads = await count_active_leads(db, tenant_id)
+    candidates = await count_active_candidates(db, tenant_id)
+    clients = await count_active_client_companies(db, tenant_id)
+    return {
+        "leads": leads,
+        "candidates": candidates,
+        "clients": clients,
+        "total": leads + candidates + clients,
+    }
+
+
+async def ensure_active_records_quota(db: AsyncSession, tenant_id: str) -> None:
     limits = await get_tenant_limits(db, tenant_id)
     cap = limits.max_candidates_active
     if cap <= 0:
         return
-    n = await count_active_candidates(db, tenant_id)
-    if n >= cap:
+    counters = await count_active_records(db, tenant_id)
+    current_total = int(counters.get("total", 0))
+    if current_total >= cap:
         raise HTTPException(
             status_code=402,
-            detail={"code": "candidate_limit_reached", "limit": cap, "current": n},
+            detail={
+                "code": "active_records_limit_reached",
+                "limit": cap,
+                "current": current_total,
+                "breakdown": {
+                    "leads": int(counters.get("leads", 0)),
+                    "candidates": int(counters.get("candidates", 0)),
+                    "clients": int(counters.get("clients", 0)),
+                },
+            },
         )
+
+
+async def ensure_active_candidate_quota(db: AsyncSession, tenant_id: str) -> None:
+    """Backward-compatible alias; canonical gate is `ensure_active_records_quota`."""
+    await ensure_active_records_quota(db, tenant_id)
 
 
 async def count_open_vacancies(db: AsyncSession, tenant_id: str) -> int:

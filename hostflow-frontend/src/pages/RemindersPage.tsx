@@ -13,6 +13,11 @@ import {
   snoozeReminder,
   updateReminder,
 } from '../api/client'
+import {
+  listCommunicationPlannerEvents,
+  patchCommunicationPlannerEvent,
+  type CommunicationPlannerEvent,
+} from '../api/communications'
 import type {
   NotificationItem,
   NotificationListResponse,
@@ -26,6 +31,7 @@ import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import ReminderExplainabilityPopover from '../components/explainability/ReminderExplainabilityPopover'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
@@ -42,7 +48,7 @@ type TaskStatusFilter = 'active' | 'all' | 'done'
 type NotificationsScopeFilter = 'all' | 'direct'
 type NotificationsReadFilter = 'unread' | 'all'
 type AssigneeScopeFilter = 'mine' | 'team'
-type TaskListMode = 'by_due' | 'sla_queue'
+type TaskListMode = 'by_due' | 'sla_queue' | 'by_candidate' | 'by_task_type' | 'by_due_day'
 
 type TaskFiltersState = {
   search: string
@@ -51,6 +57,10 @@ type TaskFiltersState = {
   priority: string
   /** When overdue: client-side filter to due bucket overdue (NBA / deep links). */
   dueBucket: '' | 'overdue'
+  /** Show only rows that have no navigable entity link (operational data debt queue). */
+  unlinkedOnly: boolean
+  /** Show tasks for candidates in terminal stages (rejected/employed/etc) or soft-deleted. */
+  includeCompletedEntities: boolean
 }
 
 type EventsFiltersState = {
@@ -67,6 +77,36 @@ type PersistedInboxState = {
   taskListMode?: TaskListMode
 }
 
+/**
+ * G-7 stage 2: tasks page now sources rows from BOTH tables:
+ *   - reminders (default `_source: 'reminder'`)
+ *   - communication_planner_events with `kind in (task, followup)`
+ *     (`_source: 'planner'`)
+ *
+ * The row keeps the same `ReminderRecord & {derived}` shape because the
+ * downstream consumers (filters, group buckets, SLA layout, edit modal,
+ * `<ReminderExplainabilityPopover>`) all operate on it. Planner events
+ * are projected onto that shape via `plannerEventToTaskRow`. The
+ * underscore-prefixed `_source` flag is the discriminator used by:
+ *   - row UI (badge "📅" for planner-source);
+ *   - mutation handlers (complete / snooze / edit branch by source).
+ *
+ * Field semantics on a planner-derived row:
+ *   - `id` keeps the planner UUID (no prefix; reminder/planner UUIDs are
+ *     globally unique by separate primary keys, no collision possible).
+ *   - `due_at` ← `start_at`. Reminders have no `end_at`; planner does,
+ *     but we deliberately drop it here — the tasks page doesn't render
+ *     duration. Edit/move handlers preserve original duration via the
+ *     planner patch path.
+ *   - `status` is mapped: `planned`/`in_progress` → `pending`,
+ *     `done` → `done`, `cancelled` → `cancelled`. This keeps
+ *     `isClosedReminderStatus` and the bucketing logic intact.
+ *   - `type` ← `'planner_' + kind` so the explainability popover can
+ *     surface the original kind. SLA fields stay null (planner events
+ *     don't carry SLA today).
+ */
+type TaskRowSource = 'reminder' | 'planner'
+
 type TaskRow = ReminderRecord & {
   dueDate: Date | null
   remindDate: Date | null
@@ -74,6 +114,70 @@ type TaskRow = ReminderRecord & {
   remindTs: number
   slaDate: Date | null
   slaTs: number
+  _source: TaskRowSource
+  /** Original planner kind ('task' | 'followup') when `_source === 'planner'`. */
+  _plannerKind?: string | null
+}
+
+/** Statuses on a planner event that should hide the row from the
+ *  active-tasks list (mirrors `isClosedReminderStatus` for the reminder
+ *  table). Keep in sync with `compute_thread_next_action`-style ladder
+ *  thinking — `done` and `cancelled` mean "no operator action expected". */
+const _PLANNER_TERMINAL_STATUSES = new Set(['done', 'cancelled'])
+
+function mapPlannerStatusToReminderStatus(status: string | null | undefined): string {
+  const s = String(status || '').trim().toLowerCase()
+  if (s === 'done') return 'done'
+  if (s === 'cancelled') return 'cancelled'
+  // 'planned' and 'in_progress' both map to active. Reminder-side
+  // `TASK_STATUS_COLORS` already has a `'pending'` colour entry.
+  return 'pending'
+}
+
+/** Convert a planner event into the same shape the reminder rows use,
+ *  so the existing filter/bucket/sort/render pipeline accepts it. Only
+ *  fields actually present on `ReminderRecord` are populated; planner-
+ *  specific fields (kind, end_at, all_day) ride on `_plannerKind` /
+ *  `payload`. */
+function plannerEventToTaskRow(event: CommunicationPlannerEvent): TaskRow {
+  const dueDate = parseDate(event.start_at)
+  const synthesized: ReminderRecord = {
+    id: event.id,
+    type: `planner_${event.kind || 'task'}`,
+    entity_type: event.entity_type || 'planner',
+    // ReminderRecord.entity_id is typed `string` (required). Empty
+    // string is the safest fallback — `reminderEntityHref` already
+    // guards on `!entityId` and returns null.
+    entity_id: event.entity_id || '',
+    title: event.title || null,
+    description: event.description || null,
+    owner_id: event.owner_id || null,
+    assignee_id: event.assignee_id || null,
+    priority: event.priority || 'normal',
+    channel: null,
+    status: mapPlannerStatusToReminderStatus(event.status) as ReminderRecord['status'],
+    due_at: event.start_at,
+    remind_at: null,
+    snoozed_until: null,
+    completed_at: null,
+    recurrence_json: null,
+    payload: event.payload || {},
+    created_at: event.created_at,
+    updated_at: event.updated_at,
+    sla_due_at: null,
+    sla_status: null,
+  }
+  return {
+    ...synthesized,
+    dueDate,
+    remindDate: null,
+    dueTs: dueDate?.getTime() || 0,
+    remindTs: 0,
+    slaDate: null,
+    slaTs: 0,
+    _source: 'planner',
+    _plannerKind: event.kind || 'task',
+  }
 }
 
 type EditState = {
@@ -96,6 +200,8 @@ const DEFAULT_TASK_FILTERS: TaskFiltersState = {
   entityType: '',
   priority: '',
   dueBucket: '',
+  unlinkedOnly: false,
+  includeCompletedEntities: false,
 }
 
 const DEFAULT_EVENTS_FILTERS: EventsFiltersState = {
@@ -160,6 +266,95 @@ function reminderEntityHref(item: ReminderRecord): string | null {
   }
 }
 
+function pickPayloadString(payload: Record<string, unknown> | null | undefined, keys: string[]): string | null {
+  if (!payload || typeof payload !== 'object') return null
+  for (const k of keys) {
+    const v = payload[k]
+    if (v == null) continue
+    const s = String(v).trim()
+    if (s) return s
+  }
+  return null
+}
+
+/** Best-effort display name for the linked CRM entity (from reminder / planner payload). */
+function linkedEntityDisplayName(item: ReminderRecord): string | null {
+  return pickPayloadString(item.payload as Record<string, unknown>, [
+    'candidate_name',
+    'candidate_full_name',
+    'display_name',
+    'entity_display_name',
+    'entity_name',
+    'company_name',
+    'vacancy_title',
+    'vacancy_name',
+    'lead_title',
+    'thread_subject',
+    'subject',
+  ])
+}
+
+function normalizeTaskListMode(value: unknown): TaskListMode | null {
+  if (value === 'by_due' || value === 'sla_queue' || value === 'by_candidate' || value === 'by_task_type' || value === 'by_due_day') {
+    return value
+  }
+  return null
+}
+
+function dueDaySectionKey(item: TaskRow): string {
+  if (isClosedReminderStatus(item.status)) return 'done'
+  if (!item.dueDate) return 'unscheduled'
+  const now = new Date()
+  const today = startOfDay(now)
+  const dueDay = startOfDay(item.dueDate)
+  if (item.status === 'overdue' || dueDay.getTime() < today.getTime()) return 'overdue'
+  const y = dueDay.getFullYear()
+  const mo = String(dueDay.getMonth() + 1).padStart(2, '0')
+  const da = String(dueDay.getDate()).padStart(2, '0')
+  return `day:${y}-${mo}-${da}`
+}
+
+function parseCalendarDayKey(key: string): Date | null {
+  if (!key.startsWith('day:')) return null
+  const s = key.slice(4).trim()
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return Number.isFinite(d.getTime()) ? d : null
+}
+
+function sortDueDaySectionKeys(keys: string[]): string[] {
+  const uniq = [...new Set(keys)]
+  const dayKeys = uniq
+    .filter((k) => k.startsWith('day:'))
+    .sort((a, b) => {
+      const da = parseCalendarDayKey(a)?.getTime() ?? 0
+      const db = parseCalendarDayKey(b)?.getTime() ?? 0
+      return da - db
+    })
+  const pick = (k: string) => (uniq.includes(k) ? [k] : [])
+  return [...pick('overdue'), ...dayKeys, ...pick('unscheduled'), ...pick('done')]
+}
+
+function sortTaskRowsMixedOpenFirst(rows: TaskRow[]): TaskRow[] {
+  const copy = [...rows]
+  copy.sort((a, b) => {
+    const ac = isClosedReminderStatus(a.status)
+    const bc = isClosedReminderStatus(b.status)
+    if (ac !== bc) return ac ? 1 : -1
+    if (!ac) return compareOpenTasksBySlaThenDue(a, b)
+    return compareDoneTasksByUpdated(a, b)
+  })
+  return copy
+}
+
+type TaskSection = {
+  key: string
+  label: string
+  headerHref?: string | null
+  items: TaskRow[]
+}
+
 function notificationEntityHref(item: NotificationItem): string | null {
   return resolveNotificationOpenPath(item, { canInboxDeepLink: true })
 }
@@ -210,6 +405,23 @@ function compareDoneTasksByUpdated(a: TaskRow, b: TaskRow): number {
   return (a.title || '').localeCompare(b.title || '')
 }
 
+function taskRelatedCaption(item: ReminderRecord, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const named = linkedEntityDisplayName(item)
+  if (named) return named
+  const et = String(item.entity_type || '').trim().toLowerCase() || 'unknown'
+  const id = String(item.entity_id || '').trim()
+  const shortId = id.length > 14 ? `${id.slice(0, 12)}…` : id
+  const etKey = `app.reminders.entity_types.${et}`
+  const typeLabel = t(etKey, { defaultValue: et })
+  if (et === 'candidate' && id) {
+    return t('app.reminders.row.candidate_without_name', { defaultValue: 'Candidate ({id})', values: { id: shortId } })
+  }
+  if (id) {
+    return t('app.reminders.row.entity_stub', { defaultValue: '{type} · {id}', values: { type: typeLabel, id: shortId } })
+  }
+  return t('app.reminders.row.unlinked_entity', { defaultValue: 'Not linked to a record' })
+}
+
 type ReminderTaskRowProps = {
   item: TaskRow
   t: (key: string, options?: Record<string, unknown>) => string
@@ -219,6 +431,8 @@ type ReminderTaskRowProps = {
   taskBusyId: string | null
   editBusy: boolean
   highlighted?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string, next: boolean) => void
   onEdit: (item: TaskRow) => void
   onSnooze: (id: string, minutes: number) => void
   onComplete: (id: string) => void
@@ -233,11 +447,15 @@ function ReminderTaskRow({
   taskBusyId,
   editBusy,
   highlighted,
+  selected,
+  onToggleSelect,
   onEdit,
   onSnooze,
   onComplete,
 }: ReminderTaskRowProps) {
   const href = reminderEntityHref(item)
+  const etRaw = String(item.entity_type || 'unknown').trim() || 'unknown'
+  const entityTypeLabel = t(`app.reminders.entity_types.${etRaw}`, { defaultValue: item.entity_type || '—' })
   const busy = taskBusyId === item.id
   const statusPill = TASK_STATUS_COLORS[item.status] || 'bg-slate-100 text-slate-700'
   const priorityPill = PRIORITY_COLORS[item.priority || 'normal'] || PRIORITY_COLORS.normal
@@ -261,6 +479,16 @@ function ReminderTaskRow({
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
+        {onToggleSelect && (
+          <label className="mt-1 inline-flex items-center">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              checked={Boolean(selected)}
+              onChange={(e) => onToggleSelect(item.id, e.target.checked)}
+            />
+          </label>
+        )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className={clsx('rounded-md px-2.5 py-1 text-[11px] font-semibold', statusPill)}>
@@ -269,7 +497,22 @@ function ReminderTaskRow({
             <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
               {t(`app.reminders.priority.${item.priority || 'normal'}`, { defaultValue: item.priority || 'normal' })}
             </span>
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{item.entity_type}</span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{entityTypeLabel}</span>
+            {item._source === 'planner' && (
+              // G-7 stage 2: small visual differentiator for planner-derived
+              // rows. Operators need to know this row mutates the planner
+              // table (so it'll also appear on the calendar) — without the
+              // badge it would feel like a phantom row.
+              <span
+                className="rounded-md bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700"
+                title={t('app.reminders.source.planner_hint', {
+                  defaultValue: 'From Calendar planner ({kind})',
+                  values: { kind: item._plannerKind || 'task' },
+                })}
+              >
+                {t('app.reminders.source.planner_label', { defaultValue: 'Calendar' })}
+              </span>
+            )}
             {item.sla_due_at && item.sla_status && slaPill && (
               <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-semibold', slaPill)} title={formatTs(item.slaDate)}>
                 {t(`app.reminders.sla.status.${slaSt}`, { defaultValue: item.sla_status })} · {formatTs(item.slaDate)}
@@ -280,12 +523,16 @@ function ReminderTaskRow({
             <h4 className="truncate text-sm font-semibold text-slate-900">
               {item.title || t('app.candidate_card.reminders.untitled')}
             </h4>
-            {href && (
-              <Link to={href} className="text-xs font-medium text-brand-700 hover:underline">
-                {t('app.reminders.actions.open_entity')}
-              </Link>
-            )}
+            <ReminderExplainabilityPopover reminder={item} entityHref={href} />
           </div>
+          {href ? (
+            <div className="text-xs text-slate-600">
+              <span className="font-medium text-slate-500">{t('app.reminders.row.related', { defaultValue: 'Related' })}: </span>
+              <Link to={href} className="font-medium text-brand-700 hover:underline">
+                {taskRelatedCaption(item, t)}
+              </Link>
+            </div>
+          ) : null}
           {item.description && <p className="text-xs text-slate-600 whitespace-pre-wrap">{item.description}</p>}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
             <span>
@@ -394,7 +641,16 @@ export default function RemindersPage() {
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [remindersState, setRemindersState] = useState<LoadState>('idle')
   const [remindersError, setRemindersError] = useState<FriendlyErrorInfo | null>(null)
+  // G-7 stage 2: planner-task rows (kind ∈ {task, followup}) are merged
+  // into the same list as reminders. Stored separately so the
+  // independent loaders can refresh them without touching reminders.
+  const [plannerTaskEvents, setPlannerTaskEvents] = useState<CommunicationPlannerEvent[]>([])
   const [taskBusyId, setTaskBusyId] = useState<string | null>(null)
+  const [copiedSectionKey, setCopiedSectionKey] = useState<string | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
+  const [bulkRescheduleLocal, setBulkRescheduleLocal] = useState('')
+  const [bulkAssigneeId, setBulkAssigneeId] = useState('')
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [notificationsState, setNotificationsState] = useState<LoadState>('idle')
@@ -430,8 +686,7 @@ export default function RemindersPage() {
     value === 'unread' || value === 'all' ? value : null
   const parseAssigneeScope = (value: string | null): AssigneeScopeFilter | null =>
     value === 'mine' || value === 'team' ? value : null
-  const parseTaskListMode = (value: string | null): TaskListMode | null =>
-    value === 'sla_queue' || value === 'by_due' ? value : null
+  const parseTaskListMode = (value: string | null): TaskListMode | null => normalizeTaskListMode(value)
 
   useEffect(() => {
     try {
@@ -445,8 +700,9 @@ export default function RemindersPage() {
       if (parsed?.taskFilters) setTaskFilters({ ...DEFAULT_TASK_FILTERS, ...parsed.taskFilters })
       if (parsed?.eventsFilters) setEventsFilters({ ...DEFAULT_EVENTS_FILTERS, ...parsed.eventsFilters })
       if (parsed?.assigneeScope === 'mine' || parsed?.assigneeScope === 'team') setAssigneeScope(parsed.assigneeScope)
-      if (parsed?.taskListMode === 'sla_queue' || parsed?.taskListMode === 'by_due') {
-        setTaskListMode(parsed.taskListMode)
+      if (parsed?.taskListMode) {
+        const m = normalizeTaskListMode(parsed.taskListMode)
+        if (m) setTaskListMode(m)
       } else if (raw) {
         setTaskListMode('by_due')
       }
@@ -460,6 +716,7 @@ export default function RemindersPage() {
       const tQ = searchParams.get('t_q')
       const tEntity = searchParams.get('t_entity')
       const tDueBucket = searchParams.get('t_due_bucket')
+      const tUnlinked = searchParams.get('t_unlinked')
       const filterLegacy = (searchParams.get('filter') || '').trim().toLowerCase()
       const tPriority = searchParams.get('t_priority')
       const eScope = parseNotifScope(searchParams.get('e_scope'))
@@ -475,6 +732,7 @@ export default function RemindersPage() {
         tEntity != null ||
         tPriority != null ||
         tDueBucket === 'overdue' ||
+        tUnlinked === '1' ||
         filterLegacy === 'overdue'
       ) {
         setTaskFilters((prev) => ({
@@ -484,6 +742,7 @@ export default function RemindersPage() {
           ...(tEntity != null ? { entityType: tEntity } : {}),
           ...(tPriority != null ? { priority: tPriority } : {}),
           ...(tDueBucket === 'overdue' || filterLegacy === 'overdue' ? { dueBucket: 'overdue' as const } : {}),
+          ...(tUnlinked === '1' ? { unlinkedOnly: true } : {}),
         }))
       }
       if (filterLegacy === 'overdue') {
@@ -547,6 +806,8 @@ export default function RemindersPage() {
     else next.delete('t_entity')
     if (taskFilters.dueBucket === 'overdue') next.set('t_due_bucket', 'overdue')
     else next.delete('t_due_bucket')
+    if (taskFilters.unlinkedOnly) next.set('t_unlinked', '1')
+    else next.delete('t_unlinked')
     if (taskFilters.priority) next.set('t_priority', taskFilters.priority)
     else next.delete('t_priority')
     if (assigneeScope !== 'mine') next.set('t_assignee', assigneeScope)
@@ -567,7 +828,11 @@ export default function RemindersPage() {
   }, [activeTab, assigneeScope, eventsFilters, hydrated, searchParams, setSearchParams, taskFilters, taskListMode])
 
   const reminderRows = useMemo<TaskRow[]>(() => {
-    return reminders.map((item) => {
+    // G-7 stage 2: merge reminders + planner-task events into one
+    // unified `TaskRow[]` stream. Reminders carry implicit
+    // `_source: 'reminder'`; planner events go through
+    // `plannerEventToTaskRow` which sets `_source: 'planner'`.
+    const reminderRowList: TaskRow[] = reminders.map((item) => {
       const dueDate = parseDate(item.due_at)
       const remindDate = parseDate(item.snoozed_until || item.remind_at)
       const slaDate = parseDate(item.sla_due_at)
@@ -579,9 +844,23 @@ export default function RemindersPage() {
         remindTs: remindDate?.getTime() || 0,
         slaDate,
         slaTs: slaDate?.getTime() || 0,
+        _source: 'reminder',
       }
     })
-  }, [reminders])
+    // Filter planner events by the active status filter on the page.
+    // The reminder list endpoint already applies a server-side status
+    // filter, but planner events come back unfiltered — apply the
+    // equivalent status filter client-side so the two sources behave
+    // consistently for the user.
+    const statusGate = (row: TaskRow): boolean => {
+      if (focusTaskIdFromUrl) return true
+      if (taskFilters.status === 'active') return !isClosedReminderStatus(row.status)
+      if (taskFilters.status === 'done') return isClosedReminderStatus(row.status)
+      return true
+    }
+    const plannerRowList = plannerTaskEvents.map(plannerEventToTaskRow).filter(statusGate)
+    return [...reminderRowList, ...plannerRowList]
+  }, [reminders, plannerTaskEvents, focusTaskIdFromUrl, taskFilters.status])
 
   const filteredReminderRows = useMemo(() => {
     const q = normalizeText(taskFilters.search)
@@ -590,6 +869,7 @@ export default function RemindersPage() {
       if (taskFilters.entityType && item.entity_type !== taskFilters.entityType) return false
       if (taskFilters.priority && (item.priority || '') !== taskFilters.priority) return false
       if (taskFilters.dueBucket === 'overdue' && bucketReminderByDue(item) !== 'overdue') return false
+      if (taskFilters.unlinkedOnly && reminderEntityHref(item) != null) return false
       if (!q) return true
       const hay = [
         item.title,
@@ -608,6 +888,7 @@ export default function RemindersPage() {
     reminderRows,
     taskFilters.dueBucket,
     taskFilters.entityType,
+    taskFilters.unlinkedOnly,
     taskFilters.priority,
     taskFilters.search,
   ])
@@ -683,8 +964,46 @@ export default function RemindersPage() {
               ? ['done', 'cancelled']
               : undefined
       const scope = canUseTeamAssigneeScope ? assigneeScope : 'mine'
-      const data = (await listReminders({ status: statusList, assigneeScope: scope })) as ReminderListResponse
-      setReminders(Array.isArray(data?.items) ? data.items : [])
+      // G-7 stage 2: parallelize reminder + planner-task fetches. The
+      // planner endpoint's `kind` filter is single-valued, so we fetch
+      // ALL planner events for the assignee scope (limit 200, plenty
+      // for an operator-facing tasks page) and filter to
+      // `kind ∈ {task, followup}` client-side. Two separate kind=task
+      // / kind=followup calls would also work but double the round-trip
+      // cost without much benefit.
+      const plannerAssigneeId = scope === 'mine' && me?.id ? String(me.id) : undefined
+      const [remindersData, plannerData] = await Promise.all([
+        listReminders({
+          status: statusList,
+          assigneeScope: scope,
+          includeCompletedEntities: taskFilters.includeCompletedEntities,
+        }) as Promise<ReminderListResponse>,
+        // Failure on planner side must NOT break reminders — wrap in a
+        // try/catch via Promise.allSettled-style fallback below.
+        listCommunicationPlannerEvents({
+          limit: 200,
+          assignee_id: plannerAssigneeId,
+          include_completed_entities: taskFilters.includeCompletedEntities,
+        }).catch((err) => {
+          // Quiet fallback — planner events are an additive surface on
+          // this page; if the planner endpoint fails we still want the
+          // reminders list to render. Log for diagnostics.
+          // eslint-disable-next-line no-console
+          console.warn('[RemindersPage] planner events fetch failed; rendering reminders only', err)
+          return { items: [] as CommunicationPlannerEvent[], total: 0 }
+        }),
+      ])
+      setReminders(Array.isArray(remindersData?.items) ? remindersData.items : [])
+      const plannerItems = Array.isArray((plannerData as any)?.items)
+        ? ((plannerData as any).items as CommunicationPlannerEvent[])
+        : []
+      // Spec G-7: only `task` and `followup` kinds belong on the tasks
+      // page. `meeting` / `call` / `shift` stay calendar-only.
+      const tasksAndFollowups = plannerItems.filter((evt) => {
+        const kind = String(evt.kind || '').trim().toLowerCase()
+        return kind === 'task' || kind === 'followup'
+      })
+      setPlannerTaskEvents(tasksAndFollowups)
       setRemindersState('idle')
     } catch (err: any) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.load'))) {
@@ -694,7 +1013,16 @@ export default function RemindersPage() {
       setRemindersState('error')
       setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load'), t))
     }
-  }, [assigneeScope, canUseTeamAssigneeScope, focusTaskIdFromUrl, planLimitModal, t, taskFilters.status])
+  }, [
+    assigneeScope,
+    canUseTeamAssigneeScope,
+    focusTaskIdFromUrl,
+    me?.id,
+    planLimitModal,
+    t,
+    taskFilters.includeCompletedEntities,
+    taskFilters.status,
+  ])
 
   const loadNotificationsFeed = useCallback(async () => {
     setNotificationsState('loading')
@@ -709,6 +1037,7 @@ export default function RemindersPage() {
         limit: 100,
         includeRead: eventsFilters.read === 'all',
         scope: eventsFilters.scope,
+        includeCompletedEntities: taskFilters.includeCompletedEntities,
       })) as NotificationListResponse
       setNotifications(Array.isArray(data?.items) ? data.items : [])
       setNotificationsState('idle')
@@ -720,7 +1049,7 @@ export default function RemindersPage() {
       setNotificationsState('error')
       setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load'), t))
     }
-  }, [eventsFilters.read, eventsFilters.scope, planLimitModal, t])
+  }, [eventsFilters.read, eventsFilters.scope, planLimitModal, t, taskFilters.includeCompletedEntities])
 
   const reconcileAndReloadNotificationsFeed = useCallback(async () => {
     setNotificationsState('loading')
@@ -731,6 +1060,7 @@ export default function RemindersPage() {
         limit: 100,
         includeRead: eventsFilters.read === 'all',
         scope: eventsFilters.scope,
+        includeCompletedEntities: taskFilters.includeCompletedEntities,
       })) as NotificationListResponse
       setNotifications(Array.isArray(data?.items) ? data.items : [])
       setNotificationsState('idle')
@@ -742,7 +1072,7 @@ export default function RemindersPage() {
       setNotificationsState('error')
       setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load'), t))
     }
-  }, [eventsFilters.read, eventsFilters.scope, planLimitModal, t])
+  }, [eventsFilters.read, eventsFilters.scope, planLimitModal, t, taskFilters.includeCompletedEntities])
 
   useEffect(() => {
     void loadReminders()
@@ -825,14 +1155,135 @@ export default function RemindersPage() {
     return buckets
   }, [filteredReminderRows])
 
-  const slaFlatLists = useMemo(() => {
-    if (taskListMode !== 'sla_queue') return null
-    const open = filteredReminderRows.filter((item) => !isClosedReminderStatus(item.status))
-    const done = filteredReminderRows.filter((item) => isClosedReminderStatus(item.status))
-    open.sort(compareOpenTasksBySlaThenDue)
-    done.sort(compareDoneTasksByUpdated)
-    return { open, done }
-  }, [filteredReminderRows, taskListMode])
+  const taskSections = useMemo((): TaskSection[] => {
+    const rows = filteredReminderRows
+
+    if (taskListMode === 'sla_queue') {
+      const open = rows.filter((item) => !isClosedReminderStatus(item.status)).sort(compareOpenTasksBySlaThenDue)
+      const done = rows.filter((item) => isClosedReminderStatus(item.status)).sort(compareDoneTasksByUpdated)
+      const out: TaskSection[] = []
+      if (taskFilters.status !== 'done' && open.length > 0) {
+        out.push({ key: 'sla_open', label: t('app.reminders.group.sla_queue'), items: open })
+      }
+      if (taskFilters.status !== 'active' && done.length > 0) {
+        out.push({ key: 'sla_done', label: t('app.reminders.group.done'), items: done })
+      }
+      return out
+    }
+
+    if (taskListMode === 'by_candidate') {
+      const groups = new Map<string, TaskRow[]>()
+      for (const item of rows) {
+        const et = String(item.entity_type || '').trim().toLowerCase()
+        const eid = String(item.entity_id || '').trim()
+        const hasEntityLink = Boolean(reminderEntityHref(item))
+        const key = et === 'candidate' && eid ? `cand:${eid}` : hasEntityLink ? '__other' : '__unlinked'
+        const arr = groups.get(key) || []
+        arr.push(item)
+        groups.set(key, arr)
+      }
+      for (const [, arr] of groups) {
+        const sorted = sortTaskRowsMixedOpenFirst(arr)
+        arr.length = 0
+        arr.push(...sorted)
+      }
+      const keys = [...groups.keys()].sort((a, b) => {
+        if (a === '__other' || a === '__unlinked') return 1
+        if (b === '__other' || b === '__unlinked') return -1
+        const ga = groups.get(a)!
+        const gb = groups.get(b)!
+        const ar = ga.find((r) => !isClosedReminderStatus(r.status)) || ga[0]
+        const br = gb.find((r) => !isClosedReminderStatus(r.status)) || gb[0]
+        return compareOpenTasksBySlaThenDue(ar, br)
+      })
+      return keys
+        .map((key): TaskSection => {
+          const items = groups.get(key) || []
+          if (key === '__other') {
+            return { key, label: t('app.reminders.layout.groups_other_entities'), items }
+          }
+          if (key === '__unlinked') {
+            return { key, label: t('app.reminders.layout.groups_unlinked_entities'), items }
+          }
+          const first = items[0]
+          const name = linkedEntityDisplayName(first) || String(first.entity_id || '').trim()
+          const headerHref = reminderEntityHref(first)
+          return {
+            key,
+            label: t('app.reminders.layout.group_candidate', { defaultValue: 'Candidate: {name}', values: { name } }),
+            headerHref,
+            items,
+          }
+        })
+        .filter((s) => s.items.length > 0)
+    }
+
+    if (taskListMode === 'by_task_type') {
+      const groups = new Map<string, TaskRow[]>()
+      for (const item of rows) {
+        const ty = String(item.type || 'unknown').trim() || 'unknown'
+        const arr = groups.get(ty) || []
+        arr.push(item)
+        groups.set(ty, arr)
+      }
+      for (const [, arr] of groups) {
+        const sorted = sortTaskRowsMixedOpenFirst(arr)
+        arr.length = 0
+        arr.push(...sorted)
+      }
+      const keys = [...groups.keys()].sort((a, b) => (groups.get(b)!.length || 0) - (groups.get(a)!.length || 0))
+      return keys
+        .map((ty) => ({
+          key: `type:${ty}`,
+          label: t('app.reminders.task_type_label', { defaultValue: 'Task type: {type}', values: { type: ty } }),
+          items: groups.get(ty) || [],
+        }))
+        .filter((s) => s.items.length > 0)
+    }
+
+    if (taskListMode === 'by_due_day') {
+      const groups = new Map<string, TaskRow[]>()
+      for (const item of rows) {
+        const k = dueDaySectionKey(item)
+        const arr = groups.get(k) || []
+        arr.push(item)
+        groups.set(k, arr)
+      }
+      for (const [, arr] of groups) {
+        const sorted = sortTaskRowsMixedOpenFirst(arr)
+        arr.length = 0
+        arr.push(...sorted)
+      }
+      const orderedKeys = sortDueDaySectionKeys([...groups.keys()])
+      return orderedKeys
+        .map((key): TaskSection => {
+          let label = key
+          if (key === 'overdue') label = t('app.reminders.status.overdue')
+          else if (key === 'unscheduled') label = t('app.reminders.group.unscheduled')
+          else if (key === 'done') label = t('app.reminders.group.done')
+          else if (key.startsWith('day:')) {
+            const d = parseCalendarDayKey(key)
+            label = d ? format(d, 'EEEE, d MMM yyyy', { locale: dateLocale }) : key
+          }
+          return { key, label, items: groups.get(key) || [] }
+        })
+        .filter((s) => s.items.length > 0)
+    }
+
+    const dueOrder = ['overdue', 'today', 'tomorrow', 'week', 'later', 'unscheduled', 'done'] as const
+    const dueLabels: Record<(typeof dueOrder)[number], string> = {
+      overdue: t('app.reminders.status.overdue'),
+      today: t('app.reminders.group.today'),
+      tomorrow: t('app.reminders.group.tomorrow'),
+      week: t('app.reminders.group.week'),
+      later: t('app.reminders.group.later'),
+      unscheduled: t('app.reminders.group.unscheduled'),
+      done: t('app.reminders.group.done'),
+    }
+    return dueOrder
+      .map((key) => ({ key, label: dueLabels[key], items: reminderGroups[key] || [] }))
+      .filter((s) => s.items.length > 0)
+  }, [dateLocale, filteredReminderRows, format, reminderGroups, t, taskFilters.status, taskListMode])
 
   const visibleNotifications = useMemo(() => {
     const q = normalizeText(eventsFilters.search)
@@ -859,13 +1310,24 @@ export default function RemindersPage() {
   }, [eventsFilters.read, eventsFilters.search, notifications])
 
   const taskCounts = useMemo(() => {
+    // G-7 stage 2: count BOTH reminder + planner-task rows so the
+    // badge totals match what the user actually sees in the list.
     return {
-      total: reminders.length,
-      active: reminders.filter((r) => !isClosedReminderStatus(r.status)).length,
-      overdue: reminders.filter((r) => r.status === 'overdue').length,
-      done: reminders.filter((r) => isClosedReminderStatus(r.status)).length,
+      total: reminderRows.length,
+      active: reminderRows.filter((r) => !isClosedReminderStatus(r.status)).length,
+      overdue: reminderRows.filter((r) => r.status === 'overdue').length,
+      done: reminderRows.filter((r) => isClosedReminderStatus(r.status)).length,
     }
-  }, [reminders])
+  }, [reminderRows])
+  const selectedTaskSet = useMemo(() => new Set(selectedTaskIds), [selectedTaskIds])
+  const selectedTaskRows = useMemo(
+    () => filteredReminderRows.filter((r) => selectedTaskSet.has(r.id)),
+    [filteredReminderRows, selectedTaskSet],
+  )
+  const unlinkedVisibleCount = useMemo(
+    () => filteredReminderRows.filter((r) => reminderEntityHref(r) == null).length,
+    [filteredReminderRows],
+  )
 
   const notificationCounts = useMemo(() => {
     return {
@@ -875,8 +1337,16 @@ export default function RemindersPage() {
   }, [notifications])
 
   const entityTypeOptions = useMemo(() => {
-    return Array.from(new Set(reminders.map((r) => r.entity_type).filter(Boolean))).sort()
-  }, [reminders])
+    // G-7 stage 2: include planner-derived rows so the entity-type
+    // dropdown lists every entity actually visible (e.g. 'planner'
+    // appears for stand-alone planner tasks without an entity link).
+    return Array.from(new Set(reminderRows.map((r) => r.entity_type).filter(Boolean))).sort()
+  }, [reminderRows])
+
+  useEffect(() => {
+    const allowed = new Set(filteredReminderRows.map((r) => r.id))
+    setSelectedTaskIds((prev) => prev.filter((id) => allowed.has(id)))
+  }, [filteredReminderRows])
 
   const openEdit = (item: TaskRow) => {
     setEditState({
@@ -920,12 +1390,24 @@ export default function RemindersPage() {
     }
   }
 
+  // G-7 stage 2: every action handler must inspect `_source` and route
+  // to the correct underlying API. Reminders use the existing
+  // /reminders endpoints; planner-derived rows use
+  // /communications/planner/events.
   const handleComplete = async (id: string) => {
     setTaskBusyId(id)
     setRemindersError(null)
+    const row = reminderRows.find((r) => r.id === id)
     try {
-      const updated = await completeReminder(id)
-      setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
+      if (row?._source === 'planner') {
+        const updated = await patchCommunicationPlannerEvent(id, { status: 'done' })
+        setPlannerTaskEvents((prev) =>
+          prev.map((e) => (e.id === id ? (updated as CommunicationPlannerEvent) : e)),
+        )
+      } else {
+        const updated = await completeReminder(id)
+        setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
+      }
     } catch (err: any) {
       if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.complete'))) {
         setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.complete'), t))
@@ -938,9 +1420,30 @@ export default function RemindersPage() {
   const handleSnooze = async (id: string, minutes: number) => {
     setTaskBusyId(id)
     setRemindersError(null)
+    const row = reminderRows.find((r) => r.id === id)
     try {
-      const updated = await snoozeReminder(id, { minutes })
-      setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
+      if (row?._source === 'planner') {
+        // Planner events have no `snoozed_until` semantics — translate
+        // "snooze by N minutes" into a `start_at` shift. The original
+        // duration is preserved by also shifting `end_at` if present.
+        const start = row.dueDate || new Date()
+        const newStart = new Date(start.getTime() + minutes * 60_000)
+        const originalEvent = plannerTaskEvents.find((e) => e.id === id)
+        const originalEnd = originalEvent?.end_at ? parseDate(originalEvent.end_at) : null
+        const newEndIso = originalEnd
+          ? new Date(originalEnd.getTime() + minutes * 60_000).toISOString()
+          : undefined
+        const updated = await patchCommunicationPlannerEvent(id, {
+          start_at: newStart.toISOString(),
+          ...(newEndIso ? { end_at: newEndIso } : {}),
+        })
+        setPlannerTaskEvents((prev) =>
+          prev.map((e) => (e.id === id ? (updated as CommunicationPlannerEvent) : e)),
+        )
+      } else {
+        const updated = await snoozeReminder(id, { minutes })
+        setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
+      }
     } catch (err: any) {
       if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.snooze'))) {
         setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.snooze'), t))
@@ -950,21 +1453,146 @@ export default function RemindersPage() {
     }
   }
 
+  const toggleTaskSelection = (id: string, next: boolean) => {
+    setSelectedTaskIds((prev) => {
+      const has = prev.includes(id)
+      if (next && !has) return [...prev, id]
+      if (!next && has) return prev.filter((x) => x !== id)
+      return prev
+    })
+  }
+
+  const toggleSelectAllVisibleTasks = (next: boolean) => {
+    const ids = filteredReminderRows.map((r) => r.id)
+    setSelectedTaskIds((prev) => {
+      if (next) return [...new Set([...prev, ...ids])]
+      const remove = new Set(ids)
+      return prev.filter((id) => !remove.has(id))
+    })
+  }
+
+  const runBulkTaskAction = async (
+    action: (row: TaskRow) => Promise<void>,
+    errorMessageKey: string,
+  ) => {
+    if (bulkBusy || selectedTaskRows.length === 0) return
+    setBulkBusy(true)
+    setRemindersError(null)
+    let ok = 0
+    let failed = 0
+    for (const row of selectedTaskRows) {
+      try {
+        await action(row)
+        ok += 1
+      } catch {
+        failed += 1
+      }
+    }
+    if (ok > 0) {
+      await loadReminders()
+      const selectedNow = new Set(selectedTaskRows.map((r) => r.id))
+      setSelectedTaskIds((prev) => prev.filter((id) => !selectedNow.has(id)))
+    }
+    if (failed > 0) {
+      setRemindersError(getFriendlyErrorInfo(new Error(t(errorMessageKey)), t(errorMessageKey), t))
+    }
+    setBulkBusy(false)
+  }
+
+  const bulkSnooze = async (minutes: number) => {
+    await runBulkTaskAction(async (row) => {
+      if (row._source === 'planner') {
+        const start = row.dueDate || new Date()
+        const newStart = new Date(start.getTime() + minutes * 60_000)
+        const originalEvent = plannerTaskEvents.find((e) => e.id === row.id)
+        const originalEnd = originalEvent?.end_at ? parseDate(originalEvent.end_at) : null
+        const newEndIso = originalEnd ? new Date(originalEnd.getTime() + minutes * 60_000).toISOString() : undefined
+        await patchCommunicationPlannerEvent(row.id, {
+          start_at: newStart.toISOString(),
+          ...(newEndIso ? { end_at: newEndIso } : {}),
+        })
+      } else {
+        await snoozeReminder(row.id, { minutes })
+      }
+    }, 'app.reminders.errors.snooze')
+  }
+
+  const bulkReschedule = async () => {
+    if (!bulkRescheduleLocal) return
+    const dueIso = new Date(bulkRescheduleLocal).toISOString()
+    await runBulkTaskAction(async (row) => {
+      if (row._source === 'planner') {
+        const plannerPayload: Record<string, unknown> = { start_at: dueIso }
+        const originalEvent = plannerTaskEvents.find((evt) => evt.id === row.id)
+        const originalStart = originalEvent ? parseDate(originalEvent.start_at) : null
+        const originalEnd = originalEvent?.end_at ? parseDate(originalEvent.end_at) : null
+        if (originalStart && originalEnd) {
+          const durationMs = originalEnd.getTime() - originalStart.getTime()
+          plannerPayload.end_at = new Date(new Date(dueIso).getTime() + durationMs).toISOString()
+        }
+        await patchCommunicationPlannerEvent(row.id, plannerPayload)
+      } else {
+        await updateReminder(row.id, { due_at: dueIso })
+      }
+    }, 'app.reminders.errors.update')
+  }
+
+  const bulkReassign = async () => {
+    const assignee = bulkAssigneeId.trim() || null
+    await runBulkTaskAction(async (row) => {
+      if (row._source === 'planner') {
+        await patchCommunicationPlannerEvent(row.id, { assignee_id: assignee })
+      } else {
+        await updateReminder(row.id, { assignee_id: assignee })
+      }
+    }, 'app.reminders.errors.update')
+  }
+
   const submitEdit = async (e: FormEvent) => {
     e.preventDefault()
     if (!editState) return
     setEditBusy(true)
     setRemindersError(null)
+    const editingRow = reminderRows.find((r) => r.id === editState.id)
     try {
-      const payload: Record<string, unknown> = {
-        title: editState.title.trim(),
-        description: editState.description.trim(),
-        priority: editState.priority || 'normal',
+      if (editingRow?._source === 'planner') {
+        // G-7 stage 2: planner edit. Reminders carry both due_at and
+        // remind_at — planner has only start_at (mapped to due_at on
+        // the row). We honour `dueAtLocal` as the planner's new
+        // start_at and ignore the remind_at field (planner has no
+        // analogous concept). End_at duration is preserved as in
+        // handleSnooze.
+        const plannerPayload: Record<string, unknown> = {
+          title: editState.title.trim(),
+          description: editState.description.trim(),
+          priority: editState.priority || 'normal',
+        }
+        if (editState.dueAtLocal) {
+          const newStart = new Date(editState.dueAtLocal)
+          plannerPayload.start_at = newStart.toISOString()
+          const originalEvent = plannerTaskEvents.find((evt) => evt.id === editState.id)
+          const originalStart = originalEvent ? parseDate(originalEvent.start_at) : null
+          const originalEnd = originalEvent?.end_at ? parseDate(originalEvent.end_at) : null
+          if (originalStart && originalEnd) {
+            const durationMs = originalEnd.getTime() - originalStart.getTime()
+            plannerPayload.end_at = new Date(newStart.getTime() + durationMs).toISOString()
+          }
+        }
+        const updated = await patchCommunicationPlannerEvent(editState.id, plannerPayload)
+        setPlannerTaskEvents((prev) =>
+          prev.map((evt) => (evt.id === editState.id ? (updated as CommunicationPlannerEvent) : evt)),
+        )
+      } else {
+        const payload: Record<string, unknown> = {
+          title: editState.title.trim(),
+          description: editState.description.trim(),
+          priority: editState.priority || 'normal',
+        }
+        if (editState.dueAtLocal) payload.due_at = new Date(editState.dueAtLocal).toISOString()
+        if (editState.remindAtLocal) payload.remind_at = new Date(editState.remindAtLocal).toISOString()
+        const updated = await updateReminder(editState.id, payload)
+        setReminders((prev) => prev.map((r) => (r.id === editState.id ? (updated as ReminderRecord) : r)))
       }
-      if (editState.dueAtLocal) payload.due_at = new Date(editState.dueAtLocal).toISOString()
-      if (editState.remindAtLocal) payload.remind_at = new Date(editState.remindAtLocal).toISOString()
-      const updated = await updateReminder(editState.id, payload)
-      setReminders((prev) => prev.map((r) => (r.id === editState.id ? (updated as ReminderRecord) : r)))
       setEditState(null)
     } catch (err: any) {
       if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.update'))) {
@@ -1005,6 +1633,24 @@ export default function RemindersPage() {
     }
   }
 
+  const copyTaskIds = async (ids: string[], sectionKey: string) => {
+    const lines = ids.map((id) => String(id).trim()).filter(Boolean)
+    if (!lines.length) return
+    const text = lines.join('\n')
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        throw new Error('clipboard-unavailable')
+      }
+      setCopiedSectionKey(sectionKey)
+      window.setTimeout(() => setCopiedSectionKey((prev) => (prev === sectionKey ? null : prev)), 1800)
+    } catch {
+      // Fallback: open prompt so operator can copy IDs manually.
+      window.prompt(t('app.reminders.layout.copy_ids_prompt', { defaultValue: 'Copy task IDs' }), text)
+    }
+  }
+
   const formatRelative = (date: Date | null): string => {
     if (!date) return '—'
     return formatDistanceToNow(date, { addSuffix: true, locale: dateLocale })
@@ -1014,16 +1660,6 @@ export default function RemindersPage() {
     if (!date) return '—'
     return format(date, 'dd MMM yyyy, HH:mm', { locale: dateLocale })
   }
-
-  const taskGroupLabels: Array<{ key: keyof typeof reminderGroups; label: string }> = [
-    { key: 'overdue', label: t('app.reminders.status.overdue') },
-    { key: 'today', label: t('app.reminders.group.today') },
-    { key: 'tomorrow', label: t('app.reminders.group.tomorrow') },
-    { key: 'week', label: t('app.reminders.group.week') },
-    { key: 'later', label: t('app.reminders.group.later') },
-    { key: 'unscheduled', label: t('app.reminders.group.unscheduled') },
-    { key: 'done', label: t('app.reminders.group.done') },
-  ]
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
@@ -1197,9 +1833,15 @@ export default function RemindersPage() {
             <details className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
               <summary className="cursor-pointer text-xs font-semibold text-slate-700">
                 {t('app.reminders.filters.more', { defaultValue: 'More filters' })}
-                {(taskFilters.entityType || taskFilters.priority) && (
+                {(taskFilters.entityType || taskFilters.priority || taskFilters.unlinkedOnly) && (
                   <span className="ml-2 font-normal text-slate-500">
-                    ({[taskFilters.entityType, taskFilters.priority].filter(Boolean).join(' · ')})
+                    ({[
+                      taskFilters.entityType,
+                      taskFilters.priority,
+                      taskFilters.unlinkedOnly ? t('app.reminders.filters.unlinked_short', { defaultValue: 'unlinked' }) : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')})
                   </span>
                 )}
               </summary>
@@ -1226,6 +1868,22 @@ export default function RemindersPage() {
                   <option value="normal">{t('app.reminders.priority.normal')}</option>
                   <option value="high">{t('app.reminders.priority.high')}</option>
                 </select>
+                <label className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5"
+                    checked={taskFilters.includeCompletedEntities}
+                    onChange={(e) =>
+                      setTaskFilters((prev) => ({
+                        ...prev,
+                        includeCompletedEntities: e.target.checked,
+                      }))
+                    }
+                  />
+                  {t('app.reminders.filters.include_completed_candidates', {
+                    defaultValue: 'Show tasks for completed/rejected candidates',
+                  })}
+                </label>
               </div>
             </details>
 
@@ -1268,6 +1926,31 @@ export default function RemindersPage() {
                     : t('app.reminders.filters.overdue_only', {
                         defaultValue: 'Overdue only ({count})',
                         values: { count: taskCounts.overdue },
+                      })}
+                </button>
+              )}
+              {(unlinkedVisibleCount > 0 || taskFilters.unlinkedOnly) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTaskFilters((prev) => ({
+                      ...prev,
+                      unlinkedOnly: !prev.unlinkedOnly,
+                    }))
+                  }
+                  className={clsx(
+                    'rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    taskFilters.unlinkedOnly
+                      ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+                      : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
+                  )}
+                  title={t('app.reminders.layout.groups_unlinked_entities_hint')}
+                >
+                  {taskFilters.unlinkedOnly
+                    ? t('app.reminders.filters.unlinked_clear', { defaultValue: 'Show linked + unlinked' })
+                    : t('app.reminders.filters.unlinked_only', {
+                        defaultValue: 'Unlinked only ({count})',
+                        values: { count: unlinkedVisibleCount },
                       })}
                 </button>
               )}
@@ -1316,14 +1999,70 @@ export default function RemindersPage() {
                 >
                   <option value="by_due">{t('app.reminders.layout.by_due')}</option>
                   <option value="sla_queue">{t('app.reminders.layout.sla_queue')}</option>
+                  <option value="by_due_day">{t('app.reminders.layout.by_due_day')}</option>
+                  <option value="by_candidate">{t('app.reminders.layout.by_candidate')}</option>
+                  <option value="by_task_type">{t('app.reminders.layout.by_task_type')}</option>
                 </select>
               </div>
               <p className="mt-2 text-[11px] text-slate-500">
                 {taskListMode === 'sla_queue'
                   ? t('app.reminders.sla_flat_hint')
-                  : t('app.reminders.sla_sort_hint')}
+                  : taskListMode === 'by_candidate'
+                    ? t('app.reminders.layout_hint_by_candidate')
+                    : taskListMode === 'by_task_type'
+                      ? t('app.reminders.layout_hint_by_task_type')
+                      : taskListMode === 'by_due_day'
+                        ? t('app.reminders.layout_hint_by_due_day')
+                        : t('app.reminders.sla_sort_hint')}
               </p>
             </details>
+            {filteredReminderRows.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                      checked={filteredReminderRows.length > 0 && selectedTaskRows.length === filteredReminderRows.length}
+                      onChange={(e) => toggleSelectAllVisibleTasks(e.target.checked)}
+                    />
+                    {t('app.reminders.bulk.select_visible', { defaultValue: 'Select visible ({count})', values: { count: filteredReminderRows.length } })}
+                  </label>
+                  <span className="text-xs text-slate-500">
+                    {t('app.reminders.bulk.selected', { defaultValue: 'Selected: {count}', values: { count: selectedTaskRows.length } })}
+                  </span>
+                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkSnooze(15)} disabled={bulkBusy || selectedTaskRows.length === 0}>
+                    {t('app.reminders.bulk.snooze_15', { defaultValue: 'Snooze +15m' })}
+                  </button>
+                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkSnooze(60)} disabled={bulkBusy || selectedTaskRows.length === 0}>
+                    {t('app.reminders.bulk.snooze_60', { defaultValue: 'Snooze +1h' })}
+                  </button>
+                  <input
+                    type="datetime-local"
+                    className="input py-1 text-xs"
+                    value={bulkRescheduleLocal}
+                    onChange={(e) => setBulkRescheduleLocal(e.target.value)}
+                  />
+                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkReschedule()} disabled={bulkBusy || selectedTaskRows.length === 0 || !bulkRescheduleLocal}>
+                    {t('app.reminders.bulk.reschedule', { defaultValue: 'Re-schedule' })}
+                  </button>
+                  <input
+                    className="input max-w-[11rem] py-1 text-xs"
+                    placeholder={t('app.reminders.bulk.assignee_placeholder', { defaultValue: 'Assignee user id' })}
+                    value={bulkAssigneeId}
+                    onChange={(e) => setBulkAssigneeId(e.target.value)}
+                  />
+                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkReassign()} disabled={bulkBusy || selectedTaskRows.length === 0}>
+                    {t('app.reminders.bulk.reassign', { defaultValue: 'Bulk reassign' })}
+                  </button>
+                  {selectedTaskRows.length > 0 && (
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => setSelectedTaskIds([])}>
+                      {t('app.reminders.bulk.clear', { defaultValue: 'Clear selection' })}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {remindersState === 'loading' && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
             {remindersState === 'error' && remindersError && (
@@ -1342,6 +2081,10 @@ export default function RemindersPage() {
                   compact
                   title={t('app.reminders.states.empty_title')}
                   description={t('app.reminders.states.empty_desc')}
+                  whyHint={t('app.reminders.states.empty_why', {
+                    defaultValue:
+                      'Tasks bring SLA, follow-ups and «next-best-actions» into one queue. Each lead, candidate and document creates tasks here automatically — your daily plan in one screen.',
+                  })}
                   primaryAction={{
                     label: t('app.reminders.states.empty_cta_create'),
                     onClick: openQuickReminderComposer,
@@ -1356,97 +2099,65 @@ export default function RemindersPage() {
 
             {filteredReminderRows.length > 0 && (
               <div className="space-y-5">
-                {taskListMode === 'sla_queue' && slaFlatLists ? (
-                  <>
-                    {taskFilters.status !== 'done' && slaFlatLists.open.length > 0 && (
-                      <section className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            {t('app.reminders.group.sla_queue')}
-                          </h3>
-                          <span className="text-xs text-slate-500">{slaFlatLists.open.length}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {slaFlatLists.open.map((item) => (
-                            <ReminderTaskRow
-                              key={item.id}
-                              item={item}
-                              t={t}
-                              reminderStatusLabel={reminderStatusLabel}
-                              formatTs={formatTs}
-                              formatRelative={formatRelative}
-                              taskBusyId={taskBusyId}
-                              editBusy={editBusy}
-                              highlighted={highlightTaskId === String(item.id)}
-                              onEdit={openEdit}
-                              onSnooze={handleSnooze}
-                              onComplete={handleComplete}
-                            />
-                          ))}
-                        </div>
-                      </section>
-                    )}
-                    {taskFilters.status !== 'active' && slaFlatLists.done.length > 0 && (
-                      <section className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            {t('app.reminders.group.done')}
-                          </h3>
-                          <span className="text-xs text-slate-500">{slaFlatLists.done.length}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {slaFlatLists.done.map((item) => (
-                            <ReminderTaskRow
-                              key={item.id}
-                              item={item}
-                              t={t}
-                              reminderStatusLabel={reminderStatusLabel}
-                              formatTs={formatTs}
-                              formatRelative={formatRelative}
-                              taskBusyId={taskBusyId}
-                              editBusy={editBusy}
-                              highlighted={highlightTaskId === String(item.id)}
-                              onEdit={openEdit}
-                              onSnooze={handleSnooze}
-                              onComplete={handleComplete}
-                            />
-                          ))}
-                        </div>
-                      </section>
-                    )}
-                  </>
-                ) : (
-                  taskGroupLabels.map(({ key, label }) => {
-                    const groupItems = reminderGroups[key] || []
-                    if (!groupItems.length) return null
-                    return (
-                      <section key={key} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
-                          <span className="text-xs text-slate-500">{groupItems.length}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {groupItems.map((item) => (
-                            <ReminderTaskRow
-                              key={item.id}
-                              item={item}
-                              t={t}
-                              reminderStatusLabel={reminderStatusLabel}
-                              formatTs={formatTs}
-                              formatRelative={formatRelative}
-                              taskBusyId={taskBusyId}
-                              editBusy={editBusy}
-                              highlighted={highlightTaskId === String(item.id)}
-                              onEdit={openEdit}
-                              onSnooze={handleSnooze}
-                              onComplete={handleComplete}
-                            />
-                          ))}
-                        </div>
-                      </section>
-                    )
-                  })
-                )}
+                {taskSections.map((section) => (
+                  <section key={section.key} className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="min-w-0 text-sm font-semibold text-slate-900">
+                        {section.headerHref ? (
+                          <Link to={section.headerHref} className="text-brand-800 hover:underline">
+                            {section.label}
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-2 truncate">
+                            <span className="truncate">{section.label}</span>
+                            {section.key === '__unlinked' ? (
+                              <span
+                                className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
+                                title={t('app.reminders.layout.groups_unlinked_entities_hint')}
+                              >
+                                {t('app.reminders.layout.unlinked_badge')}
+                              </span>
+                            ) : null}
+                          </span>
+                        )}
+                      </h3>
+                      <div className="shrink-0 flex items-center gap-2">
+                        {section.key === '__unlinked' ? (
+                          <button
+                            type="button"
+                            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                            onClick={() => void copyTaskIds(section.items.map((i) => i.id), section.key)}
+                          >
+                            {copiedSectionKey === section.key
+                              ? t('app.reminders.layout.copy_ids_done', { defaultValue: 'Copied' })
+                              : t('app.reminders.layout.copy_ids', { defaultValue: 'Copy IDs' })}
+                          </button>
+                        ) : null}
+                        <span className="text-xs text-slate-500">{section.items.length}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {section.items.map((item) => (
+                        <ReminderTaskRow
+                          key={item.id}
+                          item={item}
+                          t={t}
+                          reminderStatusLabel={reminderStatusLabel}
+                          formatTs={formatTs}
+                          formatRelative={formatRelative}
+                          taskBusyId={taskBusyId}
+                          editBusy={editBusy}
+                          highlighted={highlightTaskId === String(item.id)}
+                          selected={selectedTaskSet.has(item.id)}
+                          onToggleSelect={toggleTaskSelection}
+                          onEdit={openEdit}
+                          onSnooze={handleSnooze}
+                          onComplete={handleComplete}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
           </section>
@@ -1492,7 +2203,7 @@ export default function RemindersPage() {
               retryLabel={t('common.retry')}
               {...friendlyErrorBannerSecondary(
                 notificationsError,
-                CRM_APP_PATHS.communicationsLegacyHub,
+                CRM_APP_PATHS.inbox,
                 t('app.reminders.actions.open_comm'),
               )}
             />
@@ -1569,11 +2280,19 @@ export default function RemindersPage() {
         </section>
       )}
 
-      {editState && (
+      {editState && (() => {
+        // G-7 stage 2: planner rows have no `remind_at` analogue.
+        // Hide the remind-at input for them so the operator doesn't
+        // think they can set a separate pre-event nudge.
+        const editingSource = reminderRows.find((r) => r.id === editState.id)?._source ?? 'reminder'
+        const isPlannerEdit = editingSource === 'planner'
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !editBusy && setEditState(null)}>
           <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-slate-900">
-              {t('app.reminders.edit.title')}
+              {isPlannerEdit
+                ? t('app.reminders.edit.title_planner', { defaultValue: 'Edit calendar event' })
+                : t('app.reminders.edit.title')}
             </h3>
             <form onSubmit={submitEdit} className="mt-3 space-y-3">
               <div>
@@ -1584,15 +2303,21 @@ export default function RemindersPage() {
                 <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.description')}</label>
                 <textarea className="textarea mt-1 w-full" rows={3} value={editState.description} onChange={(e) => setEditState((prev) => prev ? { ...prev, description: e.target.value } : prev)} />
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className={isPlannerEdit ? 'grid gap-3' : 'grid gap-3 md:grid-cols-2'}>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.due')}</label>
+                  <label className="block text-xs font-medium text-slate-600">
+                    {isPlannerEdit
+                      ? t('app.reminders.form.due_planner', { defaultValue: 'Start' })
+                      : t('app.reminders.form.due')}
+                  </label>
                   <input type="datetime-local" className="input mt-1 w-full" value={editState.dueAtLocal} onChange={(e) => setEditState((prev) => prev ? { ...prev, dueAtLocal: e.target.value } : prev)} />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.remind_at')}</label>
-                  <input type="datetime-local" className="input mt-1 w-full" value={editState.remindAtLocal} onChange={(e) => setEditState((prev) => prev ? { ...prev, remindAtLocal: e.target.value } : prev)} />
-                </div>
+                {!isPlannerEdit && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.remind_at')}</label>
+                    <input type="datetime-local" className="input mt-1 w-full" value={editState.remindAtLocal} onChange={(e) => setEditState((prev) => prev ? { ...prev, remindAtLocal: e.target.value } : prev)} />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.priority')}</label>
@@ -1613,7 +2338,8 @@ export default function RemindersPage() {
             </form>
           </div>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

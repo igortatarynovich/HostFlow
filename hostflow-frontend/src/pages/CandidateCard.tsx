@@ -27,6 +27,7 @@ import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import { exportCandidateBundle } from '../api/documents'
 import { createCandidateUploadLink, type CandidateUploadLinkResponse } from '../api/candidates'
+import { useCandidateNextAction } from '../components/candidate/useCandidateNextAction'
 import {
   approveCandidatePipelineOverride,
   createCandidatePipelineOverride,
@@ -59,6 +60,7 @@ type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
 import { getFunnel } from '../api/funnels'
 import { validateRequiredFields } from '../utils/profileUtils'
 import { buildInboxHubPath } from '../utils/inboxDeepLinks'
+import { isCandidateRecruiterIdCanonEnabled } from '../utils/featureFlags'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { servicesWorkspacePath } from '../modules/services/utils'
@@ -66,6 +68,7 @@ import { useI18n, type TranslateFn } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
 import { isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import { scoreMissingHintForStage } from '../utils/candidateMissingDataHints'
 import {
   contactAttemptPipelineBlocksForward,
   docsIssuesPresent,
@@ -80,6 +83,7 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { handoffFromCandidate } from '../api/workforce'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
@@ -88,6 +92,7 @@ import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import CandidateHeader from '../components/candidate/CandidateHeader'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
 import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
+import { CandidateWorkforceTerminationSection } from '../components/candidate/CandidateWorkforceTerminationSection'
 import CandidatePersonalSection from '../components/candidate/CandidatePersonalSection'
 import CandidateStatusSection from '../components/candidate/CandidateStatusSection'
 import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
@@ -105,6 +110,7 @@ import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPan
 import RailPrimaryStepFrame from '../components/candidate/RailPrimaryStepFrame'
 import { railHasUrgentReminder, resolveRailPrimaryFocus } from '../utils/railPrimaryFocus'
 import { createHandoff, getAvailableClients, getHandoffStatus, type AvailableClientOut, type HandoffStatusResponse } from '../api/handoffs'
+import { listTenantLinks } from '../api/tenantLinks'
 import { deriveDocsMeta } from '../modules/candidates/utils'
 import {
   ADDRESS_KEYS,
@@ -257,6 +263,17 @@ const employmentPayloadFromSnapshot = (snapshot: EmploymentSnapshot) => ({
   end_date: snapshot.end_date || null,
 })
 
+const employmentRowsFingerprint = (rows: EmploymentRow[]): string => {
+  const normalized = (rows || [])
+    .map((row) => ({
+      id: row.id || null,
+      localId: row.localId,
+      snapshot: employmentSnapshot(row),
+    }))
+    .filter(({ snapshot }) => employmentRowHasData(snapshot))
+  return JSON.stringify(normalized)
+}
+
 const candidateEmploymentToRow = (record: CandidateEmploymentRecord): EmploymentRow => makeEmploymentRow({
   id: record.id,
   employer_name: record.employer_name ?? '',
@@ -375,6 +392,12 @@ const sanitizeExtra = (extra?: Partial<CandidateExtra> | null, fallback?: Candid
     result.has_adr = merged.has_adr
   } else {
     result.has_adr = null
+  }
+  const wt = (merged as { workforce_termination?: unknown }).workforce_termination
+  if (wt && typeof wt === 'object' && !Array.isArray(wt)) {
+    ;(result as CandidateExtra).workforce_termination = { ...(wt as Record<string, unknown>) } as NonNullable<
+      CandidateExtra['workforce_termination']
+    >
   }
   delete (result as any).documents
   return result as CandidateExtra
@@ -590,8 +613,10 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
         : []
 
   const managerId =
-    (raw?.manager_id && isUuidLike(raw.manager_id) && String(raw.manager_id))
+    (raw?.recruiter_id && isUuidLike(raw.recruiter_id) && String(raw.recruiter_id))
+    || (raw?.manager_id && isUuidLike(raw.manager_id) && String(raw.manager_id))
     || (isUuidLike(raw?.manager) ? String(raw.manager) : undefined)
+    || ((previous as any)?.recruiter_id && isUuidLike((previous as any).recruiter_id) && String((previous as any).recruiter_id))
     || (isUuidLike((previous as any)?.manager_id) ? String((previous as any).manager_id) : undefined)
     || (isUuidLike(previous?.manager) ? String(previous?.manager) : null)
 
@@ -668,7 +693,7 @@ export default function CandidateCard(){
   const location = useLocation()
   const isNew = id === 'new'
   const nav = useNavigate()
-  const { can, role: permissionsRole, isClientTenant } = usePermissions()
+  const { can, role: permissionsRole, isClientTenant, tenantId } = usePermissions()
   const { gates: hiringGatesApi } = useHiringPipelineGates()
   const hiringGatesRuntime = useMemo(() => hiringPipelineGatesFromApi(hiringGatesApi), [hiringGatesApi])
   const canRequestDelete = can('candidates.requestDelete')
@@ -687,10 +712,42 @@ export default function CandidateCard(){
     }
     return CRM_APP_PATHS.candidates
   }, [location.state])
-  const fromProcesowani =
-    originPath.startsWith(CRM_APP_PATHS.procesowani) ||
-    location.pathname.includes(CRM_APP_PATHS.procesowani)
-  const isClientJourneyView = fromProcesowani || isClientTenant
+  const [isHandoffEnabledForCurrentCompany, setIsHandoffEnabledForCurrentCompany] = useState(false)
+  const isClientJourneyView = isClientTenant || isHandoffEnabledForCurrentCompany
+  const [model, setModel] = useState<Candidate | null>(null)
+  const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
+  const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
+  const [workforceHandoffBusy, setWorkforceHandoffBusy] = useState(false)
+
+  useEffect(() => {
+    if (isClientTenant) {
+      setIsHandoffEnabledForCurrentCompany(false)
+      return
+    }
+    const companyId = String(model?.company_id || '').trim()
+    const agencyTenantId = String(tenantId || '').trim()
+    if (!agencyTenantId || !companyId) {
+      setIsHandoffEnabledForCurrentCompany(false)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const links = await listTenantLinks(agencyTenantId)
+        if (cancelled) return
+        const matched = links.find((link) =>
+          String(link.client_company_id || '').trim() === companyId ||
+          String(link.handoff_include_company_id || '').trim() === companyId,
+        )
+        setIsHandoffEnabledForCurrentCompany(Boolean(matched?.handoff_enabled))
+      } catch {
+        if (!cancelled) setIsHandoffEnabledForCurrentCompany(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isClientTenant, tenantId, model?.company_id])
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
@@ -730,11 +787,37 @@ export default function CandidateCard(){
   const stageOptions = useMemo(() => {
     const codes = profileStageCodes
     if (!meta?.meta) return codes
-    if (fromProcesowani || isClientTenant) {
+    if (isClientTenant) {
       return codes.filter((code) => meta.meta?.[code]?.visible_for_client)
     }
+    if (isHandoffEnabledForCurrentCompany) {
+      return codes.filter((code) => {
+        const stageMeta = meta.meta?.[code]
+        if (stageMeta?.visible_for_agency) return true
+        const canonical = canonicalStageKey(code, null) || String(code).trim().toLowerCase()
+        if (canonical === 'handoff_returned') return true
+        return isPipelineCompletedCanonicalStage(canonical)
+      })
+    }
     return codes
-  }, [profileStageCodes, meta, isClientTenant, fromProcesowani])
+  }, [profileStageCodes, meta, isClientTenant, isHandoffEnabledForCurrentCompany])
+
+  const existingStageCodesSet = useMemo(
+    () => new Set((profileStageCodes || []).map((code) => String(code).trim()).filter(Boolean)),
+    [profileStageCodes],
+  )
+
+  const timelineStageHistory = useMemo(
+    () =>
+      stageHistory.filter((entry) => {
+        const fromCode = String(entry?.from_code || '').trim()
+        const toCode = String(entry?.to_code || '').trim()
+        if (toCode && existingStageCodesSet.has(toCode)) return true
+        if (fromCode && existingStageCodesSet.has(fromCode)) return true
+        return false
+      }),
+    [stageHistory, existingStageCodesSet],
+  )
 
   const stageLabelIntl = useCallback((code: string) => {
     const funnelStage = profileFunnelStages.find((s) => s.code === code)
@@ -765,7 +848,6 @@ export default function CandidateCard(){
       return false
     }
   })
-  const [model, setModel] = useState<Candidate | null>(null)
   const [deleteRequestLoading, setDeleteRequestLoading] = useState(false)
   const [deleteRequestMessage, setDeleteRequestMessage] = useState<string | null>(null)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
@@ -795,26 +877,46 @@ export default function CandidateCard(){
 
   const lastSavedPayloadRef = useRef<string | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedEmploymentRowsRef = useRef<string | null>(null)
+  const employmentAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([])
+  const [employmentBaseline, setEmploymentBaseline] = useState<Record<string, EmploymentSnapshot>>({})
+  const [employmentLoading, setEmploymentLoading] = useState(false)
+  const [employmentError, setEmploymentError] = useState<string | null>(null)
   const modelRef = useRef<Candidate | null>(null)
+  const employmentRowsRef = useRef<EmploymentRow[]>([])
   const routeIdRef = useRef<string | null>(null)
   const candidateEditPhaseRef = useRef<CandidateEditPhase>('idle')
   const candidateOverrideReasonRef = useRef('')
   candidateEditPhaseRef.current = candidateEditPhase
   candidateOverrideReasonRef.current = candidateOverrideReason
   modelRef.current = model
+  employmentRowsRef.current = employmentRows
   if (id !== routeIdRef.current) {
     routeIdRef.current = id ?? null
     lastSavedPayloadRef.current = null
+    lastSavedEmploymentRowsRef.current = null
+    if (employmentAutoSaveTimerRef.current) {
+      clearTimeout(employmentAutoSaveTimerRef.current)
+      employmentAutoSaveTimerRef.current = null
+    }
   }
-  const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
-  const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
-  const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([])
-  const [employmentBaseline, setEmploymentBaseline] = useState<Record<string, EmploymentSnapshot>>({})
-  const [employmentLoading, setEmploymentLoading] = useState(false)
-  const [employmentError, setEmploymentError] = useState<string | null>(null)
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [remindersLoading, setRemindersLoading] = useState(false)
   const [remindersError, setRemindersError] = useState<FriendlyErrorInfo | null>(null)
+  // G-8 stage 1b: tick bumped after mutations that change the next-action
+  // signal (reminder create/complete/snooze, handoff create, contact attempt).
+  // Stage transitions are picked up automatically via the `candidate-updated`
+  // window event the hook listens to.
+  const [nextActionTick, setNextActionTick] = useState(0)
+  const bumpNextActionTick = useCallback(() => {
+    setNextActionTick((n) => n + 1)
+  }, [])
+  const {
+    data: nextActionDto,
+    loading: nextActionLoading,
+    error: nextActionError,
+  } = useCandidateNextAction(model?.id ?? null, nextActionTick)
   const [reminderBusy, setReminderBusy] = useState<string | null>(null)
   const [reminderTitle, setReminderTitle] = useState('')
   const [reminderDueAt, setReminderDueAt] = useState(() => {
@@ -1422,6 +1524,7 @@ export default function CandidateCard(){
       }
     })
     setEmploymentBaseline(baseline)
+    lastSavedEmploymentRowsRef.current = employmentRowsFingerprint(nextRows)
   }, [])
 
   const reloadCandidateEmployments = useCallback(async (candidateId: string, opts: { withSpinner?: boolean } = {}) => {
@@ -1583,12 +1686,29 @@ export default function CandidateCard(){
     if (m.vacancy_id) payload.vacancy_id = String(m.vacancy_id)
     if (m.company_id) payload.company_id = String(m.company_id)
 
+    // Phase 2.6.G-5 Stage F — canonical assignee field on the PATCH body
+    // is ``recruiter_id``. During the transition we keep ``manager`` /
+    // ``manager_id`` alongside so (a) a Stage-F-disabled build can still
+    // roll back, and (b) older backends that don't yet accept
+    // ``recruiter_id`` in ``patch_candidate.allowed_fields`` still
+    // receive the assignment via the legacy key. Both columns are kept
+    // in lock-step by the backend shadow-write (Stage D).
     const managerFromSelect = isUuidLike(m.manager) ? String(m.manager) : undefined
     const managerFromModel = (m as any).manager_id && isUuidLike((m as any).manager_id) ? String((m as any).manager_id) : undefined
-    const managerId = managerFromSelect || managerFromModel
-    if (managerId) {
-      payload.manager = managerId
-      payload.manager_id = managerId
+    const recruiterFromModel = (m as any).recruiter_id && isUuidLike((m as any).recruiter_id)
+      ? String((m as any).recruiter_id)
+      : undefined
+    // Manual selection in the UI must override any existing assignee on the model.
+    const assigneeId = managerFromSelect || recruiterFromModel || managerFromModel
+    if (assigneeId) {
+      if (isCandidateRecruiterIdCanonEnabled()) {
+        payload.recruiter_id = assigneeId
+      }
+      // Legacy keys are kept unconditionally so rollback (flag OFF) stays
+      // harmless and so that any older deployed backend still resolves
+      // the assignee.
+      payload.manager = assigneeId
+      payload.manager_id = assigneeId
     }
 
     const noteRaw = typeof m.note === 'string' ? m.note : ''
@@ -1620,7 +1740,7 @@ export default function CandidateCard(){
       payload,
       extraForState: extraData,
       docsProgressForState: docsState,
-      managerId: managerId ?? null,
+      managerId: assigneeId ?? null,
       noteForState: typeof m.note === 'string' ? m.note : (m.note ?? ''),
       statusReasonForState: stageReasonOptions.length > 0 ? statusReasonList : (Array.isArray(m.status_reason) ? m.status_reason : []),
     }
@@ -1733,6 +1853,40 @@ export default function CandidateCard(){
     candidateEditPhase,
     candidateOverrideReason,
   ])
+
+  const EMPLOYMENT_AUTO_SAVE_DELAY_MS = 1500
+  useEffect(() => {
+    if (isNew || !model?.id) return
+    const validationError = validateEmploymentRows(employmentRows)
+    if (validationError) return
+    const fingerprint = employmentRowsFingerprint(employmentRows)
+    if (lastSavedEmploymentRowsRef.current === null) {
+      lastSavedEmploymentRowsRef.current = fingerprint
+      return
+    }
+    if (lastSavedEmploymentRowsRef.current === fingerprint) return
+    if (employmentAutoSaveTimerRef.current) {
+      clearTimeout(employmentAutoSaveTimerRef.current)
+    }
+    const candidateId = String(model.id)
+    employmentAutoSaveTimerRef.current = setTimeout(async () => {
+      employmentAutoSaveTimerRef.current = null
+      try {
+        await syncEmploymentRows(candidateId)
+        lastSavedEmploymentRowsRef.current = employmentRowsFingerprint(employmentRowsRef.current)
+        setSavedOk(true)
+        setTimeout(() => setSavedOk(false), 1200)
+      } catch {
+        // Validation/API errors are surfaced by syncEmploymentRows.
+      }
+    }, EMPLOYMENT_AUTO_SAVE_DELAY_MS)
+    return () => {
+      if (employmentAutoSaveTimerRef.current) {
+        clearTimeout(employmentAutoSaveTimerRef.current)
+        employmentAutoSaveTimerRef.current = null
+      }
+    }
+  }, [employmentRows, isNew, model?.id, syncEmploymentRows, validateEmploymentRows])
 
   const fetchCandidate = useCallback(async (candidateId: string, prev?: Candidate | null) => {
     const { data } = await api.get(`/candidates/${candidateId}`)
@@ -2545,6 +2699,7 @@ export default function CandidateCard(){
       const items = Array.isArray(res?.items) ? res.items : []
       setReminders(items.slice(0, 5))
       void loadTimelineReminders(String(model.id))
+      bumpNextActionTick()
       notify({ title: t('app.reminders.messages.created'), variant: 'success' })
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) return
@@ -2555,7 +2710,7 @@ export default function CandidateCard(){
         variant: 'error',
       })
     }
-  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, planLimitModal, t, notify, loadTimelineReminders])
+  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
 
   const handleDocsNextActionCreate = useCallback(() => {
     // Distinguish action by blocker type:
@@ -2644,6 +2799,18 @@ export default function CandidateCard(){
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
+  const scrollToEmployerData = useCallback(() => {
+    const el = employerRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const scrollToPersonalData = useCallback(() => {
+    const el = personalRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   const toggleCandidateEditMode = useCallback(() => {
     setCandidateEditPhase((phase) => {
       if (phase === 'editing' || phase === 'picking_reason') {
@@ -2697,7 +2864,11 @@ export default function CandidateCard(){
     } catch {
       /* ignore, toast handled by child */
     }
-  }, [model?.id, model, fetchCandidate])
+    // Contact attempts and handoff submissions both flow through here and
+    // both shift the next-action recommendation (e.g. 'no_contact_attempt'
+    // → 'idle' or 'handoff_pending_client_decision').
+    bumpNextActionTick()
+  }, [model?.id, model, fetchCandidate, bumpNextActionTick])
 
   const refreshHandoffMeta = useCallback(async () => {
     if (!model?.id) return
@@ -2773,6 +2944,7 @@ export default function CandidateCard(){
       const items = Array.isArray(res?.items) ? res.items : []
       setReminders(items.slice(0, 5))
       if (model?.id) void loadTimelineReminders(String(model.id))
+      bumpNextActionTick()
       notify({ title: t('app.reminders.messages.completed'), variant: 'success' })
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.complete'))) return
@@ -2785,7 +2957,7 @@ export default function CandidateCard(){
     } finally {
       setReminderBusy((prev) => (prev === id ? null : prev))
     }
-  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders])
+  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
 
   const handleReminderSnooze = useCallback(async (id: string, minutes: number) => {
     try {
@@ -2799,6 +2971,7 @@ export default function CandidateCard(){
       const items = Array.isArray(res?.items) ? res.items : []
       setReminders(items.slice(0, 5))
       if (model?.id) void loadTimelineReminders(String(model.id))
+      bumpNextActionTick()
       notify({ title: t('app.reminders.messages.snoozed'), variant: 'success' })
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.snooze'))) return
@@ -2811,7 +2984,7 @@ export default function CandidateCard(){
     } finally {
       setReminderBusy((prev) => (prev === id ? null : prev))
     }
-  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders])
+  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
 
   const handleDelete = useCallback(async () => {
     if (!model?.id) return
@@ -2846,10 +3019,10 @@ export default function CandidateCard(){
   const isMasked = model?.masked === true
   // Use the same role source as the rest of the app (memberships[].role can override me.role).
   const canRequestPipelineOverride = useMemo(() => {
-    if (!model?.id || isMasked || model.can_edit === false) return false
+    if (!model?.id) return false
     if (isClientTenant) return false
-    return can('candidates.manage') || can('documents.manage')
-  }, [model?.id, model?.can_edit, isMasked, isClientTenant, can])
+    return can('candidates.manage') || can('documents.manage') || can('candidates.pipeline')
+  }, [model?.id, isClientTenant, can])
 
   const canApprovePipelineOverride = useMemo(() => {
     if (!model?.id || isMasked) return false
@@ -3026,7 +3199,14 @@ export default function CandidateCard(){
         : profileStageCodes
 
     const uniqDisplay = Array.from(new Set((codesForDisplay || []).filter(Boolean)))
-    const journeyOrder = ['processing_by_client', 'docs_submitted_permit', 'permit_received', 'employed', 'on_trip']
+    const journeyOrder = [
+      'processing_by_client',
+      'docs_submitted_permit',
+      'permit_received',
+      'employment_pending',
+      'employed',
+      'on_trip',
+    ]
     const allowedJourneyStages = new Set(journeyOrder)
     const journeyOrderRank = new Map(journeyOrder.map((code, idx) => [code, idx] as const))
 
@@ -3214,7 +3394,7 @@ export default function CandidateCard(){
    * At early stages (e.g. New) recruiters do not need an empty waiver panel.
    */
   const showPipelineWaiverSection = useMemo(() => {
-    if (!model?.id || isMasked || isClientTenant) return false
+    if (!model?.id || isClientTenant) return false
     if (pipelineOverrides.length > 0) return true
     if (!docsPipelineBlockingValue && !docsPipelineSoftWarnValue) return false
     if (!can('candidates.pipeline')) return false
@@ -3223,7 +3403,6 @@ export default function CandidateCard(){
     )
   }, [
     model?.id,
-    isMasked,
     isClientTenant,
     pipelineOverrides.length,
     canApprovePipelineOverride,
@@ -3255,6 +3434,125 @@ export default function CandidateCard(){
     if (!raw) return null
     return canonicalStageKey(raw, null) || raw.toLowerCase()
   }, [stageJourneyDisplayStage, model?.stage])
+
+  const employerDataMissingForHint = useMemo(() => {
+    const stage = canonicalStageForOps || ''
+    if (isPipelineCompletedCanonicalStage(stage)) return false
+    const companyId = String(model?.company_id || '').trim()
+    const vacancyId = String(model?.vacancy_id || '').trim()
+    return !companyId && !vacancyId
+  }, [canonicalStageForOps, model?.company_id, model?.vacancy_id])
+
+  const missingDataHints = useMemo(() => {
+    if (!model?.id || isMasked) return []
+    const hints: Array<{ id: string; label: string; ctaLabel?: string; onClick?: () => void; score: number }> = []
+    const firstName = String(model?.first_name || '').trim()
+    const lastName = String(model?.last_name || '').trim()
+    const email = String(model?.email || '').trim()
+    const phone = String(model?.phone || '').trim()
+    const companyId = String(model?.company_id || '').trim()
+    const vacancyId = String(model?.vacancy_id || '').trim()
+    const citizenship = String((extra as any)?.citizenship || '').trim()
+    const languagesValue = (extra as any)?.languages
+    const hasLanguages =
+      Array.isArray(model?.languages)
+        ? model.languages.length > 0
+        : Array.isArray(languagesValue)
+          ? languagesValue.length > 0
+          : false
+    const stage = String(canonicalStageForOps || '').trim().toLowerCase()
+    const isEarlyStage = !stage || ['new', 'no_answer', 'contacted', 'questionnaire_submitted'].includes(stage)
+    const isDocsStage = ['docs_wait', 'docs_got', 'ready_for_handoff'].includes(stage)
+
+    if (!firstName || !lastName) {
+      hints.push({
+        id: 'name',
+        label: t('app.candidate_card.next_action.missing_data.name', {
+          defaultValue: 'Candidate first and last name',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_profile', {
+          defaultValue: 'Open profile',
+        }),
+        onClick: scrollToCandidateData,
+        score: scoreMissingHintForStage('name', canonicalStageForOps),
+      })
+    }
+    if (!email && !phone) {
+      hints.push({
+        id: 'contact',
+        label: t('app.candidate_card.next_action.missing_data.contact', {
+          defaultValue: 'At least one contact channel (phone or email)',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_profile', {
+          defaultValue: 'Open profile',
+        }),
+        onClick: scrollToCandidateData,
+        score: scoreMissingHintForStage('contact', canonicalStageForOps),
+      })
+    }
+    if (!companyId && !vacancyId) {
+      hints.push({
+        id: 'employer',
+        label: t('app.candidate_card.next_action.missing_data.employer', {
+          defaultValue: 'Employer context (company or vacancy)',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.open_employer_fields', {
+          defaultValue: 'Open employer fields',
+        }),
+        onClick: scrollToEmployerData,
+        score: scoreMissingHintForStage('employer', canonicalStageForOps),
+      })
+    }
+    // Documents and relocation flows need citizenship to suggest the right checklist.
+    if (!citizenship && isDocsStage) {
+      hints.push({
+        id: 'citizenship',
+        label: t('app.candidate_card.next_action.missing_data.citizenship', {
+          defaultValue: 'Citizenship / residency context',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_personal', {
+          defaultValue: 'Open personal',
+        }),
+        onClick: scrollToPersonalData,
+        score: scoreMissingHintForStage('citizenship', canonicalStageForOps),
+      })
+    }
+    if (!hasLanguages && (isEarlyStage || isDocsStage)) {
+      hints.push({
+        id: 'languages',
+        label: t('app.candidate_card.next_action.missing_data.languages', {
+          defaultValue: 'Languages',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_personal', {
+          defaultValue: 'Open personal',
+        }),
+        onClick: scrollToPersonalData,
+        score: scoreMissingHintForStage('languages', canonicalStageForOps),
+      })
+    }
+    // Keep UI lightweight: only the two most relevant hints for current stage.
+    return hints
+      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+      .slice(0, 2)
+      .map(({ score: _score, ...rest }) => rest)
+  }, [
+    model?.id,
+    model?.first_name,
+    model?.last_name,
+    model?.email,
+    model?.phone,
+    model?.company_id,
+    model?.vacancy_id,
+    model?.languages,
+    extra,
+    canonicalStageForOps,
+    isMasked,
+    scrollToCandidateData,
+    scrollToEmployerData,
+    scrollToPersonalData,
+    t,
+    scoreMissingHintForStage,
+  ])
 
   /** Same ordering as `CandidateStageDecisionPanel` pipeline list — for resolved operational hints. */
   const nextPipelineStageCodeForOps = useMemo(() => {
@@ -3433,6 +3731,32 @@ export default function CandidateCard(){
     ],
   )
 
+  const onWorkforceHandoffFromCandidate = useCallback(async () => {
+    if (isNew || !model?.id || isMasked) return
+    setWorkforceHandoffBusy(true)
+    try {
+      const emp = await handoffFromCandidate(String(model.id), {})
+      notify({
+        variant: 'success',
+        title: t('app.candidate_card.workforce_handoff_success', {
+          defaultValue: 'HR employee record linked',
+        }),
+      })
+      nav(`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(emp.id)}`)
+    } catch (err: unknown) {
+      notify({
+        title: formatErrorForDisplay(err, {
+          fallback: t('app.candidate_card.workforce_handoff_error', {
+            defaultValue: 'Could not create HR employee record',
+          }),
+        }),
+        variant: 'error',
+      })
+    } finally {
+      setWorkforceHandoffBusy(false)
+    }
+  }, [isNew, isMasked, model?.id, nav, notify, t])
+
   if (loading || !model) {
     return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
   }
@@ -3475,6 +3799,9 @@ export default function CandidateCard(){
         pipelineWaiverPendingCount={pipelineWaiverBadgeCounts.pending}
         pipelineWaiverApprovedCount={pipelineWaiverBadgeCounts.approved}
         onOpenActivity={!isNew && model?.id ? () => setActivityModalOpen(true) : undefined}
+        nextAction={nextActionDto}
+        nextActionLoading={nextActionLoading}
+        nextActionError={nextActionError}
         focusContent={!isNew && model?.id ? (
           <div className="grid gap-2">
             <CandidateStageDecisionPanel
@@ -3498,6 +3825,28 @@ export default function CandidateCard(){
               onMoveStage={handleStageJourneyChange}
               onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
             />
+            {can('candidates.manage') && !isMasked ? (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={workforceHandoffBusy}
+                  onClick={() => void onWorkforceHandoffFromCandidate()}
+                  className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {workforceHandoffBusy
+                    ? t('common.loading')
+                    : t('app.candidate_card.workforce_handoff_button', {
+                        defaultValue: 'Open / create HR employee (from this candidate)',
+                      })}
+                </button>
+                <span className="text-[11px] text-slate-500 max-w-md">
+                  {t('app.candidate_card.workforce_handoff_hint', {
+                    defaultValue:
+                      'Creating the HR record is also triggered automatically when the candidate stage becomes «Employed».',
+                  })}
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
       />
@@ -3569,6 +3918,8 @@ export default function CandidateCard(){
                       candidateDataReadOnly={candidateDataReadOnly}
                       embedded
                     />
+
+                    <CandidateWorkforceTerminationSection extra={extra} />
 
                     <CandidateCustomFieldsSection
                       extra={extra}
@@ -3732,42 +4083,43 @@ export default function CandidateCard(){
                 onReminderSnooze={handleReminderSnooze}
                 canonicalStageCode={canonicalStageForOps}
                 nextPipelineStageCode={nextPipelineStageCodeForOps}
+                employerDataMissing={employerDataMissingForHint}
+                onOpenEmployerFields={scrollToEmployerData}
+                missingDataHints={missingDataHints}
                 vacancyPipelineBlocking={vacancyPipelineBlockingValue}
                 contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
                 primaryStepHighlight={
                   railPrimaryFocus === 'next_action' || railPrimaryFocus === 'vacancy'
                 }
-                documentsChecklistSibling={!isMasked}
+                documentsChecklistSibling
               />
 
-              {!isMasked ? (
-                <CandidateDocsRailPanel
-                  candidateId={String(model.id)}
-                  ownerContext={docsOwnerContext}
-                  uploadBusy={false}
-                  onUpload={() => openDocsDrawer(undefined)}
-                  onOpenDocs={() => openDocsDrawer(undefined)}
-                  onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
-                  onLoadingChange={setDocsBlockersLoading}
-                  refreshTrigger={docsSummaryRefreshTrigger}
-                  onSelectType={(typeCode) => openDocsDrawer(typeCode)}
-                  pollingEnabled={docsDrawerOpen}
-                  stageSummaryLabel={
-                    model.stage ? stageLabelIntl(String(model.stage)) : null
-                  }
-                  docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
-                  pipelineOverrides={pipelineOverrides}
-                  pipelineOverrideBusy={pipelineOverrideBusy}
-                  canRequestPipelineOverride={canRequestPipelineOverride}
-                  canApprovePipelineOverride={canApprovePipelineOverride}
-                  showPipelineWaiverSection={showPipelineWaiverSection}
-                  pipelineWaiverReadOnlyCard={pipelineWaiverReadOnlyCard}
-                  onCreatePipelineOverride={handleCreatePipelineOverride}
-                  onApprovePipelineOverride={handleApprovePipelineOverride}
-                  onRejectPipelineOverride={handleRejectPipelineOverride}
-                  primaryStepHighlight={railPrimaryFocus === 'docs'}
-                />
-              ) : null}
+              <CandidateDocsRailPanel
+                candidateId={String(model.id)}
+                ownerContext={docsOwnerContext}
+                uploadBusy={false}
+                onUpload={() => openDocsDrawer(undefined)}
+                onOpenDocs={() => openDocsDrawer(undefined)}
+                onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
+                onLoadingChange={setDocsBlockersLoading}
+                refreshTrigger={docsSummaryRefreshTrigger}
+                onSelectType={(typeCode) => openDocsDrawer(typeCode)}
+                pollingEnabled={docsDrawerOpen}
+                stageSummaryLabel={
+                  model.stage ? stageLabelIntl(String(model.stage)) : null
+                }
+                docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
+                pipelineOverrides={pipelineOverrides}
+                pipelineOverrideBusy={pipelineOverrideBusy}
+                canRequestPipelineOverride={canRequestPipelineOverride}
+                canApprovePipelineOverride={canApprovePipelineOverride}
+                showPipelineWaiverSection={showPipelineWaiverSection}
+                pipelineWaiverReadOnlyCard={pipelineWaiverReadOnlyCard}
+                onCreatePipelineOverride={handleCreatePipelineOverride}
+                onApprovePipelineOverride={handleApprovePipelineOverride}
+                onRejectPipelineOverride={handleRejectPipelineOverride}
+                primaryStepHighlight={railPrimaryFocus === 'docs'}
+              />
 
               {!isMasked ? (
                 <CandidateNotesRailSection
@@ -3904,7 +4256,7 @@ export default function CandidateCard(){
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
               <CandidateTimelinePanel
                 locale={locale}
-                stageHistory={stageHistory}
+                stageHistory={timelineStageHistory}
                 notes={notes}
                 reminders={timelineReminders}
                 loading={timelineStageHistoryLoading || timelineRemindersLoading}

@@ -90,7 +90,7 @@ export default function PublicStatusPage() {
         <div className="flex justify-end">
           <PublicLocaleSwitcher />
         </div>
-        <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <header className="card p-6">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
             {t('public.status_page.brand', { defaultValue: 'HostFlow' })}
           </p>
@@ -132,7 +132,7 @@ export default function PublicStatusPage() {
           <p className="text-sm text-slate-500">{t('common.loading')}</p>
         ) : state ? (
           <>
-            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <section className="card p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">{t('public.status_page.timeline.title')}</h2>
@@ -155,7 +155,7 @@ export default function PublicStatusPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <section className="card p-6">
               <h2 className="text-lg font-semibold text-slate-900">{t('public.status_page.documents.title')}</h2>
               <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
                 <span className="rounded-full bg-slate-100 px-3 py-1">
@@ -216,7 +216,7 @@ export default function PublicStatusPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+            <section className="card p-6">
               <NotificationSettings
                 token={token}
                 initialEmail={state?.contacts?.email}

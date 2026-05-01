@@ -190,7 +190,7 @@ export default function LeadFormsSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <section className="card p-6">
+      <section className="settings-panel">
         <div className="mb-4">
           <SettingsSubpageHeader
             backLabel={t('admin.settings.subpage.back_all')}
@@ -231,7 +231,7 @@ export default function LeadFormsSettingsPage() {
         )}
 
         {canMutate && (
-          <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-brand-100 bg-brand-50/20 p-4">
+          <div className="settings-toolbar mb-6 border-brand-100 bg-brand-50/20">
             <label className="min-w-[220px] flex-1">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('admin.lead_forms.new_title', { defaultValue: 'New form title' })}

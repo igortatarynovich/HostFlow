@@ -198,7 +198,7 @@ export default function PublicIntakeStart() {
 
   return (
     <PublicPageShell maxWidth="3xl" headerExtra={<PublicLocaleSwitcher />}>
-      <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+      <div className="card p-8">
         <div className="mb-4">
           <Link to="/public/portal" className="text-sm font-medium text-brand-700 hover:text-brand-900">
             {t('public.start.header.back')}
@@ -224,7 +224,7 @@ export default function PublicIntakeStart() {
 
         {leadFormDisplay && (leadFormDisplay.title || leadFormDisplay.slug) && (
           <div
-            className="mb-6 rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-left text-sm text-slate-700"
+            className="mb-6 rounded-xl border border-slate-200 bg-brand-50/60 px-4 py-3 text-left text-sm text-slate-700"
             role="status"
           >
             <span className="font-semibold text-brand-800">{t('public.start.lead_form.banner_title')}: </span>
@@ -239,7 +239,7 @@ export default function PublicIntakeStart() {
             <label className="mb-1 block text-sm font-medium text-slate-700">{t('public.start.form.email')}</label>
             <input
               type="email"
-              className="w-full rounded-xl border border-brand-100 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
               placeholder={t('public.start.form.placeholders.email', { defaultValue: 'you@example.com' })}
               value={form.email}
               onChange={(e) => handleChange('email', e.target.value)}
@@ -251,7 +251,7 @@ export default function PublicIntakeStart() {
               <label className="mb-1 block text-sm font-medium text-slate-700">{t('public.start.form.country_code')}</label>
               <input
                 type="text"
-                className="w-full rounded-xl border border-brand-100 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
                 placeholder="+48"
                 value={form.phone_country_code}
                 onChange={(e) => handleChange('phone_country_code', e.target.value)}
@@ -261,7 +261,7 @@ export default function PublicIntakeStart() {
               <label className="mb-1 block text-sm font-medium text-slate-700">{t('public.start.form.phone')}</label>
               <input
                 type="tel"
-                className="w-full rounded-xl border border-brand-100 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
                 placeholder="123 456 789"
                 value={form.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
@@ -272,7 +272,7 @@ export default function PublicIntakeStart() {
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">{t('app.candidate_card.fields.preferred_contact')}</label>
             <select
-              className="w-full rounded-xl border border-brand-100 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
               value={form.preferred_messenger}
               onChange={(e) => handleChange('preferred_messenger', e.target.value)}
             >

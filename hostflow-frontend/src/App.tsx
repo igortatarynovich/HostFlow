@@ -5,7 +5,9 @@ import Login from './pages/Login'
 import { AppShell } from './app/AppShell'
 import { WorkAreaLayout } from './app/WorkAreaLayout'
 import { WorkPathAliasRedirect } from './app/WorkPathAliasRedirect'
-import { WorkHubPage } from './app/appRoutePages'
+import { CommunicationsCalendarPage, RemindersPage } from './app/appRoutePages'
+import WorkOrganizerPage from './pages/WorkOrganizerPage'
+import CommunicationsFeatureGate from './components/communications/CommunicationsFeatureGate'
 import { ACTIVATION_PATHS } from './app/activationRoutes'
 import { APP_ROUTES, NAV_ITEMS } from './app/routes'
 import { RoutePermissionGuard } from './app/RoutePermissionGuard'
@@ -26,6 +28,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
 import OnboardingCompanyPage from './pages/OnboardingCompanyPage'
 import OnboardingGettingStartedPage from './pages/OnboardingGettingStartedPage'
+import OnboardingWizardPage from './pages/OnboardingWizardPage'
 import SignupPage from './pages/SignupPage'
 import { useI18n } from './i18n'
 import {
@@ -125,6 +128,7 @@ export default function App(){
           <Route path={CRM_APP_PATHS.appShellPrefix} element={<AppShell me={me} navItems={navItems} onLogout={logout} />}>
             <Route index element={<AppShellIndexNavigate />} />
             <Route path="onboarding/company" element={<OnboardingCompanyPage />} />
+            <Route path="onboarding/wizard" element={<OnboardingWizardPage />} />
             <Route path="onboarding/getting-started" element={<OnboardingGettingStartedPage />} />
             <Route path="work" element={<WorkAreaLayout />}>
               <Route
@@ -132,14 +136,36 @@ export default function App(){
                 element={
                   <RoutePermissionGuard>
                     <LazyRoute loadingLabel={t('common.loading')}>
-                      <WorkHubPage />
+                      <WorkOrganizerPage />
+                    </LazyRoute>
+                  </RoutePermissionGuard>
+                }
+              />
+              <Route
+                path="tasks"
+                element={
+                  <RoutePermissionGuard permission="notifications.view">
+                    <LazyRoute loadingLabel={t('common.loading')}>
+                      <RemindersPage />
+                    </LazyRoute>
+                  </RoutePermissionGuard>
+                }
+              />
+              <Route
+                path="calendar"
+                element={
+                  <RoutePermissionGuard permission="notifications.view">
+                    <LazyRoute loadingLabel={t('common.loading')}>
+                      <CommunicationsFeatureGate feature="calendar" fallbackPath={CRM_APP_PATHS.work}>
+                        <CommunicationsCalendarPage />
+                      </CommunicationsFeatureGate>
                     </LazyRoute>
                   </RoutePermissionGuard>
                 }
               />
               <Route path="*" element={<WorkPathAliasRedirect />} />
             </Route>
-            {APP_ROUTES.filter((r) => r.key !== 'work').map(({ key, path, Component, permission }) => (
+            {APP_ROUTES.filter((r) => r.key !== 'work' && r.key !== 'work-tasks').map(({ key, path, Component, permission }) => (
               <Route
                 key={key}
                 path={path}

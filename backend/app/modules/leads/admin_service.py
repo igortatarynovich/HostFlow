@@ -17,6 +17,8 @@ from backend.app.models.lead import Lead
 from backend.app.models.tenant import Tenant
 from backend.app.modules.leads import meta_oauth_service as meta_oauth
 from backend.app.services.plan_feature_gates import (
+    count_tenant_lead_sources,
+    ensure_lead_source_limit,
     ensure_leads_generic_inbound_webhook_allowed,
     ensure_meta_lead_credential_create_allowed,
     ensure_meta_lead_field_mapping_rows_allowed,
@@ -574,6 +576,10 @@ async def rotate_generic_inbound_webhook_secret(
     await ensure_leads_generic_inbound_webhook_allowed(db, tenant_id)
     await _ensure_settings_schema(db)
     entry = await _ensure_settings(db, tenant_id)
+    existing_secret = str(getattr(entry, "generic_inbound_webhook_secret", None) or "").strip()
+    if not existing_secret:
+        current_sources = await count_tenant_lead_sources(db, tenant_id)
+        await ensure_lead_source_limit(db, tenant_id, current_count=current_sources, extra_sources=1)
     secret = secrets.token_urlsafe(32)
     await crud.update_meta_settings(db, entry, generic_inbound_webhook_secret=secret)
     base = (getattr(settings, "public_api_base_url", None) or "").strip().rstrip("/")
@@ -610,6 +616,8 @@ async def create_credential(
     payload: MetaCredentialCreate,
 ) -> MetaCredentialOut:
     await ensure_meta_lead_credential_create_allowed(db, tenant_id)
+    current_sources = await count_tenant_lead_sources(db, tenant_id)
+    await ensure_lead_source_limit(db, tenant_id, current_count=current_sources, extra_sources=1)
     entry = await crud.create_meta_credential(
         db,
         tenant_id=tenant_id,

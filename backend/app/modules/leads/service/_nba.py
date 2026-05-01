@@ -45,6 +45,7 @@ def _nba_lead_locked_and_required(
     *,
     plan: str,
     team_ok: bool,
+    tenant_id: str | None = None,
 ) -> tuple[bool, Optional[str]]:
     """If bucket requires a higher plan, return (locked, required_plan code for UI)."""
     if not min_plan:
@@ -55,7 +56,7 @@ def _nba_lead_locked_and_required(
             return False, None
         return True, "team"
     if mp == "pro":
-        if plan_is_pro_tier(plan):
+        if plan_is_pro_tier(plan, tenant_id=tenant_id):
             return False, None
         return True, "pro"
     return False, None
@@ -93,7 +94,7 @@ async def nba_conversion_funnel_insight_groups(
     if total_win < NBA_FUNNEL_MIN_TOTAL_WIN:
         return []
     insight_locked, insight_required_plan = _nba_lead_locked_and_required(
-        "team", plan=plan, team_ok=team_ok
+        "team", plan=plan, team_ok=team_ok, tenant_id=tenant_id
     )
     out: List[NextActionGroupOut] = []
 
@@ -182,7 +183,7 @@ async def lead_next_actions_snapshot(
     Plan gating: some lead buckets locked on solo/starter — counts still returned; sort: unlocked first.
     """
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    team_ok = plan_allows_team_tier_features(plan)
+    team_ok = plan_allows_team_tier_features(plan, tenant_id=tenant_id)
     nba_tier: Literal["solo", "team"] = "team" if team_ok else "solo"
 
     # (id, reason, title, priority, status, stage, next_action, min_plan)
@@ -258,7 +259,7 @@ async def lead_next_actions_snapshot(
             stage=stg,
             next_action=na,
         )
-        locked, req = _nba_lead_locked_and_required(min_plan, plan=plan, team_ok=team_ok)
+        locked, req = _nba_lead_locked_and_required(min_plan, plan=plan, team_ok=team_ok, tenant_id=tenant_id)
         groups.append(
             NextActionGroupOut(
                 id=gid,
@@ -285,7 +286,7 @@ async def lead_next_actions_snapshot(
             status="needs_routing",
             pipeline_error=pe,
         )
-        locked_fit, req_fit = _nba_lead_locked_and_required(None, plan=plan, team_ok=team_ok)
+        locked_fit, req_fit = _nba_lead_locked_and_required(None, plan=plan, team_ok=team_ok, tenant_id=tenant_id)
         groups.append(
             NextActionGroupOut(
                 id=gid,

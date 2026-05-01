@@ -8,6 +8,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.user import (
     RefreshRevokeOut,
+    InviteRevokeOut,
     UserCreate,
     UserCreateInvite,
     UserDetailOut,
@@ -199,6 +200,33 @@ async def create_invite(
         supervisor_id=invite.supervisor_id,
         company_ids=list(invite.companies or []),
     )
+
+
+@router.delete(
+    "/invite/{invite_id}",
+    response_model=InviteRevokeOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def revoke_invite(
+    invite_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    try:
+        invite = await users_service.revoke_invite(
+            db,
+            tenant_id=tenant_id,
+            actor_id=ctx.sub,
+            invite_id=invite_id,
+        )
+        await db.commit()
+    except UserServiceError as exc:
+        await db.rollback()
+        _handle_service_error(exc)
+    return InviteRevokeOut(revoked=invite.revoked_at is not None, invite_id=invite.id)
 
 
 @router.patch(

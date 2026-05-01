@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../store/useAuth'
 import { usePermissions } from './usePermissions'
 import { getTeamOverview } from '../api/tenants'
+import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 export type LicenseStatus = {
   loading: boolean
@@ -38,7 +39,8 @@ export function useLicenseStatus(): LicenseStatus {
       const expiresAt = license?.expires_at ?? null
       const validUntil = typeof expiresAt === 'string' ? expiresAt : null
       const now = new Date()
-      const expired = validUntil ? new Date(validUntil) < now : false
+      const rawExpired = validUntil ? new Date(validUntil) < now : false
+      const expired = isPlatformSuperadminRole(me?.role) ? false : rawExpired
       setState({
         loading: false,
         expired,
@@ -48,7 +50,7 @@ export function useLicenseStatus(): LicenseStatus {
     } catch {
       setState((s) => ({ ...s, loading: false }))
     }
-  }, [canFetchLicense, me?.tenant_id])
+  }, [canFetchLicense, me?.tenant_id, me?.role])
 
   useEffect(() => {
     void fetchLicense()

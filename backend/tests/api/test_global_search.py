@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
+from backend.app.constants.spa_paths import TASKS
 from backend.app.models.candidate import Candidate
 from backend.app.models.company import Company
 from backend.app.models.document import Document
@@ -248,7 +249,7 @@ async def test_global_search_task_slice_mine_matches_reminder(
     assert hit is not None
     assert token in (hit.get("title") or "")
     link = hit.get("link") or ""
-    assert link.startswith("/app/tasks?")
+    assert link.startswith(f"{TASKS}?")
     assert rid in link
     assert "t_q=" in link
     assert "t_assignee=team" not in link

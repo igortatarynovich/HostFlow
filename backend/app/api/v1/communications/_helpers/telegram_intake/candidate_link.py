@@ -14,7 +14,7 @@ from backend.app.models.communication import (
     CommunicationThread,
 )
 from backend.app.services.tenant_email import send_email_for_tenant
-from backend.app.services.tenant_quota import ensure_active_candidate_quota
+from backend.app.services.tenant_quota import ensure_active_records_quota
 
 from ..candidate_lookup import (
     _candidate_name,
@@ -50,7 +50,7 @@ async def _create_candidate_from_telegram_intake(
     sender_address: str | None,
     contact_phone: str | None,
 ) -> Candidate:
-    await ensure_active_candidate_quota(db, tenant_id)
+    await ensure_active_records_quota(db, tenant_id)
     first_name, last_name = _telegram_name_parts(sender_label, username)
     phone_digits = _digits_only(contact_phone)
     candidate = Candidate(

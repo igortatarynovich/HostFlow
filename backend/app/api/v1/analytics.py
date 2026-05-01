@@ -47,6 +47,8 @@ from backend.app.constants.stages import (
     STATUS_REASON_CHOICES,
     ORDER as STAGE_ORDER,
     STAGE_META as STAGE_META_CONST,
+    code_for_label,
+    is_stage_code,
 )
 
 _CANDIDATE_ACTIVE_FOR_NEXT_ACTION = or_(
@@ -76,6 +78,46 @@ from backend.app.services.risk_intel_v1 import (
 router = APIRouter(tags=["analytics"])
 
 RISK_OPS_ROLES = frozenset({"superadmin", "administrator", "supervisor"})
+
+# Canonical codes counted as «hired» in recruiter/manager aggregates (not employment_pending).
+_CANONICAL_HIRED_STAGE_CODES = frozenset({"employed", "probation_ok"})
+
+
+def _canonical_candidate_stage_token(stage_val: Any) -> Optional[str]:
+    if stage_val is None:
+        return None
+    raw = stage_val.value if isinstance(stage_val, CandidateStage) else stage_val
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    low = text.lower()
+    if is_stage_code(low):
+        return low
+    mapped = code_for_label(text)
+    return mapped
+
+
+def _is_hired_stage_value(stage_val: Any) -> bool:
+    code = _canonical_candidate_stage_token(stage_val)
+    return bool(code) and code in _CANONICAL_HIRED_STAGE_CODES
+
+
+def _normalize_stage_counter_key(raw: Any) -> Optional[str]:
+    """Fold legacy enum / label values into canonical stage codes (matches DB `employed`, etc.)."""
+    if raw is None:
+        return None
+    token = _canonical_candidate_stage_token(raw)
+    if token:
+        return token
+    text = str(raw.value if isinstance(raw, CandidateStage) else raw).strip()
+    if not text:
+        return None
+    low = text.lower()
+    if is_stage_code(low):
+        return low
+    return text
+
+
 MANAGER_DIGEST_ACK_ACTION = "risk_intel.manager_digest_ack"
 
 
@@ -127,6 +169,8 @@ PERF_BUDGETS_P95_MS: dict[str, float] = {
 class OpsCountersOut(BaseModel):
     no_next_action_candidates: int = 0
     overdue_reminders: int = 0
+    # Active reminders assigned to current user without a resolvable CRM entity link.
+    unlinked_tasks: int = 0
     # Onboarding / overview highlights (tenant-wide, complements assignee-scoped no_next_action_*)
     overview_pipeline_total: int = 0
     overview_stuck: int = 0
@@ -191,6 +235,23 @@ async def ops_counters(
     overdue_reminders = await count_overdue_reminders_ops_scoped(
         db, tenant_id=tenant_id_str, assignee_id=assignee
     )
+    linkable_entity_types = ("candidate", "vacancy", "lead", "company", "communication_thread")
+    entity_id_trimmed = func.trim(func.coalesce(Reminder.entity_id, ""))
+    unlinked_tasks = (
+        await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id_str,
+                Reminder.assignee_id == assignee,
+                Reminder.status.in_(active_statuses),
+                or_(
+                    entity_id_trimmed == "",
+                    Reminder.entity_type.notin_(linkable_entity_types),
+                ),
+            )
+        )
+    ).scalar_one() or 0
 
     # Leads next action (processed leads only)
     # - no_next_action: processed leads with no active reminders
@@ -222,7 +283,13 @@ async def ops_counters(
     )
 
     leads_total = (
-        await db.execute(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id_str, Lead.status == "processed"))
+        await db.execute(
+            select(func.count()).select_from(Lead).where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.status == "processed",
+                Lead.candidate_id.is_(None),
+            )
+        )
     ).scalar_one() or 0
     leads_no_next_action = (
         await db.execute(
@@ -231,6 +298,7 @@ async def ops_counters(
             .where(
                 Lead.tenant_id == tenant_id_str,
                 Lead.status == "processed",
+                Lead.candidate_id.is_(None),
                 ~lead_has_active_reminder,
             )
         )
@@ -242,6 +310,7 @@ async def ops_counters(
             .where(
                 Lead.tenant_id == tenant_id_str,
                 Lead.status == "processed",
+                Lead.candidate_id.is_(None),
                 lead_has_active_reminder,
             )
         )
@@ -253,6 +322,7 @@ async def ops_counters(
             .where(
                 Lead.tenant_id == tenant_id_str,
                 Lead.status == "processed",
+                Lead.candidate_id.is_(None),
                 lead_has_overdue_reminder,
             )
         )
@@ -556,6 +626,7 @@ async def ops_counters(
     return OpsCountersOut(
         no_next_action_candidates=int(no_next_action_candidates),
         overdue_reminders=int(overdue_reminders),
+        unlinked_tasks=int(unlinked_tasks),
         overview_pipeline_total=int(overview_pipeline_total),
         overview_stuck=int(overview_stuck),
         overview_active_today=int(overview_active_today),
@@ -1608,22 +1679,30 @@ async def funnel(
     base = base.group_by(Candidate.stage)
 
     res = (await db.execute(base)).all()
-    raw_counters = {
-        (s.value if isinstance(s, CandidateStage) else str(s)): cnt for s, cnt in res
-    }
-    counters = {
-        code: cnt
-        for code, cnt in raw_counters.items()
-        if _stage_visible_for_view(code, effective_stage_view)
-    }
-
-    # упорядочим по enum
-    stages: List[Dict[str, Any]] = []
-    for st in CandidateStage:
-        name = st.value
-        if not _stage_visible_for_view(name, effective_stage_view):
+    merged: Counter[str] = Counter()
+    for s, cnt in res:
+        key = _normalize_stage_counter_key(s)
+        if not key:
             continue
-        stages.append({"name": name, "count": int(counters.get(name, 0))})
+        if not _stage_visible_for_view(key, effective_stage_view):
+            continue
+        merged[key] += int(cnt)
+
+    order_set = set(STAGE_ORDER)
+    stages: List[Dict[str, Any]] = []
+    for code in STAGE_ORDER:
+        if not _stage_visible_for_view(code, effective_stage_view):
+            continue
+        cnt = int(merged.get(code, 0))
+        if cnt <= 0:
+            continue
+        stages.append({"name": code, "count": cnt})
+    for code, cnt in sorted(merged.items(), key=lambda kv: (-kv[1], kv[0])):
+        if code in order_set:
+            continue
+        if not _stage_visible_for_view(code, effective_stage_view):
+            continue
+        stages.append({"name": code, "count": int(cnt)})
 
     return {
         "period": {
@@ -1721,19 +1800,37 @@ async def by_manager(
     for mgr, recruiter_id, recruiter_name, recruiter_short, recruiter_email, cnt in totals:
         key = _key(mgr, recruiter_id)
         label = _resolve_label(mgr, recruiter_name, recruiter_short, recruiter_email, recruiter_id)
-        by_mgr[key] = {"manager": label, "total": int(cnt), "by_stage": {}, "hired": 0}
+        # G-6 Stage 2c — surface the canonical ``users.id`` (when the row
+        # already hit G-5's shadow-write) so UI drill-downs can build
+        # ``/app/candidates?recruiter_id=<uuid>`` without a second lookup.
+        # Legacy rows (only ``Candidate.manager`` string, no FK) still
+        # show up with ``recruiter_id=null`` and drill-down via the
+        # legacy ``?manager=<label>`` path.
+        by_mgr[key] = {
+            "manager": label,
+            "recruiter_id": str(recruiter_id) if recruiter_id else None,
+            "total": int(cnt),
+            "by_stage": {},
+            "hired": 0,
+        }
 
     for mgr, recruiter_id, stage, cnt in dist:
         key = _key(mgr, recruiter_id)
         if key not in by_mgr:
             label = _resolve_label(mgr, None, None, None, recruiter_id)
-            by_mgr[key] = {"manager": label, "total": 0, "by_stage": {}, "hired": 0}
+            by_mgr[key] = {
+                "manager": label,
+                "recruiter_id": str(recruiter_id) if recruiter_id else None,
+                "total": 0,
+                "by_stage": {},
+                "hired": 0,
+            }
         stage_name = stage.value if isinstance(stage, CandidateStage) else str(stage)
         if not _stage_visible_for_view(stage_name, effective_stage_view):
             continue
         by_mgr[key]["by_stage"][stage_name] = int(cnt)
-        if stage_name == CandidateStage.HIRED.value:
-            by_mgr[key]["hired"] = int(cnt)
+        if _is_hired_stage_value(stage):
+            by_mgr[key]["hired"] += int(cnt)
 
     # чтобы были все стадии в словаре by_stage (с нулями)
     for v in by_mgr.values():
@@ -2233,14 +2330,56 @@ async def candidate_slices(
             manager_email,
         ) = row
 
-        stage_code = stage_code or None
-        stage_label = _stage_label(stage_code)
-        if not _stage_visible_for_view(stage_code, effective_stage_view):
-            # всё равно добавляем snapshot, но не учитываем в стадийных агрегациях
+        stage_code_raw = stage_code or None
+        stage_norm = _normalize_stage_counter_key(stage_code_raw) or stage_code_raw
+        stage_label = _stage_label(stage_norm)
+
+        origin_payload = _safe_dict(origin_raw)
+        origin_hint = None
+        if isinstance(origin_payload.get("source"), str):
+            origin_hint = origin_payload["source"]
+        elif origin_payload:
+            origin_hint = next(iter(origin_payload.keys()), None)
+        normalized_source = normalize_candidate_source(source or origin_hint)
+        source_label = normalized_source or (_label(source) if source else "—")
+
+        extra_payload = _safe_dict(extra_raw)
+        personal_data = _safe_dict(personal_data_raw)
+        citizenship = personal_data.get("citizenship") or extra_payload.get("citizenship")
+        country = (
+            personal_data.get("country")
+            or personal_data.get("country_code")
+            or extra_payload.get("country")
+            or extra_payload.get("country_code")
+        )
+
+        reason_codes = _status_reason_list(status_reason_raw)
+        reason_stage = stage_norm if stage_norm in allowed_reason_stages else None
+        reason_labels: list[str] = []
+        if reason_stage:
+            label_map = _REASON_LABELS.get(reason_stage, {})
+            dedup: list[tuple[str, str]] = []
+            seen_codes: set[str] = set()
+            for rcode in reason_codes:
+                if rcode in seen_codes:
+                    continue
+                seen_codes.add(rcode)
+                label = label_map.get(rcode, rcode)
+                dedup.append((rcode, label))
+            if dedup:
+                reason_labels = [lbl for _, lbl in dedup]
+            else:
+                reason_labels = ["Без причины"]
+
+        manager_preferred = manager_full or manager_short or manager_email or manager_raw
+        final_manager_label = manager_preferred or None
+
+        stage_visible = _stage_visible_for_view(stage_norm, effective_stage_view)
+        if not stage_visible:
             snapshot.append(
                 {
                     "id": str(candidate_id),
-                    "stage": stage_code,
+                    "stage": stage_code_raw,
                     "stage_label": stage_label,
                     "company": _maybe(company_name),
                     "company_id": str(company_id) if company_id else None,
@@ -2268,22 +2407,14 @@ async def candidate_slices(
             )
             continue
 
-        # Считаем по коду; если кода нет, используем метку как "сырой" ключ.
-        counter_key = str(stage_code) if stage_code else stage_label
+        # Считаем по каноническому коду (employed / employment_pending / …), не по legacy-меткам.
+        counter_key = str(stage_norm) if stage_norm else stage_label
         stage_counter[counter_key] += 1
 
         company_label = _label(company_name)
         company_key = str(company_id) if company_id else f"label::{company_label}"
         vacancy_label = _label(vacancy_title or company_name)
         vacancy_key = str(vacancy_id) if vacancy_id else f"label::{vacancy_label}"
-        origin_payload = _safe_dict(origin_raw)
-        origin_hint = None
-        if isinstance(origin_payload.get("source"), str):
-            origin_hint = origin_payload["source"]
-        elif origin_payload:
-            origin_hint = next(iter(origin_payload.keys()), None)
-        normalized_source = normalize_candidate_source(source or origin_hint)
-        source_label = normalized_source or (_label(source) if source else "—")
 
         company_counter[company_key] += 1
         vacancy_counter[vacancy_key] += 1
@@ -2291,54 +2422,32 @@ async def candidate_slices(
         vacancy_labels[vacancy_key] = vacancy_label
         source_counter[source_label] += 1
 
-        # Для разбивки по компаниям/вакансиям тоже храним по коду.
         company_stage_breakdown[company_key][counter_key] += 1
         vacancy_stage_breakdown[vacancy_key][counter_key] += 1
-
-        extra_payload = _safe_dict(extra_raw)
-        personal_data = _safe_dict(personal_data_raw)
-
-        citizenship = personal_data.get("citizenship") or extra_payload.get("citizenship")
-        country = (
-            personal_data.get("country")
-            or personal_data.get("country_code")
-            or extra_payload.get("country")
-            or extra_payload.get("country_code")
-        )
 
         citizenship_counter[_label(citizenship)] += 1
         country_counter[_label(country)] += 1
 
-        reason_codes = _status_reason_list(status_reason_raw)
-        reason_stage = stage_code if stage_code in allowed_reason_stages else None
-        reason_labels: list[str] = []
         if reason_stage:
             label_map = _REASON_LABELS.get(reason_stage, {})
             dedup = []
             seen_codes = set()
-            for code in reason_codes:
-                if code in seen_codes:
+            for rcode in reason_codes:
+                if rcode in seen_codes:
                     continue
-                seen_codes.add(code)
-                label = label_map.get(code, code)
-                dedup.append((code, label))
+                seen_codes.add(rcode)
+                label = label_map.get(rcode, rcode)
+                dedup.append((rcode, label))
             if dedup:
-                reason_labels = [label for _, label in dedup]
                 for _, label in dedup:
                     reason_counters[reason_stage][label] += 1
             else:
-                placeholder = "Без причины"
-                reason_labels = [placeholder]
-                reason_counters[reason_stage][placeholder] += 1
-
-        manager_preferred = manager_full or manager_short or manager_email or manager_raw
-        # Если у кандидата нет менеджера, не подставляем рекрутера – отображаем пустое значение.
-        final_manager_label = manager_preferred or None
+                reason_counters[reason_stage]["Без причины"] += 1
 
         snapshot.append(
             {
                 "id": str(candidate_id),
-                "stage": stage_code,
+                "stage": stage_code_raw,
                 "stage_label": stage_label,
                 "company": _maybe(company_name),
                 "company_id": str(company_id) if company_id else None,

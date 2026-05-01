@@ -108,6 +108,20 @@ def test_ensure_billing_allows_side_effects_ok_when_active() -> None:
     billing_restrictions.ensure_billing_allows_side_effects(t, None)
 
 
+def test_ensure_billing_allows_action_past_due_allows_task_complete() -> None:
+    t = _tenant({"billing": {"subscription": {"status": "past_due"}}})
+    billing_restrictions.ensure_billing_allows_action(t, None, action="task_complete")
+
+
+def test_ensure_billing_allows_action_past_due_blocks_generic_side_effects() -> None:
+    t = _tenant({"billing": {"subscription": {"status": "past_due"}}})
+    with pytest.raises(HTTPException) as ei:
+        billing_restrictions.ensure_billing_allows_action(t, None, action="side_effect_write")
+    assert ei.value.status_code == 403
+    assert ei.value.detail["code"] == "billing_past_due"
+    assert ei.value.detail["action"] == "side_effect_write"
+
+
 def test_trialing_status_respects_trial_ends_at() -> None:
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
     t = _tenant(

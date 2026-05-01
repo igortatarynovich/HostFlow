@@ -156,7 +156,7 @@ def _lang_match(user_langs: List[str], want: str) -> bool:
 
 async def _plan_allows_auto(db: AsyncSession, tenant_id: str) -> Tuple[bool, str]:
     plan = await resolve_tenant_plan_code(db, tenant_id)
-    return plan_allows_team_tier_features(plan), plan
+    return plan_allows_team_tier_features(plan, tenant_id=tenant_id), plan
 
 
 def language_route_user_ids(cfg: Dict[str, Any], preview_lang: str) -> List[str]:

@@ -39,6 +39,7 @@ export default function IntegrationsWebhookPage() {
   const [lastRotate, setLastRotate] = useState<GenericInboundWebhookRotateResponse | null>(null)
   const [previewItems, setPreviewItems] = useState<MetaIncomingLeadPreviewItem[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const load = useCallback(async () => {
     setSettingsLoading(true)
@@ -132,24 +133,13 @@ export default function IntegrationsWebhookPage() {
         subtitle={t('admin.integrations_webhook.intro')}
       />
 
-      <ol className="grid gap-2 sm:grid-cols-3">
-        {[
-          { n: 1, label: t('admin.integrations_webhook.step_endpoint') },
-          { n: 2, label: t('admin.integrations_webhook.step_verify') },
-          { n: 3, label: t('admin.integrations_webhook.step_mapping') },
-        ].map(({ n, label }) => (
-          <li
-            key={n}
-            className={clsx(
-              'rounded-lg border px-3 py-2 text-center text-sm font-medium',
-              webhookStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
-            )}
-          >
-            <span className="mr-1 font-normal text-slate-400">{n}.</span>
-            {label}
-          </li>
-        ))}
-      </ol>
+      <div className="flex justify-end">
+        <button type="button" className="btn-secondary btn-sm" onClick={() => setShowAdvanced((v) => !v)}>
+          {showAdvanced
+            ? t('admin.calendar_integrations.actions.hide_advanced', { defaultValue: 'Hide advanced' })
+            : t('admin.calendar_integrations.actions.show_advanced', { defaultValue: 'Show advanced' })}
+        </button>
+      </div>
 
       {!planLoading && !teamOk ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -223,19 +213,40 @@ export default function IntegrationsWebhookPage() {
         </div>
       ) : null}
 
-      <details className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-          {t('admin.integrations_webhook.advanced_mapping_toggle')}
-        </summary>
-        <p className="mt-3">{t('admin.integrations_webhook.mapping_hint')}</p>
-        <p className="mt-3">
-          <Link to={CRM_APP_PATHS.settingsIntegrationsMeta} className="font-medium text-brand-600 hover:underline">
-            {t('admin.integrations_webhook.mapping_cta')}
-          </Link>
-        </p>
-        <p className="mt-3 text-xs font-medium text-slate-600">{t('admin.integrations_webhook.sample_payload_title')}</p>
-        <pre className="mt-2 overflow-x-auto rounded bg-slate-900/90 p-3 text-xs text-slate-100">
-          {`POST …/inbound/{secret}
+      {showAdvanced ? (
+        <>
+          <ol className="grid gap-2 sm:grid-cols-3">
+            {[
+              { n: 1, label: t('admin.integrations_webhook.step_endpoint') },
+              { n: 2, label: t('admin.integrations_webhook.step_verify') },
+              { n: 3, label: t('admin.integrations_webhook.step_mapping') },
+            ].map(({ n, label }) => (
+              <li
+                key={n}
+                className={clsx(
+                  'rounded-lg border px-3 py-2 text-center text-sm font-medium',
+                  webhookStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
+                )}
+              >
+                <span className="mr-1 font-normal text-slate-400">{n}.</span>
+                {label}
+              </li>
+            ))}
+          </ol>
+
+          <details className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              {t('admin.integrations_webhook.advanced_mapping_toggle')}
+            </summary>
+            <p className="mt-3">{t('admin.integrations_webhook.mapping_hint')}</p>
+            <p className="mt-3">
+              <Link to={CRM_APP_PATHS.settingsIntegrationsMeta} className="font-medium text-brand-600 hover:underline">
+                {t('admin.integrations_webhook.mapping_cta')}
+              </Link>
+            </p>
+            <p className="mt-3 text-xs font-medium text-slate-600">{t('admin.integrations_webhook.sample_payload_title')}</p>
+            <pre className="mt-2 overflow-x-auto rounded bg-slate-900/90 p-3 text-xs text-slate-100">
+              {`POST …/inbound/{secret}
 Content-Type: application/json
 
 {
@@ -244,42 +255,44 @@ Content-Type: application/json
   "phone": "+48123456789",
   "id": "crm-form-123"
 }`}
-        </pre>
-      </details>
+            </pre>
+          </details>
 
-      <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-          {t('admin.integrations_webhook.recent_title')}
-        </summary>
-        <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_webhook.recent_subtitle')}</p>
-        <p className="mt-2">
-          <Link
-            to={`${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=incoming&incoming_source=webhook`}
-            className="text-sm font-medium text-brand-600 hover:underline"
-          >
-            {t('admin.integrations_webhook.view_all_incoming')}
-          </Link>
-        </p>
-        {previewLoading ? (
-          <p className="mt-3 text-sm text-slate-500">{t('common.loading')}</p>
-        ) : previewItems.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">{t('admin.integrations_webhook.recent_empty')}</p>
-        ) : (
-          <ul className="mt-3 space-y-2 text-sm">
-            {previewItems.map((row) => (
-              <li key={row.lead_id} className="rounded border border-slate-100 bg-slate-50/80 px-3 py-2">
-                <Link
-                  to={`${CRM_APP_PATHS.leads}/${row.lead_id}`}
-                  className="font-medium text-brand-600 hover:underline"
-                >
-                  {row.lead_id.slice(0, 8)}…
-                </Link>
-                <span className="text-slate-600"> · {row.status}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </details>
+          <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              {t('admin.integrations_webhook.recent_title')}
+            </summary>
+            <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_webhook.recent_subtitle')}</p>
+            <p className="mt-2">
+              <Link
+                to={`${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=incoming&incoming_source=webhook`}
+                className="text-sm font-medium text-brand-600 hover:underline"
+              >
+                {t('admin.integrations_webhook.view_all_incoming')}
+              </Link>
+            </p>
+            {previewLoading ? (
+              <p className="mt-3 text-sm text-slate-500">{t('common.loading')}</p>
+            ) : previewItems.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">{t('admin.integrations_webhook.recent_empty')}</p>
+            ) : (
+              <ul className="mt-3 space-y-2 text-sm">
+                {previewItems.map((row) => (
+                  <li key={row.lead_id} className="rounded border border-slate-100 bg-slate-50/80 px-3 py-2">
+                    <Link
+                      to={`${CRM_APP_PATHS.leads}/${row.lead_id}`}
+                      className="font-medium text-brand-600 hover:underline"
+                    >
+                      {row.lead_id.slice(0, 8)}…
+                    </Link>
+                    <span className="text-slate-600"> · {row.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
+        </>
+      ) : null}
     </div>
   )
 }

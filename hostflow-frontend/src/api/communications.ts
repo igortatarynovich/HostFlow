@@ -117,6 +117,11 @@ export type CommunicationsEntitlementsSettings = {
   modules: Record<string, CommunicationsEntitlement>
 }
 
+/** Server-computed; mirrors backend ``plan_allows_smart_operations_bundle`` (not stored in settings JSON). */
+export type CommunicationsPlanSnapshot = {
+  smartOperations: boolean
+}
+
 export type CommunicationsRoleAccessSettings = {
   messages: string[]
   email: string[]
@@ -187,6 +192,7 @@ export type CommunicationsWorkspaceSettings = {
   access: CommunicationsAccessSettings
   commands: CommunicationsCommandsSettings
   messageTemplates: CommunicationsMessageTemplatesSettings
+  plan: CommunicationsPlanSnapshot
 }
 
 export type CommunicationsSettingsPatch = Partial<CommunicationsWorkspaceSettings>
@@ -334,6 +340,14 @@ export type CommunicationTimeOffRequest = {
 export type WorkingHoursWindow = { from: string; to: string }
 export type WorkingHoursDay = { weekday: number; enabled: boolean; windows: WorkingHoursWindow[] }
 export type WorkingHoursSchedule = { tz?: string | null; days: WorkingHoursDay[] }
+export type NotificationSettings = {
+  default_reminder_minutes: number
+  channels: { in_app: boolean; push: boolean; email: boolean }
+  quiet_hours_enabled: boolean
+  quiet_hours_start?: string | null
+  quiet_hours_end?: string | null
+  timezone?: string | null
+}
 
 export type CommunicationAllocationAudit = {
   id: string
@@ -535,6 +549,9 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
         actions: [{ type: 'move_folder', value: 'HR' }],
       },
     ],
+  },
+  plan: {
+    smartOperations: false,
   },
   messageTemplates: {
     items: [
@@ -754,6 +771,10 @@ export function normalizeCommunicationsSettings(input: Partial<CommunicationsWor
       ...DEFAULT_COMMUNICATIONS_SETTINGS.messageTemplates,
       ...(source.messageTemplates || {}),
       items: normalizeMessageTemplates(source.messageTemplates?.items),
+    },
+    plan: {
+      ...DEFAULT_COMMUNICATIONS_SETTINGS.plan,
+      ...(source.plan && typeof source.plan === 'object' ? source.plan : {}),
     },
   }
 }
@@ -1345,6 +1366,16 @@ export async function upsertMyWorkingHours(payload: WorkingHoursSchedule): Promi
   return data as WorkingHoursSchedule
 }
 
+export async function getMyNotificationSettings(): Promise<NotificationSettings> {
+  const { data } = await api.get('/communications/availability/notification-settings')
+  return data as NotificationSettings
+}
+
+export async function upsertMyNotificationSettings(payload: NotificationSettings): Promise<NotificationSettings> {
+  const { data } = await api.put('/communications/availability/notification-settings', payload)
+  return data as NotificationSettings
+}
+
 export async function listCommunicationAllocatorAudit(opts?: {
   limit?: number
   offset?: number
@@ -1406,6 +1437,12 @@ export async function runCommunicationSchedulerNow(): Promise<{ ok: boolean; sta
   return data as { ok: boolean; status: CommunicationSchedulerStatus }
 }
 
+/** Single planner event — calendar ``/app/calendar?event_id=`` deep-link (G-6). */
+export async function getCommunicationPlannerEvent(eventId: string): Promise<CommunicationPlannerEvent> {
+  const { data } = await api.get(`/communications/planner/events/${encodeURIComponent(eventId)}`)
+  return data as CommunicationPlannerEvent
+}
+
 export async function listCommunicationPlannerEvents(opts?: {
   limit?: number
   offset?: number
@@ -1414,6 +1451,8 @@ export async function listCommunicationPlannerEvents(opts?: {
   from_at?: string
   to_at?: string
   kind?: string
+  /** Set true to include events linked to candidates in terminal stages or soft-deleted. */
+  include_completed_entities?: boolean
 }): Promise<{ items: CommunicationPlannerEvent[]; total: number }> {
   const params: Record<string, any> = {}
   if (opts?.limit != null) params.limit = Math.min(200, Math.max(1, opts.limit))
@@ -1423,6 +1462,7 @@ export async function listCommunicationPlannerEvents(opts?: {
   if (opts?.from_at) params.from_at = opts.from_at
   if (opts?.to_at) params.to_at = opts.to_at
   if (opts?.kind) params.kind = opts.kind
+  if (opts?.include_completed_entities) params.include_completed_entities = true
   const { data } = await api.get('/communications/planner/events', { params })
   return data as { items: CommunicationPlannerEvent[]; total: number }
 }
@@ -1443,6 +1483,7 @@ export async function createCommunicationPlannerEvent(payload: {
   linked_company_id?: string
   source?: string
   payload?: Record<string, any>
+  allow_unavailable_assignee?: boolean
 }): Promise<CommunicationPlannerEvent> {
   const { data } = await api.post('/communications/planner/events', payload)
   return data as CommunicationPlannerEvent
@@ -1465,6 +1506,7 @@ export async function patchCommunicationPlannerEvent(
     linked_candidate_id: string | null
     linked_company_id: string | null
     payload: Record<string, any>
+    allow_unavailable_assignee: boolean
   }>
 ): Promise<CommunicationPlannerEvent> {
   const { data } = await api.patch(`/communications/planner/events/${eventId}`, payload)

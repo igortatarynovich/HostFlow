@@ -2,7 +2,7 @@
  * User and tenant-related types
  */
 
-export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'viewer';
+export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'compliance_officer' | 'hr_officer' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';
@@ -24,6 +24,7 @@ export interface TenantModuleSettings {
   leads: boolean;
   services: boolean;
   client_portal: boolean;
+  hr: boolean;
 }
 
 export type TenantModuleSettingsPatch = Partial<TenantModuleSettings>;
@@ -34,6 +35,8 @@ export type RoleModuleMatrixRole =
   | 'recruiter'
   | 'client_manager'
   | 'client_processor'
+  | 'compliance_officer'
+  | 'hr_officer'
   | 'viewer';
 
 export interface RoleModulePermissions {

@@ -23,6 +23,7 @@ GLOBAL_SEARCH_ROLES = (
     Role.viewer,
     Role.client_manager,
     Role.client_processor,
+    Role.compliance_officer,
 )
 
 

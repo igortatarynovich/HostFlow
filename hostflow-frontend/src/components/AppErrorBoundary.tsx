@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import * as Sentry from '@sentry/react'
+import { attemptStaleChunkReload } from '../utils/staleChunkReload'
 
 /**
  * React error boundary that reports rendering errors to Sentry (when enabled)
@@ -29,7 +30,11 @@ export function AppErrorBoundary({
   )
 }
 
-function DefaultErrorFallback({ resetError }: { resetError: () => void }) {
+function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetError: () => void }) {
+  useEffect(() => {
+    attemptStaleChunkReload(error)
+  }, [error])
+
   return (
     <div
       role="alert"

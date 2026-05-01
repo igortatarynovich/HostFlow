@@ -19,6 +19,7 @@ LABELS: Dict[str, str] = {
     "red_paper": "Красная бумага заказана",
     "trip_plan": "Планируем приезд",
     "at_client": "На базе клиента",
+    "employment_pending": "На трудоустройстве",
     # Трудоустроен
     "employed": "Трудоустроен",
     "on_trip": "Выехал в рейс",
@@ -101,6 +102,12 @@ STAGE_META: Dict[str, Dict[str, Any]] = {
         "visible_for_agency": True,
         "visible_for_client": False,
         "owner": "agency",
+    },
+    "employment_pending": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
     },
     "probation_ok": {
         "is_system": True,
@@ -217,6 +224,7 @@ STAGES_BY_GROUP: Dict[str, List[str]] = {
         "red_paper",
         "trip_plan",
         "at_client",
+        "employment_pending",
         "on_trip",
     ],
     "probation": [
@@ -234,6 +242,7 @@ STAGES_BY_GROUP: Dict[str, List[str]] = {
         "processing_by_client",
         "docs_submitted_permit",
         "permit_received",
+        "employment_pending",
         "employed",
     ],
     "returned": ["handoff_returned"],

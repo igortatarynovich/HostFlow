@@ -10,6 +10,8 @@ export const ROLE_LABEL_KEYS: Record<UserRole, string> = {
   recruiter: 'app.admin.users.roles.recruiter',
   client_manager: 'app.admin.users.roles.client_manager',
   client_processor: 'app.admin.users.roles.client_processor',
+  compliance_officer: 'app.admin.users.roles.compliance_officer',
+  hr_officer: 'app.admin.users.roles.hr_officer',
   viewer: 'app.admin.users.roles.viewer',
 };
 
@@ -19,6 +21,8 @@ export const ROLE_BADGE_CLASSES: Record<UserRole, string> = {
   recruiter: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
   client_manager: 'bg-sky-50 text-sky-700 border border-sky-100',
   client_processor: 'bg-amber-50 text-amber-700 border border-amber-100',
+  compliance_officer: 'bg-teal-50 text-teal-800 border border-teal-100',
+  hr_officer: 'bg-indigo-50 text-indigo-800 border border-indigo-100',
   viewer: 'bg-slate-50 text-slate-700 border border-slate-200',
 };
 

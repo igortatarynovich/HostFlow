@@ -37,13 +37,14 @@ DEFAULT_STAGES = [
     ("at_client", "На базе клиента", 11),
     ("on_trip", "Выехал в рейс", 12),
     ("probation_ok", "Прошёл пробный период", 13),
-    ("employed", "Трудоустроен", 14),
-    ("rejected", "Отклонён", 15),
-    ("declined", "Отказался", 16),
-    ("ready_for_handoff", "Готов к передаче", 17),
-    ("processing_by_client", "Обработка заказчиком", 18),
-    ("docs_submitted_permit", "Документы поданы на разрешение", 19),
-    ("handoff_returned", "Возвращён", 20),
+    ("employment_pending", "На трудоустройстве", 14),
+    ("employed", "Трудоустроен", 15),
+    ("rejected", "Отклонён", 16),
+    ("declined", "Отказался", 17),
+    ("ready_for_handoff", "Готов к передаче", 18),
+    ("processing_by_client", "Обработка заказчиком", 19),
+    ("docs_submitted_permit", "Документы поданы на разрешение", 20),
+    ("handoff_returned", "Возвращён", 21),
 ]
 TERMINAL_CODES = {"probation_ok", "rejected", "declined"}
 

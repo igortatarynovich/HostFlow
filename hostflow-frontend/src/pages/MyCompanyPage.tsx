@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { listCompanies } from '../api/client'
+import { listOwnCompanies } from '../api/client'
 import { getBillingSummary, type BillingSummary } from '../api/billing'
 import { getTeamOverview } from '../api/tenants'
-import type { Company } from '../api/types'
+import type { OwnCompanyRecord } from '../api/client'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -12,17 +12,6 @@ import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorI
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
-function isOperatingCompany(company: Company) {
-  const role = String((company.extra as Record<string, any> | undefined)?.company_role || '').trim().toLowerCase()
-  return role === 'operating'
-}
-
-function isManagedByUser(company: Company, userId: string) {
-  const actor = String(userId || '').trim()
-  if (!actor) return false
-  return [company.owner_user_id, company.manager_user_id].some((value) => String(value || '').trim() === actor)
-}
-
 export default function MyCompanyPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
@@ -30,7 +19,7 @@ export default function MyCompanyPage() {
   const { can, role } = usePermissions()
   const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
   const navigate = useNavigate()
-  const [companies, setCompanies] = useState<Company[]>([])
+  const [ownCompanies, setOwnCompanies] = useState<OwnCompanyRecord[]>([])
   const [billing, setBilling] = useState<BillingSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -42,13 +31,13 @@ export default function MyCompanyPage() {
       setLoading(true)
       setError(null)
       try {
-        const [companiesData, billingData, team] = await Promise.all([
-          listCompanies({ limit: 500 }),
+        const [ownCompaniesData, billingData, team] = await Promise.all([
+          listOwnCompanies(),
           getBillingSummary(),
           canLoadTeamOverview ? getTeamOverview().catch(() => null) : Promise.resolve(null),
         ])
         if (!mounted) return
-        setCompanies(Array.isArray(companiesData) ? companiesData : [])
+        setOwnCompanies(Array.isArray(ownCompaniesData?.items) ? ownCompaniesData.items : [])
         setBilling(billingData)
         const map: Record<string, string> = {}
         const members = Array.isArray((team as any)?.members) ? (team as any).members : []
@@ -74,10 +63,10 @@ export default function MyCompanyPage() {
     }
   }, [canLoadTeamOverview, planLimitModal, t])
 
-  const managedOperatingCompanies = useMemo(() => {
-    const userId = String((me as any)?.sub || '').trim()
-    return companies.filter((company) => isOperatingCompany(company) && isManagedByUser(company, userId))
-  }, [companies, me])
+  const managedOperatingCompanies = useMemo(
+    () => ownCompanies.filter((company) => !Boolean(company.is_archived)),
+    [ownCompanies],
+  )
 
   const formatUserLabel = (id?: string | null) => {
     const key = String(id || '').trim()
@@ -92,7 +81,7 @@ export default function MyCompanyPage() {
   const effectiveOperatingLimit = billing?.company_slots?.effective_limit ?? billing?.license?.max_companies ?? 0
   const availableOperatingSlots = billing?.company_slots?.unlimited
     ? 0
-    : Math.max((billing?.company_slots?.available ?? effectiveOperatingLimit - managedOperatingCompanies.length), 0)
+    : Math.max(effectiveOperatingLimit - managedOperatingCompanies.length, 0)
   const hasAvailableOperatingSlots = Boolean(billing?.company_slots?.unlimited) || availableOperatingSlots > 0
   const usedOperatingSlots = Number(billing?.company_slots?.used ?? managedOperatingCompanies.length)
   const recommendedExtraSlots = Math.max(1, usedOperatingSlots - effectiveOperatingLimit + 1)
@@ -102,7 +91,7 @@ export default function MyCompanyPage() {
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
-      <section className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white shadow-card">
+      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white shadow-lg">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
             <p className="text-2xl font-semibold">{t('app.my_company.title', { defaultValue: 'My Company' })}</p>

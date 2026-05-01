@@ -11,6 +11,10 @@ from backend.app.models.audit import ActivityLog
 from backend.app.models.automation_rule import AutomationRule
 from backend.app.services.audit import log_activity
 from backend.app.services import reminder_tasks
+from backend.app.services.plan_feature_gates import (
+    TRIAL_AUTOMATION_RUNS_METRIC,
+    enforce_trial_usage_cap_and_increment,
+)
 
 
 TRIGGERS = {
@@ -326,6 +330,12 @@ async def run_candidate_risk_band_rules(
                 since=since,
             ):
                 continue
+            await enforce_trial_usage_cap_and_increment(
+                db,
+                tenant_id=tenant_id,
+                metric=TRIAL_AUTOMATION_RUNS_METRIC,
+                increment=1,
+            )
             await execute_automation_rule(
                 db,
                 tenant_id=tenant_id,
@@ -370,6 +380,12 @@ async def run_rules(
         conditions = _loads_or_empty(rule.conditions_json)
         if not _matches_conditions(conditions, context):
             continue
+        await enforce_trial_usage_cap_and_increment(
+            db,
+            tenant_id=tenant_id,
+            metric=TRIAL_AUTOMATION_RUNS_METRIC,
+            increment=1,
+        )
         fired += 1
         await execute_automation_rule(
             db,

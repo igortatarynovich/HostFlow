@@ -5,6 +5,7 @@ export const ACTIVATION_PATHS = {
   overview: CRM_APP_PATHS.overview,
   onboarding: CRM_APP_PATHS.onboarding,
   onboardingCompany: CRM_APP_PATHS.onboardingCompany,
+  onboardingWizard: CRM_APP_PATHS.onboardingWizard,
   onboardingGettingStarted: CRM_APP_PATHS.onboardingGettingStarted,
   clients: CRM_APP_PATHS.clientsDirectory,
   candidates: CRM_APP_PATHS.candidates,

@@ -19,13 +19,24 @@ interface UserFormInviteProps {
   companyOptions: Company[]
 }
 
-const ROLE_OPTIONS: UserRole[] = ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer']
+const ROLE_OPTIONS: UserRole[] = [
+  'administrator',
+  'supervisor',
+  'recruiter',
+  'client_manager',
+  'client_processor',
+  'compliance_officer',
+  'hr_officer',
+  'viewer',
+]
 const ROLE_LABELS: Record<UserRole, string> = {
   administrator: 'app.admin.users.roles.administrator',
   supervisor: 'app.admin.users.roles.supervisor',
   recruiter: 'app.admin.users.roles.recruiter',
   client_manager: 'app.admin.users.roles.client_manager',
   client_processor: 'app.admin.users.roles.client_processor',
+  compliance_officer: 'app.admin.users.roles.compliance_officer',
+  hr_officer: 'app.admin.users.roles.hr_officer',
   viewer: 'app.admin.users.roles.viewer',
 }
 

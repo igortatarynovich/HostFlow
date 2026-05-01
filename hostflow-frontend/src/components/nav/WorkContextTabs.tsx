@@ -17,6 +17,7 @@ function globalWorkStripVisible(pathname: string): boolean {
   if (pathname.startsWith(p.inbox)) return false
   if (pathname.startsWith(p.tasks)) return false
   if (pathname.startsWith(p.calendar)) return false
+  if (pathname.startsWith(p.workCalendar)) return false
   if (pathname.startsWith(p.procesowani)) return false
   if (pathname.startsWith(p.teamAvailability)) return false
   if (pathname.startsWith(p.myAvailability)) return false
@@ -34,7 +35,7 @@ function globalWorkStripVisible(pathname: string): boolean {
   if (pathname.startsWith(p.myCompany)) return false
   if (pathname.startsWith(p.onboarding)) return false
 
-  if (pathname === p.work || pathname.startsWith(`${p.work}/`)) return true
+  if (pathname === p.work || pathname.startsWith(`${p.work}/`)) return false
   if (pathname.startsWith(p.candidates)) return true
   if (pathname.startsWith(p.agencyClients)) return true
   if (pathname.startsWith(p.vacancies)) return true
@@ -72,24 +73,8 @@ export default function WorkContextTabs(_props: WorkContextTabsProps) {
     }
   }, [search])
 
-  const showWorkEntry =
-    can('candidates.view') ||
-    can('companies.view') ||
-    can('leads.view') ||
-    can('vacancies.view') ||
-    can('services.view') ||
-    can('documents.manage')
-
   const tabs = useMemo(() => {
     const out: TabDef[] = []
-    if (showWorkEntry) {
-      out.push({
-        key: 'work',
-        to: CRM_APP_PATHS.work,
-        label: t('app.nav.items.work'),
-        isActive: (p, _tab) => p === CRM_APP_PATHS.work || p.startsWith(`${CRM_APP_PATHS.work}/`),
-      })
-    }
     if (can('candidates.view')) {
       out.push({
         key: 'candidates',
@@ -148,7 +133,7 @@ export default function WorkContextTabs(_props: WorkContextTabsProps) {
       )
     }
     return out
-  }, [can, companiesLabel, showWorkEntry, t])
+  }, [can, companiesLabel, t])
 
   if (!globalWorkStripVisible(pathname) || tabs.length === 0) return null
 

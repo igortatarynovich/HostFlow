@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import String, DateTime, Text, JSON, Index, Integer
+from sqlalchemy import String, DateTime, ForeignKey, Text, JSON, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
@@ -40,7 +40,16 @@ class Reminder(Base, TimestampMixin):
     title: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     owner_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    assignee_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    # Phase 2.6.G-5 Stage E — FK ``users.id ON DELETE SET NULL`` added so
+    # deleting a user clears orphan reminder assignees instead of leaving
+    # them as dangling UUIDs that surface in ``/app/tasks`` and the bell.
+    # See ``docs/specs/manager-assignment.md`` §4 Stage E and Alembic
+    # revision ``202604190002_owner_fk_set_null``.
+    assignee_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     priority: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     channel: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default="internal")
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

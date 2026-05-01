@@ -7,6 +7,8 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
+import { NextActionBadge } from '../candidate/NextActionBadge'
+import { useThreadNextAction } from './useThreadNextAction'
 
 export function formatThreadDateTime(value?: string | null): string {
   if (!value) return '—'
@@ -72,6 +74,20 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   const threadLoadErrorBanner = threadError
 
   const btn = layout === 'inboxCenter' ? 'btn-secondary btn-sm' : 'btn-secondary'
+
+  // G-8 stage 2.3: per-thread "what to do next" badge. We compose a
+  // fingerprint over every field the backend ladder reads
+  // (`compute_thread_next_action` in `services/next_action.py`), so any
+  // in-place mutation that flips one of these surfaces a fresh DTO
+  // without an explicit `dispatchEvent('thread-updated')` call.
+  // `is_archived` and `status` cover the terminal branches; the SLA / unread
+  // / inbound-vs-outbound trio drives the active branches.
+  const threadNextActionFingerprint = `${thread.status ?? ''}|${thread.is_archived ? 1 : 0}|${thread.unread_count ?? 0}|${thread.sla_due_at ?? ''}|${thread.last_inbound_at ?? ''}|${thread.last_outbound_at ?? ''}`
+  const {
+    data: threadNextAction,
+    loading: threadNextActionLoading,
+    error: threadNextActionError,
+  } = useThreadNextAction(thread.id, threadNextActionFingerprint)
 
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
@@ -360,7 +376,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             <div className="truncate text-sm font-semibold text-slate-900">
               {thread.subject || thread.last_message_preview || `${String(thread.channel || '').toUpperCase()} thread`}
             </div>
-            <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
               <span>{String(thread.channel || '').toUpperCase()}</span>
               <span>·</span>
               <span>{thread.status || '—'}</span>
@@ -372,6 +388,11 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                   </span>
                 </>
               ) : null}
+              <NextActionBadge
+                dto={threadNextAction}
+                loading={threadNextActionLoading}
+                error={threadNextActionError}
+              />
             </div>
           </div>
           {actionBar}
@@ -408,7 +429,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           <h1 className="mt-1 text-xl font-semibold text-slate-900">
             {thread.subject || thread.last_message_preview || `${String(thread.channel || '').toUpperCase()} thread`}
           </h1>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
             <span>
               {t('app.communications.labels.thread')}: <span className="font-mono">{thread.id}</span>
             </span>
@@ -424,6 +445,11 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             <span>
               {t('app.communications.labels.unread')}: {thread.unread_count ?? 0}
             </span>
+            <NextActionBadge
+              dto={threadNextAction}
+              loading={threadNextActionLoading}
+              error={threadNextActionError}
+            />
           </div>
         </div>
         {actionBar}

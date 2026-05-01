@@ -71,6 +71,17 @@ export default function CandidateNextActionPanel(props: {
   canonicalStageCode?: string | null
   /** Next stage in journey order — used to advance operational hints after gates are satisfied. */
   nextPipelineStageCode?: string | null
+  /** Soft data-quality hint: employer context (company/vacancy) is missing. */
+  employerDataMissing?: boolean
+  /** Optional CTA: scroll/focus employer fields block. */
+  onOpenEmployerFields?: () => void
+  /** Smart checklist: missing data that should be filled next. */
+  missingDataHints?: Array<{
+    id: string
+    label: string
+    ctaLabel?: string
+    onClick?: () => void
+  }>
   vacancyPipelineBlocking?: boolean
   contactAttemptPipelineBlocking?: boolean
   /** Emphasize this panel as the single “do this next” rail step (reminder due, vacancy gate, etc.). */
@@ -196,9 +207,19 @@ export default function CandidateNextActionPanel(props: {
     })
   }, [stageHint, stageHintTitle, t])
 
+  const employerHintTitle = useMemo(
+    () =>
+      t('app.candidate_card.next_action.stage_hint.add_employer', {
+        defaultValue: 'Add employer data (company/vacancy)',
+      }),
+    [t],
+  )
+
   const deferDocsDuplicate = Boolean(props.documentsChecklistSibling) && issuesPresent && !next
 
   const primary = Boolean(props.primaryStepHighlight)
+  const missingDataHints = props.missingDataHints || []
+  const hasMissingDataHints = missingDataHints.length > 0
 
   if (pipelineCompleted) {
     return (
@@ -320,11 +341,33 @@ export default function CandidateNextActionPanel(props: {
           ) : (
             <>
               <div className="mt-1 text-sm font-semibold text-slate-900">
-                {stageHint
+                {props.employerDataMissing
+                  ? employerHintTitle
+                  : stageHint
                   ? stageHintTitle(stageHint.kind)
                   : t('app.candidate_card.next_action.empty_title', { defaultValue: 'No active reminders' })}
               </div>
-              {stageHint ? (
+              {props.employerDataMissing ? (
+                <div className="mt-0.5 space-y-2">
+                  <div className="text-xs text-slate-600">
+                    {t('app.candidate_card.next_action.stage_hint.add_employer_footer', {
+                      defaultValue:
+                        'Missing company or vacancy. Add employer context so the pipeline can suggest accurate next steps.',
+                    })}
+                  </div>
+                  {props.onOpenEmployerFields ? (
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      onClick={props.onOpenEmployerFields}
+                    >
+                      {t('app.candidate_card.next_action.open_employer_fields', {
+                        defaultValue: 'Open employer fields',
+                      })}
+                    </button>
+                  ) : null}
+                </div>
+              ) : stageHint ? (
                 <div className="mt-0.5 text-xs text-slate-600">
                   {t('app.candidate_card.next_action.stage_hint.footer', {
                     defaultValue: 'Suggested focus for this stage (add a reminder to track it).',
@@ -335,6 +378,37 @@ export default function CandidateNextActionPanel(props: {
                   {t('app.candidate_card.next_action.empty', { defaultValue: 'Create a reminder to track the next step.' })}
                 </div>
               )}
+              {hasMissingDataHints ? (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+                    {t('app.candidate_card.next_action.missing_data_title', {
+                      defaultValue: 'Missing information',
+                    })}
+                  </div>
+                  <div className="mt-1 space-y-1.5">
+                    {missingDataHints.slice(0, 4).map((hint) => (
+                      <div
+                        key={hint.id}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5"
+                      >
+                        <div className="min-w-0 text-xs text-slate-700">{hint.label}</div>
+                        {hint.onClick ? (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs shrink-0"
+                            onClick={hint.onClick}
+                          >
+                            {hint.ctaLabel ||
+                              t('app.candidate_card.next_action.missing_data_open', {
+                                defaultValue: 'Open',
+                              })}
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
         </div>

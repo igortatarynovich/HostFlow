@@ -215,7 +215,7 @@ function CandidateExperienceSection({
             {t('app.candidate_card.employment.empty')}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-brand-50 bg-white/95 shadow-card">
+          <div className="card overflow-x-auto">
             <table className="min-w-full divide-y divide-brand-100/70 text-sm">
               <thead className="bg-brand-50/60">
                 <tr>

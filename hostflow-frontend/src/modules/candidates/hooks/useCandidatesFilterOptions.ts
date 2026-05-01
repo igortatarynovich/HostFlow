@@ -1,10 +1,8 @@
 // src/modules/candidates/hooks/useCandidatesFilterOptions.ts
 //
 // Builds 13 column-filter dropdown option lists from the enriched
-// candidate list + currently-selected filter values. Each list is built
-// from `enrichedItems` (so options never disappear when a filter is
-// applied) and augmented with currently-selected values that are not
-// present in the dataset (so the user can still see and clear them).
+// candidate list only. Each list is built from `enrichedItems`, so the UI
+// shows only values that currently exist in data.
 //
 // Extracted from inline `useMemo` blocks in `src/pages/Candidates.tsx`
 // (Phase 1 #4 god-component split).
@@ -92,9 +90,6 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
     preferredChannelLabelMap, inPolandLabelMap, opsModeLabelMap,
     getPolandBasisLabel, getTrailerTypeLabel,
     reasonOptions,
-    vacancyFilter, managerFilter, statusReasonFilter, docsStatusFilter,
-    docsOrderedFilter, docsHasFilesFilter, preferredChannelFilter,
-    inPolandFilter, opsModeFilter, polandBasisFilter, trailerTypesFilter,
   } = ctx
 
   const vacancyFilterOptions = useMemo<FilterOption[]>(() => {
@@ -115,9 +110,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
         t('app.candidates.labels.untitled')
       ensure(id, title)
     })
-    vacancyFilter.forEach((value) => ensure(value, vacancyLabelMap.get(value) || value))
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, vacancyFilter, vacancyLabelMap, t])
+  }, [enrichedItems, vacancyLabelMap, t])
 
   const managerFilterOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, string>()
@@ -131,12 +125,11 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
       const label = resolveManagerLabel(item) || id
       ensure(id, label)
     })
-    managerFilter.forEach((value) => ensure(value, managerLabelMap.get(value) || value))
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, managerFilter, managerLabelMap, resolveManagerLabel])
+  }, [enrichedItems, resolveManagerLabel])
 
   const reasonFilterOptions = useMemo<FilterOption[]>(() => {
-    const present = new Set<string>(statusReasonFilter)
+    const present = new Set<string>()
     enrichedItems.forEach((item) => {
       item.__reasonCodes.forEach((code) => present.add(code))
     })
@@ -146,13 +139,13 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
         value: option.code,
         label: `${option.label} (${option.stageLabel})`,
       }))
-  }, [enrichedItems, reasonOptions, statusReasonFilter])
+  }, [enrichedItems, reasonOptions])
 
   const docsStatusPresence = useMemo(() => {
-    const set = new Set<string>(docsStatusFilter)
+    const set = new Set<string>()
     enrichedItems.forEach((item) => set.add(item.__docsMeta.readinessKey))
     return set
-  }, [enrichedItems, docsStatusFilter])
+  }, [enrichedItems])
 
   const allDocsStatusOptions = useMemo<FilterOption[]>(
     () =>
@@ -169,10 +162,10 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
   )
 
   const docsOrderPresence = useMemo(() => {
-    const set = new Set<string>(docsOrderedFilter)
+    const set = new Set<string>()
     enrichedItems.forEach((item) => set.add(item.__docsMeta.isOrdered ? 'ordered' : 'not_ordered'))
     return set
-  }, [enrichedItems, docsOrderedFilter])
+  }, [enrichedItems])
 
   const docsOrderFilterOptions = useMemo<FilterOption[]>(
     () =>
@@ -194,11 +187,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
       )
     }
     enrichedItems.forEach((item) => ensure(item.__docsMeta.hasFiles ? 'with' : 'without'))
-    docsHasFilesFilter.forEach((value) => {
-      if (value === 'with' || value === 'without') ensure(value)
-    })
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, docsHasFilesFilter, t])
+  }, [enrichedItems, t])
 
   const preferredChannelOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, string>()
@@ -210,11 +200,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
       const key = item.__extra.preferredContact ?? EMPTY_OPTION_VALUE
       ensure(key, preferredChannelLabelMap[key] ?? key)
     })
-    preferredChannelFilter.forEach((value) => {
-      ensure(value, preferredChannelLabelMap[value] ?? value)
-    })
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, preferredChannelFilter, preferredChannelLabelMap])
+  }, [enrichedItems, preferredChannelLabelMap])
 
   const inPolandOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, string>()
@@ -226,9 +213,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
       const key = item.__extra.inPoland === true ? 'yes' : item.__extra.inPoland === false ? 'no' : 'unknown'
       ensure(key)
     })
-    inPolandFilter.forEach((value) => ensure(value))
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, inPolandFilter, inPolandLabelMap])
+  }, [enrichedItems, inPolandLabelMap])
 
   const opsModeOptions = useMemo<OpsModeOption[]>(() => {
     const map = new Map<CandidateOpsMode, string>()
@@ -239,9 +225,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
     enrichedItems.forEach((item) => {
       if (item.__extra.opsMode) ensure(item.__extra.opsMode)
     })
-    opsModeFilter.forEach((value) => ensure(value))
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, opsModeFilter, opsModeLabelMap])
+  }, [enrichedItems, opsModeLabelMap])
 
   const polandBasisOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, string>()
@@ -252,9 +237,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
     enrichedItems.forEach((item) => {
       ensure(item.__extra.polandStayBasis ?? EMPTY_OPTION_VALUE)
     })
-    polandBasisFilter.forEach((value) => ensure(value))
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, polandBasisFilter, getPolandBasisLabel, t])
+  }, [enrichedItems, getPolandBasisLabel, t])
 
   const trailerTypesOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, string>()
@@ -265,9 +249,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
     enrichedItems.forEach((item) => {
       item.__extra.trailerTypes.forEach((code) => ensure(code))
     })
-    trailerTypesFilter.forEach((value) => ensure(value))
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, getTrailerTypeLabel, trailerTypesFilter])
+  }, [enrichedItems, getTrailerTypeLabel])
 
   return {
     vacancyFilterOptions,

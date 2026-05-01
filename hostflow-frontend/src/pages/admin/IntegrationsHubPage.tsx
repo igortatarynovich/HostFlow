@@ -32,15 +32,6 @@ type ConnectionTile = {
   showMetaStatus?: boolean
 }
 
-type OperationLink = {
-  key: string
-  titleKey: string
-  descKey: string
-  to: string
-  permission?: 'notifications.view' | 'admin.users'
-  commFeatureAny?: CommunicationsFeatureKey[]
-}
-
 const MESSENGER_INTEGRATION_ICONS: Record<MessengerChannel, TablerIcon> = {
   telegram: IconBrandTelegram,
   whatsapp: IconBrandWhatsapp,
@@ -127,32 +118,10 @@ export default function IntegrationsHubPage() {
         descKey: 'admin.integrations_hub.google_desc',
         to: CRM_APP_PATHS.settingsIntegrationsGoogle,
         Icon: IconBrandGoogle,
-        permission: 'admin.metaLeads',
+        permission: 'admin.users',
       },
     ]
   }, [])
-
-  const operationLinks: OperationLink[] = useMemo(
-    () => [
-      {
-        key: 'inbox',
-        titleKey: 'admin.integrations_hub.ops_inbox_title',
-        descKey: 'admin.integrations_hub.ops_inbox_desc',
-        to: CRM_APP_PATHS.inbox,
-        permission: 'notifications.view',
-        commFeatureAny: ['messages', 'email'],
-      },
-      {
-        key: 'comms_admin',
-        titleKey: 'admin.integrations_hub.ops_comms_title',
-        descKey: 'admin.integrations_hub.ops_comms_desc',
-        to: CRM_APP_PATHS.settingsCommunications,
-        permission: 'admin.users',
-        commFeatureAny: ['communicationsAdmin'],
-      },
-    ],
-    [],
-  )
 
   const visibleConnections = useMemo(
     () =>
@@ -167,25 +136,12 @@ export default function IntegrationsHubPage() {
     [can, canUseCommunicationsFeature, connectionTiles],
   )
 
-  const visibleOps = useMemo(
-    () =>
-      operationLinks.filter((item) => {
-        if (item.permission && !can(item.permission)) return false
-        if (item.commFeatureAny?.length) {
-          const ok = item.commFeatureAny.some((f) => canUseCommunicationsFeature(f))
-          if (!ok) return false
-        }
-        return true
-      }),
-    [can, canUseCommunicationsFeature, operationLinks],
-  )
-
   if (redirectToMeta) {
     return <Navigate to={`${CRM_APP_PATHS.settingsIntegrationsMeta}${location.search}`} replace />
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 py-6 sm:py-8">
+    <div className="settings-page-shell py-6 sm:py-8">
       <SettingsSubpageHeader
         backHref={CRM_APP_PATHS.settings}
         backLabel={t('admin.settings.subpage.back_all', { defaultValue: '← All settings' })}
@@ -249,33 +205,7 @@ export default function IntegrationsHubPage() {
         </ul>
       </section>
 
-      {visibleOps.length > 0 ? (
-        <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-5" aria-labelledby="integrations-hub-ops-heading">
-          <h2 id="integrations-hub-ops-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.integrations_hub.section_operations')}
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_hub.ops_intro')}</p>
-          <ul className="mt-4 space-y-3">
-            {visibleOps.map((item) => (
-              <li key={item.key}>
-                <Link
-                  to={item.to}
-                  className="block rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition hover:border-brand-300 hover:shadow"
-                >
-                  <span className="font-medium text-slate-900">{t(item.titleKey as any)}</span>
-                  <span className="mt-1 block text-xs text-slate-600">{t(item.descKey as any)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 text-xs text-slate-500">
-            {t('admin.integrations_hub.ops_policies_hint')}{' '}
-            <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settings}>
-              {t('admin.integrations_hub.ops_policies_link')}
-            </Link>
-          </p>
-        </section>
-      ) : null}
+      
     </div>
   )
 }

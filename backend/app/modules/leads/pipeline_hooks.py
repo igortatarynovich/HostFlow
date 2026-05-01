@@ -13,6 +13,10 @@ from backend.app.services import events
 from backend.app.services.audit import log_activity
 from backend.app.services.automation_rules import run_rules as run_automation_rules
 from backend.app.services.events import EventAudience
+from backend.app.services.plan_feature_gates import (
+    TRIAL_CONVERSION_ACTIONS_METRIC,
+    enforce_trial_usage_cap_and_increment,
+)
 
 
 async def _lead_reminder_assignee_id(
@@ -54,6 +58,13 @@ async def record_lead_stage_change(
     """Audit + in-app notification. Call in the same transaction as the stage update (before commit)."""
     fs = None if from_stage is None else str(from_stage)
     ts = str(to_stage)
+    if fs != ts:
+        await enforce_trial_usage_cap_and_increment(
+            db,
+            tenant_id=tenant_id,
+            metric=TRIAL_CONVERSION_ACTIONS_METRIC,
+            increment=1,
+        )
     audit_payload: Dict[str, Any] = {
         "lead_id": str(lead.id),
         "from_stage": fs,

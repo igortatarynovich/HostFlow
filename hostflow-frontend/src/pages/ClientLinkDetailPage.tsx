@@ -16,6 +16,7 @@ import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
 export default function ClientLinkDetailPage() {
@@ -24,8 +25,9 @@ export default function ClientLinkDetailPage() {
   const planLimitModal = usePlanLimitModal()
   const { isEmployerTenant, entitySingular } = useBusinessTerminology()
   const { me } = useAuth()
+  const currentTenantId = useCurrentTenantId()
   const { notify } = useToast()
-  const tenantId = (me as { tenant_id?: string })?.tenant_id ?? ''
+  const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id ?? '').trim()
   const backToListLabel = isEmployerTenant
     ? t('app.companies.actions.back_to_list', { defaultValue: 'Back to companies' })
     : t('app.clients.back_to_list', { defaultValue: 'Back to clients' })

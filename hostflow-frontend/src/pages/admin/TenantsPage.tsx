@@ -151,7 +151,16 @@ export default function TenantsPage() {
   const selectedTenantId = selected?.id ?? null
   const isSuperAdmin = (me?.role || '').toLowerCase() === 'superadmin'
   const roleOrder: RoleModuleMatrixRole[] = useMemo(
-    () => ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer'],
+    () => [
+      'administrator',
+      'supervisor',
+      'recruiter',
+      'client_manager',
+      'client_processor',
+      'compliance_officer',
+      'hr_officer',
+      'viewer',
+    ],
     [],
   )
   const normalizeRoleKey = useCallback((roleValue?: string | null): RoleModuleMatrixRole => {
@@ -161,6 +170,10 @@ export default function TenantsPage() {
     if (normalized === 'recruiter') return 'recruiter'
     if (normalized === 'client_manager') return 'client_manager'
     if (normalized === 'client_processor') return 'client_processor'
+    if (normalized === 'compliance_officer' || normalized === 'compliance' || normalized === 'docs_officer') {
+      return 'compliance_officer'
+    }
+    if (normalized === 'hr_officer' || normalized === 'people_ops') return 'hr_officer'
     return 'viewer'
   }, [])
 

@@ -29,6 +29,8 @@ const ROLE_OPTIONS: { value: SeatRequest['role']; labelKey: string }[] = [
   { value: 'administrator', labelKey: 'app.settings.team.form.roles.administrator' },
   { value: 'supervisor', labelKey: 'app.settings.team.form.roles.supervisor' },
   { value: 'recruiter', labelKey: 'app.settings.team.form.roles.recruiter' },
+  { value: 'compliance_officer', labelKey: 'app.settings.team.form.roles.compliance_officer' },
+  { value: 'hr_officer', labelKey: 'app.settings.team.form.roles.hr_officer' },
   { value: 'client_manager', labelKey: 'app.settings.team.form.roles.client_manager' },
   { value: 'client_processor', labelKey: 'app.admin.users.roles.client_processor' },
   { value: 'viewer', labelKey: 'app.settings.team.form.roles.viewer' },
@@ -253,7 +255,7 @@ export function TeamManagementPanel({
         info={loadErr}
         onRetry={() => window.location.reload()}
         retryLabel={t('common.actions.refresh')}
-        {...friendlyErrorBannerSecondary(loadErr, CRM_APP_PATHS.settingsTeam, t('app.settings.team.title'))}
+        {...friendlyErrorBannerSecondary(loadErr, CRM_APP_PATHS.settingsUsers, t('app.settings.team.title'))}
         compact
       />
     )
@@ -341,7 +343,7 @@ export function TeamManagementPanel({
               retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 modulesErrBanner,
-                CRM_APP_PATHS.settingsTeam,
+                CRM_APP_PATHS.settingsUsers,
                 t('app.platform.tenants.modules.title'),
               )}
               compact
@@ -394,7 +396,7 @@ export function TeamManagementPanel({
             retryLabel={t('app.platform.tenants.seat_requests.actions.refresh')}
             {...friendlyErrorBannerSecondary(
               seatErrBanner,
-              CRM_APP_PATHS.settingsTeam,
+              CRM_APP_PATHS.settingsUsers,
               t('app.platform.tenants.seat_requests.title'),
             )}
             compact

@@ -424,9 +424,18 @@ export default function OnboardingCompanyPage() {
         <button
           type="button"
           className="btn-primary mt-8 w-full rounded-lg py-2.5 font-medium"
+          onClick={() => navigate(ACTIVATION_PATHS.onboardingWizard, { replace: true })}
+        >
+          {t('app.onboarding.ready.cta_wizard', {
+            defaultValue: 'Continue setup (5 min) →',
+          })}
+        </button>
+        <button
+          type="button"
+          className="mt-2 w-full rounded-lg py-2 text-xs font-medium text-slate-500 hover:text-slate-700"
           onClick={() => navigate(`${ACTIVATION_PATHS.overview}?welcome=1`, { replace: true })}
         >
-          {t('app.onboarding.ready.cta')}
+          {t('app.onboarding.ready.cta', { defaultValue: 'View dashboard →' })}
         </button>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <button

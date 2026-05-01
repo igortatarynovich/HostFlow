@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     jwt_secret: Optional[str] = None
     webhook_url: Optional[str] = None
     webhook_timeout: Optional[int] = None
+    slack_signing_secret: Optional[str] = None
+    teams_webhook_secret: Optional[str] = None
     meta_webhook_secret: Optional[str] = None
     meta_credentials_key: Optional[str] = None
     # Self-serve Meta onboarding (paid tenants): expose in GET /settings/leads/meta/self-serve-onboarding
@@ -107,6 +109,15 @@ class Settings(BaseSettings):
     meta_leads_shared_app_secret: Optional[str] = None
     # Optional override for Facebook Login redirect (must match Meta app «Valid OAuth Redirect URIs»).
     meta_leads_oauth_redirect_uri: Optional[str] = None
+    # Shared OAuth app settings for Calendar quick-connect (one-click UI flow).
+    calendar_google_client_id: Optional[str] = None
+    calendar_google_client_secret: Optional[str] = None
+    calendar_google_redirect_uri: Optional[str] = None
+    calendar_google_scopes: str = "openid email profile https://www.googleapis.com/auth/calendar"
+    calendar_microsoft_client_id: Optional[str] = None
+    calendar_microsoft_client_secret: Optional[str] = None
+    calendar_microsoft_redirect_uri: Optional[str] = None
+    calendar_microsoft_scopes: str = "offline_access openid profile email https://graph.microsoft.com/Calendars.ReadWrite"
     # Override Focus default for superadmin+bootstrap Meta remap; use off|disable|none|false|0 to disable (forks).
     meta_leads_operational_tenant_id: Optional[str] = None
     pull_field_data_from_graph: bool = True

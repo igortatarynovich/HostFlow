@@ -31,6 +31,11 @@ from backend.app.modules.leads.lead_criteria_eval import lead_fit_evaluation_eff
 from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
 from backend.app.services import billing_restrictions
 from backend.app.services.automation_rules import run_rules as run_automation_rules
+from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup
+from backend.app.services.recruiter_assignment import (
+    record_candidate_reassignment,
+    resolve_vacancy_primary_recruiter,
+)
 
 from ._helpers import (
     LeadProcessingError,
@@ -136,9 +141,11 @@ async def process_normalized_lead(
                     if lead_own_company_id and not candidate_own_company_id:
                         candidate.own_company_id = str(lead_own_company_id)
                         await db.flush()
-                    if recruiter_id and not getattr(candidate, "manager", None):
-                        candidate.manager = recruiter_id
-                        await db.flush()
+                    # Phase 2.6.G-5 Stage D — legacy shadow-write of
+                    # ``candidate.manager = recruiter_id`` removed; the
+                    # canonical writer ``record_candidate_reassignment``
+                    # (invoked above in the lead-rule / vacancy / fallback
+                    # branches) now mirrors into both columns.
                     # Обновляем extra поля из normalized данных, если они есть
                     import json
                     extra = candidate._get_extra()
@@ -440,6 +447,19 @@ async def process_normalized_lead(
         )
         await db.flush()
         await db.commit()
+        try:
+            await apply_lead_terminal_cleanup(
+                db,
+                tenant_id=tenant_id,
+                lead_id=str(lead.id),
+                new_stage=getattr(lead, "stage", None),
+                new_status=getattr(lead, "status", None),
+                actor_id=None,
+                reason="lead_converted_to_candidate",
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
         return MetaLeadResult(
             lead_id=lead.id,
             status="duplicated",
@@ -823,28 +843,60 @@ async def process_normalized_lead(
     stamp_rid = _rule_recruiter_id_from_normalized(normalized)
     rule_rid = await validate_tenant_recruiter_id(db, tenant_id, stamp_rid) if stamp_rid else None
     recruiter_id = getattr(candidate, "recruiter_id", None)
-    vacancy_recruiter_id = getattr(vacancy, "recruiter_id", None) if vacancy else None
+    # Phase 2.6.G-5 Stage A — replaces silent dead-read ``vacancy.recruiter_id``
+    # (attribute never existed on ``Vacancy``; old code always yielded ``None``).
+    # Resolver cascades: VacancyRecruiter m2m least-load → vacancy.manager → None.
+    vacancy_recruiter_id = (
+        await resolve_vacancy_primary_recruiter(db, tenant_id, vacancy)
+        if vacancy
+        else None
+    )
+    # Phase 2.6.G-5 Stage C — every ``Candidate.recruiter_id`` mutation goes
+    # through ``record_candidate_reassignment`` so the audit trail captures
+    # the full routing cascade (rule → vacancy-resolved → tenant fallback).
+    # Actor is None + actor_kind="system" because a meta-lead conversion is
+    # not driven by a human user (there is no ``actor_id`` in scope here).
     if rule_rid:
-        candidate.recruiter_id = rule_rid
+        await record_candidate_reassignment(
+            db,
+            candidate,
+            new_recruiter_id=rule_rid,
+            reason="lead_rule",
+            actor=None,
+            actor_kind="system",
+            note=f"lead_id={lead.id}",
+        )
         recruiter_id = rule_rid
-        await db.flush()
     elif not recruiter_id and vacancy_recruiter_id:
-        candidate.recruiter_id = vacancy_recruiter_id
+        await record_candidate_reassignment(
+            db,
+            candidate,
+            new_recruiter_id=vacancy_recruiter_id,
+            reason="lead_vacancy",
+            actor=None,
+            actor_kind="system",
+            note=f"lead_id={lead.id};vacancy_id={getattr(vacancy, 'id', None)}",
+        )
         recruiter_id = vacancy_recruiter_id
-        await db.flush()
     if not recruiter_id:
         fallback_recruiter = await _validate_recruiter_id(db, tenant_id, fallback_recruiter_hint)
         if fallback_recruiter:
-            candidate.recruiter_id = fallback_recruiter
+            await record_candidate_reassignment(
+                db,
+                candidate,
+                new_recruiter_id=fallback_recruiter,
+                reason="lead_fallback",
+                actor=None,
+                actor_kind="system",
+                note=f"lead_id={lead.id}",
+            )
             recruiter_id = fallback_recruiter
-            await db.flush()
 
-    # Filtering/UX can use candidate.manager (separate from recruiter_id).
-    # For meta lead conversions we keep them aligned to avoid candidates disappearing
-    # when user has "Менеджер" filter applied.
-    if recruiter_id and not getattr(candidate, "manager", None):
-        candidate.manager = recruiter_id
-        await db.flush()
+    # Phase 2.6.G-5 Stage D — legacy shadow-write of
+    # ``candidate.manager = recruiter_id`` removed; the canonical writer
+    # ``record_candidate_reassignment`` (invoked above in the rule / vacancy
+    # / fallback branches) now keeps ``manager`` in lock-step with
+    # ``recruiter_id``.
     await crud.update_lead(
         db,
         lead,
@@ -867,6 +919,19 @@ async def process_normalized_lead(
         db, tenant_id=tenant_id, lead_id=agency_lead_id, normalized=normalized
     )
     await db.commit()
+    try:
+        await apply_lead_terminal_cleanup(
+            db,
+            tenant_id=tenant_id,
+            lead_id=agency_lead_id,
+            new_stage=getattr(lead, "stage", None),
+            new_status=getattr(lead, "status", None),
+            actor_id=None,
+            reason="lead_converted_to_candidate",
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
     supervisor_id = await _load_supervisor_id(db, recruiter_id)
     recipient_ids: List[str] = []
     if recruiter_id:

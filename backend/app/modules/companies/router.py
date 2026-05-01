@@ -5,6 +5,7 @@ from backend.app.auth.deps import require_roles, Role, get_current_user, UserCtx
 from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.companies import schemas, crud
+from backend.app.models.company import Company
 from backend.app.modules.companies.counters import (
     get_company_counters,
     company_recruitment_metrics_for_list,
@@ -34,6 +35,7 @@ from backend.app.modules.companies.service import (
 from pydantic import BaseModel
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_
 
 router = APIRouter(
     prefix="/companies",
@@ -83,18 +85,44 @@ async def list_companies(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
-    acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
-    allowed_company_ids = None if acl is None else set(acl.company_ids)
-    companies = await list_companies_service(
-        db=db,
-        q=q,
-        include_archived=include_archived,
-        allowed_company_ids=allowed_company_ids,
-        party_business_roles=party_business_roles,
-        client_stage=client_stage,
-        owner_user_id=str(owner_user_id) if owner_user_id else None,
-        client_source=client_source,
-    )
+    user_role = (getattr(current_user, "role", "") or "").strip().lower()
+    effective_include_archived = include_archived or user_role == Role.superadmin.value
+    if user_role == Role.superadmin.value:
+        stmt = select(Company)
+        if not effective_include_archived:
+            stmt = stmt.where(Company.is_archived.is_(False))
+        if q:
+            like = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    Company.name.ilike(like),
+                    Company.legal_name.ilike(like),
+                )
+            )
+        if party_business_roles:
+            stmt = stmt.where(Company.party_business_roles == party_business_roles)
+        if client_stage:
+            stmt = stmt.where(Company.client_stage == client_stage)
+        if owner_user_id:
+            stmt = stmt.where(Company.owner_user_id == str(owner_user_id))
+        if client_source:
+            stmt = stmt.where(Company.client_source == client_source)
+        stmt = stmt.order_by(Company.name.asc())
+        superadmin_rows = await db.execute(stmt)
+        companies = list(superadmin_rows.scalars().all())
+    else:
+        acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
+        allowed_company_ids = None if acl is None else set(acl.company_ids)
+        companies = await list_companies_service(
+            db=db,
+            q=q,
+            include_archived=effective_include_archived,
+            allowed_company_ids=allowed_company_ids,
+            party_business_roles=party_business_roles,
+            client_stage=client_stage,
+            owner_user_id=str(owner_user_id) if owner_user_id else None,
+            client_source=client_source,
+        )
 
     metrics: Dict[str, Dict[str, object]] = {}
     if include_service_metrics and companies:

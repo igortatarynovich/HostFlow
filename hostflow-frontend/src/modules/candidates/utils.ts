@@ -170,8 +170,21 @@ export function getCandidateVacancyId(candidate: UICandidate): string | null {
   return value && value !== 'null' ? value : null;
 }
 
-export function getCandidateManagerId(candidate: UICandidate): string | null {
+/**
+ * Canonical assignee (Phase 2.6.G-5 Stage F).
+ *
+ * Reads `candidate.recruiter_id` first, then falls back to the legacy
+ * `manager_id` / `manager` / `manager.id` shapes. Stage D shadow-write
+ * keeps the two columns in sync, so in production the fallback only
+ * matters during deploy interleave when one endpoint may have returned
+ * a Stage-F payload and another a legacy one.
+ *
+ * This is the preferred helper — route ALL new code through here
+ * instead of reading `candidate.manager` directly.
+ */
+export function getCandidateRecruiterId(candidate: UICandidate): string | null {
   const raw =
+    (candidate as any)?.recruiter_id ??
     (candidate as any)?.manager_id ??
     (candidate as any)?.manager?.id ??
     (candidate as any)?.manager ??
@@ -179,4 +192,17 @@ export function getCandidateManagerId(candidate: UICandidate): string | null {
   if (!raw) return null;
   const value = String(raw);
   return value && value !== 'null' ? value : null;
+}
+
+/**
+ * Legacy alias for {@link getCandidateRecruiterId}. Kept for BC while
+ * Stage F migration touches every call-site; remove together with
+ * `candidates.manager` column in Stage G.
+ *
+ * Historically read `manager` first; post-Stage-F it defers to
+ * `recruiter_id` so BOTH legacy and canonical reads resolve to the
+ * same value.
+ */
+export function getCandidateManagerId(candidate: UICandidate): string | null {
+  return getCandidateRecruiterId(candidate);
 }

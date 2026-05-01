@@ -44,7 +44,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
   return (
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.comparison_hostflow_vs_spreadsheets.hero.badge', { defaultValue: 'Comparison' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
             {t('public.marketing.comparison_hostflow_vs_spreadsheets.hero.title', { defaultValue: 'HostFlow vs Spreadsheets for Recruitment Ops' })}
@@ -62,7 +62,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
           </div>
         </section>
 
-        <section className="cv-auto overflow-x-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto overflow-x-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">
             {t('public.marketing.comparison_hostflow_vs_spreadsheets.overview.title', { defaultValue: 'Side-by-side overview' })}
           </h2>
@@ -94,7 +94,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
           </table>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.common.faq', { defaultValue: 'FAQ' })}</h2>
           <div className="mt-3 space-y-3">
             {faq.map((item) => (
@@ -106,7 +106,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.comparison_hostflow_vs_spreadsheets.related.title', { defaultValue: 'Related pages' })}</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('related_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>

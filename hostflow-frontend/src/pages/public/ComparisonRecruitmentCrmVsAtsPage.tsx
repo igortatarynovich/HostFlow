@@ -44,7 +44,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
   return (
     <PublicPageShell maxWidth="5xl">
       <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.comparison_recruitment_crm_vs_ats.hero.badge', { defaultValue: 'Comparison' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">{t('public.marketing.comparison_recruitment_crm_vs_ats.hero.title', { defaultValue: 'Recruitment CRM vs ATS' })}</h1>
           <p className="mt-3 text-sm text-slate-600">
@@ -60,7 +60,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.comparison_recruitment_crm_vs_ats.decision.title', { defaultValue: 'Decision lens' })}</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
             <li>{t('public.marketing.comparison_recruitment_crm_vs_ats.decision.items.1', { defaultValue: 'Use ATS when application intake and hiring administration are central.' })}</li>
@@ -69,7 +69,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
           </ul>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="card cv-auto p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.common.faq', { defaultValue: 'FAQ' })}</h2>
           <div className="mt-3 space-y-3">
             {faq.map((item) => (
@@ -81,7 +81,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
           </div>
         </section>
 
-        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">{t('public.marketing.comparison_recruitment_crm_vs_ats.related.title', { defaultValue: 'Related pages' })}</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <Link to="/comparison/hostflow-vs-spreadsheets" className="btn-secondary btn-sm" onClick={() => trackCta('related_vs_spreadsheets', '/comparison/hostflow-vs-spreadsheets')}>

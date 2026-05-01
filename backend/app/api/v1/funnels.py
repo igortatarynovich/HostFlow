@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.candidate import Candidate
+from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.funnel import Funnel, FunnelStage
+from backend.app.models.lead import Lead
 from backend.app.models.user import Role
+from backend.app.models.vacancy import Vacancy
 from backend.app.services import billing_restrictions
 from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_allowed
 
@@ -541,4 +545,51 @@ async def delete_funnel_stage(
         )
 
     await db.delete(stage)
+    await db.commit()
+
+
+@router.delete("/{funnel_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_funnel(
+    funnel_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _user=Depends(require_roles(Role.manager, Role.admin)),
+) -> None:
+    """Delete a custom funnel when it is not default and not referenced anywhere."""
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
+    funnel = (
+        await db.execute(
+            select(Funnel).where(
+                Funnel.id == funnel_id,
+                Funnel.tenant_id == tenant_str,
+            )
+        )
+    ).scalar_one_or_none()
+    if not funnel:
+        raise HTTPException(status_code=404, detail="Funnel not found")
+    if bool(getattr(funnel, "is_default", False)):
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete the default funnel. Assign another default funnel first.",
+        )
+
+    refs = {
+        "candidate profiles": CandidateProfile.funnel_id,
+        "candidates": Candidate.funnel_id,
+        "leads": Lead.funnel_id,
+        "vacancies": Vacancy.funnel_id,
+    }
+    for label, column in refs.items():
+        in_use = (
+            await db.execute(select(column).where(column == funnel_id).limit(1))
+        ).scalar_one_or_none()
+        if in_use is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot delete funnel: it is still used by {label}.",
+            )
+
+    await db.delete(funnel)
     await db.commit()

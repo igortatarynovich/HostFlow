@@ -19,7 +19,6 @@ import {
   settingsChromeTabHref,
   type SettingsChromeTabKey,
 } from '../../nav/settingsChromeNav'
-import { PageBreadcrumb } from './PageBreadcrumb'
 type SettingsChromeProps = {
   pathname: string
   search: string
@@ -51,7 +50,7 @@ export function SettingsChrome({ pathname, search, compactMode = false }: Settin
       label: t('app.settings.chrome.workspace', { defaultValue: 'Workspace' }),
       to: settingsChromeTabHref('workspace'),
       icon: IconSettings,
-      visible: can('admin.companyAcl') || can('admin.users'),
+      visible: can('companies.view') || can('admin.companyAcl') || can('admin.users') || can('settings.view'),
     },
     {
       key: 'crm_setup',
@@ -79,7 +78,7 @@ export function SettingsChrome({ pathname, search, compactMode = false }: Settin
       label: t('app.settings.chrome.integrations', { defaultValue: 'Integrations' }),
       to: settingsChromeTabHref('integrations'),
       icon: IconPlugConnected,
-      visible: can('admin.metaLeads') || can('admin.users'),
+      visible: can('admin.metaLeads') || can('admin.users') || can('settings.view') || can('notifications.view'),
     },
     {
       key: 'billing',
@@ -110,27 +109,9 @@ export function SettingsChrome({ pathname, search, compactMode = false }: Settin
     return item.key === 'billing' || item.key === 'personal'
   })
 
-  const settingsRoot = CRM_APP_PATHS.settings.replace(/\/+$/, '') || '/'
-  const pathNorm = pathname.replace(/\/+$/, '') || '/'
-  /** Root `/app/settings` already has a full CRM contours grid on the landing; avoid duplicating the strip there. */
-  const showCrmWayfinding = pathNorm !== settingsRoot
-
   return (
     <section className="mb-0 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">
-            {t('app.settings.chrome.title', { defaultValue: 'Settings' })}
-          </h1>
-          <p className="text-xs text-slate-500">
-            {t('app.settings.chrome.subtitle', {
-              defaultValue: 'Responsibility-first setup: workspace, CRM, team, automations, integrations, billing, personal.',
-            })}
-          </p>
-        </div>
-      </div>
-
-      <nav className="mt-3 flex flex-wrap gap-2">
+      <nav className="flex flex-wrap gap-2">
         {visibleItems.map((item) => {
           const active = isSettingsChromeTabActive(item.key, pathname, search)
           const Icon = item.icon
@@ -151,12 +132,6 @@ export function SettingsChrome({ pathname, search, compactMode = false }: Settin
           )
         })}
       </nav>
-
-      {showCrmWayfinding ? (
-        <div className="mt-3">
-          <PageBreadcrumb />
-        </div>
-      ) : null}
     </section>
   )
 }

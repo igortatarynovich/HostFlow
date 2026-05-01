@@ -17,7 +17,14 @@ from backend.app.services import billing_restrictions
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.additional_services import ServiceOrderOut
-from backend.app.modules.leads import admin_service, lead_custom_fields, next_action_enforcement, pipeline_hooks, service
+from backend.app.modules.leads import (
+    admin_service,
+    lead_custom_fields,
+    next_action_api as _next_action_api,
+    next_action_enforcement,
+    pipeline_hooks,
+    service,
+)
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
 from backend.app.modules.leads.schemas import (
     BulkAutoProcessQueueItemOut,
@@ -43,12 +50,21 @@ from backend.app.modules.leads.schemas import (
 from backend.app.services.lead_distribution import build_distribution_snapshot, patch_distribution_settings
 from backend.app.services.plan_feature_gates import plan_allows_team_tier_features, resolve_tenant_plan_code
 from backend.app.services.additional_services import AdditionalServicesService
+from backend.app.services.lead_lifecycle import (
+    apply_lead_deletion_cleanup,
+    maybe_apply_lead_silence_cleanup,
+)
 from backend.app.models import Lead, User
 from backend.app.services.audit import log_activity
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 
 
 router = APIRouter(prefix="/leads", tags=["leads"])
+
+# G-8 stage 2.0: per-lead "what to do next" CTA. Mounted as a sub-router so
+# the implementation lives next to the lead module instead of bloating this
+# already-large file. See backend/app/modules/leads/next_action_api.py.
+router.include_router(_next_action_api.router)
 
 
 def _signature_matches(secret: str, body: bytes, signature: str | None) -> bool:
@@ -345,7 +361,7 @@ async def lead_conversion_funnel_endpoint(
     )
     if sp.any_set():
         plan = await resolve_tenant_plan_code(db, tid)
-        if not plan_allows_team_tier_features(plan):
+        if not plan_allows_team_tier_features(plan, tenant_id=str(tid)):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
@@ -417,6 +433,8 @@ async def update_lead_stage_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
     prev_stage = getattr(lead, "stage", None)
+    prev_status = getattr(lead, "status", None)
+    prev_candidate_id = getattr(lead, "candidate_id", None)
     tenant_row = await db.get(Tenant, tenant_id_str)
     lic_row = (
         await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
@@ -508,6 +526,23 @@ async def update_lead_stage_endpoint(
         )
     await db.commit()
     await db.refresh(lead)
+    if stage_changed:
+        try:
+            await maybe_apply_lead_silence_cleanup(
+                db,
+                tenant_id=tenant_id_str,
+                lead_id=str(lead.id),
+                old_stage=prev_stage,
+                new_stage=getattr(lead, "stage", None),
+                old_status=prev_status,
+                new_status=getattr(lead, "status", None),
+                old_candidate_id=prev_candidate_id,
+                new_candidate_id=getattr(lead, "candidate_id", None),
+                actor_id=str(current_user.sub or "").strip() or None,
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
     if stage_changed:
         await pipeline_hooks.run_lead_stage_change_automations(
             db,
@@ -603,11 +638,20 @@ async def delete_lead_endpoint(
     if not res.items:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
+    actor_id = str(current_user.sub or "").strip() or None
+    try:
+        await apply_lead_deletion_cleanup(
+            db,
+            tenant_id=tenant_id_str,
+            lead_id=lead_id,
+            actor_id=actor_id,
+        )
+    except Exception:
+        await db.rollback()
     deleted = await crud.delete_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    actor_id = str(current_user.sub or "").strip() or None
     try:
         await log_activity(
             db,
@@ -638,7 +682,7 @@ async def bulk_auto_process_meta_queue_endpoint(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     plan = await resolve_tenant_plan_code(db, tenant_id_str)
-    if not plan_allows_team_tier_features(plan):
+    if not plan_allows_team_tier_features(plan, tenant_id=tenant_id_str):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
@@ -686,7 +730,7 @@ async def bulk_process_new_meta_queue_endpoint(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     plan = await resolve_tenant_plan_code(db, tenant_id_str)
-    if not plan_allows_team_tier_features(plan):
+    if not plan_allows_team_tier_features(plan, tenant_id=tenant_id_str):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
@@ -740,23 +784,39 @@ async def bulk_update_leads_endpoint(
         ).scalar_one_or_none()
         billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
 
-    stage_transitions: list[tuple[str, Any]] = []
+    stage_transitions: list[tuple[str, Any, Any]] = []
+    status_transitions: list[tuple[str, Any, Any]] = []
+    prev_candidate_by_lead: dict[str, Any] = {}
     if payload.stage is not None and lead_ids:
         prev_rows = await db.execute(
-            select(Lead.id, Lead.stage).where(
+            select(Lead.id, Lead.stage, Lead.status, Lead.candidate_id).where(
                 Lead.tenant_id == tenant_id_str,
                 Lead.id.in_(lead_ids),
             )
         )
         new_stage_s = str(payload.stage)
         for row in prev_rows.all():
-            lid, prev = row[0], row[1]
+            lid, prev, prev_status, prev_candidate_id = row[0], row[1], row[2], row[3]
+            prev_candidate_by_lead[str(lid)] = prev_candidate_id
             if str(prev or "") != new_stage_s:
-                stage_transitions.append((str(lid), prev))
+                stage_transitions.append((str(lid), prev, prev_status))
+    if payload.status is not None and lead_ids:
+        prev_rows_status = await db.execute(
+            select(Lead.id, Lead.stage, Lead.status, Lead.candidate_id).where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.id.in_(lead_ids),
+            )
+        )
+        new_status_s = str(payload.status)
+        for row in prev_rows_status.all():
+            lid, prev_stage, prev_status, prev_candidate_id = row[0], row[1], row[2], row[3]
+            prev_candidate_by_lead.setdefault(str(lid), prev_candidate_id)
+            if str(prev_status or "") != new_status_s:
+                status_transitions.append((str(lid), prev_stage, prev_status))
 
     enforcement_mode = await next_action_enforcement.get_next_action_enforcement_mode(db, tenant_id=tenant_id_str)
     if enforcement_mode in {"warn", "block"} and payload.stage is not None and stage_transitions:
-        for lid, _prev in stage_transitions:
+        for lid, _prev, _prev_status in stage_transitions:
             if await next_action_enforcement.lead_has_active_next_action_reminder(
                 db, tenant_id=tenant_id_str, lead_id=lid
             ):
@@ -789,7 +849,7 @@ async def bulk_update_leads_endpoint(
         lost_rc = payload.lost_reason_code
         lost_rn = payload.lost_reason_note
 
-    for lid, prev_stage in stage_transitions:
+    for lid, prev_stage, _prev_status in stage_transitions:
         lead_row = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lid)
         if not lead_row:
             continue
@@ -848,9 +908,32 @@ async def bulk_update_leads_endpoint(
     except Exception:
         pass
     await db.commit()
-    for lid, prev_stage in stage_transitions:
+    cleanup_targets: dict[str, tuple[Any, Any]] = {}
+    for lid, prev_stage, prev_status in stage_transitions:
+        cleanup_targets[lid] = (prev_stage, prev_status)
+    for lid, prev_stage, prev_status in status_transitions:
+        cleanup_targets.setdefault(lid, (prev_stage, prev_status))
+
+    for lid, (prev_stage, prev_status) in cleanup_targets.items():
         lead_row = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lid)
-        if lead_row and payload.stage is not None:
+        if lead_row:
+            try:
+                await maybe_apply_lead_silence_cleanup(
+                    db,
+                    tenant_id=tenant_id_str,
+                    lead_id=lid,
+                    old_stage=prev_stage,
+                    new_stage=getattr(lead_row, "stage", None),
+                    old_status=prev_status,
+                    new_status=getattr(lead_row, "status", None),
+                    old_candidate_id=prev_candidate_by_lead.get(lid),
+                    new_candidate_id=getattr(lead_row, "candidate_id", None),
+                    actor_id=actor_id,
+                )
+                await db.commit()
+            except Exception:
+                await db.rollback()
+        if lead_row and payload.stage is not None and any(t[0] == lid for t in stage_transitions):
             await pipeline_hooks.run_lead_stage_change_automations(
                 db,
                 tenant_id=tenant_id_str,

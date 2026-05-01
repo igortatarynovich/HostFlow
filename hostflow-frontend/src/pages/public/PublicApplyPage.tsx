@@ -833,7 +833,7 @@ export default function PublicApplyPage() {
       const uploading = Boolean(docUploading[code])
       const error = docUploadErrors[code]
       return (
-        <div className="rounded-xl border border-dashed border-brand-100 bg-brand-50/50 p-3 text-sm text-slate-700">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-brand-50/50 p-3 text-sm text-slate-700">
           <div className="flex flex-wrap items-center gap-3">
             <input
               id={inputId}
@@ -844,7 +844,7 @@ export default function PublicApplyPage() {
             />
             <label
               htmlFor={inputId}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm ring-1 ring-brand-100 hover:bg-brand-50"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -924,7 +924,7 @@ export default function PublicApplyPage() {
         </div>
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+            <div className="card space-y-3 bg-white/80 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">{t('public.intake.documents.next_steps_title')}</h3>
@@ -939,7 +939,7 @@ export default function PublicApplyPage() {
                 <button
                   type="button"
                   onClick={() => setActiveStep('documents')}
-                  className="rounded-full border border-brand-200 px-4 py-2 text-sm text-brand-700 hover:border-brand-300"
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm text-brand-700 hover:bg-brand-50"
                 >
                   {t('public.intake.documents.cta')}
                 </button>
@@ -970,7 +970,7 @@ export default function PublicApplyPage() {
                 </ul>
               ) : null}
             </div>
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+            <div className="card space-y-3 bg-white/80 p-5">
               <h3 className="text-base font-semibold text-slate-900">{t('public.intake.checklist.title')}</h3>
               <ul className="space-y-2">
                 {profileChecklist.map((item) => (
@@ -989,7 +989,7 @@ export default function PublicApplyPage() {
               </ul>
             </div>
           </div>
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+          <div className="card space-y-3 bg-white/80 p-5">
             <div>
               <h3 className="text-base font-semibold text-slate-900">{t('public.intake.timeline.title')}</h3>
               <p className="text-sm text-slate-500">{t('public.intake.timeline.subtitle')}</p>
@@ -997,7 +997,7 @@ export default function PublicApplyPage() {
             <PublicTimeline entries={timelineEntries} />
           </div>
           {statusShareUrl && (
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+            <div className="card space-y-3 bg-white/80 p-5">
               <div className="flex flex-col gap-2">
                 <h3 className="text-base font-semibold text-slate-900">{t('public.intake.share.title')}</h3>
                 <p className="text-sm text-slate-500">{t('public.intake.share.description')}</p>
@@ -1008,7 +1008,7 @@ export default function PublicApplyPage() {
                   <button
                     type="button"
                     onClick={handleCopyShareLink}
-                  className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
                   >
                     {shareCopied ? t('public.intake.share.copied') : t('public.intake.share.copy')}
                   </button>
@@ -1016,7 +1016,7 @@ export default function PublicApplyPage() {
                     type="button"
                     disabled={rotatingShare}
                     onClick={handleRotateShareLink}
-                    className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 disabled:opacity-60"
                   >
                     {rotatingShare ? t('public.intake.share.rotating') : t('public.intake.share.rotate')}
                   </button>
@@ -1024,7 +1024,7 @@ export default function PublicApplyPage() {
                 <button
                   type="button"
                   onClick={handleResendMagicLink}
-                  className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
                 >
                   {resendState === 'pending'
                     ? t('public.intake.share.sending')
@@ -1056,7 +1056,7 @@ export default function PublicApplyPage() {
             </div>
           )}
         </div>
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <div className="card space-y-3 bg-slate-50 p-5">
           <h3 className="text-base font-semibold text-slate-900">{t('public.intake.contacts_card.title')}</h3>
           {formData.contacts.email && (
             <p className="text-sm text-slate-700">
@@ -1089,7 +1089,7 @@ export default function PublicApplyPage() {
     ),
     contacts: (
         <div className="space-y-4">
-          <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
+          <div className="rounded-xl border border-slate-200 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
             {t('public.intake.forms.contacts.help')}
           </div>
           <div>
@@ -1146,7 +1146,7 @@ export default function PublicApplyPage() {
     ),
     personal: (
       <div className="space-y-4">
-        <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
+        <div className="rounded-xl border border-slate-200 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
           {t('public.intake.forms.personal.help')}
         </div>
         <div>
@@ -1461,7 +1461,7 @@ export default function PublicApplyPage() {
     ),
     documents: (
       <div className="space-y-4">
-        <div className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+        <div className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <PublicLogo showWordmark={false} size={32} white />
             <p className="text-sm text-white/80">{t('public.intake.documents.upload_hint')}</p>
@@ -1471,7 +1471,7 @@ export default function PublicApplyPage() {
               <p className="text-lg font-semibold">{t('public.intake.documents.summary.title')}</p>
               <p className="text-white/80">{t('public.intake.documents.card_body')}</p>
             </div>
-            <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+            <div className="rounded-xl border border-white/30 bg-white/10 p-4">
               <p className="text-xs uppercase tracking-wide text-white/80">{t('public.intake.documents.summary.ready')}</p>
               <p className="text-2xl font-semibold">{readyOrUploadedCount}</p>
               <p className="text-xs text-white/80">
@@ -1481,7 +1481,7 @@ export default function PublicApplyPage() {
           </div>
         </div>
         {summary && (
-          <div className="rounded-2xl border border-brand-100 bg-white/95 p-5 shadow-sm">
+          <div className="card p-5">
             {checklistInitialized ? (
               <>
                 <div className="flex items-center justify-between gap-2">
@@ -1524,12 +1524,12 @@ export default function PublicApplyPage() {
         )}
         <div className="space-y-4">
           {docCards.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-800">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-brand-50/60 p-4 text-sm text-brand-800">
               {t('public.intake.documents.checklist_pending')}
             </div>
           )}
           {docRequirements && docCards.length > 0 && (
-            <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-sm text-brand-900">
+            <div className="rounded-xl border border-slate-200 bg-brand-50/70 p-4 text-sm text-brand-900">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-700">
                 {t('documents.requirements')}
               </div>
@@ -1561,7 +1561,6 @@ export default function PublicApplyPage() {
             const response = docResponses[card.code] ?? (card.entry ? 'yes' : null)
             const currentFile = docFiles[card.code]
             const metaDescription = (card.meta as any)?.description as string | undefined
-            const accent = card.required ? 'border-brand-200' : 'border-slate-200'
             const processType =
               (card.entry?.process_type as string | undefined) ||
               (card.meta as any)?.process_type ||
@@ -1594,10 +1593,7 @@ export default function PublicApplyPage() {
             const question = questionKey ? t(questionKey) : null
             const showUploadField = question ? response === 'yes' : shouldRenderUploadField(card.required, response)
             return (
-              <div
-                key={`${card.code}-${idx}`}
-                className={`space-y-3 rounded-2xl border bg-white/95 p-5 shadow-sm ${accent}`}
-              >
+              <div key={`${card.code}-${idx}`} className="card space-y-3 bg-white/95 p-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-base font-semibold text-slate-900">{title}</p>
@@ -1664,20 +1660,20 @@ export default function PublicApplyPage() {
                   )}
                 </div>
                 {(question || card.required) && response === null && (
-                  <div className="rounded-xl border border-dashed border-brand-100 bg-brand-50/40 p-3 text-sm text-brand-900">
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-brand-50/40 p-3 text-sm text-brand-900">
                     <p>{t('public.intake.documents.responses.waiting')}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => handleDocumentResponse(card.code, 'yes')}
-                        className="rounded-full border border-brand-200 px-3 py-1 text-brand-700 hover:bg-brand-50"
+                        className="rounded-full border border-slate-300 px-3 py-1 text-brand-700 hover:bg-brand-50"
                       >
                         {t('public.intake.documents.responses.yes')}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDocumentResponse(card.code, 'no')}
-                        className="rounded-full border border-brand-200 px-3 py-1 text-brand-700 hover:bg-brand-50"
+                        className="rounded-full border border-slate-300 px-3 py-1 text-brand-700 hover:bg-brand-50"
                       >
                         {t('public.intake.documents.responses.no')}
                       </button>
@@ -1692,7 +1688,7 @@ export default function PublicApplyPage() {
                 )}
                 {showUploadField && !card.meta?.orderable && renderUploadField(card.code, currentFile)}
                 {card.meta?.orderable && (
-                  <div className="rounded-xl border border-brand-100 bg-brand-50 p-3 text-xs text-brand-900">
+                  <div className="rounded-xl border border-slate-200 bg-brand-50 p-3 text-xs text-brand-900">
                     {card.code === 'work_permit'
                       ? t('documents.work_permit.ordered')
                       : t('public.intake.documents.order_notice')}
@@ -1784,7 +1780,7 @@ export default function PublicApplyPage() {
               </div>
             )}
             {docWarningReasons.length > 0 && (
-              <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-900">
+              <div className="rounded-xl border border-slate-200 bg-brand-50 p-4 text-sm text-brand-900">
                 <p className="font-semibold">{t('public.intake.validations.documents.warning_title')}</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {docWarningReasons.map((reason) => (
@@ -1819,8 +1815,8 @@ export default function PublicApplyPage() {
 
   return (
     <PublicPageShell maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
-      <div className="rounded-3xl border border-brand-50 bg-white/95 p-6 shadow-card">
-        <div className="mb-6 rounded-2xl border border-brand-100 bg-brand-50/40 p-4">
+      <div className="card bg-white/95 p-6">
+        <div className="mb-6 rounded-xl border border-slate-200 bg-brand-50/40 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <PublicLogo showWordmark={false} className="text-brand-700" size={28} />
@@ -1840,7 +1836,7 @@ export default function PublicApplyPage() {
             </div>
           </div>
         </div>
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-brand-50 via-white to-brand-100/70 p-5 ring-1 ring-brand-100">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl bg-gradient-to-r from-brand-50 via-white to-brand-100/70 p-5 ring-1 ring-slate-200">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
@@ -1876,7 +1872,7 @@ export default function PublicApplyPage() {
                 return (
                   <div
                     key={`${card.type}-${card.step.key}`}
-                    className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4"
+                    className="rounded-xl border border-slate-200 bg-brand-50/70 p-4"
                   >
                     <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{toneText}</p>
                     <p className="text-base font-semibold text-slate-900">{card.step.label}</p>
@@ -2001,9 +1997,9 @@ function OverviewStatCard({ title, value, description, accent = 'default' }: Ove
       ? 'border-green-200 bg-green-50 text-green-900'
       : accent === 'warning'
         ? 'border-amber-200 bg-amber-50 text-amber-900'
-        : 'border-brand-50 bg-white text-slate-900'
+        : 'border-slate-200 bg-white text-slate-900'
   return (
-    <div className={`rounded-2xl border ${accentClasses} p-4`}>
+    <div className={`rounded-xl border shadow-sm ${accentClasses} p-4`}>
       <p className="text-xs uppercase tracking-wide text-slate-500">{title}</p>
       <p className="mt-2 text-2xl font-semibold">{value}</p>
       {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}

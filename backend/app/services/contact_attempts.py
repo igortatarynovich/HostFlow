@@ -18,6 +18,7 @@ from backend.app.services.tenant_links import get_tenant_link
 from backend.app.services.notifications import notify
 from backend.app.services.tenant_email import send_email_for_tenant
 from backend.app.services.rodo import get_first_rodo_sent
+from backend.app.services.uos_auto_activities import ensure_candidate_stage_follow_up_task
 from backend.app.services.handoff import is_client_tenant
 from backend.app.models.tenant import TenantLink
 from sqlalchemy import or_
@@ -333,6 +334,7 @@ async def create_attempt(
     )
 
     # Auto-set stage based on result
+    previous_stage = str(getattr(cand, "stage", None) or "").strip() or None
     no_contact_results = {"no_answer", "wrong_number", "unavailable"}
     if result in no_contact_results:
         cand.stage = "no_answer"
@@ -341,6 +343,14 @@ async def create_attempt(
     elif result == "answered":
         cand.stage = "contacted"
         cand.status = "contacted"
+        await ensure_candidate_stage_follow_up_task(
+            db,
+            tenant_id=tenant_id,
+            actor_id=str(actor_id or "").strip() or "uos-auto",
+            candidate=cand,
+            old_stage=previous_stage,
+            new_stage="contacted",
+        )
 
     # Check post-action: if we just reached max and all are no-contact
     if next_num == max_attempts and await _all_no_contact(db, candidate_id, max_attempts):

@@ -142,7 +142,7 @@ async def test_documents_crud_flow(
             )
         ).scalars().all()
         assert rows
-        assert all(r.status == ReminderStatus.cancelled for r in rows)
+        assert all(r.status == ReminderStatus.done for r in rows)
 
 
 @pytest.mark.anyio
@@ -210,6 +210,29 @@ async def test_document_workflow_step_reminders(
         ).scalars().all()
         assert step_reminders, "expected workflow step reminders to be scheduled"
         assert all(rem.type == "document_workflow_step" for rem in step_reminders)
+
+    # When document is approved, workflow tasks should be auto-completed.
+    patch_resp = await client.patch(
+        f"/api/v1/documents/{doc_id}",
+        headers=manager_headers,
+        json={"status": "verified"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    patched = patch_resp.json()
+    assert patched["status"] == "approved"
+
+    async with async_session_maker() as session:
+        step_reminders_after = (
+            await session.execute(
+                select(Reminder).where(
+                    Reminder.tenant_id == tenant_id,
+                    Reminder.entity_type == "document_step",
+                    Reminder.entity_id.like(f"{doc_id}:%"),
+                )
+            )
+        ).scalars().all()
+        assert step_reminders_after, "expected workflow step reminders to exist for closure check"
+        assert all(rem.status == ReminderStatus.done for rem in step_reminders_after)
 
 
 @pytest.mark.anyio

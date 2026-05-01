@@ -165,6 +165,9 @@ async def _build_lead_list_filters(
 
     if next_action:
         normalized = str(next_action or "").strip().lower()
+        # Converted leads are completed operationally; keep them out of lead
+        # next-action queues/filters to avoid duplicate noise with candidates.
+        filters.append(Lead.candidate_id.is_(None))
         reminder_exists_active = (
             exists()
             .where(
@@ -650,7 +653,9 @@ async def list_leads(
                 created_at=lead.created_at,
                 last_routed_at=lead.last_routed_at,
                 next_action_status=(
-                    "overdue"
+                    None
+                    if cand_id
+                    else "overdue"
                     if (next_action_map.get(str(lead.id)) or {}).get("overdue_count", 0) > 0
                     else "scheduled"
                     if (next_action_map.get(str(lead.id)) or {}).get("next_due_at") is not None
@@ -666,4 +671,3 @@ async def list_leads(
         )
 
     return LeadListResponse(items=items, total=int(total or 0), limit=limit, offset=offset)
-

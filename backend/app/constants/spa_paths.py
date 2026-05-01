@@ -10,7 +10,7 @@ Human-oriented rules and docs: docs/SSOT.md §1.6.
 
 APP_PREFIX = "/app"
 LEADS = "/app/leads"
-TASKS = "/app/tasks"
+TASKS = "/app/work/tasks"
 CANDIDATES = "/app/candidates"
 CANDIDATES_NO_NEXT_ACTION_PAGE = "/app/candidates/no-next-action"
 CLIENTS = "/app/clients"
@@ -22,8 +22,9 @@ SETTINGS_INTEGRATIONS = "/app/settings/integrations"
 SETTINGS_EMAIL = "/app/settings/email"
 SETTINGS_INTEGRATIONS_META = "/app/settings/integrations/meta"
 OVERVIEW = "/app/overview"
-MESSAGES_LEGACY = "/app/messages"
 EMAIL_LEGACY = "/app/email"
+INBOX_MESSAGES_SCOPED = "/app/inbox?channel=messages"
+INBOX_EMAIL_SCOPED = "/app/inbox?channel=email"
 
 def spa_candidate(candidate_id: str) -> str:
     return f"{CANDIDATES}/{candidate_id}"

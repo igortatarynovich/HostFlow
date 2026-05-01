@@ -49,6 +49,15 @@ export async function createUserInvite(payload: {
   return data as UserInvite
 }
 
+export async function revokeUserInvite(inviteId: string, opts?: { tenantId?: string }): Promise<{ revoked: boolean; invite_id: string }> {
+  const client = resolveClient(opts?.tenantId)
+  const { data } = await client.delete(`/admin/users/invite/${inviteId}`)
+  return {
+    revoked: Boolean(data?.revoked),
+    invite_id: String(data?.invite_id || inviteId),
+  }
+}
+
 export async function createTenantUser(payload: {
   email: string
   role: UserRole

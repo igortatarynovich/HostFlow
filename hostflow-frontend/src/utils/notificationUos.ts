@@ -4,8 +4,8 @@ import type { NotificationItem } from '../api/types'
 export type NotificationUosGroup = 'sla' | 'tasks' | 'messages' | 'system'
 
 /**
- * UOS attention tiers for the bell badge (SSOT: CRITICAL = SLA breach / unpaid invoice / lead SLA;
- * HIGH = overdue tasks, handoffs). Message/email unread stay on their own icons.
+ * UOS attention tiers for the bell badge (SSOT: CRITICAL = comms SLA breach / unpaid invoice;
+ * lead nudges are tasks; HIGH = overdue tasks, handoffs). Message/email unread stay on their own icons.
  */
 export type NotificationAttentionTier = 'critical' | 'high' | 'normal'
 
@@ -15,7 +15,7 @@ export function getNotificationUosGroup(item: NotificationItem): NotificationUos
   const source = String(payload.source || '').toLowerCase()
 
   if (et === 'communications_sla_overdue' || et === 'communications_thread_escalated') return 'sla'
-  if (et === 'lead_no_next_action' || et === 'lead_stuck_stage') return 'sla'
+  if (et === 'lead_no_next_action' || et === 'lead_stuck_stage') return 'tasks'
   if (et === 'invoice_overdue' || source.includes('invoice_overdue')) return 'sla'
   if (
     source === 'leads_next_action_sla' ||

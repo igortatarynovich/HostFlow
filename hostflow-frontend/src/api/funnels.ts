@@ -81,6 +81,10 @@ export async function updateFunnel(funnelId: string, payload: FunnelUpdate): Pro
   return data
 }
 
+export async function deleteFunnel(funnelId: string): Promise<void> {
+  await api.delete(`/funnels/${funnelId}`)
+}
+
 export async function addFunnelStage(
   funnelId: string,
   payload: FunnelStageCreate

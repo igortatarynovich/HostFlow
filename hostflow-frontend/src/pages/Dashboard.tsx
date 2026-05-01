@@ -7,6 +7,8 @@ import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useTenantInfo } from '../contexts/TenantInfo'
 import { OnboardingWizard } from '../components/OnboardingWizard'
+import { PostWizardWelcomePanel } from '../components/onboarding/PostWizardWelcomePanel'
+import { isOnboardingWizardEnabled } from '../utils/featureFlags'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { DashboardAnalyticsHubLinks } from '../components/dashboard/DashboardAnalyticsHubLinks'
 import { DashboardLeadAutoFixCard } from '../components/dashboard/DashboardLeadAutoFixCard'
@@ -558,6 +560,33 @@ export default function Dashboard() {
     })()
   }, [t])
 
+  useEffect(() => {
+    if (!vacancyFilter) return
+    if (vacancyOptions.some((option) => option.id === vacancyFilter)) return
+    setVacancyFilter('')
+  }, [vacancyFilter, vacancyOptions])
+
+  useEffect(() => {
+    if (!companyFilter) return
+    if (companyOptions.some((option) => option.id === companyFilter)) return
+    setCompanyFilter('')
+  }, [companyFilter, companyOptions])
+
+  useEffect(() => {
+    if (!managerFilter) return
+    if (managerOptions.some((option) => option.id === managerFilter)) return
+    setManagerFilter('')
+  }, [managerFilter, managerOptions])
+
+  useEffect(() => {
+    if (!stagesFilter.length) return
+    const allowed = new Set(stageOptions.map((option) => option.code))
+    const next = stagesFilter.filter((code) => allowed.has(code))
+    if (next.length !== stagesFilter.length) {
+      setStagesFilter(next)
+    }
+  }, [stagesFilter, stageOptions])
+
   const applyQuickRange = (range: QuickRange) => {
     const next = calcRange(range)
     setDateFrom(next.from)
@@ -998,6 +1027,7 @@ export default function Dashboard() {
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="min-h-0 flex-1 space-y-0 gap-0 overflow-auto px-0 py-0">
         {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
+        {isOnboardingWizardEnabled() ? <PostWizardWelcomePanel /> : null}
         <DashboardLeadAutoFixCard opsCounters={opsCounters} onRefreshOps={loadOpsCounters} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

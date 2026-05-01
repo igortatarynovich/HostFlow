@@ -16,6 +16,8 @@ from backend.app.api.v1.reminders_v2 import (
     SnoozeRequest as ActivitySnoozeRequest,
     ReminderOut as ActivityOut,
     ReminderListResponse as ActivityListResponse,
+    _sync_reminder_create_calendar_item,
+    _sync_reminder_patch_calendar_item,
 )
 from backend.app.services import reminder_tasks
 
@@ -86,6 +88,12 @@ async def bulk_create_activities(
                     "payload": body.payload,
                 },
             )
+            await _sync_reminder_create_calendar_item(
+                db,
+                tenant_id=tenant_id_str,
+                reminder=reminder,
+                actor_user_id=actor_id,
+            )
             results.append(
                 BulkActivityCreateResult(
                     entity_id=eid,
@@ -111,9 +119,16 @@ async def create_activity(
         actor_id=str(current_user.sub),
         payload=body.model_dump(),
     )
+    await _sync_reminder_create_calendar_item(
+        db,
+        tenant_id=str(tenant_id),
+        reminder=reminder,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+    )
     await db.commit()
     await db.refresh(reminder)
-    return ActivityOut.from_model(reminder)
+    merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=str(tenant_id), reminders=[reminder])
+    return ActivityOut.from_model(reminder, payload_merge=merges.get(str(reminder.id)))
 
 
 @router.get("", response_model=ActivityListResponse)
@@ -149,7 +164,29 @@ async def list_activities(
         type_in=type_filter or None,
         due_range=due_range,
     )
-    return ActivityListResponse(items=[ActivityOut.from_model(r) for r in reminders])
+    merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=str(tenant_id), reminders=reminders)
+    return ActivityListResponse(
+        items=[ActivityOut.from_model(r, payload_merge=merges.get(str(r.id))) for r in reminders],
+    )
+
+
+@router.get("/{activity_id}", response_model=ActivityOut)
+async def get_activity(
+    activity_id: UUID,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> ActivityOut:
+    """Fetch one activity/reminder for deep-links (e.g. ``/app/calendar?event_id=``)."""
+    db, tenant_id = db_tenant
+    reminder = await reminder_tasks.get_reminder_for_actor(
+        db,
+        tenant_id=str(tenant_id),
+        reminder_id=str(activity_id),
+        actor_id=str(current_user.sub),
+        role=current_user.role,
+    )
+    merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=str(tenant_id), reminders=[reminder])
+    return ActivityOut.from_model(reminder, payload_merge=merges.get(str(reminder.id)))
 
 
 @router.patch("/{activity_id}", response_model=ActivityOut)
@@ -168,9 +205,17 @@ async def update_activity(
         role=current_user.role,
         payload=body.model_dump(exclude_none=True),
     )
+    await _sync_reminder_patch_calendar_item(
+        db,
+        tenant_id=str(tenant_id),
+        reminder=reminder,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+        is_terminal=False,
+    )
     await db.commit()
     await db.refresh(reminder)
-    return ActivityOut.from_model(reminder)
+    merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=str(tenant_id), reminders=[reminder])
+    return ActivityOut.from_model(reminder, payload_merge=merges.get(str(reminder.id)))
 
 
 @router.post("/{activity_id}/complete", response_model=ActivityOut)
@@ -187,9 +232,17 @@ async def complete_activity(
         actor_id=str(current_user.sub),
         role=current_user.role,
     )
+    await _sync_reminder_patch_calendar_item(
+        db,
+        tenant_id=str(tenant_id),
+        reminder=reminder,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+        is_terminal=True,
+    )
     await db.commit()
     await db.refresh(reminder)
-    return ActivityOut.from_model(reminder)
+    merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=str(tenant_id), reminders=[reminder])
+    return ActivityOut.from_model(reminder, payload_merge=merges.get(str(reminder.id)))
 
 
 @router.post("/{activity_id}/snooze", response_model=ActivityOut)
@@ -209,7 +262,15 @@ async def snooze_activity(
         minutes=body.minutes,
         new_remind_at=body.new_remind_at,
     )
+    await _sync_reminder_patch_calendar_item(
+        db,
+        tenant_id=str(tenant_id),
+        reminder=reminder,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+        is_terminal=False,
+    )
     await db.commit()
     await db.refresh(reminder)
-    return ActivityOut.from_model(reminder)
+    merges = await reminder_tasks.build_reminder_payload_enrichments_for_api(db, tenant_id=str(tenant_id), reminders=[reminder])
+    return ActivityOut.from_model(reminder, payload_merge=merges.get(str(reminder.id)))
 

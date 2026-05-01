@@ -44,7 +44,7 @@ export function DashboardExecutiveOverview({
       <p className="mt-1 max-w-3xl text-xs text-slate-500">
         {t('app.dashboard.analytics.executive.hint')}
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         <Link
           to={CRM_APP_PATHS.candidates}
           className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2.5 hover:border-brand-200"
@@ -67,6 +67,17 @@ export function DashboardExecutiveOverview({
               ({executiveKpis.conversionPct.toFixed(1)}%)
             </span>
           </div>
+        </Link>
+        <Link
+          to={CRM_APP_DRILLDOWN_HREFS.candidatesStageEmploymentPending}
+          className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2.5 hover:border-brand-200"
+        >
+          <div className="text-[11px] text-slate-500">
+            {t('app.dashboard.analytics.executive.employment_pending', {
+              defaultValue: 'On employment (paperwork)',
+            })}
+          </div>
+          <div className="text-xl font-semibold text-sky-800">{formatNumber(executiveKpis.employmentPending)}</div>
         </Link>
         <div className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2.5">
           <div className="text-[11px] text-slate-500">

@@ -13,6 +13,8 @@ class UserRole(str, Enum):
     recruiter = "recruiter"
     client_manager = "client_manager"
     client_processor = "client_processor"
+    compliance_officer = "compliance_officer"
+    hr_officer = "hr_officer"
     viewer = "viewer"
 
 
@@ -164,6 +166,11 @@ class UserDeleteOut(BaseModel):
     revoked_sessions: int = Field(default=0, ge=0)
 
 
+class InviteRevokeOut(BaseModel):
+    revoked: bool = True
+    invite_id: str
+
+
 class UIPreferences(BaseModel):
     locale: str | None = None
     timezone: str | None = None
@@ -251,6 +258,10 @@ class UserMeOut(BaseModel):
     profile: UserProfileOut
     preferences: UserPreferencesOut
     security: UserSecuritySummary
+    # G-6 Stage 2e — Work Hub `admin_solo` vs `admin_team`: true when this user
+    # is an owner-class role and the tenant has exactly one active, non-deleted
+    # member (computed server-side; see `users_service.get_user_me`).
+    is_solo_admin: bool = False
 
 
 class UserMePatch(BaseModel):

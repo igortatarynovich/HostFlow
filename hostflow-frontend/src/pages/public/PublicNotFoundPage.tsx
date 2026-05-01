@@ -9,7 +9,7 @@ export default function PublicNotFoundPage() {
 
   return (
     <PublicPageShell maxWidth="xl">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <section className="card p-8 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('public.not_found.badge', { defaultValue: '404' })}
         </p>

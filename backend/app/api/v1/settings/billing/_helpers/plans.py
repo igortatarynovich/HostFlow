@@ -46,7 +46,10 @@ from backend.app.services.stripe_price_catalog import (
 from ..schemas import BillingAddonCheckoutOfferOut, BillingPlanOut
 
 
-PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro")
+PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro", "enterprise")
+
+# Enterprise is canonical in backend plan semantics, but not self-serve checkout yet.
+PUBLIC_CHECKOUT_PLAN_CODES: tuple[str, ...] = ("starter", "team", "pro")
 
 
 CHECKOUT_OUTCOMES: tuple[str, ...] = ("success", "cancel", "error")
@@ -109,6 +112,18 @@ PLAN_LICENSE_LIMITS: dict[str, dict[str, int]] = {
         "max_vacancies_active": 500,
         "max_documents": 100000,
         "max_public_portal_links": 25,
+    },
+    "enterprise": {
+        "max_recruiters": 25,
+        "max_supervisors": 10,
+        "max_client_managers": 5,
+        "max_viewers": 50,
+        "max_storage_gb": 1000,
+        "max_companies": 10,
+        "max_candidates_active": 50000,
+        "max_vacancies_active": 5000,
+        "max_documents": 500000,
+        "max_public_portal_links": 100,
     },
 }
 
@@ -351,8 +366,19 @@ def _stripe_ready() -> bool:
 
 def _available_plans() -> list[BillingPlanOut]:
     # monthly_price_usd: legacy key — whole EUR units (§2.16 list prices), not USD.
-    display_names = {"starter": "Solo", "team": "Team", "pro": "Business"}
-    catalog = {"starter": (29, 24), "team": (129, 109), "pro": (249, 219)}
+    display_names = {
+        "starter": "Solo",
+        "team": "Team",
+        "pro": "Business",
+        "enterprise": "Enterprise",
+    }
+    catalog = {
+        "starter": (29, 24),
+        "team": (129, 109),
+        "pro": (249, 219),
+        # Contact-sales plan: shown in summary catalog, not purchasable via self-serve checkout.
+        "enterprise": (0, 0),
+    }
     out: list[BillingPlanOut] = []
     for code in PLAN_CODES:
         month_id = _plan_stripe_price_id(code, "month")

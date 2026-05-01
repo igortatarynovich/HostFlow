@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from pydantic import BaseModel
 
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
@@ -17,10 +17,13 @@ from backend.app.constants.stages import pipeline_for_stage_code, STAGES_BY_GROU
 from backend.app.api.v1.candidate_documents import apply_template_to_candidate_impl
 
 from .schemas import VacancyIn, VacancyOut, VacancyPatch
+from .mappers import vacancy_to_out
+from backend.app.models.company import Company
 from .repo import VacancyRepo
 from .service import VacancyService
 from backend.app.services import billing_restrictions
 from backend.app.services.tenant_visibility import get_tenant_visibility
+from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id,
     resolve_active_own_company_id_optional,
@@ -28,6 +31,16 @@ from backend.app.api.v1.utils.own_company import (
 
 router = APIRouter(prefix="/vacancies", tags=["vacancies"], redirect_slashes=False)
 PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)
+
+# G-8 stage 2.1: per-vacancy "what to do next" CTA. Mounted as a sub-router
+# so the implementation lives in a small, single-purpose file. Must be
+# included BEFORE the inline `@router.get("/{vacancy_id}")` below — Starlette
+# matches in registration order and `/{vacancy_id}` would otherwise swallow
+# `/{vacancy_id}/next-action` and force FastAPI to validate the literal
+# string `next-action` as a UUID.
+from backend.app.api.v1.vacancies import next_action_api as _next_action_api  # noqa: E402
+
+router.include_router(_next_action_api.router)
 
 
 def _as_bool(value: Optional[str]) -> bool:
@@ -45,10 +58,23 @@ def _as_bool(value: Optional[str]) -> bool:
         return bool(value)
 
 
-def _svc(db_tenant: Tuple[AsyncSession, UUID], *, own_company_id: str | None = None) -> VacancyService:
+def _svc(
+    db_tenant: Tuple[AsyncSession, UUID],
+    *,
+    own_company_id: str | None = None,
+    is_client_tenant: bool = False,
+) -> VacancyService:
     db, tenant_id = db_tenant
     visibility = get_tenant_visibility(db, str(tenant_id))
-    return VacancyService(VacancyRepo(db, str(tenant_id), own_company_id=own_company_id, visibility=visibility))
+    return VacancyService(
+        VacancyRepo(
+            db,
+            str(tenant_id),
+            own_company_id=own_company_id,
+            visibility=visibility,
+            is_client_tenant=is_client_tenant,
+        )
+    )
 
 
 def _vacancy_allowed(vacancy_id: str, company_id: Optional[str], acl) -> bool:
@@ -93,10 +119,93 @@ async def list_vacancies(
         logger = logging.getLogger("backend.app.api.v1.vacancies")
         router._logger = logger  # type: ignore[attr-defined]
     logger.debug("list_vacancies query desc=%r", desc)
-    svc = _svc(db_tenant, own_company_id=own_company_id)
+    # When caller explicitly scopes by company_id (e.g. client profile page),
+    # we must not hide vacancies by active own-company workspace context.
+    # Otherwise the same client shows "0 vacancies" depending on current
+    # own-company selection in UI.
+    effective_own_company_id = None if company_id else own_company_id
     db, tenant_id = db_tenant
+    is_client = await is_client_tenant_for_list(db, str(tenant_id))
+    svc = _svc(
+        db_tenant,
+        own_company_id=effective_own_company_id,
+        is_client_tenant=is_client,
+    )
+    user_role = (getattr(current_user, "role", "") or "").strip().lower()
+    inc_arch = _as_bool(include_archived) if include_archived is not None else (user_role == Role.superadmin.value)
+    if user_role == Role.superadmin.value:
+        last_cand_activity_sq = (
+            select(func.max(Candidate.updated_at))
+            .where(
+                Candidate.vacancy_id == Vacancy.id,
+                Candidate.deleted_at.is_(None),
+            )
+            .correlate(Vacancy)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(
+                Vacancy,
+                Company.name.label("company_name"),
+                CandidateProfile.id.label("candidate_profile_id"),
+                CandidateProfile.name.label("candidate_profile_name"),
+                func.count(Candidate.id).label("candidate_count"),
+                last_cand_activity_sq.label("last_candidate_activity_at"),
+            )
+            .join(Company, Company.id == Vacancy.company_id, isouter=True)
+            .join(
+                CandidateProfile,
+                CandidateProfile.id == Vacancy.candidate_profile_id,
+                isouter=True,
+            )
+            .join(
+                Candidate,
+                (Candidate.vacancy_id == Vacancy.id) & (Candidate.deleted_at.is_(None)),
+                isouter=True,
+            )
+            .group_by(Vacancy.id, Company.name, CandidateProfile.id, CandidateProfile.name)
+        )
+        if company_id:
+            stmt = stmt.where(Vacancy.company_id == str(company_id))
+        normalized_status = (status or "").strip().lower() if status else None
+        if normalized_status == "archived":
+            stmt = stmt.where(Vacancy.is_archived.is_(True))
+        elif status:
+            stmt = stmt.where(Vacancy.status == status)
+        if candidate_profile_id:
+            stmt = stmt.where(Vacancy.candidate_profile_id == str(candidate_profile_id))
+        if q:
+            like = f"%{q}%"
+            stmt = stmt.where(Vacancy.title.ilike(like))
+        if not inc_arch and normalized_status != "archived":
+            stmt = stmt.where(Vacancy.is_archived.is_(False))
+
+        order_key = (order_by or "created_at").strip().lower()
+        order_col = {
+            "created_at": Vacancy.created_at,
+            "updated_at": Vacancy.updated_at,
+            "title": Vacancy.title,
+            "status": Vacancy.status,
+        }.get(order_key, Vacancy.created_at)
+        stmt = stmt.order_by(order_col.desc() if _as_bool(desc) else order_col.asc()).offset(offset).limit(limit)
+        rows = await db.execute(stmt)
+        return [
+            vacancy_to_out(
+                v,
+                company_name=company_name,
+                candidate_profile_id=str(profile_id) if profile_id else None,
+                candidate_profile_name=profile_name,
+                candidate_count=int(cand_count or 0),
+                last_candidate_activity_at=last_act,
+            )
+            for (v, company_name, profile_id, profile_name, cand_count, last_act) in rows.all()
+        ]
+
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
-    inc_arch = _as_bool(include_archived) if include_archived is not None else False
+    if is_client:
+        # Candidate list for clients does not apply UserCompanyAccess SQL; keep parity so
+        # linked agency vacancies (handoff / TenantLink) stay visible.
+        acl = None
     return await svc.list(
         company_id=str(company_id) if company_id else None,
         status=status,
@@ -115,16 +224,20 @@ async def get_vacancy(
     vacancy_id: UUID,
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
-    svc = _svc(db_tenant, own_company_id=own_company_id)
+    # Single-vacancy reads must not hide rows by the active workspace own-company
+    # (same policy as list_vacancies with company_id unset). Otherwise recruiters see
+    # the candidate but GET /vacancies/{id} returns 404 when the vacancy belongs to
+    # another legal entity under the same tenant. ACL below still enforces access.
+    db, tenant_id = db_tenant
+    is_client = await is_client_tenant_for_list(db, str(tenant_id))
+    svc = _svc(db_tenant, own_company_id=None, is_client_tenant=is_client)
     try:
         vacancy = await svc.get(str(vacancy_id))
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
-    db, tenant_id = db_tenant
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
-    if not _vacancy_allowed(vacancy.id, vacancy.company_id, acl):
+    if not is_client and not _vacancy_allowed(vacancy.id, vacancy.company_id, acl):
         raise HTTPException(status_code=403, detail="Forbidden")
     return vacancy
 
@@ -221,16 +334,22 @@ async def get_vacancy_pipeline(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
-
-    vacancy_row = await db.execute(
-        select(Vacancy).where(Vacancy.id == str(vacancy_id), Vacancy.tenant_id == str(tenant_id))
+    tid = str(tenant_id)
+    is_client = await is_client_tenant_for_list(db, tid)
+    vrepo = VacancyRepo(
+        db,
+        tid,
+        own_company_id=None,
+        visibility=get_tenant_visibility(db, tid),
+        is_client_tenant=is_client,
     )
-    vacancy = vacancy_row.scalar_one_or_none()
-    if vacancy is None:
+    vrow = await vrepo.get(str(vacancy_id))
+    if vrow is None:
         raise HTTPException(status_code=404, detail="Vacancy not found")
+    vacancy = vrow[0]
 
-    acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
-    if not _vacancy_allowed(str(vacancy.id), getattr(vacancy, "company_id", None), acl):
+    acl = await resolve_restricted_acl(db, tid, current_user)
+    if not is_client and not _vacancy_allowed(str(vacancy.id), getattr(vacancy, "company_id", None), acl):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     candidates = await db.execute(

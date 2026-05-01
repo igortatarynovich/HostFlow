@@ -7,6 +7,7 @@ All 12 endpoints registered against the shared ``router`` (defined in the
 parent package ``__init__``):
 
 * ``GET  /subscription``                            ``get_billing_subscription``
+* ``GET  /quota-headroom``                          ``get_billing_quota_headroom``
 * ``GET  /summary``                                 ``get_billing_summary``
 * ``POST /checkout-session``                        ``create_checkout_session``
 * ``POST /portal-candidates-pack/checkout``         ``create_portal_candidates_pack_checkout``
@@ -57,6 +58,7 @@ from ._helpers.plans import (
     ADDON_PACK_CHECKOUT_UNAVAILABLE,
     CHECKOUT_OUTCOMES,
     PLAN_CODES,
+    PUBLIC_CHECKOUT_PLAN_CODES,
     _addon_purchase_plan_ok_for_offer,
     _available_plans,
     _calculate_proration_amount_minor,
@@ -85,7 +87,9 @@ from ._helpers.stripe_extract import (
     _send_billing_email,
 )
 from ._helpers.summary import (
+    _billing_max_storage_gb,
     _billing_summary_addon_offers,
+    _billing_trial_caps,
     _billing_summary_extras,
     _billing_usage_caps,
     _company_slots_payload,
@@ -114,6 +118,9 @@ from .schemas import (
     BillingPortalOut,
     BillingPortalPackCheckoutIn,
     BillingPortalPackCheckoutOut,
+    BillingPlanMatrixFeatureOut,
+    BillingPlanMatrixOut,
+    BillingQuotaHeadroomOut,
     BillingSubscriptionOut,
     BillingSummaryOut,
     BillingWebhookOut,
@@ -147,6 +154,35 @@ async def get_billing_subscription(
     license_entry = await tenant_service.get_tenant_license(db, tenant_id)
     return _subscription_out(tenant, license_entry=license_entry)
 
+
+@router.get(
+    "/quota-headroom",
+    response_model=BillingQuotaHeadroomOut,
+)
+async def get_billing_quota_headroom(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> BillingQuotaHeadroomOut:
+    """Usage vs plan caps for soft quota banners (all tenant members; SSOT with ``_billing_usage_caps``)."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant_access(ctx, tenant_id)
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    license_entry = await tenant_service.get_tenant_license(db, tenant_id)
+    usage = await tenant_service.get_usage_snapshot(db, tenant_id)
+    sub_payload = _subscription_payload(tenant)
+    caps = _billing_usage_caps(license_entry, sub_payload, _tenant_settings_dict(tenant))
+    max_storage = _billing_max_storage_gb(license_entry, sub_payload)
+    return BillingQuotaHeadroomOut(
+        leads_created_this_month=int(usage.get("leads_created_this_month") or 0),
+        max_leads_created_per_month=int(caps.max_leads_created_per_month),
+        candidates_active_count=int(usage.get("candidates_active_count") or 0),
+        max_candidates_active=int(caps.max_candidates_active),
+        storage_used_gb=float(usage.get("storage_used_gb") or 0.0),
+        max_storage_gb=max_storage,
+    )
 
 
 @router.get(
@@ -196,6 +232,7 @@ async def get_billing_summary(
         license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
         usage=platform_schemas.TenantUsageOut(**usage),
         usage_caps=_billing_usage_caps(license_entry, sub_payload, _tenant_settings_dict(tenant)),
+        trial_caps=_billing_trial_caps(sub_payload),
         company_slots=company_slots,
         portal_candidates=portal_candidates,
         founder_program=founder_program,
@@ -205,7 +242,89 @@ async def get_billing_summary(
         invoices=invoices,
         addon_checkout_offers=_billing_summary_addon_offers(license_entry, sub_payload),
     )
+@router.get(
+    "/plan-matrix",
+    response_model=BillingPlanMatrixOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def get_billing_plan_matrix(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> BillingPlanMatrixOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant_access(ctx, tenant_id)
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    license_entry = await tenant_service.get_tenant_license(db, tenant_id)
+    current_plan_code = _plan_code_for_usage_caps(_subscription_payload(tenant), license_entry)
+    plans = _available_plans()
 
+    def _v(
+        starter: int | bool | str | None,
+        team: int | bool | str | None,
+        pro: int | bool | str | None,
+        enterprise: int | bool | str | None,
+    ) -> dict[str, int | bool | str | None]:
+        return {"starter": starter, "team": team, "pro": pro, "enterprise": enterprise}
+
+    features = [
+        BillingPlanMatrixFeatureOut(
+            key="max_candidates_active",
+            label="Active records",
+            unit="count",
+            values=_v(300, 2000, 10000, 50000),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="inbound_leads_monthly",
+            label="Inbound leads / month",
+            unit="count",
+            values=_v(200, 1500, 5000, 5000),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="lead_sources",
+            label="Lead sources",
+            unit="count",
+            values=_v(1, 3, 10, 10),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="portal_candidate_shares_monthly",
+            label="Portal candidate shares / month",
+            unit="count",
+            values=_v(None, 300, 2000, 2000),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="automation_rules_enabled",
+            label="Enabled automation rules",
+            unit="count",
+            values=_v(0, 10, 50, 50),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="communication_channels",
+            label="Communication channels",
+            unit="count",
+            values=_v(1, 3, 10, 10),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="custom_funnels",
+            label="Custom funnels",
+            unit="count",
+            values=_v(1, 3, 20, 20),
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="self_serve_checkout",
+            label="Self-serve checkout",
+            values=_v(True, True, True, False),
+            upgrade_checkout_allowed=False,
+        ),
+        BillingPlanMatrixFeatureOut(
+            key="smart_operations",
+            label="Intelligent operations (load-aware manager queue, smart routing)",
+            values=_v(False, True, True, True),
+        ),
+    ]
+    return BillingPlanMatrixOut(plans=plans, current_plan_code=current_plan_code, features=features)
 
 
 @router.post(
@@ -226,6 +345,15 @@ async def create_checkout_session(
         raise HTTPException(status_code=404, detail="Tenant not found")
 
     plan_code = _normalize_plan_code(payload.plan_code)
+    if plan_code not in PUBLIC_CHECKOUT_PLAN_CODES:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "plan_contact_sales_only",
+                "message": f"Plan '{plan_code}' is not available via self-serve checkout. Contact sales.",
+                "plan_code": plan_code,
+            },
+        )
     bill_interval = (payload.billing_interval or "month").strip().lower()
     if bill_interval not in ("month", "year"):
         bill_interval = "month"
@@ -608,6 +736,15 @@ async def change_plan(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
     plan_code = _normalize_plan_code(payload.plan_code)
+    if plan_code not in PUBLIC_CHECKOUT_PLAN_CODES:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "plan_contact_sales_only",
+                "message": f"Plan '{plan_code}' is not available via self-serve checkout. Contact sales.",
+                "plan_code": plan_code,
+            },
+        )
     current = _subscription_payload(tenant)
     now = _now_utc()
     req_iv_from_payload: Literal["month", "year"] | None = None

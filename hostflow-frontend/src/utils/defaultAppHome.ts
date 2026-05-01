@@ -33,8 +33,8 @@ export function resolveDefaultAppHomeHref(
   return ACTIVATION_PATHS.overview
 }
 
-export function resolveDefaultAppHomeSegment(canOpenTasks: boolean): 'tasks' | 'overview' {
-  if (readStoredDefaultAppHome() === 'tasks' && canOpenTasks) return 'tasks'
+export function resolveDefaultAppHomeSegment(canOpenTasks: boolean): 'overview' | 'work/tasks' {
+  if (readStoredDefaultAppHome() === 'tasks' && canOpenTasks) return 'work/tasks'
   return 'overview'
 }
 

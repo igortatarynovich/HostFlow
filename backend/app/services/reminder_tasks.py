@@ -9,8 +9,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.reminder_event import ReminderEvent
+from backend.app.models.tenant import Tenant
+from backend.app.models.user import User
 from backend.app.services.audit import log_activity
-from backend.app.services.user_notifications import create_notification
+from backend.app.services.candidate_lifecycle import (
+    exclude_completed_candidate_entities_clause,
+)
+from backend.app.services.lead_lifecycle import (
+    exclude_completed_lead_entities_clause,
+)
+from backend.app.services.team_assignee_auto import (
+    merge_assignee_resolution,
+    resolve_assignee_id_with_queue_fallback,
+    smart_assignee_load_context,
+)
+from backend.app.services.user_notifications import (
+    create_notification,
+    mark_reminder_bell_notifications_read,
+)
+from backend.app.services.working_hours_window import (
+    next_working_window_after,
+    schedule_applies,
+)
 
 DEFAULT_REMIND_OFFSET_MINUTES = 15
 ALLOWED_CHANNELS = {"internal"}
@@ -18,6 +38,72 @@ ALLOWED_CHANNELS = {"internal"}
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _format_candidate_display_name(
+    first_name: Optional[str],
+    last_name: Optional[str],
+    email: Optional[str],
+) -> str:
+    parts = [str(first_name or "").strip(), str(last_name or "").strip()]
+    name = " ".join(p for p in parts if p).strip()
+    if name:
+        return name
+    em = str(email or "").strip()
+    return em
+
+
+async def build_reminder_payload_enrichments_for_api(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    reminders: Sequence[Reminder],
+) -> Dict[str, Dict[str, Any]]:
+    """Non-persistent payload fields for API consumers (e.g. ``candidate_name`` for tasks UI)."""
+    if not reminders:
+        return {}
+    from backend.app.models.candidate import Candidate
+
+    candidate_ids: set[str] = set()
+    for r in reminders:
+        if str(r.entity_type or "").strip().lower() != "candidate":
+            continue
+        eid = str(r.entity_id or "").strip()
+        if not eid:
+            continue
+        pl = r.payload if isinstance(r.payload, dict) else {}
+        if str(pl.get("candidate_name") or "").strip():
+            continue
+        candidate_ids.add(eid)
+    if not candidate_ids:
+        return {}
+
+    rows = await db.execute(
+        select(Candidate.id, Candidate.first_name, Candidate.last_name, Candidate.email).where(
+            Candidate.tenant_id == tenant_id,
+            Candidate.id.in_(list(candidate_ids)),
+        )
+    )
+    name_by_id: Dict[str, str] = {}
+    for cid, fn, ln, em in rows.all():
+        label = _format_candidate_display_name(fn, ln, em)
+        if label:
+            name_by_id[str(cid)] = label
+
+    out: Dict[str, Dict[str, Any]] = {}
+    for r in reminders:
+        if str(r.entity_type or "").strip().lower() != "candidate":
+            continue
+        eid = str(r.entity_id or "").strip()
+        if not eid:
+            continue
+        pl = r.payload if isinstance(r.payload, dict) else {}
+        if str(pl.get("candidate_name") or "").strip():
+            continue
+        nm = name_by_id.get(eid)
+        if nm:
+            out[str(r.id)] = {"candidate_name": nm}
+    return out
 
 
 def _is_admin(role: Optional[str]) -> bool:
@@ -92,6 +178,86 @@ def _normalize_remind_at(
     return remind_at
 
 
+# G-4 stage 2: tenant setting that opts a workspace into "shift reminders
+# to assignee's next working window" behaviour. Default is OFF — turning
+# it on changes when reminders fire and we don't want to silently retime
+# existing tenants' workflows. Path:
+#   tenant.settings["reminders"]["shift_due_at_outside_hours"]: bool
+# When ON: if the assignee has a `working_hours_v1` schedule and the
+# requested due_at falls outside, due_at is moved to the next opening
+# and remind_at is shifted by the same delta (preserving the lead-time).
+# When OFF (default): create_reminder behaves as before.
+_REMINDER_SHIFT_SETTINGS_PATH = ("reminders", "shift_due_at_outside_hours")
+
+
+def _tenant_shifts_reminders(tenant: Optional[Tenant]) -> bool:
+    if tenant is None:
+        return False
+    settings = tenant.settings if isinstance(tenant.settings, dict) else None
+    if not settings:
+        return False
+    cursor: Any = settings
+    for key in _REMINDER_SHIFT_SETTINGS_PATH:
+        if not isinstance(cursor, dict):
+            return False
+        cursor = cursor.get(key)
+    return bool(cursor)
+
+
+async def _maybe_shift_due_at_to_working_hours(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    assignee_id: Optional[str],
+    due_at: datetime,
+    remind_at: Optional[datetime],
+) -> Tuple[datetime, Optional[datetime], Optional[Dict[str, Any]]]:
+    """Apply the G-4 working-hours shift policy.
+
+    Returns the (possibly shifted) `due_at`, `remind_at`, and a
+    diagnostic dict suitable for stashing in `Reminder.payload` under
+    `_working_hours_shift` (None if no shift was applied — keeps the
+    payload clean for the common case).
+
+    `remind_at` shift policy: preserve the original lead-time relative
+    to due_at. If the caller passed a custom remind_at, the same delta
+    is reapplied after the due_at shift. If they didn't pass one, the
+    later `_normalize_remind_at` call computes the default offset
+    against the new due_at. We return remind_at unchanged here when it
+    is None, deferring to that downstream normaliser.
+    """
+    if not assignee_id:
+        return due_at, remind_at, None
+    tenant = await db.get(Tenant, str(tenant_id))
+    if not _tenant_shifts_reminders(tenant):
+        return due_at, remind_at, None
+    user = await db.get(User, str(assignee_id))
+    if user is None:
+        return due_at, remind_at, None
+    extra = user.extra if isinstance(user.extra, dict) else {}
+    if not schedule_applies(extra):
+        # No working-hours schedule configured for this assignee → skip
+        # silently (callers shouldn't see different behaviour just
+        # because the assignee never set their hours).
+        return due_at, remind_at, None
+    shifted_due = next_working_window_after(extra, due_at)
+    if shifted_due == due_at:
+        return due_at, remind_at, None
+    # Shift remind_at by the same delta so the lead-time is preserved.
+    # If remind_at is None, leave it for `_normalize_remind_at` to
+    # default — using `shifted_due - DEFAULT_REMIND_OFFSET_MINUTES`
+    # there is the right behaviour.
+    delta = shifted_due - due_at
+    shifted_remind: Optional[datetime] = remind_at + delta if remind_at is not None else None
+    diag = {
+        "original_due_at": due_at.isoformat(),
+        "shifted_due_at": shifted_due.isoformat(),
+        "delta_seconds": int(delta.total_seconds()),
+        "reason": "outside_assignee_working_hours",
+    }
+    return shifted_due, shifted_remind, diag
+
+
 def resolve_assignee_for_reminder_list(
     *,
     explicit_assignee_id: Optional[str],
@@ -130,6 +296,18 @@ async def create_reminder(
         raise HTTPException(status_code=400, detail="remind_at must be datetime or null")
 
     assignee_id = payload.get("assignee_id") or actor_id
+    allow_unavailable_assignee = bool(payload.get("allow_unavailable_assignee", False))
+    eff_assignee, assignee_resolution = await resolve_assignee_id_with_queue_fallback(
+        db,
+        tenant_id=tenant_id,
+        assignee_id=str(assignee_id) if assignee_id else None,
+        allow_unavailable_assignee=allow_unavailable_assignee,
+        load_context=await smart_assignee_load_context(
+            db, tenant_id=tenant_id, anchor=due_at
+        ),
+    )
+    if eff_assignee:
+        assignee_id = eff_assignee
     duration_minutes = payload.get("duration_minutes")
     if duration_minutes is not None:
         try:
@@ -141,6 +319,26 @@ async def create_reminder(
     source = payload.get("source")
     if source is not None:
         source = str(source).strip() or None
+
+    # G-4 stage 2: opt-in shift to assignee's working-hours window.
+    # Default OFF — see `_tenant_shifts_reminders`. When applied, both
+    # due_at and (if provided) remind_at move by the same delta. The
+    # original due_at is preserved in payload._working_hours_shift for
+    # explainability popovers (G-10) so operators can see "this was
+    # auto-shifted from 03:00 → 09:00" instead of being confused.
+    due_at, remind_at, shift_diag = await _maybe_shift_due_at_to_working_hours(
+        db,
+        tenant_id=tenant_id,
+        assignee_id=assignee_id,
+        due_at=due_at,
+        remind_at=remind_at,
+    )
+    payload_blob: Dict[str, Any] = dict(payload.get("payload") or {})
+    if shift_diag is not None:
+        payload_blob["_working_hours_shift"] = shift_diag
+    if assignee_resolution:
+        payload_blob = merge_assignee_resolution(payload_blob, assignee_resolution)
+
     reminder = Reminder(
         tenant_id=tenant_id,
         type=payload.get("type") or "custom",
@@ -161,7 +359,7 @@ async def create_reminder(
         recurrence_json=payload.get("recurrence_json"),
         status=ReminderStatus.pending,
         message=payload.get("message"),
-        payload=payload.get("payload") or {},
+        payload=payload_blob,
         created_by=actor_id,
     )
     db.add(reminder)
@@ -211,6 +409,7 @@ async def list_reminders(
     due_range: Optional[Tuple[datetime, datetime]] = None,
     q: Optional[str] = None,
     limit: Optional[int] = None,
+    include_completed_entities: bool = False,
 ) -> List[Reminder]:
     stmt = select(Reminder).where(Reminder.tenant_id == tenant_id)
     if assignee_id:
@@ -243,6 +442,24 @@ async def list_reminders(
                 func.coalesce(Reminder.message, "").ilike(like),
             )
         )
+    # G-2: by default hide reminders attached to silenced candidates (rejected/declined/employed/
+    # probation_ok/deleted). When the caller explicitly drills into a single entity (the entity
+    # filter is set) we keep all rows so opening the candidate card still shows full history.
+    if not include_completed_entities and entity is None:
+        stmt = stmt.where(
+            and_(
+                exclude_completed_candidate_entities_clause(
+                    tenant_id,
+                    entity_type_col=Reminder.entity_type,
+                    entity_id_col=Reminder.entity_id,
+                ),
+                exclude_completed_lead_entities_clause(
+                    tenant_id,
+                    entity_type_col=Reminder.entity_type,
+                    entity_id_col=Reminder.entity_id,
+                ),
+            )
+        )
     stmt = stmt.order_by(Reminder.due_at.asc())
     if limit is not None and limit > 0:
         stmt = stmt.limit(limit)
@@ -260,6 +477,20 @@ async def _get_reminder(db: AsyncSession, tenant_id: str, reminder_id: str) -> R
     reminder = row.scalar_one_or_none()
     if reminder is None:
         raise HTTPException(status_code=404, detail="Reminder not found")
+    return reminder
+
+
+async def get_reminder_for_actor(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    reminder_id: str,
+    actor_id: str,
+    role: Optional[str],
+) -> Reminder:
+    """Single-reminder fetch with the same ACL as PATCH (G-6 calendar focus-by-id)."""
+    reminder = await _get_reminder(db, tenant_id, reminder_id)
+    _assert_acl(reminder, actor_id, role)
     return reminder
 
 
@@ -367,6 +598,22 @@ async def update_reminder(
         else:
             raise HTTPException(status_code=400, detail="remind_at must be datetime or null")
 
+    if "assignee_id" in payload or "due_at" in payload:
+        eff_id, assignee_resolution = await resolve_assignee_id_with_queue_fallback(
+            db,
+            tenant_id=tenant_id,
+            assignee_id=str(reminder.assignee_id) if reminder.assignee_id else None,
+            allow_unavailable_assignee=bool(payload.get("allow_unavailable_assignee", False)),
+            load_context=await smart_assignee_load_context(
+                db, tenant_id=tenant_id, anchor=reminder.due_at
+            ),
+        )
+        if eff_id is not None:
+            reminder.assignee_id = eff_id
+        if assignee_resolution:
+            pb = dict(reminder.payload or {}) if isinstance(reminder.payload, dict) else {}
+            reminder.payload = merge_assignee_resolution(pb, assignee_resolution)
+
     _log_event(
         db,
         reminder_id=reminder.id,
@@ -408,6 +655,13 @@ async def snooze_reminder(
     reminder.snoozed_until = reminder.remind_at
     reminder.status = ReminderStatus.pending
     reminder.sent_at = None
+    # G-9: silence current bell rows so the snooze immediately quiets the user's bell.
+    await mark_reminder_bell_notifications_read(
+        db,
+        tenant_id=tenant_id,
+        reminder=reminder,
+        reason="reminder_snoozed",
+    )
     _log_event(
         db,
         reminder_id=reminder.id,
@@ -501,6 +755,13 @@ async def complete_reminder(
         ts = ts.replace(tzinfo=timezone.utc)
     reminder.completed_at = ts
     reminder.status = ReminderStatus.done
+    # G-9: completing the task in /app/tasks must immediately clear the bell.
+    await mark_reminder_bell_notifications_read(
+        db,
+        tenant_id=tenant_id,
+        reminder=reminder,
+        reason="reminder_completed",
+    )
     _log_event(
         db,
         reminder_id=reminder.id,

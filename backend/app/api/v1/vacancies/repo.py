@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models import Candidate, Vacancy
 from backend.app.models.company import Company, CandidateVacancy
 from backend.app.models.candidate_profile import CandidateProfile
+from backend.app.models.tenant import TenantLink
 from backend.app.services.tenant_visibility import TenantVisibility
 
 class VacancyRepo:
@@ -14,13 +15,29 @@ class VacancyRepo:
         *,
         own_company_id: str | None = None,
         visibility: TenantVisibility | None = None,
+        is_client_tenant: bool = False,
     ) -> None:
         self.db = db
         self.tenant_id = tenant_id
         self.own_company_id = own_company_id
         self.visibility = visibility or TenantVisibility(tenant_id=tenant_id)
+        self.is_client_tenant = is_client_tenant
 
     def _scope_clause(self):
+        # Client (company) tenant: vacancies live on the agency DB row but are visible when
+        # the vacancy's company is linked via TenantLink or owned by this client tenant —
+        # same idea as candidates repo `_candidate_scope_clause` for clients.
+        if self.is_client_tenant:
+            include_company_subq = select(TenantLink.handoff_include_company_id).where(
+                TenantLink.client_tenant_id == self.tenant_id,
+                TenantLink.handoff_include_company_id.isnot(None),
+            )
+            client_owned_company_subq = select(Company.id).where(Company.tenant_id == self.tenant_id)
+            return or_(
+                Vacancy.company_id.in_(include_company_subq),
+                Vacancy.company_id.in_(client_owned_company_subq),
+            )
+
         clauses = [Vacancy.tenant_id == self.tenant_id]
         shared_ids = getattr(self.visibility, "shared_vacancy_ids", set())
         if shared_ids:
@@ -28,23 +45,18 @@ class VacancyRepo:
         return or_(*clauses)
 
     async def get(self, vacancy_id: str):
+        count_filters = [
+            Candidate.vacancy_id == vacancy_id,
+            Candidate.deleted_at.is_(None),
+        ]
+        if not self.is_client_tenant:
+            count_filters.append(Candidate.tenant_id == self.tenant_id)
+
         candidate_count_sq = (
-            select(func.count(Candidate.id))
-            .where(
-                Candidate.vacancy_id == vacancy_id,
-                Candidate.tenant_id == self.tenant_id,
-                Candidate.deleted_at.is_(None),
-            )
-            .scalar_subquery()
+            select(func.count(Candidate.id)).where(*count_filters).scalar_subquery()
         )
         last_candidate_activity_sq = (
-            select(func.max(Candidate.updated_at))
-            .where(
-                Candidate.vacancy_id == vacancy_id,
-                Candidate.tenant_id == self.tenant_id,
-                Candidate.deleted_at.is_(None),
-            )
-            .scalar_subquery()
+            select(func.max(Candidate.updated_at)).where(*count_filters).scalar_subquery()
         )
         stmt = (
             select(

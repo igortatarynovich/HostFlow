@@ -39,6 +39,8 @@ export type AnalyticsProfileSummary = {
 export type OpsCounters = {
   no_next_action_candidates: number
   overdue_reminders: number
+  /** Active tasks assigned to current user without resolvable entity link. */
+  unlinked_tasks?: number
   overview_pipeline_total?: number
   overview_stuck?: number
   overview_active_today?: number
@@ -302,6 +304,47 @@ export type TtvReport = {
   period: { from: string | null; to: string | null }
   actors: number
   steps: TtvReportStep[]
+}
+
+/**
+ * G-6 Stage 2c — aggregate "who owns how many candidates" per recruiter/
+ * legacy manager. Backend: `backend/app/api/v1/analytics.py::by_manager`.
+ *
+ * `recruiter_id` is the canonical user UUID (when the row has
+ * `Candidate.recruiter_id` FK; null for legacy rows with only a
+ * `Candidate.manager` free-text label). UI drill-downs should prefer
+ * `?recruiter_id=<uuid>` when present and fall back to `?manager=<label>`
+ * otherwise — matches `useCandidatesUrlSync` precedence.
+ */
+export type AnalyticsByManagerItem = {
+  manager: string
+  recruiter_id: string | null
+  total: number
+  hired: number
+  by_stage: Record<string, number>
+}
+
+export type AnalyticsByManagerResponse = {
+  period: { from: string | null; to: string | null }
+  by: 'created' | 'updated'
+  items: AnalyticsByManagerItem[]
+}
+
+export async function getAnalyticsByManager(params?: {
+  from?: string
+  to?: string
+  by?: 'created' | 'updated'
+  stage_view?: 'all' | 'agency' | 'client'
+}): Promise<AnalyticsByManagerResponse> {
+  const q: Record<string, string> = {}
+  if (params?.from) q.from = params.from
+  if (params?.to) q.to = params.to
+  if (params?.by) q.by = params.by
+  if (params?.stage_view) q.stage_view = params.stage_view
+  const { data } = await api.get<AnalyticsByManagerResponse>('/analytics/by-manager', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
 }
 
 export async function getHandoffStats(params?: {

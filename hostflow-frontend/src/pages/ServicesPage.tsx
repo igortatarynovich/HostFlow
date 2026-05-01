@@ -2670,6 +2670,10 @@ function OrdersTab({
                   description={t('app.services.orders.list.empty_desc', {
                     defaultValue: 'Create your first order using the form above and assign it to client, vacancy or candidate.',
                   })}
+                  whyHint={t('app.services.orders.list.empty_why', {
+                    defaultValue:
+                      'Service orders are billable units of work — accommodation, transport, document processing, etc. They roll into client invoices and surface as a single line per order in your dashboard.',
+                  })}
                   primaryAction={{
                     label: openEntityLabel,
                     to: CRM_APP_PATHS.clientsDirectory,

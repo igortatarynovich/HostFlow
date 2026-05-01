@@ -130,15 +130,63 @@ async def update_vacancy(
 
 
 async def archive_vacancy(db: Union[AsyncSession, Tuple[AsyncSession, Any]], vacancy_id: UUID) -> bool:
+    """Soft-archive a vacancy.
+
+    Phase 2.6.D Stage G — keep the canonical invariant
+    ``is_active = (status == 'open' AND NOT is_archived)``. Previously this
+    setter only flipped ``is_archived=True`` and left ``status`` untouched,
+    which produced inconsistent rows like ``status='open' AND is_archived=True``
+    that confused NBA, list filters and ``vacancy_is_recruiting``.
+
+    Behaviour:
+
+    * ``is_archived`` → ``True`` (always).
+    * ``is_active``  → ``False`` (always — archived rows are never "live").
+    * ``status``: if current status is in an active state (``open`` /
+      ``on_hold`` / legacy ``paused`` / empty), promote to canonical
+      ``closed``. Terminal statuses (``closed`` / ``filled`` / ``cancelled``)
+      keep their semantic — ``archived`` is purely a visibility flag on top.
+    """
     db, tenant_id = _normalize_db_ctx(db)
     col_is_archived = getattr(Vacancy, "is_archived", None)
     if col_is_archived is None:
-        # Модель не поддерживает soft-delete — действие не применимо
         return False
+
+    stmt_select = select(Vacancy).where(Vacancy.id == str(vacancy_id))
+    if tenant_id is not None and hasattr(Vacancy, "tenant_id"):
+        stmt_select = stmt_select.where(Vacancy.tenant_id == str(tenant_id))
+    existing = (await db.execute(stmt_select)).scalars().first()
+    if existing is None:
+        return False
+
+    # Local import keeps the module import graph cheap (Vacancy enum isn't
+    # needed for the read path) and avoids a circular hazard between the
+    # crud helper and the model module if either grows.
+    from backend.app.models.vacancy import VacancyStatus
+
+    current_status_raw = str(getattr(existing, "status", "") or "").strip().lower()
+    active_statuses = {
+        VacancyStatus.open.value,
+        VacancyStatus.on_hold.value,
+        "paused",  # legacy alias — see Phase 2.6.D Stage A
+        "",        # historical NULLs / empty strings
+    }
+    new_status = (
+        VacancyStatus.closed.value
+        if current_status_raw in active_statuses
+        else current_status_raw
+    )
+
+    update_values: dict[str, Any] = {"is_archived": True}
+    if hasattr(Vacancy, "is_active"):
+        update_values["is_active"] = False
+    if new_status != current_status_raw and hasattr(Vacancy, "status"):
+        update_values["status"] = new_status
+
     stmt = (
         update(Vacancy)
         .where(Vacancy.id == str(vacancy_id))
-        .values(is_archived=True)
+        .values(**update_values)
         .execution_options(synchronize_session="fetch")
     )
     if tenant_id is not None and hasattr(Vacancy, "tenant_id"):
@@ -149,10 +197,18 @@ async def archive_vacancy(db: Union[AsyncSession, Tuple[AsyncSession, Any]], vac
 
 
 async def unarchive_vacancy(db: Union[AsyncSession, Tuple[AsyncSession, Any]], vacancy_id: UUID) -> bool:
+    """Lift the archive flag from a vacancy.
+
+    Phase 2.6.D Stage G — does NOT auto-reopen ``status``. If the operator
+    archived a vacancy that was active, it is now ``status='closed'`` (per
+    ``archive_vacancy`` above) and they need to make the explicit business
+    decision to reopen via ``PATCH /vacancies/{id} {"status": "open"}``.
+    Auto-reopening here would undo Stage D's guarantee that every state
+    move is intentional and recorded.
+    """
     db, tenant_id = _normalize_db_ctx(db)
     col_is_archived = getattr(Vacancy, "is_archived", None)
     if col_is_archived is None:
-        # Модель не поддерживает soft-delete — действие не применимо
         return False
     stmt = (
         update(Vacancy)

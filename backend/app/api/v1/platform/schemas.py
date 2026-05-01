@@ -78,6 +78,7 @@ class TenantModuleSettings(BaseModel):
     leads: bool = True
     services: bool = True
     client_portal: bool = True
+    hr: bool = True
 
 
 class TenantModuleSettingsPatch(BaseModel):
@@ -88,6 +89,7 @@ class TenantModuleSettingsPatch(BaseModel):
     leads: bool | None = None
     services: bool | None = None
     client_portal: bool | None = None
+    hr: bool | None = None
 
 
 class RoleModulePermissions(BaseModel):
@@ -101,6 +103,8 @@ class TenantRoleModuleMatrix(BaseModel):
     recruiter: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     client_manager: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     client_processor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    compliance_officer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    hr_officer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     viewer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
 
 
@@ -110,6 +114,8 @@ class TenantRoleModuleMatrixPatch(BaseModel):
     recruiter: Dict[str, RoleModulePermissions] | None = None
     client_manager: Dict[str, RoleModulePermissions] | None = None
     client_processor: Dict[str, RoleModulePermissions] | None = None
+    compliance_officer: Dict[str, RoleModulePermissions] | None = None
+    hr_officer: Dict[str, RoleModulePermissions] | None = None
     viewer: Dict[str, RoleModulePermissions] | None = None
 
 

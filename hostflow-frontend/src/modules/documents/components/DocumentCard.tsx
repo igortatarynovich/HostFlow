@@ -19,6 +19,10 @@ import type { DocType, MetadataState, CoreFields } from "../types";
 import { useI18n } from "../../../i18n";
 import { MAX_FILE_MB } from "../constants";
 import { isTooLarge } from "../documentUtils";
+import { NextActionBadge } from "../../../components/candidate/NextActionBadge";
+import { useDocumentNextAction } from "../../../components/document/useDocumentNextAction";
+import { DocumentReminders } from "./DocumentReminders";
+import { DocumentLastCheck } from "./DocumentLastCheck";
 
 interface DocumentCardProps {
   doc: Document;
@@ -104,6 +108,14 @@ export const DocumentCard = memo(function DocumentCard({
   const isExpiringSoon = isExpiringSoonDoc(doc);
   const needsVerification = hasFiles && !READY_STATUSES.has(statusValue) && !NEGATIVE_STATUSES.has(statusValue);
   const fieldsConfig = getDocumentFieldsConfig(normalizedTypeCode || doc.doc_type || doc.type_code || "");
+  const docReminders = Array.isArray(doc.reminders) ? doc.reminders : [];
+  const hasLastCheck = Boolean(doc.last_check);
+  const showFollowUps = docReminders.length > 0 || hasLastCheck;
+
+  /** Next-action badge: hidden in `compact` (no room); fingerprint reflects status/files/expiry. */
+  const docNextActionFingerprint = `${doc.status ?? ''}|${doc.expire_date ?? doc.expires_at ?? ''}|${(doc as { deleted_at?: string | null }).deleted_at ?? ''}|${hasFiles ? 1 : 0}`;
+  const { data: docNextAction, loading: docNextActionLoading, error: docNextActionError } =
+    useDocumentNextAction(isCompact ? null : doc.id, docNextActionFingerprint);
 
   const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
   const toggleExpanded = () => {
@@ -157,10 +169,7 @@ export const DocumentCard = memo(function DocumentCard({
   return (
     <div key={doc.id} className="rounded border border-slate-200 bg-white shadow-sm">
       <div
-        className={clsx(
-          "flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between",
-          needsVerification && "bg-amber-50/40",
-        )}
+        className="flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
         onClick={toggleExpanded}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -200,13 +209,19 @@ export const DocumentCard = memo(function DocumentCard({
                     {t("admin.documents.badges.expiring", { values: { days: EXPIRING_SOON_THRESHOLD_DAYS } })}
                   </span>
                 )}
-                {needsVerification && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">
-                    {t("admin.documents.badges.pending_verification", { defaultValue: "verification required" })}
-                  </span>
-                )}
               </div>
             )}
+            {showFollowUps ? (
+              <div
+                className="mt-1.5 flex flex-col gap-1"
+                onClick={(e) => {
+                  if (!isCompact) e.stopPropagation();
+                }}
+              >
+                {docReminders.length > 0 ? <DocumentReminders reminders={docReminders} /> : null}
+                {hasLastCheck ? <DocumentLastCheck check={doc.last_check} variant="inline" /> : null}
+              </div>
+            ) : null}
           </div>
           <span
             className={clsx(
@@ -217,6 +232,13 @@ export const DocumentCard = memo(function DocumentCard({
             {statusLabel}
             {statusUpdating[doc.id] && <span className="text-[10px] text-slate-600">…</span>}
           </span>
+          {!isCompact && (
+            <NextActionBadge
+              dto={docNextAction}
+              loading={docNextActionLoading}
+              error={docNextActionError}
+            />
+          )}
         </div>
         <div
           className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end"
@@ -224,6 +246,11 @@ export const DocumentCard = memo(function DocumentCard({
         >
           {isCompact ? (
             <>
+              {needsVerification ? (
+                <div className="w-full rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] font-medium leading-snug text-amber-950">
+                  {t("admin.documents.hints.review_required")}
+                </div>
+              ) : null}
               <input ref={replaceInputRef} type="file" className="hidden" onChange={handleReplaceSelectedFile} />
               <button
                 type="button"
@@ -249,8 +276,8 @@ export const DocumentCard = memo(function DocumentCard({
           ) : (
             <>
               {needsVerification ? (
-                <div className="w-full rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800 sm:w-auto">
-                  {t("admin.documents.hints.review_required", { defaultValue: "Uploaded but not verified. Approve or reject to continue pipeline." })}
+                <div className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium leading-snug text-amber-950 sm:max-w-xl">
+                  {t("admin.documents.hints.review_required")}
                 </div>
               ) : null}
               <label className="flex w-full items-center gap-2 text-xs sm:w-auto">
@@ -293,7 +320,7 @@ export const DocumentCard = memo(function DocumentCard({
                   disabled={isReplacing}
                 >
                   {isReplacing
-                    ? t("admin.documents.status.uploading_with_progress", { values: { percent: uploadProgress } })
+                    ? t("admin.documents.status.uploading_with_progress", { values: { progress: uploadProgress } })
                     : t("admin.documents.actions.upload_file")}
                 </button>
               )}
@@ -308,22 +335,20 @@ export const DocumentCard = memo(function DocumentCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-100 p-4 space-y-4">
-          <div className="space-y-2 rounded border border-slate-100 bg-slate-50 p-3">
-            <div className="grid gap-2 md:grid-cols-3">
-              {fieldsConfig.map((fieldConfig) => {
-                const fieldValue = getFieldValue(doc, fieldConfig.key, metadataValues);
-                return (
-                  <DocumentFieldInput
-                    key={fieldConfig.key}
-                    fieldConfig={fieldConfig}
-                    value={fieldValue}
-                    onChange={(value) => updateFieldValue(doc, fieldConfig.key, value)}
-                    disabled={!canManageDocuments}
-                  />
-                );
-              })}
-            </div>
+        <div className="space-y-3 border-t border-slate-100 p-4">
+          <div className="grid gap-2 rounded bg-slate-50/90 p-3 md:grid-cols-3">
+            {fieldsConfig.map((fieldConfig) => {
+              const fieldValue = getFieldValue(doc, fieldConfig.key, metadataValues);
+              return (
+                <DocumentFieldInput
+                  key={fieldConfig.key}
+                  fieldConfig={fieldConfig}
+                  value={fieldValue}
+                  onChange={(value) => updateFieldValue(doc, fieldConfig.key, value)}
+                  disabled={!canManageDocuments}
+                />
+              );
+            })}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button

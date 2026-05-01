@@ -29,6 +29,7 @@ export default function EmailSettingsPage() {
   const [useTls, setUseTls] = useState(true)
   const [isActive, setIsActive] = useState(true)
   const [testTo, setTestTo] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -213,7 +214,7 @@ export default function EmailSettingsPage() {
         />
       )}
 
-      <section className="card p-6">
+      <section className="settings-panel">
         <SettingsSubpageHeader
           className="mb-4"
           backHref={CRM_APP_PATHS.settingsIntegrations}
@@ -225,50 +226,13 @@ export default function EmailSettingsPage() {
           })}
         />
 
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.email.integration_wizard.connection_status')}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span
-              className={clsx(
-                'badge',
-                emailHubStatus === 'live' && 'border-emerald-200 bg-emerald-50 text-emerald-800',
-                emailHubStatus === 'paused' && 'border-amber-200 bg-amber-50 text-amber-900',
-                emailHubStatus === 'no_config' && 'border-slate-200 bg-slate-100 text-slate-600',
-                emailHubStatus === 'loading' && 'border-slate-200 bg-slate-100 text-slate-500',
-              )}
-            >
-              {emailHubStatus === 'live'
-                ? t('admin.communications_messengers.integration_wizard.tech_status.connected', { defaultValue: 'Connected' })
-                : emailHubStatus === 'paused'
-                  ? t('admin.communications_messengers.states.disabled', { defaultValue: 'disabled' })
-                  : emailHubStatus === 'loading'
-                    ? t('common.loading')
-                    : t('admin.communications_messengers.integration_wizard.tech_status.none', { defaultValue: 'Not configured' })}
-            </span>
-            <span className="text-sm text-slate-700">{emailStatusHeadline}</span>
-          </div>
+        <div className="mt-4 flex justify-end">
+          <button type="button" className="btn-secondary btn-sm" onClick={() => setShowAdvanced((v) => !v)}>
+            {showAdvanced
+              ? t('admin.calendar_integrations.actions.hide_advanced', { defaultValue: 'Hide advanced' })
+              : t('admin.calendar_integrations.actions.show_advanced', { defaultValue: 'Show advanced' })}
+          </button>
         </div>
-
-        <ol className="mt-6 grid gap-2 sm:grid-cols-3">
-          {[
-            { n: 1, label: t('admin.email.integration_wizard.step_smtp') },
-            { n: 2, label: t('admin.email.integration_wizard.step_test') },
-            { n: 3, label: t('admin.communications_messengers.integration_wizard.step_active') },
-          ].map(({ n, label }) => (
-            <li
-              key={n}
-              className={clsx(
-                'rounded-lg border px-3 py-2 text-center text-sm font-medium',
-                emailStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
-              )}
-            >
-              <span className="mr-1 font-normal text-slate-400">{n}.</span>
-              {label}
-            </li>
-          ))}
-        </ol>
 
         <div className="mt-6 space-y-4 max-w-xl">
           <h2 className="text-sm font-semibold text-slate-900">
@@ -373,33 +337,82 @@ export default function EmailSettingsPage() {
           </div>
         </div>
 
-        <div className="mt-8 border-t border-slate-200 pt-6 max-w-xl">
-          <h2 className="text-sm font-semibold text-slate-900">{t('admin.email.integration_wizard.step_test')}</h2>
-          {config ? (
-            <>
-              <p className="mt-1 text-xs text-slate-500">{t('admin.email.test_title', { defaultValue: 'Send a test message' })}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <input
-                  type="email"
-                  value={testTo}
-                  onChange={(e) => setTestTo(e.target.value)}
-                  placeholder={t('admin.email.placeholders.test_to', { defaultValue: 'test@example.com' })}
-                  className="input min-w-[200px] flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={handleTest}
-                  disabled={testing}
-                  className="btn-secondary"
-                >
-                  {testing ? t('common.sending', { defaultValue: 'Sending...' }) : t('admin.email.send_test', { defaultValue: 'Send test' })}
-                </button>
+        {showAdvanced ? (
+          <>
+            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('admin.email.integration_wizard.connection_status')}
               </div>
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-slate-500">{t('admin.email.integration_wizard.test_locked')}</p>
-          )}
-        </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  className={clsx(
+                    'badge',
+                    emailHubStatus === 'live' && 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                    emailHubStatus === 'paused' && 'border-amber-200 bg-amber-50 text-amber-900',
+                    emailHubStatus === 'no_config' && 'border-slate-200 bg-slate-100 text-slate-600',
+                    emailHubStatus === 'loading' && 'border-slate-200 bg-slate-100 text-slate-500',
+                  )}
+                >
+                  {emailHubStatus === 'live'
+                    ? t('admin.communications_messengers.integration_wizard.tech_status.connected', { defaultValue: 'Connected' })
+                    : emailHubStatus === 'paused'
+                      ? t('admin.communications_messengers.states.disabled', { defaultValue: 'disabled' })
+                      : emailHubStatus === 'loading'
+                        ? t('common.loading')
+                        : t('admin.communications_messengers.integration_wizard.tech_status.none', { defaultValue: 'Not configured' })}
+                </span>
+                <span className="text-sm text-slate-700">{emailStatusHeadline}</span>
+              </div>
+            </div>
+
+            <ol className="mt-6 grid gap-2 sm:grid-cols-3">
+              {[
+                { n: 1, label: t('admin.email.integration_wizard.step_smtp') },
+                { n: 2, label: t('admin.email.integration_wizard.step_test') },
+                { n: 3, label: t('admin.communications_messengers.integration_wizard.step_active') },
+              ].map(({ n, label }) => (
+                <li
+                  key={n}
+                  className={clsx(
+                    'rounded-lg border px-3 py-2 text-center text-sm font-medium',
+                    emailStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
+                  )}
+                >
+                  <span className="mr-1 font-normal text-slate-400">{n}.</span>
+                  {label}
+                </li>
+              ))}
+            </ol>
+
+            <div className="mt-8 border-t border-slate-200 pt-6 max-w-xl">
+              <h2 className="text-sm font-semibold text-slate-900">{t('admin.email.integration_wizard.step_test')}</h2>
+              {config ? (
+                <>
+                  <p className="mt-1 text-xs text-slate-500">{t('admin.email.test_title', { defaultValue: 'Send a test message' })}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <input
+                      type="email"
+                      value={testTo}
+                      onChange={(e) => setTestTo(e.target.value)}
+                      placeholder={t('admin.email.placeholders.test_to', { defaultValue: 'test@example.com' })}
+                      className="input min-w-[200px] flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTest}
+                      disabled={testing}
+                      className="btn-secondary"
+                    >
+                      {testing ? t('common.sending', { defaultValue: 'Sending...' }) : t('admin.email.send_test', { defaultValue: 'Send test' })}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">{t('admin.email.integration_wizard.test_locked')}</p>
+              )}
+            </div>
+          </>
+        ) : null}
       </section>
     </div>
   )

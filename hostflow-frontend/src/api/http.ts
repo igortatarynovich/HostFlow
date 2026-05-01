@@ -89,8 +89,8 @@ http.interceptors.request.use((config) => {
     delete (config.headers as any)['Authorization']
   }
 
-  // гарантируем актуальный арендатор
-  (config.headers as any)['X-Tenant-Id'] = TENANT_ID
+  // читаем tenant из localStorage на каждый запрос (смена workspace без перезагрузки)
+  ;(config.headers as any)['X-Tenant-Id'] = resolveTenantId()
 
   return config
 })

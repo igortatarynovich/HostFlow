@@ -141,9 +141,16 @@ class DocumentPolicy(Base, TimestampMixin):
     )
 
     # Ответственный пользователь (опционально).
+    # Phase 2.6.G-5 Stage E — FK ``users.id ON DELETE SET NULL`` added via
+    # Alembic ``202604190002_owner_fk_set_null``. Index on the same
+    # revision (``ix_document_policies_owner_user_id``) speeds up both
+    # the ``?owner=<user>`` filter in the admin view and the on-delete
+    # NULL-sweep performed by the FK trigger.
     owner_user_id: Mapped[Optional[str]] = mapped_column(
         String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
 
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

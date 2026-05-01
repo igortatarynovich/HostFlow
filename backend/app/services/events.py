@@ -107,7 +107,8 @@ async def emit_event(
             entity_id=entity_id,
             channel=channel,
         )
-        created.append(notification)
+        if notification is not None:
+            created.append(notification)
         if send_webhook:
             await outbound.send_webhook(
                 event_type,

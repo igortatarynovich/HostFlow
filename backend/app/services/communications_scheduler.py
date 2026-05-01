@@ -14,6 +14,12 @@ from sqlalchemy.exc import OperationalError
 
 from backend.app.db.session import async_session_maker
 from backend.app.models.tenant import Tenant
+from backend.app.core.queue import enqueue_job
+from backend.app.observability.metrics import (
+    increment_calendar_maintenance_error,
+    increment_calendar_maintenance_queued,
+    set_calendar_sync_lag_seconds,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -249,6 +255,216 @@ def _invoices_overdue_sla_enabled() -> bool:
     return _env_bool("COMM_SCHEDULER_INVOICES_OVERDUE_SLA_ENABLED", True)
 
 
+def _calendar_scheduler_enabled() -> bool:
+    return _env_bool("CALENDAR_SCHEDULER_ENABLED", True)
+
+
+def _calendar_reconcile_max_lag_minutes() -> int:
+    return _env_int("CALENDAR_RECONCILE_MAX_LAG_MINUTES", 15)
+
+
+def _calendar_reconcile_min_interval_minutes() -> int:
+    return _env_int("CALENDAR_RECONCILE_MIN_INTERVAL_MINUTES", 5)
+
+
+def _calendar_renew_lookahead_minutes() -> int:
+    return _env_int("CALENDAR_RENEW_LOOKAHEAD_MINUTES", 10)
+
+
+def _converted_lead_sweep_enabled() -> bool:
+    return _env_bool("COMM_SCHEDULER_CONVERTED_LEAD_SWEEP_ENABLED", True)
+
+
+def _converted_lead_sweep_interval_seconds() -> int:
+    return _env_int("COMM_SCHEDULER_CONVERTED_LEAD_SWEEP_INTERVAL_SECONDS", 3600)
+
+
+def _converted_lead_sweep_batch() -> int:
+    return _env_int("COMM_SCHEDULER_CONVERTED_LEAD_SWEEP_BATCH", 120)
+
+
+async def _run_calendar_maintenance_for_tenant(db, *, tenant: Tenant, now: datetime) -> Dict[str, int]:
+    from backend.app.models.calendar_integration import (
+        CalendarChannel,
+        CalendarConnection,
+        CalendarSyncCursor,
+        CalendarSyncJob,
+    )
+
+    stats = {
+        "connections": 0,
+        "renew_queued": 0,
+        "reconcile_queued": 0,
+        "renew_failed": 0,
+        "reconcile_failed": 0,
+        "renew_skipped": 0,
+        "reconcile_skipped": 0,
+        "max_sync_lag_seconds": 0,
+    }
+    if not _calendar_scheduler_enabled():
+        return stats
+
+    tenant_id = str(tenant.id)
+    connections = (
+        await db.execute(
+            sa.select(CalendarConnection)
+            .where(
+                CalendarConnection.tenant_id == tenant_id,
+                CalendarConnection.status == "active",
+            )
+            .order_by(sa.asc(CalendarConnection.created_at))
+        )
+    ).scalars().all()
+    stats["connections"] = len(connections)
+    if not connections:
+        return stats
+
+    renew_lookahead = timedelta(minutes=_calendar_renew_lookahead_minutes())
+    reconcile_max_lag = timedelta(minutes=_calendar_reconcile_max_lag_minutes())
+    reconcile_min_interval = timedelta(minutes=_calendar_reconcile_min_interval_minutes())
+
+    for conn in connections:
+        conn_id = str(conn.id)
+        provider = str(conn.provider or "").strip().lower()
+        if provider not in {"google", "microsoft"}:
+            continue
+
+        channel = (
+            await db.execute(
+                sa.select(CalendarChannel)
+                .where(CalendarChannel.connection_id == conn_id)
+                .order_by(sa.desc(CalendarChannel.updated_at))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+        renew_due = False
+        if channel is None:
+            renew_due = True
+        else:
+            renew_after = channel.renew_after
+            if renew_after is None:
+                renew_due = True
+            else:
+                if renew_after.tzinfo is None:
+                    renew_after = renew_after.replace(tzinfo=timezone.utc)
+                renew_due = renew_after <= (now + renew_lookahead)
+
+        if renew_due:
+            dedupe_key = f"renew:{conn_id}"
+            already = (
+                await db.execute(
+                    sa.select(CalendarSyncJob.id)
+                    .where(
+                        CalendarSyncJob.tenant_id == tenant_id,
+                        CalendarSyncJob.dedupe_key == dedupe_key,
+                        CalendarSyncJob.status.in_(["queued", "processing"]),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if already:
+                stats["renew_skipped"] += 1
+            else:
+                renew_job = CalendarSyncJob(
+                    tenant_id=tenant_id,
+                    source_kind=f"{provider}_subscription_renew",
+                    operation="renew_subscription",
+                    status="queued",
+                    dedupe_key=dedupe_key,
+                    payload={
+                        "tenant_id": tenant_id,
+                        "connection_id": conn_id,
+                        "provider": provider,
+                    },
+                )
+                db.add(renew_job)
+                await db.flush()
+                try:
+                    await enqueue_job(
+                        "calendar_sync_ingest",
+                        sync_job_id=renew_job.id,
+                        job_id=f"calendar_sync_ingest:{renew_job.id}",
+                    )
+                    stats["renew_queued"] += 1
+                    increment_calendar_maintenance_queued(tenant_id, "renew_subscription")
+                except Exception:
+                    stats["renew_failed"] += 1
+                    increment_calendar_maintenance_error(tenant_id, "renew_enqueue_failed")
+
+        cursor = (
+            await db.execute(
+                sa.select(CalendarSyncCursor)
+                .where(CalendarSyncCursor.connection_id == conn_id)
+                .order_by(sa.desc(CalendarSyncCursor.updated_at))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        cursor_ts = cursor.last_synced_at if cursor is not None else None
+        lag_seconds = None
+        if cursor_ts is not None:
+            if cursor_ts.tzinfo is None:
+                cursor_ts = cursor_ts.replace(tzinfo=timezone.utc)
+            lag_seconds = int((now - cursor_ts).total_seconds())
+            stats["max_sync_lag_seconds"] = max(stats["max_sync_lag_seconds"], max(0, lag_seconds))
+
+        reconcile_due = False
+        if cursor_ts is None:
+            reconcile_due = True
+        else:
+            reconcile_due = (now - cursor_ts) >= reconcile_max_lag
+
+        if reconcile_due:
+            dedupe_key = f"reconcile:{conn_id}:{str(getattr(cursor, 'cursor', '') or '')}"
+            already = (
+                await db.execute(
+                    sa.select(CalendarSyncJob.id)
+                    .where(
+                        CalendarSyncJob.tenant_id == tenant_id,
+                        CalendarSyncJob.dedupe_key == dedupe_key,
+                        CalendarSyncJob.status.in_(["queued", "processing"]),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            too_soon = False
+            if cursor_ts is not None:
+                too_soon = (now - cursor_ts) < reconcile_min_interval
+            if already or too_soon:
+                stats["reconcile_skipped"] += 1
+            else:
+                reconcile_job = CalendarSyncJob(
+                    tenant_id=tenant_id,
+                    source_kind=f"{provider}_reconcile",
+                    operation="reconcile",
+                    status="queued",
+                    dedupe_key=dedupe_key,
+                    payload={
+                        "tenant_id": tenant_id,
+                        "connection_id": conn_id,
+                        "provider": provider,
+                        "cursor": str(getattr(cursor, "cursor", "") or "") or None,
+                        "cursor_meta": dict(getattr(cursor, "cursor_meta_json", {}) or {}),
+                    },
+                )
+                db.add(reconcile_job)
+                await db.flush()
+                try:
+                    await enqueue_job(
+                        "calendar_sync_ingest",
+                        sync_job_id=reconcile_job.id,
+                        job_id=f"calendar_sync_ingest:{reconcile_job.id}",
+                    )
+                    stats["reconcile_queued"] += 1
+                    increment_calendar_maintenance_queued(tenant_id, "reconcile")
+                except Exception:
+                    stats["reconcile_failed"] += 1
+                    increment_calendar_maintenance_error(tenant_id, "reconcile_enqueue_failed")
+
+    set_calendar_sync_lag_seconds(tenant_id, int(stats.get("max_sync_lag_seconds", 0) or 0))
+    return stats
+
+
 def _tenant_invoices_sla_settings(tenant: Tenant) -> Dict[str, Any]:
     root = tenant.settings if isinstance(tenant.settings, dict) else {}
     raw = root.get("invoice_overdue_sla_v1")
@@ -373,6 +589,7 @@ async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: date
         .where(
             Lead.tenant_id == tenant_id,
             Lead.status == "processed",
+            Lead.candidate_id.is_(None),
             Lead.created_at <= cutoff_dt,
             ~reminder_exists_active,
         )
@@ -390,7 +607,7 @@ async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: date
         due_key = f"{tenant_id}:{lid}:{threshold_hours}"
 
         if create_notifications:
-            await create_notification(
+            created_n = await create_notification(
                 db,
                 tenant_id=tenant_id,
                 user_id=str(assignee_id),
@@ -413,7 +630,8 @@ async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: date
                 # Keep bell signal low-noise; reminders are the primary actionable queue.
                 dedupe_window_minutes=60 * 24 * 30,
             )
-            stats["notifications"] += 1
+            if created_n is not None:
+                stats["notifications"] += 1
 
         if create_reminders:
             # Idempotency: avoid duplicate active reminders of this type.
@@ -494,6 +712,7 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
         .where(
             Lead.tenant_id == tenant_id,
             Lead.status == "processed",
+            Lead.candidate_id.is_(None),
             sa.func.coalesce(Lead.stage, "new").in_(list(stages)),
         )
         .order_by(sa.asc(Lead.created_at))
@@ -520,7 +739,7 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
         due_key = f"{tenant_id}:{lid}:{stuck_days}:{str(stage or '')}"
 
         if create_notifications:
-            await create_notification(
+            created_n = await create_notification(
                 db,
                 tenant_id=tenant_id,
                 user_id=str(assignee_id),
@@ -543,7 +762,8 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
                 # Keep bell signal low-noise; reminders are the primary actionable queue.
                 dedupe_window_minutes=60 * 24 * 30,
             )
-            stats["notifications"] += 1
+            if created_n is not None:
+                stats["notifications"] += 1
 
         if create_reminders:
             existing = (
@@ -659,7 +879,7 @@ async def _run_invoices_overdue_sla_for_tenant(db, *, tenant: Tenant, now: datet
         description = f"Invoice {str(inv_number or iid)[:32]} is overdue. Outstanding: {round(outstanding, 2)}."
 
         if create_notifications:
-            await create_notification(
+            created_n = await create_notification(
                 db,
                 tenant_id=tenant_id,
                 user_id=str(assignee_id),
@@ -685,7 +905,8 @@ async def _run_invoices_overdue_sla_for_tenant(db, *, tenant: Tenant, now: datet
                 },
                 dedupe_window_minutes=60 * 24,
             )
-            stats["notifications"] += 1
+            if created_n is not None:
+                stats["notifications"] += 1
 
         if create_reminders:
             existing = (
@@ -766,6 +987,7 @@ async def _run_sla_escalations_for_tenant(db, *, tenant: Tenant, now: datetime) 
 
     cooldown_min = _sla_escalation_cooldown_minutes()
     for thread in threads:
+        notif = None
         if not thread.sla_due_at:
             continue
         thread_meta = thread.thread_meta if isinstance(thread.thread_meta, dict) else {}
@@ -846,7 +1068,6 @@ async def _run_sla_escalations_for_tenant(db, *, tenant: Tenant, now: datetime) 
             thread.updated_at = now
             continue
 
-        notif = None
         if create_notifications:
             event_type = "communications_sla_overdue"
             notif = await create_notification(
@@ -872,7 +1093,8 @@ async def _run_sla_escalations_for_tenant(db, *, tenant: Tenant, now: datetime) 
                 },
                 dedupe_window_minutes=240,
             )
-            stats["notifications"] += 1
+            if notif is not None:
+                stats["notifications"] += 1
 
         if create_reminders:
             reminder_exists = False
@@ -1037,7 +1259,7 @@ async def _run_candidate_docs_deadlines_for_tenant(db, *, tenant: Tenant, now: d
                     stats["candidate_telegram"] = int(stats["candidate_telegram"]) + 1
 
             if manager_id and not str(marker.get("manager_notification_at") or "").strip():
-                await create_notification(
+                created_doc_n = await create_notification(
                     db,
                     tenant_id=tenant_id,
                     user_id=manager_id,
@@ -1062,8 +1284,9 @@ async def _run_candidate_docs_deadlines_for_tenant(db, *, tenant: Tenant, now: d
                     },
                     dedupe_window_minutes=60 * 24 * 30,
                 )
-                marker["manager_notification_at"] = now.isoformat()
-                stats["manager_notifications"] = int(stats["manager_notifications"]) + 1
+                if created_doc_n is not None:
+                    marker["manager_notification_at"] = now.isoformat()
+                    stats["manager_notifications"] = int(stats["manager_notifications"]) + 1
 
             if marker:
                 reminders_state[key] = marker
@@ -1121,6 +1344,13 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
         "invoices_sla_due": 0,
         "invoices_sla_notifications": 0,
         "invoices_sla_reminders": 0,
+        "calendar_runs": 0,
+        "calendar_connections": 0,
+        "calendar_renew_queued": 0,
+        "calendar_reconcile_queued": 0,
+        "calendar_renew_failed": 0,
+        "calendar_reconcile_failed": 0,
+        "calendar_sync_lag_max_seconds": 0,
     }
 
     for tenant in tenants:
@@ -1360,11 +1590,109 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
                 tenant_runtime["last_invoices_sla_error"] = str(exc)
                 logger.warning("[communications-scheduler] invoices SLA failed tenant=%s (%s)", tenant_id, exc)
 
+            # Calendar maintenance: keep provider subscriptions healthy and queue reconcile.
+            try:
+                calendar_stats = await _run_calendar_maintenance_for_tenant(db, tenant=tenant, now=now)
+                tenant_runtime["last_calendar_maintenance_at"] = now.isoformat()
+                tenant_runtime["last_calendar_maintenance_stats"] = dict(calendar_stats)
+                tick_summary["calendar_runs"] = int(tick_summary["calendar_runs"]) + 1
+                tick_summary["calendar_connections"] = int(tick_summary["calendar_connections"]) + int(
+                    calendar_stats.get("connections", 0) or 0
+                )
+                tick_summary["calendar_renew_queued"] = int(tick_summary["calendar_renew_queued"]) + int(
+                    calendar_stats.get("renew_queued", 0) or 0
+                )
+                tick_summary["calendar_reconcile_queued"] = int(tick_summary["calendar_reconcile_queued"]) + int(
+                    calendar_stats.get("reconcile_queued", 0) or 0
+                )
+                tick_summary["calendar_sync_lag_max_seconds"] = max(
+                    int(tick_summary.get("calendar_sync_lag_max_seconds") or 0),
+                    int(calendar_stats.get("max_sync_lag_seconds", 0) or 0),
+                )
+                tick_summary["calendar_renew_failed"] = int(tick_summary["calendar_renew_failed"]) + int(
+                    calendar_stats.get("renew_failed", 0) or 0
+                )
+                tick_summary["calendar_reconcile_failed"] = int(tick_summary["calendar_reconcile_failed"]) + int(
+                    calendar_stats.get("reconcile_failed", 0) or 0
+                )
+                await db.commit()
+            except Exception as exc:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                increment_calendar_maintenance_error(tenant_id, "maintenance_tick_failed")
+                tenant_runtime["last_calendar_maintenance_error"] = str(exc)
+                logger.warning("[communications-scheduler] calendar maintenance failed tenant=%s (%s)", tenant_id, exc)
+
     tick_summary.setdefault("risk_intel_runs", 0)
     tick_summary.setdefault("risk_intel_errors", 0)
     await _run_risk_intel_hourly_pass(state, tenants, now, tick_summary)
 
+    await _run_converted_lead_sweep_pass(state, tenants, now, tick_summary)
+
     _RUNTIME_STATUS["last_tick_summary"] = tick_summary
+
+
+async def _run_converted_lead_sweep_pass(
+    state: Dict[str, Any],
+    tenants: List[Any],
+    now: datetime,
+    tick_summary: Dict[str, Any],
+) -> None:
+    """Clear lead-scoped reminders/planner rows that survived a lead→candidate link (hook missed or legacy data)."""
+    if not _converted_lead_sweep_enabled():
+        return
+    interval = _converted_lead_sweep_interval_seconds()
+    batch = _converted_lead_sweep_batch()
+    last = state.setdefault("converted_lead_sweep_last", {})
+    tick_summary.setdefault("converted_lead_sweep_runs", 0)
+    tick_summary.setdefault("converted_lead_sweep_leads", 0)
+    tick_summary.setdefault("converted_lead_sweep_reminders", 0)
+    tick_summary.setdefault("converted_lead_sweep_notifications", 0)
+    tick_summary.setdefault("converted_lead_sweep_planner", 0)
+    tick_summary.setdefault("converted_lead_sweep_errors", 0)
+
+    try:
+        from backend.app.services.lead_lifecycle import sweep_converted_lead_operational_noise
+    except Exception as exc:
+        logger.warning("[communications-scheduler] converted_lead_sweep import failed: %s", exc)
+        return
+
+    for tenant in tenants:
+        tid = str(getattr(tenant, "id", "") or "")
+        if not tid:
+            continue
+        prev = last.get(tid)
+        if prev is not None and (now - prev).total_seconds() < interval:
+            continue
+        try:
+            async with async_session_maker() as db:
+                stats = await sweep_converted_lead_operational_noise(
+                    db,
+                    tenant_id=tid,
+                    limit=batch,
+                    now=now,
+                    actor_id="system-scheduler",
+                )
+                await db.commit()
+            last[tid] = now
+            tick_summary["converted_lead_sweep_runs"] = int(tick_summary.get("converted_lead_sweep_runs") or 0) + 1
+            tick_summary["converted_lead_sweep_leads"] = int(tick_summary.get("converted_lead_sweep_leads") or 0) + int(
+                stats.get("leads_processed", 0) or 0
+            )
+            tick_summary["converted_lead_sweep_reminders"] = int(tick_summary.get("converted_lead_sweep_reminders") or 0) + int(
+                stats.get("reminders_cancelled", 0) or 0
+            )
+            tick_summary["converted_lead_sweep_notifications"] = int(
+                tick_summary.get("converted_lead_sweep_notifications") or 0
+            ) + int(stats.get("notifications_marked_read", 0) or 0)
+            tick_summary["converted_lead_sweep_planner"] = int(tick_summary.get("converted_lead_sweep_planner") or 0) + int(
+                stats.get("planner_events_cancelled", 0) or 0
+            )
+        except Exception as exc:
+            tick_summary["converted_lead_sweep_errors"] = int(tick_summary.get("converted_lead_sweep_errors") or 0) + 1
+            logger.warning("[communications-scheduler] converted_lead_sweep failed tenant=%s (%s)", tid, exc)
 
 
 async def _run_risk_intel_hourly_pass(

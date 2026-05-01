@@ -857,7 +857,7 @@ export default function PublicIntakeNew() {
   if (isTokenExpired) {
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 shadow-card text-center">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-8 shadow-sm text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h1 className="text-xl font-semibold text-slate-900 mb-2">
             {t('public.intake.new.errors.token_expired', { defaultValue: 'Link expired or invalid' })}
@@ -882,7 +882,7 @@ export default function PublicIntakeNew() {
   if (apiLoading && !dataRestored) {
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
+        <div className="card p-8 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
           <p className="text-slate-600">{t('public.intake.new.loading')}</p>
         </div>
@@ -894,7 +894,7 @@ export default function PublicIntakeNew() {
   if (currentStep === 'language') {
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl">
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
+        <div className="card p-8 text-center">
           <PublicLogo showWordmark className="mx-auto mb-6" />
           <h1 className="text-2xl font-semibold text-slate-900 mb-4">
             {t('public.intake.new.language.title')}
@@ -908,19 +908,19 @@ export default function PublicIntakeNew() {
           <div className="flex flex-wrap justify-center gap-4">
             <button
               onClick={() => handleLanguageSelect('ru')}
-              className="rounded-xl border-2 border-brand-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 transition"
+              className="rounded-xl border-2 border-slate-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-slate-400 hover:bg-slate-50 transition"
             >
               Русский
             </button>
             <button
               onClick={() => handleLanguageSelect('en')}
-              className="rounded-xl border-2 border-brand-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 transition"
+              className="rounded-xl border-2 border-slate-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-slate-400 hover:bg-slate-50 transition"
             >
               English
             </button>
             <button
               onClick={() => handleLanguageSelect('pl')}
-              className="rounded-xl border-2 border-brand-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 transition"
+              className="rounded-xl border-2 border-slate-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-slate-400 hover:bg-slate-50 transition"
             >
               Polski
             </button>
@@ -934,7 +934,7 @@ export default function PublicIntakeNew() {
   if (currentStep === 'contacts') {
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+        <div className="card p-8">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-2xl font-semibold text-slate-900">
@@ -1048,7 +1048,7 @@ export default function PublicIntakeNew() {
 
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+        <div className="card p-8">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-2xl font-semibold text-slate-900">
@@ -1295,7 +1295,7 @@ export default function PublicIntakeNew() {
   if (currentStep === 'employment') {
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+        <div className="card p-8">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-2xl font-semibold text-slate-900">
@@ -1343,7 +1343,7 @@ export default function PublicIntakeNew() {
             )}
 
             {/* Форма добавления работодателя */}
-            <div className="rounded-lg border border-brand-200 bg-brand-50/30 p-6 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-brand-50/30 p-6 space-y-4">
               <h3 className="font-semibold text-slate-900">
                 {t('public.intake.new.employment.add_title')}
               </h3>
@@ -1567,7 +1567,7 @@ export default function PublicIntakeNew() {
     if (hasLicenseWith95 === null) {
       return (
         <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-          <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+          <div className="card p-8">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-slate-900 mb-2">
                 {t('public.intake.new.documents.license_question')}
@@ -1601,7 +1601,7 @@ export default function PublicIntakeNew() {
     if (currentDocumentIndex >= documentFlow.length && hasAdr === null) {
       return (
         <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-          <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+          <div className="card p-8">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-slate-900 mb-2">
                 {t('public.intake.new.documents.adr_question')}
@@ -1648,7 +1648,7 @@ export default function PublicIntakeNew() {
 
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+        <div className="card p-8">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-2xl font-semibold text-slate-900">
@@ -1709,7 +1709,7 @@ export default function PublicIntakeNew() {
 
             {/* Поле загрузки если выбрано "Загрузить" */}
             {docStatus === 'uploaded' && (
-              <div className="rounded-lg border border-dashed border-brand-200 bg-brand-50/30 p-4">
+              <div className="rounded-lg border border-dashed border-slate-200 bg-brand-50/30 p-4">
                 <input
                   type="file"
                   multiple
@@ -1787,7 +1787,7 @@ export default function PublicIntakeNew() {
       const statusUrlSubmitted = statusTokenSubmitted ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/status/${statusTokenSubmitted}` : ''
       return (
         <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
-          <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
+          <div className="card p-8 text-center">
             <div className="text-6xl mb-4">✅</div>
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
               {t('public.intake.new.thank_you.title')}
@@ -1796,7 +1796,7 @@ export default function PublicIntakeNew() {
               {t('public.intake.new.thank_you.message')}
             </p>
             {statusUrlSubmitted && (
-              <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/50 p-4 text-left">
+              <div className="mb-6 rounded-xl border border-slate-200 bg-brand-50/50 p-4 text-left">
                 <p className="text-sm font-medium text-slate-700 mb-2">{t('public.intake.new.thank_you.track_status', { defaultValue: 'Śledź status swojej zgłoszenia' })}</p>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
                   <div className="flex flex-col items-center gap-1">
@@ -1817,7 +1817,7 @@ export default function PublicIntakeNew() {
                           notify({ title: t('public.intake.new.thank_you.link_copied', { defaultValue: 'Link skopiowany' }), variant: 'success' })
                         }).catch(() => {})
                       }}
-                      className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                      className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
                     >
                       {t('public.intake.new.thank_you.copy_link', { defaultValue: 'Skopiuj link' })}
                     </button>
@@ -1854,7 +1854,7 @@ export default function PublicIntakeNew() {
     }
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+        <div className="card p-8">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
               {t('public.intake.new.review.title')}
@@ -1866,7 +1866,7 @@ export default function PublicIntakeNew() {
 
           <div className="space-y-4">
             {/* Блок личных данных */}
-            <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   {t('public.intake.new.review.contacts')}
@@ -1888,7 +1888,7 @@ export default function PublicIntakeNew() {
             </div>
 
             {/* Блок ответов на вопросы */}
-            <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   {t('public.intake.new.review.answers')}
@@ -1912,7 +1912,7 @@ export default function PublicIntakeNew() {
             </div>
 
             {/* Блок опыта работы */}
-            <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   {t('public.intake.new.review.employment')}
@@ -1936,7 +1936,7 @@ export default function PublicIntakeNew() {
             </div>
 
             {/* Блок документов */}
-            <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   {t('public.intake.new.review.documents')}
@@ -1966,7 +1966,7 @@ export default function PublicIntakeNew() {
             </div>
 
             {/* Согласия */}
-            <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <div className="card p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">
                 {t('public.intake.new.review.agreements')}
               </h2>
@@ -2120,7 +2120,7 @@ export default function PublicIntakeNew() {
     }
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
+        <div className="card p-8 text-center">
           <div className="mb-6">
             <div className="text-6xl mb-4">✅</div>
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -2131,7 +2131,7 @@ export default function PublicIntakeNew() {
             </p>
           </div>
           {statusUrl && (
-            <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/50 p-4 text-left">
+            <div className="mb-6 rounded-xl border border-slate-200 bg-brand-50/50 p-4 text-left">
               <p className="text-sm font-medium text-slate-700 mb-2">{t('public.intake.new.thank_you.track_status', { defaultValue: 'Śledź status swojej zgłoszenia' })}</p>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex flex-col items-center gap-1">
@@ -2148,7 +2148,7 @@ export default function PublicIntakeNew() {
                   <button
                     type="button"
                     onClick={handleCopyStatusLink}
-                    className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                    className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
                   >
                     {t('public.intake.new.thank_you.copy_link', { defaultValue: 'Skopiuj link' })}
                   </button>
@@ -2188,7 +2188,7 @@ export default function PublicIntakeNew() {
   if (currentStep === 'overview') {
     return (
       <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
-        <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
+        <div className="card p-8">
           <h1 className="text-2xl font-semibold text-slate-900 mb-6">
             {t('public.intake.new.overview.title')}
           </h1>
@@ -2229,7 +2229,7 @@ export default function PublicIntakeNew() {
           </div>
 
           {(apiState?.status_share_token || token) && (
-            <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
+            <div className="mt-6 rounded-xl border border-slate-200 bg-brand-50/50 p-4">
               <p className="text-sm font-medium text-slate-700 mb-3">{t('public.intake.new.thank_you.track_status', { defaultValue: 'Śledź status swojej zgłoszenia' })}</p>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex flex-col items-center gap-1">
@@ -2251,7 +2251,7 @@ export default function PublicIntakeNew() {
                         notify({ title: t('public.intake.new.thank_you.link_copied', { defaultValue: 'Link skopiowany' }), variant: 'success' })
                       }).catch(() => {})
                     }}
-                    className="inline-flex rounded-lg border border-brand-200 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                    className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
                   >
                     {t('public.intake.new.thank_you.copy_link', { defaultValue: 'Skopiuj link' })}
                   </button>
@@ -2260,7 +2260,7 @@ export default function PublicIntakeNew() {
             </div>
           )}
 
-          <div className="mt-8 rounded-lg border border-brand-200 bg-brand-50/30 p-4 text-center">
+          <div className="mt-8 rounded-lg border border-slate-200 bg-brand-50/30 p-4 text-center">
             <p className="text-sm text-slate-700 mb-2">
               {t('public.intake.new.overview.contact_hint')}
             </p>

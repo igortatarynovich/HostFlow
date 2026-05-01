@@ -61,24 +61,17 @@ async def run_seed(db: AsyncSession) -> None:
                 pass
             logger.warning(f"[seed] Failed to seed requirements and gates for tenant {tenant_id}: {e}")
 
-        # Seed base candidate profile
-        try:
-            from backend.app.seed_candidate_profiles import ensure_base_candidate_profile
-            await ensure_base_candidate_profile(db, tenant_id)
-        except Exception as e:
-            try:
-                await db.rollback()
-            except Exception:
-                pass
-            logger.warning(f"[seed] Failed to seed base candidate profile for tenant {tenant_id}: {e}")
-
         # Seed driver_ce_default profile and assign to vacancies without profile
         try:
-            from backend.app.seed_candidate_profiles import ensure_driver_ce_default_profile
+            from backend.app.seed_candidate_profiles import (
+                cleanup_legacy_base_candidate_profile,
+                ensure_driver_ce_default_profile,
+            )
             await ensure_driver_ce_default_profile(db, tenant_id)
+            await cleanup_legacy_base_candidate_profile(db, tenant_id)
         except Exception as e:
             try:
                 await db.rollback()
             except Exception:
                 pass
-            logger.warning(f"[seed] Failed to seed driver_ce_default profile for tenant {tenant_id}: {e}")
+            logger.warning(f"[seed] Failed to reconcile default candidate profile for tenant {tenant_id}: {e}")

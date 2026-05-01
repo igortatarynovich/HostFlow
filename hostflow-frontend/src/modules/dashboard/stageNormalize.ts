@@ -13,6 +13,7 @@ export const DEFAULT_STAGE_LABELS: StageLabelConfig = {
   hired: [],
   rejected: [],
   declined: [],
+  employment_pending: ['employment_pending'],
 }
 
 export const STAGE_CODE_ALIASES: Record<string, string> = {
@@ -69,6 +70,9 @@ export const STAGE_LABEL_ALIASES: Record<string, string> = {
   at_client_base: 'at_client',
   на_базе_клиента: 'at_client',
   na_bazie_klienta: 'at_client',
+  employment_pending: 'employment_pending',
+  на_трудоустройстве: 'employment_pending',
+  w_trakcie_zatrudnienia: 'employment_pending',
   employed: 'employed',
   hired: 'employed',
   трудоустроен: 'employed',
@@ -99,6 +103,7 @@ export const STAGE_HIGHLIGHT_CODES: StageLabelConfig = {
   hired: ['employed', 'probation_ok', 'probation_done', 'hired'],
   rejected: ['rejected'],
   declined: ['declined'],
+  employment_pending: ['employment_pending'],
 }
 
 export const REASON_LABEL_ALIASES: Record<string, string> = {
@@ -251,17 +256,19 @@ export const stageHighlights = (
 ) => {
   const normalized = normalizeStageCounts(map)
   if (!Object.keys(normalized).length) {
-    return { hired: 0, rejected: 0, declined: 0, pipeline: 0 }
+    return { hired: 0, rejected: 0, declined: 0, pipeline: 0, employmentPending: 0 }
   }
   const hiredKeys = labels.hired ?? []
   const rejectedKeys = labels.rejected ?? []
   const declinedKeys = labels.declined ?? []
+  const pendingKeys = labels.employment_pending ?? ['employment_pending']
   const hired = hiredKeys.reduce((acc, key) => acc + (normalized[key] ?? 0), 0)
   const rejected = rejectedKeys.reduce((acc, key) => acc + (normalized[key] ?? 0), 0)
   const declined = declinedKeys.reduce((acc, key) => acc + (normalized[key] ?? 0), 0)
+  const employmentPending = pendingKeys.reduce((acc, key) => acc + (normalized[key] ?? 0), 0)
   const total = Object.values(normalized).reduce((acc, val) => acc + (val ?? 0), 0)
   const pipeline = Math.max(total - hired - rejected - declined, 0)
-  return { hired, rejected, declined, pipeline }
+  return { hired, rejected, declined, pipeline, employmentPending }
 }
 
 export const STAGE_STACK_COLORS: Record<StageOutcome, string> = {

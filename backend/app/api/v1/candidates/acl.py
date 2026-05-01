@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx
@@ -61,6 +61,10 @@ async def resolve_candidate_acl(
     if role in (Role.administrator.value, Role.superadmin.value):
         return CandidateACL.unrestricted_scope()
 
+    # HR workspace: no access to candidate records (use workforce APIs only)
+    if role == UserRole.hr_officer.value:
+        return CandidateACL.restricted(company_ids=[], vacancy_ids=[], manager_ids=[])
+
     if role in (Role.supervisor.value, Role.manager.value):
         subordinate_rows = await db.execute(
             select(User.id)
@@ -107,6 +111,7 @@ async def resolve_candidate_acl(
         Role.recruiter.value,
         Role.client_manager.value,
         Role.client_processor.value,
+        Role.compliance_officer.value,
         Role.viewer.value,
     ):
         rows = await db.execute(
@@ -147,6 +152,45 @@ async def resolve_candidate_acl(
     )
 
 
+def candidate_acl_sql_or_clause(acl: CandidateACL, *, client_tenant: bool):
+    """Agency-only SQL OR for ACL columns (aligned with repo._build_conditions)."""
+    if client_tenant:
+        return None
+    mgr = list(acl.manager_ids)
+    comp = list(acl.company_ids)
+    vac = list(acl.vacancy_ids)
+    parts = []
+    if mgr:
+        parts.append(or_(Candidate.manager.in_(mgr), Candidate.recruiter_id.in_(mgr)))
+    if comp:
+        parts.append(Candidate.company_id.in_(comp))
+    if vac:
+        parts.append(Candidate.vacancy_id.in_(vac))
+    if not parts:
+        return literal(False)
+    return or_(*parts)
+
+
+async def apply_agency_acl_filters(
+    db: AsyncSession,
+    scope_tenant: str,
+    current_user: UserCtx,
+    client_tenant: bool,
+    filters: dict[str, object],
+) -> bool:
+    """Populate filters allowed_* for restricted users. False ⇒ empty list for agency tenant."""
+    acl = await resolve_candidate_acl(db, scope_tenant, current_user)
+    if acl.unrestricted:
+        return True
+    if not client_tenant and acl.is_empty():
+        return False
+    if not client_tenant:
+        filters["allowed_company_ids"] = list(acl.company_ids)
+        filters["allowed_vacancy_ids"] = list(acl.vacancy_ids)
+        filters["allowed_manager_ids"] = list(acl.manager_ids)
+    return True
+
+
 async def ensure_candidate_access(
     db: AsyncSession,
     tenant_id: str,
@@ -169,10 +213,12 @@ async def ensure_candidate_access(
     if acl.unrestricted:
         return
 
-    # Собираем ACL-условия
+    # Собираем ACL-условия (manager + recruiter_id — как в списках и bulk ACL)
     ors = []
     if acl.manager_ids:
-        ors.append(Candidate.manager.in_(acl.manager_ids))
+        ors.append(
+            or_(Candidate.manager.in_(acl.manager_ids), Candidate.recruiter_id.in_(acl.manager_ids)),
+        )
     if acl.company_ids:
         ors.append(Candidate.company_id.in_(acl.company_ids))
     if acl.vacancy_ids:
@@ -222,10 +268,8 @@ async def ensure_candidate_access(
         scope_clause,
     ]
 
-    # Если у пользователя есть явный ACL по компаниям/вакансиям — усиливаем условие.
-    if ors:
-        acl_condition = ors[0] if len(ors) == 1 else or_(*ors)
-        conditions.append(acl_condition)
+    # Не добавляем UserCompanyAccess для клиента — совпадает со списком (candidate_acl_sql_or_clause
+    # для client_tenant не строит ACL-OR); иначе handoff / вакансии агентства дают 403 на карточке.
 
     result = await db.execute(
         select(Candidate.id).where(and_(*conditions))

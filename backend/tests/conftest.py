@@ -129,6 +129,7 @@ from backend.app.main import app  # noqa: E402
 from backend.app.models.user import Role as UserRole  # noqa: E402
 from backend.app.models.user import User  # noqa: E402
 from backend.app.models import Candidate  # noqa: E402
+from backend.app.models.tenant import TenantLicense  # noqa: E402
 
 
 @pytest.fixture
@@ -170,6 +171,8 @@ async def _init_data() -> Dict[str, str]:
         supervisor_password = "Supervisor123!"
         recruiter_email = "recruiter@work-host.com"
         recruiter_password = "Recruiter123!"
+        hr_officer_email = "hr.officer@work-host.com"
+        hr_officer_password = "HrOfficer123!"
 
         candidate_id: str | None = None
 
@@ -270,6 +273,29 @@ async def _init_data() -> Dict[str, str]:
                 recruiter.is_active = True
                 recruiter.supervisor_id = supervisor.id
 
+            hr_officer = await session.scalar(
+                select(User).where(func.lower(User.email) == hr_officer_email.lower())
+            )
+            if hr_officer is None:
+                hr_officer = User(
+                    id=str(uuid.uuid4()),
+                    email=hr_officer_email,
+                    password_hash=hash_password(hr_officer_password),
+                    role=UserRole.hr_officer,
+                    short_id="HROFF001",
+                    full_name="HostFlow HR Officer",
+                    tenant_id=DEFAULT_TENANT_ID,
+                    is_active=True,
+                )
+                session.add(hr_officer)
+            else:
+                hr_officer.password_hash = hash_password(hr_officer_password)
+                hr_officer.role = UserRole.hr_officer
+                hr_officer.short_id = hr_officer.short_id or "HROFF001"
+                hr_officer.full_name = hr_officer.full_name or "HostFlow HR Officer"
+                hr_officer.tenant_id = hr_officer.tenant_id or DEFAULT_TENANT_ID
+                hr_officer.is_active = True
+
             await session.flush()
 
             async def ensure_membership(user_id: str, role: str) -> None:
@@ -294,6 +320,7 @@ async def _init_data() -> Dict[str, str]:
             await ensure_membership(viewer.id, "viewer")
             await ensure_membership(supervisor.id, "supervisor")
             await ensure_membership(recruiter.id, "recruiter")
+            await ensure_membership(hr_officer.id, "hr_officer")
 
             result = await session.execute(
                 sa.text(
@@ -369,6 +396,15 @@ async def _init_data() -> Dict[str, str]:
                     {"manager": recruiter.id, "company_id": company_id, "id": candidate_id},
                 )
 
+            # Shared dev DB may seed tenant_licenses with finite caps; vacancy API then returns 402.
+            lic_row = await session.execute(
+                select(TenantLicense).where(TenantLicense.tenant_id == DEFAULT_TENANT_ID).limit(1)
+            )
+            lic = lic_row.scalar_one_or_none()
+            if lic is not None:
+                lic.max_vacancies_active = 0
+                lic.max_candidates_active = 0
+
             await session.commit()
 
         _BOOTSTRAP.update(
@@ -382,6 +418,8 @@ async def _init_data() -> Dict[str, str]:
                 "supervisor_email": supervisor.email,
                 "recruiter_id": recruiter.id,
                 "recruiter_email": recruiter.email,
+                "hr_officer_id": hr_officer.id,
+                "hr_officer_email": hr_officer.email,
                 "company_id": company_id,
                 "candidate_id": candidate_id,
             }
@@ -443,6 +481,12 @@ async def tenant_id() -> str:
 
 
 @pytest_asyncio.fixture
+async def bootstrap() -> Dict[str, str]:
+    """Stable tenant/user/candidate ids from `_init_data()` (same keys across tests)."""
+    return await _init_data()
+
+
+@pytest_asyncio.fixture
 async def manager_token(tenant_id: str) -> str:
     data = await _init_data()
     return _build_token(
@@ -477,6 +521,17 @@ async def recruiter_token(tenant_id: str) -> str:
 
 
 @pytest_asyncio.fixture
+async def hr_officer_token(tenant_id: str) -> str:
+    data = await _init_data()
+    return _build_token(
+        data["hr_officer_id"],
+        data["hr_officer_email"],
+        "hr_officer",
+        tenant_id,
+    )
+
+
+@pytest_asyncio.fixture
 async def viewer_token(tenant_id: str) -> str:
     data = await _init_data()
     return _build_token(
@@ -507,6 +562,14 @@ async def supervisor_headers(supervisor_token: str, tenant_id: str) -> Dict[str,
 async def recruiter_headers(recruiter_token: str, tenant_id: str) -> Dict[str, str]:
     return {
         "Authorization": f"Bearer {recruiter_token}",
+        "X-Tenant-Id": tenant_id,
+    }
+
+
+@pytest_asyncio.fixture
+async def hr_officer_headers(hr_officer_token: str, tenant_id: str) -> Dict[str, str]:
+    return {
+        "Authorization": f"Bearer {hr_officer_token}",
         "X-Tenant-Id": tenant_id,
     }
 

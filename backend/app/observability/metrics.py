@@ -147,6 +147,25 @@ tenant_license_expiry_days = _create_gauge(
     ("tenant_id",),
 )
 
+# Calendar integration maintenance metrics
+calendar_sync_lag_seconds = _create_gauge(
+    "hf_calendar_sync_lag_seconds",
+    "Estimated calendar sync lag in seconds per tenant",
+    ("tenant_id",),
+)
+
+calendar_maintenance_queued_total = _create_counter(
+    "hf_calendar_maintenance_queued_total",
+    "Calendar maintenance jobs queued by type",
+    ("tenant_id", "job_type"),
+)
+
+calendar_maintenance_errors_total = _create_counter(
+    "hf_calendar_maintenance_errors_total",
+    "Calendar maintenance errors by type",
+    ("tenant_id", "error_type"),
+)
+
 _notifications_unread_index: Dict[str, Set[str]] = defaultdict(set)
 _tenant_seats_index: Dict[str, Set[str]] = defaultdict(set)
 
@@ -188,6 +207,24 @@ def set_tenant_license_expiry_days(tenant_id: str, days: int) -> None:
     Update gauge for tenant license expiry days.
     """
     tenant_license_expiry_days.labels(tenant_id=tenant_id).set(days)
+
+
+def set_calendar_sync_lag_seconds(tenant_id: str, lag_seconds: int) -> None:
+    calendar_sync_lag_seconds.labels(tenant_id=tenant_id).set(max(0, int(lag_seconds or 0)))
+
+
+def increment_calendar_maintenance_queued(tenant_id: str, job_type: str) -> None:
+    calendar_maintenance_queued_total.labels(
+        tenant_id=tenant_id,
+        job_type=(job_type or "unknown"),
+    ).inc()
+
+
+def increment_calendar_maintenance_error(tenant_id: str, error_type: str) -> None:
+    calendar_maintenance_errors_total.labels(
+        tenant_id=tenant_id,
+        error_type=(error_type or "unknown"),
+    ).inc()
 
 
 def observe_document_workflow_duration(

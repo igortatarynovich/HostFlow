@@ -105,7 +105,7 @@ export function resolveNotificationOpenPath(
   }
 
   if (eventType === 'lead.import.completed' || eventType === 'lead.import.failed') {
-    return CRM_APP_PATHS.settingsLeads
+    return CRM_APP_PATHS.settingsIntegrationsMeta
   }
 
   if (

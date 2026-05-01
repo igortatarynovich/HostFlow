@@ -86,6 +86,7 @@ const EMPLOYER_IN_PROGRESS_STAGE_CODES = new Set([
   'docs_submitted_permit',
   'permit_received',
   'on_trip',
+  'employment_pending',
 ])
 
 const EMPLOYER_DECISION_STAGE_CODES = new Set([
@@ -749,6 +750,57 @@ export default function DoProcesowaniaPage() {
     () => Array.from(new Set(tabRows.map((row) => row.who).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [tabRows],
   )
+  const statusOptions = useMemo(
+    () =>
+      [
+        { value: 'pending_review', label: t('app.handoff.status.pending') },
+        { value: 'accepted', label: t('app.handoff.status.accepted') },
+        { value: 'rejected', label: t('app.handoff.status.rejected') },
+        { value: 'returned', label: t('app.handoff.status.returned') },
+      ].filter((option) => tabRows.some((row) => row.status_code === option.value)),
+    [tabRows, t],
+  )
+  const decisionOptions = useMemo(
+    () =>
+      [
+        { value: 'employed', label: t('app.handoff.decisions.employed') },
+        { value: 'rejected', label: t('app.handoff.decisions.rejected') },
+        { value: 'declined', label: t('app.handoff.decisions.declined') },
+        { value: 'returned', label: t('app.handoff.decisions.returned') },
+      ].filter((option) => tabRows.some((row) => row.decision_code === option.value)),
+    [tabRows, t],
+  )
+
+  useEffect(() => {
+    const allowedCitizenship = new Set(citizenshipOptions)
+    const allowedStages = new Set(stageOptions.map((option) => option.code))
+    const allowedVacancies = new Set(vacancyOptions)
+    const allowedStatuses = new Set(statusOptions.map((option) => option.value))
+    const allowedDecisions = new Set(decisionOptions.map((option) => option.value))
+    const allowedWho = new Set(whoOptions)
+    setFilters((prev) => {
+      const next: HeaderFilters = {
+        ...prev,
+        citizenship: prev.citizenship.filter((value) => allowedCitizenship.has(value)),
+        stage: prev.stage.filter((value) => allowedStages.has(value)),
+        vacancy: prev.vacancy.filter((value) => allowedVacancies.has(value)),
+        status: prev.status.filter((value) => allowedStatuses.has(value)),
+        decision: prev.decision.filter((value) => allowedDecisions.has(value)),
+        who: prev.who.filter((value) => allowedWho.has(value)),
+      }
+      if (
+        next.citizenship.length === prev.citizenship.length &&
+        next.stage.length === prev.stage.length &&
+        next.vacancy.length === prev.vacancy.length &&
+        next.status.length === prev.status.length &&
+        next.decision.length === prev.decision.length &&
+        next.who.length === prev.who.length
+      ) {
+        return prev
+      }
+      return next
+    })
+  }, [citizenshipOptions, stageOptions, vacancyOptions, statusOptions, decisionOptions, whoOptions])
   const searchTooShort = globalSearch.trim().length > 0 && globalSearch.trim().length < 3
   const hasActiveFilters =
     globalSearch.trim().length > 0 ||
@@ -1037,12 +1089,7 @@ export default function DoProcesowaniaPage() {
                     <ColumnFilterMenu
                       title={t('app.handoff.table.columns.status')}
                       selected={filters.status}
-                      options={[
-                        { value: 'pending_review', label: t('app.handoff.status.pending') },
-                        { value: 'accepted', label: t('app.handoff.status.accepted') },
-                        { value: 'rejected', label: t('app.handoff.status.rejected') },
-                        { value: 'returned', label: t('app.handoff.status.returned') },
-                      ]}
+                      options={statusOptions}
                       onChange={(next) => updateFilter('status', next)}
                     />
                   </div>
@@ -1053,12 +1100,7 @@ export default function DoProcesowaniaPage() {
                     <ColumnFilterMenu
                       title={t('app.handoff.table.columns.decision')}
                       selected={filters.decision}
-                      options={[
-                        { value: 'employed', label: t('app.handoff.decisions.employed') },
-                        { value: 'rejected', label: t('app.handoff.decisions.rejected') },
-                        { value: 'declined', label: t('app.handoff.decisions.declined') },
-                        { value: 'returned', label: t('app.handoff.decisions.returned') },
-                      ]}
+                      options={decisionOptions}
                       onChange={(next) => updateFilter('decision', next)}
                     />
                   </div>

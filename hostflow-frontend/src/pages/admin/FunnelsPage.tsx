@@ -27,6 +27,7 @@ import {
   getFunnel,
   createFunnel,
   updateFunnel,
+  deleteFunnel,
   addFunnelStage,
   updateFunnelStage,
   deleteFunnelStage,
@@ -682,6 +683,13 @@ export default function FunnelsPage() {
         setEditingStage(null)
         refreshMetaStagesCache()
       } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 404) {
+          // Stage was removed concurrently (stale local id) — just resync UI.
+          await refreshSelectedFunnel()
+          setEditingStage(null)
+          return
+        }
         const fb = t('admin.funnels.errors.save_failed')
         if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
           setPageError(getFriendlyErrorInfo(err, fb, t))
@@ -708,6 +716,12 @@ export default function FunnelsPage() {
         await refreshSelectedFunnel()
         refreshMetaStagesCache()
       } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 404) {
+          // Already gone on backend; keep UI consistent and continue.
+          await refreshSelectedFunnel()
+          return
+        }
         const fb = t('admin.funnels.errors.save_failed')
         if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
           setPageError(getFriendlyErrorInfo(err, fb, t))
@@ -716,6 +730,36 @@ export default function FunnelsPage() {
     },
     [planLimitModal, selectedFunnel, refreshSelectedFunnel, t]
   )
+
+  const handleDeleteFunnel = useCallback(async () => {
+    if (!selectedFunnel) return
+    if (
+      !confirm(
+        t('admin.funnels.confirm_delete_funnel', {
+          values: { name: selectedFunnel.name },
+          defaultValue: 'Delete funnel "{name}"?',
+        })
+      )
+    ) {
+      return
+    }
+    try {
+      setSaving(true)
+      setPageError(null)
+      await deleteFunnel(selectedFunnel.id)
+      await loadFunnels()
+      refreshMetaStagesCache()
+    } catch (err: unknown) {
+      const fb = t('admin.funnels.errors.delete_funnel_failed', {
+        defaultValue: 'Could not delete funnel',
+      })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setPageError(getFriendlyErrorInfo(err, fb, t))
+      }
+    } finally {
+      setSaving(false)
+    }
+  }, [loadFunnels, planLimitModal, selectedFunnel, t])
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -731,16 +775,35 @@ export default function FunnelsPage() {
 
       try {
         setPageError(null)
+        // If local state contains stale stage ids, skip them before sending PATCH.
+        const existingIds = new Set((await getFunnel(selectedFunnel.id)).stages.map((s) => String(s.id)))
+        const staleStageIds: string[] = []
         for (let i = 0; i < reordered.length; i++) {
           const s = reordered[i]
-          await updateFunnelStage(selectedFunnel.id, s.id, {
-            code: s.code,
-            label: s.label,
-            system_stage: s.system_stage,
-            order: i,
-            is_terminal: s.is_terminal,
-            conversion_root_v1: s.conversion_root_v1 ?? null,
-          })
+          if (!existingIds.has(String(s.id))) {
+            staleStageIds.push(String(s.id))
+            continue
+          }
+          try {
+            await updateFunnelStage(selectedFunnel.id, s.id, {
+              code: s.code,
+              label: s.label,
+              system_stage: s.system_stage,
+              order: i,
+              is_terminal: s.is_terminal,
+              conversion_root_v1: s.conversion_root_v1 ?? null,
+            })
+          } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status
+            if (status === 404) {
+              staleStageIds.push(String(s.id))
+              continue
+            }
+            throw err
+          }
+        }
+        if (staleStageIds.length > 0) {
+          console.warn('[FunnelsPage] skipped stale stage ids during reorder', staleStageIds)
         }
         await refreshSelectedFunnel()
         refreshMetaStagesCache()
@@ -782,7 +845,14 @@ export default function FunnelsPage() {
     return (
       <div className="space-y-4">
         {errorBanner}
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+        <SettingsSubpageHeader
+          className="mb-2"
+          backLabel={t('admin.settings.subpage.back_all')}
+          kicker={t('admin.funnels.header_kicker')}
+          title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
+          subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
+        />
+        <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-4">
           <button
             type="button"
             onClick={() => setFunnelTab('candidate')}
@@ -806,13 +876,6 @@ export default function FunnelsPage() {
             {t('admin.funnels.tab_leads')}
           </button>
         </div>
-        <SettingsSubpageHeader
-          className="mb-2"
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('admin.funnels.header_kicker')}
-          title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
-          subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
-        />
         <div className="card p-8 text-center">
           <p className="text-slate-600 mb-4">
             {funnelTab === 'lead' ? t('admin.funnels.no_funnels_leads') : t('admin.funnels.no_funnels')}
@@ -840,30 +903,6 @@ export default function FunnelsPage() {
   return (
     <div className="space-y-4">
       {errorBanner}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-        <button
-          type="button"
-          onClick={() => setFunnelTab('candidate')}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            funnelTab === 'candidate'
-              ? 'bg-brand-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          {t('admin.funnels.tab_candidates')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setFunnelTab('lead')}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            funnelTab === 'lead'
-              ? 'bg-brand-600 text-white'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          {t('admin.funnels.tab_leads')}
-        </button>
-      </div>
       <SettingsSubpageHeader
         className="mb-2"
         backLabel={t('admin.settings.subpage.back_all')}
@@ -871,8 +910,34 @@ export default function FunnelsPage() {
         title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
         subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
       />
+      <div className="settings-toolbar">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFunnelTab('candidate')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              funnelTab === 'candidate'
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {t('admin.funnels.tab_candidates')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFunnelTab('lead')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              funnelTab === 'lead'
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {t('admin.funnels.tab_leads')}
+          </button>
+        </div>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="settings-toolbar">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">
             {t('admin.funnels.select_funnel')}
@@ -900,13 +965,36 @@ export default function FunnelsPage() {
         >
           + {t('admin.funnels.new_funnel')}
         </button>
+        {selectedFunnel && !selectedFunnel.is_default ? (
+          <button
+            type="button"
+            onClick={() => void handleDeleteFunnel()}
+            disabled={saving}
+            className="btn-danger text-sm mt-5"
+          >
+            {t('admin.funnels.delete_funnel', { defaultValue: 'Delete funnel' })}
+          </button>
+        ) : null}
       </div>
 
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">
-            {selectedFunnel?.name || ''} — {t('admin.funnels.stages')}
-          </h2>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {selectedFunnel?.name || ''} — {t('admin.funnels.stages')}
+            </h2>
+            {selectedFunnel ? (
+              <p className="mt-1 text-xs text-slate-500">
+                {selectedFunnel.is_default
+                  ? t('admin.funnels.default_funnel_locked', {
+                      defaultValue: 'Default funnel. Create another default funnel before deleting this one.',
+                    })
+                  : t('admin.funnels.delete_funnel_hint', {
+                      defaultValue: 'Only unused non-default funnels can be deleted.',
+                    })}
+              </p>
+            ) : null}
+          </div>
           {selectedFunnel && (
             <button
               type="button"
@@ -968,7 +1056,7 @@ export default function FunnelsPage() {
         )}
       </div>
 
-      <div className="card p-4">
+      <div className="settings-panel">
         <h2 className="text-sm font-semibold text-slate-900 mb-2">
           {t('admin.funnels.reference_stages')}
         </h2>

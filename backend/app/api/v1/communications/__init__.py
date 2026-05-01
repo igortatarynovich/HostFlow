@@ -203,6 +203,8 @@ from .schemas import (  # noqa: E402,F401
     WorkingHoursDayIn,
     WorkingHoursScheduleIn,
     WorkingHoursScheduleOut,
+    NotificationSettingsIn,
+    NotificationSettingsOut,
     CommunicationThreadOut,
     CommunicationMessageOut,
     CommunicationThreadListResponse,
@@ -301,6 +303,7 @@ from .routes import messages as _messages_routes  # noqa: E402
 from .routes import oauth as _oauth_routes  # noqa: E402
 from .routes import planner as _planner_routes  # noqa: E402
 from .routes import threads as _threads_routes  # noqa: E402
+from .routes import threads_next_action as _threads_next_action_routes  # noqa: E402
 from .routes import webhooks as _webhooks_routes  # noqa: E402
 
 # Re-export route handlers that other modules import as functions
@@ -364,6 +367,12 @@ router.include_router(_planner_routes.router)
 router.include_router(_oauth_routes.router)
 router.include_router(_accounts_routes.router)
 router.include_router(_threads_routes.router)
+# G-8 stage 2.3: per-thread "what to do next" CTA. Lives in its own
+# sub-router file (`routes/threads_next_action.py`). Registration order
+# vs `_threads_routes` does not matter for Starlette here — the next-action
+# path has more segments than `/threads/{thread_id}` so they cannot
+# alias each other — but we include it adjacent for code locality.
+router.include_router(_threads_next_action_routes.router)
 router.include_router(_messages_routes.router)
 router.include_router(_ingest_routes.router)
 router.include_router(_webhooks_routes.router)

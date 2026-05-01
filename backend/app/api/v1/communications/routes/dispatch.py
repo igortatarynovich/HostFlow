@@ -63,6 +63,7 @@ from .._helpers.dispatch import (
     _dispatch_telegram_message_via_bot_api,
     _dispatch_viber_message_via_bot_api,
     _dispatch_whatsapp_message_via_cloud_api,
+    _maybe_defer_outbound_for_working_hours,
     _mock_dispatch_outbound_message,
     _schedule_dispatch_retry,
 )
@@ -305,6 +306,28 @@ async def dispatch_queued_messages(
         if thread is None:
             thread = await _get_thread_or_404(db, tenant_id, str(msg.thread_id))
             thread_cache[str(thread.id)] = thread
+        # G-4.5 outbound working-hours gate. Bypassed on `simulate_failure`
+        # (tests don't want to be rescheduled) and when the tenant flag is
+        # off (default) — helper returns None in both cases without any
+        # model lookup beyond the short-circuit.
+        if not body.simulate_failure:
+            deferral_target = await _maybe_defer_outbound_for_working_hours(
+                db,
+                tenant=tenant,
+                thread=thread,
+                msg=msg,
+                now=now_ref,
+            )
+            if deferral_target is not None:
+                items.append(
+                    CommunicationDispatchResponse(
+                        dispatched=False,
+                        message=_message_out(msg),
+                        thread=_thread_out(thread),
+                        reason="deferred_outside_working_hours",
+                    )
+                )
+                continue
         attempted_count += 1
         attempt_before = _dispatch_attempt_count(msg)
         if thread.channel == "email" and not body.simulate_failure:

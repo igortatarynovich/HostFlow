@@ -428,7 +428,7 @@ async function runScenario({ page, scenario, businessType }) {
   // F11.6 mobile re-pass evidence (chat-first/thread-first layouts).
   try {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto(`${BASE_URL}/app/messages`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${BASE_URL}/app/inbox?channel=messages`, { waitUntil: 'domcontentloaded' })
     shots.push(await screenshot(page, `${scenario}-mobile-messages`))
     await page.goto(`${BASE_URL}/app/email`, { waitUntil: 'domcontentloaded' })
     shots.push(await screenshot(page, `${scenario}-mobile-email`))
@@ -513,4 +513,3 @@ main().catch((e) => {
   console.error(e)
   process.exit(1)
 })
-

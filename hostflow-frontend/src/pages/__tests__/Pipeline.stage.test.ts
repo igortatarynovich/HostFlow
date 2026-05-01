@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { sanitizeStagePath, TERMINAL_STAGE_CODES } from '../Pipeline'
+import { TERMINAL_STAGE_CODES } from '../../modules/pipeline/constants'
+import { sanitizeStagePath } from '../../modules/pipeline/utils'
 
 describe('Pipeline stage path helpers', () => {
   it('drops intermediate terminal stages when target differs', () => {

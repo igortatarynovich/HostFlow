@@ -183,6 +183,7 @@ _MODULE_DEFAULTS: Dict[str, bool] = {
     "leads": True,
     "services": True,
     "client_portal": True,
+    "hr": True,
 }
 
 _ROLE_MATRIX_ROLES: tuple[str, ...] = (
@@ -191,6 +192,8 @@ _ROLE_MATRIX_ROLES: tuple[str, ...] = (
     UserRole.recruiter.value,
     UserRole.client_manager.value,
     UserRole.client_processor.value,
+    UserRole.compliance_officer.value,
+    UserRole.hr_officer.value,
     UserRole.viewer.value,
 )
 
@@ -206,6 +209,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "leads": {"visible": True, "editable": True},
         "services": {"visible": True, "editable": True},
         "client_portal": {"visible": True, "editable": False},
+        "hr": {"visible": True, "editable": True},
     },
     UserRole.recruiter.value: {
         "candidates": {"visible": True, "editable": True},
@@ -215,6 +219,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "leads": {"visible": True, "editable": False},
         "services": {"visible": True, "editable": True},
         "client_portal": {"visible": False, "editable": False},
+        "hr": {"visible": False, "editable": False},
     },
     UserRole.client_manager.value: {
         "candidates": {"visible": True, "editable": True},
@@ -224,6 +229,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "leads": {"visible": False, "editable": False},
         "services": {"visible": False, "editable": False},
         "client_portal": {"visible": True, "editable": False},
+        "hr": {"visible": False, "editable": False},
     },
     UserRole.client_processor.value: {
         "candidates": {"visible": True, "editable": True},
@@ -233,6 +239,27 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "leads": {"visible": False, "editable": False},
         "services": {"visible": False, "editable": False},
         "client_portal": {"visible": True, "editable": False},
+        "hr": {"visible": False, "editable": False},
+    },
+    UserRole.compliance_officer.value: {
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": True, "editable": False},
+        "services": {"visible": True, "editable": True},
+        "client_portal": {"visible": False, "editable": False},
+        "hr": {"visible": False, "editable": False},
+    },
+    UserRole.hr_officer.value: {
+        "candidates": {"visible": False, "editable": False},
+        "companies": {"visible": False, "editable": False},
+        "vacancies": {"visible": False, "editable": False},
+        "documents": {"visible": False, "editable": False},
+        "leads": {"visible": False, "editable": False},
+        "services": {"visible": False, "editable": False},
+        "client_portal": {"visible": False, "editable": False},
+        "hr": {"visible": True, "editable": True},
     },
     UserRole.viewer.value: {
         "candidates": {"visible": True, "editable": False},
@@ -242,6 +269,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "leads": {"visible": False, "editable": False},
         "services": {"visible": False, "editable": False},
         "client_portal": {"visible": False, "editable": False},
+        "hr": {"visible": False, "editable": False},
     },
 }
 
@@ -249,6 +277,8 @@ _ALLOWED_SEAT_ROLES = {
     UserRole.administrator.value,
     UserRole.supervisor.value,
     UserRole.recruiter.value,
+    UserRole.compliance_officer.value,
+    UserRole.hr_officer.value,
     UserRole.client_manager.value,
     UserRole.viewer.value,
 }

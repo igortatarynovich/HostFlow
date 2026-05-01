@@ -17,6 +17,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.tenant import Tenant, TenantLicense
 
 _TRIAL_SIDE_EFFECT_GRACE = timedelta(days=3)
+BillingAction = Literal[
+    "side_effect_write",
+    "task_complete",
+    "candidate_close",
+    "data_export",
+    "billing_payment",
+]
+_PAST_DUE_ALLOWED_ACTIONS: frozenset[BillingAction] = frozenset(
+    {"task_complete", "candidate_close", "data_export", "billing_payment"}
+)
 
 
 def _subscription_payload(tenant: Tenant | None) -> dict[str, Any]:
@@ -129,6 +139,35 @@ def ensure_billing_allows_side_effects(
     )
 
 
+def ensure_billing_allows_action(
+    tenant: Tenant | None,
+    license_row: TenantLicense | None = None,
+    *,
+    action: BillingAction = "side_effect_write",
+) -> None:
+    """
+    Fine-grained allowlist for `past_due` (SSOT §2.16):
+    - complete current tasks
+    - close existing candidates
+    - export data
+    - pay
+    """
+    reason = billing_write_block_reason(tenant, license_row)
+    if reason is None:
+        return
+    if reason == "past_due" and action in _PAST_DUE_ALLOWED_ACTIONS:
+        return
+    code = "billing_trial_expired" if reason == "trial_expired" else "billing_past_due"
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": code,
+            "message": "billing_action_forbidden",
+            "action": action,
+        },
+    )
+
+
 async def ensure_billing_allows_side_effects_for_tenant_id(db: AsyncSession, tenant_id: str) -> None:
     tid = (tenant_id or "").strip()
     if not tid:
@@ -138,6 +177,19 @@ async def ensure_billing_allows_side_effects_for_tenant_id(db: AsyncSession, ten
         await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tid).limit(1))
     ).scalar_one_or_none()
     ensure_billing_allows_side_effects(tenant_row, lic_row)
+
+
+async def ensure_billing_allows_action_for_tenant_id(
+    db: AsyncSession, tenant_id: str, *, action: BillingAction = "side_effect_write"
+) -> None:
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return
+    tenant_row = await db.get(Tenant, tid)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tid).limit(1))
+    ).scalar_one_or_none()
+    ensure_billing_allows_action(tenant_row, lic_row, action=action)
 
 
 @dataclass(frozen=True)

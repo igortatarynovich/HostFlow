@@ -18,6 +18,7 @@ from backend.app.services.lead_forms_quota import (
     ensure_tenant_lead_form_active_count_allows_transition,
     normalize_and_validate_public_slug,
 )
+from backend.app.services.plan_feature_gates import count_tenant_lead_sources, ensure_lead_source_limit
 
 
 router = APIRouter(prefix="/lead-forms", tags=["settings-lead-forms"])
@@ -94,6 +95,8 @@ async def create_lead_form(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
+    current_sources = await count_tenant_lead_sources(db, tenant_id)
+    await ensure_lead_source_limit(db, tenant_id, current_count=current_sources, extra_sources=1)
     await ensure_tenant_lead_form_active_count_allows_transition(
         db,
         tenant_id,
@@ -160,6 +163,9 @@ async def patch_lead_form(
             )
             row.public_slug = norm
     will_active = was_active if payload.is_active is None else bool(payload.is_active)
+    if not was_active and will_active:
+        current_sources = await count_tenant_lead_sources(db, tenant_id)
+        await ensure_lead_source_limit(db, tenant_id, current_count=current_sources, extra_sources=1)
     await ensure_tenant_lead_form_active_count_allows_transition(
         db,
         tenant_id,

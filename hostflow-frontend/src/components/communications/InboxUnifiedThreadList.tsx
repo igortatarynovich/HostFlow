@@ -56,6 +56,16 @@ function formatHubTime(iso?: string | null): string {
   }
 }
 
+function formatMinutesDelta(totalMinutes: number, t: ReturnType<typeof useI18n>['t']): string {
+  const mins = Math.max(0, Math.floor(totalMinutes))
+  const days = Math.floor(mins / (60 * 24))
+  const hours = Math.floor((mins % (60 * 24)) / 60)
+  const minutes = mins % 60
+  if (days > 0) return t('app.communications_inbox_hub.sla_in_days_hours', { defaultValue: '{d}d {h}h', values: { d: days, h: hours } })
+  if (hours > 0) return t('app.communications_inbox_hub.sla_in_hours_minutes', { defaultValue: '{h}h {m}m', values: { h: hours, m: minutes } })
+  return t('app.communications_inbox_hub.sla_in_minutes', { defaultValue: '{m}m', values: { m: minutes } })
+}
+
 function threadTo(
   threadLinkPrefix: string,
   th: CommunicationThread,
@@ -89,6 +99,9 @@ type Props = {
   hideSectionHeading?: boolean
   /** Preserve channel/folder/q in thread links (unified inbox URL state). */
   listQuery?: InboxListQuery | null
+  selectedThreadIds?: string[]
+  onToggleThreadSelection?: (threadId: string, nextChecked: boolean) => void
+  onToggleAllVisibleSelection?: (threadIds: string[], nextChecked: boolean) => void
 }
 
 const FILTER_KEYS: InboxHubFilter[] = ['all', 'unread', 'unlinked', 'sla', 'in_work', 'later']
@@ -104,6 +117,9 @@ export default function InboxUnifiedThreadList({
   selectedThreadId,
   hideSectionHeading,
   listQuery,
+  selectedThreadIds,
+  onToggleThreadSelection,
+  onToggleAllVisibleSelection,
 }: Props) {
   const { t } = useI18n()
   const [hubSort, setHubSort] = useState<InboxHubSort>('activity')
@@ -156,6 +172,11 @@ export default function InboxUnifiedThreadList({
       return threadRecencyMs(b) - threadRecencyMs(a)
     })
   })()
+  const selectedSet = new Set((selectedThreadIds || []).map((x) => String(x)))
+  const selectableIds = unifiedThreads.map((th) => String(th.id))
+  const selectableCount = selectableIds.length
+  const selectedVisibleCount = selectableIds.filter((id) => selectedSet.has(id)).length
+  const allVisibleSelected = selectableCount > 0 && selectedVisibleCount === selectableCount
 
   return (
     <div>
@@ -184,7 +205,21 @@ export default function InboxUnifiedThreadList({
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
+          {onToggleAllVisibleSelection && selectableCount > 0 && (
+            <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                checked={allVisibleSelected}
+                onChange={(e) => onToggleAllVisibleSelection(selectableIds, e.target.checked)}
+              />
+              {t('app.communications_inbox_hub.bulk.select_visible', {
+                defaultValue: 'Select visible ({count})',
+                values: { count: selectableCount },
+              })}
+            </label>
+          )}
           <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
             {t('app.communications_inbox_hub.sort_label')}
           </span>
@@ -210,6 +245,22 @@ export default function InboxUnifiedThreadList({
             const channelBadge = inboxChannelBadgeLabel(th)
             const tier = threadDecisionTier(th)
             const waitH = threadHoursWaitingForReply(th)
+            const slaDueMs = parseMs(th.sla_due_at)
+            const hasSlaDeadline = slaDueMs > 0
+            const slaDeltaMinutes = hasSlaDeadline ? Math.round((slaDueMs - Date.now()) / 60000) : null
+            const isSlaOverdue = hasSlaDeadline && (slaDeltaMinutes ?? 0) < 0
+            const slaChipLabel =
+              hasSlaDeadline && slaDeltaMinutes !== null
+                ? isSlaOverdue
+                  ? t('app.communications_inbox_hub.sla_overdue_by', {
+                      defaultValue: 'SLA overdue {delta}',
+                      values: { delta: formatMinutesDelta(Math.abs(slaDeltaMinutes), t) },
+                    })
+                  : t('app.communications_inbox_hub.sla_due_in', {
+                      defaultValue: 'SLA in {delta}',
+                      values: { delta: formatMinutesDelta(slaDeltaMinutes, t) },
+                    })
+                : null
             const waitLine =
               threadNeedsOutboundReply(th) && waitH !== null
                 ? waitH < 1
@@ -222,12 +273,25 @@ export default function InboxUnifiedThreadList({
             const active = selectedThreadId === th.id
             return (
               <li key={th.id}>
-                <NavLink
-                  to={to}
+                <div
                   className={clsx(
-                    'flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50',
+                    'flex gap-2 px-3 py-3 transition-colors hover:bg-slate-50',
                     active && 'bg-brand-50/80 ring-1 ring-inset ring-brand-200',
                   )}
+                >
+                  {onToggleThreadSelection ? (
+                    <label className="mt-1 inline-flex shrink-0 items-center" title={t('app.communications_inbox_hub.bulk.select_one', { defaultValue: 'Select thread' })}>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                        checked={selectedSet.has(String(th.id))}
+                        onChange={(e) => onToggleThreadSelection(String(th.id), e.target.checked)}
+                      />
+                    </label>
+                  ) : null}
+                <NavLink
+                  to={to}
+                  className="flex min-w-0 flex-1 gap-3"
                 >
                   <div className="mt-0.5 shrink-0 text-slate-400">
                     {email ? <IconMail size={18} stroke={1.75} /> : <IconMessageCircle size={18} stroke={1.75} />}
@@ -255,9 +319,22 @@ export default function InboxUnifiedThreadList({
                       {unread > 0 && (
                         <span className="rounded-md bg-brand-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">{unread}</span>
                       )}
-                      {tier === 'sla_overdue' && (
-                        <span className="text-sm leading-none" title={t('app.communications.email.tier_sla_overdue', { defaultValue: 'SLA overdue' })}>
-                          🔴
+                      {slaChipLabel && (
+                        <span
+                          className={clsx(
+                            'rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+                            isSlaOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-900',
+                          )}
+                          title={
+                            th.sla_due_at
+                              ? t('app.communications_inbox_hub.sla_due_exact', {
+                                  defaultValue: 'SLA due: {when}',
+                                  values: { when: formatHubTime(th.sla_due_at) },
+                                })
+                              : undefined
+                          }
+                        >
+                          {slaChipLabel}
                         </span>
                       )}
                       {tier === 'needs_reply' && (
@@ -275,6 +352,7 @@ export default function InboxUnifiedThreadList({
                     </div>
                   </div>
                 </NavLink>
+                </div>
               </li>
             )
           })}
