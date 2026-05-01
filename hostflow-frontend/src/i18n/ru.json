@@ -4666,6 +4666,19 @@
         "empty_dialogs": "Связанных диалогов пока нет. Откройте Messages и привяжите кандидата в заголовке диалога."
       }
     },
+    "fleet": {
+      "operating_lines": {
+        "title": "Операционные линии",
+        "new_name": "Название линии",
+        "create": "Добавить линию",
+        "empty": "Пока нет операционных линий.",
+        "delete_confirm": "Удалить эту операционную линию?",
+        "edit_name": "Название",
+        "edit_status": "Статус",
+        "status_active": "активна",
+        "status_inactive": "неактивна"
+      }
+    },
     "candidates": {
       "debug": {
         "click_after_mousedown": "Debug: click AFTER mousedown",

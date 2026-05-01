@@ -4168,6 +4168,19 @@
         "empty_dialogs": "Brak powiązanych dialogów. Otwórz Messages i podłącz tego kandydata w nagłówku dialogu."
       }
     },
+    "fleet": {
+      "operating_lines": {
+        "title": "Linie operacyjne",
+        "new_name": "Nazwa linii",
+        "create": "Dodaj linię",
+        "empty": "Brak linii operacyjnych.",
+        "delete_confirm": "Usunąć tę linię operacyjną?",
+        "edit_name": "Nazwa",
+        "edit_status": "Status",
+        "status_active": "aktywna",
+        "status_inactive": "nieaktywna"
+      }
+    },
     "companies": {
       "detail": {
         "wayfinding_title": "Inne obszary CRM",

@@ -4666,6 +4666,19 @@
         "empty_dialogs": "No linked dialogs yet. Open Messages and link this candidate in dialog header."
       }
     },
+    "fleet": {
+      "operating_lines": {
+        "title": "Operating lines",
+        "new_name": "Line name",
+        "create": "Add line",
+        "empty": "No operating lines yet.",
+        "delete_confirm": "Delete this operating line?",
+        "edit_name": "Name",
+        "edit_status": "Status",
+        "status_active": "active",
+        "status_inactive": "inactive"
+      }
+    },
     "candidates": {
       "debug": {
         "click_after_mousedown": "Debug: click AFTER mousedown",

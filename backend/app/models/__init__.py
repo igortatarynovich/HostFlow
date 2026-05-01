@@ -233,6 +233,9 @@ MergeDocumentGenerationLog = _load_model_module(
     "merge_document_generation_log"
 ).MergeDocumentGenerationLog  # type: ignore[attr-defined]
 
+# Fleet (transport operations)
+FleetOperatingLine = _load_model_module("fleet_operating_line").FleetOperatingLine  # type: ignore[attr-defined]
+
 __all__ = [
     "Base",
     "Candidate",
@@ -292,6 +295,7 @@ __all__ = [
     "MagicLink",
     "MergeDocumentGenerationLog",
     "MergeDocumentTemplate",
+    "FleetOperatingLine",
     "Funnel",
     "FunnelStage",
     "Invoice",
