@@ -1,7 +1,7 @@
 """users.role enum: add compliance_officer (document / process specialist)
 
 Revision ID: 202604301300_compliance_officer
-Revises: 202604301200_fleet_rec_v2
+Revises: 202604190002_owner_fk_set_null
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "202604301300_compliance_officer"
-down_revision: Union[str, None] = "202604301200_fleet_rec_v2"
+down_revision: Union[str, None] = "202604190002_owner_fk_set_null"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

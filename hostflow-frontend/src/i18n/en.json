@@ -3525,6 +3525,7 @@
           "hint": "Top-line outcomes for the current slice. “SLA proxy” is 100% minus overdue-reminder pressure on the pipeline; “no reply” uses contact-attempt limits as a proxy when risk analytics is off.",
           "leads": "Candidates in period",
           "hired": "Employed",
+          "employment_pending": "On employment (paperwork)",
           "avg_days_employ": "Avg days (employed stages)",
           "no_reply_proxy": "% attempt limit (proxy)",
           "no_next_queue": "No-next queue / pipeline",

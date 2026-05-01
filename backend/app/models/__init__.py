@@ -215,9 +215,28 @@ PasswordResetToken = _load_model_module("password_reset_token").PasswordResetTok
 # Countries (ISO2 reference)
 Country = _load_model_module("country").Country  # type: ignore[attr-defined]
 
+# Candidate recruiter assignee audit (Phase 2.6.G-5)
+CandidateAssigneeHistory = _load_model_module("candidate_assignee_history").CandidateAssigneeHistory  # type: ignore[attr-defined]
+
+# Workforce HR (employee root + satellite profiles)
+WorkforceEmployee = _load_model_module("workforce_employee").WorkforceEmployee  # type: ignore[attr-defined]
+WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
+WorkforcePayrollProfile = _load_model_module("workforce_payroll_profile").WorkforcePayrollProfile  # type: ignore[attr-defined]
+WorkforceZusProfile = _load_model_module("workforce_zus_profile").WorkforceZusProfile  # type: ignore[attr-defined]
+WorkforceAbsence = _load_model_module("workforce_absence").WorkforceAbsence  # type: ignore[attr-defined]
+WorkforceLeaveRequest = _load_model_module("workforce_leave_request").WorkforceLeaveRequest  # type: ignore[attr-defined]
+WorkforceOnboardingTask = _load_model_module("workforce_onboarding_task").WorkforceOnboardingTask  # type: ignore[attr-defined]
+
+# Merge-document templates and generation logs
+MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
+MergeDocumentGenerationLog = _load_model_module(
+    "merge_document_generation_log"
+).MergeDocumentGenerationLog  # type: ignore[attr-defined]
+
 __all__ = [
     "Base",
     "Candidate",
+    "CandidateAssigneeHistory",
     "Document",
     "DocumentType",
     "DocumentCheck",
@@ -271,6 +290,8 @@ __all__ = [
     "UserNotification",
     "Stage",
     "MagicLink",
+    "MergeDocumentGenerationLog",
+    "MergeDocumentTemplate",
     "Funnel",
     "FunnelStage",
     "Invoice",
@@ -303,4 +324,11 @@ __all__ = [
     "RiskIntelTenantHourly",
     "RiskIntelEntityShadow",
     "Country",
+    "WorkforceAbsence",
+    "WorkforceEmployee",
+    "WorkforceEmployment",
+    "WorkforceLeaveRequest",
+    "WorkforceOnboardingTask",
+    "WorkforcePayrollProfile",
+    "WorkforceZusProfile",
 ]

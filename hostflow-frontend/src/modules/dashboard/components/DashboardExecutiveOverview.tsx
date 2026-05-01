@@ -73,9 +73,7 @@ export function DashboardExecutiveOverview({
           className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2.5 hover:border-brand-200"
         >
           <div className="text-[11px] text-slate-500">
-            {t('app.dashboard.analytics.executive.employment_pending', {
-              defaultValue: 'On employment (paperwork)',
-            })}
+            {t('app.dashboard.analytics.executive.employment_pending')}
           </div>
           <div className="text-xl font-semibold text-sky-800">{formatNumber(executiveKpis.employmentPending)}</div>
         </Link>

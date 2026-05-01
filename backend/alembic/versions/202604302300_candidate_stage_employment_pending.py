@@ -1,7 +1,7 @@
 """Candidate funnels: insert stage employment_pending immediately before employed.
 
 Revision ID: 202604302300_candidate_stage_employment_pending
-Revises: 202604302200_fleet_driver_workforce_employee
+Revises: 202604301600_merge_doc_tpl
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "202604302300_candidate_stage_employment_pending"
-down_revision: Union[str, None] = "202604302200_fleet_driver_workforce_employee"
+down_revision: Union[str, None] = "202604301600_merge_doc_tpl"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

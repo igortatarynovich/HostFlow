@@ -3027,6 +3027,7 @@
           "hint": "Najważniejsze wyniki dla bieżącego wycinka. „SLA proxy” to 100% minus obciążenie przeterminowanymi przypomnieniami; „brak odpowiedzi” to proxy z limitu prób kontaktu, gdy risk analytics jest wyłączone.",
           "leads": "Kandydaci w okresie",
           "hired": "Zatrudnieni",
+          "employment_pending": "W trakcie zatrudnienia (formalności)",
           "avg_days_employ": "Śr. dni (etapy zatrudnienia)",
           "no_reply_proxy": "% limit prób (proxy)",
           "no_next_queue": "Kolejka bez next / pipeline",
