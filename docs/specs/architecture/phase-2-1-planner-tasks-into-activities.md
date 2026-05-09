@@ -13,6 +13,12 @@ Linked artefacts:
 * ADR-012 (`./ADR-012-activity-notification-operating-layer.md`).
 * Phase 1.3 plan (`./phase-1-3-activity-layer-v1-migration-plan.md`).
 * Alembic 202607150004 (backfill) and 202607150005 (drop).
+* **Operational runbook** for the staging → prod gate (executable
+  step-by-step recipe with pass/fail criteria):
+  `../runbooks/phase-2-1-drop-runbook.md`.
+* **Phase 3 cleanup inventory** (locked targets list — code is
+  blocked on the physical drop landing on prod):
+  `./phase-3-cleanup-inventory.md`.
 
 This document captures the **operational notes** an operator needs to
 read before driving Phase 2.1 to completion. The full design /
