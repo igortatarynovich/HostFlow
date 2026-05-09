@@ -313,6 +313,125 @@ explicitly removed in Phase 3 cleanup.
 
 ---
 
+## Operational-gate evidence — dev (2026-05-09)
+
+Recorded after the recovery commit (`23cfd3e`) + startup-fix commit
+(`2a905eb`) that re-applied the Phase 2.1 backend work lost to a
+`git reset` and resolved the `sqlalchemy.exc.InvalidRequestError`
+double-registration of the `activities` table that the recovery had
+exposed. Captured against the local docker-compose dev DB; the same
+queries / commands are what staging and prod should run before
+opening `HOSTFLOW_PHASE_2_1_DROP_OK=1`.
+
+### Dev — section 2 (zero-writes audit)
+
+```text
+              tbl              |  rows   |          last_write
+-------------------------------+---------+-------------------------------
+ activities                    |    5865 | 2026-05-09 19:29:13.887323+00
+ activity_events               |    2451 | 2026-05-09 19:29:13.880096+00
+ candidate_tasks (LEGACY)      |       0 | (no rows, no writes)
+ communication_planner_events  |       0 | (no rows, no writes)
+ notifications                 | 3546699 | 2026-05-09 19:28:59.227338+00
+```
+
+`phase_2_1_backfill_audit` row (single):
+
+```json
+{ "candidate_tasks_total": 0, "planner_events_total": 50,
+  "candidate_tasks_inserted": 0, "planner_events_inserted": 50,
+  "missing_due_on": 0, "unparseable_due_on": 0,
+  "unresolved_related_entities": 41 }
+```
+
+Compat-view runtime guard is in place: `INSTEAD OF
+{INSERT,UPDATE,DELETE}` triggers `reject_writes_reminders` and
+`reject_writes_user_notifications` are present on `reminders` /
+`user_notifications` (verified via `information_schema.triggers`).
+Code-level audit (`rg "(db|session)\.add\(\s*(CommunicationPlannerEvent|CandidateTask)\b"`)
+returns zero hits in `backend/app/`; the only matches are the ORM
+class declarations themselves and one `tests/test_owner_fk_set_null.py`
+fixture (test code, not a runtime writer — folded into Phase 3
+cleanup `p3-orm-rip-*`).
+
+### Dev — section 4 (rollback drill, soft-gate path)
+
+Run inside the backend container:
+
+```bash
+docker compose exec -T backend alembic downgrade 202607150004_pti
+docker compose exec -T backend alembic upgrade head
+```
+
+Snapshots match across all three checkpoints:
+
+```text
+                       BEFORE       AFTER DOWNGRADE   AFTER UPGRADE
+head=                  005_dptt     004_pti           005_dptt
+activities_total=      5865         5865              5865
+activities_legacy=     50           50                50
+candidate_tasks_rows=  0            0                 0
+planner_events_rows=   0            0                 0
+audit_rows=            1            1                 1
+```
+
+The re-upgrade emits the soft-gate warning as designed:
+
+> `WARNI [phase_2_1] DROP revision is gated; tables left in place
+> (candidate_tasks_present=yes, planner_events_present=yes). Set
+> HOSTFLOW_PHASE_2_1_DROP_OK=1 to actually drop them after canary
+> completes.`
+
+This validates the soft-gate end-to-end: `alembic upgrade head` is
+non-destructive on every environment that has not opted into the
+gate, and the version-num round-trip preserves data and audit rows.
+
+### Dev — caveat for the prod-style 004 drill
+
+Downgrading **past** `202607150004_pti` (the backfill) is destructive
+on dev because `candidate_tasks` and `communication_planner_events`
+are empty here (post-backfill state) — `downgrade()` deletes the
+50 rows in `activities` carrying `metadata.legacy_source`, and a
+re-`upgrade` re-runs the backfill against now-empty source tables,
+inserting nothing. Net loss: 50 activities. The full
+`alembic downgrade 202607150003_cvla && alembic upgrade head`
+round-trip with row-count consistency belongs on a **prod-snapshot**
+environment where the legacy source tables still hold data and the
+re-upgrade can re-populate the activities rows. That drill is the
+gating evidence for `p21-rollback-drill` and is intentionally
+excluded from the dev-env recipe above.
+
+### Reproducible audit query (any environment)
+
+```sql
+SELECT 'activities' AS tbl, COUNT(*) AS rows, MAX(updated_at) AS last_write
+  FROM activities
+UNION ALL SELECT 'activity_events', COUNT(*), MAX(created_at) FROM activity_events
+UNION ALL SELECT 'notifications',   COUNT(*), MAX(created_at) FROM notifications
+UNION ALL SELECT 'candidate_tasks (LEGACY)',
+                 COUNT(*), MAX(updated_at) FROM candidate_tasks
+UNION ALL SELECT 'communication_planner_events (LEGACY)',
+                 COUNT(*), MAX(updated_at) FROM communication_planner_events
+ORDER BY tbl;
+
+SELECT metadata::jsonb ->> 'legacy_source' AS legacy_source, COUNT(*) AS rows
+  FROM activities
+ WHERE metadata::jsonb ->> 'legacy_source' IS NOT NULL
+ GROUP BY 1 ORDER BY 1;
+
+SELECT * FROM phase_2_1_backfill_audit ORDER BY created_at DESC LIMIT 5;
+```
+
+Acceptance for the audit on staging / prod: legacy `last_write` is
+strictly older than the Phase 2.1 route-removal deploy timestamp
+(2026-05-09); `phase_2_1_backfill_audit` has at least one row with
+`candidate_tasks_inserted == candidate_tasks_total` and
+`planner_events_inserted == planner_events_total`; row count of
+`activities WHERE legacy_source IS NOT NULL` equals
+`candidate_tasks_total + planner_events_total` from that audit row.
+
+---
+
 ## What "service rewire" means concretely (`p21-svc`)
 
 Files touched:
