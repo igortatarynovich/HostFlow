@@ -76,6 +76,8 @@ FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
 # История стадий
 CandidateStageHistory = _load_model_module("candidate_stage_history").CandidateStageHistory  # type: ignore[attr-defined]
 
+RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
+
 
 
 # Документы (новые модели из модуля documents)
@@ -115,6 +117,25 @@ _register_aliases("scan_session", _sys.modules[ScanSession.__module__])
 _register_aliases("scan_page", _sys.modules[ScanPage.__module__])
 _register_aliases("document_ruleset", _sys.modules[DocumentRulesetVersion.__module__])
 _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
+
+# Phase 1.3 / Phase 2.1 (ADR-012): canonical Activity / ActivityEvent /
+# Notification ORMs — these MUST be loaded through ``_load_model_module``
+# before any code can do ``from backend.app.models.activity import …``,
+# otherwise the legacy ``reminder.py`` / ``reminder_event.py`` /
+# ``user_notification.py`` re-export modules pull them in via a relative
+# ``from .activity import …`` that registers them under the
+# ``app.models.activity`` alias only, leaving ``backend.app.models.activity``
+# absent from ``sys.modules``. Any later import via the
+# ``backend.app.models.X`` path then re-executes the file under a second
+# module identity and SQLAlchemy raises "Table 'activities' is already
+# defined for this MetaData instance" (Docker reproduces this every
+# startup because the ``app/__init__.py`` aliasing layer wires
+# ``backend.app`` to ``app`` but does NOT wire each submodule).
+_activity_mod = _load_model_module("activity")
+Activity = _activity_mod.Activity  # type: ignore[attr-defined]
+ActivityStatus = _activity_mod.ActivityStatus  # type: ignore[attr-defined]
+ActivityEvent = _load_model_module("activity_event").ActivityEvent  # type: ignore[attr-defined]
+Notification = _load_model_module("notification").Notification  # type: ignore[attr-defined]
 
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
 ReminderEvent = _load_model_module("reminder_event").ReminderEvent  # type: ignore[attr-defined]
@@ -281,6 +302,7 @@ __all__ = [
     "MetaOAuthPending",
     "LeadImportJob",
     "LeadImportJobStatus",
+    "RecruitmentApplication",
     "CandidateDeleteRequest",
     "UserInvite",
     "UserAuditLog",
@@ -291,6 +313,10 @@ __all__ = [
     "TenantLink",
     "Company",
     "Vacancy",
+    "Activity",
+    "ActivityEvent",
+    "ActivityStatus",
+    "Notification",
     "Reminder",
     "ReminderEvent",
     "UserNotification",

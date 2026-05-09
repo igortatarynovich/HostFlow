@@ -27,7 +27,12 @@ from typing import Optional
 from sqlalchemy import and_, not_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.activity import Activity, ActivityStatus
+# Phase 2.1 (ADR-012, 2026-05-09): import ``Activity`` via the
+# ``backend.app.models.reminder`` alias module (``Reminder is Activity``
+# post-Phase-1.3) to avoid the duplicate-package-path footgun under
+# Docker — see ``models/user_notification.py`` docstring + the matching
+# comment in ``services/timeoff_cleanup.py``.
+from backend.app.models.reminder import Reminder as Activity, ReminderStatus as ActivityStatus
 from backend.app.models.lead import Lead
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.reminder_event import ReminderEvent

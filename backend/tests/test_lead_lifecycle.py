@@ -12,9 +12,16 @@ from sqlalchemy import select
 # planner-style rows = ``starts_at IS NOT NULL``. ``ReminderStatus``
 # constants are kept because their string values match what the
 # service layer enforces.
-from backend.app.models.activity import Activity, ActivityStatus
+# Phase 2.1 (ADR-012, 2026-05-09): use the ``backend.app.models.reminder``
+# alias module to fetch ``Activity`` (``Reminder is Activity`` post-
+# Phase-1.3) — going through ``backend.app.models.activity`` directly
+# triggers the duplicate-package-path footgun under Docker.
 from backend.app.models.lead import Lead
-from backend.app.models.reminder import ReminderStatus
+from backend.app.models.reminder import (
+    Reminder as Activity,
+    ReminderStatus,
+    ReminderStatus as ActivityStatus,
+)
 from backend.app.models.user_notification import UserNotification
 from backend.app.models.user import User
 from backend.app.services.lead_lifecycle import (

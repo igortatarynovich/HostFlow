@@ -31,7 +31,12 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.activity import Activity
+# Phase 2.1 (ADR-012, 2026-05-09): import ``Activity`` via the
+# ``backend.app.models.reminder`` alias (``Reminder is Activity``
+# post-Phase-1.3) to avoid the duplicate-package-path footgun under
+# Docker — see ``models/user_notification.py`` docstring + the matching
+# comment in ``services/timeoff_cleanup.py``.
+from backend.app.models.reminder import Reminder as Activity
 from backend.app.models.tenant import Tenant
 from backend.app.services.assignee_load_taxonomy import (
     LOAD_PRIORITY_MULT,

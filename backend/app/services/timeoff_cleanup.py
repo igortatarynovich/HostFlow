@@ -47,7 +47,17 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.activity import Activity, ActivityStatus
+# Phase 2.1 (ADR-012, 2026-05-09): we want the canonical ``Activity``
+# class, but importing it as ``backend.app.models.activity`` directly
+# trips the duplicate-package-path footgun under Docker (where both
+# ``app.models.activity`` and ``backend.app.models.activity`` resolve
+# to the same file but as two distinct ``sys.modules`` entries — see
+# ``models/user_notification.py`` docstring). Going through
+# ``backend.app.models.reminder`` is the safe loader path that the
+# rest of the service layer already uses (e.g. ``reminder_tasks``);
+# ``Reminder is Activity`` and ``ReminderStatus is ActivityStatus``
+# post-Phase-1.3, so the alias is a free identity rename.
+from backend.app.models.reminder import Reminder as Activity, ReminderStatus as ActivityStatus
 from backend.app.models.user import User
 
 

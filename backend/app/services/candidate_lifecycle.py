@@ -44,9 +44,19 @@ from sqlalchemy import and_, not_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
-from backend.app.models.activity import Activity, ActivityStatus
 from backend.app.models.candidate import Candidate
-from backend.app.models.reminder import Reminder, ReminderStatus
+# Phase 2.1 (ADR-012, 2026-05-09): import ``Activity`` via the
+# ``backend.app.models.reminder`` alias (``Reminder is Activity``
+# post-Phase-1.3) to avoid the duplicate-package-path footgun under
+# Docker — see ``models/user_notification.py`` docstring. We pull
+# ``Activity`` and ``ActivityStatus`` as local aliases here so the
+# rest of this module can keep using the canonical names.
+from backend.app.models.reminder import (
+    Reminder,
+    Reminder as Activity,
+    ReminderStatus,
+    ReminderStatus as ActivityStatus,
+)
 from backend.app.models.reminder_event import ReminderEvent
 from backend.app.models.user_notification import UserNotification
 

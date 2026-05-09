@@ -35,8 +35,15 @@ from sqlalchemy import select
 # rows. The legacy ``ReminderStatus`` constants stay because the
 # values themselves (``"pending"``, ``"done"``) match what the service
 # enforces.
-from backend.app.models.activity import Activity, ActivityStatus
-from backend.app.models.reminder import ReminderStatus
+# Phase 2.1 (ADR-012, 2026-05-09): use the ``backend.app.models.reminder``
+# alias module to fetch ``Activity`` (``Reminder is Activity`` post-
+# Phase-1.3) — going through ``backend.app.models.activity`` directly
+# triggers the duplicate-package-path footgun under Docker.
+from backend.app.models.reminder import (
+    Reminder as Activity,
+    ReminderStatus,
+    ReminderStatus as ActivityStatus,
+)
 from backend.app.models.user import User
 from backend.app.services.timeoff_cleanup import (
     cancel_assignee_schedule_during_timeoff,
