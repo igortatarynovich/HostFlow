@@ -27,8 +27,16 @@ from zoneinfo import ZoneInfo
 import pytest
 from sqlalchemy import select
 
-from backend.app.models.communication import CommunicationPlannerEvent
-from backend.app.models.reminder import Reminder, ReminderStatus
+# Phase 2.1 (ADR-012, 2026-05-09): the legacy ``Reminder`` /
+# ``CommunicationPlannerEvent`` writes are blocked by the
+# ``activity_layer_v1`` views; tests now seed directly through
+# ``Activity`` (the canonical ORM) — split between reminder-style
+# (``starts_at IS NULL``) and planner-style (``starts_at IS NOT NULL``)
+# rows. The legacy ``ReminderStatus`` constants stay because the
+# values themselves (``"pending"``, ``"done"``) match what the service
+# enforces.
+from backend.app.models.activity import Activity, ActivityStatus
+from backend.app.models.reminder import ReminderStatus
 from backend.app.models.user import User
 from backend.app.services.timeoff_cleanup import (
     cancel_assignee_schedule_during_timeoff,
@@ -94,19 +102,22 @@ async def _seed_reminder(
     user_id: str,
     candidate_id: str,
     due_at: datetime,
-    status: ReminderStatus = ReminderStatus.pending,
+    status: str = ReminderStatus.pending,
     title: str = "Call candidate",
-) -> Reminder:
-    rem = Reminder(
+) -> Activity:
+    """Seed a deadline-only (``starts_at IS NULL``) Activity row that
+    plays the role of a reminder under Phase 2.1."""
+    rem = Activity(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
         type="custom",
-        entity_type="candidate",
-        entity_id=candidate_id,
+        related_entity_type="candidate",
+        related_entity_id=candidate_id,
         owner_id=user_id,
-        assignee_id=user_id,
+        assigned_to_user_id=user_id,
         title=title,
         due_at=due_at,
+        starts_at=None,
         status=status,
         channel="internal",
     )
@@ -123,23 +134,29 @@ async def _seed_planner_event(
     user_id: str,
     start_at: datetime,
     end_at: datetime | None = None,
-    status: str = "planned",
+    status: str = ActivityStatus.planned,
     title: str = "Interview",
-) -> CommunicationPlannerEvent:
-    ev = CommunicationPlannerEvent(
+) -> Activity:
+    """Seed a time-bound (``starts_at IS NOT NULL``) Activity row that
+    plays the role of a planner event under Phase 2.1. The legacy
+    ``kind="meeting"`` semantics are preserved in
+    ``metadata.planner.kind``."""
+    rem_at = end_at or (start_at + timedelta(hours=1))
+    ev = Activity(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
+        type="meeting",
+        related_entity_type="user",
+        related_entity_id=user_id,
         title=title,
-        kind="meeting",
         status=status,
         priority="normal",
-        start_at=start_at,
-        end_at=end_at or (start_at + timedelta(hours=1)),
-        all_day=False,
+        starts_at=start_at,
+        due_at=rem_at,
         owner_id=user_id,
-        assignee_id=user_id,
+        assigned_to_user_id=user_id,
         source="manual",
-        payload={},
+        metadata_={"planner": {"kind": "meeting"}},
     )
     db.add(ev)
     await db.commit()
@@ -185,10 +202,10 @@ async def test_cancels_pending_reminders_inside_window(
     # inside the Mon-Fri window — they're equally legitimate cancels,
     # but inflate the count from this test's POV.
     assert counts["reminders_cancelled"] >= 1
-    refreshed = await db.scalar(select(Reminder).where(Reminder.id == rem.id))
+    refreshed = await db.scalar(select(Activity).where(Activity.id == rem.id))
     assert refreshed is not None
-    assert refreshed.status == ReminderStatus.done
-    payload = refreshed.payload or {}
+    assert refreshed.status == ActivityStatus.done
+    payload = refreshed.metadata_ or {}
     assert payload.get("_cancelled_reason") == "timeoff_approved"
     assert payload.get("_timeoff_request_id") == request_id
 
@@ -225,9 +242,9 @@ async def test_does_not_cancel_completed_reminders(
 
     # Per-row assertion — counts may be > 0 due to other tests seeding
     # pending reminders on the same future Monday for the same user.
-    refreshed = await db.scalar(select(Reminder).where(Reminder.id == rem.id))
+    refreshed = await db.scalar(select(Activity).where(Activity.id == rem.id))
     assert refreshed is not None
-    assert refreshed.status == ReminderStatus.done
+    assert refreshed.status == ActivityStatus.done
 
 
 async def test_does_not_cancel_reminder_outside_window(
@@ -255,7 +272,7 @@ async def test_does_not_cancel_reminder_outside_window(
 
     # Per-row assertion — what matters is the Saturday reminder
     # survived. Counts may be non-zero from sibling tests.
-    refreshed = await db.scalar(select(Reminder).where(Reminder.id == rem.id))
+    refreshed = await db.scalar(select(Activity).where(Activity.id == rem.id))
     assert refreshed is not None
     assert refreshed.status == ReminderStatus.pending
 
@@ -284,12 +301,10 @@ async def test_cancels_active_planner_events_inside_window(
     await db.commit()
 
     assert counts["planner_events_cancelled"] >= 1
-    refreshed = await db.scalar(
-        select(CommunicationPlannerEvent).where(CommunicationPlannerEvent.id == ev.id)
-    )
+    refreshed = await db.scalar(select(Activity).where(Activity.id == ev.id))
     assert refreshed is not None
-    assert refreshed.status == "cancelled"
-    payload = refreshed.payload or {}
+    assert refreshed.status == ActivityStatus.cancelled
+    payload = refreshed.metadata_ or {}
     assert payload.get("_cancelled_reason") == "timeoff_approved"
     assert payload.get("_timeoff_request_id") == "req-planner-1"
 
@@ -318,11 +333,9 @@ async def test_does_not_cancel_done_planner_events(db, tenant_id: str) -> None:
     )
     await db.commit()
 
-    refreshed = await db.scalar(
-        select(CommunicationPlannerEvent).where(CommunicationPlannerEvent.id == ev.id)
-    )
+    refreshed = await db.scalar(select(Activity).where(Activity.id == ev.id))
     assert refreshed is not None
-    assert refreshed.status == "done"
+    assert refreshed.status == ActivityStatus.done
 
 
 async def test_does_not_cancel_other_assignees_rows(
@@ -349,16 +362,17 @@ async def test_does_not_cancel_other_assignees_rows(
         db, tenant_id=tenant_id, user_id=user_a, candidate_id=candidate_id, due_at=inside_due
     )
     # Seed a reminder for user_b at the same time.
-    rem_b = Reminder(
+    rem_b = Activity(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
         type="custom",
-        entity_type="candidate",
-        entity_id=candidate_id,
+        related_entity_type="candidate",
+        related_entity_id=candidate_id,
         owner_id=user_b,
-        assignee_id=user_b,
+        assigned_to_user_id=user_b,
         title="B's reminder",
         due_at=inside_due,
+        starts_at=None,
         status=ReminderStatus.pending,
         channel="internal",
     )
@@ -380,10 +394,10 @@ async def test_does_not_cancel_other_assignees_rows(
     # Per-row assertion — what matters is the cross-user safety: A's
     # row was auto-completed, B's was not. Total counts may be > 1 due to
     # other tests' seeded reminders for user A.
-    a = await db.scalar(select(Reminder).where(Reminder.id == rem_a.id))
-    b = await db.scalar(select(Reminder).where(Reminder.id == rem_b.id))
+    a = await db.scalar(select(Activity).where(Activity.id == rem_a.id))
+    b = await db.scalar(select(Activity).where(Activity.id == rem_b.id))
     assert a is not None and b is not None
-    assert a.status == ReminderStatus.done
+    assert a.status == ActivityStatus.done
     assert b.status == ReminderStatus.pending, "B's reminder must NOT be auto-completed"
 
 

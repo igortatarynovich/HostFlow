@@ -6,15 +6,27 @@ When a candidate moves into a "completed pipeline" stage (`PIPELINE_COMPLETED_ST
 i.e. `rejected` / `declined` / `probation_ok` / `employed`) or gets soft-deleted, the
 operational signals tied to that candidate must be silenced:
 
-1. Pending `Reminder` rows for `entity_type='candidate', entity_id=<cand>`
-   are moved to `cancelled` (statuses `new|pending|sent|overdue` -> `cancelled`).
+1. Active deadline-only `Activity` rows (``starts_at IS NULL``) for
+   ``related_entity_type='candidate', related_entity_id=<cand>`` are moved
+   to ``cancelled`` (statuses ``new|pending|sent|overdue|planned|in_progress``
+   → ``cancelled``).
 2. Unread `UserNotification` rows for the same entity are marked read.
-3. Future (`start_at >= now`) `CommunicationPlannerEvent` rows linked to the
-   candidate (either via `linked_candidate_id` or `entity_type='candidate'`)
-   that are still `planned|in_progress` are moved to `cancelled`.
+3. Future (``starts_at >= now``) time-bound `Activity` rows
+   (``starts_at IS NOT NULL``) linked to the candidate that are still
+   ``planned|in_progress`` are moved to ``cancelled``. Linkage is detected
+   either via the canonical ``related_entity_*`` pair *or* via the legacy
+   ``metadata.planner.linked_candidate_id`` marker preserved by Phase 2.1
+   backfill (Alembic ``202607150004_pti``).
 4. A `ReminderEvent` row of type `auto_cancelled_due_to_candidate_stage`
    is logged for each cancelled reminder so the operator can see *why*
    it disappeared (G-10 explainability).
+
+Phase 2.1 (ADR-012, 2026-05-09): both halves now query the canonical
+``activities`` table (``Reminder is Activity`` after the ``activity_layer_v1``
+rename). The split between "reminder" and "planner" rows is on
+``Activity.starts_at IS NULL`` vs ``IS NOT NULL`` — see
+``docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md``
+§"What service rewire means concretely".
 
 The cleanup is idempotent and best-effort: failures are isolated and do not
 roll back the candidate stage transition itself. The caller is responsible
@@ -32,8 +44,8 @@ from sqlalchemy import and_, not_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.models.activity import Activity, ActivityStatus
 from backend.app.models.candidate import Candidate
-from backend.app.models.communication import CommunicationPlannerEvent
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.reminder_event import ReminderEvent
 from backend.app.models.user_notification import UserNotification
@@ -45,14 +57,23 @@ logger = logging.getLogger(__name__)
 LIFECYCLE_TERMINATED_STAGE_CODES = PIPELINE_COMPLETED_STAGE_CODES
 
 
+# "Active" reminder/activity statuses — closed Activity enum
+# (planned / in_progress) plus the legacy transient values that the
+# ``activity_layer_v1`` migration collapses to ``planned`` on read but
+# may still exist on rows that were not yet touched.
 _ACTIVE_REMINDER_STATUSES: tuple[str, ...] = (
     ReminderStatus.new,
     ReminderStatus.pending,
     ReminderStatus.sent,
     ReminderStatus.overdue,
+    ActivityStatus.planned,
+    ActivityStatus.in_progress,
 )
 
-_ACTIVE_PLANNER_STATUSES: tuple[str, ...] = ("planned", "in_progress")
+_ACTIVE_PLANNER_STATUSES: tuple[str, ...] = (
+    ActivityStatus.planned,
+    ActivityStatus.in_progress,
+)
 
 
 def is_terminal_stage(stage_code: Optional[str]) -> bool:
@@ -191,12 +212,16 @@ async def _cancel_candidate_reminders(
     new_stage: Optional[str],
     reason: str,
 ) -> int:
+    # Phase 2.1 (ADR-012, 2026-05-09): scoped to deadline-only rows
+    # (``starts_at IS NULL``) so it doesn't double-process the
+    # planner-style rows handled by ``_cancel_candidate_planner_events``.
     rows = await db.execute(
-        select(Reminder).where(
-            Reminder.tenant_id == tenant_id,
-            Reminder.entity_type == "candidate",
-            Reminder.entity_id == candidate_id,
-            Reminder.status.in_(_ACTIVE_REMINDER_STATUSES),
+        select(Activity).where(
+            Activity.tenant_id == tenant_id,
+            Activity.related_entity_type == "candidate",
+            Activity.related_entity_id == candidate_id,
+            Activity.status.in_(_ACTIVE_REMINDER_STATUSES),
+            Activity.starts_at.is_(None),
         )
     )
     reminders = list(rows.scalars().all())
@@ -206,7 +231,7 @@ async def _cancel_candidate_reminders(
     cancelled = 0
     for reminder in reminders:
         previous_status = str(reminder.status)
-        reminder.status = ReminderStatus.done
+        reminder.status = ActivityStatus.done
         reminder.completed_at = now
         # Best-effort audit row so /app/tasks "explainability" can show why this disappeared.
         db.add(
@@ -260,24 +285,38 @@ async def _cancel_candidate_planner_events(
     candidate_id: str,
     now: datetime,
 ) -> int:
-    """Cancel future planner events linked to this candidate.
+    """Cancel future time-bound (planner-style) activities linked to this candidate.
 
-    A planner event can be linked either via the dedicated `linked_candidate_id`
-    column (preferred, set by the calendar UI) or via the generic
-    `entity_type='candidate', entity_id=<cand>` pair (set by automation).
+    A planner-source activity can be linked to a candidate either via:
+      * the canonical ``related_entity_type='candidate', related_entity_id=<cand>``
+        pair (set by the calendar UI / automation since Phase 1.3);
+      * or via the legacy ``metadata.planner.linked_candidate_id`` marker
+        preserved by Phase 2.1 backfill (Alembic ``202607150004_pti``) for
+        rows whose original ``communication_planner_events.linked_candidate_id``
+        differed from ``entity_id``.
 
-    We only cancel events that are *still planned/in_progress* AND start in the future.
-    Past events are kept as historical record.
+    Phase 2.1 (ADR-012, 2026-05-09): scoped to ``Activity.starts_at IS NOT NULL``
+    (time-bound) and ``starts_at >= now`` so it doesn't double-process the
+    deadline-only rows handled by ``_cancel_candidate_reminders``. Past
+    events are kept as historical record.
     """
     rows = await db.execute(
-        select(CommunicationPlannerEvent).where(
-            CommunicationPlannerEvent.tenant_id == tenant_id,
-            CommunicationPlannerEvent.status.in_(_ACTIVE_PLANNER_STATUSES),
-            CommunicationPlannerEvent.start_at >= now,
+        select(Activity).where(
+            Activity.tenant_id == tenant_id,
+            Activity.status.in_(_ACTIVE_PLANNER_STATUSES),
+            Activity.starts_at.is_not(None),
+            Activity.starts_at >= now,
             or_(
-                CommunicationPlannerEvent.linked_candidate_id == candidate_id,
-                (CommunicationPlannerEvent.entity_type == "candidate")
-                & (CommunicationPlannerEvent.entity_id == candidate_id),
+                # Canonical linkage.
+                (Activity.related_entity_type == "candidate")
+                & (Activity.related_entity_id == candidate_id),
+                # Legacy ``linked_candidate_id`` preserved by backfill in
+                # ``metadata.planner.linked_candidate_id``. The JSON path
+                # is portable across PG (JSON ``->>``) and SQLite (TEXT
+                # JSON1) since both support the chained ``->>`` operator
+                # via SQLAlchemy's ``Activity.metadata_["planner"]["linked_candidate_id"]``.
+                Activity.metadata_["planner"]["linked_candidate_id"].as_string()
+                == candidate_id,
             ),
         )
     )
@@ -287,14 +326,14 @@ async def _cancel_candidate_planner_events(
 
     cancelled = 0
     for event in events:
-        event.status = "cancelled"
-        event.updated_at = now
-        meta = dict(event.payload) if isinstance(event.payload, dict) else {}
+        event.status = ActivityStatus.cancelled
+        event.cancelled_at = now
+        meta = dict(event.metadata_) if isinstance(event.metadata_, dict) else {}
         meta["auto_cancelled"] = {
             "reason": "candidate_lifecycle_terminal",
             "at": now.isoformat(),
         }
-        event.payload = meta
+        event.metadata_ = meta
         cancelled += 1
     return cancelled
 
@@ -331,8 +370,9 @@ def exclude_completed_candidate_entities_clause(
 ):
     """Build a SQLAlchemy WHERE clause that drops rows tied to silenced candidates.
 
-    Use with any table that carries (entity_type, entity_id) columns
-    (Reminder / UserNotification / CommunicationPlannerEvent). Rows that are
+    Use with any table that carries ``(entity_type, entity_id)`` columns
+    (``UserNotification``, or the legacy ``Reminder`` / ``CommunicationPlannerEvent``
+    aliases that now resolve to ``activities`` post-Phase-2.1). Rows that are
     not candidate-related pass through unchanged.
 
     Returns a clause suitable for `stmt = stmt.where(<clause>)`.

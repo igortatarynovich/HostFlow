@@ -9,7 +9,10 @@ so URL paths and the public OpenAPI schema are unchanged.
 Phase 1 god-module split, step 3/N. Topics extracted so far:
 
 * ``audit``    — allocator preview / audit + commands audit endpoints.
-* ``planner``  — planner events, working-hours, time-off requests.
+* ``planner``  — working-hours, time-off requests, notification settings.
+                 Phase 2.1 (ADR-012, 2026-05-09): legacy planner-event
+                 routes were removed; canonical task / planner CRUD is
+                 ``/api/v1/activities``.
 * ``oauth``    — channel-account OAuth start / complete / refresh +
                  sync-cursor get / patch.
 

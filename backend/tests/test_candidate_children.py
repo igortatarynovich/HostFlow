@@ -1,4 +1,6 @@
 # tests/test_candidate_children.py
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from httpx import AsyncClient
 
@@ -168,52 +170,84 @@ async def test_visas_crud(
     assert r.status_code == 204, r.text
 
 
-# ---------------- TASKS ----------------
+# ---------------- TASKS (candidate-linked Activity rows) ----------------
+#
+# Phase 2.1 (ADR-012, 2026-05-09): the legacy
+# ``/api/v1/candidates/{id}/tasks`` endpoint is removed. Candidate-linked
+# tasks are now ``Activity`` rows of ``type="task"`` with
+# ``entity_type="candidate", entity_id=<candidate>`` — see
+# ``docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md``.
+# This test was rewritten on top of ``/api/v1/activities`` to keep the
+# CRUD coverage in the new shape (the legacy endpoint test was deleted
+# as superseded).
 
 
 @pytest.mark.anyio
 async def test_tasks_crud(
     client: AsyncClient, candidate_id, manager_headers, viewer_headers
 ):
-    # create
-    payload = {
+    due_at = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+
+    create_payload = {
         "title": "Позвонить кандидату",
-        "due_date": "2025-08-20",
+        "type": "task",
+        "entity_type": "candidate",
+        "entity_id": candidate_id,
+        "due_at": due_at,
         "priority": "high",
-        "assigned_to": "ManagerName",
     }
     r = await client.post(
-        f"/api/v1/candidates/{candidate_id}/tasks",
+        "/api/v1/activities",
         headers=manager_headers,
-        json=payload,
+        json=create_payload,
     )
     assert r.status_code == 201, r.text
     task = r.json()
     assert task["title"] == "Позвонить кандидату"
     assert task["priority"] == "high"
-    assert task["completed"] is False
+    assert task["type"] == "task"
+    assert task["entity_type"] == "candidate"
+    assert str(task["entity_id"]) == str(candidate_id)
+    # Phase 2.1: ``planned`` is the canonical create status
+    # (``ActivityStatus.planned``); legacy code paths still emit the
+    # transient ``pending`` value which the ``activity_layer_v1``
+    # migration collapses to ``planned`` on read.
+    assert task["status"] in {"planned", "pending"}
+    assert task["completed_at"] is None
 
-    # list
+    # List with ``manager_headers`` (the creator) so default
+    # ``assignee_scope=mine`` returns the row we just created. The
+    # ``viewer_headers`` role doesn't see other people's activities by
+    # default — that's enforced by ``resolve_assignee_for_reminder_list``
+    # — and we don't want to assert role policy here, only round-trip
+    # CRUD on ``/api/v1/activities``.
     r = await client.get(
-        f"/api/v1/candidates/{candidate_id}/tasks", headers=viewer_headers
+        "/api/v1/activities",
+        headers=manager_headers,
+        params={
+            "entity_type": "candidate",
+            "entity_id": candidate_id,
+            "type_filter": ["task"],
+        },
     )
     assert r.status_code == 200, r.text
-    items = r.json()
-    assert any(x["id"] == task["id"] for x in items)
+    items = r.json().get("items") or []
+    assert any(str(x["id"]) == str(task["id"]) for x in items)
 
-    # patch
     r = await client.patch(
-        f"/api/v1/candidates/{candidate_id}/tasks/{task['id']}",
+        f"/api/v1/activities/{task['id']}",
         headers=manager_headers,
-        json={"completed": True, "description": "созвон в 15:00"},
+        json={"description": "созвон в 15:00"},
     )
     assert r.status_code == 200, r.text
     patched = r.json()
-    assert patched["completed"] is True
     assert patched["description"] == "созвон в 15:00"
 
-    # delete
-    r = await client.delete(
-        f"/api/v1/candidates/{candidate_id}/tasks/{task['id']}", headers=manager_headers
+    r = await client.post(
+        f"/api/v1/activities/{task['id']}/complete",
+        headers=manager_headers,
     )
-    assert r.status_code == 204, r.text
+    assert r.status_code == 200, r.text
+    completed = r.json()
+    assert completed["status"] == "done"
+    assert completed["completed_at"] is not None

@@ -113,7 +113,8 @@ try:
     if not _DOCUMENTS_DISABLED:
         from backend.app.api.v1.candidate_permits import router as candidate_permits_router
         from backend.app.api.v1.candidate_visas import router as candidate_visas_router
-        from backend.app.api.v1.candidate_tasks import router as candidate_tasks_router
+        # Phase 2.1 (ADR-012): legacy /api/v1/candidates/{id}/tasks removed.
+        # Use /api/v1/activities (canonical) — see ADR-012 §6 + canon §7.2.
     from backend.app.api.v1.candidate_employments import router as candidate_employments_router
     from backend.app.api.v1.stages import router as stages_router
     from backend.app.api.v1.tenants.router import router as tenants_router
@@ -193,7 +194,8 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     if not _DOCUMENTS_DISABLED:
         from .api.v1.candidate_permits import router as candidate_permits_router  # type: ignore[no-redef]
         from .api.v1.candidate_visas import router as candidate_visas_router  # type: ignore[no-redef]
-        from .api.v1.candidate_tasks import router as candidate_tasks_router  # type: ignore[no-redef]
+        # Phase 2.1 (ADR-012): legacy /api/v1/candidates/{id}/tasks removed.
+        # Use /api/v1/activities (canonical) — see ADR-012 §6 + canon §7.2.
     from .api.v1.candidate_employments import router as candidate_employments_router  # type: ignore[no-redef]
     from .api.v1.stages import router as stages_router  # type: ignore[no-redef]
     from .api.v1.tenants.router import router as tenants_router  # type: ignore[no-redef]
@@ -839,7 +841,9 @@ if not _DOCUMENTS_DISABLED:
 if not _DOCUMENTS_DISABLED:
     app.include_router(candidate_permits_router, prefix="/api/v1", tags=["candidate-permits"])
     app.include_router(candidate_visas_router, prefix="/api/v1", tags=["candidate-visas"])
-    app.include_router(candidate_tasks_router, prefix="/api/v1", tags=["candidate-tasks"])
+    # Phase 2.1 (ADR-012): legacy candidate-tasks router was mounted here.
+    # The HTTP surface /api/v1/candidates/{id}/tasks is gone; canonical
+    # task CRUD is /api/v1/activities (mounted above).
 app.include_router(candidate_delete_router.router)
 
 # Mount root static files LAST to avoid intercepting /uploads requests

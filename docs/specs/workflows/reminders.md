@@ -1,6 +1,8 @@
 
 # Reminders — Workflow Specification
 
+> **STATUS: SUPERSEDED** by [`activities.md`](activities.md) (canon workflow) and [`../architecture/activity-notification-operating-layer.md`](../architecture/activity-notification-operating-layer.md) (canon model). After ADR-012 / Phase 2.1 (2026-05-09) `Reminder` is no longer a separate domain concept — it's an alias for `Activity` (см. ADR-012 §D3). `candidate_tasks` и `communication_planner_events` поглощены той же `activities`-таблицей. Сохранено как археология: фактическая логика SLA / каналов / эскалаций живёт в [`activities-sla-matrix.md`](activities-sla-matrix.md), а CRUD — на `/api/v1/activities`. **Не использовать как источник истины** для новых фич; обновляйте canon-документы.
+
 Этот документ описывает работу подсистемы напоминаний HostFlow. Она отвечает за создание, хранение, обновление и доставку уведомлений пользователям о событиях, сроках документов, задачах и других бизнес-событиях.
 
 ---

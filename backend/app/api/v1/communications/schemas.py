@@ -74,10 +74,10 @@ __all__ = [
     "CommunicationEmailWorkerPollResponse",
     "CommunicationSchedulerStatusOut",
     "CommunicationSchedulerRunNowResponse",
-    "CommunicationPlannerEventOut",
-    "CommunicationPlannerEventListResponse",
-    "CommunicationPlannerEventCreate",
-    "CommunicationPlannerEventPatch",
+    # Phase 2.1 (ADR-012, 2026-05-09): CommunicationPlannerEvent* schemas
+    # removed together with the legacy planner-event HTTP routes. The
+    # canonical task / planner-row schemas live in
+    # ``backend/app/api/v1/reminders_v2.py`` and ``activities_v1.py``.
     "TimeOffRequestOut",
     "TimeOffRequestListResponse",
     "TimeOffRequestCreate",
@@ -676,87 +676,15 @@ class CommunicationSchedulerRunNowResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Planner events + time-off requests (calendar/availability).
+# Time-off requests (calendar/availability).
+#
+# Phase 2.1 (ADR-012, 2026-05-09): the legacy planner-event schemas
+# (``CommunicationPlannerEventOut``, ``CommunicationPlannerEventCreate``,
+# ``CommunicationPlannerEventPatch``, ``CommunicationPlannerEventListResponse``)
+# were removed together with the corresponding HTTP routes. Activity
+# create / update / list contracts live in
+# ``backend/app/api/v1/reminders_v2.py`` and ``activities_v1.py``.
 # ---------------------------------------------------------------------------
-
-
-class CommunicationPlannerEventOut(BaseModel):
-    id: str
-    tenant_id: str
-    title: str
-    description: str | None = None
-    kind: str
-    status: str
-    priority: str
-    start_at: datetime
-    end_at: datetime | None = None
-    all_day: bool
-    owner_id: str | None = None
-    assignee_id: str | None = None
-    entity_type: str | None = None
-    entity_id: str | None = None
-    linked_candidate_id: str | None = None
-    linked_company_id: str | None = None
-    source: str
-    payload: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime
-    updated_at: datetime
-
-
-class CommunicationPlannerEventListResponse(BaseModel):
-    items: List[CommunicationPlannerEventOut]
-    total: int
-
-
-class CommunicationPlannerEventCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
-    kind: str = Field(default="task", max_length=32)
-    status: str = Field(default="planned", max_length=32)
-    priority: str = Field(default="normal", max_length=16)
-    start_at: datetime
-    end_at: datetime | None = None
-    all_day: bool = False
-    assignee_id: str | None = Field(default=None, max_length=36)
-    entity_type: str | None = Field(default=None, max_length=64)
-    entity_id: str | None = Field(default=None, max_length=120)
-    linked_candidate_id: str | None = Field(default=None, max_length=36)
-    linked_company_id: str | None = Field(default=None, max_length=36)
-    source: str = Field(default="manual", max_length=32)
-    payload: Dict[str, Any] = Field(default_factory=dict)
-    # G-4 stage 3: opt-out of working-hours validation. Default False
-    # means "respect the assignee's working_hours_v1 schedule" (when
-    # the tenant has working-hours validation enabled). Pass True to
-    # explicitly schedule outside hours (after-hours interview, weekend
-    # shift cover, etc.). The flag is consumed by the route handler
-    # and never persisted on the row.
-    allow_outside_hours: bool = False
-    # Team-state guard: by default disallow assignment to managers marked
-    # unavailable in communications.managerQueue (offline/break/meeting/busy).
-    allow_unavailable_assignee: bool = False
-
-
-class CommunicationPlannerEventPatch(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
-    kind: str | None = Field(default=None, max_length=32)
-    status: str | None = Field(default=None, max_length=32)
-    priority: str | None = Field(default=None, max_length=16)
-    start_at: datetime | None = None
-    end_at: datetime | None = None
-    all_day: bool | None = None
-    assignee_id: str | None = Field(default=None, max_length=36)
-    entity_type: str | None = Field(default=None, max_length=64)
-    entity_id: str | None = Field(default=None, max_length=120)
-    linked_candidate_id: str | None = Field(default=None, max_length=36)
-    linked_company_id: str | None = Field(default=None, max_length=36)
-    payload: Dict[str, Any] | None = None
-    # G-4 stage 3: same semantics as on Create. Required when PATCHing
-    # `start_at`/`end_at` to a value outside the assignee's hours;
-    # ignored on patches that don't move the time window.
-    allow_outside_hours: bool = False
-    # Same semantics as on Create: explicit override for unavailable assignee.
-    allow_unavailable_assignee: bool = False
 
 
 class TimeOffRequestOut(BaseModel):

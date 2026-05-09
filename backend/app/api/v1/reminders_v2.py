@@ -240,6 +240,21 @@ class ReminderUpdateRequest(BaseModel):
     message: Optional[str] = None
     allow_unavailable_assignee: bool = False
 
+    # ----- Phase 2.1 (ADR-012) transitional fields -----
+    # The FE shim in `hostflow-frontend/src/api/communications.ts` translates
+    # legacy `patchCommunicationPlannerEvent({ status, kind, linked_*_id,
+    # payload })` into `PATCH /activities/{id}` and needs these fields to
+    # land on `Activity`. Phase 3 cleanup MUST remove them and the matching
+    # branches in `services/reminder_tasks.update_reminder` (especially the
+    # wholesale `payload` replace) once the shim is gone — see
+    # `docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md`
+    # §"Transitional backend addition".
+    status: Optional[str] = None
+    type: Optional[str] = None
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    payload: Optional[Dict[str, Any]] = None
+
 
 class SnoozeRequest(BaseModel):
     minutes: Optional[int] = None

@@ -4,6 +4,20 @@ When ``respectAvailability`` is on, we can pick the fallback using the same cale
 day as the event (``load_context['anchor']``): sum **non-equivalent** work items
 (planner kinds + active reminders) with tunable weights, then choose the manager with
 the lowest score (ties: earlier in ``managerQueue.items``).
+
+Phase 2.1 (ADR-012, 2026-05-09): both halves of the load query now read from
+the canonical ``activities`` table.
+
+* Time-bound (planner-style) rows are ``Activity.starts_at IS NOT NULL``,
+  scored on the ``[day_start, day_end)`` window matched against
+  ``starts_at``. The original planner ``kind`` survives in
+  ``Activity.metadata_['planner']['kind']`` (preserved by the
+  ``communication_planner_events`` → ``activities`` backfill in Alembic
+  ``202607150004_pti``); we fall back to ``Activity.type`` for natively
+  created activities.
+* Deadline-only (reminder-style) rows are ``Activity.starts_at IS NULL``,
+  scored on the same window matched against ``due_at``. The reminder
+  ``type`` is just ``Activity.type``.
 """
 
 from __future__ import annotations
@@ -17,8 +31,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.communication import CommunicationPlannerEvent
-from backend.app.models.reminder import Reminder
+from backend.app.models.activity import Activity
 from backend.app.models.tenant import Tenant
 from backend.app.services.assignee_load_taxonomy import (
     LOAD_PRIORITY_MULT,
@@ -184,33 +197,66 @@ async def compute_managers_weighted_day_load(
         return {}
     loads: dict[str, float] = {i: 0.0 for i in ids}
     tid = str(tenant_id)
+
+    # Time-bound (planner-style) activities — ``starts_at IS NOT NULL``.
+    # Phase 2.1: ``kind`` lives in ``metadata.planner.kind`` for rows
+    # backfilled from ``communication_planner_events``; natively created
+    # activities just expose ``Activity.type``. We pull both and let the
+    # Python side prefer the planner kind to keep weights identical to
+    # pre-Phase-2.1 behaviour. ``metadata.planner.kind`` lookup is
+    # transitional and removed in Phase 3 once UI/automation consistently
+    # writes the planner taxonomy into ``Activity.type`` directly
+    # (see todo ``p3-aliases-cleanup``).
     pl_rows = (
         await db.execute(
-            select(CommunicationPlannerEvent.assignee_id, CommunicationPlannerEvent.kind, CommunicationPlannerEvent.priority, CommunicationPlannerEvent.status).where(
-                CommunicationPlannerEvent.tenant_id == tid,
-                CommunicationPlannerEvent.assignee_id.isnot(None),
-                CommunicationPlannerEvent.assignee_id.in_(ids),
-                CommunicationPlannerEvent.start_at >= day_start,
-                CommunicationPlannerEvent.start_at < day_end,
+            select(
+                Activity.assigned_to_user_id,
+                Activity.type,
+                Activity.priority,
+                Activity.status,
+                Activity.metadata_,
+            ).where(
+                Activity.tenant_id == tid,
+                Activity.starts_at.is_not(None),
+                Activity.assigned_to_user_id.isnot(None),
+                Activity.assigned_to_user_id.in_(ids),
+                Activity.starts_at >= day_start,
+                Activity.starts_at < day_end,
             )
         )
     ).all()
-    for aid, kind, pri, st in pl_rows:
+    for aid, atype, pri, st, meta in pl_rows:
         if not aid:
             continue
+        kind: str | None = None
+        if isinstance(meta, dict):
+            planner_meta = meta.get("planner")
+            if isinstance(planner_meta, dict):
+                raw_kind = planner_meta.get("kind")
+                if isinstance(raw_kind, str) and raw_kind.strip():
+                    kind = raw_kind.strip()
+        if not kind:
+            kind = str(atype or "task")
         key = str(aid)
         loads[key] = loads.get(key, 0.0) + planner_event_load_weight(
-            kind=str(kind or "task"), priority=str(pri or "normal"), status=str(st or "planned")
+            kind=kind, priority=str(pri or "normal"), status=str(st or "planned")
         )
 
+    # Deadline-only (reminder-style) activities — ``starts_at IS NULL``.
     r_rows = (
         await db.execute(
-            select(Reminder.assignee_id, Reminder.type, Reminder.priority, Reminder.status).where(
-                Reminder.tenant_id == tid,
-                Reminder.assignee_id.isnot(None),
-                Reminder.assignee_id.in_(ids),
-                Reminder.due_at >= day_start,
-                Reminder.due_at < day_end,
+            select(
+                Activity.assigned_to_user_id,
+                Activity.type,
+                Activity.priority,
+                Activity.status,
+            ).where(
+                Activity.tenant_id == tid,
+                Activity.starts_at.is_(None),
+                Activity.assigned_to_user_id.isnot(None),
+                Activity.assigned_to_user_id.in_(ids),
+                Activity.due_at >= day_start,
+                Activity.due_at < day_end,
             )
         )
     ).all()

@@ -1,5 +1,7 @@
 # Reminders/Notifications Rework (MVP → Full)
 
+> **STATUS: SUPERSEDED** by [`../architecture/ADR-012-activity-notification-operating-layer.md`](../architecture/ADR-012-activity-notification-operating-layer.md) и [`../architecture/activity-notification-operating-layer.md`](../architecture/activity-notification-operating-layer.md). Целевая архитектура «один operational layer» (Activity + Notification) заменяет предложения этого документа: `Reminder` — поведение Activity (поле `reminder_at`), а не отдельная таблица; CRUD ушёл на `/api/v1/activities`. Phase 2.1 (2026-05-09) поглотила `candidate_tasks` и `communication_planner_events`. Сохранено как археология решения; **не использовать** как источник истины.
+
 Цель: полноценные персональные напоминания/уведомления с понятным текстом, временем, контекстом (кандидат/документ/вакансия), ACL и доставкой во внутреннюю ленту (+ pop-up), с дефолтным смещением 15 минут и закладкой recurrence/snooze.
 
 ## Данные

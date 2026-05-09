@@ -1,9 +1,20 @@
 """Таксономия событий для **взвешенной дневной нагрузки** (fallback выбора assignee).
 
+Phase 2.1 (ADR-012, 2026-05-09): после поглощения
+``communication_planner_events`` и ``candidate_tasks`` каноничной таблицей
+``activities`` оба «потока» — это один и тот же ORM ``Activity``,
+разделённый на ``starts_at IS NOT NULL`` (planner-style, calendar block) и
+``starts_at IS NULL`` (reminder-style, deadline-only) — см.
+``team_assignee_auto.compute_managers_weighted_day_load``.
+
 Суммируются два **независимых потока** из БД (см. ``team_assignee_auto``)::
 
-  1. **Planner** — ``CommunicationPlannerEvent`` (календарные блоки по ``start_at``).
-  2. **Reminders** — ``Reminder`` (задачи по ``due_at``), поле ``type`` (строка до 64).
+  1. **Planner-style** — ``Activity`` где ``starts_at IS NOT NULL``;
+     ``kind`` берётся из ``metadata.planner.kind`` (для строк, перенесённых
+     из ``communication_planner_events`` миграцией ``202607150004_pti``)
+     или из ``Activity.type`` для нативно созданных активностей.
+  2. **Reminder-style** — ``Activity`` где ``starts_at IS NULL``;
+     ``type`` — это ``Activity.type`` (строка до 64; раньше ``reminders.type``).
 
 Назначение разделения: **сначала зафиксировать полный набор лексики**, потом
 подобрать веса так, чтобы порядок величин отражал продукт (SLA/операции > ручной to-do).
@@ -18,9 +29,12 @@ from typing import Final
 from backend.app.models.reminder import ReminderStatus
 
 # ---------------------------------------------------------------------------
-# 1) Planner: ``communication_planner_events.kind`` (String 32)
-#    Док-строка в модели: task / call / meeting / followup / shift.
-#    UI: ``CommunicationsCalendarPage`` — те же + согласованные labels.
+# 1) Planner-style: ``Activity`` where ``starts_at IS NOT NULL``.
+#    ``kind`` is read from ``metadata.planner.kind`` (preserved by
+#    ``202607150004_pti`` for rows backfilled from
+#    ``communication_planner_events``) with a fallback to ``Activity.type``
+#    for natively created calendar blocks.
+#    UI: ``CommunicationsCalendarPage`` — same vocabulary + matching labels.
 # ---------------------------------------------------------------------------
 PLANNER_EVENT_KINDS: Final[frozenset[str]] = frozenset(
     {
@@ -44,7 +58,8 @@ PLANNER_KIND_BASE_WEIGHT: Final[dict[str, float]] = {
 }
 
 # ---------------------------------------------------------------------------
-# 2) Reminders: ``reminders.type`` (String 64) — **широкий** набор.
+# 2) Reminder-style: ``Activity.type`` (String 64) on rows where
+#    ``starts_at IS NULL`` — **широкий** набор.
 #
 #    Группы (для читаемости; вес задаётся **по конкретному** ``type``):
 #    * **SLA / планировщик** — ``communications_scheduler``,
@@ -135,14 +150,18 @@ LOAD_PRIORITY_MULT: Final[dict[str, float]] = {
     "normal": 1.0,
     "low": 0.85,
 }
-# Planner: ``CommunicationPlannerEvent.status`` (см. модель / API).
+# Planner-style: ``Activity.status`` on ``starts_at IS NOT NULL`` rows
+# (Phase 2.1 absorbed legacy ``CommunicationPlannerEvent.status``;
+# values are a subset of ``ActivityStatus``).
 PLANNER_STATUS_LOAD_MULT: Final[dict[str, float]] = {
     "cancelled": 0.0,
     "done": 0.12,
     "planned": 1.0,
     "in_progress": 1.15,
 }
-# Reminder: ``Reminder.status`` (см. ``ReminderStatus``).
+# Reminder-style: ``Activity.status`` on ``starts_at IS NULL`` rows
+# (legacy ``ReminderStatus`` constants are still importable; the values
+# match ``ActivityStatus.*`` post-``activity_layer_v1``).
 REMINDER_STATUS_LOAD_MULT: Final[dict[str, float]] = {
     ReminderStatus.cancelled: 0.0,
     ReminderStatus.done: 0.1,

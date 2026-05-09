@@ -585,6 +585,72 @@ async def update_reminder(
             due_at = due_at.replace(tzinfo=timezone.utc)
         reminder.due_at = due_at
 
+    # --- Phase 2.1 (ADR-012) transitional fields ---
+    # The FE shim in `hostflow-frontend/src/api/communications.ts` maps
+    # legacy planner-event PATCHes onto `PATCH /activities/{id}` and may
+    # send any of `status`, `type`, `entity_type`, `entity_id`, `payload`.
+    # Phase 3 cleanup MUST remove this whole block (and especially the
+    # wholesale `payload` replace) — see the matching schema note in
+    # `backend/app/api/v1/reminders_v2.py::ReminderUpdateRequest` and the
+    # rationale in `docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md`
+    # §"Transitional backend addition".
+    if "status" in payload and payload["status"] is not None:
+        next_status = str(payload["status"]).strip().lower()
+        # Closed Activity enum (ADR-012 §6) plus the transient legacy
+        # planner statuses the shim still relays verbatim. Anything else
+        # is a contract violation.
+        allowed = {
+            "planned",
+            "in_progress",
+            "done",
+            "cancelled",
+            "overdue",
+            # Legacy planner / reminder statuses — collapsed to "planned"
+            # by `activity_layer_v1` on read; we still accept them on
+            # write so the shim doesn't have to translate per-call.
+            "new",
+            "pending",
+            "sent",
+        }
+        if next_status not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_status",
+                    "message": f"unknown reminder/activity status '{next_status}'",
+                    "allowed": sorted(allowed),
+                },
+            )
+        reminder.status = next_status
+
+    if "type" in payload and payload["type"] is not None:
+        new_type = str(payload["type"]).strip()
+        if new_type:
+            reminder.type = new_type
+
+    if "entity_type" in payload and payload["entity_type"] is not None:
+        new_entity_type = str(payload["entity_type"]).strip()
+        if new_entity_type:
+            reminder.entity_type = new_entity_type
+    if "entity_id" in payload and payload["entity_id"] is not None:
+        new_entity_id = str(payload["entity_id"]).strip()
+        if new_entity_id:
+            reminder.entity_id = new_entity_id
+
+    if "payload" in payload and payload["payload"] is not None:
+        # Wholesale replace — mirrors legacy planner PATCH semantics. The
+        # canonical Activity update model merges payload; this branch is
+        # transitional. Phase 3 must delete it and route any legitimate
+        # "replace blob" need through a dedicated endpoint
+        # (`PUT /activities/{id}/payload`).
+        new_payload = payload["payload"]
+        if not isinstance(new_payload, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="payload must be an object",
+            )
+        reminder.payload = dict(new_payload)
+
     if "remind_at" in payload:
         remind_at = payload["remind_at"]
         if remind_at is None:

@@ -1,9 +1,20 @@
 """Lead lifecycle cleanup and visibility helpers.
 
 Keeps lead-linked operational signals clean:
-- when a lead enters a terminal stage/status, open reminders are cancelled,
-  unread notifications are marked read, and future planner events are cancelled;
+- when a lead enters a terminal stage/status, open reminder-style activities
+  are cancelled, unread notifications are marked read, and future planner-style
+  activities are cancelled;
 - list surfaces can hide rows tied to terminal leads by default.
+
+Phase 2.1 (ADR-012, 2026-05-09): both halves now query the canonical
+``activities`` table directly. ``_cancel_lead_reminders`` is scoped to
+``Activity.starts_at IS NULL`` (deadline-only); ``_cancel_lead_planner_events``
+is scoped to ``Activity.starts_at IS NOT NULL`` (time-bound), so the two
+sweeps don't double-process the same row. Counter names
+(``reminders_cancelled`` / ``planner_events_cancelled``) are preserved
+verbatim for log/metric continuity through Phase 4 — see
+``docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md``
+§"What service rewire means concretely".
 """
 
 from __future__ import annotations
@@ -16,7 +27,7 @@ from typing import Optional
 from sqlalchemy import and_, not_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.communication import CommunicationPlannerEvent
+from backend.app.models.activity import Activity, ActivityStatus
 from backend.app.models.lead import Lead
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.reminder_event import ReminderEvent
@@ -27,13 +38,23 @@ logger = logging.getLogger(__name__)
 LEAD_TERMINAL_STAGE_CODES: frozenset[str] = frozenset({"converted", "lost"})
 LEAD_TERMINAL_STATUS_CODES: frozenset[str] = frozenset({"failed", "duplicated"})
 
+# "Active" = anything not in {done, cancelled}. Closed Activity enum
+# (planned / in_progress / done / cancelled / overdue) plus the legacy
+# transient values (new / pending / sent) that the activity_layer_v1
+# migration collapses to ``planned`` on read but may still exist on
+# in-flight rows.
 _ACTIVE_REMINDER_STATUSES: tuple[str, ...] = (
     ReminderStatus.new,
     ReminderStatus.pending,
     ReminderStatus.sent,
     ReminderStatus.overdue,
+    ActivityStatus.planned,
+    ActivityStatus.in_progress,
 )
-_ACTIVE_PLANNER_STATUSES: tuple[str, ...] = ("planned", "in_progress")
+_ACTIVE_PLANNER_STATUSES: tuple[str, ...] = (
+    ActivityStatus.planned,
+    ActivityStatus.in_progress,
+)
 
 
 def _norm(raw: Optional[str]) -> str:
@@ -191,12 +212,14 @@ async def sweep_converted_lead_operational_noise(
     cap = min(max(1, int(limit or 150)), 500)
     ts = now or datetime.now(timezone.utc)
 
+    # Reminder-style activities = deadline-only (``starts_at IS NULL``).
     reminder_lead_ids = (
-        select(Reminder.entity_id)
+        select(Activity.related_entity_id)
         .where(
-            Reminder.tenant_id == tenant_id_str,
-            Reminder.entity_type == "lead",
-            Reminder.status.in_(_ACTIVE_REMINDER_STATUSES),
+            Activity.tenant_id == tenant_id_str,
+            Activity.related_entity_type == "lead",
+            Activity.status.in_(_ACTIVE_REMINDER_STATUSES),
+            Activity.starts_at.is_(None),
         )
         .distinct()
     )
@@ -208,13 +231,15 @@ async def sweep_converted_lead_operational_noise(
             Lead.id.in_(reminder_lead_ids),
         )
     )
+    # Planner-style activities = time-bound (``starts_at IS NOT NULL``).
     planner_lead_ids = (
-        select(CommunicationPlannerEvent.entity_id)
+        select(Activity.related_entity_id)
         .where(
-            CommunicationPlannerEvent.tenant_id == tenant_id_str,
-            CommunicationPlannerEvent.entity_type == "lead",
-            CommunicationPlannerEvent.status.in_(_ACTIVE_PLANNER_STATUSES),
-            CommunicationPlannerEvent.start_at >= ts,
+            Activity.tenant_id == tenant_id_str,
+            Activity.related_entity_type == "lead",
+            Activity.status.in_(_ACTIVE_PLANNER_STATUSES),
+            Activity.starts_at.is_not(None),
+            Activity.starts_at >= ts,
         )
         .distinct()
     )
@@ -298,12 +323,19 @@ async def _cancel_lead_reminders(
     new_status: Optional[str],
     reason: str,
 ) -> int:
+    """Cancel deadline-only (reminder-style) activities linked to ``lead_id``.
+
+    Phase 2.1 (ADR-012, 2026-05-09): scoped to ``Activity.starts_at IS NULL``
+    so it doesn't overlap with ``_cancel_lead_planner_events`` (which
+    handles time-bound rows).
+    """
     rows = await db.execute(
-        select(Reminder).where(
-            Reminder.tenant_id == tenant_id,
-            Reminder.entity_type == "lead",
-            Reminder.entity_id == lead_id,
-            Reminder.status.in_(_ACTIVE_REMINDER_STATUSES),
+        select(Activity).where(
+            Activity.tenant_id == tenant_id,
+            Activity.related_entity_type == "lead",
+            Activity.related_entity_id == lead_id,
+            Activity.status.in_(_ACTIVE_REMINDER_STATUSES),
+            Activity.starts_at.is_(None),
         )
     )
     reminders = list(rows.scalars().all())
@@ -312,7 +344,7 @@ async def _cancel_lead_reminders(
     cancelled = 0
     for reminder in reminders:
         previous_status = str(reminder.status)
-        reminder.status = ReminderStatus.done
+        reminder.status = ActivityStatus.done
         reminder.completed_at = now
         db.add(
             ReminderEvent(
@@ -360,13 +392,24 @@ async def _cancel_lead_planner_events(
     lead_id: str,
     now: datetime,
 ) -> int:
+    """Cancel time-bound (planner-style) activities linked to ``lead_id``.
+
+    Phase 2.1 (ADR-012, 2026-05-09): scoped to ``Activity.starts_at IS
+    NOT NULL`` so it doesn't overlap with ``_cancel_lead_reminders``
+    (which handles deadline-only rows). The legacy
+    ``communication_planner_events`` table is absorbed into
+    ``activities`` by Alembic ``202607150004_pti``; we filter on
+    ``starts_at`` because that is the slot start the planner UI
+    visualises.
+    """
     rows = await db.execute(
-        select(CommunicationPlannerEvent).where(
-            CommunicationPlannerEvent.tenant_id == tenant_id,
-            CommunicationPlannerEvent.status.in_(_ACTIVE_PLANNER_STATUSES),
-            CommunicationPlannerEvent.start_at >= now,
-            CommunicationPlannerEvent.entity_type == "lead",
-            CommunicationPlannerEvent.entity_id == lead_id,
+        select(Activity).where(
+            Activity.tenant_id == tenant_id,
+            Activity.status.in_(_ACTIVE_PLANNER_STATUSES),
+            Activity.starts_at.is_not(None),
+            Activity.starts_at >= now,
+            Activity.related_entity_type == "lead",
+            Activity.related_entity_id == lead_id,
         )
     )
     events = list(rows.scalars().all())
@@ -374,14 +417,14 @@ async def _cancel_lead_planner_events(
         return 0
     cancelled = 0
     for event in events:
-        event.status = "cancelled"
-        event.updated_at = now
-        meta = dict(event.payload) if isinstance(event.payload, dict) else {}
+        event.status = ActivityStatus.cancelled
+        event.cancelled_at = now
+        meta = dict(event.metadata_) if isinstance(event.metadata_, dict) else {}
         meta["auto_cancelled"] = {
             "reason": "lead_lifecycle_terminal",
             "at": now.isoformat(),
         }
-        event.payload = meta
+        event.metadata_ = meta
         cancelled += 1
     return cancelled
 

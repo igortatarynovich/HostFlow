@@ -6,9 +6,15 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from backend.app.models.communication import CommunicationPlannerEvent
+# Phase 2.1 (ADR-012, 2026-05-09): legacy ``Reminder`` / planner-event
+# tables are absorbed into ``activities``; tests now seed via
+# ``Activity`` directly. Reminder-style rows = ``starts_at IS NULL``;
+# planner-style rows = ``starts_at IS NOT NULL``. ``ReminderStatus``
+# constants are kept because their string values match what the
+# service layer enforces.
+from backend.app.models.activity import Activity, ActivityStatus
 from backend.app.models.lead import Lead
-from backend.app.models.reminder import Reminder, ReminderStatus
+from backend.app.models.reminder import ReminderStatus
 from backend.app.models.user_notification import UserNotification
 from backend.app.models.user import User
 from backend.app.services.lead_lifecycle import (
@@ -38,18 +44,20 @@ async def test_terminal_lead_transition_cleans_operational_signals(
             stage="contacted",
         )
     )
+    planner_start = datetime.now(timezone.utc) + timedelta(days=1)
     db.add(
-        Reminder(
+        Activity(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             type="custom",
-            entity_type="lead",
-            entity_id=lead_id,
+            related_entity_type="lead",
+            related_entity_id=lead_id,
             title="Follow up lead",
             due_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            starts_at=None,
             status=ReminderStatus.pending,
             channel="internal",
-            assignee_id=manager_id,
+            assigned_to_user_id=manager_id,
         )
     )
     db.add(
@@ -66,18 +74,19 @@ async def test_terminal_lead_transition_cleans_operational_signals(
         )
     )
     db.add(
-        CommunicationPlannerEvent(
+        Activity(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             title="Call lead",
-            kind="task",
-            status="planned",
+            type="task",
+            status=ActivityStatus.planned,
             priority="normal",
-            start_at=datetime.now(timezone.utc) + timedelta(days=1),
-            assignee_id=manager_id,
-            entity_type="lead",
-            entity_id=lead_id,
-            payload={},
+            starts_at=planner_start,
+            due_at=planner_start + timedelta(hours=1),
+            assigned_to_user_id=manager_id,
+            related_entity_type="lead",
+            related_entity_id=lead_id,
+            metadata_={"planner": {"kind": "task"}},
         )
     )
     await db.commit()
@@ -100,10 +109,15 @@ async def test_terminal_lead_transition_cleans_operational_signals(
     assert cleanup.planner_events_cancelled == 1
 
     reminder = await db.scalar(
-        select(Reminder).where(Reminder.tenant_id == tenant_id, Reminder.entity_type == "lead", Reminder.entity_id == lead_id)
+        select(Activity).where(
+            Activity.tenant_id == tenant_id,
+            Activity.related_entity_type == "lead",
+            Activity.related_entity_id == lead_id,
+            Activity.starts_at.is_(None),
+        )
     )
     assert reminder is not None
-    assert reminder.status == ReminderStatus.done
+    assert reminder.status == ActivityStatus.done
 
     notif = await db.scalar(
         select(UserNotification).where(
@@ -136,17 +150,18 @@ async def test_list_surfaces_hide_terminal_lead_entities_by_default(
         )
     )
     db.add(
-        Reminder(
+        Activity(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             type="custom",
-            entity_type="lead",
-            entity_id=lead_id,
+            related_entity_type="lead",
+            related_entity_id=lead_id,
             title="Stale lead task",
             due_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            starts_at=None,
             status=ReminderStatus.pending,
             channel="internal",
-            assignee_id=manager_id,
+            assigned_to_user_id=manager_id,
         )
     )
     db.add(
@@ -211,17 +226,18 @@ async def test_list_surfaces_hide_lead_with_created_candidate(
         )
     )
     db.add(
-        Reminder(
+        Activity(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             type="custom",
-            entity_type="lead",
-            entity_id=lead_id,
+            related_entity_type="lead",
+            related_entity_id=lead_id,
             title="Should be hidden",
             due_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            starts_at=None,
             status=ReminderStatus.pending,
             channel="internal",
-            assignee_id=manager_id,
+            assigned_to_user_id=manager_id,
         )
     )
     await db.commit()
@@ -255,17 +271,18 @@ async def test_candidate_link_transition_cleans_operational_signals(
         )
     )
     db.add(
-        Reminder(
+        Activity(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             type="custom",
-            entity_type="lead",
-            entity_id=lead_id,
+            related_entity_type="lead",
+            related_entity_id=lead_id,
             title="Follow up lead",
             due_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            starts_at=None,
             status=ReminderStatus.pending,
             channel="internal",
-            assignee_id=manager_id,
+            assigned_to_user_id=manager_id,
         )
     )
     db.add(
@@ -324,17 +341,18 @@ async def test_sweep_converted_lead_cleans_stale_lead_reminders(
         )
     )
     db.add(
-        Reminder(
+        Activity(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
             type="custom",
-            entity_type="lead",
-            entity_id=lead_id,
+            related_entity_type="lead",
+            related_entity_id=lead_id,
             title="Stale lead task",
             due_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            starts_at=None,
             status=ReminderStatus.pending,
             channel="internal",
-            assignee_id=manager_id,
+            assigned_to_user_id=manager_id,
         )
     )
     await db.commit()
@@ -351,7 +369,12 @@ async def test_sweep_converted_lead_cleans_stale_lead_reminders(
     assert stats["reminders_cancelled"] >= 1
 
     reminder = await db.scalar(
-        select(Reminder).where(Reminder.tenant_id == tenant_id, Reminder.entity_type == "lead", Reminder.entity_id == lead_id)
+        select(Activity).where(
+            Activity.tenant_id == tenant_id,
+            Activity.related_entity_type == "lead",
+            Activity.related_entity_id == lead_id,
+            Activity.starts_at.is_(None),
+        )
     )
     assert reminder is not None
-    assert reminder.status == ReminderStatus.done
+    assert reminder.status == ActivityStatus.done

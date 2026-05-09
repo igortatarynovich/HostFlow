@@ -1,13 +1,15 @@
-"""G-4 stage 4: cancel an assignee's reminders and planner events that
-fall within an approved time-off window.
+"""G-4 stage 4: cancel an assignee's reminders and planner-source
+activities that fall within an approved time-off window.
 
 Triggered from `decide_time_off_request` when the decision flips a
 request to `approved`. The contract:
 
-  * Only PENDING reminders are auto-completed — already-completed or
+  * Only PENDING-equivalent reminder-style activities (deadline-only,
+    `starts_at IS NULL`) are auto-completed — already-completed or
     already-cancelled rows stay as-is (no rewriting history).
-  * Only ACTIVE planner events (`status not in {done, cancelled}`)
-    are cancelled — same rationale.
+  * Only ACTIVE planner-style activities (time-bound, `starts_at IS
+    NOT NULL`, `status NOT IN {done, cancelled}`) are cancelled —
+    same rationale.
   * Each row records `payload._cancelled_reason="timeoff_approved"`
     plus the time-off request id, so the audit trail explains why the
     operator suddenly has fewer items in their queue.
@@ -16,6 +18,15 @@ request to `approved`. The contract:
     falling back to UTC). This matches user expectations — "I'm off
     Monday through Friday" means Monday 00:00 local through Friday
     24:00 local, not whatever UTC-bounded slice that maps to.
+
+Phase 2.1 (ADR-012, 2026-05-09): both halves now query the canonical
+``activities`` table (`Reminder is Activity`). The split between
+"reminder" and "planner" rows is on ``Activity.starts_at IS NULL``
+(deadline) vs ``IS NOT NULL`` (time-bound). The counter names
+(``reminders_cancelled`` and ``planner_events_cancelled``) are
+preserved verbatim for log/metric continuity through Phase 4 — see
+``docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md``
+§"What service rewire means concretely".
 
 Returns counts so callers can log / surface "12 reminders auto-closed".
 
@@ -36,16 +47,16 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.communication import CommunicationPlannerEvent
-from backend.app.models.reminder import Reminder, ReminderStatus
+from backend.app.models.activity import Activity, ActivityStatus
 from backend.app.models.user import User
 
 
-# Planner statuses that mean "no operator action expected" — same set
-# as the `_PLANNER_TERMINAL_STATUSES` in `RemindersPage.tsx` (G-7).
-# Kept in sync defensively; mismatch would mean we either re-cancel
-# already-cancelled events (harmless but noisy in audit) or miss
-# active ones (silent bug).
+# Activity statuses that mean "no operator action expected" — closed
+# enum from ADR-012 §6 plus the `cancelled` terminal. The legacy
+# values (`new` / `pending` / `sent` / `overdue`) are normalised to
+# `planned` by the activity_layer_v1 migration on read; we keep them
+# out of the terminal set so they remain "active" candidates for
+# cancellation here.
 _PLANNER_TERMINAL_STATUSES = frozenset({"done", "cancelled"})
 
 _CANCEL_REASON = "timeoff_approved"
@@ -152,35 +163,53 @@ async def cancel_assignee_schedule_during_timeoff(
         start_local, end_local, tz
     )
 
-    # --- Reminders ---
-    reminders_stmt = sa.select(Reminder).where(
-        Reminder.tenant_id == str(tenant_id),
-        Reminder.assignee_id == str(assignee_id),
-        Reminder.status == ReminderStatus.pending,
-        Reminder.due_at >= window_start_utc,
-        Reminder.due_at < window_end_utc,
+    now_utc = datetime.now(timezone.utc)
+
+    # --- Reminder-style activities (deadline-only, no time slot) ---
+    # Reminder-style rows have ``starts_at IS NULL`` and we anchor the
+    # window on ``due_at`` — same semantics as the legacy reminders
+    # cleanup. ``ActivityStatus.planned`` covers the canonical
+    # "active" status; the legacy ``pending`` value is collapsed to
+    # ``planned`` by ``activity_layer_v1`` migration §3 on read but
+    # may still exist on rows that were not yet touched, so we accept
+    # both via ``status NOT IN terminal``.
+    reminders_stmt = sa.select(Activity).where(
+        Activity.tenant_id == str(tenant_id),
+        Activity.assigned_to_user_id == str(assignee_id),
+        sa.func.lower(Activity.status).notin_(_PLANNER_TERMINAL_STATUSES),
+        Activity.starts_at.is_(None),
+        Activity.due_at >= window_start_utc,
+        Activity.due_at < window_end_utc,
     )
     reminders = (await db.execute(reminders_stmt)).scalars().all()
-    now_utc = datetime.now(timezone.utc)
     for reminder in reminders:
-        reminder.status = ReminderStatus.done
+        reminder.status = ActivityStatus.done
         reminder.completed_at = now_utc
-        reminder.payload = _stash_reason(reminder.payload, request_id=request_id)
+        reminder.metadata_ = _stash_reason(reminder.metadata_, request_id=request_id)
     counts["reminders_cancelled"] = len(reminders)
 
-    # --- Planner events ---
-    planner_stmt = sa.select(CommunicationPlannerEvent).where(
-        CommunicationPlannerEvent.tenant_id == str(tenant_id),
-        CommunicationPlannerEvent.assignee_id == str(assignee_id),
+    # --- Planner-style activities (time-bound, has start slot) ---
+    # Time-bound rows have ``starts_at IS NOT NULL``. The legacy
+    # ``communication_planner_events`` table is absorbed into
+    # ``activities`` (Phase 2.1 backfill — see
+    # ``alembic/versions/202607150004_planner_tasks_into_activities.py``);
+    # we filter on ``starts_at`` rather than ``due_at`` because the
+    # planner UI anchors visualisation on the slot start, not the
+    # deadline.
+    planner_stmt = sa.select(Activity).where(
+        Activity.tenant_id == str(tenant_id),
+        Activity.assigned_to_user_id == str(assignee_id),
         # Active only — exclude already-terminal rows.
-        sa.func.lower(CommunicationPlannerEvent.status).notin_(_PLANNER_TERMINAL_STATUSES),
-        CommunicationPlannerEvent.start_at >= window_start_utc,
-        CommunicationPlannerEvent.start_at < window_end_utc,
+        sa.func.lower(Activity.status).notin_(_PLANNER_TERMINAL_STATUSES),
+        Activity.starts_at.is_not(None),
+        Activity.starts_at >= window_start_utc,
+        Activity.starts_at < window_end_utc,
     )
     planner_events = (await db.execute(planner_stmt)).scalars().all()
     for event in planner_events:
-        event.status = "cancelled"
-        event.payload = _stash_reason(event.payload, request_id=request_id)
+        event.status = ActivityStatus.cancelled
+        event.cancelled_at = now_utc
+        event.metadata_ = _stash_reason(event.metadata_, request_id=request_id)
     counts["planner_events_cancelled"] = len(planner_events)
 
     await db.flush()

@@ -184,8 +184,14 @@ async def test_resolve_picks_least_weighted_load_with_anchor() -> None:
             }
         }
     )
+    # Phase 2.1: planner-style query now also selects ``metadata`` so it
+    # can read the legacy ``planner.kind`` from rows backfilled from
+    # ``communication_planner_events``. The fifth element here is the
+    # metadata dict — empty means "no planner backfill marker", in which
+    # case ``compute_managers_weighted_day_load`` falls back to the
+    # second tuple element (``Activity.type``).
     Sess = _make_exec_mock(
-        planner_rows=[("u2", "meeting", "normal", "planned")],
+        planner_rows=[("u2", "meeting", "normal", "planned", None)],
         reminder_rows=[],
     )
     anchor = datetime(2026, 4, 22, 9, 0, tzinfo=timezone.utc)

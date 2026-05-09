@@ -88,7 +88,6 @@ from ._helpers.dto import (  # noqa: E402,F401
     _thread_out,
     _message_out,
     _timeoff_out,
-    _planner_event_out,
     _allocation_audit_out,
     _command_audit_out,
 )
@@ -255,10 +254,9 @@ from .schemas import (  # noqa: E402,F401
     CommunicationEmailWorkerPollResponse,
     CommunicationSchedulerStatusOut,
     CommunicationSchedulerRunNowResponse,
-    CommunicationPlannerEventOut,
-    CommunicationPlannerEventListResponse,
-    CommunicationPlannerEventCreate,
-    CommunicationPlannerEventPatch,
+    # Phase 2.1 (ADR-012, 2026-05-09): CommunicationPlannerEvent* schemas
+    # removed; canonical Activity contract lives in reminders_v2.py /
+    # activities_v1.py.
     TimeOffRequestOut,
     TimeOffRequestListResponse,
     TimeOffRequestCreate,

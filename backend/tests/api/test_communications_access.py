@@ -174,30 +174,14 @@ async def test_communications_list_endpoints_accept_high_limit_values(
     assert time_off.status_code == 200, time_off.text
 
 
-@pytest.mark.anyio
-async def test_planner_access_by_role_and_override(
-    client: AsyncClient,
-    manager_headers: dict[str, str],
-    recruiter_headers: dict[str, str],
-) -> None:
-    await _update_comm_settings(
-        client,
-        manager_headers,
-        lambda s: s["access"]["roles"].update({"planner": ["administrator"]}),
-    )
-
-    denied = await client.get("/api/v1/communications/planner/events", headers=recruiter_headers, params={"limit": 20})
-    assert denied.status_code == 403
-
-    recruiter_id = await _me_user_id(client, recruiter_headers)
-    await _update_comm_settings(
-        client,
-        manager_headers,
-        lambda s: s["access"]["usersOverrides"].update({recruiter_id: {"planner": True}}),
-    )
-
-    allowed = await client.get("/api/v1/communications/planner/events", headers=recruiter_headers, params={"limit": 20})
-    assert allowed.status_code == 200
+# NOTE: ``test_planner_access_by_role_and_override`` was deleted in
+# Phase 2.1 (ADR-012, 2026-05-09). It exercised
+# ``settings.access.roles.planner`` against the legacy
+# ``/api/v1/communications/planner/events`` endpoint which was removed
+# (planner-events were absorbed into ``/api/v1/activities``). The new
+# activities endpoint does not enforce the ``planner`` role gate the
+# same way, so the test could not be faithfully rewritten — see
+# ``docs/specs/architecture/phase-2-1-planner-tasks-into-activities.md``.
 
 
 @pytest.mark.anyio

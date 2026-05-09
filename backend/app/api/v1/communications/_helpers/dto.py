@@ -11,7 +11,6 @@ from backend.app.models.communication import (
     CommunicationAllocationAudit,
     CommunicationCommandAudit,
     CommunicationMessage,
-    CommunicationPlannerEvent,
     CommunicationThread,
     CommunicationTimeOffRequest,
 )
@@ -20,7 +19,6 @@ from ..schemas import (
     CommunicationAllocationAuditOut,
     CommunicationCommandAuditOut,
     CommunicationMessageOut,
-    CommunicationPlannerEventOut,
     CommunicationThreadOut,
     TimeOffRequestOut,
 )
@@ -30,7 +28,6 @@ __all__ = [
     "_thread_out",
     "_message_out",
     "_timeoff_out",
-    "_planner_event_out",
     "_allocation_audit_out",
     "_command_audit_out",
 ]
@@ -123,29 +120,11 @@ def _timeoff_out(row: CommunicationTimeOffRequest) -> TimeOffRequestOut:
     )
 
 
-def _planner_event_out(row: CommunicationPlannerEvent) -> CommunicationPlannerEventOut:
-    return CommunicationPlannerEventOut(
-        id=str(row.id),
-        tenant_id=str(row.tenant_id),
-        title=row.title,
-        description=row.description,
-        kind=row.kind,
-        status=row.status,
-        priority=row.priority,
-        start_at=row.start_at,
-        end_at=row.end_at,
-        all_day=bool(row.all_day),
-        owner_id=row.owner_id,
-        assignee_id=row.assignee_id,
-        entity_type=row.entity_type,
-        entity_id=row.entity_id,
-        linked_candidate_id=row.linked_candidate_id,
-        linked_company_id=row.linked_company_id,
-        source=row.source,
-        payload=_as_dict(row.payload),
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-    )
+# Phase 2.1 (ADR-012, 2026-05-09): ``_planner_event_out`` removed
+# along with the legacy planner-event HTTP routes. Activity rows are
+# serialised by ``ReminderOut.from_model`` /
+# ``ActivityOut.from_model`` in ``backend/app/api/v1/reminders_v2.py``
+# / ``activities_v1.py`` instead.
 
 
 def _allocation_audit_out(row: CommunicationAllocationAudit) -> CommunicationAllocationAuditOut:

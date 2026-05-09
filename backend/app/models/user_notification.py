@@ -1,57 +1,22 @@
+"""Legacy import path for the canonical :class:`Notification` ORM model.
+
+Phase 1.3 / ADR-012 renames the physical table to ``notifications`` and exposes
+``user_notifications`` as a **read-only SQL view** in PostgreSQL. Code must not
+map an ORM model to ``user_notifications`` — inserts would hit the rejecting
+INSTEAD OF trigger.
+
+``UserNotification`` remains a stable alias for :class:`~app.models.notification.Notification`
+so existing imports keep working while writes go to ``notifications``.
+
+Use a relative import here so Docker/runtime does not resolve ``backend.app.models``
+(a duplicate package path) and re-enter ``models.__init__`` while this submodule is
+still loading (circular import / ``partially initialized module``).
+"""
+
 from __future__ import annotations
 
-from datetime import datetime
-from uuid import uuid4
+from .notification import Notification
 
-from sqlalchemy import Boolean, DateTime, String, text
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
-from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import Mapped, mapped_column
+UserNotification = Notification
 
-from backend.app.db.base import Base
-from .mixins import now_utc
-
-JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
-
-
-class UserNotification(Base):
-    __tablename__ = "user_notifications"
-
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid4())
-    )
-    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    priority: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
-    entity_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    payload: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
-    channel: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="in_app", server_default=text("'in_app'")
-    )
-    is_read: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("false")
-    )
-    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=now_utc,
-        server_default=text("CURRENT_TIMESTAMP"),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=now_utc,
-        onupdate=now_utc,
-        server_default=text("CURRENT_TIMESTAMP"),
-    )
-
-    def mark_read(self, timestamp: datetime | None = None) -> None:
-        ts = timestamp or now_utc()
-        self.is_read = True
-        self.read_at = ts
-        self.updated_at = ts
+__all__ = ["UserNotification"]
