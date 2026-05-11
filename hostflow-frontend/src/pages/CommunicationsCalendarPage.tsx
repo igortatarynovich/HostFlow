@@ -10,7 +10,7 @@ import {
   listActivities,
   listManagers,
   snoozeActivity,
-  updateReminder,
+  updateActivity,
 } from '../api/client'
 import { ACTIVITY_TEMPLATES } from '../modules/candidates/activityTemplates'
 import {
@@ -47,6 +47,47 @@ type BatchSelectStatusFilter = '' | 'planned' | 'in_progress' | 'done' | 'cancel
 type WeekSlotMinutes = 15 | 30 | 60
 type TaskKind = 'task' | 'followup' | 'call'
 type EventModalParticipant = { id: string; name: string; email: string; response_status: '' | 'accepted' | 'tentative' | 'declined' }
+
+/**
+ * Phase 2.1 canary calendar-worthy whitelist (FE-only, surgical).
+ *
+ * An Activity row appears in the calendar grid only if BOTH:
+ *   - it has a parseable start (callers enforce this separately), AND
+ *   - it carries explicit calendar intent:
+ *       * type === 'meeting'                              (intrinsic calendar shape)
+ *       * payload.planner.kind IN ('meeting', 'shift')    (planner UI semantic)
+ *       * payload.calendar_visible === true               (explicit user opt-in)
+ *
+ * `type === 'call'` is intentionally NOT in this set — auto-generated lead/lifecycle
+ * calls cannot be reliably distinguished from user-scheduled calls today. A user
+ * who creates a call via the calendar UI still passes through because every
+ * calendar-UI write path sets `payload.calendar_visible = true`.
+ *
+ * Excluded by design (these continue to surface in MyTasksPanel / WorkHub):
+ *   - UOS auto-rows (type starts with `uos_*`)
+ *   - scheduler SLA rows (leads_no_next_action / leads_stuck_stage / invoice_overdue_payment / communications_sla_overdue)
+ *   - automation-rule rows (type='custom' without calendar markers)
+ *   - document deadlines (document_expiry / document_workflow_step)
+ *   - any auto-created operational activity without scheduled intent
+ *
+ * See plan: phase_2.1_calendar_worthy_filter.
+ */
+function isCalendarWorthyActivity(input: {
+  type: unknown
+  payload?: unknown
+}): boolean {
+  const type = String(input?.type || '').toLowerCase()
+  const payload =
+    input?.payload && typeof input.payload === 'object' && !Array.isArray(input.payload)
+      ? (input.payload as Record<string, any>)
+      : {}
+  const plannerKind = String(payload?.planner?.kind || '').toLowerCase()
+  const calendarVisible = payload?.calendar_visible === true
+  if (calendarVisible) return true
+  if (type === 'meeting') return true
+  if (plannerKind === 'meeting' || plannerKind === 'shift') return true
+  return false
+}
 
 function normalizeParticipantEmail(email: string): string {
   return String(email || '').trim().toLowerCase()
@@ -304,16 +345,80 @@ function enumerateDayKeys(start: Date, end: Date): string[] {
   return out
 }
 
-function weekSlotIndex(dt: Date, slotMinutes: WeekSlotMinutes): number {
-  const total = dt.getHours() * 60 + dt.getMinutes()
-  return Math.floor(total / slotMinutes)
-}
-
 function weekSlotStart(slotIndex: number, slotMinutes: WeekSlotMinutes): { hour: number; minute: number } {
   const total = slotIndex * slotMinutes
   const hour = Math.floor(total / 60)
   const minute = total % 60
   return { hour, minute }
+}
+
+/** One day on the hour grid (0–24h) in local time. */
+const CALENDAR_DAY_MINUTES = 24 * 60
+/** Week / day timeline row height — must match column layout math. */
+const CALENDAR_TIMELINE_SLOT_PX = 44
+
+/**
+ * Top + height as % of a single-day column (00:00–24:00 local).
+ * When ``endAt`` is missing, default duration is 60m. Enforces ``minDurationMinutes``
+ * for visible height. Returns null if times are unusable (never emits NaN %).
+ */
+function eventTimelinePercents(
+  event: UnifiedCalendarEvent,
+  minDurationMinutes: number,
+): { topPct: number; heightPct: number } | null {
+  const minDur =
+    Number.isFinite(minDurationMinutes) && minDurationMinutes > 0 ? minDurationMinutes : 30
+
+  const start = parseDate(event.at || null)
+  if (!start || !Number.isFinite(start.getTime())) return null
+
+  const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const dayStartMs = dayStart.getTime()
+  if (!Number.isFinite(dayStartMs)) return null
+
+  const startMinRaw = (start.getTime() - dayStartMs) / 60_000
+  if (!Number.isFinite(startMinRaw)) return null
+  if (startMinRaw < 0 || startMinRaw >= CALENDAR_DAY_MINUTES) return null
+  const startMin = startMinRaw
+
+  let endMin: number
+  const endParsed = parseDate(event.endAt || null)
+  if (endParsed && Number.isFinite(endParsed.getTime())) {
+    endMin = (endParsed.getTime() - dayStartMs) / 60_000
+    if (!Number.isFinite(endMin)) {
+      endMin = startMin + 60
+    }
+  } else {
+    endMin = startMin + 60
+  }
+  if (!Number.isFinite(endMin) || endMin <= startMin) {
+    endMin = startMin + 60
+  }
+  endMin = Math.min(Math.max(endMin, startMin + minDur), CALENDAR_DAY_MINUTES)
+  const durMin = Math.max(endMin - startMin, minDur)
+
+  const topPct = (startMin / CALENDAR_DAY_MINUTES) * 100
+  const heightPct = (durMin / CALENDAR_DAY_MINUTES) * 100
+
+  if (!Number.isFinite(topPct) || !Number.isFinite(heightPct) || heightPct <= 0) {
+    return null
+  }
+
+  return { topPct, heightPct }
+}
+
+/** Pointer Y inside ``columnHeightPx`` → snapped start minute-of-day. */
+function minuteFromTimelinePointer(
+  clientY: number,
+  columnTop: number,
+  columnHeightPx: number,
+  slotMinutes: WeekSlotMinutes,
+): number {
+  if (columnHeightPx <= 0) return 0
+  const y = Math.max(0, Math.min(columnHeightPx - 1, clientY - columnTop))
+  const raw = (y / columnHeightPx) * CALENDAR_DAY_MINUTES
+  const snapped = Math.floor(raw / slotMinutes) * slotMinutes
+  return Math.max(0, Math.min(CALENDAR_DAY_MINUTES - slotMinutes, snapped))
 }
 
 function sourceBadgeClass(source: UnifiedCalendarEvent['source']): string {
@@ -365,6 +470,13 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
   const [busy, setBusy] = useState(false)
   const [calendarError, setCalendarError] = useState<FriendlyErrorInfo | null>(null)
   const [infoText, setInfoText] = useState<string | null>(null)
+  // Auto-clear transient toast banners (saved / cancelled / completed) after 4s so
+  // they don't stick across navigation. Manually-cleared messages still work.
+  useEffect(() => {
+    if (!infoText) return
+    const handle = window.setTimeout(() => setInfoText(null), 4000)
+    return () => window.clearTimeout(handle)
+  }, [infoText])
   const [nowTs, setNowTs] = useState<number>(() => Date.now())
 
   const [timeOffRows, setTimeOffRows] = useState<CommunicationTimeOffRequest[]>([])
@@ -626,6 +738,10 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
   const unifiedEvents = useMemo<UnifiedCalendarEvent[]>(() => {
     const nowTs = Date.now()
     const events: UnifiedCalendarEvent[] = []
+    /** Same Activity rows are returned by ``listActivities`` and ``listCommunicationPlannerEvents`` when loading ``sourceFilter=all``. Prefer the planner projection so ``plannerId`` / duration stay canonical. */
+    const plannerActivityIds = new Set(
+      plannerEventsEffective.map((pe) => String(pe.id || '').trim()).filter(Boolean),
+    )
 
     for (const row of timeOffRows) {
       if (!row.start_date || !row.end_date) continue
@@ -649,10 +765,22 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
     }
 
     for (const rem of remindersEffective) {
-      const dueAt = rem?.due_at || rem?.remind_at || null
+      const rid = String(rem?.id || '').trim()
+      if (rid && plannerActivityIds.has(rid)) continue
+      const rawStart =
+        (rem as any)?.starts_at ?? (rem as any)?.startsAt ?? rem?.due_at ?? rem?.remind_at ?? null
+      const dueAt = rawStart
       const dt = parseDate(dueAt)
       if (!dt) continue
       const status = String(rem?.status || '').toLowerCase()
+      // Hide terminal states from calendar view (matches integrated-source behaviour below).
+      // Cancelled / completed events should leave the timeline once the action lands.
+      if (['cancelled', 'canceled', 'deleted', 'done', 'completed'].includes(status)) continue
+      // Phase 2.1 calendar-worthy whitelist: only show Activities with explicit
+      // calendar intent (meeting / planner.kind / calendar_visible). System-suggested
+      // operational tasks (UOS, SLA, automation, doc-deadlines) still appear in
+      // MyTasksPanel / WorkHub but stay off the calendar grid.
+      if (!isCalendarWorthyActivity({ type: (rem as any)?.type, payload: (rem as any)?.payload })) continue
       const sourceStatus: UnifiedCalendarEvent['status'] = status === 'overdue' || dt.getTime() < nowTs ? 'overdue' : 'due'
       events.push({
         id: `rem:${String(rem?.id || '')}:${String(dueAt)}`,
@@ -682,6 +810,12 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
       const dt = parseDate(pe.start_at)
       if (!dt) continue
       const s = String(pe.status || '').toLowerCase()
+      // Hide terminal states from calendar view (matches integrated-source behaviour below).
+      if (['cancelled', 'canceled', 'deleted', 'done', 'completed'].includes(s)) continue
+      // Phase 2.1 calendar-worthy whitelist applied to planner-projected rows too:
+      // the planner shim maps Activity.type -> pe.kind and forwards Activity.payload,
+      // so the same gate keeps system-suggested rows out of the planner timeline.
+      if (!isCalendarWorthyActivity({ type: pe.kind, payload: pe.payload })) continue
       events.push({
         id: `planner:${pe.id}:${pe.start_at}`,
         plannerId: pe.id,
@@ -707,7 +841,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
       const dt = parseDate(ci.starts_at)
       if (!dt) continue
       const statusRaw = String(ci.status || '').toLowerCase()
-      if (statusRaw === 'cancelled' || statusRaw === 'canceled' || statusRaw === 'deleted') continue
+      if (['cancelled', 'canceled', 'deleted', 'done', 'completed'].includes(statusRaw)) continue
       events.push({
         id: `integrated:${ci.id}:${ci.starts_at}`,
         integratedItemId: ci.id,
@@ -1312,17 +1446,27 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
             },
           })
         } else if (eventModalEvent.reminderId) {
-          await updateReminder(eventModalEvent.reminderId, {
+          const patchBody: Record<string, any> = {
             title: eventModalTitle.trim(),
             description: eventModalDescription.trim() || undefined,
             due_at: start.toISOString(),
             assignee_id: assigneeId || undefined,
             allow_unavailable_assignee: eventModalAllowUnavailableAssignee,
-          })
+          }
+          if (!eventModalAllDay && end) {
+            const dm = Math.round((end.getTime() - start.getTime()) / 60_000)
+            if (dm > 0) patchBody.duration_minutes = dm
+          }
+          const kt = String(eventModalKind || '').toLowerCase()
+          if (['task', 'followup', 'call', 'meeting'].includes(kt)) {
+            patchBody.type = kt
+          }
+          await updateActivity(eventModalEvent.reminderId, patchBody)
           window.dispatchEvent(new CustomEvent('reminder-updated'))
         }
         setEventModalOpen(false)
-        await load()
+        setInfoText(t('app.communications.calendar.messages.saved', { defaultValue: 'Event saved.' }))
+        void load()
         return
       }
       if (eventModalType === 'task') {
@@ -1337,7 +1481,14 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
           remind_at: eventModalRemindMinutes > 0 ? remindAt.toISOString() : undefined,
           source: 'communications_calendar_modal',
           allow_unavailable_assignee: eventModalAllowUnavailableAssignee,
-          payload: { priority: 'normal', remind_minutes: eventModalRemindMinutes, task_kind: taskKind },
+          payload: {
+            priority: 'normal',
+            remind_minutes: eventModalRemindMinutes,
+            task_kind: taskKind,
+            // Phase 2.1 calendar-worthy marker — user explicitly used the calendar
+            // create modal, so the row stays on the calendar regardless of taskKind.
+            calendar_visible: true,
+          },
         })
         window.dispatchEvent(new CustomEvent('reminder-updated'))
       } else {
@@ -1394,24 +1545,58 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
   }, [eventModalAllDay, eventModalAllowUnavailableAssignee, eventModalAssigneeId, eventModalDescription, eventModalEndAt, eventModalEvent, eventModalKind, eventModalLocation, eventModalMeetingLink, eventModalOnlineMeeting, eventModalParticipants, eventModalRemindMinutes, eventModalStartAt, eventModalTitle, eventModalType, load, me, plannerById, t, taskPrefs.defaultTaskKind])
 
   const cancelUnifiedEvent = useCallback(async (event: UnifiedCalendarEvent) => {
+    // Snapshot for rollback if BE rejects the cancel.
+    const snapshotPlanner = plannerEvents
+    const snapshotReminders = reminders
+    const snapshotIntegrated = integratedCalendarItems
     try {
       setBusy(true)
+      // Optimistic removal — make the event disappear from the calendar instantly,
+      // before the network round-trip. Backend is the source of truth and the
+      // follow-up ``load()`` reconciles if anything diverged.
+      if (event.plannerId) {
+        setPlannerEvents((prev) => prev.map((pe) => (pe.id === event.plannerId ? { ...pe, status: 'cancelled' } : pe)))
+      }
+      if (event.reminderId) {
+        setReminders((prev: any[]) =>
+          prev.map((r: any) => (String(r?.id || '') === event.reminderId ? { ...r, status: 'cancelled' } : r)),
+        )
+      }
+      if (event.integratedItemId) {
+        setIntegratedCalendarItems((prev) =>
+          prev.map((ci) => (ci.id === event.integratedItemId ? { ...ci, status: 'cancelled' } : ci)),
+        )
+      }
+      setEventModalOpen(false)
+      setInfoText(t('app.communications.calendar.messages.cancelled', { defaultValue: 'Event cancelled.' }))
+
       if (event.plannerId) {
         await patchCommunicationPlannerEvent(event.plannerId, { status: 'cancelled' })
         window.dispatchEvent(new CustomEvent('planner-event-updated'))
+      } else if (event.reminderId) {
+        await patchCommunicationPlannerEvent(event.reminderId, { status: 'cancelled' })
+        window.dispatchEvent(new CustomEvent('planner-event-updated'))
+        try {
+          window.dispatchEvent(new CustomEvent('reminder-updated', { detail: { reminderId: event.reminderId } }))
+        } catch {}
       } else if (event.integratedItemId) {
         await cancelCalendarItem(event.integratedItemId)
       } else {
         return
       }
-      setEventModalOpen(false)
-      await load()
+      // Reconcile in the background — won't block the UI.
+      void load()
     } catch (err: any) {
+      // Rollback optimistic update on failure.
+      setPlannerEvents(snapshotPlanner)
+      setReminders(snapshotReminders)
+      setIntegratedCalendarItems(snapshotIntegrated)
+      setInfoText(null)
       setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.update_planner_failed', { defaultValue: 'Failed to update planner event' }), t))
     } finally {
       setBusy(false)
     }
-  }, [load, t])
+  }, [integratedCalendarItems, load, plannerEvents, reminders, t])
 
   const saveNotificationSettings = useCallback(async () => {
     try {
@@ -1446,6 +1631,10 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
         payload: {
           priority: reminderForm.priority,
           selected_day: selectedDay,
+          // Phase 2.1 calendar-worthy marker: user explicitly created this row
+          // via the calendar side form, so it must stay on the calendar regardless
+          // of its `type` (task / followup / custom). See isCalendarWorthyActivity.
+          calendar_visible: true,
         },
       })
       setReminderForm((p) => ({ ...p, title: '', description: '' }))
@@ -1469,11 +1658,22 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
 
   const setPlannerStatus = useCallback(async (plannerId: string, status: string) => {
     setBusy(true)
+    const snapshotPlanner = plannerEvents
+    const s = String(status || '').toLowerCase()
     try {
+      // Optimistic: flip status locally so the calendar reflects the action instantly.
+      setPlannerEvents((prev) => prev.map((pe) => (pe.id === plannerId ? { ...pe, status: s } : pe)))
+      if (s === 'cancelled' || s === 'canceled') {
+        setInfoText(t('app.communications.calendar.messages.cancelled', { defaultValue: 'Event cancelled.' }))
+      } else if (s === 'done' || s === 'completed') {
+        setInfoText(t('app.communications.calendar.messages.completed', { defaultValue: 'Event completed.' }))
+      }
       await patchCommunicationPlannerEvent(plannerId, { status })
-      await load()
       setCalendarError(null)
+      void load()
     } catch (err: any) {
+      setPlannerEvents(snapshotPlanner)
+      setInfoText(null)
       if (
         !planLimitModal?.showPlanLimitIfNeeded(
           err,
@@ -1487,7 +1687,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
     } finally {
       setBusy(false)
     }
-  }, [load, planLimitModal, t])
+  }, [load, plannerEvents, planLimitModal, t])
 
   const updatePlannerEvent = useCallback(async (
     event: UnifiedCalendarEvent,
@@ -1889,11 +2089,23 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
 
   const completeDayReminder = useCallback(async (reminderId: string) => {
     setBusy(true)
+    const snapshotReminders = reminders
+    const snapshotPlanner = plannerEvents
     try {
+      // Optimistic: mark the activity as done in both projections (reminder + planner
+      // shim returns the same row through ``listActivities``).
+      setReminders((prev: any[]) =>
+        prev.map((r: any) => (String(r?.id || '') === reminderId ? { ...r, status: 'done' } : r)),
+      )
+      setPlannerEvents((prev) => prev.map((pe) => (pe.id === reminderId ? { ...pe, status: 'done' } : pe)))
+      setInfoText(t('app.communications.calendar.messages.completed', { defaultValue: 'Event completed.' }))
       await completeActivity(reminderId)
-      await load()
       setCalendarError(null)
+      void load()
     } catch (err: any) {
+      setReminders(snapshotReminders)
+      setPlannerEvents(snapshotPlanner)
+      setInfoText(null)
       if (
         !planLimitModal?.showPlanLimitIfNeeded(
           err,
@@ -1907,7 +2119,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
     } finally {
       setBusy(false)
     }
-  }, [load, planLimitModal, t])
+  }, [load, planLimitModal, plannerEvents, reminders, t])
 
   const snoozeDayReminder = useCallback(async (reminderId: string, minutes: number) => {
     setBusy(true)
@@ -1948,13 +2160,8 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
   }, [])
 
   // G-7 stage 1: drag-to-reschedule for both planner events AND reminders.
-  // Same UX entrypoint, but the underlying patch differs:
-  //   - planner → `patchCommunicationPlannerEvent` with { start_at, end_at }
-  //   - reminder → `updateReminder` with { due_at }
-  // Reminders have no end_at (no duration concept), so the conflict check
-  // is skipped on the reminder branch — there's nothing to overlap with.
-  // The dispatch happens inside this single function so the three drop
-  // handlers (week grid, day timeline, day buckets) stay source-agnostic.
+  // Planner rows use ``patchCommunicationPlannerEvent``; reminder-only rows
+  // PATCH the same Activity via ``updateActivity`` (Phase 2.1 surface).
   const movePlannerEventToDateTime = useCallback(async (event: UnifiedCalendarEvent, targetStart: Date, dayKeyAfterMove?: string) => {
     const isReminderSource = event.source === 'reminder' && Boolean(event.reminderId)
     const isPlannerSource = event.source === 'planner' && Boolean(event.plannerId)
@@ -1993,12 +2200,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
     setBusy(true)
     try {
       if (isReminderSource && event.reminderId) {
-        // PATCH /reminders/{id} accepts due_at directly; no new endpoint
-        // needed despite the spec's earlier assumption.
-        await updateReminder(event.reminderId, { due_at: movedStart.toISOString() })
-        // Reminder rows on this page come from `listActivities` (the
-        // alias of /reminders). The Topbar bell + per-entity badges
-        // listen on these events to refetch — keep them in sync.
+        await updateActivity(event.reminderId, { due_at: movedStart.toISOString() })
         try {
           window.dispatchEvent(new CustomEvent('reminder-updated', { detail: { reminderId: event.reminderId } }))
         } catch {}
@@ -2383,80 +2585,131 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                   </div>
 
                   <div className="max-h-[62vh] overflow-auto">
-                    {Array.from({ length: Math.floor((24 * 60) / weekSlotMinutes) }).map((_, slotIndex) => {
-                      const slot = weekSlotStart(slotIndex, weekSlotMinutes)
-                      const hourLabel = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`
-                      const majorLine = slot.minute === 0
-                      const slotStartMin = slot.hour * 60 + slot.minute
-                      const slotEndMin = slotStartMin + weekSlotMinutes
-                      const isCurrentSlot = nowMeta.totalMinutes >= slotStartMin && nowMeta.totalMinutes < slotEndMin
-                      const nowOffsetPercent = ((nowMeta.totalMinutes - slotStartMin) / weekSlotMinutes) * 100
+                    {(() => {
+                      const slotsTotal = Math.floor(CALENDAR_DAY_MINUTES / weekSlotMinutes)
+                      const columnHeightPx = slotsTotal * CALENDAR_TIMELINE_SLOT_PX
                       return (
-                        <div key={`week-hour-${slotIndex}`} className={clsx('grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b', majorLine ? 'border-slate-200' : 'border-slate-100')}>
-                          <div className={clsx('px-2 py-2 text-[11px]', majorLine ? 'text-slate-500' : 'text-slate-400')}>{hourLabel}</div>
-                          {weekDays.map((day) => {
-                            const key = localDayKeyFromDate(day)
-                            const cellEvents = (eventsByDay.get(key) || [])
-                              .filter((event) => {
-                                const dt = parseDate(event.at || null)
-                                return dt ? weekSlotIndex(dt, weekSlotMinutes) === slotIndex : false
-                              })
-                              .slice(0, 4)
-                            return (
-                              <div
-                                key={`week-cell-${key}-${slotIndex}`}
-                                className={clsx(
-                                  'relative min-h-[44px] border-l border-slate-100 px-1 py-1',
-                                  isDragActive ? 'hover:bg-brand-50/40' : '',
-                                )}
-                                onClick={() => {
-                                  if (!isDragActive) openCreateEventModal(key, slot.hour, slot.minute)
-                                }}
-                                onDragOver={(e) => {
-                                  if (isDragActive) e.preventDefault()
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault()
-                                  if (!isDragActive || !dragPlannerEvent) return
-                                  const target = parseDate(`${key}T00:00:00`)
-                                  if (!target) return
-                                  target.setHours(slot.hour, slot.minute, 0, 0)
-                                  void movePlannerEventToDateTime(dragPlannerEvent, target, key)
-                                  setDragPlannerEvent(null)
-                                }}
-                              >
-                                {key === nowMeta.dayKey && isCurrentSlot && (
-                                  <div className="pointer-events-none absolute left-0 right-0" style={{ top: `${Math.max(0, Math.min(100, nowOffsetPercent))}%` }}>
-                                    <div className="h-0.5 w-full bg-rose-500" />
-                                  </div>
-                                )}
-                                <div className="space-y-1">
-                                  {cellEvents.map((event) => (
-                                    <div
-                                      key={`week-item-${event.id}`}
-                                      draggable={isCalendarEventDraggable(event)}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        openEventDetailsModal(event)
-                                      }}
-                                      onDragStart={() => {
-                                        if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
-                                      }}
-                                      onDragEnd={() => setDragPlannerEvent(null)}
-                                      className={clsx('badge border', plannerKindTone(event.kind), 'block w-full overflow-hidden', isCalendarEventDraggable(event) ? 'cursor-move' : '')}
-                                      title={isCalendarEventDraggable(event) ? t('app.communications.calendar.week.drag_to_slot', { defaultValue: 'Drag to another slot' }) : undefined}
-                                    >
-                                      <div className="truncate font-medium">{event.title}</div>
-                                      <div className="truncate text-slate-600">{formatDateTime(event.at)}</div>
-                                    </div>
-                                  ))}
+                        <div className="flex min-w-[980px]">
+                          <div className="flex w-16 flex-shrink-0 flex-col border-r border-slate-200">
+                            {Array.from({ length: slotsTotal }).map((_, slotIndex) => {
+                              const slot = weekSlotStart(slotIndex, weekSlotMinutes)
+                              const hourLabel = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`
+                              const majorLine = slot.minute === 0
+                              return (
+                                <div
+                                  key={`week-ruler-${slotIndex}`}
+                                  style={{ height: CALENDAR_TIMELINE_SLOT_PX }}
+                                  className={clsx(
+                                    'flex items-start border-b px-2 pt-0.5 text-[11px]',
+                                    majorLine ? 'border-slate-200 text-slate-500' : 'border-slate-100 text-slate-400',
+                                  )}
+                                >
+                                  {hourLabel}
                                 </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
+                          </div>
+                          <div className="grid min-w-0 flex-1 grid-cols-7">
+                            {weekDays.map((day) => {
+                              const key = localDayKeyFromDate(day)
+                              const timedEvents = (eventsByDay.get(key) || []).filter((ev) => Boolean(ev.at))
+                              return (
+                                <div
+                                  key={`week-col-${key}`}
+                                  className={clsx(
+                                    'relative border-l border-slate-100',
+                                    isDragActive ? 'hover:bg-brand-50/40' : '',
+                                  )}
+                                  style={{ minHeight: columnHeightPx }}
+                                  onClick={(e) => {
+                                    if ((e.target as HTMLElement).closest('[data-calendar-event-card]')) return
+                                    if (isDragActive) return
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const minuteOfDay = minuteFromTimelinePointer(e.clientY, rect.top, rect.height, weekSlotMinutes)
+                                    openCreateEventModal(key, Math.floor(minuteOfDay / 60), minuteOfDay % 60)
+                                  }}
+                                  onDragOver={(e) => {
+                                    if (isDragActive) e.preventDefault()
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault()
+                                    if (!isDragActive || !dragPlannerEvent) return
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    const minuteOfDay = minuteFromTimelinePointer(e.clientY, rect.top, rect.height, weekSlotMinutes)
+                                    const target = parseDate(`${key}T00:00:00`)
+                                    if (!target) return
+                                    target.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0)
+                                    void movePlannerEventToDateTime(dragPlannerEvent, target, key)
+                                    setDragPlannerEvent(null)
+                                  }}
+                                >
+                                  {Array.from({ length: slotsTotal }).map((_, i) => {
+                                    const major = weekSlotStart(i, weekSlotMinutes).minute === 0
+                                    return (
+                                      <div
+                                        key={`week-gridline-${key}-${i}`}
+                                        className={clsx(
+                                          'pointer-events-none absolute left-0 right-0 border-b',
+                                          major ? 'border-slate-200' : 'border-slate-100',
+                                        )}
+                                        style={{
+                                          top: `${(i * weekSlotMinutes * 100) / CALENDAR_DAY_MINUTES}%`,
+                                          height: `${(weekSlotMinutes * 100) / CALENDAR_DAY_MINUTES}%`,
+                                        }}
+                                      />
+                                    )
+                                  })}
+                                  {key === nowMeta.dayKey && (
+                                    <div
+                                      className="pointer-events-none absolute left-0 right-0 z-[8]"
+                                      style={{ top: `${(nowMeta.totalMinutes / CALENDAR_DAY_MINUTES) * 100}%` }}
+                                    >
+                                      <div className="h-0.5 w-full bg-rose-500" />
+                                    </div>
+                                  )}
+                                  {timedEvents.map((event) => {
+                                    const pct = eventTimelinePercents(event, weekSlotMinutes)
+                                    if (!pct) return null
+                                    return (
+                                      <div
+                                        key={`week-item-${event.id}`}
+                                        data-calendar-event-card
+                                        draggable={isCalendarEventDraggable(event)}
+                                        onPointerDown={(e) => {
+                                          e.stopPropagation()
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          openEventDetailsModal(event)
+                                        }}
+                                        onDragStart={() => {
+                                          if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
+                                        }}
+                                        onDragEnd={() => setDragPlannerEvent(null)}
+                                        className={clsx(
+                                          'badge absolute left-1 right-1 z-[5] overflow-hidden border py-0.5',
+                                          plannerKindTone(event.kind),
+                                          isCalendarEventDraggable(event) ? 'cursor-move' : '',
+                                        )}
+                                        style={{ top: `${pct.topPct}%`, height: `${pct.heightPct}%` }}
+                                        title={
+                                          isCalendarEventDraggable(event)
+                                            ? t('app.communications.calendar.week.drag_to_slot', { defaultValue: 'Drag to another slot' })
+                                            : undefined
+                                        }
+                                      >
+                                        <div className="truncate text-[11px] font-medium leading-tight">{event.title}</div>
+                                        <div className="truncate text-[10px] leading-tight text-slate-600">{formatDateTime(event.at)}</div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
                       )
-                    })}
+                    })()}
                   </div>
                 </div>
               </div>
@@ -2587,86 +2840,155 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                     </button>
                   )}
                 </div>
-                <div className="max-h-[62vh] space-y-1 overflow-auto">
-                  {Array.from({ length: 24 }).map((_, hour) => {
-                    const slotLabel = `${String(hour).padStart(2, '0')}:00`
-                    const isCurrentHour = selectedDay === nowMeta.dayKey && nowMeta.hours === hour
-                    const slotEvents = dayPlannerEvents.filter((event) => {
-                      const dt = parseDate(event.at || null)
-                      return dt ? dt.getHours() === hour : false
-                    })
+                <div className="max-h-[62vh] overflow-auto">
+                  {(() => {
+                    const slotsTotal = Math.floor(CALENDAR_DAY_MINUTES / weekSlotMinutes)
+                    const columnHeightPx = slotsTotal * CALENDAR_TIMELINE_SLOT_PX
+                    const timedEvents = dayPlannerEvents.filter((e) => Boolean(e.at))
                     return (
-                      <div
-                        key={`slot-${hour}`}
-                        className={clsx(
-                          'relative rounded border border-slate-200 px-2 py-1 text-xs',
-                          isDragActive ? 'hover:border-brand-300 hover:bg-brand-50/40' : '',
-                          isCurrentHour ? 'border-rose-200 bg-rose-50/30' : '',
-                        )}
-                        onClick={() => {
-                          if (!isDragActive) openCreateEventModal(selectedDay, hour, 0)
-                        }}
-                        onDragOver={(e) => {
-                          if (isDragActive) e.preventDefault()
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault()
-                          if (resizePlannerEvent?.plannerId) {
-                            void resizePlannerEventToHour(resizePlannerEvent, selectedDay, hour + 1)
-                            return
-                          }
-                          if (isDragActive && dragPlannerEvent) {
-                            const target = parseDate(`${selectedDay}T00:00:00`)
-                            if (!target) return
-                            target.setHours(hour, 0, 0, 0)
-                            void movePlannerEventToDateTime(dragPlannerEvent, target, selectedDay)
-                            setDragPlannerEvent(null)
-                          }
-                        }}
-                      >
-                        {isCurrentHour && (
-                          <div className="pointer-events-none absolute left-0 right-0" style={{ top: `${(nowMeta.minutes / 60) * 100}%` }}>
-                            <div className="h-0.5 w-full bg-rose-500" />
-                          </div>
-                        )}
-                        <div className="font-medium text-slate-600">{slotLabel}</div>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {slotEvents.map((event) => (
+                      <div className="flex">
+                        <div className="flex w-16 flex-shrink-0 flex-col border-r border-slate-200">
+                          {Array.from({ length: slotsTotal }).map((_, slotIndex) => {
+                            const slot = weekSlotStart(slotIndex, weekSlotMinutes)
+                            const hourLabel = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`
+                            const majorLine = slot.minute === 0
+                            return (
+                              <div
+                                key={`day-ruler-${slotIndex}`}
+                                style={{ height: CALENDAR_TIMELINE_SLOT_PX }}
+                                className={clsx(
+                                  'flex items-start border-b px-2 pt-0.5 text-[11px]',
+                                  majorLine ? 'border-slate-200 text-slate-500' : 'border-slate-100 text-slate-400',
+                                )}
+                              >
+                                {hourLabel}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div
+                          className={clsx(
+                            'relative min-h-0 flex-1 rounded border border-slate-200',
+                            selectedDay === nowMeta.dayKey ? 'border-rose-200 bg-rose-50/30' : '',
+                            isDragActive ? 'hover:border-brand-300 hover:bg-brand-50/40' : '',
+                          )}
+                          style={{ minHeight: columnHeightPx }}
+                          onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('[data-calendar-event-card]')) return
+                            if (isDragActive) return
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const minuteOfDay = minuteFromTimelinePointer(e.clientY, rect.top, rect.height, weekSlotMinutes)
+                            openCreateEventModal(selectedDay, Math.floor(minuteOfDay / 60), minuteOfDay % 60)
+                          }}
+                          onDragOver={(e) => {
+                            if (isDragActive || resizePlannerEvent?.plannerId) e.preventDefault()
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const minuteOfDay = minuteFromTimelinePointer(e.clientY, rect.top, rect.height, weekSlotMinutes)
+                            const hour = Math.floor(minuteOfDay / 60)
+                            if (resizePlannerEvent?.plannerId) {
+                              void resizePlannerEventToHour(resizePlannerEvent, selectedDay, hour + 1)
+                              return
+                            }
+                            if (isDragActive && dragPlannerEvent) {
+                              const target = parseDate(`${selectedDay}T00:00:00`)
+                              if (!target) return
+                              target.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0)
+                              void movePlannerEventToDateTime(dragPlannerEvent, target, selectedDay)
+                              setDragPlannerEvent(null)
+                            }
+                          }}
+                        >
+                          {Array.from({ length: slotsTotal }).map((_, i) => {
+                            const major = weekSlotStart(i, weekSlotMinutes).minute === 0
+                            return (
+                              <div
+                                key={`day-gridline-${i}`}
+                                className={clsx(
+                                  'pointer-events-none absolute left-0 right-0 border-b',
+                                  major ? 'border-slate-200' : 'border-slate-100',
+                                )}
+                                style={{
+                                  top: `${(i * weekSlotMinutes * 100) / CALENDAR_DAY_MINUTES}%`,
+                                  height: `${(weekSlotMinutes * 100) / CALENDAR_DAY_MINUTES}%`,
+                                }}
+                              />
+                            )
+                          })}
+                          {selectedDay === nowMeta.dayKey && (
                             <div
-                              key={`slot-item-${event.id}`}
-                              draggable={isCalendarEventDraggable(event)}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openEventDetailsModal(event)
-                              }}
-                              onDragStart={() => {
-                                if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
-                              }}
-                              onDragEnd={() => setDragPlannerEvent(null)}
-                              className={clsx('badge border', plannerKindTone(event.kind), isCalendarEventDraggable(event) ? 'cursor-move' : '')}
-                              title={t('app.communications.calendar.timeline.drag_to_hour_or_day', { defaultValue: 'Drag to another hour/day' })}
+                              className="pointer-events-none absolute left-0 right-0 z-[8]"
+                              style={{ top: `${(nowMeta.totalMinutes / CALENDAR_DAY_MINUTES) * 100}%` }}
                             >
-                              <span>{event.title}</span>
-                              {event.plannerId && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setResizePlannerEvent(event)
-                                  }}
-                                  className={clsx('ml-1 btn-secondary btn-xs', resizePlannerEvent?.plannerId === event.plannerId && 'border-brand-400 bg-brand-50 text-brand-700')}
-                                >
-                                  {t('app.communications.calendar.timeline.resize', { defaultValue: 'resize' })}
-                                </button>
-                              )}
+                              <div className="h-0.5 w-full bg-rose-500" />
                             </div>
-                          ))}
-                          {slotEvents.length === 0 && <span className="text-[10px] text-slate-400">{t('app.communications.calendar.timeline.drop_here', { defaultValue: 'drop here' })}</span>}
-                          {resizePlannerEvent?.plannerId && <span className="text-[10px] text-brand-700">{t('app.communications.calendar.timeline.set_end_here', { defaultValue: 'set end here' })}</span>}
+                          )}
+                          {timedEvents.map((event) => {
+                            const pct = eventTimelinePercents(event, weekSlotMinutes)
+                            if (!pct) return null
+                            return (
+                              <div
+                                key={`slot-item-${event.id}`}
+                                data-calendar-event-card
+                                draggable={isCalendarEventDraggable(event)}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation()
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openEventDetailsModal(event)
+                                }}
+                                onDragStart={() => {
+                                  if (isCalendarEventDraggable(event)) setDragPlannerEvent(event)
+                                }}
+                                onDragEnd={() => setDragPlannerEvent(null)}
+                                className={clsx(
+                                  'badge absolute left-2 right-2 z-[5] overflow-hidden border px-2 py-1 text-xs',
+                                  plannerKindTone(event.kind),
+                                  isCalendarEventDraggable(event) ? 'cursor-move' : '',
+                                )}
+                                style={{ top: `${pct.topPct}%`, height: `${pct.heightPct}%` }}
+                                title={t('app.communications.calendar.timeline.drag_to_hour_or_day', {
+                                  defaultValue: 'Drag to another hour/day',
+                                })}
+                              >
+                                <div className="flex flex-wrap items-start gap-1">
+                                  <span className="min-w-0 flex-1 truncate font-medium">{event.title}</span>
+                                  {event.plannerId && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setResizePlannerEvent(event)
+                                      }}
+                                      className={clsx(
+                                        'btn-secondary btn-xs shrink-0',
+                                        resizePlannerEvent?.plannerId === event.plannerId && 'border-brand-400 bg-brand-50 text-brand-700',
+                                      )}
+                                    >
+                                      {t('app.communications.calendar.timeline.resize', { defaultValue: 'resize' })}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          {timedEvents.length === 0 && (
+                            <span className="pointer-events-none absolute bottom-2 left-2 text-[10px] text-slate-400">
+                              {t('app.communications.calendar.timeline.drop_here', { defaultValue: 'drop here' })}
+                            </span>
+                          )}
+                          {resizePlannerEvent?.plannerId && (
+                            <span className="pointer-events-none absolute bottom-2 right-2 text-[10px] text-brand-700">
+                              {t('app.communications.calendar.timeline.set_end_here', { defaultValue: 'set end here' })}
+                            </span>
+                          )}
                         </div>
                       </div>
                     )
-                  })}
+                  })()}
                 </div>
               </div>
 
@@ -3357,11 +3679,11 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                 placeholder={t('app.communications.calendar.forms.description', { defaultValue: 'Description' })}
               />
               <div className="flex items-center justify-between gap-2 pt-1">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setEventModalOpen(false)} className="btn-secondary">
                     {t('common.actions.close', { defaultValue: 'Close' })}
                   </button>
-                  {eventModalEvent && (eventModalEvent.plannerId || eventModalEvent.integratedItemId) && (
+                  {eventModalEvent && (eventModalEvent.plannerId || eventModalEvent.integratedItemId || eventModalEvent.reminderId) && (
                     <button
                       type="button"
                       onClick={() => void cancelUnifiedEvent(eventModalEvent)}
@@ -3369,6 +3691,33 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                       className="btn-danger disabled:opacity-50"
                     >
                       {t('app.communications.calendar.actions.cancel', { defaultValue: 'Cancel' })}
+                    </button>
+                  )}
+                  {eventModalEvent?.plannerId && (
+                    <button
+                      type="button"
+                      onClick={() => void setPlannerStatus(eventModalEvent.plannerId!, 'done')}
+                      disabled={
+                        busy ||
+                        eventModalEvent.plannerStatus === 'done' ||
+                        eventModalEvent.plannerStatus === 'cancelled'
+                      }
+                      className="btn-primary disabled:opacity-50"
+                    >
+                      {t('app.communications.calendar.actions.complete', { defaultValue: 'Complete' })}
+                    </button>
+                  )}
+                  {eventModalEvent?.reminderId && !eventModalEvent.plannerId && (
+                    <button
+                      type="button"
+                      onClick={() => void completeDayReminder(eventModalEvent.reminderId!)}
+                      disabled={
+                        busy ||
+                        ['done', 'completed', 'cancelled'].includes(String(eventModalEvent.reminderStatus || '').toLowerCase())
+                      }
+                      className="btn-primary disabled:opacity-50"
+                    >
+                      {t('app.communications.calendar.actions.complete', { defaultValue: 'Complete' })}
                     </button>
                   )}
                 </div>

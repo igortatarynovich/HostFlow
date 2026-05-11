@@ -1437,10 +1437,222 @@ export async function runCommunicationSchedulerNow(): Promise<{ ok: boolean; sta
   return data as { ok: boolean; status: CommunicationSchedulerStatus }
 }
 
+// =====================================================================
+// Phase 2.1 (ADR-012) — CommunicationPlannerEvent shim.
+//
+// The legacy /communications/planner/events* HTTP surface is gone. The
+// four functions below preserve the legacy types and call signatures
+// used by CommunicationsCalendarPage, CommunicationsPlannerPage,
+// RemindersPage, MyTasksPanel, and TodayPlannerPanel; internally they
+// dispatch to /api/v1/activities with a planner-event ↔ activity field
+// remap. Phase 3 cleanup will delete the shim and migrate UI pages to
+// the canonical Activity types.
+//
+// Field mapping (planner-event → activity, both directions):
+//   id              ↔ id
+//   title           ↔ title
+//   description     ↔ description
+//   kind            ↔ type
+//   status          ↔ status     (pending/new/sent → 'planned' on read)
+//   priority        ↔ priority
+//   start_at        ↔ due_at
+//   end_at          ↔ derived from duration_minutes (start + minutes*60s)
+//   all_day         ↔ payload._planner_all_day (boolean flag in blob)
+//   assignee_id     ↔ assignee_id
+//   owner_id        ↔ owner_id
+//   entity_type/id  ↔ entity_type/id (linked_candidate_id/linked_company_id
+//                     fold into entity_type='candidate'/'company')
+//   source          ↔ source
+//   payload         ↔ payload     (wholesale replace on PATCH to mirror
+//                                  legacy planner semantics)
+// =====================================================================
+
+const PLANNER_ALL_DAY_KEY = '_planner_all_day'
+
+function _normalizePlannerStatusFromActivity(value: unknown): string {
+  const v = String(value || '').trim().toLowerCase()
+  // Activity legacy/transient statuses ("new"/"pending"/"sent"/"overdue")
+  // collapse to "planned" for the planner-event view (see ADR-012 §6 +
+  // backend ``activity_layer_v1`` migration §3). Already-canonical
+  // statuses ("planned", "in_progress", "done", "cancelled") pass through.
+  if (v === 'pending' || v === 'new' || v === 'sent' || v === 'overdue') return 'planned'
+  return v || 'planned'
+}
+
+function _activityToPlannerEvent(row: any): CommunicationPlannerEvent {
+  const startAtIso: string = row?.due_at ? String(row.due_at) : ''
+  const durationMin =
+    typeof row?.duration_minutes === 'number' && Number.isFinite(row.duration_minutes)
+      ? Number(row.duration_minutes)
+      : null
+  let endAtIso: string | null = null
+  if (durationMin && durationMin > 0 && startAtIso) {
+    const startMs = Date.parse(startAtIso)
+    if (!Number.isNaN(startMs)) {
+      endAtIso = new Date(startMs + durationMin * 60_000).toISOString()
+    }
+  }
+  const payload =
+    row?.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+      ? { ...row.payload }
+      : {}
+  const allDay = Boolean(payload[PLANNER_ALL_DAY_KEY])
+  const entityType = row?.entity_type ? String(row.entity_type) : null
+  const entityId = row?.entity_id ? String(row.entity_id) : null
+  return {
+    id: String(row?.id || ''),
+    tenant_id: '',
+    title: String(row?.title || ''),
+    description: row?.description ?? null,
+    kind: String(row?.type || 'task'),
+    status: _normalizePlannerStatusFromActivity(row?.status),
+    priority: row?.priority ? String(row.priority) : 'normal',
+    start_at: startAtIso,
+    end_at: endAtIso,
+    all_day: allDay,
+    owner_id: row?.owner_id ?? null,
+    assignee_id: row?.assignee_id ?? null,
+    entity_type: entityType,
+    entity_id: entityId,
+    linked_candidate_id: entityType === 'candidate' && entityId ? entityId : null,
+    linked_company_id: entityType === 'company' && entityId ? entityId : null,
+    source: row?.source ? String(row.source) : 'manual',
+    payload,
+    created_at: String(row?.created_at || ''),
+    updated_at: String(row?.updated_at || ''),
+  }
+}
+
+function _plannerCreateBodyToActivity(input: {
+  title: string
+  description?: string
+  kind?: string
+  status?: string
+  priority?: string
+  start_at: string
+  end_at?: string
+  all_day?: boolean
+  assignee_id?: string
+  entity_type?: string
+  entity_id?: string
+  linked_candidate_id?: string
+  linked_company_id?: string
+  source?: string
+  payload?: Record<string, any>
+  allow_unavailable_assignee?: boolean
+}): Record<string, any> {
+  let entityType = input.entity_type
+  let entityId = input.entity_id
+  if (!entityId && input.linked_candidate_id) {
+    entityType = 'candidate'
+    entityId = input.linked_candidate_id
+  }
+  if (!entityId && input.linked_company_id) {
+    entityType = 'company'
+    entityId = input.linked_company_id
+  }
+  let durationMinutes: number | undefined
+  if (input.end_at) {
+    const startMs = Date.parse(input.start_at)
+    const endMs = Date.parse(input.end_at)
+    if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
+      durationMinutes = Math.round((endMs - startMs) / 60_000)
+    }
+  }
+  const blob: Record<string, any> = { ...(input.payload || {}) }
+  if (input.all_day) blob[PLANNER_ALL_DAY_KEY] = true
+  // Phase 2.1 calendar-worthy markers: every Activity written through the planner
+  // UI is by definition user-confirmed and must remain visible on the calendar
+  // grid (see CommunicationsCalendarPage.isCalendarWorthyActivity).
+  //   - planner.kind preserves the original UI kind so the `kind IN (meeting, shift)`
+  //     rule keeps working even when type is collapsed.
+  //   - calendar_visible=true is the explicit opt-in that also covers kind='call'
+  //     and any future kind the planner UI might offer.
+  const plannerBlob: Record<string, any> = {
+    ...((blob.planner && typeof blob.planner === 'object' && !Array.isArray(blob.planner))
+      ? (blob.planner as Record<string, any>)
+      : {}),
+  }
+  if (input.kind) plannerBlob.kind = input.kind
+  if (Object.keys(plannerBlob).length > 0) blob.planner = plannerBlob
+  blob.calendar_visible = true
+  const body: Record<string, any> = {
+    title: input.title,
+    type: input.kind || 'meeting',
+    entity_type: entityType || 'custom',
+    due_at: input.start_at,
+    priority: input.priority || 'normal',
+    payload: blob,
+    allow_unavailable_assignee: Boolean(input.allow_unavailable_assignee),
+  }
+  if (input.description !== undefined) body.description = input.description
+  if (entityId !== undefined) body.entity_id = entityId
+  if (durationMinutes !== undefined) body.duration_minutes = durationMinutes
+  if (input.assignee_id) body.assignee_id = input.assignee_id
+  if (input.source) body.source = input.source
+  return body
+}
+
+function _plannerPatchBodyToActivity(
+  input: Record<string, any>,
+): { body: Record<string, any>; complete: boolean } {
+  const out: Record<string, any> = {}
+  let routeToComplete = false
+  if ('title' in input) out.title = input.title
+  if ('description' in input) out.description = input.description
+  if ('priority' in input) out.priority = input.priority
+  if ('kind' in input) out.type = input.kind
+  if ('source' in input) out.source = input.source
+  if ('assignee_id' in input) out.assignee_id = input.assignee_id
+  if ('start_at' in input) out.due_at = input.start_at
+  if ('start_at' in input && 'end_at' in input) {
+    if (input.end_at) {
+      const startMs = Date.parse(input.start_at)
+      const endMs = Date.parse(input.end_at)
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs > startMs) {
+        out.duration_minutes = Math.round((endMs - startMs) / 60_000)
+      } else {
+        out.duration_minutes = null
+      }
+    } else {
+      out.duration_minutes = null
+    }
+  }
+  if ('entity_type' in input) out.entity_type = input.entity_type
+  if ('entity_id' in input) out.entity_id = input.entity_id
+  if (input.linked_candidate_id) {
+    out.entity_type = 'candidate'
+    out.entity_id = input.linked_candidate_id
+  } else if (input.linked_company_id) {
+    out.entity_type = 'company'
+    out.entity_id = input.linked_company_id
+  }
+  if ('payload' in input || 'all_day' in input) {
+    const blob: Record<string, any> = { ...(input.payload || {}) }
+    if ('all_day' in input) {
+      if (input.all_day) blob[PLANNER_ALL_DAY_KEY] = true
+      else delete blob[PLANNER_ALL_DAY_KEY]
+    }
+    if ('payload' in input || 'all_day' in input) out.payload = blob
+  }
+  if ('allow_unavailable_assignee' in input) {
+    out.allow_unavailable_assignee = input.allow_unavailable_assignee
+  }
+  if ('status' in input && input.status != null) {
+    const next = String(input.status).trim().toLowerCase()
+    if (next === 'done' || next === 'completed') {
+      routeToComplete = true
+    } else {
+      out.status = next
+    }
+  }
+  return { body: out, complete: routeToComplete }
+}
+
 /** Single planner event — calendar ``/app/calendar?event_id=`` deep-link (G-6). */
 export async function getCommunicationPlannerEvent(eventId: string): Promise<CommunicationPlannerEvent> {
-  const { data } = await api.get(`/communications/planner/events/${encodeURIComponent(eventId)}`)
-  return data as CommunicationPlannerEvent
+  const { data } = await api.get(`/activities/${encodeURIComponent(eventId)}`)
+  return _activityToPlannerEvent(data)
 }
 
 export async function listCommunicationPlannerEvents(opts?: {
@@ -1456,15 +1668,24 @@ export async function listCommunicationPlannerEvents(opts?: {
 }): Promise<{ items: CommunicationPlannerEvent[]; total: number }> {
   const params: Record<string, any> = {}
   if (opts?.limit != null) params.limit = Math.min(200, Math.max(1, opts.limit))
-  if (opts?.offset != null) params.offset = opts.offset
   if (opts?.status_filter?.length) params.status_filter = opts.status_filter
-  if (opts?.assignee_id) params.assignee_id = opts.assignee_id
-  if (opts?.from_at) params.from_at = opts.from_at
-  if (opts?.to_at) params.to_at = opts.to_at
-  if (opts?.kind) params.kind = opts.kind
+  if (opts?.assignee_id) {
+    params.assignee_id = opts.assignee_id
+    params.assignee_scope = 'mine'
+  } else {
+    // Legacy planner list returned tenant-wide rows for managers/admins.
+    // Activities API mirrors that with assignee_scope=team (RBAC enforced
+    // server-side; viewer-role callers still see their own rows only).
+    params.assignee_scope = 'team'
+  }
+  if (opts?.from_at) params.due_from = opts.from_at
+  if (opts?.to_at) params.due_to = opts.to_at
+  if (opts?.kind) params.type_filter = [opts.kind]
   if (opts?.include_completed_entities) params.include_completed_entities = true
-  const { data } = await api.get('/communications/planner/events', { params })
-  return data as { items: CommunicationPlannerEvent[]; total: number }
+  const { data } = await api.get('/activities', { params })
+  const rawItems: any[] = Array.isArray((data as any)?.items) ? (data as any).items : []
+  const items = rawItems.map(_activityToPlannerEvent)
+  return { items, total: items.length }
 }
 
 export async function createCommunicationPlannerEvent(payload: {
@@ -1485,8 +1706,9 @@ export async function createCommunicationPlannerEvent(payload: {
   payload?: Record<string, any>
   allow_unavailable_assignee?: boolean
 }): Promise<CommunicationPlannerEvent> {
-  const { data } = await api.post('/communications/planner/events', payload)
-  return data as CommunicationPlannerEvent
+  const body = _plannerCreateBodyToActivity(payload)
+  const { data } = await api.post('/activities', body)
+  return _activityToPlannerEvent(data)
 }
 
 export async function patchCommunicationPlannerEvent(
@@ -1507,8 +1729,13 @@ export async function patchCommunicationPlannerEvent(
     linked_company_id: string | null
     payload: Record<string, any>
     allow_unavailable_assignee: boolean
-  }>
+  }>,
 ): Promise<CommunicationPlannerEvent> {
-  const { data } = await api.patch(`/communications/planner/events/${eventId}`, payload)
-  return data as CommunicationPlannerEvent
+  const { body, complete } = _plannerPatchBodyToActivity(payload as Record<string, any>)
+  if (complete) {
+    const { data } = await api.post(`/activities/${encodeURIComponent(eventId)}/complete`)
+    return _activityToPlannerEvent(data)
+  }
+  const { data } = await api.patch(`/activities/${encodeURIComponent(eventId)}`, body)
+  return _activityToPlannerEvent(data)
 }
