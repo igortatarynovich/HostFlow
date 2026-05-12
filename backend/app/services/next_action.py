@@ -50,7 +50,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.spa_paths import TASKS
+from backend.app.constants.spa_paths import TASKS, spa_candidate, spa_inbox_thread, spa_lead, spa_vacancy
 from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
@@ -239,7 +239,7 @@ async def compute_candidate_next_action(
                 title_key="app.next_action.handoff.client_decide.title",
                 hint="The agency is waiting for accept / reject.",
                 hint_key="app.next_action.handoff.client_decide.hint",
-                href=f"/app/candidates/{candidate_id_str}?focus=handoff",
+                href=f"{spa_candidate(candidate_id_str)}?focus=handoff",
             )
         # Agency viewer: nothing for them to do until the client responds.
         return NextActionDTO(
@@ -297,7 +297,7 @@ async def compute_candidate_next_action(
                 title_key="app.next_action.contact.first.title",
                 hint="No call or message logged yet.",
                 hint_key="app.next_action.contact.first.hint",
-                href=f"/app/candidates/{candidate_id_str}?action=log_contact",
+                href=f"{spa_candidate(candidate_id_str)}?action=log_contact",
             )
 
     # 6. Active candidate with no signal — say so explicitly.
@@ -365,7 +365,7 @@ async def compute_lead_next_action(
     if lead is None:
         return _idle_dto(entity_id=lead_id_str, reason="lead_not_found", entity_type="lead")
 
-    href_detail = f"/app/leads/{lead_id_str}"
+    href_detail = spa_lead(lead_id_str)
 
     # 1. Converted to candidate: lead workstream is complete.
     if getattr(lead, "candidate_id", None):
@@ -542,7 +542,7 @@ async def compute_vacancy_next_action(
 
     owner_tid = str(vacancy.tenant_id or "").strip() or tenant_id_str
 
-    href_detail = f"/app/vacancies/{vacancy_id_str}"
+    href_detail = spa_vacancy(vacancy_id_str)
 
     # 1. Archived: terminal forever (operator filed it away).
     if bool(vacancy.is_archived):
@@ -765,6 +765,27 @@ async def compute_document_next_action(
     if not tenant_id_str or not doc_id_str:
         return _idle_dto(entity_id=doc_id_str, reason="invalid_input", entity_type="document")
 
+    # Checklist placeholders (no DB row) — same UX as ``DocumentStatus.missing``.
+    if doc_id_str.startswith("synthetic::"):
+        parts = doc_id_str.split("::")
+        if len(parts) == 3 and parts[0] == "synthetic":
+            _, _syn_type, candidate_id = parts
+            cid = (candidate_id or "").strip()
+            href_detail = spa_candidate(cid) if cid else None
+            reason_code = "document_missing"
+            return NextActionDTO(
+                entity_type="document",
+                entity_id=doc_id_str,
+                kind=NextActionKind.CONTACT,
+                priority=NextActionPriority.HIGH,
+                reason_code=reason_code,
+                title="Action required: missing",
+                title_key=f"app.next_action.document.{reason_code}.title",
+                hint="Open the candidate's documents tab to handle this.",
+                hint_key=f"app.next_action.document.{reason_code}.hint",
+                href=href_detail,
+            )
+
     doc = await db.scalar(
         select(Document).where(
             Document.id == doc_id_str,
@@ -777,7 +798,7 @@ async def compute_document_next_action(
     # `Document.candidate_id` is non-null on the model, but defensive read
     # in case migration history or a fixture left it blank.
     candidate_id = (getattr(doc, "candidate_id", None) or "").strip()
-    href_detail = f"/app/candidates/{candidate_id}" if candidate_id else None
+    href_detail = spa_candidate(candidate_id) if candidate_id else None
 
     # 1. Soft-deleted: respect the cleanup contract from G-1.
     if doc.deleted_at is not None:
@@ -1051,7 +1072,7 @@ async def compute_thread_next_action(
     if thread is None:
         return _idle_dto(entity_id=thread_id_str, reason="thread_not_found", entity_type="thread")
 
-    href_detail = f"/app/inbox/threads/{thread_id_str}"
+    href_detail = spa_inbox_thread(thread_id_str)
     ref_now = now or datetime.now(timezone.utc)
 
     # 1. Archived — operator filed it away. Terminal.

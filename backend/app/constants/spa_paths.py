@@ -22,9 +22,11 @@ SETTINGS_INTEGRATIONS = "/app/settings/integrations"
 SETTINGS_EMAIL = "/app/settings/email"
 SETTINGS_INTEGRATIONS_META = "/app/settings/integrations/meta"
 OVERVIEW = "/app/overview"
+MESSAGES_LEGACY = "/app/messages"
 EMAIL_LEGACY = "/app/email"
 INBOX_MESSAGES_SCOPED = "/app/inbox?channel=messages"
 INBOX_EMAIL_SCOPED = "/app/inbox?channel=email"
+INBOX_THREADS_BASE = "/app/inbox/threads"
 
 def spa_candidate(candidate_id: str) -> str:
     return f"{CANDIDATES}/{candidate_id}"
@@ -44,3 +46,7 @@ def spa_lead(lead_id: str) -> str:
 
 def spa_vacancy(vacancy_id: str) -> str:
     return f"{VACANCIES}/{vacancy_id}"
+
+
+def spa_inbox_thread(thread_id: str) -> str:
+    return f"{INBOX_THREADS_BASE}/{thread_id}"

@@ -41,11 +41,13 @@ export const CRM_APP_PATHS = {
   automationRules: "/app/automation-rules",
   automationLog: "/app/automation-log",
   inbox: "/app/inbox",
-  /** Inbox with messages channel selected. */
+  /** Inbox with messages channel selected (legacy top-level /app/messages redirects here). */
   inboxMessagesScoped: "/app/inbox?channel=messages",
   inboxEmailScoped: "/app/inbox?channel=email",
   inboxThreadsBase: "/app/inbox/threads",
   calendar: "/app/calendar",
+  /** Legacy: top-level /app/messages — redirects into Inbox with channel=messages. */
+  messages: "/app/messages",
   email: "/app/email",
   fleet: "/app/fleet",
   fleetVehicles: "/app/fleet/vehicles",
@@ -68,6 +70,8 @@ export const CRM_APP_PATHS = {
   slaIncidents: "/app/sla-incidents",
   communicationsCommandAudit: "/app/communications/command-audit",
   communicationsThreadsBase: "/app/communications/threads",
+  /** Legacy aggregate URL kept for redirects/bookmarks. */
+  communicationsLegacyHub: "/app/communications",
   profile: "/app/profile",
   myCompany: "/app/my-company",
   myAvailability: "/app/my-availability",
@@ -77,7 +81,6 @@ export const CRM_APP_PATHS = {
   companiesOperatingBilling: "/app/my-company?section=billing",
   settings: "/app/settings",
   settingsUsers: "/app/settings/users",
-  settingsTeam: "/app/settings/team",
   settingsBilling: "/app/settings/billing",
   settingsBillingPlan: "/app/settings/billing/plan",
   settingsLegal: "/app/settings/legal",
@@ -100,17 +103,24 @@ export const CRM_APP_PATHS = {
   settingsCommunicationsMessengers: "/app/settings/communications/messengers",
   settingsCommunicationsQueue: "/app/settings/communications/queue",
   settingsCommunicationsSla: "/app/settings/communications/sla",
+  settingsTeam: "/app/settings/team",
   settingsRiskIntel: "/app/settings/risk-intel",
   settingsHiringPipelineGates: "/app/settings/hiring-pipeline-gates",
   settingsRuleset: "/app/settings/ruleset",
   settingsDocs: "/app/settings/docs",
   settingsMergeTemplates: "/app/settings/document-merge-templates",
   settingsTenants: "/app/settings/tenants",
+  /** Legacy aliased Meta / lead-source admin (canonical: settingsIntegrationsMeta). */
+  settingsLeads: "/app/settings/leads",
   settingsLeadForms: "/app/settings/lead-forms",
   settingsTtvReport: "/app/settings/ttv-report",
   settingsCandidateProfiles: "/app/settings/candidate-profiles",
   settingsCustomFields: "/app/settings/custom-fields",
+  /** Legacy URLs kept for redirects / bookmarks. */
+  companiesLegacy: "/app/companies",
   doProcesowaniaLegacy: "/app/do-procesowania",
+  /** Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity). */
+  plannerLegacy: "/app/planner",
   remindersLegacy: "/app/reminders",
   activitiesLegacy: "/app/activities",
 } as const

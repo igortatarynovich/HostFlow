@@ -14,6 +14,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.constants.spa_paths import LEADS
 from backend.app.services.onboarding_demo_seed import (
     clear_onboarding_demo_data,
     onboarding_demo_still_active,
@@ -534,7 +535,7 @@ class WizardFirstLeadOut(BaseModel):
     nba_title: str | None = None
     nba_due_at: str | None = None
     nba_id: str | None = None
-    leads_url: str = "/app/leads/"
+    leads_url: str = Field(default=f"{LEADS}/")
     demo_seeded: bool = False
 
 
@@ -626,6 +627,6 @@ async def get_onboarding_wizard_first_lead(
         nba_title=nba_title,
         nba_due_at=nba_due,
         nba_id=nba_id,
-        leads_url=f"/app/leads/?focus={lead.id}",
+        leads_url=f"{LEADS}/?focus={lead.id}",
         demo_seeded=demo_active,
     )

@@ -10,9 +10,12 @@
     "onboarding": "/app/onboarding/",
     "onboardingCompany": "/app/onboarding/company",
     "onboardingGettingStarted": "/app/onboarding/getting-started",
+    "onboardingWizard": "/app/onboarding/wizard",
     "clientsDirectory": "/app/clients/directory",
     "agencyClients": "/app/clients",
     "clientsLinkBase": "/app/clients/link",
+    "hr": "/app/hr",
+    "hrEmployees": "/app/hr/employees",
     "candidates": "/app/candidates",
     "candidatesNoNextActionPage": "/app/candidates/no-next-action",
     "candidateNew": "/app/candidates/new",
@@ -28,7 +31,8 @@
     "orders": "/app/orders",
     "documents": "/app/documents",
     "procesowani": "/app/procesowani",
-    "tasks": "/app/tasks",
+    "tasks": "/app/work/tasks",
+    "workCalendar": "/app/work/calendar",
     "automations": "/app/automations",
     "automationAreaPrefix": "/app/automation",
     "automationRules": "/app/automation-rules",
@@ -40,6 +44,23 @@
     "calendar": "/app/calendar",
     "messages": "/app/messages",
     "email": "/app/email",
+    "fleet": "/app/fleet",
+    "fleetVehicles": "/app/fleet/vehicles",
+    "fleetTrailers": "/app/fleet/trailers",
+    "fleetDrivers": "/app/fleet/drivers",
+    "fleetCounterparties": "/app/fleet/counterparties",
+    "fleetAssignments": "/app/fleet/assignments",
+    "fleetOperatingLines": "/app/fleet/operating-lines",
+    "fleetHrBridge": "/app/fleet/hr-bridge",
+    "fleetRotation": "/app/fleet/rotation",
+    "fleetCalendar": "/app/fleet/calendar",
+    "fleetTelematics": "/app/fleet/telematics",
+    "fleetTachograph": "/app/fleet/tachograph",
+    "fleetViolations": "/app/fleet/violations",
+    "fleetPayroll": "/app/fleet/payroll",
+    "fleetReports": "/app/fleet/reports",
+    "fleetReconciliation": "/app/fleet/reconciliation",
+    "fleetSettings": "/app/fleet/settings",
     "setupCommunications": "/app/setup/communications",
     "slaIncidents": "/app/sla-incidents",
     "communicationsCommandAudit": "/app/communications/command-audit",
@@ -51,10 +72,11 @@
     "teamAvailability": "/app/team-availability",
     "timeOff": "/app/time-off",
     "clientNew": "/app/clients/new",
-    "companiesOperatingBilling": "/app/companies?role=operating&section=billing",
+    "companiesOperatingBilling": "/app/my-company?section=billing",
     "settings": "/app/settings",
     "settingsUsers": "/app/settings/users",
     "settingsBilling": "/app/settings/billing",
+    "settingsBillingPlan": "/app/settings/billing/plan",
     "settingsLegal": "/app/settings/legal",
     "settingsCompanyAccess": "/app/settings/company-access",
     "settingsFunnels": "/app/settings/funnels",
@@ -79,6 +101,7 @@
     "settingsHiringPipelineGates": "/app/settings/hiring-pipeline-gates",
     "settingsRuleset": "/app/settings/ruleset",
     "settingsDocs": "/app/settings/docs",
+    "settingsMergeTemplates": "/app/settings/document-merge-templates",
     "settingsTenants": "/app/settings/tenants",
     "settingsLeads": "/app/settings/leads",
     "settingsLeadForms": "/app/settings/lead-forms",
@@ -93,25 +116,31 @@
   },
   "path_comments": {
     "inboxMessagesScoped": "Inbox with messages channel selected (legacy top-level /app/messages redirects here).",
+    "messages": "Legacy: top-level /app/messages — redirects into Inbox with channel=messages.",
+    "communicationsLegacyHub": "Legacy aggregate URL kept for redirects/bookmarks.",
+    "settingsLeads": "Legacy aliased Meta / lead-source admin (canonical: settingsIntegrationsMeta).",
     "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
+    "plannerLegacy": "Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity).",
     "settingsIntegrationsMessengerFacebook": "Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”)."
   },
   "drilldown_hrefs": {
     "vacanciesOpen": "/app/vacancies?status=open",
     "ordersOpen": "/app/orders?status=open",
     "invoicesOverdueUnpaid": "/app/invoices?queue=overdue_unpaid",
-    "tasksOverdueReminders": "/app/tasks?tab=tasks&t_status=active&t_due_bucket=overdue",
-    "tasksLeadsSlaNudges": "/app/tasks?tab=tasks&t_status=active&t_entity=lead",
-    "tasksCandidateOverdueNextAction": "/app/tasks?tab=tasks&t_status=active&t_entity=candidate",
+    "tasksOverdueReminders": "/app/work/tasks?tab=tasks&t_status=active&t_due_bucket=overdue",
+    "tasksLeadsSlaNudges": "/app/work/tasks?tab=tasks&t_status=active&t_entity=lead",
+    "tasksCandidateOverdueNextAction": "/app/work/tasks?tab=tasks&t_status=active&t_entity=candidate",
     "leadsNeedsRouting": "/app/leads?status=needs_routing",
     "leadsFailed": "/app/leads?status=failed",
     "leadsProcessedNoNextAction": "/app/leads?status=processed&next_action=no_next_action",
     "leadsProcessedStuck": "/app/leads?status=processed&next_action=stuck",
     "candidatesDraftIntakeDebug": "/app/candidates?debug=1",
-    "candidatesQueueNoNextAction": "/app/candidates?queue=no_next_action"
+    "candidatesQueueNoNextAction": "/app/candidates?queue=no_next_action",
+    "candidatesStageEmploymentPending": "/app/candidates?qv=employment_pending"
   },
   "drilldown_comments": {
-    "candidatesQueueNoNextAction": "Main candidates list with no-next-action queue (see CandidatesListGate)."
+    "candidatesQueueNoNextAction": "Main candidates list with no-next-action queue (see CandidatesListGate).",
+    "candidatesStageEmploymentPending": "Candidates list filtered to stage «employment_pending» (HR paperwork in progress)."
   },
   "python_only_paths": {
     "settingsBillingCheckoutSuccess": "/app/settings/billing?checkout=success",
@@ -182,6 +211,18 @@
       {
         "name": "EMAIL_LEGACY",
         "path_key": "email"
+      },
+      {
+        "name": "INBOX_MESSAGES_SCOPED",
+        "path_key": "inboxMessagesScoped"
+      },
+      {
+        "name": "INBOX_EMAIL_SCOPED",
+        "path_key": "inboxEmailScoped"
+      },
+      {
+        "name": "INBOX_THREADS_BASE",
+        "path_key": "inboxThreadsBase"
       }
     ],
     "functions": [
@@ -219,6 +260,13 @@
           "vacancy_id: str"
         ],
         "body": "return f\"{VACANCIES}/{vacancy_id}\""
+      },
+      {
+        "name": "spa_inbox_thread",
+        "params": [
+          "thread_id: str"
+        ],
+        "body": "return f\"{INBOX_THREADS_BASE}/{thread_id}\""
       }
     ]
   }
