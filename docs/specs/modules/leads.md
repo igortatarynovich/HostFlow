@@ -93,6 +93,10 @@ Sequence диаграмма (логический порядок):
 - `POST /api/v1/admin/meta-leads/leads/retry` — bulk-перезапуск пайплайна для существующих лидов. Поддерживает фильтрацию по статусам/ID и повторно использует Graph‑обогащение. Только `administrator`/`owner`.
 - Расширение для других источников планируется через дополнительные endpoints (`/api/v1/leads/<source>`).
 
+### Intake resolution (Slice 2, signed)
+
+Операционный слой intake (отдельно от стадий кандидата): **`POST /api/v1/leads/{id}/intake-decision`**, **`POST /api/v1/leads/{id}/confirm-vacancy`**, гейтинг **`POST /api/v1/leads/{id}/process`** через `manual_process_block_code` (стабильные коды в 422), тот же слой на **bulk/NBA**, **retry**, **CSV reimport** для повторной обработки существующей строки. Детали и smoke-чеклист: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.
+
 ### Формат ответа
 ```json
 {
@@ -109,7 +113,7 @@ Sequence диаграмма (логический порядок):
 
 ## UI
 
-- Страница `Leads` (`/leads`) в фронтенде отображает таблицу лидов с фильтром по статусу, ссылками на компании/вакансии и переходом в карточку кандидата.
+- Страница `Leads` (`/leads`) в фронтенде отображает таблицу лидов с фильтром по статусу, ссылками на компании/вакансии и переходом в карточку кандидата. На **карточке лида** (`LeadDetailPage`): панель **Intake routing & decisions** (`LeadIntakeResolutionPanel`) — confirm vacancy + intake actions; кнопка Process и панель qualification используют общий **`manualProcessBlockHint`** (без скрытого второго Process).
 - Доступна ролям с правом `leads.view` (администратор, супервайзер, рекрутер, viewer-readonly).
 - Админка `Админка → Лиды` (`/admin/meta-leads`) предназначена для владельцев интеграции (права `admin.metaLeads`). Разделы:
   - **Подключение** — формы для ввода `META_WEBHOOK_SECRET`, access token, идентификаторов рекламных аккаунтов; статус вебхука, дата последней проверки подписи, кнопка «Перегенерировать секрет», подсказки по настройке Meta.
@@ -170,6 +174,8 @@ Sequence диаграмма (логический порядок):
 
 ## Тесты и валидация
 
+- `backend/tests/api/test_lead_intake_decision.py` — intake-decision, Process gating, bulk/CSV alignment со stable codes.
+- `hostflow-frontend/src/utils/__tests__/intakeResolution.test.ts`, `hostflow-frontend/src/components/leads/__tests__/LeadQualificationSuggestionPanel.intake.test.tsx` — клиентский gating (без e2e).
 - `backend/tests/api/test_leads_meta.py`
   - создание кандидата при валидном payload;
   - обработка дублей.

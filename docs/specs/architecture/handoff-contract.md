@@ -1,0 +1,102 @@
+# Handoff Contract: события передачи Recruitment ↔ HR ↔ Client
+
+**Статус:** канон для продуктовых и архитектурных решений; дополняет [ADR-002](ADR-002-modular-recruitment-hr-boundary.md) и [invariants-recruitment-hr-document-hub.md](invariants-recruitment-hr-document-hub.md).  
+**Не заменяет** дорожную карту фазы 1 — см. [implementation-roadmap-single-tenant-hr-handoff.md](../workflows/implementation-roadmap-single-tenant-hr-handoff.md).  
+**Границы операционных фактов** (stage vs handoff vs materialization, без отдельных `candidate_ready_for_*` событий в MVP): [operational-event-boundaries.md](operational-event-boundaries.md).
+
+---
+
+## Часть A. Продуктовый контракт стадий (Stage mapping)
+
+Цель — чтобы агенты и разработчики **не угадывали**, какая стадия что запускает.
+
+### A.1 `ready_for_hr` (канонический Recruitment → HR)
+
+- **Смысл:** финал зоны Recruitment — кандидат готов к передаче в кадры внутри tenant / company scope.
+- **Кто двигает:** рекрутер (при включённом handoff lane) — см. invariants и enforcement в коде.
+- **Эффект на Workforce:** при смене стадии на `ready_for_hr` (из другого кода стадии) вызывается **`handoff_from_candidate`** — идемпотентное появление **`WorkforceEmployee`** (+ далее HR operational context по отдельному контуру).
+- **Не путать с:** «готов к передаче клиенту» — это не обязанность этой стадии; она про **internal HR readiness** в смысле ADR-002.
+
+### A.2 `ready_for_handoff` (универсальная стадия «передача»)
+
+- **Смысл:** воронка / Telegram / пресеты могут использовать код **«готов к передаче»** без привязки к одному продуктовому сценарию.
+- **Куда может вести операционно** (не исключают друг друга на уровне продукта, но **материализация Workforce** задаётся настройкой ссылки):
+
+| Режим на tenant link | Поведение для `ready_for_handoff` → Workforce |
+|----------------------|-----------------------------------------------|
+| **Client portal включён**, internal HR выключен | Workforce **не** из одной только этой стадии по stage-driven правилу; дальше — **CandidateHandoff** (client) по продуктовому flow. |
+| **Internal HR включён**, **client portal выключен** (`handoff_to_client: false`) | Стадия **`ready_for_handoff`** **запускает** тот же материализационный путь, что и handoff-стадии (см. `should_workforce_handoff_on_stage_change_resolved`). |
+| **Оба включены** | По умолчанию **не** материализуем Workforce только из `ready_for_handoff` (чтобы не создавать сотрудника до выбора сценария). Исключение: флаг **`workforce_handoff_on_ready_for_handoff_stage: true`** на ссылке — тогда funnel/Telegram может запускать internal flow **без** смены кода воронки на `ready_for_hr`. |
+
+- **Канон для документации и аналитики «рекрутинг закрыл»** по-прежнему **`ready_for_hr`** (ADR-002); `ready_for_handoff` — **продуктово настраиваемый** вход в передачу.
+
+### A.3 Сводка для агентов (copy-paste)
+
+- **`ready_for_hr`** = канонический переход Recruitment → internal HR (Workforce) по стадии.
+- **`ready_for_handoff`** = универсальная стадия передачи; может вести в client handoff, в internal HR, или в оба — в зависимости от **tenant link** и флага **`workforce_handoff_on_ready_for_handoff_stage`** (см. roadmap §2.1 блок D).
+
+---
+
+## Часть B. Handoff Contract (модель события)
+
+### B.1 Что считается handoff **событием** сейчас
+
+В коде к **событию передачи** относятся (разные уровни, не смешивать):
+
+1. **Stage-driven internal continuity** — смена стадии кандидата удовлетворяет `should_workforce_handoff_on_stage_change_resolved` → **`handoff_from_candidate`** + запись активности **`workforce.handoff_from_candidate`** (и далее `ensure_hr_operational_context` на handoff / лениво по API).
+2. **Запись `CandidateHandoff`** — явный запрос передачи (agency → client portal, agency → internal HR, и т.д.) с состоянием pending/accepted/rejected; может **создавать или досинхронизировать** Workforce на create/accept в зависимости от `destination` (см. `backend/app/services/handoff.py`).
+
+Доменная таблица **«HandoffEvent»** как единый лог — **вне scope** этого контракта; при появлении — этот документ обновить.
+
+### B.2 Source и Destination (роли)
+
+| Тип | Source (инициатор) | Destination (получатель ответственности) |
+|-----|-------------------|------------------------------------------|
+| Stage-driven internal | Recruitment (оператор/рекрутер через смену стадии) | HR / Workforce (операционный владелец сотрудника) |
+| `CandidateHandoff` → internal HR | Обычно recruitment-side пользователь (запрос) | Internal HR (accept/reject), кандидат в `processing_by_hr` |
+| `CandidateHandoff` → client portal | Agency / recruitment | Client processor / портал |
+
+### B.3 Тип передачи (классификация для спек)
+
+- **T1 — Internal HR (single-tenant, stage):** только смена стадии + tenant link; запись `CandidateHandoff` **не обязательна**.
+- **T2 — Internal HR (agency record):** `CandidateHandoff` с `destination = internal_hr` + материализация Workforce на create/accept.
+- **T3 — Client portal:** `CandidateHandoff` с client destination + отдельные правила блокировки recruitment edits.
+
+### B.4 Документы и поля
+
+- **Документы:** не копируются; доступ HR через существующий Document Hub + workforce-scoped API; связь сотрудник↔документ — **`document_entity_links`** (MVP), см. roadmap.
+- **Кандидат после передачи:** может оставаться read-only для recruitment в зависимости от handoff state (см. `handoff.py` blocking rules).
+- **WorkforceEmployee:** каноническое представление «принятого в HR» файла; **идемпотентно** по `candidate_id` в рамках tenant.
+
+### B.5 Что создаётся автоматически
+
+- При успешном **`handoff_from_candidate`:** строка **`WorkforceEmployee`** (если ещё нет), спутники bundle (как в сервисе), далее при наличии миграций/кода — **`WorkforceHrCase`**, **`DocumentEntityLink`** (`reused_for_hr`).
+- При **`CandidateHandoff` (internal HR):** см. `handoff.py` — workforce на create; на accept — досинхронизация при необходимости.
+
+### B.6 Readonly и запреты (forbidden)
+
+- **Forbidden:** копирование бинарных файлов документов при handoff (инвариант 1 invariants).
+- **Forbidden:** рекрутер переводит на **`hired`** при включённом agency handoff lane (enforcement в API).
+- **Readonly:** смысл «владения документом» не переносится в Recruitment/HR — владеет Hub; handoff добавляет **права и проверки**, не вторую каноническую копию.
+
+### B.7 Идемпотентность
+
+- Повторная смена стадии на уже «handoff»-код или повторный вызов **`handoff_from_candidate`** для того же `candidate_id` **не должен** плодить второго сотрудника.
+- **`ensure_hr_operational_context`** и линки документов — идемпотентны по уникальным ключам в БД.
+
+---
+
+## Связанные файлы кода
+
+- `backend/app/services/workforce_employees.py` — `WORKFORCE_HANDOFF_STAGE_CODES`, `handoff_from_candidate`, `should_workforce_handoff_on_stage_change_resolved`
+- `backend/app/services/handoff.py` — create/accept `CandidateHandoff`, internal HR vs client portal
+- `backend/app/api/v1/candidates/service.py` — stage change → workforce
+- `backend/app/services/workforce_hr_operational_context.py` — HR case + document links
+- `backend/app/api/v1/tenants/router.py` — флаги tenant link (`handoff_to_client`, `workforce_handoff_on_ready_for_handoff_stage`)
+
+---
+
+## AI Agent Notes
+
+- Перед добавлением новой стадии или нового пути handoff — обновить **этот файл** и [invariants…](invariants-recruitment-hr-document-hub.md) согласованно.
+- Не смешивать в одном PR **T1** и **T3** без явного продуктового решения и тестов на оба контура.

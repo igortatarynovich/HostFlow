@@ -4,7 +4,7 @@ _Живой инженерный канон и стандарты разрабо
 Этот документ определяет структуру, стандарты и правила разработки проекта HostFlow. Он служит источником истины для всех модулей (backend, frontend, инфраструктура, AI-агенты) и регулярно обновляется по мере развития системы.
 
 ## Project Structure & Module Organization
-The FastAPI backend lives in `backend/app` with API routes under `backend/app/api/v1`, SQLAlchemy models in `backend/app/models`, and service helpers in `backend/app/services`. Database migrations are tracked via Alembic: the Alembic configuration file `alembic.ini` is located in the project root, and migration scripts are stored in `backend/alembic/versions`. Reusable scripts for seeding and utilities are in `backend/app/db/seeds`. Automated tests target live endpoints and reside in `backend/tests`. The React client is in `hostflow-frontend/src`, organised by feature modules (for example `src/modules/candidates` and `src/modules/vacancies`). Shared documentation and architecture notes belong in `docs/`, and incremental tooling lives under `scripts/` and the top-level `Makefile`.
+The FastAPI backend lives in `backend/app` with API routes under `backend/app/api/v1`, SQLAlchemy models in `backend/app/models`, and service helpers in `backend/app/services`. Database migrations are tracked via Alembic: the Alembic configuration file `alembic.ini` is located in the project root, and migration scripts are stored in `backend/alembic/versions`. Reusable scripts for seeding and utilities are in `backend/app/db/seeds`. Automated tests target live endpoints and reside in `backend/tests`. The React client is in `hostflow-frontend/src`, organised by feature modules (for example `src/modules/candidates` and `src/modules/vacancies`). Shared documentation and architecture notes belong in `docs/`, security governance in `docs/security/` (см. `docs/security/README.md`), and incremental tooling lives under `scripts/` and the top-level `Makefile`.
 
 ### Alembic Layout & Safety Checklist
 - **Single source of truth:** запускайте Alembic только из `/opt/HostFlow` (repo root) — здесь лежит `alembic.ini` и сюда смотрит `script_location`.
@@ -43,6 +43,7 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 - [ ] Проведён `make lint` и `make test`
 - [ ] Проверены миграции Alembic и сиды
 - [ ] Обновлены связанные спеки и README при необходимости
+- [ ] Если PR в security perimeter (см. `docs/security/security-review-checklist.md`) — отмечены все пункты чеклиста в описании PR
 
 ---
 
@@ -52,6 +53,15 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 - Включён Row-Level Security (RLS) на уровне базы данных.
 - Приложение устанавливает текущий tenant через `current_setting('app.tenant_id')` в сессии PostgreSQL.
 - Все запросы и операции должны учитывать tenant isolation.
+
+## Security operating model
+
+- Канон: `docs/security/security-ssot.md` (классификация данных, handoff, superadmin, тесты, KPI, IR).
+- **PR template (весь репозиторий):** `.github/pull_request_template.md` — заполняется для каждого PR.
+- **PR gate (чеклист):** для изменений в API, RLS, документах, экспорте, webhooks, публичных ссылках, порталах и handoff — пройти и приложить к описанию PR пункты из `docs/security/security-review-checklist.md`.
+- **CI enforcement:** `.github/workflows/security-gates.yml` (pip-audit, bandit, npm audit + sensitive gate, dependency-review, Trivy, threat-model/docs gate, SQL f-string scan).
+- **Авто-метки:** `.github/workflows/pull-request-labeler.yml` + `.github/labeler.yml` (метки создать один раз: `docs/security/github-labels.md`).
+- Threat models по поверхностям: `docs/security/threat-models/`.
 
 ## Notes for AI Agents (Codex/ChatGPT)
 

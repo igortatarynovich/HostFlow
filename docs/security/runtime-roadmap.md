@@ -1,0 +1,242 @@
+# HostFlow — Runtime Security & Observability Roadmap
+
+**Статус:** evolving operational program (backlog по фазам).  
+**Не заменяет** [`security-ssot.md`](./security-ssot.md): SSOT остаётся нормативным каноном принципов и invariants; этот файл — **приоритизируемая реализация** runtime-guarantees, telemetry и detection.
+
+**Аудитория:** platform, backend, SRE, security champion, product (для scope AI/search).
+
+---
+
+## Зачем отдельный документ
+
+| SSOT (`security-ssot.md`) | Этот roadmap |
+|---------------------------|----------------|
+| Стабильные правила | Часто меняющиеся метрики, дашборды, пороги алертов |
+| Invariants «всегда так» | «Сделать к Q…», vendor-выбор, burn-down |
+| Компактность | Расширяемые разделы по мере зрелости |
+
+---
+
+## Security-owned infrastructure (наблюдаемость = часть security architecture)
+
+Для HostFlow уже достаточная сложность, чтобы **не** относиться к логам и метрикам как к чистому DevOps-шуму. Нужен слой **security-owned** артефактов — единые для forensics, detection и IR:
+
+- **Security / audit logs** — отдельный контур или чётко помеченный stream (не «кто как залогировал» в произвольных полях).
+- **Audit pipeline** — доставка, retention, доступ (кто читает audit в prod).
+- **Telemetry schema** — версионируемые JSON-схемы или protobuf/OpenTelemetry semantic conventions (выбор — в реализации).
+- **Event taxonomy** — словарь `action`, `entity_type`, `result`; новые значения через review.
+- **Anomaly / security events** — нормализованные записи для детекторов (вход тот же канон полей ниже).
+
+Без единой event-модели детекция, расследования инсайдеров и AI-abuse быстро превращаются в хаос.
+
+---
+
+## Canonical security event fields (v1)
+
+Ниже — **минимальный канон** для security-sensitive событий (export, document URL, superadmin, failed auth, mass list, retrieval/prompt context и т.д.). Реализации могут добавлять поля, но **ядро должно быть заполняемым** там, где событие относится к доступу к данным.
+
+| Поле | Тип / смысл | Обязательность |
+|------|----------------|-----------------|
+| `timestamp` | UTC, RFC3339 / epoch ms + TZ | обязательно |
+| `tenant_id` | UUID tenant в контексте события | обязательно, если применимо; иначе явный `null` + `source` |
+| `actor_id` | user/service principal; `SYSTEM` для чисто фоновых задач | обязательно |
+| `entity_type` | нормализованная строка таксономии (`candidate`, `document`, `export_job`, …) | обязательно для object-bound событий |
+| `entity_id` | UUID или стабильный идентификатор | обязательно, если применимо |
+| `action` | нормализованное имя (`document.signed_url.generate`, `export.started`, …) | обязательно |
+| `access_scope` | OWNER / SHARED_READ / … или эквивалент из SSOT handoff | рекомендуется; обязательно для cross-tenant paths |
+| `route` / `source` | HTTP route или `worker:reminders.send` | обязательно |
+| `correlation_id` | сквозной ID запроса/джоба | обязательно для цепочек HTTP→worker |
+| `ip` | клиентский IP (edge-trusted) | обязательно для наружнего доступа; иначе `null` |
+| `user_agent` | заголовок или `null` для non-HTTP | рекомендуется |
+| `result` | `success`, `denied`, `error` + при необходимости код причины | обязательно |
+
+**Расширения (по классу события):** `row_count`, `bytes_out`, `duration_ms`, `reason` (superadmin), `ttl_sec` (signed URL), `policy_version` — только в рамках версионируемой схемы, не произвольный JSON без ревью.
+
+**PII / CLASS 3:** значения полей — идентификаторы и таксономия; **не** сырые фрагменты документов, токены целиком, тела запросов. Redaction — часть pipeline, не «надежда на дисциплину».
+
+**Версионирование:** при изменении обязательного набора полей — bump `schema_version` в payload и запись в changelog этого roadmap.
+
+---
+
+## Рекомендуемая последовательность внедрения (практический порядок)
+
+Порядок ниже сознательно **ближе к operational risk**, чем нумерация фаз по документу; маппинг на фазы roadmap указан в скобках.
+
+1. **Runtime tenant assertions** — Phase 1.  
+2. **Structured observability** — Phase 2 + канон полей выше (единая event-модель с первого дня).  
+3. **Export + document telemetry** — Phase 4 + Phase 3 (можно параллельно после базового логирования).  
+4. **Async worker security context** — контракт SSOT §0b + guards в worker entrypoints (Phase 1 / Phase 2).  
+5. **Search / AI retrieval enforcement** — Phase 6 (не откладывать до «когда появится AI»: поиск и отчёты — тот же класс риска).  
+6. **Detection rules** — Phase 7.  
+7. **Scorecard** — Phase 8 (подпитывается метриками из п.2–4).
+
+Observability для HF трактуется как **часть security architecture**, а не только как operational dashboard DevOps.
+
+---
+
+## Phase 1 — Runtime tenant assertions
+
+**Цель:** гарантировать, что в критичном пути к данным **никогда** не выполняется запрос с «потерянным» tenant context (включая workers).
+
+**Направления работ**
+
+- Assertions / invariant checks в repository/session слое: tenant context установлен до первого SQL к tenant-таблицам.
+- Middleware или единая точка входа для HTTP: fail-fast или structured error при отсутствии контекста (политика: dev vs prod).
+- Документированный контракт для фоновых задач (см. SSOT §0b): `tenant_id`, `actor_id`, `access_scope`, `correlation_id` обязательны в message/job payload.
+
+**Критерии готовности фазы (пример)**
+
+- Единый helper/guard, используемый и в API, и в worker entrypoints.
+- Тесты: негативный сценарий «job без tenant» → fail до БД.
+
+---
+
+## Phase 2 — Structured observability
+
+**Цель:** сделать изоляцию и злоупотребления **измеримыми** в рантайме, а не только в статическом анализе.
+
+**Направления работ**
+
+- Structured logs (JSON), **совместимые с каноном полей** (см. раздел *Canonical security event fields* выше): в том числе `tenant_id`, `actor_id`, `route` / `job_type`, `query_class` (list/search/export), `row_count`, `duration_ms`, `bytes_out` (где применимо), `correlation_id`.
+- Метрики (Prometheus или аналог): rate/latency по endpoint × tenant (агрегации с ограничением кардинальности).
+- Политика PII в логах: никаких сырьевых тел документов и чувствительных полей в debug.
+
+**Критерии готовности фазы (пример)**
+
+- Минимальный «golden path» для list + export покрыт единым форматом логов.
+- Runbook: как по correlation_id пройти цепочку от HTTP до worker.
+
+---
+
+## Phase 3 — Signed URL telemetry
+
+**Цель:** после архитектурной защиты (короткий TTL, private storage) добавить **доказуемость** доступа к байтам.
+
+**События (audit / security log)**
+
+- Генерация URL: кто, какой объект, TTL, scope, tenant.
+- Успешный доступ / отказ: IP, user-agent, причина отказа (expired, wrong tenant, signature mismatch, replay).
+- Попытки reuse / scan паттернов (массовый перебор ключей).
+
+**Критерии готовности фазы (пример)**
+
+- Отчёт или дашборд: топ генераций и топ отказов по причине.
+- Алерт на аномальный рост denied/expired для одного tenant или IP (см. Phase 7).
+
+---
+
+## Phase 4 — Export anomaly detection
+
+**Цель:** снизить **insider risk** и массовые выгрузки без блокировки легитимной работы.
+
+**Сигналы (примеры)**
+
+- Резкий рост `row_count` или числа экспортов на пользователя / tenant / сутки.
+- Много скачиваний CLASS 3 за короткий интервал.
+- Нетипичное время (after-hours) + большой объём (политика по юрисдикции и культуре компании).
+
+**Критерии готовности фазы (пример)**
+
+- Пороги v1 задокументированы; ложноположительные сценарии известны.
+- Связка с audit trail export (SSOT): каждый экспорт уже имеет запись → детектор читает те же данные.
+
+---
+
+## Phase 5 — SUPERADMIN operational controls
+
+**Цель:** перевести описанные в SSOT требования в **операционные** контроли, а не только в архитектуру.
+
+**Направления работ**
+
+- Обязательное поле **reason** (и при необходимости ссылка на ticket/incident) при impersonation / elevated session.
+- Time-bound elevation (например 30 мин) в продукте, не только в тексте спеки.
+- Audit trail: **append-only** или эквивалент (WORM / immutable store / crypto-hashing цепочки событий) для superadmin-действий — выбор реализации в backlog.
+- UI banner «SUPERADMIN ACCESS ACTIVE» (или эквивалент) для снижения социального риска.
+
+**Критерии готовности фазы (пример)**
+
+- Невозможно начать impersonation без reason в production-конфигурации.
+- Выборка superadmin-событий за период — один запрос / один отчёт.
+
+---
+
+## Phase 6 — Search, analytics & AI isolation (выделенный high-risk track)
+
+**Почему отдельно:** для HostFlow с высокой вероятностью именно **global search**, **отчёты/дашборды**, **embeddings** и **AI context assembly** станут следующим слоем обхода изоляции после «сырых» экспортов и документов. Этот слой соединяет данные из разных сущностей и упрощает **слишком широкий контекст** для модели или пользователя.
+
+**Инвариант (должен попасть в реализацию каждой фичи этого класса)**
+
+Любая инфраструктура поиска, аналитики или AI **обязана** быть одновременно:
+
+1. **Tenant-scoped** — никаких cross-tenant индексов/кэшей без явной модели handoff.
+2. **RBAC-scoped** — тот же policy layer, что и для API; никаких «admin search sees all fields».
+3. **Audit-scoped** — логируемые запросы контекста (что включили в prompt / retrieval, какой индекс, какой фильтр), без утечки CLASS 3 в логах.
+
+**Направления работ**
+
+- Контракт на «retrieval»: максимальный scope, redaction, запрет на склейку несвязанных кандидатов.
+- Запрет неявного «global search» по всем tenant’ам без platform-only режима с отдельным audit и rate limit.
+- Оценка RAG/vector: кто может писать в индекс, как удаляются вектора при delete/anonymize (GDPR).
+
+**Критерии готовности фазы (пример)**
+
+- Threat model обновлён под конкретную AI/search фичу (отдельный файл в `threat-models/` при появлении продукта).
+- Негативные тесты: запрос контекста с чужим `tenant_id` / чужим кандидатом → отказ.
+
+---
+
+## Phase 7 — Detection & alerting
+
+**Цель:** превратить сигналы фаз 2–4 в **реакцию** (Slack, email, admin center, PagerDuty по критичности).
+
+**Примеры правил**
+
+- Brute force / всплеск 401/403.
+- Массовые экспорты / скачивания документов (см. Phase 4).
+- Аномалии signed URL (см. Phase 3).
+- Tenant enumeration (паттерны запросов к публичным endpoint).
+
+**Критерии готовности фазы (пример)**
+
+- Каждое правило имеет owner, порог и процедуру triage.
+- Нет «алерта без runbook» (ссылка на IR в SSOT / security-review-checklist).
+
+---
+
+## Phase 8 — Security scorecard
+
+**Цель:** сделать security **измеримой системой** для leadership и ретроспектив, без превращения в SOC2-theater.
+
+**Примеры строк scorecard**
+
+| Area | Metric | Target / note |
+|------|--------|-----------------|
+| RLS | % tenant-таблиц с политикой | 100% |
+| CI gates | security-gates workflow | green on main |
+| Security tests | `backend/tests/security/` + tenant API tests | pass |
+| Threat models | актуальность при изменении surface | по gate |
+| MFA | adoption superadmin + owners | > 90% (цель SSOT) |
+| Vulns | critical / high (sensitive deps) | 0 / по политике |
+
+**Критерии готовности фазы (пример)**
+
+- Единый источник цифр (дашборд + ссылка из этого файла).
+- Ежемесячный или квартальный review с фиксацией в changelog roadmap.
+
+---
+
+## Как вести этот документ
+
+1. **Не дублировать** SSOT: сюда — сроки, метрики, vendor, пороги; в SSOT — только неизменные правила.  
+2. При конфликте с SSOT **побеждает SSOT**; roadmap корректируется.  
+3. Закрытые фазы можно помечать статусом `Done` и датой, не удаляя текст (audit trail документа).  
+4. Новые AI/search возможности **обязаны** получать запись минимум в Phase 6 и в `threat-models/`.
+
+---
+
+## Связанные артефакты
+
+- [`security-ssot.md`](./security-ssot.md) — принципы, классификация данных, invariants.  
+- [`security-review-checklist.md`](./security-review-checklist.md) — PR gate.  
+- [`threat-models/`](./threat-models/) — уточнение по поверхностям.  
+- CI: `.github/workflows/security-gates.yml`.
