@@ -190,7 +190,8 @@ const EXPECTED_BASELINE_DEFAULT = {
     superadmin: 'ALLOW',
     'owner/admin': 'ALLOW',
     supervisor: 'ALLOW',
-    recruiter: 'DENY',
+    // Route allows notifications.view (OR); recruiter has it — matches Sidebar hub visibility.
+    recruiter: 'ALLOW',
     viewer: 'DENY',
   },
   'settings-integrations-meta': {
@@ -227,6 +228,10 @@ const EXPECTED_BASELINE_CLIENT_TENANT = {
   ...EXPECTED_BASELINE_DEFAULT,
   leads: { ...EXPECTED_BASELINE_DEFAULT.leads, recruiter: 'DENY' },
   services: { ...EXPECTED_BASELINE_DEFAULT.services, recruiter: 'DENY' },
+  'settings-integrations': {
+    ...EXPECTED_BASELINE_DEFAULT['settings-integrations'],
+    recruiter: 'DENY',
+  },
 }
 
 function parseArgs(argv) {
