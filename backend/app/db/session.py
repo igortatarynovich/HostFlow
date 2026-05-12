@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 
 from sqlalchemy.engine.url import URL, make_url
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 try:
@@ -75,14 +75,39 @@ else:
         poolclass=NullPool,
     )
 
+from backend.app.db.tenant_session import TenantEnforcingAsyncSession
+
 # 3) Фабрика сессий
 async_session_maker = async_sessionmaker(
     bind=engine,
-    class_=AsyncSession,
+    class_=TenantEnforcingAsyncSession,
     expire_on_commit=False,
     autoflush=False,
     autocommit=False,
 )
+
+
+def _session_local_sync_url() -> str:
+    """Bare ``postgresql://`` defaults to psycopg2 in SQLAlchemy; prefer psycopg (v3)."""
+    raw = settings.SYNC_DATABASE_URL
+    u: URL = make_url(raw)
+    d = u.drivername
+    if d in ("postgresql", "postgres"):
+        return u.set(drivername="postgresql+psycopg").render_as_string(hide_password=False)
+    return raw
+
+
+# Sync session factory for legacy/unit tests (e.g. TestClient + `.query()`).
+# Application code should use ``async_session_maker``.
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker as _sync_sessionmaker
+
+_sync_engine = create_engine(
+    _session_local_sync_url(),
+    future=True,
+    pool_pre_ping=True,
+)
+SessionLocal = _sync_sessionmaker(bind=_sync_engine, autoflush=False, autocommit=False, future=True)
 
 # 4) Лог — только маскируем вывод, НЕ исходный URL
 try:
@@ -92,4 +117,4 @@ try:
 except Exception:
     pass
 
-__all__ = ["engine", "async_session_maker", "ASYNC_DATABASE_URL"]
+__all__ = ["engine", "async_session_maker", "ASYNC_DATABASE_URL", "SessionLocal"]

@@ -1,10 +1,59 @@
 from __future__ import annotations
 
+import site
+import sys
+from pathlib import Path
+
+
+def _prepend_site_packages_for_alembic_library() -> None:
+    """``backend/alembic`` is the migration *script* tree; with ``backend/`` on ``sys.path`` it can
+    shadow the PyPI ``alembic`` package (breaking ``from alembic.operations import Operations``).
+
+    Prepend the ``site-packages`` directory that contains the real Alembic distribution so the
+    library wins without removing ``backend/`` (tests use ``from tests.conftest import …``).
+    """
+    here = Path(__file__).resolve()
+    backend_root = here.parents[1]
+    try:
+        backend_abs = backend_root.resolve()
+    except OSError:
+        return
+    on_backend_path = False
+    for raw in sys.path:
+        if raw == "":
+            try:
+                if Path.cwd().resolve() == backend_abs:
+                    on_backend_path = True
+                    break
+            except OSError:
+                continue
+        try:
+            if Path(raw).resolve() == backend_abs:
+                on_backend_path = True
+                break
+        except OSError:
+            continue
+    if not on_backend_path:
+        return
+    for sp in site.getsitepackages():
+        lib_root = Path(sp)
+        if not (lib_root / "alembic" / "__init__.py").is_file():
+            continue
+        if not (lib_root / "alembic" / "operations").is_dir():
+            continue
+        s = str(lib_root)
+        if s in sys.path:
+            sys.path.remove(s)
+        sys.path.insert(0, s)
+        return
+
+
+_prepend_site_packages_for_alembic_library()
+
 import asyncio
 import os
 import subprocess
 import uuid
-from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Dict
 
@@ -404,6 +453,8 @@ async def _init_data() -> Dict[str, str]:
             if lic is not None:
                 lic.max_vacancies_active = 0
                 lic.max_candidates_active = 0
+                # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.
+                lic.max_documents = 0
 
             await session.commit()
 
@@ -458,7 +509,7 @@ async def client() -> AsyncClient:
     """
     In-memory HTTP client bound to FastAPI app with lifespan triggers.
     """
-    async with LifespanManager(app):
+    async with LifespanManager(app, startup_timeout=120.0, shutdown_timeout=60.0):
         await _init_data()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
@@ -467,7 +518,7 @@ async def client() -> AsyncClient:
 
 @pytest_asyncio.fixture
 async def app_with_db() -> AsyncClient:
-    async with LifespanManager(app):
+    async with LifespanManager(app, startup_timeout=120.0, shutdown_timeout=60.0):
         await _init_data()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
