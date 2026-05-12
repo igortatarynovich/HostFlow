@@ -31,7 +31,7 @@ UX-эффекты этой фрагментации:
 - `architecture/platform-architecture-principles.md` §6 — две capability `Notifications` и `Activity / Tasks`.
 - `architecture/module-catalog-and-routing-map.md` §0 — те же две строки.
 - `operations-loop.md` — as-built карта boltened-вместе подсистем.
-- `workflows/reminders.md` + `reminders_matrix.md` + `reminders_rework.md` — три источника правды по reminders.
+- `workflows/reminders.md` + `reminders_matrix.md` + (исторически) `reminders_rework.md` — три источника правды по reminders; `reminders_rework.md` заархивирован ([`/archive/legacy/2026-05-12/workflows-reminders_rework.md`](../../../archive/legacy/2026-05-12/workflows-reminders_rework.md)) после принятия канона `activity-notification-operating-layer.md`.
 - `manager-assignment.md` — assignee-поля, Reminder/Planner/Thread в одном фрейме.
 - `modules/scheduler.md` + `min/scheduler.min.md` — отдельный booking/services-домен, который продуктовая команда часто путает с «планировщиком работы рекрутёра».
 

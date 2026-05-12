@@ -21,7 +21,7 @@
 - Напоминания формируются за 30, 14 и 7 дней до даты истечения документа.
 - Кандидат уникален в рамках `tenant_id` (идентификация по имени, дате рождения и паспорту).
 - Доступ рекрутёра к кандидатам определяется ACL: компаниями, вакансиями или назначением в поле `manager_id`; пайплайн, документы и задачи используют тот же фильтр, а изменение этапов возможно только для этих кандидатов.
-- Workflow кандидата описан в `workflows/candidate_pipeline.md`.
+- Workflow кандидата: канон — `architecture/recruitment-domain-model.md` и `architecture/ADR-002-modular-recruitment-hr-boundary.md` (граница Recruitment ↔ HR).
 
 ## 3. Правила документов
 - Документы работают на новой схеме: `doc_type`, `status`, `issue_date`, `expire_date`, `remind_days_before`, `workflow`, `files`, `meta`; поле `type` больше не используется.

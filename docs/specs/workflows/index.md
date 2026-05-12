@@ -15,9 +15,7 @@
 
 | Документ | Назначение | Основные сущности | Автоматизация |
 |-----------|-------------|-------------------|----------------|
-| [candidate_pipeline.md](candidate_pipeline.md) | Жизненный цикл кандидата — от лида до трудоустройства | Candidate, Company, Vacancy, Document | Автоматические переходы по статусам, события |
 | [document_expiry.md](document_expiry.md) | Контроль сроков действия документов и напоминания | Document, Candidate, Reminder | Автоматические напоминания, изменение статуса |
-| [lead_to_candidate.md](lead_to_candidate.md) | Конверсия входящих лидов в кандидатов | Lead, Candidate, Manager | Валидация и автоматическое создание кандидата |
 | [reminders.md](reminders.md) | Подсистема напоминаний и уведомлений | Reminder, Candidate, Document | Cron-задачи, уведомления, RLS |
 | [reminders_matrix.md](reminders_matrix.md) | SLA и эскалации напоминаний | Reminder, Notification | Каналы доставки, дедупликация |
 | [recruitment-application-lifecycle.md](recruitment-application-lifecycle.md) | Семантика жизненного цикла **Application** (intent/cycle), матрица переходов, идемпотентность; не пайплайн кандидата | RecruitmentApplication, Candidate | Без workflow engine; см. документ |
@@ -49,7 +47,7 @@ Lead → Candidate → Documents → Reminders → Hiring
 ```
 
 1. **Lead** создаётся через webhook и конвертируется в **Candidate**.  
-2. **Candidate** проходит статусы пайплайна (см. `candidate_pipeline.md`).  
+2. **Candidate** проходит статусы пайплайна (канон: `../architecture/recruitment-domain-model.md` + `../architecture/ADR-002-modular-recruitment-hr-boundary.md`).  
 3. **Documents** добавляются и отслеживаются (см. `document_expiry.md`).  
 4. При приближении срока создаются **Reminders** (см. `reminders.md`).  
 5. После успешного завершения всех этапов кандидат становится “Трудоустроен”.

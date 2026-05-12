@@ -4,7 +4,7 @@
 
 - `workflows/reminders.md` — superseded by this document
 - `workflows/reminders_matrix.md` — superseded by [`activities-sla-matrix.md`](activities-sla-matrix.md)
-- `workflows/reminders_rework.md` — superseded by canon [`../architecture/activity-notification-operating-layer.md`](../architecture/activity-notification-operating-layer.md)
+- `workflows/reminders_rework.md` — **archived** ([`/archive/legacy/2026-05-12/workflows-reminders_rework.md`](../../../archive/legacy/2026-05-12/workflows-reminders_rework.md)); canon: [`../architecture/activity-notification-operating-layer.md`](../architecture/activity-notification-operating-layer.md)
 
 **Связанные документы:**
 
