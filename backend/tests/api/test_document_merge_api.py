@@ -150,7 +150,7 @@ async def test_merge_generate_by_code_with_oc_fallback(
     doc_id = gen.json()["document_id"]
     hdr = {**recruiter_headers, "X-Own-Company-Id": oc_id}
     docs = await client.get(
-        f"/api/v1/candidates/candidate/{candidate_id}/documents",
+        f"/api/v1/candidates/{candidate_id}/documents",
         headers=hdr,
     )
     assert docs.status_code == 200, docs.text

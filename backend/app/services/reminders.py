@@ -10,6 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from backend.app.models.reminder import Reminder, ReminderStatus
+from backend.app.services.candidate_workforce_lock import (
+    SKIP_SOURCE_REMINDER_EXPIRY,
+    is_candidate_locked_by_workforce,
+    observe_skipped_system_candidate_mutation_due_to_workforce_lock,
+)
 from backend.app.services.pipeline_sync import sync_candidate_links
 from backend.app.services.document_catalog import get_doc_type_defaults
 from backend.app.services.document_workflow import iter_workflow_step_deadlines
@@ -574,26 +579,38 @@ async def run_expiry_notifications(
         text = "\n".join(text_lines)
 
         if offset_hours == 0 and getattr(cand, "stage", None) != "docs_wait":
-            try:
-                await db.execute(
-                    update(Candidate)
-                    .where(Candidate.id == cand.id)
-                    .values(stage="docs_wait", updated_at=datetime.utcnow())
+            wf_locked = await is_candidate_locked_by_workforce(
+                db, tenant_id=str(tenant_id), candidate_id=str(cand.id)
+            )
+            if wf_locked:
+                await observe_skipped_system_candidate_mutation_due_to_workforce_lock(
+                    db,
+                    tenant_id=str(tenant_id),
+                    candidate_id=str(cand.id),
+                    source=SKIP_SOURCE_REMINDER_EXPIRY,
+                    intended_transition="Candidate.stage -> docs_wait (document expiry reminder)",
                 )
-                await db.commit()
-                cand.stage = "docs_wait"
+            else:
                 try:
-                    await sync_candidate_links(
-                        db=db,
-                        tenant_id=UUID(tenant_id),
-                        candidate_id=UUID(cand.id),
-                        candidate_stage="docs_wait",
+                    await db.execute(
+                        update(Candidate)
+                        .where(Candidate.id == cand.id)
+                        .values(stage="docs_wait", updated_at=datetime.utcnow())
                     )
+                    await db.commit()
+                    cand.stage = "docs_wait"
+                    try:
+                        await sync_candidate_links(
+                            db=db,
+                            tenant_id=UUID(tenant_id),
+                            candidate_id=UUID(cand.id),
+                            candidate_stage="docs_wait",
+                        )
+                    except Exception:
+                        # не валим процесс напоминаний из-за ошибок синка
+                        pass
                 except Exception:
-                    # не валим процесс напоминаний из-за ошибок синка
-                    pass
-            except Exception:
-                await db.rollback()
+                    await db.rollback()
 
         # кому слать: менеджеру и самому кандидату, если у него есть email
         targets = []

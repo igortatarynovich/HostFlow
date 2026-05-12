@@ -20,6 +20,11 @@ from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candida
 from backend.app.modules.documents.owner_summary import compute_owner_summary
 from backend.app.services.candidate_notifications import get_document_display_name
 from backend.app.services.communications_telegram import TelegramBotConfig, send_telegram_text
+from backend.app.services.candidate_workforce_lock import (
+    SKIP_SOURCE_READY_FOR_HANDOFF_GATE,
+    is_candidate_locked_by_workforce,
+    observe_skipped_system_candidate_mutation_due_to_workforce_lock,
+)
 from backend.app.services.document_ruleset import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 from backend.app.services.audit import log_activity
@@ -340,6 +345,18 @@ async def sync_candidate_ready_for_handoff_gate(
     total = int(snapshot.get("total") or 0)
     ready = int(snapshot.get("ready") or 0)
     if total <= 0 or ready < total:
+        return False
+
+    if await is_candidate_locked_by_workforce(
+        db, tenant_id=str(tenant_id), candidate_id=str(getattr(candidate, "id", "") or "")
+    ):
+        await observe_skipped_system_candidate_mutation_due_to_workforce_lock(
+            db,
+            tenant_id=str(tenant_id),
+            candidate_id=str(candidate.id),
+            source=SKIP_SOURCE_READY_FOR_HANDOFF_GATE,
+            intended_transition="Candidate.stage -> ready_for_handoff (telegram auto gate)",
+        )
         return False
 
     current_stage = str(getattr(candidate, "stage", "") or "").strip().lower()

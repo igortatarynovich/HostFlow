@@ -61,6 +61,20 @@ reminders_triggered_counter = _create_counter(
     ("tenant_id", "type", "severity"),
 )
 
+system_automation_workforce_lock_skip_counter = _create_counter(
+    "hf_system_automation_workforce_lock_skip_total",
+    "Candidate stage/status writes skipped because a WorkforceEmployee row exists",
+    ("tenant_id", "source"),
+)
+
+
+def increment_system_automation_workforce_lock_skip(tenant_id: str, source: str) -> None:
+    """Record that automation intentionally skipped a recruitment mutation (workforce lock)."""
+    system_automation_workforce_lock_skip_counter.labels(
+        tenant_id=tenant_id or "unknown",
+        source=(source or "unknown").strip() or "unknown",
+    ).inc()
+
 _documents_overdue_index: Dict[str, Set[str]] = defaultdict(set)
 
 

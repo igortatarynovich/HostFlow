@@ -254,6 +254,7 @@ async def reroute_lead_manual(
             payload=candidate_payload,
             actor_id=None,
             acl=None,
+            source_lead=lead,
         )
     except HTTPException as exc:
         await crud.update_lead(

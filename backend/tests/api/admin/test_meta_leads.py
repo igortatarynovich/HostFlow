@@ -675,7 +675,12 @@ async def test_superadmin_bootstrap_meta_uses_operational_tenant(client, monkeyp
 
     data = await _init_data()
     sa_token = _build_token(data["admin_id"], data["admin_email"], "superadmin", DEFAULT_TENANT_ID)
-    sa_headers = {"Authorization": f"Bearer {sa_token}", "X-Tenant-Id": DEFAULT_TENANT_ID}
+    sa_headers = {
+        "Authorization": f"Bearer {sa_token}",
+        "X-Tenant-Id": DEFAULT_TENANT_ID,
+        "X-HostFlow-Elevated-Reason": "integration-test-meta-leads-operational-remap",
+        "X-HostFlow-Elevated-Scope": "meta_leads_operational_tenant",
+    }
 
     r = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=sa_headers)
     assert r.status_code == 200, r.text

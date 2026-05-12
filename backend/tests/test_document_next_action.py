@@ -498,6 +498,35 @@ async def test_unknown_document_yields_idle_placeholder(
     assert dto.reason_code == "document_not_found"
 
 
+async def test_synthetic_document_next_action_missing_cta(
+    db: AsyncSession,
+    tenant_id: str,
+) -> None:
+    """Synthetic checklist rows have no DB id — still surface a missing-document CTA."""
+    cid = str(uuid.uuid4())
+    sid = f"synthetic::medical_certificate::{cid}"
+    dto = await compute_document_next_action(db, tenant_id=tenant_id, document_id=sid)
+    assert dto.kind == NextActionKind.CONTACT
+    assert dto.reason_code == "document_missing"
+    assert dto.entity_id == sid
+
+
+async def test_http_synthetic_document_next_action_ok(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    cid = str(uuid.uuid4())
+    sid = f"synthetic::medical_certificate::{cid}"
+    r = await client.get(
+        f"/api/v1/db/documents/{sid}/next-action",
+        headers=manager_headers,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["reason_code"] == "document_missing"
+    assert body["entity_id"] == sid
+
+
 # ---------------------------------------------------------------------------
 # HTTP smoke tests.
 # ---------------------------------------------------------------------------

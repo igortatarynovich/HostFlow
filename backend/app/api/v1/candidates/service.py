@@ -57,6 +57,15 @@ from backend.app.services.rodo import send_rodo_email as _send_rodo_email
 from backend.app.services.rodo import get_first_rodo_sent as _get_first_rodo_sent
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services.handoff import is_client_tenant as _is_client_tenant
+from backend.app.services.recruitment_handoff_write_guard import (
+    AgencyRecruitmentWriteBypass,
+    agency_candidate_has_internal_hr_handoff_lane,
+    agency_recruitment_lock_bulk_error,
+    require_agency_recruitment_write_allowed,
+)
+from backend.app.services.candidate_hr_internal_lane_patch import (
+    assert_hr_internal_lane_patch_keys_allowed,
+)
 from backend.app.services.candidate_lifecycle import (
     apply_candidate_deletion_cleanup,
     maybe_apply_candidate_terminal_cleanup,
@@ -295,7 +304,9 @@ async def update_candidate(
     data: Dict[str, Any],
     *,
     actor_id: Optional[str] = None,
+    actor_role: Optional[str] = None,
     reason: Any = _UNSET,
+    agency_recruitment_bypass: Optional[AgencyRecruitmentWriteBypass] = None,
 ) -> Optional[Candidate]:
     """Update candidate fields and apply domain rules (tenant-scoped)."""
     return await update_candidate_full(
@@ -304,7 +315,9 @@ async def update_candidate(
         candidate_id,
         data,
         actor_id=actor_id,
+        actor_role=actor_role,
         status_reason_override=reason,
+        agency_recruitment_bypass=agency_recruitment_bypass,
     )
 
 async def get_candidate(db: AsyncSession, tenant_id: str, candidate_id: str) -> Optional[Candidate]:
@@ -347,6 +360,7 @@ async def create_candidate_full(
     *,
     actor_id: Optional[str] = None,
     acl: CandidateACL | None = None,
+    source_lead: Any = None,
 ) -> Candidate:
     payload = dict(payload or {})
     await ensure_active_records_quota(db, tenant_id)
@@ -752,7 +766,9 @@ async def create_candidate_full(
     try:
         from backend.app.services import uos_auto_activities
 
-        await uos_auto_activities.ensure_candidate_created_call_task(db, tenant_id, actor_id, c)
+        await uos_auto_activities.ensure_candidate_created_call_task(
+            db, tenant_id, actor_id, c, source_lead=source_lead
+        )
         await db.commit()
     except Exception:
         await db.rollback()
@@ -769,8 +785,10 @@ async def update_candidate_full(
     payload: Dict[str, Any],
     *,
     actor_id: Optional[str] = None,
+    actor_role: Optional[str] = None,
     status_reason_override: Any = _UNSET,
     acl: CandidateACL | None = None,
+    agency_recruitment_bypass: Optional[AgencyRecruitmentWriteBypass] = None,
 ) -> Candidate:
     # ВАЖНО: доступ к кандидату уже проверен на уровне API (ensure_candidate_access,
     # can_client_edit / can_agency_edit, TenantVisibility и т.п.).
@@ -791,7 +809,23 @@ async def update_candidate_full(
         )
         raise HTTPException(status_code=404, detail="Candidate not found")
 
+    candidate_home_tenant = str(getattr(c, "tenant_id", "") or "").strip()
+    if candidate_home_tenant and not await _is_client_tenant(db, candidate_home_tenant):
+        await require_agency_recruitment_write_allowed(
+            db,
+            agency_tenant_id=candidate_home_tenant,
+            candidate_id=str(candidate_id),
+            bypass=agency_recruitment_bypass,
+        )
+
     payload = dict(payload or {})
+
+    role_lane = str(actor_role or "").strip().lower()
+    if role_lane == "hr_officer" and candidate_home_tenant and not await _is_client_tenant(db, candidate_home_tenant):
+        if await agency_candidate_has_internal_hr_handoff_lane(
+            db, agency_tenant_id=candidate_home_tenant, candidate_id=str(candidate_id)
+        ):
+            assert_hr_internal_lane_patch_keys_allowed(set(payload.keys()))
 
     source_update_present = "source" in payload
     origin_update_present = "origin" in payload
@@ -1556,45 +1590,6 @@ async def update_candidate_full(
             except Exception:
                 pass
 
-    # Workforce HR row at employment paperwork / final hire (idempotent; best-effort).
-    if stage_changed:
-        try:
-            st_now = str(getattr(c, "stage", None) or "").strip().lower()
-            old_l = (old_stage_code or "").strip().lower()
-            from backend.app.services import workforce_employees as _we
-
-            if _we.should_workforce_handoff_on_stage_change(old_l, st_now):
-                emp = await _we.handoff_from_candidate(
-                    db,
-                    tenant_id,
-                    c,
-                    hire_date=None,
-                    actor_user_id=str(actor_id or "").strip() or "system",
-                )
-                await log_activity(
-                    db,
-                    tenant_id=tenant_id,
-                    action="workforce.handoff_from_candidate",
-                    actor_id=actor_id,
-                    target_type="workforce_employee",
-                    target_id=emp.id,
-                    payload={
-                        "candidate_id": str(candidate_id),
-                        "trigger": f"candidate_stage_{st_now}",
-                    },
-                )
-                await db.commit()
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "workforce handoff on employment stage failed tenant=%s candidate=%s",
-                tenant_id,
-                candidate_id,
-            )
-            try:
-                await db.rollback()
-            except Exception:
-                pass
-
     # Auto-send RODO when candidate has email (art.14 GDPR); send_rodo_email no-ops if already sent
     email_after = locals().get("email_after", "") or ""
     if str(email_after).strip():
@@ -1646,7 +1641,6 @@ async def bulk_update_stage(
     target_stage = _normalize_stage_to_code(stage) or stage
     client_tenant = await _is_client_tenant(db, tenant_id)
     hiring_gates = await resolve_hiring_pipeline_gates(db, tenant_id)
-    from backend.app.services import workforce_employees as _we_handoff
 
     out: list[BulkStageResult] = []
     status_reason_explicit = status_reason is not _UNSET and status_reason is not None
@@ -1677,6 +1671,18 @@ async def bulk_update_stage(
             ):
                 out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": "forbidden"})
                 continue
+
+            cand_tid = str(getattr(c, "tenant_id", "") or "").strip()
+            if not client_tenant:
+                lock_err = await agency_recruitment_lock_bulk_error(
+                    db,
+                    agency_tenant_id=cand_tid,
+                    candidate_id=cid,
+                    operation_label="cannot change stage",
+                )
+                if lock_err:
+                    out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": lock_err})
+                    continue
 
             normalized = _normalize_stage_to_code(target_stage) or target_stage
             if not normalized:
@@ -1768,8 +1774,6 @@ async def bulk_update_stage(
                 )
                 continue
 
-            old_stage_snapshot = str(getattr(c, "stage", None) or "").strip().lower()
-
             await db.execute(
                 update(Candidate)
                 .where(Candidate.id == cid, Candidate.tenant_id == tenant_id)
@@ -1851,40 +1855,6 @@ async def bulk_update_stage(
                     await db.rollback()
                 except Exception:
                     pass
-
-            norm_l = normalized.strip().lower()
-            old_snap_l = (old_stage_snapshot or "").strip().lower()
-
-            if _we_handoff.should_workforce_handoff_on_stage_change(old_snap_l, norm_l):
-                try:
-                    await db.refresh(c)
-                    emp = await _we_handoff.handoff_from_candidate(
-                        db,
-                        tenant_id,
-                        c,
-                        hire_date=None,
-                        actor_user_id=str(actor_id or "").strip() or "system",
-                    )
-                    await log_activity(
-                        db,
-                        tenant_id=tenant_id,
-                        action="workforce.handoff_from_candidate",
-                        actor_id=actor_id,
-                        target_type="workforce_employee",
-                        target_id=emp.id,
-                        payload={"candidate_id": str(cid), "trigger": f"bulk_stage_{norm_l}"},
-                    )
-                    await db.commit()
-                except Exception:
-                    logging.getLogger(__name__).exception(
-                        "bulk workforce handoff on employment stage failed tenant=%s candidate=%s",
-                        tenant_id,
-                        cid,
-                    )
-                    try:
-                        await db.rollback()
-                    except Exception:
-                        pass
 
             out.append({"candidate_id": cid, "stage": normalized, "ok": True})
         except HTTPException as exc:
@@ -1971,6 +1941,20 @@ async def bulk_update_manager(
             results.append(entry)
             continue
 
+        cand_tid = str(getattr(candidate_row, "tenant_id", "") or "").strip()
+        if cand_tid and not await _is_client_tenant(db, cand_tid):
+            lock_err = await agency_recruitment_lock_bulk_error(
+                db,
+                agency_tenant_id=cand_tid,
+                candidate_id=cid,
+                operation_label="cannot reassign manager",
+            )
+            if lock_err:
+                entry["ok"] = False
+                entry["error"] = lock_err
+                results.append(entry)
+                continue
+
         try:
             await record_candidate_reassignment(
                 db,
@@ -2048,6 +2032,21 @@ async def bulk_delete_candidates(
             entry["error"] = "forbidden"
             results.append(entry)
             continue
+
+        cand_tid = str(getattr(candidate_row, "tenant_id", "") or "").strip()
+        if cand_tid and not await _is_client_tenant(db, cand_tid):
+            lock_err = await agency_recruitment_lock_bulk_error(
+                db,
+                agency_tenant_id=cand_tid,
+                candidate_id=cid,
+                operation_label="cannot delete candidate",
+            )
+            if lock_err:
+                entry["ok"] = False
+                entry["error"] = lock_err
+                results.append(entry)
+                continue
+
         allowed_indexes.append(len(results))
         results.append(entry)
 

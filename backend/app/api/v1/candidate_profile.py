@@ -356,7 +356,6 @@ async def patch_profile(
     prof = _get_profile(extra)
 
     base_updates: Dict[str, Any] = {}
-    old_stage_snapshot = str(getattr(c, "stage", None) or "").strip().lower()
     for f in ["first_name", "last_name", "email", "phone", "stage", "manager", "note"]:
         val = getattr(payload, f)
         if val is not None:
@@ -404,43 +403,6 @@ async def patch_profile(
     await db.commit()
     await db.refresh(c)
 
-    if "stage" in base_updates:
-        new_stage_snapshot = str(getattr(c, "stage", None) or "").strip().lower()
-        from backend.app.services import workforce_employees as _we
-
-        if _we.should_workforce_handoff_on_stage_change(old_stage_snapshot, new_stage_snapshot):
-            try:
-                emp = await _we.handoff_from_candidate(
-                    db,
-                    tenant_id_str,
-                    c,
-                    hire_date=None,
-                    actor_user_id="candidate_profile",
-                )
-                await log_activity(
-                    db,
-                    tenant_id=tenant_id_str,
-                    action="workforce.handoff_from_candidate",
-                    actor_id=None,
-                    target_type="workforce_employee",
-                    target_id=emp.id,
-                    payload={
-                        "candidate_id": str(candidate_id),
-                        "trigger": f"candidate_profile_stage_{new_stage_snapshot}",
-                    },
-                )
-                await db.commit()
-            except Exception:
-                _cp_log.exception(
-                    "workforce handoff on profile employment stage tenant=%s candidate=%s",
-                    tenant_id_str,
-                    candidate_id,
-                )
-                try:
-                    await db.rollback()
-                except Exception:
-                    pass
-
     return _candidate_to_profile(c, _safe_json_load(c.extra))
 
 
@@ -466,7 +428,17 @@ async def patch_questionnaire(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
     c = await _get_candidate(db, tenant_id, candidate_id)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    if client_tenant:
+        if not await can_client_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit: no accepted handoff")
+    else:
+        if not await can_agency_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit: candidate has accepted handoff")
+
     extra = _safe_json_load(c.extra)
     q = _get_questionnaire(extra)
 
@@ -498,7 +470,17 @@ async def autofill_from_docs(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
     c = await _get_candidate(db, tenant_id, candidate_id)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    if client_tenant:
+        if not await can_client_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit: no accepted handoff")
+    else:
+        if not await can_agency_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit: candidate has accepted handoff")
+
     extra = _safe_json_load(c.extra)
     prof = _get_profile(extra)
 

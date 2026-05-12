@@ -77,6 +77,7 @@ from backend.app.api.v1.candidates import service as cand_service
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.api.v1.candidates import repo as cand_repo
 from backend.app.models.candidate import Candidate
+from backend.app.models.recruitment_application import RecruitmentApplication
 from backend.app.models.audit import ActivityLog
 from backend.app.models.user import User
 from backend.app.models.reminder import Reminder, ReminderStatus
@@ -104,10 +105,11 @@ from backend.app.services.handoff import (
     can_agency_edit,
     can_client_edit,
 )
+from backend.app.services.recruitment_handoff_write_guard import agency_candidate_has_internal_hr_handoff_lane
 from backend.app.api.public.intake import _ensure_intake_token, _ensure_status_share_token
 from backend.app.services import billing_restrictions, portal_candidate_usage
 from backend.app.core.settings import settings
-from backend.app.core.audit_events import AuditEntityType
+from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.services import candidate_notifications
 from backend.app.services.audit import log_audit_event
@@ -117,6 +119,13 @@ from backend.app.api.v1.candidates.schemas import (
     CandidateChangeLogItemOut,
     CandidateChangeLogResponse,
     CandidateWorkPanelResponse,
+    RecruitmentApplicationOut,
+)
+from backend.app.services.recruitment_application_lifecycle import normalize_application_status
+from backend.app.services.recruitment_handoff_write_guard import (
+    RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    AgencyRecruitmentWriteBypass,
+    is_recruitment_recruiter_write_locked_by_handoff,
 )
 from backend.app.services.candidate_timeline import fetch_candidate_timeline_events
 from backend.app.services.candidate_work_panel import load_candidate_work_panel
@@ -1825,7 +1834,15 @@ async def get_candidate(
         out = await _apply_client_view_mask(db, out, str(candidate_id), tenant_id_str)
         out["can_edit"] = await can_client_edit(db, str(candidate_id), tenant_id_str)
     else:
-        out["can_edit"] = await can_agency_edit(db, str(candidate_id), tenant_id_str)
+        agency_can = await can_agency_edit(db, str(candidate_id), tenant_id_str)
+        if agency_can:
+            out["can_edit"] = True
+        elif user_role_lower == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+            db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+        ):
+            out["can_edit"] = True
+        else:
+            out["can_edit"] = False
 
     # Contact-attempt readiness for stage UI (plan: New → at least one attempt when policy on).
     cand_row = row[0]
@@ -2008,6 +2025,56 @@ async def get_candidate_change_log(
             )
         )
     return CandidateChangeLogResponse(items=items)
+
+
+def _recruitment_application_to_out(row: RecruitmentApplication) -> RecruitmentApplicationOut:
+    return RecruitmentApplicationOut(
+        id=str(row.id),
+        candidate_id=str(row.candidate_id),
+        lead_id=str(row.lead_id) if getattr(row, "lead_id", None) else None,
+        vacancy_id=str(row.vacancy_id) if getattr(row, "vacancy_id", None) else None,
+        source=str(getattr(row, "source", None) or "meta"),
+        recruiter_id=str(row.recruiter_id) if getattr(row, "recruiter_id", None) else None,
+        applied_at=row.applied_at,
+        status=normalize_application_status(getattr(row, "status", None)),
+        application_cycle=getattr(row, "application_cycle", None),
+        meta=dict(row.meta) if isinstance(getattr(row, "meta", None), dict) else {},
+    )
+
+
+@router.get(
+    "/{candidate_id}/applications",
+    response_model=List[RecruitmentApplicationOut],
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    summary="List recruitment applications (intent) for this candidate",
+)
+async def list_candidate_recruitment_applications(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> List[RecruitmentApplicationOut]:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    apps = await list_recruitment_applications_for_candidate(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+    )
+    return [_recruitment_application_to_out(a) for a in apps]
 
 
 @router.post(
@@ -2221,15 +2288,39 @@ async def patch_candidate(
     )
     acl_raw = await resolve_candidate_acl(db, tenant_id_str, current_user)
     acl: CandidateACL | None = None if acl_raw.unrestricted else acl_raw
+    if acl and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer":
+        if await agency_candidate_has_internal_hr_handoff_lane(
+            db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+        ):
+            acl = None
 
     # Handoff permissions: agency can edit only if no accepted handoff; client only with accepted
     client_tenant = await is_client_tenant(db, tenant_id_str)
+    recruitment_locked = False
+    recruitment_lock_reason: Optional[str] = None
+    recruitment_lock_override_used = False
+
     if client_tenant:
         if not await can_client_edit(db, str(candidate_id), tenant_id_str):
             raise HTTPException(status_code=403, detail="Cannot edit: no accepted handoff")
     else:
-        if not await can_agency_edit(db, str(candidate_id), tenant_id_str):
-            raise HTTPException(status_code=403, detail="Cannot edit: candidate has accepted handoff")
+        recruitment_locked, recruitment_lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
+            db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+        )
+        if recruitment_locked:
+            role_l = str(getattr(current_user, "role", "") or "").strip().lower()
+            or_raw = (payload or {}).get("override_reason")
+            if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and str(or_raw or "").strip():
+                recruitment_lock_override_used = True
+            elif role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+                db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+            ):
+                recruitment_lock_override_used = True
+            else:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Recruitment locked ({recruitment_lock_reason or 'handoff'}): cannot edit candidate",
+                )
 
     # Allow only known fields to be updated to avoid accidental overwrites
     allowed_fields = {
@@ -2268,6 +2359,9 @@ async def patch_candidate(
         "personal_data",
         "contacts",
         "override_reason",
+        "source",
+        "origin",
+        "docs_progress",
     }
 
     # Start with only allowed keys
@@ -2316,6 +2410,14 @@ async def patch_candidate(
         override_reason_raw = data.pop("override_reason")
         if override_reason_raw is not None:
             override_reason = str(override_reason_raw).strip() or None
+
+    if (
+        not client_tenant
+        and recruitment_lock_override_used
+        and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer"
+        and not override_reason
+    ):
+        override_reason = "internal_hr_handoff_lane"
 
     if not data:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -2371,13 +2473,24 @@ async def patch_candidate(
             },
         )
 
+    patch_keys_for_audit = sorted(data.keys())
+
+    agency_bypass: Optional[AgencyRecruitmentWriteBypass] = None
+    if not client_tenant and recruitment_lock_override_used and override_reason:
+        agency_bypass = AgencyRecruitmentWriteBypass(
+            actor_role=str(getattr(current_user, "role", "") or ""),
+            override_reason=override_reason,
+        )
+
     updated = await cand_service.update_candidate_full(
         db,
         tenant_id=str(tenant_id),
         candidate_id=str(candidate_id),
         payload=data,
         actor_id=current_user.sub,
+        actor_role=str(getattr(current_user, "role", "") or ""),
         acl=acl,
+        agency_recruitment_bypass=agency_bypass,
     )
 
     # Return the same enriched view as GET /{id}
@@ -2403,6 +2516,27 @@ async def patch_candidate(
             None,
         )
     response_payload = _serialize_candidate_row(row)
+
+    if recruitment_lock_override_used and override_reason:
+        try:
+            await log_audit_event(
+                db,
+                tenant_id=tenant_id_str,
+                event_type=AuditEventType.recruitment_lock_write_override,
+                entity_type=AuditEntityType.candidate,
+                entity_id=str(candidate_id),
+                actor_id=current_user.sub,
+                payload={
+                    "operation": "candidate_patch",
+                    "lock_reason": recruitment_lock_reason or "handoff",
+                    "override_reason": override_reason,
+                    "actor_role": str(getattr(current_user, "role", "") or "").strip().lower(),
+                    "updated_fields": patch_keys_for_audit,
+                },
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
 
     if override_fields and override_reason:
         try:

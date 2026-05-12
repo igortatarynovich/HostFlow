@@ -18,6 +18,11 @@ from backend.app.models import (
 )
 from backend.app.models.access import UserCompanyAccess
 from backend.app.models.user import Role as UserRole, User
+from backend.app.services.handoff import is_client_tenant
+from backend.app.services.recruitment_handoff_write_guard import (
+    AgencyRecruitmentWriteBypass,
+    require_agency_recruitment_write_allowed,
+)
 
 
 # Phase 2.6.G-5 Stage C — machine-readable codes for
@@ -432,6 +437,7 @@ async def record_candidate_reassignment(
     note: Optional[str] = None,
     skip_if_unchanged: bool = True,
     write: bool = True,
+    agency_recruitment_bypass: Optional[AgencyRecruitmentWriteBypass] = None,
 ) -> Optional[CandidateAssigneeHistory]:
     """Reassign a candidate's recruiter and append an audit-trail row.
 
@@ -446,6 +452,9 @@ async def record_candidate_reassignment(
 
     * When ``write=True`` (default) the helper mutates ``candidate.recruiter_id``
       *and* adds a :class:`CandidateAssigneeHistory` row to the session.
+      Agency-owned dossiers require ``require_agency_recruitment_write_allowed``
+      (pass ``agency_recruitment_bypass`` only from guarded API paths that
+      already validated a privileged override).
     * When ``write=False`` the helper **only** emits the history row — useful
       for INSERT-time assignments where ``recruiter_id`` is already baked into
       the ``INSERT`` statement (see ``create_candidate_full``).
@@ -478,6 +487,16 @@ async def record_candidate_reassignment(
     tenant_id_attr = getattr(candidate, "tenant_id", None)
     if not tenant_id_attr:
         return None
+
+    if write:
+        cand_tid = str(tenant_id_attr).strip()
+        if cand_tid and not await is_client_tenant(db, cand_tid):
+            await require_agency_recruitment_write_allowed(
+                db,
+                agency_tenant_id=cand_tid,
+                candidate_id=str(candidate_id),
+                bypass=agency_recruitment_bypass,
+            )
 
     old_value = _normalise_owner_id(getattr(candidate, "recruiter_id", None))
     new_value = _normalise_owner_id(new_recruiter_id)

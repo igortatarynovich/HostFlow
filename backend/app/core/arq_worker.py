@@ -39,6 +39,7 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 from typing import Any, Awaitable, Callable, Dict, List, Optional
+from uuid import UUID
 
 from backend.app.core.settings import settings
 
@@ -209,7 +210,6 @@ async def job_automation_evaluate_trigger(
     same rules (any dedupe policy lives inside the rule engine via
     `was_rule_fired_for_candidate_since`).
     """
-    from backend.app.db.session import async_session_maker
     from backend.app.services.automation_rules import (
         _matches_conditions,
         _loads_or_empty,
@@ -220,7 +220,12 @@ async def job_automation_evaluate_trigger(
     fired = 0
     examined = 0
     try:
-        async with async_session_maker() as db:
+        from backend.app.db.deps import tenant_enforced_session
+
+        async with tenant_enforced_session(
+            UUID(tenant_id),
+            actor_id=(actor_id or "system:automation_evaluate_trigger"),
+        ) as db:
             rules = await list_rules(db, tenant_id=tenant_id, trigger=trigger)
             for rule in rules:
                 examined += 1

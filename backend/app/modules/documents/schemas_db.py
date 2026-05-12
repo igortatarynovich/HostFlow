@@ -202,6 +202,7 @@ if PYDANTIC_V2:
         tenant_id: str
         candidate_id: str
         company_id: Optional[str] = None
+        own_company_id: Optional[str] = None
         kind: str
         doc_type: str
         type: str
@@ -252,6 +253,7 @@ else:
         tenant_id: str
         candidate_id: str
         company_id: Optional[str] = None
+        own_company_id: Optional[str] = None
         kind: str
         doc_type: str
         type: str

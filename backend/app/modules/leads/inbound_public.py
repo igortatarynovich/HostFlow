@@ -7,11 +7,10 @@ import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from backend.app.db.deps import get_db
+from backend.app.db.deps import bind_tenant_context_to_session, get_db
 from backend.app.modules.leads import crud, service
 from backend.app.modules.leads.schemas import MetaLeadResponse
 from backend.app.services.plan_feature_gates import ensure_leads_generic_inbound_webhook_allowed
@@ -19,14 +18,6 @@ from backend.app.services.plan_feature_gates import ensure_leads_generic_inbound
 logger = logging.getLogger("backend.app.modules.leads.inbound_public")
 
 router = APIRouter()
-
-
-async def _apply_tenant_context(db: AsyncSession, tenant_id: str) -> None:
-    db.info["tenant_id"] = UUID(tenant_id)
-    try:
-        await db.execute(text("SELECT set_config('app.tenant_id', :tenant_id, false)"), {"tenant_id": tenant_id})
-    except Exception:
-        pass
 
 
 @router.post(
@@ -48,28 +39,33 @@ async def post_generic_lead_inbound(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     tenant_id = str(settings_row.tenant_id)
-    await _apply_tenant_context(db, tenant_id)
-    await ensure_leads_generic_inbound_webhook_allowed(db, tenant_id)
+    from backend.app.security.runtime_context import security_job_context
 
-    raw_body = await request.body()
-    try:
-        parsed: Dict[str, Any] = json.loads(raw_body.decode("utf-8"))
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
+    rid = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+    async with security_job_context(actor_id="system:leads-generic-inbound-webhook", correlation_id=rid):
+        db.info["tenant_rls_enforcement"] = True
+        await bind_tenant_context_to_session(db, UUID(tenant_id))
+        await ensure_leads_generic_inbound_webhook_allowed(db, tenant_id)
 
-    if not isinstance(parsed, dict):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="JSON object expected")
+        raw_body = await request.body()
+        try:
+            parsed: Dict[str, Any] = json.loads(raw_body.decode("utf-8"))
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
 
-    try:
-        result = await service.process_generic_inbound_webhook_lead(
-            db=db,
-            tenant_id=tenant_id,
-            own_company_id=None,
-            body=parsed,
-        )
-    except service.LeadProcessingError as exc:
-        raise service.lead_processing_error_as_http(exc) from exc
+        if not isinstance(parsed, dict):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="JSON object expected")
 
-    await db.commit()
-    logger.info("[webhook] inbound lead tenant=%s status=%s", tenant_id, result.status)
-    return result.to_schema()
+        try:
+            result = await service.process_generic_inbound_webhook_lead(
+                db=db,
+                tenant_id=tenant_id,
+                own_company_id=None,
+                body=parsed,
+            )
+        except service.LeadProcessingError as exc:
+            raise service.lead_processing_error_as_http(exc) from exc
+
+        await db.commit()
+        logger.info("[webhook] inbound lead tenant=%s status=%s", tenant_id, result.status)
+        return result.to_schema()

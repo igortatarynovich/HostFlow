@@ -15,6 +15,7 @@ from sqlalchemy import and_, or_, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
@@ -41,9 +42,13 @@ from backend.app.services.handoff import (
     is_client_tenant,
     has_pending_handoff_for_client,
     client_has_accepted_handoff,
-    can_agency_edit,
     can_client_edit,
 )
+from backend.app.services.recruitment_handoff_write_guard import (
+    RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    is_recruitment_recruiter_write_locked_by_handoff,
+)
+from backend.app.services.audit import log_audit_event
 from backend.app.services.document_catalog import (
     doc_type_requires_user_comment,
     get_doc_type_defaults,
@@ -320,8 +325,11 @@ async def _recalc_docs_progress(
     own_company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Recalculate and persist candidate.docs_progress based on rows in documents.
-    uploaded = file physically present (path not null and not empty)
-    status counters come from Document.status (fallback to extra['status']).
+
+    This path updates only ``Candidate.docs_progress`` and ``updated_at`` (no
+    ``stage`` / ``status``). It is intentionally **not** blocked by the agency
+    recruitment handoff lock: it mirrors document state for UI/analytics while
+    document mutations themselves remain guarded by ``_check_document_edit_permission``.
     """
     base = and_(
         Document.tenant_id == str(tenant_id),
@@ -537,6 +545,10 @@ class CandDocCreate(BaseModel):
     files: Optional[Dict[str, Any]] = None
     workflow: Optional[Dict[str, Any]] = None
     meta: Optional[Dict[str, Any]] = None
+    override_reason: Optional[str] = Field(
+        default=None,
+        description="Privileged bypass when recruitment is handoff-locked (administrator/supervisor/superadmin).",
+    )
 
     def normalized_status(self) -> str:
         return _normalize_status(self.status)
@@ -559,6 +571,10 @@ class CandDocUpdate(BaseModel):
     files: Optional[Dict[str, Any]] = None
     workflow: Optional[Dict[str, Any]] = None
     meta: Optional[Dict[str, Any]] = None
+    override_reason: Optional[str] = Field(
+        default=None,
+        description="Privileged bypass when recruitment is handoff-locked (administrator/supervisor/superadmin).",
+    )
 
     def normalized_status(self) -> Optional[str]:
         if self.status is None:
@@ -569,6 +585,10 @@ class CandDocUpdate(BaseModel):
 class ApplyTemplatePayload(BaseModel):
     template_id: Optional[UUID] = None
     template_code: Optional[str] = None
+    override_reason: Optional[str] = Field(
+        default=None,
+        description="Privileged bypass when recruitment is handoff-locked (administrator/supervisor/superadmin).",
+    )
 
     @root_validator(pre=True)
     def _ensure_identifier(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -690,14 +710,79 @@ async def list_candidate_documents(
 
 
 async def _check_document_edit_permission(
-    db: AsyncSession, tenant_id_str: str, candidate_id_str: str, is_client: bool
-) -> None:
+    db: AsyncSession,
+    tenant_id_str: str,
+    candidate_id_str: str,
+    is_client: bool,
+    *,
+    current_user: Optional[UserCtx] = None,
+    override_reason: Optional[str] = None,
+) -> Optional[dict[str, str]]:
+    """Return lock-override audit context when privileged bypass is used; else None."""
     if is_client:
         if not await can_client_edit(db, candidate_id_str, tenant_id_str):
             raise HTTPException(status_code=403, detail="Cannot edit documents: no accepted handoff")
-    else:
-        if not await can_agency_edit(db, candidate_id_str, tenant_id_str):
-            raise HTTPException(status_code=403, detail="Cannot edit documents: candidate has accepted handoff")
+        return None
+    locked, lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
+        db, agency_tenant_id=tenant_id_str, candidate_id=candidate_id_str
+    )
+    if not locked:
+        return None
+    role_l = str(getattr(current_user, "role", "") or "").strip().lower() if current_user else ""
+    or_s = str(override_reason or "").strip()
+    if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and or_s:
+        return {"lock_reason": lock_reason or "handoff", "override_reason": or_s}
+    raise HTTPException(
+        status_code=403,
+        detail=f"Recruitment locked ({lock_reason or 'handoff'}): cannot edit documents",
+    )
+
+
+async def _flush_recruitment_lock_override_audit(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    lock_audit_ctx: Optional[dict[str, str]],
+    current_user: UserCtx,
+    operation: str,
+    document_id: Optional[str] = None,
+) -> None:
+    """Log only after a successful mutation when recruitment lock was bypassed with override_reason."""
+    if not lock_audit_ctx:
+        return
+    payload: Dict[str, Any] = {
+        "operation": operation,
+        "candidate_id": candidate_id,
+        "lock_reason": lock_audit_ctx["lock_reason"],
+        "override_reason": lock_audit_ctx["override_reason"],
+        "actor_role": str(getattr(current_user, "role", "") or "").strip().lower(),
+    }
+    if document_id:
+        payload["document_id"] = document_id
+    try:
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.recruitment_lock_write_override,
+            entity_type=AuditEntityType.candidate,
+            entity_id=candidate_id,
+            actor_id=current_user.sub,
+            payload=payload,
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+
+
+def _doc_payload_override_reason(payload: Any) -> Optional[str]:
+    """Same contract as candidate PATCH: top-level or inside ``meta``."""
+    raw = getattr(payload, "override_reason", None)
+    meta = getattr(payload, "meta", None) or {}
+    if isinstance(meta, dict):
+        raw = raw or meta.get("override_reason")
+    s = str(raw or "").strip()
+    return s or None
 
 
 # --------- create ---------
@@ -728,7 +813,15 @@ async def create_candidate_document(
     ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
-    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
+    or_reason = _doc_payload_override_reason(payload)
+    lock_audit_ctx = await _check_document_edit_permission(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        client_tenant,
+        current_user=current_user,
+        override_reason=or_reason,
+    )
     status = payload.normalized_status()
     effective_key = (payload.key or payload.doc_type or "").strip()
     if not effective_key:
@@ -750,6 +843,7 @@ async def create_candidate_document(
 
     files_list = _dict_files_to_list(payload.files)
     meta_payload: Dict[str, Any] = dict(payload.meta or {})
+    meta_payload.pop("override_reason", None)
     if payload.title:
         meta_payload["title"] = payload.title
     if payload.note:
@@ -840,6 +934,15 @@ async def create_candidate_document(
         )
     await db.commit()
     await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
+    await _flush_recruitment_lock_override_audit(
+        db,
+        tenant_id=str(cand.tenant_id),
+        candidate_id=str(candidate_id),
+        lock_audit_ctx=lock_audit_ctx,
+        current_user=current_user,
+        operation="document_create",
+        document_id=str(m.id),
+    )
     return CandDoc.from_document(m)
 
 
@@ -870,7 +973,15 @@ async def update_candidate_document(
     ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
-    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
+    or_reason = _doc_payload_override_reason(payload)
+    lock_audit_ctx = await _check_document_edit_permission(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        client_tenant,
+        current_user=current_user,
+        override_reason=or_reason,
+    )
 
     row = await db.execute(
         select(Document).where(
@@ -948,6 +1059,7 @@ async def update_candidate_document(
         meta_payload["workflow"] = payload.workflow
     if payload.meta is not None:
         meta_payload.update(payload.meta)
+    meta_payload.pop("override_reason", None)
     raw_reminder_days = meta_payload.pop("remind_days_before", None)
     if raw_reminder_days is not None:
         try:
@@ -1110,6 +1222,15 @@ async def update_candidate_document(
     except Exception:
         pass
     await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
+    await _flush_recruitment_lock_override_audit(
+        db,
+        tenant_id=str(cand.tenant_id),
+        candidate_id=str(candidate_id),
+        lock_audit_ctx=lock_audit_ctx,
+        current_user=current_user,
+        operation="document_update",
+        document_id=str(m.id),
+    )
     return CandDoc.from_document(m)
 
 
@@ -1337,7 +1458,15 @@ async def apply_document_template(
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
-    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
+    or_reason = _doc_payload_override_reason(payload)
+    lock_audit_ctx = await _check_document_edit_permission(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        client_tenant,
+        current_user=current_user,
+        override_reason=or_reason,
+    )
 
     result = await apply_template_to_candidate_impl(
         db,
@@ -1349,6 +1478,15 @@ async def apply_document_template(
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Document template not found")
+    await _flush_recruitment_lock_override_audit(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        lock_audit_ctx=lock_audit_ctx,
+        current_user=current_user,
+        operation="document_apply_template",
+        document_id=None,
+    )
     return result
 
 # --------- delete ---------
@@ -1366,6 +1504,10 @@ async def delete_candidate_document(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    override_reason: Optional[str] = Query(
+        None,
+        description="Privileged bypass when recruitment is handoff-locked (administrator/supervisor/superadmin).",
+    ),
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
@@ -1375,7 +1517,14 @@ async def delete_candidate_document(
     ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
-    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
+    lock_audit_ctx = await _check_document_edit_permission(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        client_tenant,
+        current_user=current_user,
+        override_reason=override_reason,
+    )
 
     row = await db.execute(
         select(Document).where(
@@ -1403,6 +1552,15 @@ async def delete_candidate_document(
     )
     await db.commit()
     await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
+    await _flush_recruitment_lock_override_audit(
+        db,
+        tenant_id=str(cand.tenant_id),
+        candidate_id=str(candidate_id),
+        lock_audit_ctx=lock_audit_ctx,
+        current_user=current_user,
+        operation="document_delete",
+        document_id=str(doc_id),
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -1428,6 +1586,10 @@ async def upload_candidate_document(
     status: str = Form(DocumentStatus.received.value),
     note: Optional[str] = Form(None),
     user_comment: Optional[str] = Form(None),
+    override_reason: Optional[str] = Form(
+        None,
+        description="Privileged bypass when recruitment is handoff-locked (administrator/supervisor/superadmin).",
+    ),
 ):
     if status not in STATUSES:
         raise HTTPException(status_code=422, detail="Invalid status")
@@ -1441,7 +1603,14 @@ async def upload_candidate_document(
     ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
-    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
+    lock_audit_ctx = await _check_document_edit_permission(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        client_tenant,
+        current_user=current_user,
+        override_reason=override_reason,
+    )
 
     # 1) файл — пишем через абстракцию object storage (FS или S3/MinIO).
     # Ключ формируется по тому же шаблону, что и раньше, чтобы существующие
@@ -1582,6 +1751,16 @@ async def upload_candidate_document(
     )
     await db.commit()
     await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
+
+    await _flush_recruitment_lock_override_audit(
+        db,
+        tenant_id=str(cand.tenant_id),
+        candidate_id=str(candidate_id),
+        lock_audit_ctx=lock_audit_ctx,
+        current_user=current_user,
+        operation="document_upload",
+        document_id=str(obj.id),
+    )
 
     return CandDoc.from_document(obj)
 

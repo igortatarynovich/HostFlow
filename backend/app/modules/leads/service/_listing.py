@@ -50,7 +50,7 @@ from backend.app.modules.leads.lead_candidate_doc_loader import (
 )
 from backend.app.modules.leads.lead_criteria_eval import evaluate_vacancy_for_lead
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
-from backend.app.modules.leads.schemas import LeadListResponse, LeadOut
+from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, lead_vacancy_routing_aux
 
 from ._helpers import _build_lead_outcome, _load_tenant_business_type
 
@@ -623,6 +623,7 @@ async def list_leads(
             vacancy_extra,
             candidate_document_statuses=doc_status_payload,
         )
+        _, vacancy_routing_confirmed = lead_vacancy_routing_aux(lead.normalized, lead.vacancy_id)
         items.append(
             LeadOut(
                 id=_uuid_or_none(lead.id) or UUID(lead.id),
@@ -666,6 +667,7 @@ async def list_leads(
                 next_action_title=(next_action_map.get(str(lead.id)) or {}).get("next_title"),
                 fit_status=fit_status,
                 fit_reasons=fit_reasons,
+                vacancy_routing_confirmed=vacancy_routing_confirmed,
                 custom_fields=custom_field_maps.get(str(lead.id), {}),
             )
         )

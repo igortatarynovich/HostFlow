@@ -112,3 +112,9 @@ from ._bulk import (  # noqa: F401
 )
 from ._retry import retry_meta_leads  # noqa: F401
 from ._reroute import reroute_lead_manual  # noqa: F401
+from .intake_decision import (  # noqa: F401
+    INTAKE_REJECT_REASON_CODES,
+    apply_lead_intake_decision,
+    manual_process_block_code,
+)
+from .intake_vacancy_confirm import confirm_lead_vacancy  # noqa: F401

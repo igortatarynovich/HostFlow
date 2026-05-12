@@ -30,6 +30,7 @@ from backend.app.services.plan_feature_gates import (
 )
 from backend.app.modules.leads.schemas import (
     LeadOut,
+    lead_vacancy_routing_aux,
     MetaAdsMapCreate,
     MetaAdsMapEntry,
     MetaAdsMapUpdate,
@@ -911,6 +912,10 @@ async def list_unmapped_leads(
                 candidate_id=lead.candidate_id,
                 candidate_name=None,
             )
+            _, vrc = lead_vacancy_routing_aux(
+                lead.normalized if isinstance(lead.normalized, dict) else {},
+                lead.vacancy_id,
+            )
             items.append(
                 LeadOut(
                     id=UUID(lead.id),
@@ -936,6 +941,7 @@ async def list_unmapped_leads(
                     normalized=lead.normalized,
                     created_at=lead.created_at,
                     last_routed_at=lead.last_routed_at,
+                    vacancy_routing_confirmed=vrc,
                 )
             )
         groups.append(

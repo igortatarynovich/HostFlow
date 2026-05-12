@@ -14,6 +14,10 @@ has no explicit `require_roles` and relies on tenant scoping + ACL via
 inconsistent: anyone who can already read the document should be able to
 ask "what's the next action?".
 
+``document_id`` is typed as **str** (not ``UUID``) so checklist **synthetic** ids
+``synthetic::{doc_type}::{candidate_id}`` are accepted; the service returns a
+``document_missing`` CTA without **422** path validation errors.
+
 Soft-delete handling: we DO NOT exclude `deleted_at IS NOT NULL` here.
 The service returns a `terminal_deleted` DTO for soft-deleted documents,
 which is the truthful answer; 404 would be misleading because the row
@@ -23,7 +27,6 @@ still exists.
 from __future__ import annotations
 
 from typing import Tuple
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -50,27 +53,26 @@ router = APIRouter()
     ),
 )
 async def get_document_next_action(
-    document_id: UUID,
+    document_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> NextActionDTO:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
-    document_id_str = str(document_id)
+    document_id_str = str(document_id).strip()
 
-    # 404 path: confirm the document exists in this tenant before computing.
-    # We do NOT filter `deleted_at` — soft-deleted rows still get a DTO
-    # (with reason_code='terminal_deleted'); only a truly missing row 404s.
-    document_row = await db.scalar(
-        select(Document.id).where(
-            Document.id == document_id_str,
-            Document.tenant_id == tenant_id_str,
+    synthetic = document_id_str.startswith("synthetic::")
+    if not synthetic:
+        document_row = await db.scalar(
+            select(Document.id).where(
+                Document.id == document_id_str,
+                Document.tenant_id == tenant_id_str,
+            )
         )
-    )
-    if document_row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        )
+        if document_row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
+            )
 
     return await compute_document_next_action(
         db,

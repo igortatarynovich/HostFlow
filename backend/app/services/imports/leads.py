@@ -495,6 +495,17 @@ async def run_import_job(
                     await session.commit()
                     continue
 
+                # Same doctrine as ``POST /leads/{id}/process`` and bulk queues: re-import must not
+                # run conversion while intake / routing blocks apply to the stored row.
+                if existing:
+                    block = leads_service.manual_process_block_code(existing)
+                    if block:
+                        failed_rows += 1
+                        errors.append({"row": row_number, "error": block})
+                        await _send_lead_failed_webhook(tenant_id, job_id, row_number, block)
+                        continue
+
+                target_lead_id = str(existing.id) if existing else None
                 result = await leads_service.process_normalized_lead(
                     session,
                     tenant_id=tenant_id,
@@ -502,6 +513,7 @@ async def run_import_job(
                     normalized=normalized,
                     source=IMPORT_SOURCE,
                     external_id=external_id,
+                    target_lead_id=target_lead_id,
                 )
 
                 if not result.is_new:

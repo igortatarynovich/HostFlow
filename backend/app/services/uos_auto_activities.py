@@ -28,6 +28,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.tenant import Tenant
+from backend.app.services.audit import log_activity
+from backend.app.services.lead_first_contact_continuity import (
+    FIRST_CONTACT_SUPPRESSED_ACTION,
+    should_skip_default_first_contact_after_lead_conversion,
+)
 from backend.app.services.recruiter_assignment import resolve_vacancy_primary_recruiter
 from backend.app.services.reminder_tasks import create_reminder, refresh_open_typed_reminder_due
 
@@ -174,12 +179,33 @@ async def ensure_candidate_created_call_task(
     tenant_id: str,
     actor_id: str,
     candidate: Any,
+    *,
+    source_lead: Optional[Any] = None,
 ) -> None:
     if not _uos_auto_flag(await _tenant_settings(db, tenant_id), "candidate_created_call", True):
         return
     cid = str(getattr(candidate, "id", "") or "").strip()
     if not cid:
         return
+    if source_lead is not None:
+        skip, reasons = await should_skip_default_first_contact_after_lead_conversion(
+            db, tenant_id=tenant_id, lead=source_lead
+        )
+        if skip:
+            await log_activity(
+                db,
+                tenant_id=tenant_id,
+                actor_id=None,
+                action=FIRST_CONTACT_SUPPRESSED_ACTION,
+                target_type="candidate",
+                target_id=cid,
+                payload={
+                    "lead_id": str(getattr(source_lead, "id", "") or ""),
+                    "reasons": reasons,
+                },
+            )
+            await db.flush()
+            return
     if await _has_active_typed_reminder(
         db, tenant_id=tenant_id, entity_type="candidate", entity_id=cid, rtype="uos_candidate_call"
     ):

@@ -126,6 +126,9 @@ class TenantLinkCreate(BaseModel):
 
 class TenantLinkUpdate(BaseModel):
     handoff_enabled: Optional[bool] = None
+    handoff_to_client: Optional[bool] = None
+    handoff_to_internal_hr: Optional[bool] = None
+    workforce_handoff_on_ready_for_handoff_stage: Optional[bool] = None
     contact_policy: Optional[Dict[str, Any]] = None
     see_vacancies: Optional[bool] = None
     see_reduced_profiles: Optional[bool] = None

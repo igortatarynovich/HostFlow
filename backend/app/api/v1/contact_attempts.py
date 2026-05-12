@@ -107,6 +107,8 @@ async def create_contact_attempt(
         actor_id=current_user.sub,
     )
     if err:
+        if isinstance(err, str) and err.startswith("Recruitment locked"):
+            raise HTTPException(status_code=403, detail=err)
         raise HTTPException(status_code=400, detail=err)
     await db.commit()
     await db.refresh(attempt)

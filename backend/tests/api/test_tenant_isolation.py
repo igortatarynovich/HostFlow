@@ -25,6 +25,8 @@ from backend.app.models.document import Document
 from backend.app.models.user import User
 from backend.app.models.vacancy import Vacancy
 
+pytestmark = pytest.mark.postgres_integration
+
 
 TENANT_1_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_2_ID = "22222222-2222-2222-2222-222222222222"
@@ -49,20 +51,22 @@ async def tenant2_data(tenant_id: str) -> Dict[str, str]:
         
         # Create user for tenant 2 using raw SQL (let server handle timestamps)
         user2_id = str(uuid.uuid4())
+        email2 = f"admin2-{user2_id[:8]}@tenant2.com"
         await session.execute(
-            text(f"""
-                INSERT INTO users (id, email, password_hash, role, tenant_id, short_id, full_name, is_active)
-                VALUES (:id, :email, :password_hash, :role, :tenant_id, :short_id, :full_name, :is_active)
+            text("""
+                INSERT INTO users (id, email, password_hash, role, tenant_id, short_id, full_name, is_active, preferences)
+                VALUES (:id, :email, :password_hash, :role, :tenant_id, :short_id, :full_name, :is_active, CAST(:preferences AS jsonb))
             """),
             {
                 "id": user2_id,
-                "email": "admin2@tenant2.com",
+                "email": email2,
                 "password_hash": "hash",
                 "role": "administrator",
                 "tenant_id": TENANT_2_ID,
                 "short_id": "ADM2",
                 "full_name": "Tenant 2 Admin",
                 "is_active": True,
+                "preferences": "{}",
             },
         )
         
@@ -70,8 +74,8 @@ async def tenant2_data(tenant_id: str) -> Dict[str, str]:
         company2_id = str(uuid.uuid4())
         await session.execute(
             text("""
-                INSERT INTO companies (id, tenant_id, name)
-                VALUES (:id, :tenant_id, :name)
+                INSERT INTO companies (id, tenant_id, name, party_entity_type)
+                VALUES (:id, :tenant_id, :name, 'company')
             """),
             {
                 "id": company2_id,
@@ -82,10 +86,17 @@ async def tenant2_data(tenant_id: str) -> Dict[str, str]:
         
         # Create candidate for tenant 2
         candidate2_id = str(uuid.uuid4())
+        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
         await session.execute(
             text("""
-                INSERT INTO candidates (id, tenant_id, first_name, last_name, manager, company_id)
-                VALUES (:id, :tenant_id, :first_name, :last_name, :manager, :company_id)
+                INSERT INTO candidates (
+                    id, tenant_id, first_name, last_name, manager, company_id,
+                    stage, email, created_at, updated_at
+                )
+                VALUES (
+                    :id, :tenant_id, :first_name, :last_name, :manager, :company_id,
+                    'new', :email, :created_at, :updated_at
+                )
             """),
             {
                 "id": candidate2_id,
@@ -94,6 +105,9 @@ async def tenant2_data(tenant_id: str) -> Dict[str, str]:
                 "last_name": "Candidate",
                 "manager": user2_id,
                 "company_id": company2_id,
+                "email": f"c2-{candidate2_id[:8]}@example.com",
+                "created_at": now_naive,
+                "updated_at": now_naive,
             },
         )
         
@@ -117,6 +131,7 @@ async def tenant2_data(tenant_id: str) -> Dict[str, str]:
 
         return {
             "user_id": user2_id,
+            "user_email": email2,
             "company_id": company2_id,
             "candidate_id": candidate2_id,
         }
@@ -131,7 +146,7 @@ async def tenant2_token(tenant2_data: Dict[str, str]) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": tenant2_data["user_id"],
-        "email": "admin2@tenant2.com",
+        "email": tenant2_data["user_email"],
         "role": "administrator",
         "tenant_id": TENANT_2_ID,
         "type": "access",

@@ -65,6 +65,62 @@ class CandidateHandoff(Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, index=True, default="pending_review"
     )
+    # client_portal (agency→client) | internal_hr (agency/single-tenant→workforce HR)
+    destination: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        index=True,
+        default="client_portal",
+        server_default=text("'client_portal'"),
+    )
+    # Product routing: internal_hr | client_portal | client_account (see handoff_type vs destination).
+    handoff_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="client_portal",
+        server_default=text("'client_portal'"),
+        index=True,
+    )
+    application_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("recruitment_applications.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    from_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    to_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    locked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    returned_by_user_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    returned_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    accepted_by_user_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("users.id", ondelete="SET NULL"),

@@ -13,6 +13,14 @@ from backend.app.models.document import Document
 
 
 def resolved_document_own_company_id(cand: Candidate, active_own_company_id: Optional[str]) -> Optional[str]:
+    """Effective own-company for document rows tied to this candidate.
+
+    The UI persists ``X-Own-Company-Id`` globally (active workspace). That value can
+    differ from ``Candidate.own_company_id`` while the user still opens the candidate
+    card from the tenant-wide list (see candidates list: no own-company filter for the
+    same reason). When the candidate is pinned to a workspace, document APIs should use
+    that id so listings and summaries stay aligned with the card the user opened.
+    """
     c = str(getattr(cand, "own_company_id", None) or "").strip()
     if c:
         return c

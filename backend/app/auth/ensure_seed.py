@@ -21,6 +21,8 @@ except Exception:
 
 ADMIN_EMAIL = "admin@hostflow.dev"
 ADMIN_PASSWORD = "Admin@025"
+HR_OFFICER_EMAIL = "hr.officer@hostflow.dev"
+HR_OFFICER_PASSWORD = "HrOfficer@025"
 DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
 
 _ASYNC_URL = os.getenv("ASYNC_DATABASE_URL") or ""
@@ -90,6 +92,161 @@ async def _user_exists(db: AsyncSession, email: str) -> bool:
     except Exception:
         # Если нет индекса/колонки — считаем, что нет
         return False
+
+
+async def _ensure_membership_with_role(
+    db: AsyncSession,
+    *,
+    user_id: Optional[str],
+    tenant_id: str,
+    membership_role: str,
+    now: dt.datetime,
+) -> None:
+    if not user_id:
+        return
+    if not await _table_exists(db, "user_memberships"):
+        return
+    try:
+        await db.execute(
+            text(
+                """
+                INSERT INTO user_memberships (id, user_id, tenant_id, role, created_at, updated_at)
+                VALUES (:id, :user_id, :tenant_id, :role, :created_at, :updated_at)
+                ON CONFLICT(user_id, tenant_id) DO UPDATE SET role=excluded.role
+                """
+            ),
+            {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+                "role": membership_role,
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+        await db.commit()
+    except Exception as membership_err:
+        await db.rollback()
+        print(f"[seed] user_membership ({membership_role}) insert skipped: {membership_err}")
+
+
+async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.datetime) -> None:
+    """Dev/test HR officer on the default tenant (same pattern as admin seed)."""
+    if pwd_context is None:
+        return
+    hr_user_id: Optional[str] = None
+    if await _user_exists(db, HR_OFFICER_EMAIL):
+        try:
+            res = await db.execute(
+                text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                {"email": HR_OFFICER_EMAIL},
+            )
+            row = res.first()
+            if row:
+                hr_user_id = row[0]
+        except Exception:
+            hr_user_id = None
+
+        assignments = []
+        params: dict[str, object] = {"email": HR_OFFICER_EMAIL}
+
+        if "password_hash" in cols:
+            params["password_hash"] = pwd_context.hash(HR_OFFICER_PASSWORD)
+            assignments.append("password_hash = :password_hash")
+        if "updated_at" in cols:
+            params["updated_at"] = now
+            assignments.append("updated_at = :updated_at")
+        if "is_active" in cols:
+            params["is_active"] = True
+            assignments.append("is_active = :is_active")
+        if "tenant_id" in cols:
+            params["tenant_id"] = DEFAULT_TENANT_ID
+            assignments.append("tenant_id = :tenant_id")
+        if "role" in cols:
+            params["role"] = "hr_officer"
+            assignments.append("role = :role")
+        if "full_name" in cols:
+            params["full_name"] = "HostFlow HR Officer (dev)"
+            assignments.append("full_name = :full_name")
+
+        if assignments:
+            update_sql = ", ".join(assignments)
+            try:
+                await db.execute(
+                    text(f"UPDATE users SET {update_sql} WHERE email = :email"),
+                    params,
+                )
+                await db.commit()
+                print(f"[seed] HR officer обновлён: {HR_OFFICER_EMAIL}")
+            except Exception as update_err:
+                await db.rollback()
+                print(f"[seed] обновление HR officer не удалось: {update_err}")
+                return
+        await _ensure_membership_with_role(
+            db,
+            user_id=hr_user_id,
+            tenant_id=DEFAULT_TENANT_ID,
+            membership_role="hr_officer",
+            now=now,
+        )
+        return
+
+    new_id = str(uuid.uuid4())
+    insert_cols: list[str] = []
+    insert_vals: list[object] = []
+
+    def add(col: str, val: Optional[object]) -> None:
+        if col in cols and val is not None:
+            insert_cols.append(col)
+            insert_vals.append(val)
+
+    add("id", new_id)
+    add("email", HR_OFFICER_EMAIL)
+    add("password_hash", pwd_context.hash(HR_OFFICER_PASSWORD))
+    add("role", "hr_officer")
+    add("is_active", True)
+    add("tenant_id", DEFAULT_TENANT_ID)
+    add("created_at", now)
+    add("updated_at", now)
+    add("full_name", "HostFlow HR Officer (dev)")
+
+    if not insert_cols:
+        print("[seed] HR officer: нет подходящих колонок users — пропускаю")
+        return
+
+    placeholders = ", ".join([f":v{i}" for i in range(len(insert_vals))])
+    columns_ddl = ", ".join(insert_cols)
+    sql = f"INSERT INTO users ({columns_ddl}) VALUES ({placeholders})"
+    params_ins = {f"v{i}": insert_vals[i] for i in range(len(insert_vals))}
+
+    try:
+        await db.execute(text(sql), params_ins)
+        await db.commit()
+        print(f"[seed] HR officer создан: {HR_OFFICER_EMAIL} / {HR_OFFICER_PASSWORD}")
+    except Exception as e:
+        print(f"[seed] вставка HR officer не удалась: {e}")
+        await db.rollback()
+        return
+
+    user_id_value = new_id if "id" in insert_cols else None
+    if user_id_value is None:
+        try:
+            res = await db.execute(
+                text("SELECT id FROM users WHERE email=:email LIMIT 1"),
+                {"email": HR_OFFICER_EMAIL},
+            )
+            row = res.first()
+            if row:
+                user_id_value = row[0]
+        except Exception:
+            user_id_value = None
+    await _ensure_membership_with_role(
+        db,
+        user_id=user_id_value,
+        tenant_id=DEFAULT_TENANT_ID,
+        membership_role="hr_officer",
+        now=now,
+    )
 
 
 async def ensure_auth_seed() -> None:
@@ -223,6 +380,7 @@ async def ensure_auth_seed() -> None:
                 print("[seed] admin существует, подходящих колонок для обновления не найдено — пропускаю")
 
             await ensure_membership(existing_user_id, now)
+            await _ensure_hr_officer_dev_user(db, cols, now)
             return
 
         # 2) готовим поля для создания
@@ -285,3 +443,4 @@ async def ensure_auth_seed() -> None:
                 except Exception:
                     user_id_value = None
             await ensure_membership(user_id_value, now)
+            await _ensure_hr_officer_dev_user(db, cols, now)

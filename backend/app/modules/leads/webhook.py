@@ -9,10 +9,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.deps import get_db
+from backend.app.db.deps import bind_tenant_context_to_session, get_db
 from backend.app.modules.leads import admin_service, normalizer, pipeline, service
 
 
@@ -53,14 +52,6 @@ def _extract_challenge(request: Request) -> str:
         if value:
             return value
     return ""
-
-
-async def _apply_tenant_context(db: AsyncSession, tenant_id: str) -> None:
-    db.info["tenant_id"] = UUID(tenant_id)
-    try:
-        await db.execute(text("SELECT set_config('app.tenant_id', :tenant_id, false)"), {"tenant_id": tenant_id})
-    except Exception:
-        pass
 
 
 @router.get("/webhook", response_class=PlainTextResponse)
@@ -122,69 +113,74 @@ async def receive(
     if not tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant not resolved")
 
-    await _apply_tenant_context(db, tenant_id)
+    from backend.app.security.runtime_context import security_job_context
 
-    header_signature = request.headers.get("X-Hub-Signature-256")
-    signatures = await admin_service.get_active_secret_candidates(db, tenant_id)
-    signature_status = "not_configured"
+    rid = request.headers.get("x-request-id") or request.headers.get("X-Request-ID")
+    async with security_job_context(actor_id="system:meta-leads-webhook", correlation_id=rid):
+        db.info["tenant_rls_enforcement"] = True
+        await bind_tenant_context_to_session(db, UUID(tenant_id))
 
-    matched_secret = None
-    matched_credential = signature_owner
-
-    if signatures:
-        if not header_signature:
-            await admin_service.mark_signature_status(db, tenant_id, "missing_header")
-            await db.commit()
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing signature header")
-
-        for credential_id, credential_obj, secret in signatures:
-            if _signature_matches(secret, raw_body, header_signature):
-                matched_secret = secret
-                matched_credential = credential_obj
-                break
-
-        if not matched_secret:
-            await admin_service.mark_signature_status(db, tenant_id, "mismatch")
-            await db.commit()
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Signature mismatch")
-
-        signature_status = "ok"
-        await admin_service.mark_credential_verified(db, matched_credential)
-    else:
+        header_signature = request.headers.get("X-Hub-Signature-256")
+        signatures = await admin_service.get_active_secret_candidates(db, tenant_id)
         signature_status = "not_configured"
 
-    try:
-        payload = await pipeline.hydrate_webhook_payload(
-            db,
-            tenant_id,
-            parsed_payload,
-            existing_leads=None,
-            refresh_graph=True,
+        matched_secret = None
+        matched_credential = signature_owner
+
+        if signatures:
+            if not header_signature:
+                await admin_service.mark_signature_status(db, tenant_id, "missing_header")
+                await db.commit()
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing signature header")
+
+            for credential_id, credential_obj, secret in signatures:
+                if _signature_matches(secret, raw_body, header_signature):
+                    matched_secret = secret
+                    matched_credential = credential_obj
+                    break
+
+            if not matched_secret:
+                await admin_service.mark_signature_status(db, tenant_id, "mismatch")
+                await db.commit()
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Signature mismatch")
+
+            signature_status = "ok"
+            await admin_service.mark_credential_verified(db, matched_credential)
+        else:
+            signature_status = "not_configured"
+
+        try:
+            payload = await pipeline.hydrate_webhook_payload(
+                db,
+                tenant_id,
+                parsed_payload,
+                existing_leads=None,
+                refresh_graph=True,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+        try:
+            result = await service.process_meta_lead(
+                db=db,
+                tenant_id=tenant_id,
+                payload=payload,
+            )
+        except service.LeadProcessingError as exc:
+            raise service.lead_processing_error_as_http(exc) from exc
+
+        preview = normalizer.normalize_meta_payload(payload)
+        logger.info(
+            "[meta] normalized: phone=%s email=%s decided=%s",
+            _mask_contact(preview.get("phone")),
+            _mask_contact(preview.get("email")),
+            result.status,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    try:
-        result = await service.process_meta_lead(
-            db=db,
-            tenant_id=tenant_id,
-            payload=payload,
-        )
-    except service.LeadProcessingError as exc:
-        raise service.lead_processing_error_as_http(exc) from exc
+        await admin_service.mark_signature_status(db, tenant_id, signature_status)
+        await db.commit()
 
-    preview = normalizer.normalize_meta_payload(payload)
-    logger.info(
-        "[meta] normalized: phone=%s email=%s decided=%s",
-        _mask_contact(preview.get("phone")),
-        _mask_contact(preview.get("email")),
-        result.status,
-    )
-
-    await admin_service.mark_signature_status(db, tenant_id, signature_status)
-    await db.commit()
-
-    return result.to_schema()
+        return result.to_schema()
 
 
 def _mask_contact(value: Optional[str]) -> str:

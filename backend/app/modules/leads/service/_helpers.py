@@ -314,6 +314,8 @@ def lead_processing_error_as_http(exc: LeadProcessingError) -> HTTPException:
                 "message": "New leads are paused until subscription payment succeeds. Open Billing to retry payment.",
             },
         )
+    if exc.status == "not_found":
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message)
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message)
 
 

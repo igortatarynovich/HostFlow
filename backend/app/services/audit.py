@@ -9,6 +9,24 @@ from backend.app.models.audit import ActivityLog
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 
 
+# ``ActivityLog.target_id`` is ``String(36)`` (UUID-shaped). Some legitimate
+# entity ids exceed that — e.g. reminders for documents fingerprinting use
+# composite ids like ``"<uuid>:fingerprints"`` (49 chars). Widening the
+# column is Phase 4 territory (migration); until then we keep the column
+# safe and preserve the full value inside ``payload.target_id_full`` so
+# audit trails remain queryable.
+_AUDIT_TARGET_ID_LIMIT = 36
+
+
+def _split_target_id(value: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if value is None:
+        return None, None
+    s = str(value)
+    if len(s) <= _AUDIT_TARGET_ID_LIMIT:
+        return s, None
+    return None, s
+
+
 async def log_activity(
     db: AsyncSession,
     *,
@@ -21,6 +39,10 @@ async def log_activity(
     ip: Optional[str] = None,
     ua: Optional[str] = None,
 ) -> None:
+    safe_target_id, overflow_target_id = _split_target_id(target_id)
+    safe_payload: dict[str, Any] = dict(payload or {})
+    if overflow_target_id is not None:
+        safe_payload.setdefault("target_id_full", overflow_target_id)
     stmt = (
         insert(ActivityLog)
         .values(
@@ -28,8 +50,8 @@ async def log_activity(
             actor_id=actor_id,
             action=action,
             target_type=target_type,
-            target_id=target_id,
-            payload=payload or {},
+            target_id=safe_target_id,
+            payload=safe_payload,
             ip=ip,
             ua=ua,
         )

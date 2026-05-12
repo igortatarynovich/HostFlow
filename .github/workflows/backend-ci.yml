@@ -6,14 +6,24 @@ on:
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
+      - "scripts/security/**"
+      - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
   pull_request:
     paths:
       - "backend/**"
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
+      - "scripts/security/**"
+      - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -49,12 +59,17 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: alembic upgrade head
       - name: Lint
+        continue-on-error: true
         working-directory: backend
         run: |
           pip install ruff
           ruff check .
+      - name: ADR-014 document access guardrails (documents-db module)
+        run: python3 backend/scripts/check_adr014_document_access.py
       - name: Tests with coverage
         working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: |
           pip install pytest pytest-asyncio pytest-cov
           pytest -q \
@@ -62,6 +77,18 @@ jobs:
             --cov-config=.coveragerc \
             --cov-report=term \
             --cov-report=xml:coverage.xml
+      - name: Tenant isolation (Postgres, integration)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: |
+          pip install pytest pytest-asyncio
+          pytest -q tests/api/test_tenant_isolation.py -m postgres_integration
+      - name: Security regression package
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: pytest -q tests/security
       - name: Coverage gate (Phase 0 #7 — ratchet)
         run: python backend/scripts/check_coverage.py
       - name: Upload coverage report

@@ -15,6 +15,7 @@ historical ``service.process_normalized_lead`` access pattern.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
@@ -27,11 +28,16 @@ from backend.app.models import Candidate, Lead, OwnCompany, Tenant
 from backend.app.models.tenant import TenantLicense
 from backend.app.models.user import Role
 from backend.app.modules.leads import crud, lead_custom_fields
+from backend.app.modules.leads.lead_candidate_conversion import ensure_recruitment_application_for_converted_lead
 from backend.app.modules.leads.lead_criteria_eval import lead_fit_evaluation_effective
 from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
 from backend.app.services import billing_restrictions
 from backend.app.services.automation_rules import run_rules as run_automation_rules
+from backend.app.services.handoff import is_client_tenant
 from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup
+from backend.app.services.recruitment_handoff_write_guard import (
+    is_recruitment_recruiter_write_locked_by_handoff,
+)
 from backend.app.services.recruiter_assignment import (
     record_candidate_reassignment,
     resolve_vacancy_primary_recruiter,
@@ -56,6 +62,27 @@ from ._helpers import (
     _validate_recruiter_id,
     resolve_vacancy_for_lead_processing,
 )
+from backend.app.modules.leads.schemas import intake_vacancy_confirm_triage_bypass
+from backend.app.modules.leads.service.intake_decision import pool_intake_manual_convert_ready
+
+_ingest_guard_log = logging.getLogger(__name__)
+
+
+async def _agency_recruitment_lock_context_for_ingest(
+    db: AsyncSession,
+    *,
+    agency_tenant_id: str,
+    candidate_id: str,
+) -> tuple[bool, Optional[str]]:
+    """Return (locked, lock_reason) when ingest must not mutate an existing Candidate row."""
+    if await is_client_tenant(db, agency_tenant_id):
+        return False, None
+    locked, reason = await is_recruitment_recruiter_write_locked_by_handoff(
+        db, agency_tenant_id=agency_tenant_id, candidate_id=str(candidate_id)
+    )
+    if not locked:
+        return False, None
+    return True, (reason or "handoff")
 
 
 async def process_normalized_lead(
@@ -133,72 +160,89 @@ async def process_normalized_lead(
                 candidate = await db.get(Candidate, candidate_id)
                 if candidate:
                     recruiter_id = getattr(candidate, "recruiter_id", None)
-                    # Candidates list is filtered by own_company_id (active OwnCompany in Topbar).
-                    # Some lead->candidate flows can create candidates with own_company_id=None
-                    # (e.g. when no vacancy was resolved). Fix it here so the candidate is visible.
                     lead_own_company_id = getattr(lead, "own_company_id", None)
                     candidate_own_company_id = getattr(candidate, "own_company_id", None)
-                    if lead_own_company_id and not candidate_own_company_id:
-                        candidate.own_company_id = str(lead_own_company_id)
-                        await db.flush()
-                    # Phase 2.6.G-5 Stage D — legacy shadow-write of
-                    # ``candidate.manager = recruiter_id`` removed; the
-                    # canonical writer ``record_candidate_reassignment``
-                    # (invoked above in the lead-rule / vacancy / fallback
-                    # branches) now mirrors into both columns.
-                    # Обновляем extra поля из normalized данных, если они есть
-                    import json
-                    extra = candidate._get_extra()
-                    updated = False
-                    
-                    # Обновляем preferred_contact
-                    preferred_contact = normalized.get("preferred_contact")
-                    if isinstance(preferred_contact, str) and preferred_contact.strip():
-                        if extra.get("preferred_contact") != preferred_contact.strip():
-                            extra["preferred_contact"] = preferred_contact.strip()
-                            updated = True
-                    
-                    # Обновляем in_poland
-                    in_poland_value = normalized.get("in_poland")
-                    if isinstance(in_poland_value, bool):
-                        if extra.get("in_poland") != in_poland_value:
-                            extra["in_poland"] = in_poland_value
-                            updated = True
-                    elif isinstance(in_poland_value, str):
-                        lowered = in_poland_value.strip().lower()
-                        if lowered in {"true", "yes", "1"}:
-                            if extra.get("in_poland") is not True:
-                                extra["in_poland"] = True
+                    ingest_locked, ingest_lock_reason = await _agency_recruitment_lock_context_for_ingest(
+                        db, agency_tenant_id=tenant_id, candidate_id=str(candidate_id)
+                    )
+                    if ingest_locked:
+                        _ingest_guard_log.info(
+                            "lead_ingest_skipped_candidate_mutation_recruitment_locked",
+                            extra={
+                                "event": "lead_ingest_skipped_candidate_mutation_recruitment_locked",
+                                "operation": "ingest_skip",
+                                "candidate_id": str(candidate_id),
+                                "lead_id": str(lead.id),
+                                "tenant_id": tenant_id,
+                                "lock_reason": ingest_lock_reason or "handoff",
+                                "source": source,
+                                "ingest_skip_at": datetime.now(timezone.utc).isoformat(),
+                            },
+                        )
+                    if not ingest_locked:
+                        # Candidates list is filtered by own_company_id (active OwnCompany in Topbar).
+                        # Some lead->candidate flows can create candidates with own_company_id=None
+                        # (e.g. when no vacancy was resolved). Fix it here so the candidate is visible.
+                        if lead_own_company_id and not candidate_own_company_id:
+                            candidate.own_company_id = str(lead_own_company_id)
+                            await db.flush()
+                        # Phase 2.6.G-5 Stage D — legacy shadow-write of
+                        # ``candidate.manager = recruiter_id`` removed; the
+                        # canonical writer ``record_candidate_reassignment``
+                        # (invoked above in the lead-rule / vacancy / fallback
+                        # branches) now mirrors into both columns.
+                        # Обновляем extra поля из normalized данных, если они есть
+                        extra = candidate._get_extra()
+                        updated = False
+
+                        # Обновляем preferred_contact
+                        preferred_contact = normalized.get("preferred_contact")
+                        if isinstance(preferred_contact, str) and preferred_contact.strip():
+                            if extra.get("preferred_contact") != preferred_contact.strip():
+                                extra["preferred_contact"] = preferred_contact.strip()
                                 updated = True
-                        elif lowered in {"false", "no", "0"}:
-                            if extra.get("in_poland") is not False:
-                                extra["in_poland"] = False
+
+                        # Обновляем in_poland
+                        in_poland_value = normalized.get("in_poland")
+                        if isinstance(in_poland_value, bool):
+                            if extra.get("in_poland") != in_poland_value:
+                                extra["in_poland"] = in_poland_value
                                 updated = True
-                    
-                    # Обновляем poland_stay_basis
-                    poland_basis = normalized.get("poland_stay_basis")
-                    if isinstance(poland_basis, str) and poland_basis.strip():
-                        if extra.get("poland_stay_basis") != poland_basis.strip():
-                            extra["poland_stay_basis"] = poland_basis.strip()
-                            updated = True
-                    
-                    # Обновляем driving_experience_in_europe
-                    driving_experience = normalized.get("driving_experience_in_europe")
-                    if isinstance(driving_experience, str) and driving_experience.strip():
-                        if extra.get("driving_experience_in_europe") != driving_experience.strip():
-                            extra["driving_experience_in_europe"] = driving_experience.strip()
-                            updated = True
-                    
-                    # Обновляем experience_eu_years (опыт по ЕС)
-                    experience_eu_years = normalized.get("experience_eu_years")
-                    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
-                        if extra.get("experience_eu_years") != experience_eu_years:
-                            extra["experience_eu_years"] = experience_eu_years
-                            updated = True
-                    
-                    if updated:
-                        candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
-                        await db.flush()
+                        elif isinstance(in_poland_value, str):
+                            lowered = in_poland_value.strip().lower()
+                            if lowered in {"true", "yes", "1"}:
+                                if extra.get("in_poland") is not True:
+                                    extra["in_poland"] = True
+                                    updated = True
+                            elif lowered in {"false", "no", "0"}:
+                                if extra.get("in_poland") is not False:
+                                    extra["in_poland"] = False
+                                    updated = True
+
+                        # Обновляем poland_stay_basis
+                        poland_basis = normalized.get("poland_stay_basis")
+                        if isinstance(poland_basis, str) and poland_basis.strip():
+                            if extra.get("poland_stay_basis") != poland_basis.strip():
+                                extra["poland_stay_basis"] = poland_basis.strip()
+                                updated = True
+
+                        # Обновляем driving_experience_in_europe
+                        driving_experience = normalized.get("driving_experience_in_europe")
+                        if isinstance(driving_experience, str) and driving_experience.strip():
+                            if extra.get("driving_experience_in_europe") != driving_experience.strip():
+                                extra["driving_experience_in_europe"] = driving_experience.strip()
+                                updated = True
+
+                        # Обновляем experience_eu_years (опыт по ЕС)
+                        experience_eu_years = normalized.get("experience_eu_years")
+                        if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
+                            if extra.get("experience_eu_years") != experience_eu_years:
+                                extra["experience_eu_years"] = experience_eu_years
+                                updated = True
+
+                        if updated:
+                            candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
+                            await db.flush()
             outcome_entity_type, outcome_entity_id, outcome_entity_name = _build_lead_outcome(
                 business_type=business_type,
                 company_id=lead.company_id,
@@ -244,8 +288,17 @@ async def process_normalized_lead(
         source=source,
         own_company_id=scope_for_vacancy_routing,
     )
+    vacancy_for_confirm = vacancy
+    pool_manual_convert_ready = False
+    if lead is not None:
+        pool_manual_convert_ready = pool_intake_manual_convert_ready(lead, normalized)
+    if pool_manual_convert_ready:
+        vacancy = None
+
     triage_gate_bypass = bool(
-        force_candidate_conversion or _triage_bypass_from_vacancy_fallback(normalized)
+        force_candidate_conversion
+        or _triage_bypass_from_vacancy_fallback(normalized)
+        or intake_vacancy_confirm_triage_bypass(normalized, vacancy_for_confirm)
     )
 
     tenant_autoconv = bool(getattr(settings_row, "leads_auto_convert_on_fit_v1", True))
@@ -535,7 +588,7 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not triage_gate_bypass and not may_auto_convert:
+    if not triage_gate_bypass and not may_auto_convert and not pool_manual_convert_ready:
         if business_type not in (None, "services"):
             if effective_processing_mode == "assisted":
                 _stamp_lead_qualification_preview_v1(
@@ -705,7 +758,7 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not vacancy:
+    if not vacancy and not pool_manual_convert_ready:
         needs_routing_lead_id = str(lead.id)
         await crud.update_lead(
             db,
@@ -791,7 +844,7 @@ async def process_normalized_lead(
         "phone_country_code": normalized.get("phone_country_code"),
         "own_company_id": getattr(lead, "own_company_id", None),
         "company_id": resolved_company_id,
-        "vacancy_id": vacancy.id,
+        "vacancy_id": vacancy.id if vacancy else None,
         "contacts": {
             key: value
             for key, value in {
@@ -814,6 +867,7 @@ async def process_normalized_lead(
             payload=candidate_payload,
             actor_id=None,
             acl=None,
+            source_lead=lead,
         )
     except HTTPException as exc:
         await crud.update_lead(
@@ -913,6 +967,18 @@ async def process_normalized_lead(
         normalized=normalized,
     )
     await db.flush()
+
+    await ensure_recruitment_application_for_converted_lead(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        candidate=candidate,
+        vacancy_id=str(vacancy.id) if vacancy else None,
+        recruiter_id=recruiter_id,
+        source=str(source),
+    )
+    await db.flush()
+
     # Commit lead status update before automation to avoid losing it on rollback.
     agency_lead_id = str(lead.id)
     await _audit_lead_qualification_rule_match(

@@ -20,18 +20,16 @@ from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
 
 _logger = logging.getLogger(__name__)
 
-# Create / ensure HR workforce row when recruitment hands off (before final «employed»).
-WORKFORCE_HANDOFF_STAGE_CODES: frozenset[str] = frozenset({"employment_pending", "employed"})
+# PR-5: Workforce employee for HR is materialized only via ``accept_handoff`` (internal_hr),
+# not via candidate stage transitions. Do not reintroduce stage-driven paths — they duplicate
+# handoff audit/ACL and risk double materialization.
 
 
 def should_workforce_handoff_on_stage_change(
     old_stage: Optional[str], new_stage: Optional[str]
 ) -> bool:
-    ns = (new_stage or "").strip().lower()
-    ol = (old_stage or "").strip().lower()
-    if not ns or ol == ns:
-        return False
-    return ns in WORKFORCE_HANDOFF_STAGE_CODES
+    """Deprecated: always false. HR row creation is handoff-accept only."""
+    return False
 
 
 ALLOWED_STATUS = frozenset(

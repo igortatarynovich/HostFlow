@@ -426,3 +426,23 @@ class CandidateWorkPanelResponse(BaseModel):
     timeline: CandidateTimelineResponse
     comms: CandidateWorkPanelCommsOut
     documents_summary: Optional[CandidateWorkPanelDocumentsSummaryOut] = None
+
+
+# --- Recruitment applications (intent layer read model) ----------------------
+
+
+class RecruitmentApplicationOut(BaseModel):
+    """One row of ``recruitment_applications`` for recruiter UI (read-only)."""
+
+    id: str
+    candidate_id: str
+    lead_id: Optional[str] = None
+    vacancy_id: Optional[str] = None
+    source: str = "meta"
+    recruiter_id: Optional[str] = None
+    applied_at: datetime
+    status: str = "applied"
+    application_cycle: Optional[str] = None
+    meta: Dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {"from_attributes": False}

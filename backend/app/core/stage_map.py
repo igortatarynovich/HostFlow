@@ -51,11 +51,16 @@ _STAGE_TO_STATUS = {
     "employment_pending": "hiring",
     "на трудоустройстве": "hiring",
     "on_trip": "hiring",
+    "ready_for_handoff": "hiring",
+    "ready_for_hr": "hiring",
+    "processing_by_hr": "hiring",
+    "processing_by_client": "hiring",
     # Трудоустроен
     "трудоустроен": "employed",
     "выехал в рейс": "employed",
     "employed": "employed",
     "dispatched": "employed",
+    "hired": "employed",
     # Прошёл пробный период
     "прошёл пробный период": "probation",
     "passed probation": "probation",

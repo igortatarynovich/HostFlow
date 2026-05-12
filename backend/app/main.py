@@ -143,8 +143,12 @@ try:
     from backend.app.api.v1 import legal_documents as legal_documents_router
     from backend.app.api.v1 import contact_attempts as contact_attempts_router
     from backend.app.api.v1 import handoffs as handoffs_router
+    from backend.app.api.v1 import hr_inbox as hr_inbox_router
+    from backend.app.api.v1.document_merge import router as document_merge_router
+    from backend.app.api.v1.workforce.router import router as workforce_router
     from backend.app.api.v1 import global_search as global_search_router
     from backend.app.api.v1.fleet.router import router as fleet_router
+    from backend.app.api.v1 import calendar as calendar_router
     from backend.app.api.v1 import onboarding as onboarding_router
 except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import meta as meta_router  # type: ignore[no-redef]
@@ -224,8 +228,12 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import legal_documents as legal_documents_router  # type: ignore[no-redef]
     from .api.v1 import contact_attempts as contact_attempts_router  # type: ignore[no-redef]
     from .api.v1 import handoffs as handoffs_router  # type: ignore[no-redef]
+    from .api.v1 import hr_inbox as hr_inbox_router  # type: ignore[no-redef]
+    from .api.v1.document_merge import router as document_merge_router  # type: ignore[no-redef]
+    from .api.v1.workforce.router import router as workforce_router  # type: ignore[no-redef]
     from .api.v1 import global_search as global_search_router  # type: ignore[no-redef]
     from .api.v1.fleet.router import router as fleet_router  # type: ignore[no-redef]
+    from .api.v1 import calendar as calendar_router  # type: ignore[no-redef]
     from .api.v1 import onboarding as onboarding_router  # type: ignore[no-redef]
 
 try:
@@ -685,7 +693,16 @@ async def _observability_context(request: Request, call_next):
     except ModuleNotFoundError:  # pragma: no cover
         from .core.observability import bind_request_context  # type: ignore[no-redef]
 
+    from backend.app.security.runtime_context import (
+        reset_security_actor_token,
+        reset_security_correlation_token,
+        set_security_actor_id,
+        set_security_correlation_id,
+    )
+
     request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+    cor_tok = set_security_correlation_id(request_id)
+    act_tok = set_security_actor_id(None)
     tenant_id = (
         request.headers.get("x-tenant-id")
         or request.headers.get("X-Tenant-Id")
@@ -704,7 +721,14 @@ async def _observability_context(request: Request, call_next):
         )
     except Exception:
         pass
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    finally:
+        try:
+            reset_security_correlation_token(cor_tok)
+            reset_security_actor_token(act_tok)
+        except Exception:
+            pass
     try:
         response.headers.setdefault("X-Request-ID", request_id)
     except Exception:
@@ -764,6 +788,7 @@ app.include_router(catalogs_router.router, prefix="/api/v1", tags=["catalogs"])
 app.include_router(additional_services_router.router, prefix="/api/v1", tags=["additional-services"])
 app.include_router(reminders_v2_router.router, prefix="/api/v1", tags=["reminders"])
 app.include_router(activities_v1_router.router, prefix="/api/v1", tags=["activities"])
+app.include_router(calendar_router.router, prefix="/api/v1", tags=["calendar"])
 app.include_router(automation_log_router.router, prefix="/api/v1", tags=["automation-log"])
 app.include_router(automation_rules_router.router, prefix="/api/v1", tags=["automation-rules"])
 
@@ -810,6 +835,9 @@ app.include_router(funnels_router, prefix="/api/v1", tags=["funnels"])
 app.include_router(legal_documents_router.router, prefix="/api/v1", tags=["legal-documents"])
 app.include_router(contact_attempts_router.router, prefix="/api/v1", tags=["contact-attempts"])
 app.include_router(handoffs_router.router, prefix="/api/v1", tags=["handoffs"])
+app.include_router(hr_inbox_router.router, prefix="/api/v1", tags=["hr-inbox"])
+app.include_router(document_merge_router, prefix="/api/v1", tags=["document-merge"])
+app.include_router(workforce_router, prefix="/api/v1", tags=["workforce"])
 app.include_router(global_search_router.router, prefix="/api/v1", tags=["search"])
 
 # Documents (mount under /api/v1)
@@ -820,6 +848,12 @@ if documents_db_router is not None:
 
 # Кандидаты
 app.include_router(candidates.router, prefix="/api/v1/candidates", tags=["candidates"])
+try:
+    from backend.app.api.v1 import candidate_links as candidate_links_router
+
+    app.include_router(candidate_links_router.router, prefix="/api/v1", tags=["candidate-links"])
+except Exception as e:
+    logger.warning("[router] candidate-links skipped: %s", e)
 app.include_router(candidate_employments_router, prefix="/api/v1", tags=["candidate-employments"])
 
 if not _DOCUMENTS_DISABLED:

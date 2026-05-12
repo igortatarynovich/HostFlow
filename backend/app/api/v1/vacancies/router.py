@@ -23,7 +23,8 @@ from .repo import VacancyRepo
 from .service import VacancyService
 from backend.app.services import billing_restrictions
 from backend.app.services.tenant_visibility import get_tenant_visibility
-from backend.app.services.handoff import is_client_tenant_for_list
+from backend.app.services.handoff import is_client_tenant_for_list, is_client_tenant, can_client_edit
+from backend.app.services.recruitment_handoff_write_guard import require_agency_recruitment_write_allowed
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id,
     resolve_active_own_company_id_optional,
@@ -92,6 +93,25 @@ def _vacancy_allowed(vacancy_id: str, company_id: Optional[str], acl) -> bool:
 
 class VacancyCandidateLink(BaseModel):
     candidate_id: UUID
+
+
+async def _require_can_reassign_candidate_to_vacancy(
+    db: AsyncSession,
+    *,
+    tenant_id_str: str,
+    candidate_id: str,
+) -> None:
+    """Block vacancy reassignment when recruitment is locked (post-handoff dossier)."""
+    if await is_client_tenant(db, tenant_id_str):
+        if not await can_client_edit(db, candidate_id, tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot assign candidate: no accepted handoff")
+    else:
+        await require_agency_recruitment_write_allowed(
+            db,
+            agency_tenant_id=tenant_id_str,
+            candidate_id=candidate_id,
+            bypass=None,
+        )
 
 @router.get("/", response_model=List[VacancyOut])
 @router.get("", response_model=List[VacancyOut], include_in_schema=False)
@@ -269,7 +289,8 @@ async def attach_candidate(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
-    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
+    tenant_id_str = str(tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id_str)
 
     vacancy_row = await db.execute(
         select(Vacancy).where(Vacancy.id == str(vacancy_id), Vacancy.tenant_id == str(tenant_id))
@@ -281,7 +302,7 @@ async def attach_candidate(
     candidate_row = await db.execute(
         select(Candidate).where(
             Candidate.id == str(payload.candidate_id),
-            Candidate.tenant_id == str(tenant_id),
+            Candidate.tenant_id == tenant_id_str,
             Candidate.deleted_at.is_(None),
         )
     )
@@ -289,9 +310,15 @@ async def attach_candidate(
     if candidate is None:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
+    await _require_can_reassign_candidate_to_vacancy(
+        db,
+        tenant_id_str=tenant_id_str,
+        candidate_id=str(payload.candidate_id),
+    )
+
     await db.execute(
         update(Candidate)
-        .where(Candidate.id == str(payload.candidate_id), Candidate.tenant_id == str(tenant_id))
+        .where(Candidate.id == str(payload.candidate_id), Candidate.tenant_id == tenant_id_str)
         .values(
             vacancy_id=str(vacancy.id),
             company_id=str(getattr(vacancy, "company_id", None)) if getattr(vacancy, "company_id", None) else None,

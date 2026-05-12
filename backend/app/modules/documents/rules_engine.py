@@ -66,12 +66,28 @@ def _apply_candidate_document_flags(
     required: Set[str],
     optional: Set[str],
 ) -> Set[str]:
+    """
+    Merge ``ctx["documents"]`` boolean flags into the checklist.
+
+    ``medical`` / ``medical_certificate``: the flag means "relevant / in progress"
+    for UX — it must **not** silently promote the doc to **required** (that blocks
+    stages and creates synthetic rows). Hard requirements for ``medical_certificate``
+    must come from ruleset (defaults, vacancy category, overrides).
+
+    ``passport``, ``driver_license``, ``work_permit`` remain hard promotions when set.
+    """
     added: Set[str] = set()
     docs = ctx.get("documents") if isinstance(ctx.get("documents"), dict) else {}
+
+    if _truthy(docs.get("medical")):
+        doc_type = "medical_certificate"
+        if doc_type not in required and doc_type not in optional:
+            optional.add(doc_type)
+            added.add(doc_type)
+
     doc_flag_to_type = {
         "passport": "passport",
         "driver_license": "driver_license",
-        "medical": "medical_certificate",
         "work_permit": "work_permit",
     }
     for flag, doc_type in doc_flag_to_type.items():

@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from typing import Optional
+from typing import Any, Optional, Union
 
+from backend.app.auth.deps import UserCtx, get_current_user_optional
 from backend.app.db.deps import get_db
+from backend.app.services.stage_meta_recruitment_filter import apply_handoff_stage_meta_for_user
 
 # Основные константы стадий. Если модуль отсутствует или в нём иные имена —
 # ниже есть безопасные дефолты, чтобы приложение поднималось без падения.
@@ -38,7 +40,6 @@ if 'STAGES_BY_GROUP_CONST' in locals():
     STAGE_META = STAGE_META_CONST
 
 # Каталоги для форм (безопасный импорт с дефолтами)
-from typing import Any, Union
 
 CatalogType = Union[list[dict[str, Any]], list[str], dict[str, Any]]
 
@@ -60,6 +61,7 @@ router = APIRouter(prefix="/meta", tags=["meta"])
 async def stages_meta(
     db: AsyncSession = Depends(get_db),
     tenant_id_header: Optional[str] = Header(None, alias="X-Tenant-Id"),
+    current_user: Optional[UserCtx] = Depends(get_current_user_optional),
 ):
     """
     Справочник стадий:
@@ -201,6 +203,9 @@ async def stages_meta(
     }
     if funnel_id_out:
         out["funnel_id"] = funnel_id_out
+    tid = (tenant_id_header or "").strip()
+    if tid and current_user is not None:
+        out = await apply_handoff_stage_meta_for_user(db, tid, current_user, out)
     return out
 
 # --- Catalogs API ---

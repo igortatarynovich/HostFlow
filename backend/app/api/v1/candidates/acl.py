@@ -13,6 +13,7 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.user import User, Role as UserRole
 from backend.app.services.tenant_visibility import get_tenant_visibility
+from backend.app.services.recruitment_handoff_write_guard import agency_candidate_has_internal_hr_handoff_lane
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause
 
@@ -61,7 +62,8 @@ async def resolve_candidate_acl(
     if role in (Role.administrator.value, Role.superadmin.value):
         return CandidateACL.unrestricted_scope()
 
-    # HR workspace: no access to candidate records (use workforce APIs only)
+    # HR workspace: default ACL is empty; internal-HR handoff lane widens access in
+    # ``ensure_candidate_access`` / PATCH (see ``agency_candidate_has_internal_hr_handoff_lane``).
     if role == UserRole.hr_officer.value:
         return CandidateACL.restricted(company_ids=[], vacancy_ids=[], manager_ids=[])
 
@@ -229,6 +231,23 @@ async def ensure_candidate_access(
     is_client = await is_client_tenant_for_list(db, tenant_id)
 
     if not is_client:
+        role_l = str(getattr(user, "role", "") or "").strip().lower()
+        if role_l == UserRole.hr_officer.value and await agency_candidate_has_internal_hr_handoff_lane(
+            db, agency_tenant_id=tenant_id, candidate_id=candidate_id
+        ):
+            res = await db.execute(
+                select(Candidate.id).where(
+                    Candidate.id == candidate_id,
+                    Candidate.tenant_id == tenant_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+            if res.scalar_one_or_none() is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden for recruiter",
+                )
+            return
         # Агентский путь: сохраняем прежнюю модель безопасности — кандидат должен
         # принадлежать tenant'у и попадать под ACL.
         if not ors:

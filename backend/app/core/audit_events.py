@@ -35,3 +35,7 @@ class AuditEventType(str, Enum):
     pipeline_override_approved = "pipeline_override_approved"
     pipeline_override_rejected = "pipeline_override_rejected"
     pipeline_override_revoked = "pipeline_override_revoked"
+    # Privileged recruitment lock bypass (handoff / handed_off application)
+    recruitment_lock_write_override = "recruitment_lock_write_override"
+    # System automation skipped mutating candidate because workforce HR row owns the dossier
+    system_automation_skipped_workforce_lock = "system_automation_skipped_workforce_lock"

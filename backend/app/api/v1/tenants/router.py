@@ -407,6 +407,17 @@ async def update_tenant_link(
         features = dict(link.features_json or {})
         if "handoff_enabled" in updates:
             features["handoff_enabled"] = updates["handoff_enabled"]
+        if "handoff_to_client" in updates and updates["handoff_to_client"] is not None:
+            features["handoff_to_client"] = updates["handoff_to_client"]
+        if "handoff_to_internal_hr" in updates and updates["handoff_to_internal_hr"] is not None:
+            features["handoff_to_internal_hr"] = updates["handoff_to_internal_hr"]
+        if (
+            "workforce_handoff_on_ready_for_handoff_stage" in updates
+            and updates["workforce_handoff_on_ready_for_handoff_stage"] is not None
+        ):
+            features["workforce_handoff_on_ready_for_handoff_stage"] = updates[
+                "workforce_handoff_on_ready_for_handoff_stage"
+            ]
         if "contact_policy" in updates and updates["contact_policy"] is not None:
             features["contact_policy"] = updates["contact_policy"]
         if "see_vacancies" in updates:

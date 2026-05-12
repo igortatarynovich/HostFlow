@@ -41,6 +41,74 @@ class MetaLeadResponse(BaseModel):
     error: Optional[str] = None
 
 
+def lead_vacancy_routing_aux(normalized: Any, lead_vacancy_id: Any) -> tuple[bool, bool]:
+    """Return ``(has_suggested_routing, recruiter_confirmed_for_lead_vacancy)`` for intake gating."""
+    norm = normalized if isinstance(normalized, dict) else {}
+    lv = str(lead_vacancy_id).strip() if lead_vacancy_id else ""
+    suggested = bool(
+        lv
+        or norm.get("vacancy_id")
+        or norm.get("vacancy_id_hint")
+        or norm.get("resolved_vacancy_id")
+    )
+    confirm = norm.get("intake_vacancy_confirm_v1")
+    if not isinstance(confirm, dict):
+        return suggested, False
+    cv = str(confirm.get("vacancy_id") or "").strip()
+    confirmed = bool(lv and cv and cv == lv)
+    return suggested, confirmed
+
+
+def intake_vacancy_confirm_triage_bypass(normalized: Any, vacancy: Any) -> bool:
+    """When assisted/fit triage would block, allow conversion if recruiter confirmed this vacancy."""
+    if vacancy is None:
+        return False
+    norm = normalized if isinstance(normalized, dict) else {}
+    confirm = norm.get("intake_vacancy_confirm_v1")
+    if not isinstance(confirm, dict):
+        return False
+    cv = str(confirm.get("vacancy_id") or "").strip()
+    vid = str(getattr(vacancy, "id", "") or "").strip()
+    return bool(cv and vid and cv == vid)
+
+
+class LeadVacancyConfirmIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    vacancy_id: UUID = Field(description="Vacancy the recruiter commits for this lead (routing + process).")
+
+
+IntakeResolutionDecision = Literal["qualify", "reject", "pool", "request_info", "duplicate_review"]
+
+
+class LeadIntakeDecisionIn(BaseModel):
+    """Operator intake resolution (not candidate pipeline). ``reason_code`` is required for ``reject``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: IntakeResolutionDecision
+    reason_code: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Canonical reject code when decision is reject.",
+    )
+    note: Optional[str] = Field(default=None, max_length=2000)
+    funnel_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional funnel when decision is pool (talent pool intent).",
+    )
+
+
+DuplicateDecisionType = Literal["attach_existing", "create_new", "ignore"]
+
+
+class LeadDuplicateDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: DuplicateDecisionType
+    note: Optional[str] = Field(default=None, max_length=2000)
+
+
 class LeadOut(BaseModel):
     id: UUID
     tenant_id: UUID
@@ -81,6 +149,10 @@ class LeadOut(BaseModel):
     # Vacancy fit check (criteria-based)
     fit_status: Optional[LeadFitStatus] = None
     fit_reasons: List[str] = Field(default_factory=list)
+    vacancy_routing_confirmed: Optional[bool] = Field(
+        default=None,
+        description="True when ``intake_vacancy_confirm_v1`` matches the lead's committed ``vacancy_id``.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

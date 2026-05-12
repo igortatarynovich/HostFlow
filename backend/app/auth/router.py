@@ -52,6 +52,8 @@ _ROLE_MAP = {
     "client_processor": UserRole.client_processor.value,
     "processor": UserRole.client_processor.value,
     "superadmin": UserRole.superadmin.value,
+    "hr_officer": UserRole.hr_officer.value,
+    "people_ops": UserRole.hr_officer.value,
 }
 
 class LoginIn(BaseModel):

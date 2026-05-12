@@ -210,6 +210,9 @@ FinalNoContactNotification = _load_model_module("final_no_contact_notification")
 
 # Handoff
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
+CandidateHandoffSnapshot = _load_model_module(
+    "candidate_handoff_snapshot"
+).CandidateHandoffSnapshot  # type: ignore[attr-defined]
 
 # Pipeline document overrides (recruiter request / manager approval)
 CandidatePipelineOverride = _load_model_module(
@@ -352,6 +355,7 @@ __all__ = [
     "ContactAttempt",
     "FinalNoContactNotification",
     "CandidateHandoff",
+    "CandidateHandoffSnapshot",
     "CandidatePipelineOverride",
     "TenantEmailConfig",
     "CommunicationThread",

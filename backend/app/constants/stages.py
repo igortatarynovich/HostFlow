@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, Final, List, Optional
 
 # ----- Коды ↔ Метки -----
 LABELS: Dict[str, str] = {
@@ -33,6 +33,10 @@ LABELS: Dict[str, str] = {
     "processing_by_client": "Обработка заказчиком",
     "docs_submitted_permit": "Документы поданы на разрешение",
     "handoff_returned": "Возвращён",
+    # Recruitment → HR (single-tenant / internal lane; ADR-002)
+    "ready_for_hr": "Готов к передаче в HR",
+    "processing_by_hr": "В обработке у HR",
+    "hired": "Принят HR",
 }
 
 # ----- Метаданные этапов -----
@@ -120,6 +124,24 @@ STAGE_META: Dict[str, Dict[str, Any]] = {
         "visible_for_agency": True,
         "visible_for_client": False,
         "owner": "agency",
+    },
+    "ready_for_hr": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "processing_by_hr": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "shared",
+    },
+    "hired": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "shared",
     },
 
     # Клиентский пайплайн (после handoff)
@@ -237,7 +259,11 @@ STAGES_BY_GROUP: Dict[str, List[str]] = {
         "rejected",
         "declined",
     ],
-    "ready": ["ready_for_handoff"],
+    "ready": ["ready_for_handoff", "ready_for_hr"],
+    "internal_hr": [
+        "processing_by_hr",
+        "hired",
+    ],
     "client_process": [
         "processing_by_client",
         "docs_submitted_permit",
@@ -269,7 +295,58 @@ TERMINAL_STATUSES = {"probation_ok", "rejected", "declined"}
 
 # Путь завершён (успех или отказ): нет операционных next-action / risk v1 и агрегатов активного пайплайна.
 # Включает TERMINAL_STATUSES + «трудоустроен» (успешный финал воронки).
-PIPELINE_COMPLETED_STAGE_CODES: frozenset[str] = frozenset(TERMINAL_STATUSES) | frozenset({"employed"})
+PIPELINE_COMPLETED_STAGE_CODES: frozenset[str] = frozenset(TERMINAL_STATUSES) | frozenset(
+    {"employed", "ready_for_hr", "hired", "processing_by_hr"}
+)
+
+# ----- Agency handoff lane (see ADR-002, stage_meta_recruitment_filter) -----
+# Recruitment roles must not jump into HR/client terminal lanes when handoff is enabled.
+RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: Final[frozenset[str]] = frozenset(
+    {
+        "hired",
+        "employed",
+        "processing_by_hr",
+        "processing_by_client",
+        "docs_submitted_permit",
+        "employment_pending",
+        "on_trip",
+        "probation_ok",
+    }
+)
+
+# HR officer funnel: internal lane + shared downstream (excludes client-only first steps).
+INTERNAL_HR_HANDOFF_VISIBLE_STAGE_CODES: Final[frozenset[str]] = frozenset(
+    {
+        "processing_by_hr",
+        "hired",
+        "permit_received",
+        "employment_pending",
+        "on_trip",
+        "employed",
+        "handoff_returned",
+        "rejected",
+        "declined",
+        "visa",
+        "red_paper",
+        "trip_plan",
+        "at_client",
+    }
+)
+
+# Client processor lane after agency→client handoff.
+CLIENT_HANDOFF_VISIBLE_STAGE_CODES: Final[frozenset[str]] = frozenset(
+    {
+        "processing_by_client",
+        "docs_submitted_permit",
+        "permit_received",
+        "employment_pending",
+        "on_trip",
+        "employed",
+        "handoff_returned",
+        "rejected",
+        "declined",
+    }
+)
 
 # По умолчанию
 DEFAULT_STAGE_CODE: str = "new"
@@ -315,6 +392,9 @@ __all__ = [
     "TERMINAL_STATUSES",
     "STAGES",
     "STAGES_ORDER",
+    "RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES",
+    "INTERNAL_HR_HANDOFF_VISIBLE_STAGE_CODES",
+    "CLIENT_HANDOFF_VISIBLE_STAGE_CODES",
     "is_pipeline_completed_stage",
     "is_stage_code",
     "code_for_label",

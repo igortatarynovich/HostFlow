@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
@@ -20,8 +20,15 @@ from backend.app.services.tenant_email import send_email_for_tenant
 from backend.app.services.rodo import get_first_rodo_sent
 from backend.app.services.uos_auto_activities import ensure_candidate_stage_follow_up_task
 from backend.app.services.handoff import is_client_tenant
+from backend.app.services.recruitment_handoff_write_guard import (
+    is_recruitment_recruiter_write_locked_by_handoff,
+)
+from backend.app.services.candidate_workforce_lock import (
+    SKIP_SOURCE_CONTACT_ATTEMPT,
+    is_candidate_locked_by_workforce,
+    observe_skipped_system_candidate_mutation_due_to_workforce_lock,
+)
 from backend.app.models.tenant import TenantLink
-from sqlalchemy import or_
 
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_POST_ACTION = "auto_reject"
@@ -304,6 +311,13 @@ async def create_attempt(
     if not policy.get("enabled", False):
         return None, "Contact attempts not enabled for this candidate"
 
+    if not await is_client_tenant(db, tenant_id):
+        locked, reason = await is_recruitment_recruiter_write_locked_by_handoff(
+            db, agency_tenant_id=tenant_id, candidate_id=candidate_id
+        )
+        if locked:
+            return None, f"Recruitment locked ({reason or 'handoff'}): cannot log contact attempts"
+
     max_attempts = policy.get("max_attempts") or DEFAULT_MAX_ATTEMPTS
     next_num = await get_next_attempt_number(db, candidate_id)
     if next_num > max_attempts:
@@ -333,34 +347,68 @@ async def create_attempt(
         payload={"candidate_id": candidate_id, "attempt_number": next_num, "result": result},
     )
 
+    wf_locked = await is_candidate_locked_by_workforce(
+        db, tenant_id=tenant_id, candidate_id=candidate_id
+    )
+
     # Auto-set stage based on result
     previous_stage = str(getattr(cand, "stage", None) or "").strip() or None
     no_contact_results = {"no_answer", "wrong_number", "unavailable"}
-    if result in no_contact_results:
-        cand.stage = "no_answer"
-        if cand.status != "rejected":
-            cand.status = "no_answer"
-    elif result == "answered":
-        cand.stage = "contacted"
-        cand.status = "contacted"
-        await ensure_candidate_stage_follow_up_task(
-            db,
-            tenant_id=tenant_id,
-            actor_id=str(actor_id or "").strip() or "uos-auto",
-            candidate=cand,
-            old_stage=previous_stage,
-            new_stage="contacted",
-        )
+    if not wf_locked:
+        if result in no_contact_results:
+            cand.stage = "no_answer"
+            if cand.status != "rejected":
+                cand.status = "no_answer"
+        elif result == "answered":
+            cand.stage = "contacted"
+            cand.status = "contacted"
+            await ensure_candidate_stage_follow_up_task(
+                db,
+                tenant_id=tenant_id,
+                actor_id=str(actor_id or "").strip() or "uos-auto",
+                candidate=cand,
+                old_stage=previous_stage,
+                new_stage="contacted",
+            )
+    else:
+        if result in no_contact_results or result == "answered":
+            await observe_skipped_system_candidate_mutation_due_to_workforce_lock(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=candidate_id,
+                source=SKIP_SOURCE_CONTACT_ATTEMPT,
+                intended_transition=(
+                    f"contact_attempt result={result} (stage/status follow-up suppressed)"
+                ),
+            )
 
     # Check post-action: if we just reached max and all are no-contact
     if next_num == max_attempts and await _all_no_contact(db, candidate_id, max_attempts):
         post_action = policy.get("post_action") or DEFAULT_POST_ACTION
         if post_action == "auto_reject":
-            await _apply_auto_reject(db, cand, tenant_id, actor_id)
+            if wf_locked:
+                await observe_skipped_system_candidate_mutation_due_to_workforce_lock(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=candidate_id,
+                    source=SKIP_SOURCE_CONTACT_ATTEMPT,
+                    intended_transition="auto_reject_no_contact (suppressed)",
+                )
+            else:
+                await _apply_auto_reject(db, cand, tenant_id, actor_id)
         elif post_action == "stage_change":
             stage = policy.get("stage_code")
             if stage:
-                cand.stage = stage
-                # Optionally add status_reason
+                if wf_locked:
+                    await observe_skipped_system_candidate_mutation_due_to_workforce_lock(
+                        db,
+                        tenant_id=tenant_id,
+                        candidate_id=candidate_id,
+                        source=SKIP_SOURCE_CONTACT_ATTEMPT,
+                        intended_transition=f"post_action stage_change -> {stage} (suppressed)",
+                    )
+                else:
+                    cand.stage = stage
+                    # Optionally add status_reason
 
     return attempt, None

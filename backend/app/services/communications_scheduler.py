@@ -1383,7 +1383,12 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
             }
         )
 
-        async with async_session_maker() as db:
+        from backend.app.db.deps import tenant_enforced_session
+
+        async with tenant_enforced_session(
+            UUID(tenant_id),
+            actor_id="system:communications-scheduler",
+        ) as db:
             db_tenant = (db, UUID(tenant_id))
             if do_poll:
                 try:
@@ -1667,7 +1672,12 @@ async def _run_converted_lead_sweep_pass(
         if prev is not None and (now - prev).total_seconds() < interval:
             continue
         try:
-            async with async_session_maker() as db:
+            from backend.app.db.deps import tenant_enforced_session
+
+            async with tenant_enforced_session(
+                UUID(tid),
+                actor_id="system:converted-lead-sweep",
+            ) as db:
                 stats = await sweep_converted_lead_operational_noise(
                     db,
                     tenant_id=tid,
@@ -1720,7 +1730,12 @@ async def _run_risk_intel_hourly_pass(
         if prev is not None and (now - prev).total_seconds() < interval:
             continue
         try:
-            async with async_session_maker() as db:
+            from backend.app.db.deps import tenant_enforced_session
+
+            async with tenant_enforced_session(
+                UUID(tid),
+                actor_id="system:risk-intel-hourly",
+            ) as db:
                 await run_risk_intel_hourly_job(db, tenant, now)
                 await db.commit()
             last[tid] = now

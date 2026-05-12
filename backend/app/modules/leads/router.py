@@ -40,12 +40,16 @@ from backend.app.modules.leads.schemas import (
     LeadDistributionStats,
     LeadDistributionTeamMemberOut,
     LeadConversionFunnelResponse,
+    LeadDuplicateDecisionRequest,
+    LeadIntakeDecisionIn,
     LeadListResponse,
     LeadOut,
     LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
+    LeadVacancyConfirmIn,
     MetaLeadResponse,
+    lead_vacancy_routing_aux,
 )
 from backend.app.services.lead_distribution import build_distribution_snapshot, patch_distribution_settings
 from backend.app.services.plan_feature_gates import plan_allows_team_tier_features, resolve_tenant_plan_code
@@ -582,6 +586,10 @@ async def update_lead_stage_endpoint(
         db, tenant_id=tenant_id_str, lead_ids=[str(lead.id)]
     )
 
+    _, vacancy_routing_confirmed = lead_vacancy_routing_aux(
+        lead.normalized if isinstance(lead.normalized, dict) else {},
+        lead.vacancy_id,
+    )
     return LeadOut(
         id=PyUUID(lead.id),
         tenant_id=PyUUID(lead.tenant_id),
@@ -611,6 +619,7 @@ async def update_lead_stage_endpoint(
         custom_fields=cf_maps.get(str(lead.id), {}),
         created_at=lead.created_at,
         last_routed_at=lead.last_routed_at,
+        vacancy_routing_confirmed=vacancy_routing_confirmed,
     )
 
 
@@ -1012,6 +1021,121 @@ async def create_service_order_from_lead(
     return ServiceOrderOut.model_validate(order, from_attributes=True)
 
 
+@router.post("/{lead_id}/duplicate-decision", response_model=LeadOut)
+async def lead_duplicate_decision_endpoint(
+    lead_id: str,
+    payload: LeadDuplicateDecisionRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+) -> LeadOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    actor_id = str(current_user.sub or "").strip() or None
+
+    from backend.app.modules.leads import duplicate_decision as _duplicate_decision
+
+    try:
+        await _duplicate_decision.apply_lead_duplicate_decision(
+            db,
+            tenant_id=tenant_id_str,
+            lead_id=lead_id,
+            actor_id=actor_id,
+            decision=str(payload.decision),
+            note=payload.note,
+        )
+    except HTTPException:
+        raise
+
+    res = await service.list_leads(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    return res.items[0]
+
+
+@router.post("/{lead_id}/confirm-vacancy", response_model=LeadOut)
+async def confirm_lead_vacancy_endpoint(
+    lead_id: str,
+    payload: LeadVacancyConfirmIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+) -> LeadOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    actor_id = str(current_user.sub or "").strip() or None
+    try:
+        await service.confirm_lead_vacancy(
+            db,
+            tenant_id=tenant_id_str,
+            lead_id=lead_id,
+            vacancy_id=str(payload.vacancy_id),
+            actor_sub=actor_id,
+        )
+    except service.LeadProcessingError as exc:
+        raise service.lead_processing_error_as_http(exc) from exc
+
+    res = await service.list_leads(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    return res.items[0]
+
+
+@router.post("/{lead_id}/intake-decision", response_model=LeadOut)
+async def lead_intake_decision_endpoint(
+    lead_id: str,
+    payload: LeadIntakeDecisionIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+) -> LeadOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    actor_id = str(current_user.sub or "").strip() or None
+    try:
+        await service.apply_lead_intake_decision(
+            db,
+            tenant_id=tenant_id_str,
+            lead_id=lead_id,
+            decision=str(payload.decision),
+            actor_sub=actor_id,
+            reason_code=str(payload.reason_code).strip() if payload.reason_code else None,
+            note=payload.note,
+            funnel_id=str(payload.funnel_id) if payload.funnel_id else None,
+        )
+    except service.LeadProcessingError as exc:
+        raise service.lead_processing_error_as_http(exc) from exc
+
+    res = await service.list_leads(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    return res.items[0]
+
+
 @router.post("/{lead_id}/process", response_model=MetaLeadResponse)
 async def process_lead_endpoint(
     lead_id: str,
@@ -1043,6 +1167,13 @@ async def process_lead_endpoint(
     if not getattr(lead, "payload", None):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lead payload is missing")
 
+    block = service.manual_process_block_code(lead)
+    if block:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": block},
+        )
+
     try:
         await log_activity(
             db,
@@ -1063,7 +1194,11 @@ async def process_lead_endpoint(
 
     # If the lead is marked as processed but has no resulting candidate,
     # we must force re-processing. Otherwise the service will skip the pipeline.
-    force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {"processed", "duplicated"}
+    force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {
+        "processed",
+        "duplicated",
+        "duplicate_review",
+    }
 
     prior_norm = getattr(lead, "normalized", None)
     if not isinstance(prior_norm, dict):

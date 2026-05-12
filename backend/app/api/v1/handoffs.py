@@ -8,11 +8,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from backend.app.auth.deps import get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_readable
 from backend.app.services.handoff import (
     create_handoff,
     accept_handoff,
@@ -36,6 +38,11 @@ class HandoffCreate(BaseModel):
     client_company_id: Optional[UUID] = None
     client_tenant_id: Optional[UUID] = None
     assigned_to_user_id: Optional[UUID] = None
+    application_id: Optional[UUID] = None
+    destination: Optional[str] = Field(
+        default="client_portal",
+        description="client_portal | internal_hr",
+    )
 
 
 class HandoffBulkCreate(BaseModel):
@@ -54,6 +61,17 @@ class HandoffOut(BaseModel):
     id: str
     candidate_id: str
     agency_tenant_id: str
+    destination: str = "client_portal"
+    handoff_type: str = "client_portal"
+    application_id: Optional[str] = None
+    from_company_id: Optional[str] = None
+    to_company_id: Optional[str] = None
+    locked_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    accepted_at: Optional[datetime] = None
+    accepted_by_user_id: Optional[str] = None
+    returned_by_user_id: Optional[str] = None
+    returned_reason: Optional[str] = None
     client_company_id: Optional[str] = None
     client_tenant_id: Optional[str] = None
     requested_by_user_id: str
@@ -125,6 +143,7 @@ async def create_handoff_bulk(
                 client_tenant_id=None,
                 requested_by_user_id=current_user.sub,
                 assigned_to_user_id=aid,
+                destination="client_portal",
             )
             if err:
                 errors.append({"candidate_id": str(candidate_id), "error": err})
@@ -152,6 +171,8 @@ async def create_handoff_route(
     cid = str(payload.client_company_id) if payload.client_company_id else None
     tid = str(payload.client_tenant_id) if payload.client_tenant_id else None
     aid = str(payload.assigned_to_user_id) if payload.assigned_to_user_id else None
+    dest = (payload.destination or "client_portal").strip()
+    app_id = str(payload.application_id) if payload.application_id else None
     handoff, err = await create_handoff(
         db,
         candidate_id=str(candidate_id),
@@ -160,6 +181,8 @@ async def create_handoff_route(
         client_tenant_id=tid,
         requested_by_user_id=current_user.sub,
         assigned_to_user_id=aid,
+        destination=dest,
+        application_id=app_id,
     )
     if err:
         raise HTTPException(status_code=400, detail=err)
@@ -182,6 +205,10 @@ class HandoffWithCandidatesListOut(BaseModel):
 async def list_pending(
     client_company_id: Optional[UUID] = Query(None),
     client_tenant_id: Optional[UUID] = Query(None),
+    handoff_destination: Optional[str] = Query(
+        None,
+        description="Filter by destination, e.g. internal_hr. Omit for default client-portal queue.",
+    ),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
@@ -194,8 +221,9 @@ async def list_pending(
             status_code=400,
             detail="Provide client_company_id or client_tenant_id",
         )
+    dest_f = (handoff_destination or "").strip() or None
     handoffs = await list_pending_for_client(
-        db, client_company_id=cid, client_tenant_id=tid
+        db, client_company_id=cid, client_tenant_id=tid, destination=dest_f
     )
     return [HandoffOut.model_validate(h) for h in handoffs]
 
@@ -204,6 +232,10 @@ async def list_pending(
 async def list_pending_with_candidates_route(
     client_company_id: Optional[UUID] = Query(None),
     client_tenant_id: Optional[UUID] = Query(None),
+    handoff_destination: Optional[str] = Query(
+        None,
+        description="Filter by destination, e.g. internal_hr.",
+    ),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
@@ -216,8 +248,12 @@ async def list_pending_with_candidates_route(
             status_code=400,
             detail="Provide client_company_id or client_tenant_id",
         )
+    dest_f = (handoff_destination or "").strip() or None
     items = await list_pending_with_candidates(
-        db, client_company_id=cid, client_tenant_id=tid
+        db,
+        client_company_id=cid,
+        client_tenant_id=tid,
+        destination=dest_f,
     )
     return [
         {
@@ -338,6 +374,38 @@ async def list_handoffs_with_candidates_route(
         )
 
     return HandoffWithCandidatesListOut(total=total, items=items)
+
+
+@router.get("/{handoff_id}/snapshot")
+async def get_handoff_snapshot(
+    handoff_id: UUID,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    """Immutable recruitment handoff payload captured at create time (v1)."""
+    from backend.app.models.candidate_handoff import CandidateHandoff
+    from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+
+    db, tenant_id = db_tenant
+    handoff = await db.get(CandidateHandoff, str(handoff_id))
+    if not handoff:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    await assert_handoff_snapshot_readable(
+        db,
+        handoff=handoff,
+        viewer=current_user,
+        workspace_tenant_id=str(tenant_id),
+    )
+    row = (
+        await db.execute(
+            select(CandidateHandoffSnapshot).where(
+                CandidateHandoffSnapshot.handoff_id == str(handoff_id)
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    return row.payload
 
 
 @router.post("/{handoff_id}/accept", response_model=HandoffOut)

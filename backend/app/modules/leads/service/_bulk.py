@@ -26,6 +26,7 @@ from backend.app.modules.leads import normalizer
 
 from ._helpers import LeadProcessingError, MetaLeadResult, _load_settings
 from ._processing import process_normalized_lead
+from .intake_decision import manual_process_block_code
 
 
 def _coerce_lead_payload_to_dict(payload: Any) -> Dict[str, Any]:
@@ -104,6 +105,27 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
         lowered = em.strip().lower()
         normalized["email"] = lowered or None
 
+    for preserve_key in (
+        "duplicate_override_v1",
+        "duplicate_decisions_history_v1",
+        "duplicate_resolution_v1",
+        "intake_vacancy_confirm_v1",
+        "intake_resolution_v1",
+        "recruitment_pool_intent_v1",
+    ):
+        if preserve_key not in prior:
+            continue
+        pv = prior[preserve_key]
+        if pv is None:
+            continue
+        cur = normalized.get(preserve_key)
+        if preserve_key not in normalized:
+            normalized[preserve_key] = pv
+        elif isinstance(pv, dict) and isinstance(cur, dict) and not cur and pv:
+            normalized[preserve_key] = pv
+        elif preserve_key == "recruitment_pool_intent_v1" and pv is True and cur is not True:
+            normalized[preserve_key] = True
+
 
 def _ad_id_from_meta_lead_export_row(payload: Dict[str, Any]) -> Optional[int]:
     """
@@ -175,9 +197,19 @@ async def _bulk_auto_process_single_lead(
             "status_after": lead.status,
             "error": "Lead payload is missing",
         }
+    # Same doctrine as ``POST /leads/{id}/process``: bulk must not bypass intake / routing gates.
+    block = manual_process_block_code(lead)
+    if block:
+        return {
+            "lead_id": lid,
+            "ok": False,
+            "status_after": lead.status,
+            "error": block,
+        }
     force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {
         "processed",
         "duplicated",
+        "duplicate_review",
     }
     src = (getattr(lead, "source", None) or "").strip().lower()
     try:
@@ -283,7 +315,7 @@ async def bulk_auto_process_meta_lead_queue(
     ``concurrency`` > 1 runs leads in parallel (one AsyncSession per lead, bounded by a semaphore).
     ``concurrency`` == 1 uses the caller's ``db`` session sequentially (legacy behavior).
 
-    ``force_candidate_conversion``: bypass assisted-mode / fit gates so candidates can be created when a vacancy resolves (bulk operator escape hatch).
+    ``force_candidate_conversion``: bypass assisted-mode / fit triage gates so candidates can be created when a vacancy resolves (bulk operator escape hatch). Intake operational blocks (reject, info requested, duplicate review, routing) still apply — use ``manual_process_block_code`` / ``POST .../process`` doctrine.
     """
     max_items = max(1, min(int(max_items or 25), 50))
     conc = max(1, min(int(concurrency or 1), 32))

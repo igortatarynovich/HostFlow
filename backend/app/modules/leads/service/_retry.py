@@ -20,6 +20,7 @@ from backend.app.modules.leads import crud, pipeline
 
 from ._bulk import process_meta_lead
 from ._helpers import LeadProcessingError, MetaLeadRetryOutcome, _load_settings
+from .intake_decision import manual_process_block_code
 
 
 async def retry_meta_leads(
@@ -109,6 +110,22 @@ async def retry_meta_leads(
                 continue
         else:
             payload_dict = dict(payload_raw)
+
+        block = manual_process_block_code(lead)
+        if block:
+            outcomes.append(
+                MetaLeadRetryOutcome(
+                    lead_id=lead.id,
+                    status_before=status_before,
+                    status_after=status_before,
+                    candidate_id=lead.candidate_id,
+                    error_before=error_before,
+                    error_after=error_before,
+                    processed=False,
+                    message=block,
+                )
+            )
+            continue
 
         try:
             hydrated = await pipeline.hydrate_webhook_payload(

@@ -4,12 +4,12 @@ import csv
 import io
 import json
 import logging
+import os
 import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path as PathLib
 from typing import Any, Dict, List, Optional, Sequence
 from uuid import UUID
-from dataclasses import dataclass
 
 from fastapi import (
     APIRouter,
@@ -17,6 +17,7 @@ from fastapi import (
     Depends,
     File,
     Form,
+    Header,
     HTTPException,
     Path,
     Query,
@@ -73,12 +74,10 @@ from .storage import (
 )
 from backend.app.services.document_files import resolve_document_file
 from backend.app.services.own_company_doc_scope import (
-    ensure_candidate_own_company_scope,
     ensure_document_own_company_matches,
-    resolved_document_own_company_id,
     tenant_documents_own_company_clause,
 )
-from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
+from backend.app.services.tenant_visibility import get_tenant_visibility
 
 from .crud import (
     create_document,
@@ -118,10 +117,79 @@ from .schemas_db import (
     RulesetUsageResponse,
     RulesetVersionOut,
 )
+from .candidate_document_owner_access import (
+    CandidateDocsContext,
+    candidate_visible_for_tenant_documents,
+)
+from .document_access_resolver import DocumentAccessContext, DocumentAccessResolver
+from .document_visibility_and_locks import (
+    DOCUMENT_VIEWER_CHANNELS,
+    document_visible_to_viewer,
+    viewer_readable_scopes,
+)
 from .validators import validate_meta
 
 router = APIRouter(prefix="/db", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+
+def resolve_document_viewer_channel(
+    x_document_viewer_channel: Optional[str] = Header(
+        None,
+        alias="X-Document-Viewer-Channel",
+        description=(
+            "Viewer channel for document read visibility (recruitment|hr|transport|finance). "
+            "Defaults to recruitment."
+        ),
+    ),
+) -> str:
+    if x_document_viewer_channel is None or not str(x_document_viewer_channel).strip():
+        return "recruitment"
+    ch = str(x_document_viewer_channel).strip().lower()
+    if ch not in DOCUMENT_VIEWER_CHANNELS:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid X-Document-Viewer-Channel",
+        )
+    return ch
+
+
+def document_access_trace_response_enabled() -> bool:
+    """When true, JSON responses may include ``document_access_trace`` (dev/CI only)."""
+    return os.environ.get("HOSTFLOW_DOCUMENT_ACCESS_DEBUG", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def _log_document_access_visibility(
+    *,
+    surface: str,
+    candidate_id: UUID,
+    viewer_channel: str,
+    db_fetch_total: int,
+    db_visible: int,
+    response_items: int,
+    synthetics_returned: int,
+) -> None:
+    """DEBUG-only: why rows disappeared for a viewer channel (no policy graph)."""
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
+    scopes = ",".join(sorted(viewer_readable_scopes(viewer_channel)))
+    logger.debug(
+        "[document_access_visibility] surface=%s candidate=%s viewer=%s readable_scopes=[%s] "
+        "db_fetch_total=%s db_visible=%s filtered_out=%s response_items=%s synthetics_in_response=%s",
+        surface,
+        candidate_id,
+        viewer_channel,
+        scopes,
+        db_fetch_total,
+        db_visible,
+        max(0, db_fetch_total - db_visible),
+        response_items,
+        synthetics_returned,
+    )
 
 # G-8 stage 2.2: per-document "what to do next" CTA. Mounted as a sub-router
 # so the implementation lives in a small, single-purpose file. Must be
@@ -554,6 +622,9 @@ async def _document_to_out(
         tenant_id=str(doc.tenant_id),
         candidate_id=str(doc.candidate_id),
         company_id=str(doc.company_id) if getattr(doc, "company_id", None) else None,
+        own_company_id=str(getattr(doc, "own_company_id", None))
+        if getattr(doc, "own_company_id", None) is not None
+        else None,
         kind=kind_value,
         doc_type=canonical_type,
         type=canonical_type,
@@ -611,79 +682,39 @@ async def _document_to_out_with_responsible(
     )
 
 
-@dataclass
-class CandidateDocsContext:
-    candidate: Candidate
-    company_name: Optional[str]
-    manager_raw: Optional[str]
-    manager_name: Optional[str]
-    vacancy_title: Optional[str]
-    recruiter_id: Optional[str]
-    recruiter_name: Optional[str]
-    recruiter_short: Optional[str]
-    owner_tenant_id: str
-    allowed_tenant_ids: set[str]
-
-
-def _candidate_is_visible(candidate: Candidate, tenant_id: str, visibility: Optional[TenantVisibility]) -> bool:
-    if str(getattr(candidate, "tenant_id", "") or "") == str(tenant_id):
-        return True
-    if not visibility:
-        return False
-    vacancy_id = getattr(candidate, "vacancy_id", None)
-    company_id = getattr(candidate, "company_id", None)
-    if vacancy_id and str(vacancy_id) in visibility.shared_vacancy_ids:
-        return True
-    if company_id and str(company_id) in visibility.shared_company_ids:
-        return True
-    return False
-
-
-async def _load_candidate_context(
+async def _candidate_documents_read_access(
     session: AsyncSession,
     tenant_id: str,
     candidate_id: UUID,
-) -> CandidateDocsContext:
-    visibility = get_tenant_visibility(session, tenant_id)
-    from backend.app.api.v1.candidates import repo as candidate_repo
-    from backend.app.services.handoff import is_client_tenant
-
-    client_tenant = await is_client_tenant(session, tenant_id)
-    row = await candidate_repo.get_candidate_with_labels(
+    *,
+    workspace_own_company_header: Optional[str],
+    viewer_channel: str = "recruitment",
+) -> DocumentAccessContext:
+    """ADR-014: one read-path resolver call for list / checklist / export / summary."""
+    return await DocumentAccessResolver.resolve_for_candidate_documents(
         session,
-        tenant_id,
-        str(candidate_id),
-        visibility=visibility,
-        is_client_tenant=client_tenant,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=workspace_own_company_header,
+        viewer_channel=viewer_channel,
     )
-    if not row:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-    (
-        candidate,
-        company_name,
-        manager_raw,
-        manager_name,
-        vacancy_title,
-        recruiter_id,
-        recruiter_name,
-        recruiter_short,
-    ) = row
-    owner_tenant_id = str(getattr(candidate, "tenant_id", None) or tenant_id)
-    allowed_tenant_ids: set[str] = {owner_tenant_id, tenant_id}
-    if _candidate_is_visible(candidate, tenant_id, visibility):
-        allowed_tenant_ids.add(owner_tenant_id)
 
-    return CandidateDocsContext(
-        candidate=candidate,
-        company_name=company_name,
-        manager_raw=manager_raw,
-        manager_name=manager_name,
-        vacancy_title=vacancy_title,
-        recruiter_id=recruiter_id,
-        recruiter_name=recruiter_name,
-        recruiter_short=recruiter_short,
-        owner_tenant_id=owner_tenant_id,
-        allowed_tenant_ids=allowed_tenant_ids,
+
+async def _candidate_documents_mutation_access(
+    session: AsyncSession,
+    tenant_id: str,
+    candidate_id: UUID,
+    *,
+    workspace_own_company_header: Optional[str],
+    viewer_channel: str = "recruitment",
+) -> DocumentAccessContext:
+    """ADR-014: mutation-oriented resolver call (same contract as read; not the read helper)."""
+    return await DocumentAccessResolver.resolve_for_candidate_document_mutations(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=workspace_own_company_header,
+        viewer_channel=viewer_channel,
     )
 
 
@@ -707,13 +738,12 @@ async def _maybe_ensure_doc_own_company(
         ensure_document_own_company_matches(doc, cand, active_own_company_id)
 
 
-async def _get_document_with_access(
+async def _fetch_document_with_visibility(
     session: AsyncSession,
     tenant_id: str,
     document_id: str,
-    *,
-    active_own_company_id: Optional[str] = None,
 ) -> tuple[Optional[Document], str, Optional[Candidate]]:
+    """Load document + candidate row without own-company slice enforcement."""
     visibility = get_tenant_visibility(session, tenant_id)
     doc = await get_document(session, tenant_id, document_id)
     if doc:
@@ -725,7 +755,6 @@ async def _get_document_with_access(
                 )
             )
         ).scalar_one_or_none()
-        await _maybe_ensure_doc_own_company(session, doc, candidate_row, active_own_company_id)
         return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
 
     doc = (
@@ -749,10 +778,79 @@ async def _get_document_with_access(
     ).scalar_one_or_none()
     if not candidate_row:
         return None, tenant_id, None
-    if not _candidate_is_visible(candidate_row, tenant_id, visibility):
+    if not candidate_visible_for_tenant_documents(candidate_row, tenant_id, visibility):
         return None, tenant_id, None
-    await _maybe_ensure_doc_own_company(session, doc, candidate_row, active_own_company_id)
     return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
+
+
+async def _get_document_with_access(
+    session: AsyncSession,
+    tenant_id: str,
+    document_id: str,
+    *,
+    active_own_company_id: Optional[str] = None,
+    viewer_channel: str = "recruitment",
+) -> tuple[Optional[Document], str, Optional[Candidate]]:
+    doc, doc_tenant_id, candidate_row = await _fetch_document_with_visibility(
+        session, tenant_id, document_id
+    )
+    if doc:
+        await _maybe_ensure_doc_own_company(session, doc, candidate_row, active_own_company_id)
+        if not document_visible_to_viewer(getattr(doc, "doc_type", None), viewer_channel):
+            return None, doc_tenant_id, candidate_row
+    return doc, doc_tenant_id, candidate_row
+
+
+async def _get_document_with_mutation_access(
+    session: AsyncSession,
+    tenant_id: str,
+    document_id: str,
+    *,
+    workspace_own_company_header: Optional[str],
+    enforce_destructive_process_lock: bool = False,
+    viewer_channel: str = "recruitment",
+) -> tuple[Optional[Document], str, Optional[Candidate], Optional[DocumentAccessContext]]:
+    """ADR-014: resolver + resolved workspace slice before mutating a document row."""
+    doc, doc_tenant_id, candidate_row = await _fetch_document_with_visibility(
+        session, tenant_id, document_id
+    )
+    if not doc:
+        return None, tenant_id, None, None
+    doc_access: Optional[DocumentAccessContext] = None
+    if doc.candidate_id:
+        cid = UUID(str(doc.candidate_id))
+        if enforce_destructive_process_lock:
+            doc_access = await DocumentAccessResolver.resolve_for_candidate_destructive_document_mutations(
+                session,
+                tenant_id,
+                cid,
+                workspace_own_company_header=workspace_own_company_header,
+                viewer_channel=viewer_channel,
+            )
+        else:
+            doc_access = await _candidate_documents_mutation_access(
+                session,
+                tenant_id,
+                cid,
+                workspace_own_company_header=workspace_own_company_header,
+                viewer_channel=viewer_channel,
+            )
+        ensure_document_own_company_matches(
+            doc,
+            doc_access.candidate_context.candidate,
+            doc_access.resolved_workspace_own_company_id,
+        )
+        candidate_row = doc_access.candidate_context.candidate
+        if doc_access.viewer_channel != "recruitment":
+            raise HTTPException(
+                status_code=403,
+                detail="Document mutations require recruitment viewer channel",
+            )
+    else:
+        await _maybe_ensure_doc_own_company(
+            session, doc, candidate_row, workspace_own_company_header
+        )
+    return doc, doc_tenant_id, candidate_row, doc_access
 
 
 def _safe_json(value: Any) -> str:
@@ -890,10 +988,11 @@ async def _list_documents_for_candidate(
     owner_tenant_id: Optional[str] = None,
     allowed_tenant_ids: Optional[set[str]] = None,
     active_own_company_id: Optional[str] = None,
+    viewer_channel: str = "recruitment",
 ) -> List[DocumentOut]:
     doc_tenant_id = owner_tenant_id or tenant_id
     tenants_scope = set(allowed_tenant_ids or {doc_tenant_id, tenant_id})
-    docs = await list_candidate_documents(
+    raw_docs = await list_candidate_documents(
         session,
         doc_tenant_id,
         str(candidate_id),
@@ -905,6 +1004,13 @@ async def _list_documents_for_candidate(
         allowed_tenant_ids=tenants_scope,
         active_own_company_id=active_own_company_id,
     )
+    last_db_fetch_total = len(raw_docs)
+    docs = [
+        d
+        for d in raw_docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
+    last_db_visible = len(docs)
     last_checks: Dict[str, Any] = {}
     if include_last_check:
         last_checks = await get_last_document_checks_map(
@@ -936,16 +1042,14 @@ async def _list_documents_for_candidate(
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
         checklist = compute_candidate_checklist(ctx, ruleset_payload)
-        auto_docs = docs
-        if any([status, doc_type, limit, offset]):
-            auto_docs = await list_candidate_documents(
-                session,
-                doc_tenant_id,
-                str(candidate_id),
-                include_deleted=False,
-                allowed_tenant_ids=tenants_scope,
-                active_own_company_id=active_own_company_id,
-            )
+        auto_docs = await list_candidate_documents(
+            session,
+            doc_tenant_id,
+            str(candidate_id),
+            include_deleted=False,
+            allowed_tenant_ids=tenants_scope,
+            active_own_company_id=active_own_company_id,
+        )
         auto_created = await _ensure_auto_ordered_documents(
             session,
             doc_tenant_id,
@@ -955,7 +1059,7 @@ async def _list_documents_for_candidate(
         )
         if auto_created:
             await session.commit()
-            docs = await list_candidate_documents(
+            raw_docs = await list_candidate_documents(
                 session,
                 doc_tenant_id,
                 str(candidate_id),
@@ -967,6 +1071,13 @@ async def _list_documents_for_candidate(
                 allowed_tenant_ids=tenants_scope,
                 active_own_company_id=active_own_company_id,
             )
+            last_db_fetch_total = len(raw_docs)
+            docs = [
+                d
+                for d in raw_docs
+                if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+            ]
+            last_db_visible = len(docs)
             if include_last_check:
                 last_checks = await get_last_document_checks_map(
                     session,
@@ -990,7 +1101,23 @@ async def _list_documents_for_candidate(
         synthetic_docs = _build_synthetic_documents(
             tenant_id, candidate_id, checklist, serialized
         )
-        result.extend(synthetic_docs)
+        result.extend(
+            d
+            for d in synthetic_docs
+            if document_visible_to_viewer(d.doc_type, viewer_channel)
+        )
+    synth_returned = sum(
+        1 for r in result if str(getattr(r, "id", "")).startswith("synthetic::")
+    )
+    _log_document_access_visibility(
+        surface="candidate_documents_list",
+        candidate_id=candidate_id,
+        viewer_channel=viewer_channel,
+        db_fetch_total=last_db_fetch_total,
+        db_visible=last_db_visible,
+        response_items=len(result),
+        synthetics_returned=synth_returned,
+    )
     return result
 
 
@@ -1100,6 +1227,7 @@ async def api_list_documents_legacy(
     ),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
     if candidate_id is None:
@@ -1126,6 +1254,11 @@ async def api_list_documents_legacy(
         if limit:
             stmt = stmt.limit(int(limit))
         docs = (await session.execute(stmt)).scalars().all()
+        docs = [
+            d
+            for d in docs
+            if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+        ]
         if not docs:
             return []
         last_checks: Dict[str, Any] = {}
@@ -1147,8 +1280,15 @@ async def api_list_documents_legacy(
             )
         return result
 
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -1164,7 +1304,8 @@ async def api_list_documents_legacy(
         offset=offset,
         owner_tenant_id=cand_ctx.owner_tenant_id,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-        active_own_company_id=own_company_id,
+        active_own_company_id=own_for_docs,
+        viewer_channel=viewer_channel,
     )
 
 
@@ -1195,10 +1336,18 @@ async def api_list_candidate_documents(
     ),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -1214,7 +1363,8 @@ async def api_list_candidate_documents(
         offset=offset,
         owner_tenant_id=cand_ctx.owner_tenant_id,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-        active_own_company_id=own_company_id,
+        active_own_company_id=own_for_docs,
+        viewer_channel=viewer_channel,
     )
 
 
@@ -1228,11 +1378,23 @@ async def api_create_candidate_document(
     payload: DocumentCreateIn,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentOut:
     session, tenant_id = db_dep
     logger.info(f"[create_doc] Received request for candidate {candidate_id}, parsed payload: {payload.model_dump()}")
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
+    doc_access = await _candidate_documents_mutation_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    if doc_access.viewer_channel != "recruitment":
+        raise HTTPException(
+            status_code=403,
+            detail="Document mutations require recruitment viewer channel",
+        )
     try:
         doc_type = payload.effective_doc_type()
     except ValueError as exc:
@@ -1258,7 +1420,7 @@ async def api_create_candidate_document(
         data["meta"] = meta_json_payload
     owner_id = data.get("owner_id") or str(candidate_id)
     data["owner_id"] = owner_id
-    data["own_company_id"] = resolved_document_own_company_id(cand_ctx.candidate, own_company_id)
+    data["own_company_id"] = doc_access.resolved_workspace_own_company_id
 
     try:
         doc = await create_document(session, data)
@@ -1282,6 +1444,7 @@ async def api_get_document(
     include_last_check: bool = Query(True),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentWithChecksOut:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
@@ -1289,6 +1452,7 @@ async def api_get_document(
         str(tenant_id),
         str(document_id),
         active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1322,13 +1486,15 @@ async def api_patch_document(
     payload: DocumentUpdateIn,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentOut:
     session, tenant_id = db_dep
-    doc, doc_tenant_id, _ = await _get_document_with_access(
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
         session,
         str(tenant_id),
         str(document_id),
-        active_own_company_id=own_company_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1360,13 +1526,16 @@ async def api_delete_document(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Response:
     session, tenant_id = db_dep
-    doc, doc_tenant_id, _ = await _get_document_with_access(
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
         session,
         str(tenant_id),
         str(document_id),
-        active_own_company_id=own_company_id,
+        workspace_own_company_header=own_company_id,
+        enforce_destructive_process_lock=True,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1393,13 +1562,15 @@ async def api_presign_upload(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
-    doc, _, _ = await _get_document_with_access(
+    doc, _, _, _ = await _get_document_with_mutation_access(
         session,
         str(tenant_id),
         str(document_id),
-        active_own_company_id=own_company_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1412,6 +1583,7 @@ async def api_get_document_file_url(
     version: Optional[int] = Query(None),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
     doc, _, _ = await _get_document_with_access(
@@ -1419,6 +1591,7 @@ async def api_get_document_file_url(
         str(tenant_id),
         str(document_id),
         active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1449,6 +1622,7 @@ async def api_download_document_file(
     version: Optional[int] = Query(None),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> FileResponse:
     session, tenant_id = db_dep
     doc, _, _ = await _get_document_with_access(
@@ -1456,6 +1630,7 @@ async def api_download_document_file(
         str(tenant_id),
         str(document_id),
         active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1487,6 +1662,7 @@ async def api_list_document_checks(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> List[DocumentCheckOut]:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
@@ -1494,6 +1670,7 @@ async def api_list_document_checks(
         str(tenant_id),
         str(document_id),
         active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1508,13 +1685,15 @@ async def api_check_document(
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentOut:
     session, tenant_id = db_dep
-    doc, doc_tenant_id, _ = await _get_document_with_access(
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
         session,
         str(tenant_id),
         str(document_id),
-        active_own_company_id=own_company_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1565,10 +1744,18 @@ async def fetch_candidate_documents_summary_response(
     owner_context: Optional[str] = None,
     *,
     active_own_company_id: Optional[str] = None,
+    viewer_channel: str = "recruitment",
 ) -> Dict[str, Any]:
     """Same payload as GET /candidate/{id}/documents/summary (work-panel bundle, tests, etc.)."""
-    cand_ctx = await _load_candidate_context(session, tenant_id, candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, active_own_company_id)
+    doc_access = await _candidate_documents_read_access(
+        session,
+        tenant_id,
+        candidate_id,
+        workspace_own_company_header=active_own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     ctx = _owner_context_or_400(
         owner_context,
         candidate_id,
@@ -1580,7 +1767,7 @@ async def fetch_candidate_documents_summary_response(
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-        active_own_company_id=active_own_company_id,
+        active_own_company_id=own_for_docs,
     )
     ruleset_version = None
     ruleset_payload: Dict[str, Any]
@@ -1589,7 +1776,7 @@ async def fetch_candidate_documents_summary_response(
             session,
             cand_ctx.owner_tenant_id,
             load_default_ruleset(),
-            own_company_id=active_own_company_id,
+            own_company_id=own_for_docs,
         )
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
@@ -1611,17 +1798,29 @@ async def fetch_candidate_documents_summary_response(
         session, cand_ctx.owner_tenant_id, [str(candidate_id)]
     )
     rid, rname = resp_pair.get(str(candidate_id), (None, None))
-    serialized_docs: List[Dict[str, Any]] = []
+    serialized_docs_full: List[Dict[str, Any]] = []
     for doc in docs:
         last_check = last_checks.get(str(doc.id))
-        serialized_docs.append(
+        serialized_docs_full.append(
             (
                 await _document_to_out(
                     session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
                 )
             ).model_dump()
         )
-    summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
+
+    def _serialized_visible(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return [
+            d
+            for d in rows
+            if document_visible_to_viewer(
+                d.get("doc_type") or d.get("type_code") or d.get("type"),
+                viewer_channel,
+            )
+        ]
+
+    serialized_visible = _serialized_visible(serialized_docs_full)
+    summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
     checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
@@ -1639,14 +1838,14 @@ async def fetch_candidate_documents_summary_response(
             str(candidate_id),
             include_deleted=False,
             allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-            active_own_company_id=active_own_company_id,
+            active_own_company_id=own_for_docs,
         )
         last_checks = await get_last_document_checks_map(
             session,
             cand_ctx.owner_tenant_id,
             [str(doc.id) for doc in docs],
         )
-        serialized_docs = [
+        serialized_docs_full = [
             (
                 await _document_to_out(
                     session,
@@ -1658,19 +1857,35 @@ async def fetch_candidate_documents_summary_response(
             ).model_dump()
             for doc in docs
         ]
-        summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
+        serialized_visible = _serialized_visible(serialized_docs_full)
+        summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
         checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
         summary["checklist"] = checklist
+    synthetic_models = _build_synthetic_documents(
+        cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs_full
+    )
     synthetic_docs = [
         doc.model_dump()
-        for doc in _build_synthetic_documents(
-            cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs
-        )
+        for doc in synthetic_models
+        if document_visible_to_viewer(doc.doc_type, viewer_channel)
     ]
-    return {
+    physical_total = len(docs)
+    physical_visible = len(serialized_visible)
+    synth_built = len(synthetic_models)
+    synth_vis = len(synthetic_docs)
+    _log_document_access_visibility(
+        surface="candidate_documents_summary",
+        candidate_id=candidate_id,
+        viewer_channel=viewer_channel,
+        db_fetch_total=physical_total,
+        db_visible=physical_visible,
+        response_items=len(serialized_visible) + len(synthetic_docs),
+        synthetics_returned=synth_vis,
+    )
+    out: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "summary": summary,
-        "documents": serialized_docs + synthetic_docs,
+        "documents": serialized_visible + synthetic_docs,
         "ruleset_version": (
             _ruleset_to_out(ruleset_version).model_dump()
             if ruleset_version is not None
@@ -1685,6 +1900,19 @@ async def fetch_candidate_documents_summary_response(
         ),
         "checklist": checklist,
     }
+    if document_access_trace_response_enabled():
+        out["document_access_trace"] = {
+            "surface": "candidate_documents_summary",
+            "viewer_channel": viewer_channel,
+            "viewer_readable_scopes": sorted(doc_access.viewer_readable_scopes),
+            "physical_documents_total": physical_total,
+            "physical_documents_visible_to_viewer": physical_visible,
+            "physical_documents_filtered_out": max(0, physical_total - physical_visible),
+            "synthetic_candidates_built": synth_built,
+            "synthetic_documents_returned": synth_vis,
+            "synthetic_documents_filtered_out": max(0, synth_built - synth_vis),
+        }
+    return out
 
 
 @router.get(
@@ -1698,6 +1926,7 @@ async def api_candidate_documents_summary(
     ),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     return await fetch_candidate_documents_summary_response(
@@ -1706,6 +1935,7 @@ async def api_candidate_documents_summary(
         candidate_id,
         owner_context,
         active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
     )
 
 
@@ -1720,8 +1950,14 @@ async def api_candidate_checklist(
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     ctx = _owner_context_or_400(
         owner_context,
         candidate_id,
@@ -1731,7 +1967,7 @@ async def api_candidate_checklist(
         session,
         cand_ctx.owner_tenant_id,
         load_default_ruleset(),
-        own_company_id=own_company_id,
+        own_company_id=own_for_docs,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = _fill_checklist_defaults(compute_candidate_checklist(ctx, ruleset_payload), ruleset_payload)
@@ -1757,18 +1993,33 @@ async def api_export_documents_json(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
-    docs = await list_candidate_documents(
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
+    raw_docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-        active_own_company_id=own_company_id,
+        active_own_company_id=own_for_docs,
     )
+    physical_total = len(raw_docs)
+    docs = [
+        d
+        for d in raw_docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
+    physical_visible = len(docs)
     last_checks = await get_last_document_checks_map(
         session,
         cand_ctx.owner_tenant_id,
@@ -1790,12 +2041,31 @@ async def api_export_documents_json(
         ).model_dump()
         for doc in docs
     ]
-    return {
+    _log_document_access_visibility(
+        surface="candidate_documents_export_json",
+        candidate_id=candidate_id,
+        viewer_channel=viewer_channel,
+        db_fetch_total=physical_total,
+        db_visible=physical_visible,
+        response_items=len(serialized),
+        synthetics_returned=0,
+    )
+    out: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "documents": serialized,
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "count": len(serialized),
     }
+    if document_access_trace_response_enabled():
+        out["document_access_trace"] = {
+            "surface": "candidate_documents_export_json",
+            "viewer_channel": viewer_channel,
+            "viewer_readable_scopes": sorted(doc_access.viewer_readable_scopes),
+            "physical_documents_total": physical_total,
+            "physical_documents_visible_to_viewer": physical_visible,
+            "physical_documents_filtered_out": max(0, physical_total - physical_visible),
+        }
+    return out
 
 
 @router.get("/candidate/{candidate_id}/documents/export.csv")
@@ -1803,18 +2073,31 @@ async def api_export_documents_csv(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-        active_own_company_id=own_company_id,
+        active_own_company_id=own_for_docs,
     )
+    docs = [
+        d
+        for d in docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
     last_checks = await get_last_document_checks_map(
         session,
         cand_ctx.owner_tenant_id,
@@ -1867,18 +2150,31 @@ async def api_export_candidate_bundle(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
-    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
-        active_own_company_id=own_company_id,
+        active_own_company_id=own_for_docs,
     )
+    docs = [
+        d
+        for d in docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
     last_checks = await get_last_document_checks_map(
         session, cand_ctx.owner_tenant_id, [str(doc.id) for doc in docs]
     )
@@ -1947,6 +2243,7 @@ async def api_extract_document(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     doc, _, _ = await _get_document_with_access(
@@ -1954,6 +2251,7 @@ async def api_extract_document(
         str(tenant_id),
         str(document_id),
         active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1987,6 +2285,7 @@ async def api_mock_upload(
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     segments = [seg for seg in key.strip().split("/") if seg]
@@ -1996,11 +2295,13 @@ async def api_mock_upload(
             detail="key must follow 'documents/{document_id}/...'",
         )
     document_id = segments[1]
-    doc, _, _ = await _get_document_with_access(
+    doc, _, _, _ = await _get_document_with_mutation_access(
         session,
         str(tenant_id),
         document_id,
-        active_own_company_id=own_company_id,
+        workspace_own_company_header=own_company_id,
+        enforce_destructive_process_lock=True,
+        viewer_channel=viewer_channel,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")

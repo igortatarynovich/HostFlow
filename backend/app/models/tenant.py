@@ -322,6 +322,18 @@ class TenantLink(Base, TimestampMixin):
         features = self.features_json or {}
         return bool(features.get("handoff_enabled", False))
 
+    def get_handoff_to_client(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_to_client", True))
+
+    def get_handoff_to_internal_hr(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_to_internal_hr", False))
+
+    def get_workforce_handoff_on_ready_for_handoff_stage(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("workforce_handoff_on_ready_for_handoff_stage", False))
+
     def get_contact_policy(self) -> dict:
         """Return contact_attempts policy: max_attempts, post_action, enabled."""
         features = self.features_json or {}
