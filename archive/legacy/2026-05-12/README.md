@@ -16,6 +16,12 @@
 | `workflows-lead_to_candidate.md` | `docs/specs/workflows/lead_to_candidate.md` | Дубликат / устаревшая версия. Конверсия Lead → Candidate описана новым контрактом и операционной моделью. | `docs/specs/workflows/lead-conversion-contract.md`, `docs/specs/workflows/lead-to-candidate-operating-model.md` |
 | `workflows-candidate_pipeline.md` | `docs/specs/workflows/candidate_pipeline.md` | Старая «pipeline-кандидата» спецификация. Замещена доменной моделью + ADR-002 (граница Recruitment ↔ HR). | `docs/specs/architecture/recruitment-domain-model.md`, `docs/specs/architecture/ADR-002-modular-recruitment-hr-boundary.md` |
 | `workflows-reminders_rework.md` | `docs/specs/workflows/reminders_rework.md` | Rework-черновик подсистемы напоминаний. Канон зафиксирован в ADR-012 + Activity & Notification Operating Layer. | `docs/specs/architecture/ADR-012-activity-notification-operating-layer.md`, `docs/specs/architecture/activity-notification-operating-layer.md` |
+| `min-companies.min.md` | `docs/specs/min/companies.min.md` | LLM-min копия (стратегия `.min.md`). Ноль inbound references в active surface. Стратегия `.min.md` ушла вместе с архивированным `agent_tz.md`. Дублирует canon. | `docs/specs/modules/companies.md` |
+| `min-documents.min.md` | `docs/specs/min/documents.min.md` | LLM-min копия. Orphan + duplicate. | `docs/specs/modules/documents.md` |
+| `min-invoicing.min.md` | `docs/specs/min/invoicing.min.md` | LLM-min копия. Orphan + duplicate. | `docs/specs/modules/invoicing.md` |
+| `min-portals.min.md` | `docs/specs/min/portals.min.md` | LLM-min копия (объединённый client_portal + candidate_portal). Orphan + duplicate. | `docs/specs/modules/client_portal.md`, `docs/specs/modules/candidate_portal.md` |
+
+**Замечание:** `docs/specs/min/scheduler.min.md` оставлен в active surface — он явно цитируется из `docs/specs/architecture/ADR-012-activity-notification-operating-layer.md` как пример отдельного booking/services-домена, который команда часто путает с «планировщиком работы рекрутёра».
 
 ## Inbound-ссылки, обновлённые в этом коммите
 
