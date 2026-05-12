@@ -110,6 +110,7 @@ HTTP-запросы часто безопасны, а **фоновые джоб�
 2. **Ни одного запроса** к tenant-данным без установленного контекста сессии (`current_setting('app.tenant_id')` и согласованные доп. ключи, если введены в политиках).
 3. **Backend не доверяет** `tenant_id` / `X-Tenant-Id` с клиента как источнику истины — только проверенная связка пользователь ↔ тенант (JWT/session + membership).
 4. Любые пути: **list, search, export, bulk, reports, WebSocket, notifications, attachments, uploads, audit logs** — подчиняются тем же правилам.
+5. **Runtime guard на границе SQLAlchemy-сессии:** для сессий с `tenant_rls_enforcement=True` любой `execute`/`stream` в Postgres блокируется, пока не выполнен `bind_tenant_context_to_session` (см. `backend/app/db/tenant_session.py`, `backend/app/db/deps.py`). Детали и backlog — `docs/security/runtime-roadmap.md` §Phase 1.
 
 ### Канонические спеки
 

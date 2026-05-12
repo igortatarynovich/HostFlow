@@ -10,7 +10,7 @@
 
 ### 1. Tenant isolation
 
-- [ ] Новые/изменённые таблицы с `tenant_id` имеют согласованную RLS-политику (или явное обоснование + review platform).
+- [ ] Фоновые джобы / webhooks открывают сессию через `tenant_enforced_session` или эквивалент (`tenant_rls_enforcement=True` + `bind_tenant_context_to_session`), а не «сырой» `async_session_maker` без bind.
 - [ ] Нет путей чтения/записи без установки DB tenant context (включая фоновые задачи, bulk, raw SQL).
 - [ ] `tenant_id` / `X-Tenant-Id` с клиента **не** являются единственным источником истины.
 - [ ] Добавлены/обновлены **негативные** тесты: чужой tenant → 403/404 без утечки данных.

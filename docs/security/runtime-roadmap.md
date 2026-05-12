@@ -89,6 +89,16 @@ Observability для HF трактуется как **часть security archit
 - Единый helper/guard, используемый и в API, и в worker entrypoints.
 - Тесты: негативный сценарий «job без tenant» → fail до БД.
 
+**Реализовано (MVP + hardening, код):**
+
+- **Статус фазы:** MVP (session guard) **+ hardening** — superadmin/support elevated bind, `actor_id` в runtime, worker `tenant_enforced_session`, CI для tenant isolation.
+- `TenantEnforcingAsyncSession` (`backend/app/db/tenant_session.py`) + `async_sessionmaker(..., class_=...)` в `backend/app/db/session.py`: при `tenant_rls_enforcement=True` на Postgres блокируется `execute`/`stream`, пока не завершён `bind_tenant_context_to_session` (флаги `rls_tenant_bound`, `_binding_tenant_context` на время bind).
+- `get_db_with_tenant` / `get_db_with_meta_leads_effective_tenant` выставляют `tenant_rls_enforcement=True` до bind; `bind_tenant_context_to_session` проверяет `set_config` через `current_setting` (без silent pass на Postgres). **Hardening:** superadmin с `X-Tenant-Id` ≠ JWT tenant — обязателен `X-HostFlow-Elevated-Reason` (+ опциональный `X-HostFlow-Elevated-Scope` из allowlist), `emit_security_event`; meta leads remap (`effective` ≠ header) — тот же контракт; `db.info["security_access_kind"]` / `security_elevated_*`.
+- Webhooks Meta / generic inbound: `security_job_context` + bind + enforcement (`webhook.py`, `inbound_public.py`).
+- Worker helper: `tenant_enforced_session(..., actor_id=..., correlation_id=...)` — используется в `communications_scheduler` (per-tenant tick), ARQ `job_automation_evaluate_trigger`, sweep / risk_intel passes.
+- Security event v1: `emit_security_event` — всегда непустые `actor_id` (или `system:unknown`) и `correlation_id`; JWT deps и middleware сбрасывают contextvars через token reset.
+- Тесты: `tests/security/test_tenant_rls_session_guard.py`, `test_api_tenant_context_unit.py`, `test_superadmin_elevated_bind.py`; A/B API — `tests/api/test_tenant_isolation.py` (`@pytest.mark.postgres_integration`, Lifespan timeouts увеличены в `conftest`).
+
 ---
 
 ## Phase 2 — Structured observability
