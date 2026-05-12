@@ -33,8 +33,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - name: CRM app paths codegen drift check
+        working-directory: .
         run: python3 scripts/codegen/generate_crm_app_paths.py --check
       - name: SPA path literals (backend/app mirror)
+        working-directory: .
         run: python3 backend/scripts/check_spa_path_literals.py
       - uses: actions/setup-node@v4
         with:
