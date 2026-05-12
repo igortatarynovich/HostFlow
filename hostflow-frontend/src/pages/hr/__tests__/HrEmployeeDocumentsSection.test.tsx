@@ -1,24 +1,18 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { I18nProvider } from '../../../i18n'
 import type { Document } from '../../../api/types'
 import { HrEmployeeDocumentsSection } from '../HrEmployeeDocumentsSection'
 
-const { mockListDocs, mockGetCtx, mockDownload } = vi.hoisted(() => ({
+const { mockListDocs, mockGetCtx } = vi.hoisted(() => ({
   mockListDocs: vi.fn(),
   mockGetCtx: vi.fn(),
-  mockDownload: vi.fn(),
 }))
 
 vi.mock('../../../api/workforce', () => ({
   listWorkforceEmployeeDocuments: (...args: unknown[]) => mockListDocs(...args),
   getHrOperationalContext: (...args: unknown[]) => mockGetCtx(...args),
   recordWorkforceDocumentHrReview: vi.fn(),
-}))
-
-vi.mock('../../../api/documents', () => ({
-  downloadDocumentFile: (...args: unknown[]) => mockDownload(...args),
 }))
 
 vi.mock('../../../api/documents/list', () => ({
@@ -63,41 +57,34 @@ function renderSection() {
 
 describe('HrEmployeeDocumentsSection', () => {
   beforeEach(() => {
-    mockListDocs.mockResolvedValue([{ document: baseDoc, daysLeft: null }])
+    mockListDocs.mockResolvedValue([{ document: baseDoc, downloadUrl: null, daysLeft: null }])
     mockGetCtx.mockResolvedValue({
       hr_case: null,
       document_links: [],
       required_document_types: [],
     })
-    mockDownload.mockResolvedValue({ blob: new Blob(['%PDF-1.4'], { type: 'application/pdf' }) })
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('shows Open when document has id (Hub path; workforce list has no recruitment file_url)', async () => {
+  it('shows file link when row has downloadUrl (workforce documents API)', async () => {
+    mockListDocs.mockResolvedValue([
+      { document: baseDoc, downloadUrl: 'https://example.com/presigned.pdf', daysLeft: null },
+    ])
     renderSection()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument()
+      const link = screen.getByRole('link')
+      expect(link).toHaveAttribute('href', 'https://example.com/presigned.pdf')
+      expect(link).toHaveAttribute('target', '_blank')
     })
   })
 
-  it('calls downloadDocumentFile(documentId) when Open is clicked', async () => {
-    vi.spyOn(window, 'open').mockImplementation(() => null)
-    const user = userEvent.setup()
-    renderSection()
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument())
-    await user.click(screen.getByRole('button', { name: 'Open' }))
-    await waitFor(() => {
-      expect(mockDownload).toHaveBeenCalledWith('doc-uuid-1')
-    })
-  })
-
-  it('does not show Open when document id is empty (whitespace)', async () => {
-    mockListDocs.mockResolvedValue([{ document: { ...baseDoc, id: '   ' }, daysLeft: null }])
+  it('does not show file link when downloadUrl is absent', async () => {
+    mockListDocs.mockResolvedValue([{ document: baseDoc, downloadUrl: null, daysLeft: null }])
     renderSection()
     await waitFor(() => expect(screen.getByText('Passport')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 })

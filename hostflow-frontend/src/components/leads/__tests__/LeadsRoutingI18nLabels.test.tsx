@@ -51,22 +51,22 @@ describe('Lead routing table — i18n labels (en / pl)', () => {
     vacancy_id: null,
   } as Lead
 
-  it('en: needs_routing + suggested → Confirm & process', () => {
+  it('en: needs_routing + suggested → Confirm route and create candidate', () => {
     render(
       <MemoryRouter>
         <ProbeWithLocale lead={leadSuggested} locale="en" />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('button', { name: 'Confirm & process' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirm route and create candidate' })).toBeInTheDocument()
   })
 
-  it('pl: needs_routing + suggested → Potwierdź i przetwórz', () => {
+  it('pl: needs_routing + suggested → Potwierdź routing i utwórz kandydata', () => {
     render(
       <MemoryRouter>
         <ProbeWithLocale lead={leadSuggested} locale="pl" />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('button', { name: 'Potwierdź i przetwórz' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Potwierdź routing i utwórz kandydata' })).toBeInTheDocument()
   })
 
   it('en: pick_vacancy → Choose vacancy', () => {
