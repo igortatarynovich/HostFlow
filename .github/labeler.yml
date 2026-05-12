@@ -1,0 +1,58 @@
+# Pull Request Labeler (actions/labeler@v6).
+# Метки должны существовать в репозитории — см. docs/security/github-labels.md
+
+changed-files-labels-limit: 10
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - backend/app/auth/**
+          - backend/app/api/public/**
+          - backend/app/api/v1/candidate*/**
+          - backend/app/api/v1/client*/**
+          - backend/app/core/security*.py
+          - docs/security/**
+          - .github/workflows/security-gates.yml
+          - scripts/security/**
+          - backend/tests/security/**
+
+security-p0:
+  - changed-files:
+      - any-glob-to-any-file:
+          - backend/alembic/versions/**
+          - backend/app/db/**
+          - backend/app/auth/**
+          - backend/app/api/public/**
+
+security-rbac:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/permissions**"
+          - "**/rbac**"
+          - "**/*require_roles*"
+          - backend/app/**/*guard*.py
+          - hostflow-frontend/**/permissions/**
+          - hostflow-frontend/scripts/check-permission*.mjs
+
+security-rls:
+  - changed-files:
+      - any-glob-to-any-file:
+          - backend/alembic/versions/**
+          - "**/*rls*"
+          - docs/specs/architecture/multi_tenant_model.md
+
+security-upload:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/upload**"
+          - backend/app/modules/documents/**
+          - backend/app/api/**/document**
+          - backend/app/api/public/scanner.py
+          - backend/app/api/public/intake.py
+
+security-public-link:
+  - changed-files:
+      - any-glob-to-any-file:
+          - backend/app/api/public/**
+          - hostflow-frontend/**/public/**
+          - docs/specs/architecture/ADR-013-public-intake-strategy.md

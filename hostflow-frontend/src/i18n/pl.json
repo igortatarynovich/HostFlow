@@ -1044,7 +1044,8 @@
         "panel_subtitle": "Nieprzeczytane: {count}",
         "open": "Otwórz",
         "clear": "Wyczyść",
-        "clear_all": "Wyczyść wszystko"
+        "clear_all": "Wyczyść wszystko",
+        "open_center": "Otwórz centrum powiadomień"
       },
       "search": {
         "open": "Szukaj",
@@ -3935,6 +3936,23 @@
         "pipeline_completed_body": "Kandydat na etapie końcowym (zatrudniony, odrzucony, rezygnacja lub zakończony okres próbny) — dalsze kroki w procesie nie dotyczą.",
         "title": "Następne działanie"
       },
+      "applications": {
+        "title": "Aplikacje i intencja",
+        "subtitle": "Zainteresowanie ofertą z leadów i konwersji. Link legacy z akta kandydata, gdy brak wierszy Application.",
+        "empty": "Brak zapisów aplikacji dla tego kandydata.",
+        "load_error": "Nie udało się wczytać aplikacji.",
+        "vacancy_pool": "Pula / bez oferty",
+        "lead_link": "Otwórz lead",
+        "legacy_note": "Brak wierszy Application — pokazujemy ofertę powiązaną w aktach kandydata (legacy).",
+        "legacy_source_label": "Legacy (akt)",
+        "columns": {
+          "source": "Źródło",
+          "vacancy": "Oferta",
+          "status": "Status",
+          "applied_at": "Zgłoszono",
+          "lead": "Lead"
+        }
+      },
       "validation": {
         "poland_basis_required": "Podaj podstawę pobytu przy pobycie w Polsce",
         "email_invalid_format": "Nieprawidłowy format adresu e-mail.",
@@ -4086,7 +4104,7 @@
       "documents": {
         "blockers_subtitle": "Blokery zatrzymują pipeline",
         "empty": "Pusty",
-        "missing_label": "Brakująca etykieta",
+        "missing_label": "Brakujące dokumenty",
         "next_step": "Następny krok: -> Poprosić o dokumenty",
         "no_blocks": "Żadnych bloków",
         "ok_subtitle": "Gotowe do przejścia dalej",
@@ -5460,7 +5478,8 @@
         "processed": "Kandydat utworzony",
         "duplicated": "Duplikat",
         "needs_routing": "Wymaga przekierowania",
-        "failed": "Błąd"
+        "failed": "Błąd",
+        "duplicate_review": "Weryfikacja duplikatu (intake)"
       },
       "stages": {
         "new": "Nowy",
@@ -5485,11 +5504,19 @@
         "service_order": "Zamówienie serwisowe",
         "full_page": "Pełna strona"
       },
+      "queue_keyboard": {
+        "hint": "Skróty: J lub ↓ / K lub ↑ — wybór leada · Enter — główna akcja · Esc — zamknij panel lub okno · V — oferta · P — pula · I — poproś o info · R — odrzuć",
+        "no_primary": "Brak głównej akcji dla tego leada.",
+        "action_unavailable": "Ten skrót nie jest dostępny dla wybranego leada.",
+        "duplicate_first": "Najpierw rozwiąż duplikat (Enter).",
+        "request_info_hint": "Opcjonalna notatka — dołączona do prośby o informacje."
+      },
       "detail": {
         "wayfinding_title": "Inne obszary CRM",
         "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kandydatów, listy leadów, zadań i ustawień",
         "back_to_list": "Powrót do leadów",
         "title": "Lead",
+        "details_heading": "Szczegóły leada",
         "not_found": "Nie znaleziono leada",
         "not_found_hint": "Mógł zostać usunięty lub jest poza Twoim zakresem.",
         "missing_id": "Brak identyfikatora leada.",
@@ -5512,7 +5539,7 @@
             "assisted": "Assisted",
             "automatic": "Automatic"
           },
-          "assisted_link": "Zobacz panel kwalifikacji powyżej: proponowana oferta, status fit i powody.",
+          "assisted_link": "Poniżej: podsumowanie kwalifikacji i panel sugestii — kontekst źródła, snapshot fit i powody.",
           "auto_convert_off": "Auto-konwersja przy fit była wyłączona dla tego leada (tenant lub oferta). Użyj Process.",
           "downgrade_team": "Tryb Automatic został obniżony dla tego ingestu (wymagany plan Team).",
           "configured_effective_mismatch": "Ustawienie admina: {configured}. Skutecznie przy ingest: {effective}."
@@ -5530,7 +5557,103 @@
         "delete_confirm": "Trwale usunąć ten lead? Nie cofnie tego. Rekord kandydata (jeśli jest) pozostaje.",
         "delete_success": "Lead usunięty",
         "delete_failed": "Nie udało się usunąć leada",
-        "lost_reason_title": "Powód utraty"
+        "remind_client": {
+          "cta": "Szybkie przypomnienie",
+          "busy": "Tworzenie…",
+          "hint": "Utwórz działanie follow-up dla tego leada (np. oddzwonić jutro).",
+          "default_title": "Kontakt z leadem"
+        },
+        "lost_reason_title": "Powód utraty",
+        "qualification_summary": {
+          "title": "Podsumowanie kwalifikacji",
+          "subtitle": "Tylko do odczytu — wspiera decyzje intake (odrzucenie, prośba o info, pool, proces).",
+          "section_source": "Źródło i kampania",
+          "section_contact": "Kontakt",
+          "section_profile": "Profil i uprawnienia",
+          "section_vacancy": "Oferta i pool",
+          "section_fit": "Fit (ostatnia ocena)",
+          "section_rule": "Reguła kwalifikacji",
+          "form_id": "ID formularza",
+          "created_time": "Utworzono (źródło)",
+          "utm": "UTM / kampania",
+          "contact_complete": "Kompletność kontaktu",
+          "contact_complete_yes": "E-mail i telefon",
+          "contact_partial": "Częściowo (brak e-maila lub telefonu)",
+          "contact_missing": "Brak e-maila i telefonu",
+          "email": "E-mail",
+          "phone": "Telefon",
+          "driving_eu": "Doświadczenie w prowadzeniu (UE)",
+          "documents": "Dokumenty (zadeklarowane)",
+          "nationality": "Obywatelstwo / narodowość",
+          "poland_stay": "Podstawa pobytu w Polsce",
+          "languages": "Języki",
+          "vacancy_routed": "Oferta na leadzie",
+          "suggested_vacancy": "Sugerowane id oferty",
+          "resolved_vacancy_id": "Rozstrzygnięte id oferty (znormalizowane)",
+          "funnel": "Lejek",
+          "pool_intent": "Intencja pool",
+          "pool_intent_yes": "Tak",
+          "pool_intent_no": "Nie",
+          "fit_effective": "Ocena kryteriów oferty",
+          "fit_effective_on": "Włączone (oferta ma aktywne kryteria)",
+          "fit_effective_off": "Wyłączone lub brak kryteriów",
+          "pipeline": "Pipeline",
+          "evaluated_at": "Oceniono",
+          "no_preview": "Brak zapisanego snapshotu fit — uruchom Proces lub poczekaj na automatyczną ocenę.",
+          "rule_id": "Id reguły",
+          "rule_note": "Notatka"
+        },
+        "intake_resolution": {
+          "title": "Routing i decyzje intake",
+          "subtitle": "Potwierdź ofertę i zapisz decyzje intake. To działania operatora na leadzie, a nie etapy lejka kandydata.",
+          "select_label": "Oferta dla tego leada",
+          "select_placeholder": "Wybierz ofertę…",
+          "suggested": "Sugerowana",
+          "confirmed_badge": "Potwierdzono",
+          "confirm": "Potwierdź ofertę",
+          "confirmed_hint": "Routing oferty potwierdzony. Możesz uruchomić Process, gdy pozostałe warunki intake są spełnione.",
+          "process_blocked_hint": "Process jest zablokowany, dopóki routing i decyzje intake nie są domknięte (zob. podpowiedź przy Process).",
+          "pick_first": "Najpierw wybierz ofertę.",
+          "confirm_success": "Oferta potwierdzona",
+          "confirm_failed": "Nie udało się potwierdzić oferty",
+          "qualification_title": "Znormalizowane sygnały",
+          "experience_eu": "Doświadczenie w UE (lata)",
+          "in_poland": "W Polsce",
+          "country": "Kraj",
+          "source_ad": "Źródło",
+          "reject_reasons": {
+            "insufficient_experience": "Niewystarczające doświadczenie",
+            "missing_documents": "Brak dokumentów",
+            "unsupported_citizenship": "Nieobsługiwane obywatelstwo / zezwolenie na pracę",
+            "language_mismatch": "Niezgodność językowa",
+            "invalid_contact": "Nieprawidłowy lub niedostępny kontakt",
+            "no_response": "Brak odpowiedzi",
+            "salary_mismatch": "Niezgodność wynagrodzenia / warunków",
+            "unsuitable_route": "Nieodpowiednia ścieżka lub rola",
+            "duplicate_spam": "Duplikat / spam",
+            "not_interested": "Brak zainteresowania",
+            "other": "Inne"
+          },
+          "intake_actions": {
+            "heading": "Akcje intake",
+            "hint": "Zapisz wynik intake przed konwersją na kandydata.",
+            "rejected_banner": "Lead został odrzucony na intake. Dalsza konwersja jest zablokowana.",
+            "qualify": "Kwalifikuj (gotowy do Process)",
+            "pool": "Wyślij do puli",
+            "duplicate_review": "Oznacz do weryfikacji duplikatu",
+            "request_info_label": "Poproś o więcej informacji",
+            "note_placeholder": "Opcjonalna notatka dla zespołu…",
+            "request_info": "Poproś o info",
+            "reject_title": "Odrzuć na intake",
+            "reject_reason": "Powód",
+            "reject_reason_placeholder": "Wybierz powód…",
+            "note_optional": "Notatka (opcjonalnie)",
+            "reject_submit": "Odrzuć lead",
+            "success": "Decyzja intake zapisana",
+            "failed": "Nie udało się zapisać decyzji intake",
+            "reject_pick_reason": "Wybierz powód odrzucenia."
+          }
+        }
       },
       "states": {
         "empty": "Brak leadów.",
@@ -5555,7 +5678,16 @@
         "processed_desc_short": "Lead został przetworzony.",
         "service_order_create_failed": "Nie udało się utworzyć zlecenia serwisowego",
         "service_order_created": "Zlecenie serwisowe utworzone",
-        "service_order_created_desc": "Z leada utworzono szkic zlecenia serwisowego."
+        "service_order_created_desc": "Z leada utworzono szkic zlecenia serwisowego.",
+        "process_blocked": {
+          "INTAKE_REJECTED": "Lead został odrzucony na intake. Zmień decyzję intake, aby kontynuować.",
+          "DUPLICATE_REVIEW_PENDING": "Najpierw domknij weryfikację duplikatu (intake) przed Process.",
+          "INTAKE_POOL_PATH_REQUIRED": "Na panelu intake wybierz pulę lub kwalifikację przed Process.",
+          "VACANCY_NOT_CONFIRMED": "Potwierdź routing oferty na panelu intake przed Process.",
+          "INTAKE_ROUTING_INCOMPLETE": "Dokończ routing intake (oferta lub ścieżka puli) przed Process.",
+          "INTAKE_INFO_REQUESTED": "Na intake poproszono o informacje. Uzupełnij lead lub anuluj prośbę przed Process.",
+          "INTAKE_IDENTITY_UNCLEAR": "Tożsamość leada na intake jest niejasna. Rozwiąż to przed Process."
+        }
       },
       "pipeline_errors": {
         "LEAD_FIT_NO_MATCH": "Kryteria oferty niespełnione — pominięto autotworzenie kandydata.",
@@ -5607,7 +5739,194 @@
         "create_invoice": "Utwórz fakturę",
         "create_service_order": "Utwórz zlecenie serwisowe",
         "open_service_order": "Otwórz zlecenie serwisowe",
-        "process": "Przetwórz"
+        "process": "Utwórz kandydata"
+      },
+      "routing": {
+        "confirm_vacancy": "Potwierdź ofertę",
+        "confirm_route": "Potwierdź przypisanie",
+        "confirm_and_process": "Potwierdź routing i utwórz kandydata",
+        "other_option": "Inna opcja",
+        "pick_vacancy": "Wybierz ofertę",
+        "pick_modal_title": "Wybór oferty",
+        "pick_modal_hint": "Potwierdź trasę dla tego leada. Możesz od razu uruchomić przetwarzanie.",
+        "pick_modal_confirm": "Potwierdź przypisanie",
+        "confirm_then_process": "Potem automatycznie uruchom przetwarzanie",
+        "next_step_hint": "Oczekuje na trasę — potwierdź sugerowaną ofertę, aby odblokować „Przetwórz”.",
+        "inbox_focus_title": "Intake: najpierw przypisanie do oferty",
+        "expand_crm_tools": "Etap, przypomnienia, oś czasu"
+      },
+      "intake_workspace": {
+        "title": "Intake leada",
+        "question": "Co zrobić z tym leadem?",
+        "services_hint": "Leady serwisowe obsługujesz na pełnej stronie (zamówienia i rozliczenia).",
+        "owner": "Właściciel",
+        "more": {
+          "contact": "Telefon i e-mail"
+        },
+        "section": {
+          "lead_data": "Dane leada",
+          "vacancy_route": "Oferta i routing",
+          "quick_decision": "Szybka decyzja",
+          "more_actions": "Pool, duplikat, prośba o dane, odrzucenie",
+          "qualification": "Podsumowanie kwalifikacji",
+          "more": "Dodatkowo"
+        },
+        "unified": {
+          "confirm_and_create": "Potwierdź routing i utwórz kandydata",
+          "change_vacancy": "Wybierz inną ofertę",
+          "pick_vacancy_cta": "Wybierz ofertę",
+          "create_candidate": "Utwórz kandydata"
+        },
+        "detail": {
+          "decisions_heading": "Pool, duplikat, prośba o dane, odrzucenie",
+          "lead_data_heading": "Dane leada",
+          "vacancy_heading": "Oferta i routing",
+          "intake_label": "Status intake",
+          "notes_heading": "Notatki",
+          "notes_empty": "Brak notatek intake.",
+          "application": "Aplikacja",
+          "audit_sidebar_title": "Rekord",
+          "open_candidate_primary": "Otwórz kandydata"
+        },
+        "actions": {
+          "change_vacancy": "Zmień ofertę",
+          "to_pool": "Do poolu",
+          "process_convert": "Przetwórz / utwórz kandydata",
+          "review_duplicate": "Sprawdź duplikat",
+          "pick_vacancy": "Wybierz ofertę",
+          "open_candidate": "Otwórz kandydata",
+          "none": "—"
+        },
+        "vacancy": {
+          "suggested_label": "Oferta na leadzie",
+          "route_hint": "Potwierdź lub zmień ofertę w panelu decyzji po prawej."
+        },
+        "sticky": {
+          "vacancy_route_pending": "{title} · potwierdź routing",
+          "vacancy_none": "Brak oferty"
+        },
+        "snapshot": {
+          "title": "Szybki podgląd kandydata",
+          "context_title": "Kontekst rekrutacji",
+          "in_poland_yes": "W Polsce",
+          "in_poland_no": "Poza Polską",
+          "country": "{value}",
+          "exp_years": "{n} lat doświadczenia w UE",
+          "exp_none": "Mało / brak doświadczenia w UE",
+          "docs_list": "Dokumenty: {list}",
+          "docs_missing": "Brak zadeklarowanych dokumentów",
+          "languages": "Języki: {list}",
+          "phone_ok": "Telefon podany",
+          "phone_missing": "Brak telefonu",
+          "email": "{email}",
+          "route_label": "Routing",
+          "route_confirmed": "Routing potwierdzony",
+          "route_unconfirmed": "Oferta na leadzie · potwierdź w panelu Decyzja",
+          "route_missing": "Wybierz ofertę (panel Decyzja)",
+          "duplicate_label": "Duplikat",
+          "duplicate_review_active": "Wymagana weryfikacja duplikatu",
+          "duplicate_clear": "Bez flagi duplikatu",
+          "qual_toggle": "Pełna kwalifikacja (tabele)",
+          "group_driving": "Profil kierowcy",
+          "group_communication": "Komunikacja",
+          "group_legal": "Status prawny i dopasowanie",
+          "code95_present": "Code95 w dokumentach",
+          "code95_missing": "Brak Code95 w dokumentach",
+          "tachograph_present": "Tachograf / karta kierowcy w dokumentach",
+          "tachograph_missing": "Brak tachografu w dokumentach",
+          "citizenship_line": "Obywatelstwo / lokalizacja: {value}"
+        },
+        "decision_rail": {
+          "title": "Decyzja",
+          "subtitle": "Oferta → podsumowanie dopasowania → działanie.",
+          "step_vacancy": "Krok 1 · Oferta",
+          "step_review_fit": "Krok 2 · Dopasowanie",
+          "step_decision": "Krok 3 · Decyzja",
+          "block_vacancy": "Oferta",
+          "context_qualification": "Kwalifikacja",
+          "context_qualification_hint": "Odczyt automatyczny — to nie jest krok checklisty.",
+          "block_decision": "Decyzja",
+          "pick_vacancy_prompt": "Dokąd skierować tego leada?",
+          "all_vacancies": "Wszystkie oferty",
+          "back_suggested": "Wróć do sugerowanej oferty",
+          "optional_context": "Podpowiedzi · oznacz duplikat",
+          "unsupported": "Decyzje intake niedostępne dla tego leada (źródło lub status).",
+          "reject_open": "Odrzuć…",
+          "reject_cancel": "Zamknij formularz",
+          "qualify_not_duplicate": "To nie duplikat — kontynuuj",
+          "fit_clear": "Brak automatycznych ostrzeżeń dopasowania dla tego leada."
+        },
+        "audit": {
+          "badge": "Kandydat utworzony",
+          "subtitle": "Intake zakończony — kontynuuj w rekordzie kandydata.",
+          "open_candidate": "Otwórz kandydata",
+          "source": "Źródło",
+          "history": "Historia intake i oś czasu",
+          "created_from": "Źródło leada",
+          "trace_expand": "Ślad · oś czasu, kwalifikacja, ingest i narzędzia"
+        },
+        "header": {
+          "routing_unconfirmed_title": "Wymagane potwierdzenie routingu",
+          "routing_unconfirmed_hint": "Oferta jest na leadzie, ale routing intake nie jest jeszcze potwierdzony.",
+          "routing_incomplete_title": "Wybierz ofertę",
+          "routing_incomplete_hint": "Wskaż ofertę lub wyślij lead do poolu przed utworzeniem kandydata.",
+          "duplicate_title": "Weryfikacja duplikatu",
+          "duplicate_hint": "Potwierdź, czy to duplikat, zanim przetworzysz lead.",
+          "pool_path_title": "Wymagana ścieżka pool",
+          "pool_path_hint": "Jest intencja pool — wybierz ofertę lub potwierdź pool.",
+          "info_requested_title": "Prośba o dane",
+          "info_requested_hint": "Czekamy na dodatkowe informacje od kandydata lub źródła.",
+          "rejected_title": "Odrzucony na intake",
+          "rejected_hint": "Lead odrzucony na intake. Zmieniaj tylko zgodnie z polityką.",
+          "identity_unclear_title": "Tożsamość niejasna",
+          "identity_unclear_hint": "Wyjaśnij tożsamość / deduplikację przed przetworzeniem.",
+          "needs_routing_title": "Wybierz ofertę",
+          "needs_routing_hint": "Wybierz ofertę lub pool dla tego leada.",
+          "ready_title": "Gotowe do utworzenia kandydata",
+          "ready_hint": "Routing wygląda dobrze — utwórz kandydata, gdy wszystko sprawdzisz.",
+          "converted_title": "Skonwertowany",
+          "converted_hint": "Kandydat dla tego leada już istnieje.",
+          "services_title": "Lead serwisowy",
+          "services_hint": "Dalsze kroki w workspace zamówienia.",
+          "failed_title": "Błąd",
+          "failed_hint": "Błąd ingest lub pipeline — napraw i spróbuj ponownie."
+        },
+        "col": {
+          "intake_status": "Intake",
+          "services": "Serwis",
+          "converted": "Skonwertowany",
+          "unsupported": "—",
+          "duplicate_review": "Duplikat",
+          "failed": "Błąd",
+          "rejected": "Odrzucony",
+          "info_requested": "Prośba o dane",
+          "identity_unclear": "Tożsamość",
+          "pool_path": "Pool",
+          "routing_unconfirmed": "Potwierdź routing",
+          "routing_incomplete": "Wybór oferty",
+          "needs_routing": "Wybór oferty",
+          "new": "Nowy",
+          "awaiting_convert": "Do konwersji",
+          "duplicated": "Duplikat",
+          "other": "—"
+        },
+        "qual": {
+          "exp_label": "Doświadczenie",
+          "exp_ok": "{years} lat w UE (OK)",
+          "exp_low": "Mało / brak doświadczenia w UE",
+          "exp_unknown": "Nieznane",
+          "docs_label": "Dokumenty",
+          "docs_yes": "Zadeklarowane",
+          "docs_no": "Brak",
+          "citizenship_label": "Obywatelstwo / kraj",
+          "citizenship_ok": "{value}",
+          "citizenship_unknown": "Wymaga weryfikacji",
+          "fit_label": "Dopasowanie",
+          "fit_reject": "Odrzuć",
+          "fit_needs_info": "Potrzebne info",
+          "fit_unknown": "Nie oceniono",
+          "pipeline": "Pipeline"
+        }
       },
       "bulk": {
         "activities": {

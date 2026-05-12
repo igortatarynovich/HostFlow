@@ -92,3 +92,29 @@ export async function getCandidateNextAction(candidateId: string): Promise<Candi
   )
   return data
 }
+
+/** Recruitment intent rows (lead → vacancy), read model for candidate card. */
+export type RecruitmentApplicationOut = {
+  id: string
+  candidate_id: string
+  lead_id?: string | null
+  vacancy_id?: string | null
+  source: string
+  recruiter_id?: string | null
+  applied_at: string
+  status: string
+  application_cycle?: string | null
+  meta?: Record<string, unknown>
+}
+
+export async function listCandidateRecruitmentApplications(
+  candidateId: string,
+): Promise<RecruitmentApplicationOut[]> {
+  if (!candidateId) {
+    throw new Error('candidateId is required')
+  }
+  const { data } = await api.get<RecruitmentApplicationOut[]>(
+    `/candidates/${encodeURIComponent(candidateId)}/applications`,
+  )
+  return Array.isArray(data) ? data : []
+}

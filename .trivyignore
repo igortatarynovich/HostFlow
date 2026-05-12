@@ -1,0 +1,2 @@
+# Baseline ignore list for aquasecurity/trivy-action (filesystem scan).
+# Add short-lived suppressions only with ticket + expiry comment.

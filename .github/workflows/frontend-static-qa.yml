@@ -7,14 +7,20 @@ on:
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
+      - "scripts/security/**"
       - ".github/workflows/frontend-static-qa.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
   pull_request:
     paths:
       - "hostflow-frontend/**"
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
+      - "scripts/security/**"
       - ".github/workflows/frontend-static-qa.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
 
 jobs:
   qa-static:

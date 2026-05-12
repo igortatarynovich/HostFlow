@@ -1044,7 +1044,8 @@
         "panel_subtitle": "{count} unread",
         "open": "Open",
         "clear": "Clear",
-        "clear_all": "Clear all"
+        "clear_all": "Clear all",
+        "open_center": "Open Notification Center"
       },
       "search": {
         "open": "Search",
@@ -4215,6 +4216,23 @@
         "pipeline_completed_body": "This candidate is in a final stage (hired, rejected, declined, or probation completed) — no further pipeline steps apply.",
         "title": "Next action"
       },
+      "applications": {
+        "title": "Applications & intent",
+        "subtitle": "Vacancy interest from leads and conversions. Legacy dossier links appear when no application rows exist yet.",
+        "empty": "No application records for this candidate yet.",
+        "load_error": "Could not load applications.",
+        "vacancy_pool": "Pool / no vacancy",
+        "lead_link": "View lead",
+        "legacy_note": "No application rows yet — showing the vacancy linked on the candidate dossier (legacy).",
+        "legacy_source_label": "Legacy (dossier)",
+        "columns": {
+          "source": "Source",
+          "vacancy": "Vacancy",
+          "status": "Status",
+          "applied_at": "Applied",
+          "lead": "Lead"
+        }
+      },
       "reminders": {
         "title": "Candidate reminders",
         "subtitle": "Quick reminder: title, due date, offset (min).",
@@ -4584,7 +4602,7 @@
       "documents": {
         "blockers_subtitle": "Blockers stop the pipeline",
         "empty": "Empty",
-        "missing_label": "Missing label",
+        "missing_label": "Missing documents",
         "next_step": "Next step: -> Request documents",
         "no_blocks": "No blocks",
         "ok_subtitle": "Ready to move forward",
@@ -5460,7 +5478,8 @@
         "processed": "Candidate created",
         "duplicated": "Duplicate",
         "needs_routing": "Needs routing",
-        "failed": "Error"
+        "failed": "Error",
+        "duplicate_review": "Duplicate review (intake)"
       },
       "stages": {
         "new": "New",
@@ -5485,11 +5504,19 @@
         "service_order": "Service order",
         "full_page": "Full page"
       },
+      "queue_keyboard": {
+        "hint": "Shortcuts: J or ↓ / K or ↑ move selection · Enter primary action · Esc close panel or modal · V vacancy · P pool · I request info · R reject",
+        "no_primary": "No primary action for this lead.",
+        "action_unavailable": "This shortcut is not available for the selected lead.",
+        "duplicate_first": "Resolve duplicate review first (Enter).",
+        "request_info_hint": "Optional note — sent with the info request."
+      },
       "detail": {
         "wayfinding_title": "Other CRM areas",
         "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, candidates, leads list, tasks, and settings",
         "back_to_list": "Back to leads",
         "title": "Lead",
+        "details_heading": "Lead details",
         "not_found": "Lead not found",
         "not_found_hint": "It may have been removed or is outside your scope.",
         "missing_id": "Missing lead id.",
@@ -5512,7 +5539,7 @@
             "assisted": "Assisted",
             "automatic": "Automatic"
           },
-          "assisted_link": "Use the qualification panel above for suggested vacancy, fit status, and reasons.",
+          "assisted_link": "Use the qualification summary and suggestion panels below for source context, fit snapshot, and reasons.",
           "auto_convert_off": "Auto-convert on fit was off for this lead (tenant or vacancy safeguard). Use Process to continue.",
           "downgrade_team": "Automatic mode was downgraded for this ingest (Team plan required).",
           "configured_effective_mismatch": "Admin setting: {configured}. Effective at ingest: {effective}."
@@ -5530,7 +5557,103 @@
         "delete_confirm": "Delete this lead permanently? This cannot be undone. The candidate record (if any) is not removed.",
         "delete_success": "Lead deleted",
         "delete_failed": "Could not delete lead",
-        "lost_reason_title": "Lost reason"
+        "remind_client": {
+          "cta": "Quick reminder",
+          "busy": "Creating…",
+          "hint": "Create a follow-up activity on this lead (for example, call back tomorrow).",
+          "default_title": "Follow up with lead"
+        },
+        "lost_reason_title": "Lost reason",
+        "qualification_summary": {
+          "title": "Qualification summary",
+          "subtitle": "Read-only snapshot to support intake decisions (reject, request info, pool, or process).",
+          "section_source": "Source & campaign",
+          "section_contact": "Contact",
+          "section_profile": "Profile & eligibility",
+          "section_vacancy": "Vacancy & pool",
+          "section_fit": "Fit (last evaluation)",
+          "section_rule": "Qualification rule",
+          "form_id": "Form ID",
+          "created_time": "Created (source)",
+          "utm": "UTM / campaign",
+          "contact_complete": "Contact completeness",
+          "contact_complete_yes": "Email and phone present",
+          "contact_partial": "Partial (missing email or phone)",
+          "contact_missing": "Missing email and phone",
+          "email": "Email",
+          "phone": "Phone",
+          "driving_eu": "Driving experience (EU)",
+          "documents": "Documents (declared)",
+          "nationality": "Nationality / citizenship",
+          "poland_stay": "Poland stay basis",
+          "languages": "Languages",
+          "vacancy_routed": "Vacancy on lead",
+          "suggested_vacancy": "Suggested vacancy id",
+          "resolved_vacancy_id": "Resolved vacancy id (normalized)",
+          "funnel": "Funnel",
+          "pool_intent": "Pool intent",
+          "pool_intent_yes": "Yes",
+          "pool_intent_no": "No",
+          "fit_effective": "Vacancy criteria evaluation",
+          "fit_effective_on": "On (vacancy has active criteria)",
+          "fit_effective_off": "Off or no criteria",
+          "pipeline": "Pipeline",
+          "evaluated_at": "Evaluated at",
+          "no_preview": "No fit snapshot stored yet — run Process or wait for automatic evaluation.",
+          "rule_id": "Rule id",
+          "rule_note": "Note"
+        },
+        "intake_resolution": {
+          "title": "Intake routing & decisions",
+          "subtitle": "Confirm vacancy and record intake decisions. These are operator actions on the lead, not candidate pipeline stages.",
+          "select_label": "Vacancy for this lead",
+          "select_placeholder": "Choose vacancy…",
+          "suggested": "Suggested",
+          "confirmed_badge": "Confirmed",
+          "confirm": "Confirm vacancy",
+          "confirmed_hint": "Vacancy routing is confirmed. You can run Process when other intake checks pass.",
+          "process_blocked_hint": "Process is blocked until intake routing and decisions are complete (see tooltip on Process).",
+          "pick_first": "Choose a vacancy first.",
+          "confirm_success": "Vacancy confirmed",
+          "confirm_failed": "Could not confirm vacancy",
+          "qualification_title": "Normalized signals",
+          "experience_eu": "EU experience (years)",
+          "in_poland": "In Poland",
+          "country": "Country",
+          "source_ad": "Source",
+          "reject_reasons": {
+            "insufficient_experience": "Insufficient experience",
+            "missing_documents": "Missing documents",
+            "unsupported_citizenship": "Unsupported citizenship / work authorization",
+            "language_mismatch": "Language mismatch",
+            "invalid_contact": "Invalid or unreachable contact",
+            "no_response": "No response",
+            "salary_mismatch": "Salary / conditions mismatch",
+            "unsuitable_route": "Unsuitable route or role",
+            "duplicate_spam": "Duplicate / spam",
+            "not_interested": "Not interested",
+            "other": "Other"
+          },
+          "intake_actions": {
+            "heading": "Intake actions",
+            "hint": "Use these to record an intake outcome before converting to a candidate.",
+            "rejected_banner": "This lead was rejected at intake. Further conversion is blocked.",
+            "qualify": "Qualify (ready to process)",
+            "pool": "Send to pool",
+            "duplicate_review": "Mark for duplicate review",
+            "request_info_label": "Request more information",
+            "note_placeholder": "Optional note for the team…",
+            "request_info": "Request info",
+            "reject_title": "Reject at intake",
+            "reject_reason": "Reason",
+            "reject_reason_placeholder": "Select reason…",
+            "note_optional": "Note (optional)",
+            "reject_submit": "Reject lead",
+            "success": "Intake decision saved",
+            "failed": "Could not save intake decision",
+            "reject_pick_reason": "Select a reject reason."
+          }
+        }
       },
       "states": {
         "empty": "No leads found.",
@@ -5555,7 +5678,16 @@
         "processed_desc_short": "Lead was processed.",
         "service_order_create_failed": "Failed to create service order",
         "service_order_created": "Service order created",
-        "service_order_created_desc": "Draft service order was created from this lead."
+        "service_order_created_desc": "Draft service order was created from this lead.",
+        "process_blocked": {
+          "INTAKE_REJECTED": "This lead was rejected at intake. Change the intake decision to continue.",
+          "DUPLICATE_REVIEW_PENDING": "Resolve duplicate review (intake) before processing.",
+          "INTAKE_POOL_PATH_REQUIRED": "Choose pool or qualify this lead on the intake panel before processing.",
+          "VACANCY_NOT_CONFIRMED": "Confirm vacancy routing on the intake panel before processing.",
+          "INTAKE_ROUTING_INCOMPLETE": "Complete intake routing (vacancy or pool path) before processing.",
+          "INTAKE_INFO_REQUESTED": "Information was requested at intake. Update the lead or clear the request before processing.",
+          "INTAKE_IDENTITY_UNCLEAR": "Lead identity is unclear at intake. Resolve identity before processing."
+        }
       },
       "pipeline_errors": {
         "LEAD_FIT_NO_MATCH": "Does not meet vacancy criteria — automatic candidate creation was skipped.",
@@ -5607,7 +5739,194 @@
         "create_invoice": "Create invoice",
         "create_service_order": "Create service order",
         "open_service_order": "Open service order",
-        "process": "Process"
+        "process": "Create candidate"
+      },
+      "routing": {
+        "confirm_vacancy": "Confirm vacancy",
+        "confirm_route": "Confirm route",
+        "confirm_and_process": "Confirm route and create candidate",
+        "other_option": "Other option",
+        "pick_vacancy": "Choose vacancy",
+        "pick_modal_title": "Choose vacancy",
+        "pick_modal_hint": "Confirm routing for this lead. You can run Process immediately after.",
+        "pick_modal_confirm": "Confirm routing",
+        "confirm_then_process": "Then run Process automatically",
+        "next_step_hint": "Routing is waiting — confirm the suggested vacancy to unblock Process.",
+        "inbox_focus_title": "Intake: resolve routing first",
+        "expand_crm_tools": "Stage, follow-ups, timeline"
+      },
+      "intake_workspace": {
+        "title": "Lead intake",
+        "question": "What should we do with this lead?",
+        "services_hint": "Service leads are managed on the full page (orders & billing).",
+        "owner": "Owner",
+        "more": {
+          "contact": "Call & email"
+        },
+        "section": {
+          "lead_data": "Lead details",
+          "vacancy_route": "Vacancy & route",
+          "quick_decision": "Quick decision",
+          "more_actions": "Pool, duplicate, request info, reject",
+          "qualification": "Qualification summary",
+          "more": "Additional tools"
+        },
+        "unified": {
+          "confirm_and_create": "Confirm route and create candidate",
+          "change_vacancy": "Choose a different vacancy",
+          "pick_vacancy_cta": "Choose vacancy",
+          "create_candidate": "Create candidate"
+        },
+        "detail": {
+          "decisions_heading": "Pool, duplicate, request info, reject",
+          "lead_data_heading": "Lead details",
+          "vacancy_heading": "Vacancy & route",
+          "intake_label": "Intake status",
+          "notes_heading": "Notes",
+          "notes_empty": "No intake notes yet.",
+          "application": "Application",
+          "audit_sidebar_title": "Record",
+          "open_candidate_primary": "Open candidate"
+        },
+        "actions": {
+          "change_vacancy": "Change vacancy",
+          "to_pool": "Send to pool",
+          "process_convert": "Process / create candidate",
+          "review_duplicate": "Review duplicate",
+          "pick_vacancy": "Choose vacancy",
+          "open_candidate": "Open candidate",
+          "none": "—"
+        },
+        "vacancy": {
+          "suggested_label": "Vacancy on lead",
+          "route_hint": "Confirm or change the vacancy using the decision panel on the right."
+        },
+        "sticky": {
+          "vacancy_route_pending": "{title} · confirm route",
+          "vacancy_none": "No vacancy yet"
+        },
+        "snapshot": {
+          "title": "Candidate snapshot",
+          "context_title": "Recruitment context",
+          "in_poland_yes": "In Poland",
+          "in_poland_no": "Not in Poland",
+          "country": "{value}",
+          "exp_years": "{n} yrs EU experience",
+          "exp_none": "Little / no EU experience",
+          "docs_list": "Documents: {list}",
+          "docs_missing": "No documents declared",
+          "languages": "Languages: {list}",
+          "phone_ok": "Phone on file",
+          "phone_missing": "No phone",
+          "email": "{email}",
+          "route_label": "Route",
+          "route_confirmed": "Route confirmed",
+          "route_unconfirmed": "Vacancy on lead · confirm route in Decision panel",
+          "route_missing": "Choose a vacancy (Decision panel)",
+          "duplicate_label": "Duplicate check",
+          "duplicate_review_active": "Duplicate review required",
+          "duplicate_clear": "Not flagged for duplicate",
+          "qual_toggle": "Full qualification breakdown",
+          "group_driving": "Driving profile",
+          "group_communication": "Communication",
+          "group_legal": "Legal & fit",
+          "code95_present": "Code95 declared",
+          "code95_missing": "Code95 not in documents",
+          "tachograph_present": "Tachograph / driver card declared",
+          "tachograph_missing": "Tachograph not in documents",
+          "citizenship_line": "Citizenship / location: {value}"
+        },
+        "decision_rail": {
+          "title": "Decision",
+          "subtitle": "Pick a vacancy, scan qualification, then act.",
+          "step_vacancy": "Step 1 · Choose vacancy",
+          "step_review_fit": "Step 2 · Review fit",
+          "step_decision": "Step 3 · Decide",
+          "block_vacancy": "Vacancy",
+          "context_qualification": "Qualification",
+          "context_qualification_hint": "Automated read-out — not a checklist step.",
+          "block_decision": "Decision",
+          "pick_vacancy_prompt": "Where should this lead go?",
+          "all_vacancies": "Search all vacancies",
+          "back_suggested": "Use suggested vacancy again",
+          "optional_context": "Notes · system hints · flag duplicate",
+          "unsupported": "Intake decisions are not enabled for this lead (source or status).",
+          "reject_open": "Reject…",
+          "reject_cancel": "Close reject form",
+          "qualify_not_duplicate": "Not a duplicate — continue",
+          "fit_clear": "No automated fit warnings on this lead."
+        },
+        "audit": {
+          "badge": "Candidate created",
+          "subtitle": "Intake is complete — continue in the candidate record.",
+          "open_candidate": "Open candidate",
+          "source": "Source",
+          "history": "Intake history & timeline",
+          "created_from": "Created from",
+          "trace_expand": "Trace · timeline, qualification, ingest & tools"
+        },
+        "header": {
+          "routing_unconfirmed_title": "Routing needs confirmation",
+          "routing_unconfirmed_hint": "A vacancy is on the lead, but intake routing is not confirmed yet.",
+          "routing_incomplete_title": "Choose a vacancy",
+          "routing_incomplete_hint": "Pick the right vacancy or send the lead to the pool before creating a candidate.",
+          "duplicate_title": "Duplicate review",
+          "duplicate_hint": "Confirm whether this lead is a duplicate before converting.",
+          "pool_path_title": "Pool path required",
+          "pool_path_hint": "Pool intent is on — pick a vacancy or confirm pool handling.",
+          "info_requested_title": "Information requested",
+          "info_requested_hint": "Waiting on additional details from the candidate or source.",
+          "rejected_title": "Intake rejected",
+          "rejected_hint": "This lead was rejected at intake. Adjust only if policy allows.",
+          "identity_unclear_title": "Identity unclear",
+          "identity_unclear_hint": "Resolve identity / dedupe signals before processing.",
+          "needs_routing_title": "Choose a vacancy",
+          "needs_routing_hint": "Select the vacancy (or pool) this lead belongs to.",
+          "ready_title": "Ready to create candidate",
+          "ready_hint": "Routing looks good — create the candidate when you are satisfied.",
+          "converted_title": "Converted",
+          "converted_hint": "A candidate already exists for this lead.",
+          "services_title": "Service lead",
+          "services_hint": "Use the service order workspace for next steps.",
+          "failed_title": "Failed",
+          "failed_hint": "Ingest or pipeline failed — fix the error, then retry."
+        },
+        "col": {
+          "intake_status": "Intake",
+          "services": "Service",
+          "converted": "Converted",
+          "unsupported": "—",
+          "duplicate_review": "Duplicate review",
+          "failed": "Failed",
+          "rejected": "Rejected",
+          "info_requested": "Info requested",
+          "identity_unclear": "Identity",
+          "pool_path": "Pool path",
+          "routing_unconfirmed": "Confirm route",
+          "routing_incomplete": "Choose vacancy",
+          "needs_routing": "Choose vacancy",
+          "new": "New",
+          "awaiting_convert": "Awaiting convert",
+          "duplicated": "Duplicate",
+          "other": "—"
+        },
+        "qual": {
+          "exp_label": "Experience",
+          "exp_ok": "{years} yrs EU (ok)",
+          "exp_low": "Little / no EU experience",
+          "exp_unknown": "Unknown",
+          "docs_label": "Documents",
+          "docs_yes": "Declared",
+          "docs_no": "None declared",
+          "citizenship_label": "Citizenship / country",
+          "citizenship_ok": "{value}",
+          "citizenship_unknown": "Needs check",
+          "fit_label": "Fit",
+          "fit_reject": "Reject",
+          "fit_needs_info": "Needs info",
+          "fit_unknown": "Not evaluated",
+          "pipeline": "Pipeline"
+        }
       },
       "bulk": {
         "activities": {

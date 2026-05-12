@@ -24,7 +24,7 @@
 - **Security / audit logs** — отдельный контур или чётко помеченный stream (не «кто как залогировал» в произвольных полях).
 - **Audit pipeline** — доставка, retention, доступ (кто читает audit в prod).
 - **Telemetry schema** — версионируемые JSON-схемы или protobuf/OpenTelemetry semantic conventions (выбор — в реализации).
-- **Event taxonomy** — словарь `action`, `entity_type`, `result`; новые значения через review.
+- **Event taxonomy** — словарь `action`, `entity_type`, `result`; новые значения через review. **Процесс и ownership:** [`security-events-governance.md`](./security-events-governance.md).
 - **Anomaly / security events** — нормализованные записи для детекторов (вход тот же канон полей ниже).
 
 Без единой event-модели детекция, расследования инсайдеров и AI-abuse быстро превращаются в хаос.
@@ -104,6 +104,15 @@ Observability для HF трактуется как **часть security archit
 ## Phase 2 — Structured observability
 
 **Цель:** сделать изоляцию и злоупотребления **измеримыми** в рантайме, а не только в статическом анализе.
+
+**Spike (реализовано, узкий scope — не «platform»):**
+
+- **Canonical schema v1** (enforced): `emit_security_event_v1` в `backend/app/security/canonical_emit.py` — поля `schema_version`, `event_id`, `event_type`, `category`, `severity`, `timestamp`, `tenant_id`, `actor_id`, `correlation_id`, `access_kind`, `action`, `entity_type`, `entity_id`, `result`, `source`, `extra`. Transport остаётся только structured log (`hostflow.security.events`); продьюсеры не знают SIEM/queue.
+- **Taxonomy:** `backend/app/security/event_taxonomy.py` — allowlist префиксов (`auth.`, `rls.`, `superadmin.`, …), константы spike-событий, `validate_event_type`.
+- **Redaction:** `backend/app/security/event_redaction.py` — запрещённые/чувствительные ключи, allowlist для `extra`, лимит размера JSON.
+- **Legacy shim:** `emit_security_event` в `backend/app/security/events.py` — маппинг старых `action` на v1 + fallback старый payload для неизвестных строк.
+- **Call sites (canonical):** `get_db_with_tenant` (superadmin elevated + auth impersonation), `get_db_with_meta_leads_effective_tenant` (operational remap), `TenantEnforcingAsyncSession` (RLS deny).
+- **Governance (process):** [`security-events-governance.md`](./security-events-governance.md) — как добавлять `event_type`/prefixes, bump `schema_version`, запрет raw events, rollout без drift; **CI gate** на raw `emit_security_event(` (см. раздел *CI enforcement* там и job `no-raw-emit-security-event` в `security-gates.yml`).
 
 **Направления работ**
 

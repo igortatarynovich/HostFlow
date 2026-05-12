@@ -1,0 +1,12 @@
+# Paths (repo-relative, forward slashes) that MAY contain a *call* or reference
+# matching ``emit_security_event(`` — i.e. the legacy shim and controlled migration.
+#
+# BURN-DOWN: keep this list as small as possible. Add a path ONLY for:
+#   - the legacy shim module, or
+#   - a temporary migration PR (remove in the same series or a follow-up).
+#
+# NOT allowed here: "I'll add my route file until we migrate" without a tracked burn-down.
+#
+# Allowed today:
+#   - Definition + shim lives in events.py (``def emit_security_event`` is ignored by the checker).
+backend/app/security/events.py

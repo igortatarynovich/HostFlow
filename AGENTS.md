@@ -4,7 +4,7 @@ _Живой инженерный канон и стандарты разрабо
 Этот документ определяет структуру, стандарты и правила разработки проекта HostFlow. Он служит источником истины для всех модулей (backend, frontend, инфраструктура, AI-агенты) и регулярно обновляется по мере развития системы.
 
 ## Project Structure & Module Organization
-The FastAPI backend lives in `backend/app` with API routes under `backend/app/api/v1`, SQLAlchemy models in `backend/app/models`, and service helpers in `backend/app/services`. Database migrations are tracked via Alembic: the Alembic configuration file `alembic.ini` is located in the project root, and migration scripts are stored in `backend/alembic/versions`. Reusable scripts for seeding and utilities are in `backend/app/db/seeds`. Automated tests target live endpoints and reside in `backend/tests`. The React client is in `hostflow-frontend/src`, organised by feature modules (for example `src/modules/candidates` and `src/modules/vacancies`). Shared documentation and architecture notes belong in `docs/`, security governance in `docs/security/` (см. `docs/security/README.md`), and incremental tooling lives under `scripts/` and the top-level `Makefile`.
+The FastAPI backend lives in `backend/app` with API routes under `backend/app/api/v1`, SQLAlchemy models in `backend/app/models`, and service helpers in `backend/app/services`. Database migrations are tracked via Alembic: the Alembic configuration file `alembic.ini` is located in the project root, and migration scripts are stored in `backend/alembic/versions`. Reusable scripts for seeding and utilities are in `backend/app/db/seeds`. Automated tests target live endpoints and reside in `backend/tests`. The React client is in `hostflow-frontend/src`, organised by feature modules (for example `src/modules/candidates` and `src/modules/vacancies`). Shared documentation and architecture notes belong in `docs/`, security governance in `docs/security/` (см. `docs/security/README.md`, [`security-events-governance.md`](docs/security/security-events-governance.md)), and incremental tooling lives under `scripts/` and the top-level `Makefile`.
 
 ### Alembic Layout & Safety Checklist
 - **Single source of truth:** запускайте Alembic только из `/opt/HostFlow` (repo root) — здесь лежит `alembic.ini` и сюда смотрит `script_location`.
@@ -40,10 +40,11 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 ### Pull Request Checklist
 - [ ] Обновлены соответствующие файлы в `docs/specs/**` при изменении логики или моделей
 - [ ] Добавлены/обновлены тесты
-- [ ] Проведён `make lint` и `make test`
-- [ ] Проверены миграции Alembic и сиды
-- [ ] Обновлены связанные спеки и README при необходимости
+ - [ ] Проведён `make lint` и `make test`
+ - [ ] Проверены миграции Alembic и сиды
+ - [ ] Обновлены связанные спеки и README при необходимости
 - [ ] Если PR в security perimeter (см. `docs/security/security-review-checklist.md`) — отмечены все пункты чеклиста в описании PR
+- [ ] Если PR трогает `*.md` — пройден `make docs-lint` и контрибьютор-чеклист (`docs/governance/documentation-rules.md` §9)
 
 ---
 
@@ -57,11 +58,35 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 ## Security operating model
 
 - Канон: `docs/security/security-ssot.md` (классификация данных, handoff, superadmin, тесты, KPI, IR).
+- **Security events (canonical):** новые producer-события — только `emit_security_event_v1` и согласованная таксономия; правила drift/process — `docs/security/security-events-governance.md`. Legacy `emit_security_event` — только migration path, не для новых типов событий.
 - **PR template (весь репозиторий):** `.github/pull_request_template.md` — заполняется для каждого PR.
 - **PR gate (чеклист):** для изменений в API, RLS, документах, экспорте, webhooks, публичных ссылках, порталах и handoff — пройти и приложить к описанию PR пункты из `docs/security/security-review-checklist.md`.
-- **CI enforcement:** `.github/workflows/security-gates.yml` (pip-audit, bandit, npm audit + sensitive gate, dependency-review, Trivy, threat-model/docs gate, SQL f-string scan).
+- **CI enforcement:** `.github/workflows/security-gates.yml` (pip-audit, bandit, npm audit + sensitive gate, dependency-review, Trivy, threat-model/docs gate, SQL f-string scan, **raw `emit_security_event(` gate**).
 - **Авто-метки:** `.github/workflows/pull-request-labeler.yml` + `.github/labeler.yml` (метки создать один раз: `docs/security/github-labels.md`).
 - Threat models по поверхностям: `docs/security/threat-models/`.
+
+## Documentation governance
+
+Перед созданием или изменением любого `.md` файла прочитайте `docs/governance/` (три файла, читать все три):
+
+- **`docs/governance/hierarchy-of-truth.md`** — три уровня источников истины (L1 canon / L2 operating canon / L3 implementation context). При конфликте выигрывает более высокий уровень. L1 не может ссылаться на L3 как на «канон».
+- **`docs/governance/documentation-rules.md`** — куда класть новый ADR / workflow / module spec / runbook, что запрещено (`*-draft.md`, `*-final-v2.md`, и т.д.), как архивировать с canon replacement, контрибьютор-checklist (§9).
+- **`docs/governance/ownership.md`** — владельцы канона по слою (security / architecture / module / workflows / operational SSOT). Без явного owner-а новый канонический слой не создаётся.
+
+**Жёсткие правила (выдержка из rules):**
+- Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage из domain map / module catalog).
+- Новый workflow — обязательная запись в `docs/specs/workflows/index.md`.
+- Изменение поведения модуля — обновление `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в одном PR.
+- Запрещено создавать спеки в корне репо (кроме `AGENTS.md`, `README.md` и т.п.) или в `docs/_drafts/**`.
+- Любой архивированный документ должен иметь явный canon replacement в `archive/legacy/YYYY-MM-DD/README.md`.
+- ADR с `Supersedes: ADR-NNN` обязан иметь backref `Status: Superseded by ADR-MMM` в `ADR-NNN`.
+
+**Enforcement:**
+- Локально: `make docs-lint` (или `make docs-lint-strict` без baseline). Запускать перед PR.
+- CI: `.github/workflows/docs-gates.yml → docs-governance-gate` блокирует merge при нарушениях вне `scripts/docs/governance_baseline.txt`.
+- Lint-script: `scripts/docs/check_doc_governance.py`.
+
+**PR-checklist (для PR, который трогает `*.md`):** прочитан hierarchy-of-truth, файл в правильной канонической папке, имя не нарушает §2.1, есть минимум один inbound reference, новый workflow добавлен в `workflows/index.md`, новый ADR — в module-catalog/domain-map, `make docs-lint` зелёный.
 
 ## Notes for AI Agents (Codex/ChatGPT)
 
@@ -83,8 +108,11 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 
 
 ## Living Spec Integration
-HostFlow использует живую спецификацию в `docs/specs/`. Перед изменением логики, структуры моделей или API необходимо:
-1. Проверить и при необходимости обновить соответствующие файлы (`core.md`, `modules/*.md`).
-2. Согласовать изменения с ответственными разработчиками или агентом Codex.
-3. После обновления спецификации — сгенерировать/обновить код и тесты.
-4. Поддерживать согласованность кода и документации на всех этапах.
+HostFlow использует живую спецификацию в `docs/specs/` + canonical baseline (см. `docs/governance/hierarchy-of-truth.md`). Перед изменением логики, структуры моделей или API необходимо:
+1. Определить уровень изменения по `hierarchy-of-truth.md` (L1: ADR / domain map / security canon; L2: module-scope / workflows / specs/architecture; L3: notes / research / runbooks).
+2. Обновить документ соответствующего слоя:
+   - L1: open ADR (см. `docs/governance/documentation-rules.md` §3) — без ADR изменения архитектуры запрещены.
+   - L2: обновить `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в том же PR; новый workflow — добавить в `docs/specs/workflows/index.md`.
+   - L3: обновить implementation-note и убедиться, что ссылка на L3 не используется как «источник истины».
+3. После обновления — сгенерировать/обновить код и тесты, прогнать `make docs-lint` и `make test`.
+4. При архивации устаревшего документа — `git mv` в `archive/legacy/YYYY-MM-DD/` + явный canon replacement в `archive/legacy/YYYY-MM-DD/README.md` (см. `documentation-rules.md` §6).

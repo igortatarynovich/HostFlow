@@ -970,6 +970,33 @@ export async function createLeadServiceOrder(leadId: string) {
   return data;
 }
 
+export type LeadIntakeDecision =
+  | 'qualify'
+  | 'reject'
+  | 'pool'
+  | 'request_info'
+  | 'duplicate_review';
+
+/** Intake Resolution MVP §1 — recruiter commits vacancy before Process (meta / csv_import). */
+export async function confirmLeadVacancy(leadId: string, payload: { vacancy_id: string }) {
+  const { data } = await api.post<Lead>(`/leads/${leadId}/confirm-vacancy`, payload);
+  return data;
+}
+
+/** Intake Resolution MVP §2 — qualify / reject / pool / request_info / duplicate_review (not candidate stage). */
+export async function submitLeadIntakeDecision(
+  leadId: string,
+  payload: {
+    decision: LeadIntakeDecision;
+    reason_code?: string | null;
+    note?: string | null;
+    funnel_id?: string | null;
+  },
+) {
+  const { data } = await api.post<Lead>(`/leads/${leadId}/intake-decision`, payload);
+  return data;
+}
+
 export async function processLead(leadId: string) {
   const { data } = await api.post(`/leads/${leadId}/process`);
   return data;

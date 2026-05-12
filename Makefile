@@ -48,6 +48,9 @@ help:
 	@echo "  make codegen-crm-app-paths - regenerate TS/Python from shared/crm_app_paths.json"
 	@echo "  make check-codegen-crm-paths - fail if generated files drift from manifest"
 	@echo "  make paths-qa - codegen + SPA literals + frontend route static checks (needs npm in hostflow-frontend)"
+	@echo "  make docs-lint - documentation governance lint (forbidden filenames, broken md links, archive contract, ADR superseded chain, workflow linkage)"
+	@echo "  make docs-lint-strict - same as docs-lint but ignores baseline (zero tolerance)"
+	@echo "  make docs-lint-baseline - rewrite scripts/docs/governance_baseline.txt with current violations (use sparingly)"
 	@echo ""
 
 # ---- Tests (need: make install, DB reachable) ----
@@ -136,6 +139,19 @@ check-codegen-crm-paths:
 .PHONY: paths-qa
 paths-qa:
 	npm run paths:qa
+
+# ---- Docs governance ----
+.PHONY: docs-lint
+docs-lint:
+	python3 scripts/docs/check_doc_governance.py
+
+.PHONY: docs-lint-strict
+docs-lint-strict:
+	python3 scripts/docs/check_doc_governance.py --strict --check-orphans
+
+.PHONY: docs-lint-baseline
+docs-lint-baseline:
+	python3 scripts/docs/check_doc_governance.py --init-baseline
 
 # ---- Utils ----
 .PHONY: env-print

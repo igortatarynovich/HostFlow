@@ -90,6 +90,7 @@ import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import CandidateHeader from '../components/candidate/CandidateHeader'
+import CandidateApplicationsSection from '../components/candidate/CandidateApplicationsSection'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
 import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
 import { CandidateWorkforceTerminationSection } from '../components/candidate/CandidateWorkforceTerminationSection'
@@ -4027,6 +4028,14 @@ export default function CandidateCard(){
                       </div>
                     </section>
                   )}
+
+                  {!isNew && model?.id && !isMasked ? (
+                    <CandidateApplicationsSection
+                      candidateId={String(model.id)}
+                      locale={locale}
+                      legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                    />
+                  ) : null}
 
             </div>
 

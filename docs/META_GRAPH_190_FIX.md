@@ -136,7 +136,7 @@ docker compose exec backend python backend/scripts/check_meta_tokens.py \
 
 ## Дополнительная информация
 
-- [Документация Meta Leads Setup](../specs/integrations/meta_leads_setup.md)
+- [Документация Meta Leads Setup](specs/integrations/meta_leads_setup.md)
 - [Graph API Explorer](https://developers.facebook.com/tools/explorer/)
 - [Facebook Business Manager](https://business.facebook.com/)
 

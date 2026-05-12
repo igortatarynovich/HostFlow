@@ -226,7 +226,7 @@ Tenant → Company → Recruitment → Document Hub → HR
 | [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) | Document Hub как общий слой |
 | [documents_workflow_contract.md](../modules/documents_workflow_contract.md) | Поля workflow документов (шаги, статусы) |
 | [glossary.md](../glossary.md) | Термины |
-| [candidate_pipeline.md](candidate_pipeline.md) | Пайплайн кандидата |
+| [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) + [ADR-002](../architecture/ADR-002-modular-recruitment-hr-boundary.md) | Канон пайплайна кандидата (бывший `candidate_pipeline.md` архивирован 2026-05-12) |
 
 ---
 

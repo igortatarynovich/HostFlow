@@ -14,7 +14,7 @@
 - Границы tenant/company — [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md).  
 - Три уровня настроек — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md) (пресеты форм per company / per module — по мере внедрения).  
 - Слои платформы и монетизация baseline vs paid — [`ADR-006`](ADR-006-marketplace-and-integration-platform.md).  
-- Детали текущего public intake / lead types — [`../lead-types.md`](../lead-types.md), [`../SSOT.md`](../SSOT.md).
+- Детали текущего public intake / lead types — [`../lead-types.md`](../lead-types.md), [`../../SSOT.md`](../../SSOT.md).
 
 ## Decision: Forms = отдельная платформенная capability
 

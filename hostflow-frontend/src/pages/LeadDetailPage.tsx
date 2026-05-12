@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
   completeActivity,
+  confirmLeadVacancy,
   createActivity,
   deleteLead,
   getLead,
@@ -10,15 +11,22 @@ import {
   getOnboardingStatus,
   listReminders,
   processLead,
+  submitLeadIntakeDecision,
   updateLeadStage,
 } from '../api/client'
 import type { Lead, LeadStage, LeadStatus } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
 import LeadMetaProblemPanel from '../components/leads/LeadMetaProblemPanel'
 import LeadQualificationSuggestionPanel from '../components/leads/LeadQualificationSuggestionPanel'
+import LeadQualificationSummaryCard from '../components/leads/LeadQualificationSummaryCard'
 import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
 import { NextActionBadge } from '../components/candidate/NextActionBadge'
 import { useLeadNextAction } from '../components/lead/useLeadNextAction'
+import LeadIntakeWorkspaceStickyHeader from '../components/leads/LeadIntakeWorkspaceStickyHeader'
+import {
+  RecruitmentAgencyAuditDetailView,
+  RecruitmentAgencyIntakeDetailView,
+} from './LeadDetailRecruitmentAgencyViews'
 import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -26,7 +34,15 @@ import { useToast } from '../components/Toast'
 import { useI18n } from '../i18n'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import LeadIntakeResolutionPanel from '../components/leads/LeadIntakeResolutionPanel'
+import {
+  leadIntakeWorkspaceBlocking,
+  manualProcessBlockHint,
+  manualProcessBlockedUserMessage,
+  parseProcessBlockedCodeFromAxios,
+} from '../utils/intakeResolution'
 import { CRM_STAGE_VALUES, leadAssignmentLocked, leadSupportsManualProcess } from '../utils/leadCrm'
+import { intakeStickyVacancySummary, leadIntakeColumnStatusKey } from '../utils/leadIntakeWorkspace'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useAuth } from '../store/auth'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
@@ -169,19 +185,21 @@ export default function LeadDetailPage() {
   const [lostStagePrompt, setLostStagePrompt] = useState<{ previousStage: string | null } | null>(null)
   const [deletingLead, setDeletingLead] = useState(false)
   const [quickRemindBusy, setQuickRemindBusy] = useState(false)
+  const [routingConfirming, setRoutingConfirming] = useState(false)
+  const [poolBusyDetail, setPoolBusyDetail] = useState(false)
 
   // G-8 stage 2.0: refresh tick the page bumps after a stage / process /
   // assignment mutation so the per-lead next-action badge re-resolves
   // without holding a `refetch` reference. Keeps the hook surface read-only.
   const [nextActionTick, setNextActionTick] = useState(0)
   const bumpNextActionTick = useCallback(() => setNextActionTick((n) => n + 1), [])
+  const isServicesTenant = onboardingBusinessType === 'services'
+
   const {
     data: leadNextAction,
     loading: leadNextActionLoading,
     error: leadNextActionError,
-  } = useLeadNextAction(leadId ?? null, nextActionTick)
-
-  const isServicesTenant = onboardingBusinessType === 'services'
+  } = useLeadNextAction(isServicesTenant ? (leadId ?? null) : null, nextActionTick)
   const canDeleteLead = Boolean(me?.role && me.role !== 'viewer')
 
   useEffect(() => {
@@ -404,6 +422,7 @@ export default function LeadDetailPage() {
         duplicated: t('app.leads.statuses.duplicated'),
         needs_routing: t('app.leads.statuses.needs_routing'),
         failed: t('app.leads.statuses.failed'),
+        duplicate_review: t('app.leads.statuses.duplicate_review'),
       }) satisfies Record<LeadStatus, string>,
     [t],
   )
@@ -431,7 +450,43 @@ export default function LeadDetailPage() {
   const contactPhone = (normalized as Record<string, unknown>).phone
   const contactLine = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ') || '—'
 
+  const leadDisplayName = useMemo(() => {
+    const fn = (normalized as Record<string, unknown>).full_name
+    if (typeof fn === 'string' && fn.trim()) return fn.trim()
+    const first = typeof (normalized as Record<string, unknown>).first_name === 'string' ? (normalized as Record<string, unknown>).first_name : ''
+    const last = typeof (normalized as Record<string, unknown>).last_name === 'string' ? (normalized as Record<string, unknown>).last_name : ''
+    const composed = `${first} ${last}`.trim()
+    if (composed) return composed
+    const em = typeof (normalized as Record<string, unknown>).email === 'string' ? (normalized as Record<string, unknown>).email.trim() : ''
+    if (em) return em
+    const ph = typeof (normalized as Record<string, unknown>).phone === 'string' ? (normalized as Record<string, unknown>).phone.trim() : ''
+    if (ph) return ph
+    return t('app.leads.detail.title')
+  }, [normalized, t])
+
   const canManualProcessLead = leadSupportsManualProcess(lead)
+  const processBlockCode = lead ? manualProcessBlockHint(lead) : null
+  const intakeWorkspaceBlocking = useMemo(
+    () => Boolean(lead && leadIntakeWorkspaceBlocking(lead, isServicesTenant)),
+    [isServicesTenant, lead],
+  )
+
+  const recruitmentLeadConverted = Boolean(lead && !isServicesTenant && lead.candidate_id)
+
+  const intakeNote = useMemo(() => {
+    if (!lead?.normalized || typeof lead.normalized !== 'object' || Array.isArray(lead.normalized)) return null
+    const ir = (lead.normalized as Record<string, unknown>).intake_resolution_v1
+    if (!ir || typeof ir !== 'object' || Array.isArray(ir)) return null
+    const note = String((ir as { note?: unknown }).note ?? '').trim()
+    return note || null
+  }, [lead?.normalized])
+
+  const intakeStatusLabel = useMemo(() => {
+    if (!lead || isServicesTenant) return ''
+    const k = leadIntakeColumnStatusKey(lead, false)
+    const tr = t(k)
+    return tr === k ? String(lead.status) : tr
+  }, [isServicesTenant, lead, t])
 
   const customFieldsEntries = useMemo(() => {
     const raw = lead?.custom_fields
@@ -439,11 +494,12 @@ export default function LeadDetailPage() {
     return Object.entries(raw as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
   }, [lead?.custom_fields])
 
-  const handleProcess = useCallback(async () => {
-    if (!lead?.id) return
+  const runProcessLead = useCallback(async (explicitId?: string) => {
+    const id = explicitId ?? lead?.id
+    if (!id) return
     setProcessing(true)
     try {
-      const result = await processLead(lead.id)
+      const result = await processLead(id)
       await loadLead({ silent: true })
       void loadTimeline()
       bumpNextActionTick()
@@ -476,6 +532,14 @@ export default function LeadDetailPage() {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.messages.process_failed'))) {
         return
       }
+      const blocked = parseProcessBlockedCodeFromAxios(err)
+      if (blocked) {
+        notify({
+          title: manualProcessBlockedUserMessage(t, blocked),
+          variant: 'warning',
+        })
+        return
+      }
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
         (err as Error)?.message ??
@@ -485,6 +549,63 @@ export default function LeadDetailPage() {
       setProcessing(false)
     }
   }, [lead?.id, loadLead, loadTimeline, notify, planLimitModal, t, bumpNextActionTick])
+
+  const handleProcess = useCallback(() => void runProcessLead(), [runProcessLead])
+
+  const handleConfirmLeadRoutingDetail = useCallback(
+    async (vacancyId: string, thenProcess: boolean) => {
+      if (!lead?.id) return
+      setRoutingConfirming(true)
+      try {
+        const updated = await confirmLeadVacancy(lead.id, { vacancy_id: vacancyId })
+        setLead(updated)
+        bumpNextActionTick()
+        void loadTimeline()
+        notify({ title: t('app.leads.detail.intake_resolution.confirm_success'), variant: 'success' })
+        if (thenProcess) {
+          await runProcessLead(updated.id)
+        }
+      } catch (err: unknown) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.intake_resolution.confirm_failed'))) {
+          return
+        }
+        const detail =
+          (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+          (err as Error)?.message ??
+          t('app.leads.detail.intake_resolution.confirm_failed')
+        notify({
+          title: typeof detail === 'string' ? detail : JSON.stringify(detail),
+          variant: 'error',
+        })
+      } finally {
+        setRoutingConfirming(false)
+      }
+    },
+    [bumpNextActionTick, lead?.id, loadTimeline, notify, planLimitModal, runProcessLead, t],
+  )
+
+  const handlePoolDetail = useCallback(async () => {
+    if (!lead?.id) return
+    setPoolBusyDetail(true)
+    try {
+      const updated = await submitLeadIntakeDecision(lead.id, { decision: 'pool' })
+      setLead(updated)
+      bumpNextActionTick()
+      void loadTimeline()
+      notify({ title: t('app.leads.detail.intake_resolution.intake_actions.success'), variant: 'success' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.intake_resolution.intake_actions.failed'))) {
+        return
+      }
+      const detail =
+        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.leads.detail.intake_resolution.intake_actions.failed')
+      notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
+    } finally {
+      setPoolBusyDetail(false)
+    }
+  }, [bumpNextActionTick, lead?.id, loadTimeline, notify, planLimitModal, t])
 
   const handleDetailStageChange = useCallback(
     async (nextRaw: string) => {
@@ -632,14 +753,21 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
-      <div className="mb-6">
-        <Link to={CRM_APP_PATHS.leads} className="text-sm font-medium text-brand-700 hover:underline">
-          ← {t('app.leads.detail.back_to_list')}
+    <div className="w-full min-h-full bg-gradient-to-b from-slate-50 via-white to-brand-50/25">
+      <div
+        className={`mx-auto space-y-6 px-4 py-6 sm:px-6 sm:py-8 ${!isServicesTenant ? 'max-w-7xl' : 'max-w-4xl'}`}
+      >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link
+          to={CRM_APP_PATHS.leads}
+          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
+        >
+          <span aria-hidden>←</span>
+          {t('app.leads.detail.back_to_list')}
         </Link>
       </div>
 
-      <PageBreadcrumb className="mb-4 max-w-4xl" />
+      <PageBreadcrumb className="max-w-4xl" />
 
       {loading && <p className="text-slate-600">{t('common.loading')}</p>}
 
@@ -657,7 +785,7 @@ export default function LeadDetailPage() {
       )}
 
       {!loading && notFound && (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="card p-6 shadow-md shadow-slate-900/[0.04]">
           <h1 className="text-lg font-semibold text-slate-900">{t('app.leads.detail.not_found')}</h1>
           <p className="mt-2 text-sm text-slate-600">{t('app.leads.detail.not_found_hint')}</p>
         </div>
@@ -665,34 +793,61 @@ export default function LeadDetailPage() {
 
       {!loading && !notFound && lead && (
         <>
-          <header className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold text-slate-900">{t('app.leads.detail.title')}</h1>
-                <NextActionBadge
-                  dto={leadNextAction}
-                  loading={leadNextActionLoading}
-                  error={leadNextActionError}
-                  inverse={false}
-                />
+          {isServicesTenant ? (
+          <>
+          <header className="card relative overflow-hidden p-5 shadow-md shadow-slate-900/[0.04] sm:p-6">
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600/90"
+              aria-hidden
+            />
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{leadDisplayName}</h1>
+                <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">
+                  {[lead.company_name, lead.vacancy_title].filter(Boolean).join(' · ') || '—'}
+                </p>
               </div>
-              <p className="mt-1 font-mono text-xs text-slate-500">{lead.id}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  {statusLabels[lead.status] ?? lead.status}
+                </span>
+                {!recruitmentLeadConverted ? (
+                  <NextActionBadge
+                    dto={leadNextAction}
+                    loading={leadNextActionLoading}
+                    error={leadNextActionError}
+                    inverse={false}
+                  />
+                ) : null}
+              </div>
+              <p className="font-mono text-[11px] leading-relaxed text-slate-400 break-all sm:max-w-xl">
+                ID · {lead.id}
+              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-100 pt-4 sm:border-t-0 sm:border-l sm:pl-5 sm:pt-0">
               {canManualProcessLead && !isServicesTenant && !lead.candidate_id ? (
-                <button type="button" className="btn-secondary rounded-lg px-3 py-1.5 text-sm" disabled={processing} onClick={() => void handleProcess()}>
+                <button
+                  type="button"
+                  className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
+                  disabled={processing || Boolean(processBlockCode)}
+                  title={processBlockCode ? manualProcessBlockedUserMessage(t, processBlockCode) : undefined}
+                  onClick={() => void handleProcess()}
+                >
                   {processing ? t('common.loading') : t('app.leads.actions.process')}
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
-                disabled={quickRemindBusy || patching || processing || deletingLead}
-                onClick={() => void handleQuickRemindClient()}
-                title={t('app.leads.detail.remind_client.hint')}
-              >
-                {quickRemindBusy ? t('app.leads.detail.remind_client.busy') : t('app.leads.detail.remind_client.cta')}
-              </button>
+              {!intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
+                <button
+                  type="button"
+                  className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
+                  disabled={quickRemindBusy || patching || processing || deletingLead}
+                  onClick={() => void handleQuickRemindClient()}
+                  title={t('app.leads.detail.remind_client.hint')}
+                >
+                  {quickRemindBusy ? t('app.leads.detail.remind_client.busy') : t('app.leads.detail.remind_client.cta')}
+                </button>
+              ) : null}
               {!isServicesTenant && lead.candidate_id ? (
                 <Link
                   to={`${CRM_APP_PATHS.candidates}/${lead.candidate_id}`}
@@ -728,78 +883,211 @@ export default function LeadDetailPage() {
                 </button>
               ) : null}
             </div>
+            </div>
           </header>
 
-          <LeadQualificationSuggestionPanel
-            lead={lead}
-            isServicesTenant={isServicesTenant}
-            onProcess={() => void handleProcess()}
-            processing={processing}
-            hideProcessButton
-            className="mb-6"
-          />
+          {recruitmentLeadConverted ? (
+            <div className="card border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm sm:p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                {t('app.leads.intake_workspace.audit.badge')}
+              </p>
+              <p className="mt-1 text-sm text-slate-700">{t('app.leads.intake_workspace.audit.subtitle')}</p>
+              <Link
+                to={`${CRM_APP_PATHS.candidates}/${lead.candidate_id}`}
+                className="btn-primary mt-3 inline-flex rounded-xl px-4 py-2 text-sm font-semibold"
+              >
+                {t('app.leads.intake_workspace.audit.open_candidate')}
+              </Link>
+            </div>
+          ) : null}
 
-          <LeadNextActionPlaybook lead={lead} formatDueAt={(iso) => formatDateValue(iso, locale)} className="mb-6" />
+          {intakeWorkspaceBlocking ? (
+            <>
+              <LeadIntakeResolutionPanel
+                lead={lead}
+                isServicesTenant={isServicesTenant}
+                onLeadUpdated={(l) => {
+                  setLead(l)
+                  bumpNextActionTick()
+                  void loadTimeline()
+                }}
+                onRequestProcess={() => void handleProcess()}
+              />
+              <LeadQualificationSummaryCard
+                lead={lead}
+                isServicesTenant={isServicesTenant}
+                formatAt={(iso) => formatDateValue(iso, locale)}
+                className="!border-0 bg-slate-50/60 shadow-none ring-1 ring-slate-900/[0.05]"
+              />
+            </>
+          ) : (
+            <>
+              <LeadQualificationSummaryCard
+                lead={lead}
+                isServicesTenant={isServicesTenant}
+                formatAt={(iso) => formatDateValue(iso, locale)}
+              />
+              <LeadQualificationSuggestionPanel
+                lead={lead}
+                isServicesTenant={isServicesTenant}
+                onProcess={() => void handleProcess()}
+                processing={processing}
+                hideProcessButton
+              />
+              <LeadIntakeResolutionPanel
+                lead={lead}
+                isServicesTenant={isServicesTenant}
+                onLeadUpdated={(l) => {
+                  setLead(l)
+                  bumpNextActionTick()
+                  void loadTimeline()
+                }}
+                onRequestProcess={() => void handleProcess()}
+              />
+            </>
+          )}
+
+          {!intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
+            <LeadNextActionPlaybook lead={lead} formatDueAt={(iso) => formatDateValue(iso, locale)} />
+          ) : null}
 
           <LeadMetaProblemPanel lead={lead} onRefreshed={refreshLeadAndTimeline} />
 
-          <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
-                <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
-                <select
-                  className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
-                  value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
-                  disabled={patching}
-                  onChange={(e) => void handleDetailStageSelect(e.target.value)}
-                >
-                  <option value="">{t('app.leads.inbox.stage_unset')}</option>
-                  {CRM_STAGE_VALUES.map((v) => (
-                    <option key={v} value={v}>
-                      {stageLabels[v] ?? v}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  className="rounded border-slate-300"
-                  checked={leadAssignmentLocked(lead)}
-                  disabled={patching}
-                  onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
-                />
-                <span>{t('app.leads.inbox.lock_assignment')}</span>
-              </label>
+          {recruitmentLeadConverted ? (
+            <details className="card overflow-hidden p-0 shadow-md shadow-slate-900/[0.03]">
+              <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 marker:content-none hover:bg-slate-50/80 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
+                {t('app.leads.intake_workspace.section.more')}
+              </summary>
+              <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
+                    <select
+                      className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
+                      value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
+                      disabled={patching}
+                      onChange={(e) => void handleDetailStageSelect(e.target.value)}
+                    >
+                      <option value="">{t('app.leads.inbox.stage_unset')}</option>
+                      {CRM_STAGE_VALUES.map((v) => (
+                        <option key={v} value={v}>
+                          {stageLabels[v] ?? v}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300"
+                      checked={leadAssignmentLocked(lead)}
+                      disabled={patching}
+                      onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
+                    />
+                    <span>{t('app.leads.inbox.lock_assignment')}</span>
+                  </label>
+                </div>
+                <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
+              </div>
+            </details>
+          ) : intakeWorkspaceBlocking ? (
+            <details className="card overflow-hidden p-0 shadow-md shadow-slate-900/[0.03]">
+              <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 marker:content-none hover:bg-slate-50/80 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
+                {t('app.leads.routing.expand_crm_tools')}
+              </summary>
+              <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                    <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
+                    <select
+                      className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
+                      value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
+                      disabled={patching}
+                      onChange={(e) => void handleDetailStageSelect(e.target.value)}
+                    >
+                      <option value="">{t('app.leads.inbox.stage_unset')}</option>
+                      {CRM_STAGE_VALUES.map((v) => (
+                        <option key={v} value={v}>
+                          {stageLabels[v] ?? v}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300"
+                      checked={leadAssignmentLocked(lead)}
+                      disabled={patching}
+                      onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
+                    />
+                    <span>{t('app.leads.inbox.lock_assignment')}</span>
+                  </label>
+                </div>
+                <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
+              </div>
+            </details>
+          ) : (
+            <div className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                  <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
+                  <select
+                    className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
+                    value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
+                    disabled={patching}
+                    onChange={(e) => void handleDetailStageSelect(e.target.value)}
+                  >
+                    <option value="">{t('app.leads.inbox.stage_unset')}</option>
+                    {CRM_STAGE_VALUES.map((v) => (
+                      <option key={v} value={v}>
+                        {stageLabels[v] ?? v}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300"
+                    checked={leadAssignmentLocked(lead)}
+                    disabled={patching}
+                    onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
+                  />
+                  <span>{t('app.leads.inbox.lock_assignment')}</span>
+                </label>
+              </div>
+              <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
             </div>
-            <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
-          </div>
+          )}
 
-          <dl className="mb-8 grid gap-4 sm:grid-cols-2">
+          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6" aria-labelledby="lead-detail-fields-heading">
+            <h2 id="lead-detail-fields-heading" className="mb-4 text-sm font-semibold text-slate-900">
+              {t('app.leads.detail.details_heading')}
+            </h2>
+          <dl className="grid gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.created')}</dt>
               <dd className="mt-0.5 text-sm text-slate-900">{formatDateValue(lead.created_at, locale)}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.status')}</dt>
-              <dd className="mt-0.5">
-                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                  {statusLabels[lead.status] ?? lead.status}
-                </span>
-              </dd>
+              <dd className="mt-0.5 text-sm text-slate-900">{statusLabels[lead.status] ?? lead.status}</dd>
             </div>
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.stage')}</dt>
-              <dd className="mt-0.5 text-sm text-slate-900">
-                {lead.stage ? (
-                  <span className="inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-800">
-                    {stageLabels[lead.stage] ?? lead.stage}
-                  </span>
-                ) : (
-                  '—'
-                )}
-              </dd>
-            </div>
+            {!intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.stage')}</dt>
+                <dd className="mt-0.5 text-sm text-slate-900">
+                  {lead.stage ? (
+                    <span className="inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-800">
+                      {stageLabels[lead.stage] ?? lead.stage}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{companyLabel}</dt>
               <dd className="mt-0.5 text-sm text-slate-900">{lead.company_name || lead.company_id || '—'}</dd>
@@ -827,74 +1115,146 @@ export default function LeadDetailPage() {
               </div>
             ) : null}
           </dl>
-
-          <section className="mb-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
-            <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
-            <dl className="mb-4 grid gap-3 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>
-                <dd className="mt-0.5 text-sm text-slate-900">{lead.source || '—'}</dd>
-              </div>
-              {lead.ad_id != null ? (
-                <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.detail.ad_id')}</dt>
-                  <dd className="mt-0.5 font-mono text-sm text-slate-900">{String(lead.ad_id)}</dd>
-                </div>
-              ) : null}
-            </dl>
-            <div className="mb-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                {t('app.leads.detail.mapped_custom_fields')}
-              </h3>
-              {customFieldsEntries.length === 0 ? (
-                <p className="text-sm text-slate-500">{t('app.leads.detail.mapped_custom_fields_empty')}</p>
-              ) : (
-                <div className="overflow-x-auto rounded-md border border-slate-200">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs font-medium uppercase text-slate-600">
-                      <tr>
-                        <th className="px-3 py-2">{t('app.leads.detail.field_key')}</th>
-                        <th className="px-3 py-2">{t('app.leads.detail.field_value')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {customFieldsEntries.map(([k, v]) => (
-                        <tr key={k} className="border-t border-slate-100">
-                          <td className="px-3 py-2 font-mono text-xs text-slate-800">{k}</td>
-                          <td className="max-w-md whitespace-pre-wrap break-words px-3 py-2 text-slate-700">{formatCustomFieldCell(v)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
-                <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
-                  {t('app.leads.detail.normalized_json')}
-                </summary>
-                <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
-                  {jsonPreview(normalized)}
-                </pre>
-              </details>
-              <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
-                <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
-                  {t('app.leads.detail.raw_payload')}
-                </summary>
-                <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
-                  {jsonPreview(lead.payload)}
-                </pre>
-              </details>
-            </div>
           </section>
 
-          <section className="mb-10">
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+            {recruitmentLeadConverted ? (
+              <details>
+                <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                  {t('app.leads.detail.source_ingest_title')}
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>
+                      <dd className="mt-0.5 text-sm text-slate-900">{lead.source || '—'}</dd>
+                    </div>
+                    {lead.ad_id != null ? (
+                      <div>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.detail.ad_id')}</dt>
+                        <dd className="mt-0.5 font-mono text-sm text-slate-900">{String(lead.ad_id)}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      {t('app.leads.detail.mapped_custom_fields')}
+                    </h3>
+                    {customFieldsEntries.length === 0 ? (
+                      <p className="text-sm text-slate-500">{t('app.leads.detail.mapped_custom_fields_empty')}</p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-md border border-slate-200">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="bg-slate-50 text-xs font-medium uppercase text-slate-600">
+                            <tr>
+                              <th className="px-3 py-2">{t('app.leads.detail.field_key')}</th>
+                              <th className="px-3 py-2">{t('app.leads.detail.field_value')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {customFieldsEntries.map(([k, v]) => (
+                              <tr key={k} className="border-t border-slate-100">
+                                <td className="px-3 py-2 font-mono text-xs text-slate-800">{k}</td>
+                                <td className="max-w-md whitespace-pre-wrap break-words px-3 py-2 text-slate-700">{formatCustomFieldCell(v)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                        {t('app.leads.detail.normalized_json')}
+                      </summary>
+                      <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                        {jsonPreview(normalized)}
+                      </pre>
+                    </details>
+                    <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                        {t('app.leads.detail.raw_payload')}
+                      </summary>
+                      <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                        {jsonPreview(lead.payload)}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
+              </details>
+            ) : (
+              <>
+                <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
+                <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
+                <dl className="mb-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>
+                    <dd className="mt-0.5 text-sm text-slate-900">{lead.source || '—'}</dd>
+                  </div>
+                  {lead.ad_id != null ? (
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.detail.ad_id')}</dt>
+                      <dd className="mt-0.5 font-mono text-sm text-slate-900">{String(lead.ad_id)}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+                <div className="mb-4">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    {t('app.leads.detail.mapped_custom_fields')}
+                  </h3>
+                  {customFieldsEntries.length === 0 ? (
+                    <p className="text-sm text-slate-500">{t('app.leads.detail.mapped_custom_fields_empty')}</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-md border border-slate-200">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="bg-slate-50 text-xs font-medium uppercase text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2">{t('app.leads.detail.field_key')}</th>
+                            <th className="px-3 py-2">{t('app.leads.detail.field_value')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {customFieldsEntries.map(([k, v]) => (
+                            <tr key={k} className="border-t border-slate-100">
+                              <td className="px-3 py-2 font-mono text-xs text-slate-800">{k}</td>
+                              <td className="max-w-md whitespace-pre-wrap break-words px-3 py-2 text-slate-700">{formatCustomFieldCell(v)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                      {t('app.leads.detail.normalized_json')}
+                    </summary>
+                    <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                      {jsonPreview(normalized)}
+                    </pre>
+                  </details>
+                  <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                      {t('app.leads.detail.raw_payload')}
+                    </summary>
+                    <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                      {jsonPreview(lead.payload)}
+                    </pre>
+                  </details>
+                </div>
+              </>
+            )}
+          </section>
+
+          {!intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
+          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+            <h2 className="mb-4 text-sm font-semibold text-slate-900">
               {t('app.leads.detail.followup_title')}
             </h2>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="rounded-xl border border-slate-100 bg-gradient-to-br from-brand-50/40 to-slate-50/80 p-4 ring-1 ring-slate-900/[0.04]">
               <div className="space-y-3">
                 <input
                   className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
@@ -972,9 +1332,11 @@ export default function LeadDetailPage() {
               )}
             </div>
           </section>
+          ) : null}
 
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.timeline')}</h2>
+          {isServicesTenant && !intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
+          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+            <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.timeline')}</h2>
             {timelineLoading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
             {timelineError && <p className="text-sm text-red-600">{timelineError}</p>}
             {!timelineLoading && !timelineError && timelineItems.length === 0 && (
@@ -997,6 +1359,317 @@ export default function LeadDetailPage() {
               </ul>
             )}
           </section>
+          ) : null}
+
+          </>
+          ) : recruitmentLeadConverted ? (
+            <>
+              <LeadIntakeWorkspaceStickyHeader
+                variant="audit"
+                displayName={leadDisplayName}
+                source={lead.source}
+                vacancySummary={intakeStickyVacancySummary(lead, t)}
+                statusLabel={t('app.leads.intake_workspace.audit.badge')}
+                createdLabel={formatDateValue(lead.created_at, locale)}
+              />
+              <RecruitmentAgencyAuditDetailView
+                lead={lead}
+                leadDisplayName={leadDisplayName}
+                normalized={normalized as Record<string, unknown>}
+                companyLabel={companyLabel}
+                vacancyLabel={vacancyLabel}
+                formatDateValue={(iso) => formatDateValue(iso, locale)}
+                locale={locale}
+                t={t}
+                timelineItems={timelineItems}
+                timelineLoading={timelineLoading}
+                timelineError={timelineError}
+                auditDiagnostics={
+                  <>
+                    <LeadMetaProblemPanel lead={lead} onRefreshed={refreshLeadAndTimeline} />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                      <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                        <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
+                        <select
+                          className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
+                          value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
+                          disabled={patching}
+                          onChange={(e) => void handleDetailStageSelect(e.target.value)}
+                        >
+                          <option value="">{t('app.leads.inbox.stage_unset')}</option>
+                          {CRM_STAGE_VALUES.map((v) => (
+                            <option key={v} value={v}>
+                              {stageLabels[v] ?? v}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300"
+                          checked={leadAssignmentLocked(lead)}
+                          disabled={patching}
+                          onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
+                        />
+                        <span>{t('app.leads.inbox.lock_assignment')}</span>
+                      </label>
+                    </div>
+                    <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
+                    <section aria-labelledby="lead-rec-audit-ingest">
+                      <h2 id="lead-rec-audit-ingest" className="mb-3 text-sm font-semibold text-slate-900">
+                        {t('app.leads.detail.source_ingest_title')}
+                      </h2>
+                      <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
+                      <dl className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>
+                          <dd className="mt-0.5 text-sm text-slate-900">{lead.source || '—'}</dd>
+                        </div>
+                        {lead.ad_id != null ? (
+                          <div>
+                            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.detail.ad_id')}</dt>
+                            <dd className="mt-0.5 font-mono text-sm text-slate-900">{String(lead.ad_id)}</dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </section>
+                    {canDeleteLead ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
+                        disabled={deletingLead || patching || processing}
+                        onClick={() => void handleDeleteLead()}
+                      >
+                        {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
+                      </button>
+                    ) : null}
+                  </>
+                }
+              />
+            </>
+          ) : (
+            <>
+              <LeadIntakeWorkspaceStickyHeader
+                variant="intake"
+                displayName={leadDisplayName}
+                source={lead.source}
+                vacancySummary={intakeStickyVacancySummary(lead, t)}
+                statusLabel={intakeStatusLabel}
+                createdLabel={formatDateValue(lead.created_at, locale)}
+              />
+              <RecruitmentAgencyIntakeDetailView
+                lead={lead}
+                leadDisplayName={leadDisplayName}
+                normalized={normalized as Record<string, unknown>}
+                companyLabel={companyLabel}
+                vacancyLabel={vacancyLabel}
+                intakeNote={intakeNote}
+                formatDateValue={(iso) => formatDateValue(iso, locale)}
+                locale={locale}
+                t={t}
+                processing={processing}
+                routingConfirming={routingConfirming}
+                poolBusy={poolBusyDetail}
+                onLeadUpdated={(l) => {
+                  setLead(l)
+                  bumpNextActionTick()
+                  void loadTimeline()
+                }}
+                onRequestProcess={() => void handleProcess()}
+                onConfirmRouting={(vacancyId, thenProcess) => void handleConfirmLeadRoutingDetail(vacancyId, thenProcess)}
+                onPool={() => void handlePoolDetail()}
+                timelineItems={timelineItems}
+                timelineLoading={timelineLoading}
+                timelineError={timelineError}
+              />
+              <details className="card mt-6 overflow-hidden p-0 shadow-md shadow-slate-900/[0.03]">
+                <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 marker:content-none hover:bg-slate-50/80 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
+                  {t('app.leads.intake_workspace.section.more')}
+                </summary>
+                <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-5 space-y-6">
+                  <LeadMetaProblemPanel lead={lead} onRefreshed={refreshLeadAndTimeline} />
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                    <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                      <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
+                      <select
+                        className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
+                        value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
+                        disabled={patching}
+                        onChange={(e) => void handleDetailStageSelect(e.target.value)}
+                      >
+                        <option value="">{t('app.leads.inbox.stage_unset')}</option>
+                        {CRM_STAGE_VALUES.map((v) => (
+                          <option key={v} value={v}>
+                            {stageLabels[v] ?? v}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300"
+                        checked={leadAssignmentLocked(lead)}
+                        disabled={patching}
+                        onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
+                      />
+                      <span>{t('app.leads.inbox.lock_assignment')}</span>
+                    </label>
+                  </div>
+                  <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
+                  <LeadNextActionPlaybook lead={lead} formatDueAt={(iso) => formatDateValue(iso, locale)} />
+                  <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+                    <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.followup_title')}</h2>
+                    <div className="rounded-xl border border-slate-100 bg-gradient-to-br from-brand-50/40 to-slate-50/80 p-4 ring-1 ring-slate-900/[0.04]">
+                      <div className="space-y-3">
+                        <input
+                          className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                          value={reminderTitle}
+                          onChange={(e) => setReminderTitle(e.target.value)}
+                          placeholder={t('app.reminders.fields.title')}
+                        />
+                        <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+                          <label className="text-xs font-medium text-slate-600">
+                            <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
+                            <input
+                              type="datetime-local"
+                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                              value={reminderDueAt}
+                              onChange={(e) => setReminderDueAt(e.target.value)}
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-slate-600">
+                            <div className="mb-1">{t('app.reminders.fields.remind_before')}</div>
+                            <input
+                              type="number"
+                              min={0}
+                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                              value={reminderOffset}
+                              onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-primary h-9 rounded-lg px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={!reminderTitle.trim() || !reminderDueAt}
+                          onClick={() => void handleCreateLeadReminder()}
+                        >
+                          {t('app.reminders.actions.create')}
+                        </button>
+                        {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <h3 className="text-xs font-semibold text-slate-700">{t('app.reminders.title')}</h3>
+                        <button
+                          type="button"
+                          className="btn-secondary h-8 rounded-lg px-2 text-xs"
+                          onClick={() => void loadLeadReminders()}
+                        >
+                          {t('common.actions.refresh')}
+                        </button>
+                      </div>
+                      {remindersLoading ? (
+                        <p className="text-sm text-slate-500">{t('common.loading')}</p>
+                      ) : reminders.length === 0 ? (
+                        <p className="text-sm text-slate-500">{t('app.reminders.states.empty')}</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {reminders.slice(0, 30).map((r) => (
+                            <li key={r.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-slate-900">{r.title || t('app.reminders.item.untitled')}</div>
+                                <div className="mt-0.5 text-xs text-slate-600">
+                                  {t('app.reminders.fields.due_at')}: {formatDateValue(r.due_at, locale)}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-secondary h-8 shrink-0 rounded-lg px-2 text-xs"
+                                onClick={() => void handleCompleteReminder(r.id)}
+                              >
+                                {t('app.reminders.actions.complete')}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+                  <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6" aria-labelledby="lead-rec-intake-fields-heading">
+                    <h2 id="lead-rec-intake-fields-heading" className="mb-4 text-sm font-semibold text-slate-900">
+                      {t('app.leads.detail.details_heading')}
+                    </h2>
+                    <dl className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.created')}</dt>
+                        <dd className="mt-0.5 text-sm text-slate-900">{formatDateValue(lead.created_at, locale)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.status')}</dt>
+                        <dd className="mt-0.5 text-sm text-slate-900">{statusLabels[lead.status] ?? lead.status}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{companyLabel}</dt>
+                        <dd className="mt-0.5 text-sm text-slate-900">{lead.company_name || lead.company_id || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{vacancyLabel}</dt>
+                        <dd className="mt-0.5 text-sm text-slate-900">{lead.vacancy_title || lead.vacancy_id || '—'}</dd>
+                      </div>
+                    </dl>
+                  </section>
+                  <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+                    <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
+                    <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
+                    <dl className="mb-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>
+                        <dd className="mt-0.5 text-sm text-slate-900">{lead.source || '—'}</dd>
+                      </div>
+                      {lead.ad_id != null ? (
+                        <div>
+                          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.detail.ad_id')}</dt>
+                          <dd className="mt-0.5 font-mono text-sm text-slate-900">{String(lead.ad_id)}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    <div className="space-y-2">
+                      <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                          {t('app.leads.detail.normalized_json')}
+                        </summary>
+                        <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                          {jsonPreview(normalized)}
+                        </pre>
+                      </details>
+                      <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                          {t('app.leads.detail.raw_payload')}
+                        </summary>
+                        <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                          {jsonPreview(lead.payload)}
+                        </pre>
+                      </details>
+                    </div>
+                  </section>
+                  {canDeleteLead ? (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
+                      disabled={deletingLead || patching || processing}
+                      onClick={() => void handleDeleteLead()}
+                    >
+                      {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
+                    </button>
+                  ) : null}
+                </div>
+              </details>
+            </>
+          )}
 
           <LostReasonForLostStageModal
             open={Boolean(lostStagePrompt)}
@@ -1006,6 +1679,7 @@ export default function LeadDetailPage() {
           />
         </>
       )}
+      </div>
     </div>
   )
 }

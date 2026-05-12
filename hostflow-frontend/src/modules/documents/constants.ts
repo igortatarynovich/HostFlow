@@ -125,7 +125,8 @@ export const METADATA_LABEL_NS = "documents.meta_fields";
 
 // Legacy/alias codes that still exist in tenant configs must resolve to canonical catalog types.
 export const DOC_TYPE_CODE_ALIASES: Record<string, string> = {
-  identity_document: "passport",
+  // Align with backend catalog: `national_id` lists identity_document / dowód as aliases.
+  identity_document: "national_id",
   qualification_code95: "code95",
   tachograph_card: "tacho_card",
   residence_card: "residence_permit",

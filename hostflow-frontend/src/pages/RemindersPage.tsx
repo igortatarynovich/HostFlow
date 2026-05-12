@@ -28,6 +28,7 @@ import { getNotificationAttentionTier } from '../utils/notificationUos'
 import { resolveNotificationOpenPath } from '../utils/resolveNotificationOpenPath'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
+import { activateClickOnSpaceEnter, runActionOnSpaceEnter } from '../utils/a11yClick'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -480,8 +481,13 @@ function ReminderTaskRow({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         {onToggleSelect && (
-          <label className="mt-1 inline-flex items-center">
+          <label
+            className="mt-1 inline-flex items-center"
+            htmlFor={`hf-reminder-select-${item.id}`}
+            aria-label={t('app.reminders.bulk.select_one', { defaultValue: 'Select reminder' })}
+          >
             <input
+              id={`hf-reminder-select-${item.id}`}
               type="checkbox"
               className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               checked={Boolean(selected)}
@@ -1390,10 +1396,11 @@ export default function RemindersPage() {
     }
   }
 
-  // G-7 stage 2: every action handler must inspect `_source` and route
-  // to the correct underlying API. Reminders use the existing
-  // /reminders endpoints; planner-derived rows use
-  // /communications/planner/events.
+  // G-7 stage 2 (Phase 2.1 ADR-012): every action handler must inspect
+  // `_source` and route to the correct underlying API. Reminders use
+  // /api/v1/activities directly; planner-derived rows go through the
+  // CommunicationPlannerEvent shim in src/api/communications.ts (which
+  // also targets /api/v1/activities under the hood with a field remap).
   const handleComplete = async (id: string) => {
     setTaskBusyId(id)
     setRemindersError(null)
@@ -1696,7 +1703,7 @@ export default function RemindersPage() {
             <button
               type="button"
               className={clsx(
-                'rounded-lg border px-4 py-2 text-sm font-medium transition',
+                'btn rounded-lg border px-4 py-2 text-sm font-medium transition',
                 activeTab === 'tasks' ? 'border-brand-600 bg-brand-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               )}
               onClick={() => setActiveTab('tasks')}
@@ -1706,7 +1713,7 @@ export default function RemindersPage() {
             <button
               type="button"
               className={clsx(
-                'rounded-lg border px-4 py-2 text-sm font-medium transition',
+                'btn rounded-lg border px-4 py-2 text-sm font-medium transition',
                 activeTab === 'events' ? 'border-brand-600 bg-brand-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               )}
               onClick={() => setActiveTab('events')}
@@ -1806,7 +1813,7 @@ export default function RemindersPage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="min-w-[220px] flex-1">
+              <div className="min-w-hf-220 flex-1">
                 <input
                   className="input w-full"
                   value={taskFilters.search}
@@ -1894,7 +1901,7 @@ export default function RemindersPage() {
                   type="button"
                   onClick={() => setTaskFilters((prev) => ({ ...prev, status }))}
                   className={clsx(
-                    'rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                    'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
                     taskFilters.status === status
                       ? 'border-brand-600 bg-brand-600 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1915,7 +1922,7 @@ export default function RemindersPage() {
                     }))
                   }
                   className={clsx(
-                    'rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    'btn rounded-md border px-3 py-1.5 text-xs font-semibold transition',
                     taskFilters.dueBucket === 'overdue'
                       ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
                       : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
@@ -1939,7 +1946,7 @@ export default function RemindersPage() {
                     }))
                   }
                   className={clsx(
-                    'rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    'btn rounded-md border px-3 py-1.5 text-xs font-semibold transition',
                     taskFilters.unlinkedOnly
                       ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
                       : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
@@ -1960,7 +1967,7 @@ export default function RemindersPage() {
                     type="button"
                     onClick={() => setAssigneeScope('mine')}
                     className={clsx(
-                      'rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
                       assigneeScope === 'mine'
                         ? 'border-brand-600 bg-brand-600 text-white'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1972,7 +1979,7 @@ export default function RemindersPage() {
                     type="button"
                     onClick={() => setAssigneeScope('team')}
                     className={clsx(
-                      'rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
                       assigneeScope === 'team'
                         ? 'border-brand-600 bg-brand-600 text-white'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -2125,7 +2132,7 @@ export default function RemindersPage() {
                         {section.key === '__unlinked' ? (
                           <button
                             type="button"
-                            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                            className="btn rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
                             onClick={() => void copyTaskIds(section.items.map((i) => i.id), section.key)}
                           >
                             {copiedSectionKey === section.key
@@ -2167,7 +2174,7 @@ export default function RemindersPage() {
       {activeTab === 'events' && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="min-w-[220px] flex-1">
+            <div className="min-w-hf-220 flex-1">
               <input
                 className="input w-full"
                 value={eventsFilters.search}
@@ -2287,8 +2294,22 @@ export default function RemindersPage() {
         const editingSource = reminderRows.find((r) => r.id === editState.id)?._source ?? 'reminder'
         const isPlannerEdit = editingSource === 'planner'
         return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !editBusy && setEditState(null)}>
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onClick={() => !editBusy && setEditState(null)}
+          onKeyDown={(e) =>
+            runActionOnSpaceEnter(e, () => {
+              if (!editBusy) setEditState(null)
+            })
+          }
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => activateClickOnSpaceEnter(e, (ev) => ev.stopPropagation())}
+          >
             <h3 className="text-lg font-semibold text-slate-900">
               {isPlannerEdit
                 ? t('app.reminders.edit.title_planner', { defaultValue: 'Edit calendar event' })

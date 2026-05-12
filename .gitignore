@@ -47,3 +47,6 @@ hostflow-frontend/coverage/
 
 # PII samples (real candidate documents — NEVER commit)
 /samples/
+
+# Playwright / local e2e output (regenerated on each run)
+test-results/

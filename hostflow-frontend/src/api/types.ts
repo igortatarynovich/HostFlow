@@ -731,7 +731,13 @@ export interface Candidate {
   can_edit?: boolean;
 }
 
-export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
+export type LeadStatus =
+  | 'new'
+  | 'processed'
+  | 'duplicated'
+  | 'failed'
+  | 'needs_routing'
+  | 'duplicate_review';
 export type LeadType = 'candidate' | 'client';
 
 export interface Lead {
@@ -742,7 +748,12 @@ export interface Lead {
   company_id?: UUID | null;
   company_name?: string | null;
   vacancy_id?: UUID | null;
+  /** Suggested routing target from qualification preview (UI convenience). */
+  suggested_vacancy_id?: UUID | string | null;
+  /** True when ``intake_vacancy_confirm_v1`` matches committed ``vacancy_id`` (intake gating). */
+  vacancy_routing_confirmed?: boolean | null;
   vacancy_title?: string | null;
+  funnel_id?: UUID | null;
   source: string;
   ad_id?: number | null;
   status: LeadStatus;
@@ -1291,6 +1302,8 @@ export interface Document {
   id: string;
   tenant_id: string;
   candidate_id: string;
+  /** Workspace slice (multi-entity); mirrors API DocumentOut for debugging / UI hints. */
+  own_company_id?: string | null;
   company_id?: string | null;
   kind: DocumentKind;
   doc_type: string;

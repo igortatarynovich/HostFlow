@@ -567,19 +567,46 @@ export default function CandidateDocuments({
           filteredTypes = allTypes;
         }
       }
-      
-      setDocTypes(filteredTypes);
+
+      // Ruleset-required types that block the pipeline must stay visible/attachable even when the
+      // candidate profile omits them (e.g. legacy `identity_document` ref resolved to wrong catalog row).
+      const reqSum = summaryResp?.summary?.required;
+      const pipelineBlockingCodes = new Set<string>();
+      if (reqSum && typeof reqSum === "object") {
+        for (const bucket of [reqSum.missing, reqSum.problematic, reqSum.in_progress_types]) {
+          if (!Array.isArray(bucket)) continue;
+          for (const raw of bucket) {
+            const n = normalizeDocTypeCode(String(raw || ""));
+            if (n) pipelineBlockingCodes.add(n);
+          }
+        }
+      }
+      const byNormCode = new Map<string, DocType>();
+      for (const t of allTypes) {
+        byNormCode.set(normalizeDocTypeCode(t.code), t);
+      }
+      let displayTypes = filteredTypes;
+      if (profileFilterActive && allTypes.length > 0 && pipelineBlockingCodes.size > 0) {
+        const merged = new Map(filteredTypes.map((t) => [t.code, t] as const));
+        for (const code of pipelineBlockingCodes) {
+          const hit = byNormCode.get(code);
+          if (hit && !merged.has(hit.code)) merged.set(hit.code, hit);
+        }
+        displayTypes = Array.from(merged.values());
+      }
+
+      setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
       const summaryDocsRaw = Array.isArray(summaryResp?.documents)
         ? (summaryResp.documents as Document[])
         : [];
       const docsListRaw = Array.isArray(docsResp) ? docsResp : [];
-      const allowedTypeCodes = new Set(filteredTypes.map((type) => normalizeDocTypeCode(type.code)));
+      const displayTypeCodes = new Set(displayTypes.map((type) => normalizeDocTypeCode(type.code)));
       const summaryDocs = profileFilterActive
-        ? summaryDocsRaw.filter((doc) => allowedTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
+        ? summaryDocsRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
         : summaryDocsRaw;
       const docsList = profileFilterActive
-        ? docsListRaw.filter((doc) => allowedTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
+        ? docsListRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
         : docsListRaw;
       
       // Объединяем реальные документы и синтетические из summary
@@ -619,7 +646,7 @@ export default function CandidateDocuments({
       });
       
       // Создаем синтетические документы для всех типов из docTypes, которых еще нет
-      filteredTypes.forEach((type) => {
+      displayTypes.forEach((type) => {
         const typeCode = type.code;
         const typeCodeNorm = normalizeDocTypeCode(typeCode);
         if (!existingTypeCodes.has(typeCodeNorm)) {
@@ -696,14 +723,14 @@ export default function CandidateDocuments({
       setMetadataEdits(metadataInitial);
 
       const defaultType = (() => {
-        if (!filteredTypes.length) return "";
+        if (!displayTypes.length) return "";
         const readyCodes = new Set(
           summaryDocs
             .filter((doc) => READY_STATUSES.has(doc.status))
             .map((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || ""))
         );
         // Проверяем required из профиля или из типа документа
-        const firstRequired = filteredTypes.find((t) => {
+        const firstRequired = displayTypes.find((t) => {
           if (profileFilterActive) {
             const docConfig = profileConfigByTypeCode.get(t.code);
             const isRequired = docConfig?.required || t.required;
@@ -711,13 +738,13 @@ export default function CandidateDocuments({
           }
           return t.required && !readyCodes.has(t.code);
         });
-        return firstRequired?.code || filteredTypes[0].code;
+        return firstRequired?.code || displayTypes[0].code;
       })();
       setSelectedType((prev) => {
         if (prev) return prev;
         if (initialType) {
           const normalized = normalizeDocTypeCode(initialType);
-          const exists = filteredTypes.some((t) => t.code === initialType || normalizeDocTypeCode(t.code) === normalized);
+          const exists = displayTypes.some((t) => t.code === initialType || normalizeDocTypeCode(t.code) === normalized);
           if (exists) return initialType;
         }
         return defaultType;

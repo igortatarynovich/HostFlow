@@ -169,11 +169,9 @@ function formatThreadUnreadBadge(n: number): string {
   return '99+'
 }
 
-/** Quick filters for the unified notification + threads panel (Phase 5). */
-type NotifPanelQuickFilter = 'all' | 'sla' | 'tasks' | 'messages' | 'system'
-type NotifPanelQuickSort = 'newest' | 'urgent'
-const NOTIF_PANEL_FILTER_STORAGE_KEY = 'hf:topbar:notif-panel-filter:v1'
-const NOTIF_PANEL_SORT_STORAGE_KEY = 'hf:topbar:notif-panel-sort:v1'
+// Bell drawer is intentionally lightweight (ADR-012): list + unread count + open/dismiss
+// + [Open Notification Center] + [Clear all]. Filtering / sorting / SLA-focus / severity /
+// bulk actions live on the Notification Center page, not in this transient overlay.
 
 export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
   const navigate = useNavigate()
@@ -214,52 +212,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   )
   const [commPollKey, setCommPollKey] = useState(0)
   const [reminderDuePopup, setReminderDuePopup] = useState<NotificationItem | null>(null)
-  const [notifPanelFilter, setNotifPanelFilter] = useState<NotifPanelQuickFilter>(() => {
-    if (typeof window === 'undefined') return 'all'
-    const raw = String(window.localStorage.getItem(NOTIF_PANEL_FILTER_STORAGE_KEY) || '').trim()
-    if (raw === 'sla' || raw === 'tasks' || raw === 'messages' || raw === 'system' || raw === 'all') {
-      return raw
-    }
-    return 'all'
-  })
-  const [notifPanelSort, setNotifPanelSort] = useState<NotifPanelQuickSort>(() => {
-    if (typeof window === 'undefined') return 'urgent'
-    const raw = String(window.localStorage.getItem(NOTIF_PANEL_SORT_STORAGE_KEY) || '').trim()
-    if (raw === 'newest' || raw === 'urgent') return raw
-    return 'urgent'
-  })
 
-  const notificationRank = (item: NotificationItem): number => {
-    if (item.is_read) return 0
-    const payload = (item.payload || {}) as Record<string, any>
-    const eventType = String(item.event_type || '').toLowerCase()
-    const severity = String(payload.severity || '').toLowerCase()
-    const requiresAction = Boolean(payload.requires_action)
-    const group = getNotificationUosGroup(item)
-    const tier = getNotificationAttentionTier(item)
-    let score = 0
-    if (tier === 'critical') score += 120
-    else if (tier === 'high') score += 60
-    if (requiresAction) score += 100
-    if (group === 'sla') score += 90
-    if (eventType === 'communications_sla_overdue') score += 90
-    if (eventType === 'communications_thread_escalated') score += 88
-    if (severity === 'high') score += 40
-    else if (severity === 'medium') score += 20
-    else if (severity === 'low') score += 5
-    if (group === 'tasks') score += 15
-    if (group === 'messages') score += 10
-    if (eventType === 'intake_client_lead_skipped_no_company') score += 50
-    return score
-  }
-
-  const prioritizeNotifications = (items: NotificationItem[]): NotificationItem[] => {
-    return [...items].sort((a, b) => {
-      const rankDiff = notificationRank(b) - notificationRank(a)
-      if (rankDiff !== 0) return rankDiff
-      return Date.parse(b.created_at || '') - Date.parse(a.created_at || '')
-    })
-  }
+  // Severity / SLA / requires-action ranking used to sort drawer rows; that policy now lives
+  // on the Notification Center page (ADR-012). Drawer renders newest-first only — see
+  // `unifiedPanelRows` (sorted by sortAt desc).
 
   const initials = useMemo(() => {
     if (!me) return 'HF'
@@ -398,84 +354,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     return rows
   }, [panelThreads, notifItems])
 
-  const filteredUnifiedPanelRows = useMemo(() => {
-    if (notifPanelFilter === 'all') return unifiedPanelRows
-    return unifiedPanelRows.filter((row) => {
-      if (row.kind === 'thread') return notifPanelFilter === 'messages'
-      const item = row.kind === 'notif' ? row.item : row.representative
-      const g = getNotificationUosGroup(item)
-      if (notifPanelFilter === 'sla') return g === 'sla'
-      if (notifPanelFilter === 'tasks') return g === 'tasks'
-      if (notifPanelFilter === 'messages') return g === 'messages'
-      if (notifPanelFilter === 'system') return g === 'system'
-      return false
-    })
-  }, [unifiedPanelRows, notifPanelFilter])
-
-  const notifPanelFilterCounts = useMemo<Record<NotifPanelQuickFilter, number>>(() => {
-    const counts: Record<NotifPanelQuickFilter, number> = {
-      all: unifiedPanelRows.length,
-      sla: 0,
-      tasks: 0,
-      messages: 0,
-      system: 0,
-    }
-    for (const row of unifiedPanelRows) {
-      if (row.kind === 'thread') {
-        counts.messages += 1
-        continue
-      }
-      const item = row.kind === 'notif' ? row.item : row.representative
-      const g = getNotificationUosGroup(item)
-      if (g === 'sla') counts.sla += 1
-      else if (g === 'tasks') counts.tasks += 1
-      else if (g === 'messages') counts.messages += 1
-      else counts.system += 1
-    }
-    return counts
-  }, [unifiedPanelRows])
-
-  const filteredAndSortedPanelRows = useMemo(() => {
-    if (notifPanelSort === 'newest') return filteredUnifiedPanelRows
-    return [...filteredUnifiedPanelRows].sort((a, b) => {
-      const rankOf = (row: (typeof filteredUnifiedPanelRows)[number]): number => {
-        if (row.kind === 'thread') {
-          const unread = Number(row.thread.unread_count || 0)
-          return 40 + Math.min(Math.max(unread, 0), 20)
-        }
-        if (row.kind === 'notif') return notificationRank(row.item)
-        return notificationRank(row.representative) + Math.min(row.count, 10)
-      }
-      const byRank = rankOf(b) - rankOf(a)
-      if (byRank !== 0) return byRank
-      return b.sortAt - a.sortAt
-    })
-  }, [filteredUnifiedPanelRows, notifPanelSort])
-
-  const visiblePanelTargets = useMemo(() => {
-    const notifIdSet = new Set<string>()
-    const threadIdSet = new Set<string>()
-    for (const row of filteredAndSortedPanelRows) {
-      if (row.kind === 'thread') {
-        threadIdSet.add(String(row.thread.id))
-        continue
-      }
-      if (row.kind === 'notif') {
-        const id = String(row.item.id || '').trim()
-        if (id) notifIdSet.add(id)
-        continue
-      }
-      for (const item of row.items) {
-        const id = String(item.id || '').trim()
-        if (id) notifIdSet.add(id)
-      }
-    }
-    return {
-      notifIds: Array.from(notifIdSet),
-      threadIds: Array.from(threadIdSet),
-    }
-  }, [filteredAndSortedPanelRows])
-
   useEffect(() => {
     const handler = (event: MouseEvent) => {
       if (!notifOpen) return
@@ -486,16 +364,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [notifOpen])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(NOTIF_PANEL_FILTER_STORAGE_KEY, notifPanelFilter)
-  }, [notifPanelFilter])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(NOTIF_PANEL_SORT_STORAGE_KEY, notifPanelSort)
-  }, [notifPanelSort])
 
   useEffect(() => {
     const onVis = () => {
@@ -679,7 +547,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         return true
       })
       setPanelThreads([...activeUnreadThreads].sort((a, b) => threadRecencyMs(b) - threadRecencyMs(a)))
-      setNotifItems(prioritizeNotifications(notifFiltered))
+      setNotifItems(notifFiltered)
     } catch {
       setNotifError(t('app.reminders.errors.load'))
     } finally {
@@ -751,71 +619,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     } catch {
       // ignore
     }
-  }
-
-  const clearAllNotificationsOnly = async () => {
-    try {
-      await markNotificationsRead({ markAll: true })
-      setNotifItems([])
-      lastUnreadNotificationsRef.current = []
-      setBellAttentionCount(computeBellAttentionCount([], pendingHandoffsCount))
-      setCommPollKey((k) => k + 1)
-    } catch {
-      // ignore
-    }
-  }
-
-  const clearAllThreadsOnly = async () => {
-    const threadsSnap = [...panelThreads]
-    if (threadsSnap.length === 0) return
-    try {
-      await Promise.all(threadsSnap.map((th) => markCommunicationThreadRead(th.id).catch(() => {})))
-      setPanelThreads([])
-      setCommPollKey((k) => k + 1)
-    } catch {
-      // ignore
-    }
-  }
-
-  const clearVisiblePanelItems = async () => {
-    const notifIds = visiblePanelTargets.notifIds
-    const threadIds = visiblePanelTargets.threadIds
-    if (notifIds.length === 0 && threadIds.length === 0) return
-    const notifSet = new Set(notifIds.map(String))
-    const threadSet = new Set(threadIds.map(String))
-    try {
-      if (notifIds.length > 0) {
-        await markNotificationsRead({ ids: notifIds })
-      }
-      if (threadIds.length > 0) {
-        await Promise.all(threadIds.map((id) => markCommunicationThreadRead(id).catch(() => {})))
-      }
-      if (notifIds.length > 0) {
-        setNotifItems((prev) => prev.filter((i) => !notifSet.has(String(i.id))))
-        lastUnreadNotificationsRef.current = lastUnreadNotificationsRef.current.filter(
-          (i) => !notifSet.has(String(i.id)),
-        )
-        setBellAttentionCount(
-          computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount),
-        )
-      }
-      if (threadIds.length > 0) {
-        setPanelThreads((prev) => prev.filter((t) => !threadSet.has(String(t.id))))
-      }
-      setCommPollKey((k) => k + 1)
-    } catch {
-      // ignore
-    }
-  }
-
-  const resetNotifPanelView = () => {
-    setNotifPanelFilter('all')
-    setNotifPanelSort('urgent')
-  }
-
-  const focusSlaNotifPanelView = () => {
-    setNotifPanelFilter('sla')
-    setNotifPanelSort('urgent')
   }
 
   const handleSubmitSearch = () => {
@@ -961,147 +764,31 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-10 z-50 w-[min(96vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                  <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{t('app.topbar.notifications.title')}</p>
-                      <p className="text-xs text-slate-500 break-words">
-                        {notifLoading
-                          ? t('common.loading')
-                          : t('app.topbar.notifications.panel_subtitle', {
-                              values: { count: filteredUnifiedPanelRows.length },
-                            })}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('app.topbar.notifications.filter_group_label')}>
-                      {(
-                        [
-                          ['all', 'filter_all'],
-                          ['sla', 'filter_sla'],
-                          ['tasks', 'filter_tasks'],
-                          ['messages', 'filter_messages'],
-                          ['system', 'filter_system'],
-                        ] as const
-                      ).map(([key, labelKey]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={[
-                            'rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition',
-                            notifPanelFilter === key
-                              ? 'border-brand-600 bg-brand-50 text-brand-800'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
-                          ].join(' ')}
-                          aria-pressed={notifPanelFilter === key}
-                          onClick={() => setNotifPanelFilter(key)}
-                        >
-                          {t(`app.topbar.notifications.${labelKey}`)} ({notifPanelFilterCounts[key]})
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-[11px] font-semibold">
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2 py-1',
-                            notifPanelSort === 'urgent'
-                              ? 'bg-brand-600 text-white'
-                              : 'text-slate-600 hover:bg-slate-50',
-                          ].join(' ')}
-                          onClick={() => setNotifPanelSort('urgent')}
-                          aria-pressed={notifPanelSort === 'urgent'}
-                        >
-                          {t('app.topbar.notifications.sort_urgent')}
-                        </button>
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2 py-1',
-                            notifPanelSort === 'newest'
-                              ? 'bg-brand-600 text-white'
-                              : 'text-slate-600 hover:bg-slate-50',
-                          ].join(' ')}
-                          onClick={() => setNotifPanelSort('newest')}
-                          aria-pressed={notifPanelSort === 'newest'}
-                        >
-                          {t('app.topbar.notifications.sort_newest')}
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={focusSlaNotifPanelView}
-                        disabled={notifLoading || (notifPanelFilter === 'sla' && notifPanelSort === 'urgent')}
+                <div className="absolute right-0 top-10 z-50 w-[min(96vw,28rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {t('app.topbar.notifications.title')}
+                    </p>
+                    {unifiedPanelRows.length > 0 && (
+                      <span
+                        className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold text-white"
+                        aria-label={t('app.topbar.notifications.panel_subtitle', {
+                          values: { count: unifiedPanelRows.length },
+                        })}
                       >
-                        {t('app.topbar.notifications.focus_sla')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={resetNotifPanelView}
-                        disabled={notifLoading || (notifPanelFilter === 'all' && notifPanelSort === 'urgent')}
-                      >
-                        {t('app.topbar.notifications.reset_view')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={() => void loadNotificationPanel()}
-                        disabled={notifLoading}
-                      >
-                        {t('app.reminders.actions.refresh')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={() => void clearVisiblePanelItems()}
-                        disabled={
-                          notifLoading ||
-                          (visiblePanelTargets.notifIds.length === 0 &&
-                            visiblePanelTargets.threadIds.length === 0)
-                        }
-                      >
-                        {t('app.topbar.notifications.clear_visible')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={() => void clearAllNotificationsOnly()}
-                        disabled={notifLoading || notifItems.length === 0}
-                      >
-                        {t('app.topbar.notifications.clear_notifications')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={() => void clearAllThreadsOnly()}
-                        disabled={notifLoading || panelThreads.length === 0}
-                      >
-                        {t('app.topbar.notifications.clear_threads')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={() => void clearAllPanelItems()}
-                        disabled={notifLoading || unifiedPanelRows.length === 0}
-                      >
-                        {t('app.topbar.notifications.clear_all')}
-                      </button>
-                    </div>
+                        {formatThreadUnreadBadge(unifiedPanelRows.length)}
+                      </span>
+                    )}
                   </div>
-                  <div className="max-h-[min(64vh,36rem)] space-y-2 overflow-auto p-3">
+                  <div className="max-h-[min(60vh,32rem)] space-y-2 overflow-auto p-3">
+                    {notifLoading && unifiedPanelRows.length === 0 && (
+                      <p className="text-sm text-slate-500">{t('common.loading')}</p>
+                    )}
                     {notifError && <p className="text-xs text-rose-600">{notifError}</p>}
-                    {!notifError && unifiedPanelRows.length === 0 && !notifLoading && (
+                    {!notifError && !notifLoading && unifiedPanelRows.length === 0 && (
                       <p className="text-sm text-slate-500">{t('app.reminders.states.empty')}</p>
                     )}
-                    {!notifError &&
-                      unifiedPanelRows.length > 0 &&
-                      filteredUnifiedPanelRows.length === 0 &&
-                      !notifLoading && (
-                        <p className="text-sm text-slate-500">{t('app.topbar.notifications.filter_empty')}</p>
-                      )}
-                    {filteredAndSortedPanelRows.map((row) => {
+                    {unifiedPanelRows.map((row) => {
                       const dateLocale = localeMap[locale as keyof typeof localeMap] || enUS
                       if (row.kind === 'thread') {
                         const th = row.thread
@@ -1294,6 +981,26 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                         </div>
                       )
                     })}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-2">
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+                      onClick={() => {
+                        setNotifOpen(false)
+                        navigate(CRM_APP_PATHS.remindersLegacy)
+                      }}
+                    >
+                      {t('app.topbar.notifications.open_center')}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-slate-600 hover:text-slate-800 disabled:opacity-50"
+                      onClick={() => void clearAllPanelItems()}
+                      disabled={notifLoading || unifiedPanelRows.length === 0}
+                    >
+                      {t('app.topbar.notifications.clear_all')}
+                    </button>
                   </div>
                 </div>
               )}

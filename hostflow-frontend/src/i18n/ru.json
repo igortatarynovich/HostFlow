@@ -1044,7 +1044,8 @@
         "panel_subtitle": "Непрочитанных: {count}",
         "open": "Открыть",
         "clear": "Скрыть",
-        "clear_all": "Очистить всё"
+        "clear_all": "Очистить всё",
+        "open_center": "Открыть центр уведомлений"
       },
       "search": {
         "open": "Поиск",
@@ -4215,6 +4216,23 @@
         "pipeline_completed_body": "Кандидат на финальной стадии (трудоустроен, отклонён, отказ или завершена стажировка) — дальнейшие шаги воронки не применяются.",
         "title": "Следующее действие"
       },
+      "applications": {
+        "title": "Отклики и намерение",
+        "subtitle": "Интерес к вакансии из лидов и конверсий. Ссылка из досье (legacy) показывается, если записей Application ещё нет.",
+        "empty": "Для этого кандидата пока нет записей откликов.",
+        "load_error": "Не удалось загрузить отклики.",
+        "vacancy_pool": "Пул / без вакансии",
+        "lead_link": "Открыть лид",
+        "legacy_note": "Записей Application пока нет — показана вакансия, привязанная к досье кандидата (legacy).",
+        "legacy_source_label": "Legacy (досье)",
+        "columns": {
+          "source": "Источник",
+          "vacancy": "Вакансия",
+          "status": "Статус",
+          "applied_at": "Дата",
+          "lead": "Лид"
+        }
+      },
       "reminders": {
         "title": "Напоминания по кандидату",
         "subtitle": "Быстрое напоминание: заголовок, срок, смещение (мин).",
@@ -5460,7 +5478,8 @@
         "processed": "Кандидат создан",
         "duplicated": "Дубликат",
         "needs_routing": "Требует маршрутизации",
-        "failed": "Ошибка"
+        "failed": "Ошибка",
+        "duplicate_review": "Проверка дубликата (intake)"
       },
       "stages": {
         "new": "Новый",
@@ -5485,11 +5504,19 @@
         "service_order": "Заказ услуги",
         "full_page": "Отдельная страница"
       },
+      "queue_keyboard": {
+        "hint": "Горячие клавиши: J или ↓ / K или ↑ — выбор лида · Enter — основное действие · Esc — закрыть панель или модалку · V — вакансия · P — пул · I — запросить инфо · R — отказ",
+        "no_primary": "Для этого лида нет основного действия.",
+        "action_unavailable": "Эта комбинация недоступна для выбранного лида.",
+        "duplicate_first": "Сначала снимите дубликат (Enter).",
+        "request_info_hint": "Заметка по желанию — уйдёт вместе с запросом."
+      },
       "detail": {
         "wayfinding_title": "Другие области CRM",
         "wayfinding_nav_label": "Переход к дашборду, центру работы, inbox, кандидатам, списку лидов, задачам и настройкам",
         "back_to_list": "К списку лидов",
         "title": "Лид",
+        "details_heading": "Данные лида",
         "not_found": "Лид не найден",
         "not_found_hint": "Возможно, он удалён или вне вашей области видимости.",
         "missing_id": "Не указан идентификатор лида.",
@@ -5512,7 +5539,7 @@
             "assisted": "Assisted",
             "automatic": "Automatic"
           },
-          "assisted_link": "Смотрите панель квалификации выше: предложенная вакансия, статус fit и причины.",
+          "assisted_link": "Ниже: сводка квалификации и панель подсказок — контекст источника, снимок fit и причины.",
           "auto_convert_off": "Авто-конверсия при fit была выключена для этого лида (тенант или вакансия). Используйте Process.",
           "downgrade_team": "Режим Automatic для этого ingest понижен (нужен Team-план).",
           "configured_effective_mismatch": "В настройках: {configured}. Фактически при ingest: {effective}."
@@ -5530,7 +5557,103 @@
         "delete_confirm": "Удалить этот лид безвозвратно? Кандидат (если был создан) не удаляется.",
         "delete_success": "Лид удалён",
         "delete_failed": "Не удалось удалить лид",
-        "lost_reason_title": "Причина потери"
+        "remind_client": {
+          "cta": "Быстрое напоминание",
+          "busy": "Создание…",
+          "hint": "Создать задачу по этому лиду (например, перезвонить завтра).",
+          "default_title": "Связаться с лидом"
+        },
+        "lost_reason_title": "Причина потери",
+        "qualification_summary": {
+          "title": "Сводка квалификации",
+          "subtitle": "Только для чтения — помогает решить intake (отказ, запрос данных, пул, процесс).",
+          "section_source": "Источник и кампания",
+          "section_contact": "Контакты",
+          "section_profile": "Профиль и право на работу",
+          "section_vacancy": "Вакансия и пул",
+          "section_fit": "Fit (последняя оценка)",
+          "section_rule": "Правило квалификации",
+          "form_id": "ID формы",
+          "created_time": "Создано (источник)",
+          "utm": "UTM / кампания",
+          "contact_complete": "Полнота контактов",
+          "contact_complete_yes": "Есть email и телефон",
+          "contact_partial": "Частично (нет email или телефона)",
+          "contact_missing": "Нет email и телефона",
+          "email": "Email",
+          "phone": "Телефон",
+          "driving_eu": "Водительский стаж (ЕС)",
+          "documents": "Документы (заявленные)",
+          "nationality": "Гражданство",
+          "poland_stay": "Основание пребывания в Польше",
+          "languages": "Языки",
+          "vacancy_routed": "Вакансия на лиде",
+          "suggested_vacancy": "Предложенный id вакансии",
+          "resolved_vacancy_id": "Разрешённый id вакансии (normalized)",
+          "funnel": "Воронка",
+          "pool_intent": "Намерение в пул",
+          "pool_intent_yes": "Да",
+          "pool_intent_no": "Нет",
+          "fit_effective": "Оценка критериев вакансии",
+          "fit_effective_on": "Включено (есть активные критерии)",
+          "fit_effective_off": "Выключено или нет критериев",
+          "pipeline": "Pipeline",
+          "evaluated_at": "Оценено",
+          "no_preview": "Снимка fit ещё нет — запустите Process или дождитесь автооценки.",
+          "rule_id": "Id правила",
+          "rule_note": "Заметка"
+        },
+        "intake_resolution": {
+          "title": "Маршрутизация и решения intake",
+          "subtitle": "Подтвердите вакансию и зафиксируйте решения intake. Это действия оператора по лиду, а не этапы воронки кандидата.",
+          "select_label": "Вакансия для этого лида",
+          "select_placeholder": "Выберите вакансию…",
+          "suggested": "Предложено",
+          "confirmed_badge": "Подтверждено",
+          "confirm": "Подтвердить вакансию",
+          "confirmed_hint": "Маршрутизация по вакансии подтверждена. Можно запускать Process, если остальные проверки intake пройдены.",
+          "process_blocked_hint": "Process заблокирован, пока не закрыты маршрутизация и решения intake (см. подсказку у кнопки Process).",
+          "pick_first": "Сначала выберите вакансию.",
+          "confirm_success": "Вакансия подтверждена",
+          "confirm_failed": "Не удалось подтвердить вакансию",
+          "qualification_title": "Нормализованные сигналы",
+          "experience_eu": "Опыт в ЕС (лет)",
+          "in_poland": "В Польше",
+          "country": "Страна",
+          "source_ad": "Источник",
+          "reject_reasons": {
+            "insufficient_experience": "Недостаточный опыт",
+            "missing_documents": "Нет документов",
+            "unsupported_citizenship": "Неподдерживаемое гражданство / разрешение на работу",
+            "language_mismatch": "Несоответствие по языку",
+            "invalid_contact": "Некорректный или недоступный контакт",
+            "no_response": "Нет ответа",
+            "salary_mismatch": "Несоответствие по зарплате / условиям",
+            "unsuitable_route": "Неподходящий маршрут или роль",
+            "duplicate_spam": "Дубликат / спам",
+            "not_interested": "Не заинтересован",
+            "other": "Другое"
+          },
+          "intake_actions": {
+            "heading": "Действия intake",
+            "hint": "Фиксируйте исход intake до конверсии в кандидата.",
+            "rejected_banner": "Лид отклонён на intake. Дальнейшая конверсия заблокирована.",
+            "qualify": "Квалифицировать (готов к Process)",
+            "pool": "В пул",
+            "duplicate_review": "На проверку дубликата",
+            "request_info_label": "Запросить дополнительную информацию",
+            "note_placeholder": "Необязательная заметка для команды…",
+            "request_info": "Запросить информацию",
+            "reject_title": "Отклонить на intake",
+            "reject_reason": "Причина",
+            "reject_reason_placeholder": "Выберите причину…",
+            "note_optional": "Заметка (необязательно)",
+            "reject_submit": "Отклонить лид",
+            "success": "Решение intake сохранено",
+            "failed": "Не удалось сохранить решение intake",
+            "reject_pick_reason": "Выберите причину отклонения."
+          }
+        }
       },
       "states": {
         "empty": "Лиды не найдены.",
@@ -5555,7 +5678,16 @@
         "processed_desc_short": "Лид обработан.",
         "service_order_create_failed": "Не удалось создать заказ услуги",
         "service_order_created": "Заказ услуги создан",
-        "service_order_created_desc": "Из лида создан черновик заказа услуги."
+        "service_order_created_desc": "Из лида создан черновик заказа услуги.",
+        "process_blocked": {
+          "INTAKE_REJECTED": "Лид отклонён на intake. Измените решение intake, чтобы продолжить.",
+          "DUPLICATE_REVIEW_PENDING": "Сначала завершите проверку дубликата (intake) перед Process.",
+          "INTAKE_POOL_PATH_REQUIRED": "На панели intake выберите пул или квалификацию перед Process.",
+          "VACANCY_NOT_CONFIRMED": "Подтвердите маршрутизацию по вакансии на панели intake перед Process.",
+          "INTAKE_ROUTING_INCOMPLETE": "Завершите маршрутизацию intake (вакансия или пул) перед Process.",
+          "INTAKE_INFO_REQUESTED": "На intake запрошена информация. Дополните лид или снимите запрос перед Process.",
+          "INTAKE_IDENTITY_UNCLEAR": "Личность лида на intake неясна. Разрешите это перед Process."
+        }
       },
       "pipeline_errors": {
         "LEAD_FIT_NO_MATCH": "Не проходит критерии вакансии — автосоздание кандидата отменено.",
@@ -5607,7 +5739,194 @@
         "create_invoice": "Создать счет",
         "create_service_order": "Создать заказ на обслуживание",
         "open_service_order": "Открыть заказ на обслуживание",
-        "process": "Обработать"
+        "process": "Создать кандидата"
+      },
+      "routing": {
+        "confirm_vacancy": "Подтвердить вакансию",
+        "confirm_route": "Подтвердить маршрут",
+        "confirm_and_process": "Подтвердить маршрут и создать кандидата",
+        "other_option": "Другой вариант",
+        "pick_vacancy": "Выбрать вакансию",
+        "pick_modal_title": "Выбор вакансии",
+        "pick_modal_hint": "Подтвердите маршрут для этого лида. При необходимости сразу запустите обработку.",
+        "pick_modal_confirm": "Подтвердить маршрут",
+        "confirm_then_process": "Сразу выполнить обработку (Process)",
+        "next_step_hint": "Ожидается маршрутизация — подтвердите предложенную вакансию, чтобы разблокировать «Обработать».",
+        "inbox_focus_title": "Intake: сначала маршрутизация",
+        "expand_crm_tools": "Этап, напоминания, хронология"
+      },
+      "intake_workspace": {
+        "title": "Intake лида",
+        "question": "Что сделать с этим лидом?",
+        "services_hint": "Сервисные лиды ведутся на полной странице (заказы и биллинг).",
+        "owner": "Ответственный",
+        "more": {
+          "contact": "Звонок и почта"
+        },
+        "section": {
+          "lead_data": "Данные лида",
+          "vacancy_route": "Вакансия и маршрут",
+          "quick_decision": "Быстрое решение",
+          "more_actions": "Пул, дубликат, запрос данных, отказ",
+          "qualification": "Сводка квалификации",
+          "more": "Дополнительно"
+        },
+        "unified": {
+          "confirm_and_create": "Подтвердить маршрут и создать кандидата",
+          "change_vacancy": "Выбрать другую вакансию",
+          "pick_vacancy_cta": "Выбрать вакансию",
+          "create_candidate": "Создать кандидата"
+        },
+        "detail": {
+          "decisions_heading": "Пул, дубликат, запрос данных, отказ",
+          "lead_data_heading": "Данные лида",
+          "vacancy_heading": "Вакансия и маршрут",
+          "intake_label": "Статус intake",
+          "notes_heading": "Заметки",
+          "notes_empty": "Заметок intake пока нет.",
+          "application": "Заявка",
+          "audit_sidebar_title": "Карточка",
+          "open_candidate_primary": "Открыть кандидата"
+        },
+        "actions": {
+          "change_vacancy": "Другая вакансия",
+          "to_pool": "В пул",
+          "process_convert": "Обработать / создать кандидата",
+          "review_duplicate": "Проверить дубликат",
+          "pick_vacancy": "Выбрать вакансию",
+          "open_candidate": "Открыть кандидата",
+          "none": "—"
+        },
+        "vacancy": {
+          "suggested_label": "Вакансия на лиде",
+          "route_hint": "Подтвердите или смените вакансию в блоке решений справа."
+        },
+        "sticky": {
+          "vacancy_route_pending": "{title} · подтвердите маршрут",
+          "vacancy_none": "Вакансия не выбрана"
+        },
+        "snapshot": {
+          "title": "Снимок кандидата",
+          "context_title": "Контекст найма",
+          "in_poland_yes": "В Польше",
+          "in_poland_no": "Не в Польше",
+          "country": "{value}",
+          "exp_years": "{n} лет опыта в EU",
+          "exp_none": "Мало или нет опыта EU",
+          "docs_list": "Документы: {list}",
+          "docs_missing": "Документы не указаны",
+          "languages": "Языки: {list}",
+          "phone_ok": "Телефон указан",
+          "phone_missing": "Нет телефона",
+          "email": "{email}",
+          "route_label": "Маршрут",
+          "route_confirmed": "Маршрут подтверждён",
+          "route_unconfirmed": "Вакансия на лиде · подтвердите в блоке «Решение»",
+          "route_missing": "Выберите вакансию (блок «Решение»)",
+          "duplicate_label": "Дубликат",
+          "duplicate_review_active": "Нужна проверка на дубликат",
+          "duplicate_clear": "Не помечен как дубликат",
+          "qual_toggle": "Полная квалификация (таблицы)",
+          "group_driving": "Водительский профиль",
+          "group_communication": "Коммуникация",
+          "group_legal": "Право и соответствие",
+          "code95_present": "Code95 указан",
+          "code95_missing": "Code95 нет в документах",
+          "tachograph_present": "Тахограф / карта водителя указаны",
+          "tachograph_missing": "Тахографа нет в документах",
+          "citizenship_line": "Гражданство / локация: {value}"
+        },
+        "decision_rail": {
+          "title": "Решение",
+          "subtitle": "Вакансия → сводка по соответствию → действие.",
+          "step_vacancy": "Шаг 1 · Вакансия",
+          "step_review_fit": "Шаг 2 · Соответствие",
+          "step_decision": "Шаг 3 · Решение",
+          "block_vacancy": "Вакансия",
+          "context_qualification": "Квалификация",
+          "context_qualification_hint": "Авто-сводка — не отдельный шаг.",
+          "block_decision": "Решение",
+          "pick_vacancy_prompt": "Куда направить этого лида?",
+          "all_vacancies": "Все вакансии",
+          "back_suggested": "Вернуться к предложенной вакансии",
+          "optional_context": "Подсказки · отметить дубликат",
+          "unsupported": "Решения intake недоступны для этого лида (источник или статус).",
+          "reject_open": "Отклонить…",
+          "reject_cancel": "Закрыть форму отказа",
+          "qualify_not_duplicate": "Не дубликат — продолжить",
+          "fit_clear": "Автоматических предупреждений по соответствию нет."
+        },
+        "audit": {
+          "badge": "Кандидат создан",
+          "subtitle": "Intake завершён — продолжайте в карточке кандидата.",
+          "open_candidate": "Открыть кандидата",
+          "source": "Источник",
+          "history": "История intake и таймлайн",
+          "created_from": "Источник лида",
+          "trace_expand": "Трассировка · таймлайн, квалификация, ingest и инструменты"
+        },
+        "header": {
+          "routing_unconfirmed_title": "Нужно подтвердить маршрут",
+          "routing_unconfirmed_hint": "Вакансия на лиде есть, но маршрутизация для intake ещё не подтверждена.",
+          "routing_incomplete_title": "Нужно выбрать вакансию",
+          "routing_incomplete_hint": "Укажите вакансию или отправьте лид в пул перед созданием кандидата.",
+          "duplicate_title": "Проверка дубликата",
+          "duplicate_hint": "Подтвердите, дубликат ли это, прежде чем конвертировать.",
+          "pool_path_title": "Нужен пул",
+          "pool_path_hint": "Есть намерение в пул — выберите вакансию или подтвердите пул.",
+          "info_requested_title": "Запрошены данные",
+          "info_requested_hint": "Ожидаем дополнительные данные от кандидата или источника.",
+          "rejected_title": "Отклонён на intake",
+          "rejected_hint": "Лид отклонён на intake. Меняйте только если это допустимо политикой.",
+          "identity_unclear_title": "Личность неясна",
+          "identity_unclear_hint": "Уточните личность / дедуп до обработки.",
+          "needs_routing_title": "Нужно выбрать вакансию",
+          "needs_routing_hint": "Выберите вакансию или пул для этого лида.",
+          "ready_title": "Можно создать кандидата",
+          "ready_hint": "Маршрут в порядке — создайте кандидата, когда всё проверено.",
+          "converted_title": "Сконвертирован",
+          "converted_hint": "Кандидат для этого лида уже создан.",
+          "services_title": "Сервисный лид",
+          "services_hint": "Дальше — в воркспейсе заказа.",
+          "failed_title": "Ошибка",
+          "failed_hint": "Сбой ingest или пайплайна — исправьте и повторите."
+        },
+        "col": {
+          "intake_status": "Intake",
+          "services": "Сервис",
+          "converted": "Сконвертирован",
+          "unsupported": "—",
+          "duplicate_review": "Дубликат",
+          "failed": "Ошибка",
+          "rejected": "Отклонён",
+          "info_requested": "Запрос данных",
+          "identity_unclear": "Личность",
+          "pool_path": "Пул",
+          "routing_unconfirmed": "Подтвердить маршрут",
+          "routing_incomplete": "Выбор вакансии",
+          "needs_routing": "Выбор вакансии",
+          "new": "Новый",
+          "awaiting_convert": "К обработке",
+          "duplicated": "Дубликат",
+          "other": "—"
+        },
+        "qual": {
+          "exp_label": "Опыт",
+          "exp_ok": "{years} лет EU (ок)",
+          "exp_low": "Мало / нет опыта EU",
+          "exp_unknown": "Неизвестно",
+          "docs_label": "Документы",
+          "docs_yes": "Указаны",
+          "docs_no": "Не указаны",
+          "citizenship_label": "Гражданство / страна",
+          "citizenship_ok": "{value}",
+          "citizenship_unknown": "Нужна проверка",
+          "fit_label": "Fit",
+          "fit_reject": "Отказ",
+          "fit_needs_info": "Нужна информация",
+          "fit_unknown": "Не оценён",
+          "pipeline": "Пайплайн"
+        }
       },
       "bulk": {
         "activities": {

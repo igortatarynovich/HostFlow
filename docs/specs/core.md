@@ -1,6 +1,6 @@
 # HostFlow — Living Spec (Core Canon)
 
-**Основные модули:** [Candidates](modules/candidates.md) · [Documents](modules/documents.md) · [Vacancies](modules/vacancies.md) · [Companies](modules/companies.md) · [Leads](modules/leads.md) · [Public Intake / Candidate Portal](../platform/webhooks.md)
+**Основные модули:** [Candidates](modules/candidates.md) · [Documents](modules/documents.md) · [Vacancies](modules/vacancies.md) · [Companies](modules/companies.md) · [Leads](modules/leads.md) · [Public Intake / Candidate Portal](platform/webhooks.md)
 
 ---
 

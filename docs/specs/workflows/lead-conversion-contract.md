@@ -2,7 +2,7 @@
 
 **Назначение:** зафиксировать **операционный контракт** границы **Lead → Candidate** (и смежные действия) без введения отдельного «matching engine» и без обязательного event bus на первом шаге. Документ задаёт инварианты, допустимые переходы и минимальный payload события `candidate_created`, чтобы ingestion-пути не создавали **Candidate** как побочный эффект.
 
-**Связанные документы:** [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md), [lead_to_candidate.md](lead_to_candidate.md), [person-identity-layer-and-roadmap.md](../architecture/person-identity-layer-and-roadmap.md), [handoff-contract.md](../architecture/handoff-contract.md), [applications-operating-model.md](../architecture/applications-operating-model.md), [application-creation-mvp.md](application-creation-mvp.md), [recruitment-application-lifecycle.md](recruitment-application-lifecycle.md) (Application status/transition **canon**), [recruitment-application-lifecycle-sync-note.md](recruitment-application-lifecycle-sync-note.md) (reconciliation: ветки/код ↔ канон, C2b / I1 и др.), [candidate-creation-entrypoints-audit.md](candidate-creation-entrypoints-audit.md).
+**Связанные документы:** [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md), [person-identity-layer-and-roadmap.md](../architecture/person-identity-layer-and-roadmap.md), [handoff-contract.md](../architecture/handoff-contract.md), [applications-operating-model.md](../architecture/applications-operating-model.md), [application-creation-mvp.md](application-creation-mvp.md), [recruitment-application-lifecycle.md](recruitment-application-lifecycle.md) (Application status/transition **canon**), [recruitment-application-lifecycle-sync-note.md](recruitment-application-lifecycle-sync-note.md) (reconciliation: ветки/код ↔ канон, C2b / I1 и др.), [candidate-creation-entrypoints-audit.md](candidate-creation-entrypoints-audit.md).
 
 **Версионирование:** поле `conversion_contract_version` в audit / событиях должно ссылаться на версию этого документа (например `lead-conversion-contract@1` до первого пересмотра матрицы).
 
@@ -159,7 +159,7 @@
 
 ## 7. Несоответствия с текущим кодом
 
-Сегодня часть путей может всё ещё создавать **Candidate** напрямую (см. [lead_to_candidate.md](lead_to_candidate.md)). Этот документ — **целевой контракт**; миграция ingestion на wrapper выполняется поэтапно с чеклистом путей: Meta, manual, Telegram, public intake, import, duplicate attach, reactivation.
+Сегодня часть путей может всё ещё создавать **Candidate** напрямую (см. устаревший [lead_to_candidate.md](../../../archive/legacy/2026-05-12/workflows-lead_to_candidate.md), архивирован). Этот документ — **целевой контракт**; миграция ingestion на wrapper выполняется поэтапно с чеклистом путей: Meta, manual, Telegram, public intake, import, duplicate attach, reactivation.
 
 **Инвентаризация точек создания (аудит):** [candidate-creation-entrypoints-audit.md](candidate-creation-entrypoints-audit.md).
 

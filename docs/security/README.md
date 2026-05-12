@@ -8,6 +8,7 @@
 |----------|------------|
 | [security-ssot.md](./security-ssot.md) | Единый источник истины: классификация данных, изоляция, RBAC, handoff, auth, интеграции, тесты, KPI, IR. |
 | [runtime-roadmap.md](./runtime-roadmap.md) | Фазовый backlog: runtime assertions, observability, telemetry, detection, AI/search isolation, scorecard; **канон полей security-событий**, security-owned pipeline. |
+| [security-events-governance.md](./security-events-governance.md) | Правила владения security events: canonical v1, taxonomy PR, запрет raw events, redaction, отделение transport от producers. |
 | [security-review-checklist.md](./security-review-checklist.md) | Обязательный чеклист для каждого PR, который трогает security perimeter. |
 | [threat-models/](./threat-models/) | Узкоспециализированные threat models по поверхностям атаки. |
 | [github-labels.md](./github-labels.md) | Имена GitHub labels + команды `gh` для первичной настройки. |
@@ -15,7 +16,7 @@
 ## Enforcement (CI + process)
 
 - **PR template:** `.github/pull_request_template.md` (единый gate для всего репо).
-- **CI:** `.github/workflows/security-gates.yml` — pip-audit, bandit, npm audit + sensitive-high gate, dependency-review, Trivy (CRITICAL), threat-model/docs gate, SQL f-string scan.
+- **CI:** `.github/workflows/security-gates.yml` — pip-audit, bandit, npm audit + sensitive-high gate, dependency-review, Trivy (CRITICAL), threat-model/docs gate, SQL f-string scan, **no raw `emit_security_event(`** (canonical security events).
 - **Авто-метки:** `.github/workflows/pull-request-labeler.yml` + `.github/labeler.yml`.
 
 ## Связь с остальной документацией
