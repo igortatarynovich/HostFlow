@@ -78,10 +78,12 @@ describe('CandidateApplicationsSection', () => {
     await waitFor(() => {
       expect(screen.getByText('meta')).toBeInTheDocument()
     })
-    expect(screen.getByRole('link', { name: /Title for vac-from-api/i })).toHaveAttribute(
-      'href',
-      expect.stringContaining('vac-from-api'),
-    )
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Title for vac-from-api/i })).toHaveAttribute(
+        'href',
+        expect.stringContaining('vac-from-api'),
+      )
+    })
     expect(screen.queryByText(/Legacy \(dossier\)/i)).not.toBeInTheDocument()
     expect(
       screen.queryByText(
@@ -104,10 +106,12 @@ describe('CandidateApplicationsSection', () => {
     await waitFor(() => {
       expect(screen.getByText('Legacy (dossier)')).toBeInTheDocument()
     })
-    expect(screen.getByRole('link', { name: /Title for vac-legacy-only/i })).toHaveAttribute(
-      'href',
-      expect.stringContaining('vac-legacy-only'),
-    )
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Title for vac-legacy-only/i })).toHaveAttribute(
+        'href',
+        expect.stringContaining('vac-legacy-only'),
+      )
+    })
   })
 
   it('does not show legacy fallback when real applications exist (even if legacyVacancyId is passed)', async () => {
