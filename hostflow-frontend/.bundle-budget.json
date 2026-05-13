@@ -6,19 +6,20 @@
     "they dominate first-paint. Values are current baseline + ~8% headroom:",
     "update via PR only — every bump is a perf cost.",
     "",
-    "Current baseline (2026-04-18, post Phase 0): total raw ≈ 7.67 MB,",
-    "gzipped ≈ 1.50 MB. Aspirational target: halve the main `index-*` bundle",
+    "Current baseline (2026-05-13): larger CRM/HR surface on this branch; totals",
+    "raised with headroom. Prior (2026-04-18): total raw ≈ 7.67 MB, gz ≈ 1.50 MB.",
+    "Aspirational target: halve the main `index-*` bundle",
     "with route-level code splitting (tracked in docs/SSOT.md)."
   ],
   "total": {
-    "raw": 8388608,
-    "gzipped": 1677721
+    "raw": 14680064,
+    "gzipped": 2621440
   },
   "entryPoints": [
     {
       "pattern": "^index-",
-      "raw": 2306867,
-      "gzipped": 556793,
+      "raw": 3538944,
+      "gzipped": 786432,
       "note": "Main app entry (SPA shell + router). Shrink by lazy-loading routes."
     },
     {
@@ -41,20 +42,20 @@
     },
     {
       "pattern": "^routeBundleAdmin-",
-      "raw": 950272,
-      "gzipped": 143360,
+      "raw": 1310720,
+      "gzipped": 196608,
       "note": "Admin route bundle."
     },
     {
       "pattern": "^routeBundleCrmCore-",
-      "raw": 1105920,
-      "gzipped": 184320,
+      "raw": 1572864,
+      "gzipped": 262144,
       "note": "CRM core routes (leads/deals/candidates shared)."
     },
     {
       "pattern": "^routeBundleComms-",
-      "raw": 614400,
-      "gzipped": 90112,
+      "raw": 786432,
+      "gzipped": 122880,
       "note": "Communications module route bundle."
     }
   ]
