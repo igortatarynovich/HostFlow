@@ -1,7 +1,7 @@
 """Add personal_data, contacts, status columns to candidates
 
 Revision ID: 20251021_add_candidate_profile_schema
-Revises: 20251021_merge_heads
+Revises: 20260113_widen_alembic_ver
 Create Date: 2025-10-21 10:15:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = "20251021_add_candidate_profile_schema"
-down_revision: Union[str, Sequence[str], None] = "20251021_merge_heads"
+down_revision: Union[str, Sequence[str], None] = "20260113_widen_alembic_ver"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

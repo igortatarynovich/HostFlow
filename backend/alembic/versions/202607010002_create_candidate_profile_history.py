@@ -17,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 revision: str = "202607010002_create_candidate_profile_history"
 down_revision: Union[str, None] = "202607010001_create_candidate_stage_dict"
 branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = ("202501030000_add_candidate_profiles_and_process_templates",)
 
 
 def upgrade() -> None:
