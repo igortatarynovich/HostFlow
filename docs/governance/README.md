@@ -30,3 +30,4 @@
 ## История
 
 - **2026-05-12** — введено по итогам canonicalization pass (commits `9370fc4`…`b143e51`). Triggering risk: появление draft-v2/final-v2 параллельно канону, ad-hoc spec вне ADR, workflow без linkage в `workflows/index.md`.
+- **2026-05-12** — Documentation governance package is already tracked and pushed as part of `b97ec8d` (`chore: commit remaining repo changes`). It is accepted as the factual introduction point. No history rewrite will be performed. Future governance changes must be committed separately.

@@ -4,7 +4,7 @@ _Живой инженерный канон и стандарты разрабо
 Этот документ определяет структуру, стандарты и правила разработки проекта HostFlow. Он служит источником истины для всех модулей (backend, frontend, инфраструктура, AI-агенты) и регулярно обновляется по мере развития системы.
 
 ## Project Structure & Module Organization
-The FastAPI backend lives in `backend/app` with API routes under `backend/app/api/v1`, SQLAlchemy models in `backend/app/models`, and service helpers in `backend/app/services`. Database migrations are tracked via Alembic: the Alembic configuration file `alembic.ini` is located in the project root, and migration scripts are stored in `backend/alembic/versions`. Reusable scripts for seeding and utilities are in `backend/app/db/seeds`. Automated tests target live endpoints and reside in `backend/tests`. The React client is in `hostflow-frontend/src`, organised by feature modules (for example `src/modules/candidates` and `src/modules/vacancies`). Shared documentation and architecture notes belong in `docs/`, security governance in `docs/security/` (см. `docs/security/README.md`, [`security-events-governance.md`](docs/security/security-events-governance.md)), and incremental tooling lives under `scripts/` and the top-level `Makefile`.
+The FastAPI backend lives in `backend/app` with API routes under `backend/app/api/v1`, SQLAlchemy models in `backend/app/models`, and service helpers in `backend/app/services`. Database migrations are tracked via Alembic: the Alembic configuration file `alembic.ini` is located in the project root, and migration scripts are stored in `backend/alembic/versions`. Reusable scripts for seeding and utilities are in `backend/app/db/seeds`. Automated tests target live endpoints and reside in `backend/tests`. The React client is in `hostflow-frontend/src`, organised by feature modules (for example `src/modules/candidates` and `src/modules/vacancies`). Shared documentation and architecture notes belong in `docs/`, security governance in `docs/security/` (см. `docs/security/README.md`, [`security-events-governance.md`](docs/security/security-events-governance.md)), documentation governance in `docs/governance/`, and incremental tooling lives under `scripts/` and the top-level `Makefile`.
 
 ### Alembic Layout & Safety Checklist
 - **Single source of truth:** запускайте Alembic только из `/opt/HostFlow` (repo root) — здесь лежит `alembic.ini` и сюда смотрит `script_location`.
@@ -16,13 +16,27 @@ The FastAPI backend lives in `backend/app` with API routes under `backend/app/ap
 ## Build, Test, and Development Commands
 ### Makefile Commands
 
-- `make up` — Запускает backend (Uvicorn с автоперезапуском) и необходимые сервисы.
-- `make down` — Останавливает все сервисы и контейнеры.
-- `make mig` — Применяет все доступные миграции базы данных.
-- `make mig-rev` — Создаёт новую ревизию Alembic (указать msg через `MSG="описание"`).
-- `make seed` — Заполняет базу начальными данными (сиды из `backend/app/db/seeds`).
-- `make test` — Запускает все тесты (pytest).
-- `make lint` — Запускает линтеры и автоформатирование.
+- `make up` — run API (uvicorn --reload).
+- `make install` — create `.venv` (or use existing), ensure pip, install `backend/requirements.txt` (PEP 668).
+- `make test` — pytest with project `.venv` (`ARGS=...`); DB host `db` → `127.0.0.1` fallback is handled in tests.
+- `make test-search` — shortcut for global search API tests only.
+- `make upg` — Alembic upgrade head.
+- `make ensure-automation-schema` — ensure `automation_rules` table exists (dev fallback).
+- `make mig msg=...` — Alembic autogenerate revision.
+- `make down` — Alembic downgrade -1.
+- `make seed-demo` — seed demo data (5 companies, 5 vacancies, 25 candidates).
+- `make env-print` — print effective DB URLs.
+- `make curl-list` — GET `/api/v1/candidates` (needs `TOKEN`).
+- `make curl-create` — POST `/api/v1/candidates` (needs `TOKEN`).
+- `make get-token` — print JWT for `admin@hostflow.dev` / `admin`.
+- `make check-meta-oauth-env` — verify `META_LEADS_*` + `FRONTEND_URL` for Facebook Login (no DB).
+- `make check-spa-paths` — fail on stray `/app/...` URL literals in `backend/app`.
+- `make codegen-crm-app-paths` — regenerate TS/Python from `shared/crm_app_paths.json`.
+- `make check-codegen-crm-paths` — fail if generated files drift from manifest.
+- `make paths-qa` — codegen + SPA literals + frontend route static checks (needs npm in `hostflow-frontend`).
+- `make docs-lint` — documentation governance lint.
+- `make docs-lint-strict` — same as `docs-lint` but ignores baseline (zero tolerance).
+- `make docs-lint-baseline` — rewrite `scripts/docs/governance_baseline.txt` with current violations (use sparingly).
 
 Для клиента: установите зависимости в `hostflow-frontend` и используйте `npm run dev` для локальной разработки, `npm run build` для сборки, и `npm run preview` для проверки production-версии.
 
@@ -30,7 +44,7 @@ The FastAPI backend lives in `backend/app` with API routes under `backend/app/ap
 Python code uses 4-space indentation, type hints, and snake_case for modules, packages, and variables. Enforce formatting and linting with `ruff --fix` (Python), type checking via `mypy`, and import ordering via `isort --profile=black`; all эти инструменты запускаются автоматически через pre-commit hooks. Для фронтенда используется `eslint` (см. `hostflow-frontend/eslint.config.js`). React и TypeScript исходники используют функциональные компоненты, PascalCase для компонентов и camelCase для хуков и вспомогательных функций. Tailwind utility classes должны оставаться в `*.tsx` файлах для колокации стилей.
 
 ## Testing Guidelines
-Pytest is configured in `backend/pytest.ini` with asyncio support; tests expect an API at `http://localhost:8000` and bearer tokens supplied via `VIEWER_TOKEN`/`MANAGER_TOKEN`. Name new test modules `test_<feature>.py`, mirror the API surface, and assert both status codes and payload shapes. Add integration tests whenever you expose a new route, and keep seed data scripts up to date so fixtures succeed locally and in CI.
+Pytest is configured in `backend/pytest.ini` with asyncio support. Name new test modules `test_<feature>.py`, mirror the API surface, and assert both status codes and payload shapes. Add integration tests whenever you expose a new route, and keep seed data scripts up to date so fixtures succeed locally and in CI.
 
 `backend/tests/api/test_public_intake.py` и связанные интеграционные тесты нужно гонять только в окружении с доступной Postgres — в песочницах без реальной базы они падают еще на попытке коннекта.
 
@@ -95,17 +109,6 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 3. При изменении схемы базы данных необходимо:
    - Создать миграцию через Alembic (см. Makefile).
    - Обновить сиды в `backend/app/db/seeds`, чтобы тестовые/локальные данные были актуальны.
-
-## Linting & Typing Tools
-
-- Python: `ruff` (линтинг+форматирование), `mypy` (type checking), `pre-commit` (hooks).
-- JS/TS: `eslint` (с конфигом в `hostflow-frontend/eslint.config.js`).
-
-
-- Основные связи: `candidate↔client`, `candidate↔documents`, `client↔vacancies`.
-- Источник истины по статусу, документам и связям — карточка кандидата.
-- Все напоминания и контроль сроков по документам реализуются через связанные объекты документов.
-
 
 ## Living Spec Integration
 HostFlow использует живую спецификацию в `docs/specs/` + canonical baseline (см. `docs/governance/hierarchy-of-truth.md`). Перед изменением логики, структуры моделей или API необходимо:
