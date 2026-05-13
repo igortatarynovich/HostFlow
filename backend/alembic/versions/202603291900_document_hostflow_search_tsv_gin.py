@@ -45,8 +45,7 @@ def upgrade() -> None:
               COALESCE(NEW.user_comment, ''),
               COALESCE(NEW.source, ''),
               COALESCE(NEW.id::text, ''),
-              COALESCE(NEW.candidate_id::text, ''),
-              COALESCE(NEW.status::text, '')
+              COALESCE(NEW.candidate_id::text, '')
             )
           );
           RETURN NEW;
@@ -60,7 +59,7 @@ def upgrade() -> None:
         CREATE TRIGGER trg_documents_hostflow_search_tsv
         BEFORE INSERT OR UPDATE OF
           doc_type, custom_name, filename, number, external_id, user_comment, source,
-          id, candidate_id, status
+          id, candidate_id
         ON documents
         FOR EACH ROW
         EXECUTE PROCEDURE trg_refresh_document_search_tsv()
