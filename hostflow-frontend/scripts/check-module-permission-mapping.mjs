@@ -99,7 +99,15 @@ function parseRoutePermissions(sf) {
   return out
 }
 
-const modulePermissionPrefixes = ['companies.', 'leads.', 'vacancies.', 'candidates.', 'documents.', 'services.']
+const modulePermissionPrefixes = [
+  'companies.',
+  'leads.',
+  'vacancies.',
+  'candidates.',
+  'documents.',
+  'services.',
+  'workforce.',
+]
 
 function isModulePermission(permission) {
   return modulePermissionPrefixes.some((prefix) => permission.startsWith(prefix))

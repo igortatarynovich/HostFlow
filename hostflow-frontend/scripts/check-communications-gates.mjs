@@ -23,6 +23,7 @@ const EXPECTED_COMM_GATES = {
   'communications-inbox-hub': { type: 'any', features: ['messages', 'email'] },
   'communications-inbox-center': { type: 'any', features: ['messages', 'email'] },
   'email-inbox': { type: 'feature', features: ['email'] },
+  'messages-inbox': { type: 'feature', features: ['messages'] },
   calendar: { type: 'feature', features: ['calendar'] },
   'sla-incidents': { type: 'any', features: ['messages', 'email'] },
   'command-audit': { type: 'feature', features: ['communicationsAdmin'] },
