@@ -18,7 +18,7 @@ from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
-from tests.conftest import DEFAULT_TENANT_ID
+from backend.tests.conftest import DEFAULT_TENANT_ID
 
 
 async def _set_tenant_ctx(db, tenant_id: str) -> None:

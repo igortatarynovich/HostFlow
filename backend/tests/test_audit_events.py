@@ -11,14 +11,14 @@ from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.models.audit import ActivityLog
 from backend.app.services.audit import log_audit_event
 
-from tests.conftest import DEFAULT_TENANT_ID
+from backend.tests.conftest import DEFAULT_TENANT_ID
 
 
 @pytest_asyncio.fixture
 async def db_session():
     """Session for audit tests."""
     from backend.app.db.session import async_session_maker
-    from tests.conftest import _init_data, _set_tenant
+    from backend.tests.conftest import _init_data, _set_tenant
     await _init_data()
     async with async_session_maker() as session:
         await _set_tenant(session, DEFAULT_TENANT_ID)

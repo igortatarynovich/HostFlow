@@ -10,7 +10,7 @@ def _prepend_site_packages_for_alembic_library() -> None:
     shadow the PyPI ``alembic`` package (breaking ``from alembic.operations import Operations``).
 
     Prepend the ``site-packages`` directory that contains the real Alembic distribution so the
-    library wins without removing ``backend/`` (tests use ``from tests.conftest import …``).
+    library wins without removing ``backend/`` (tests should import fixtures via ``backend.tests.conftest``).
     """
     here = Path(__file__).resolve()
     backend_root = here.parents[1]
@@ -509,8 +509,8 @@ async def client() -> AsyncClient:
     """
     In-memory HTTP client bound to FastAPI app with lifespan triggers.
     """
+    await _init_data()
     async with LifespanManager(app, startup_timeout=120.0, shutdown_timeout=60.0):
-        await _init_data()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
             yield c
@@ -518,8 +518,8 @@ async def client() -> AsyncClient:
 
 @pytest_asyncio.fixture
 async def app_with_db() -> AsyncClient:
+    await _init_data()
     async with LifespanManager(app, startup_timeout=120.0, shutdown_timeout=60.0):
-        await _init_data()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
             yield c
