@@ -185,6 +185,7 @@ export default function Candidates(){
 
   const [q, setQ] = useState('')
   const [stageFilter, setStageFilter] = useState<string[]>([])
+  const [candidateRowStatusFilter, setCandidateRowStatusFilter] = useState<string[]>([])
   const [vacancyFilter, setVacancyFilter] = useState<string[]>([])
   const [managerFilter, setManagerFilter] = useState<string[]>([])
   const [docsStatusFilter, setDocsStatusFilter] = useState<string[]>([])
@@ -500,7 +501,7 @@ export default function Candidates(){
     resetCandidatesFiltersCore,
     handleResetFilters,
   } = useCandidatesFiltersState({
-    setQ, setStageFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
     setTagsFilter, setIsFavoriteFilter, setDocsStatusFilter, setDocsOrderedFilter,
     setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
     setTrailerTypesFilter, setDocsHasFilesFilter,
@@ -999,6 +1000,7 @@ export default function Candidates(){
     t,
     q,
     stageFilter,
+    candidateRowStatusFilter,
     statusReasonFilter,
     tagsFilter,
     vacancyFilter,
@@ -1023,7 +1025,7 @@ export default function Candidates(){
     searchParams, setSearchParams,
     setViewMode, operationalQueue,
     filtersHydrated, resetCandidatesFiltersCore,
-    setQ, setStageFilter, setVacancyFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setStatusReasonFilter,
     setTextFilter, setManagerFilter, setPreferredChannelFilter,
     setOpsModeFilter, setInPolandFilter,
     setHandoffStatusFilter, setContactAttemptsFilter,
@@ -1033,14 +1035,14 @@ export default function Candidates(){
   useCandidatesFiltersPersistence({
     storageKey: filterStorageKey,
     filtersHydrated, setFiltersHydrated, persistedFiltersRef,
-    setQ, setStageFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
     setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
     setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
     setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
     setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
     setTextFilters, setIsFavoriteFilter, setIntakeApplicationKindFilter,
     setSortKey, setSortDir,
-    q, stageFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
+    q, stageFilter, candidateRowStatusFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
     docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
     opsModeFilter, polandBasisFilter, trailerTypesFilter,
     createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,
@@ -1091,6 +1093,7 @@ export default function Candidates(){
   const filterSnapshot = useMemo<CandidateFilterSnapshot>(
     () => ({
       stage: stageFilter,
+      rowStatuses: candidateRowStatusFilter,
       vacancy: vacancyFilter,
       manager: managerFilter,
       statusReasons: statusReasonFilter,
@@ -1112,6 +1115,7 @@ export default function Candidates(){
     }),
     [
       stageFilter,
+      candidateRowStatusFilter,
       vacancyFilter,
       managerFilter,
       statusReasonFilter,
@@ -1537,6 +1541,45 @@ export default function Candidates(){
     if (next.length !== tagsFilter.length) setTagsFilter(next)
   }, [tagsFilter, tagOptions, setTagsFilter, pruneSelectionByOptions])
 
+  const candidateRowStatusFilterOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    const labelFor = (value: string) =>
+      t(`app.candidates.row_status.${value}`, { defaultValue: value })
+    enrichedItems.forEach((item) => {
+      const raw = (item as { row_status?: string | null }).row_status
+      const v = raw != null && String(raw).trim() !== '' ? String(raw).trim() : null
+      if (v && !map.has(v)) map.set(v, labelFor(v))
+    })
+    candidateRowStatusFilter.forEach((code) => {
+      const v = String(code || '').trim()
+      if (v && !map.has(v)) map.set(v, labelFor(v))
+    })
+    return Array.from(map.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }))
+  }, [enrichedItems, candidateRowStatusFilter, t])
+
+  const candidateRowStatusLabel = useCallback(
+    (code: string) => {
+      const v = String(code || '').trim()
+      if (!v) {
+        return t('app.candidates.filters.row_status_legacy', { defaultValue: 'Unknown / legacy status' })
+      }
+      return t(`app.candidates.row_status.${v}`, { defaultValue: v })
+    },
+    [t],
+  )
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(candidateRowStatusFilter, candidateRowStatusFilterOptions)
+    if (next.length !== candidateRowStatusFilter.length) setCandidateRowStatusFilter(next)
+  }, [
+    candidateRowStatusFilter,
+    candidateRowStatusFilterOptions,
+    setCandidateRowStatusFilter,
+    pruneSelectionByOptions,
+  ])
+
   // Функция для рендеринга содержимого заголовка колонки
   const columnHeaderCtx = useMemo(() => ({
     t,
@@ -1547,6 +1590,7 @@ export default function Candidates(){
     vacancyFilterOptions, vacancyFilter, setVacancyFilter,
     managerFilterOptions, managerFilter, setManagerFilter,
     stageFilterOptions, stageFilter, setStageFilter,
+    candidateRowStatusFilterOptions, candidateRowStatusFilter, setCandidateRowStatusFilter,
     preferredChannelOptions, preferredChannelFilter, setPreferredChannelFilter,
     inPolandOptions, inPolandFilter, setInPolandFilter,
     polandBasisOptions, polandBasisFilter, setPolandBasisFilter,
@@ -1570,6 +1614,7 @@ export default function Candidates(){
     vacancyFilterOptions, vacancyFilter, setVacancyFilter,
     managerFilterOptions, managerFilter, setManagerFilter,
     stageFilterOptions, stageFilter, setStageFilter,
+    candidateRowStatusFilterOptions, candidateRowStatusFilter, setCandidateRowStatusFilter,
     preferredChannelOptions, preferredChannelFilter, setPreferredChannelFilter,
     inPolandOptions, inPolandFilter, setInPolandFilter,
     polandBasisOptions, polandBasisFilter, setPolandBasisFilter,
@@ -2097,6 +2142,7 @@ export default function Candidates(){
   const hasFilterBadges =
     Boolean(q) ||
     stageFilter.length > 0 ||
+    candidateRowStatusFilter.length > 0 ||
     vacancyFilter.length > 0 ||
     managerFilter.length > 0 ||
     statusReasonFilter.length > 0 ||
@@ -2433,6 +2479,9 @@ export default function Candidates(){
             vacancies={quickVacancies}
             stageFilter={stageFilter}
             setStageFilter={setStageFilter}
+            candidateRowStatusFilter={candidateRowStatusFilter}
+            setCandidateRowStatusFilter={setCandidateRowStatusFilter}
+            candidateRowStatusLabel={candidateRowStatusLabel}
             managerFilter={managerFilter}
             setManagerFilter={setManagerFilter}
             vacancyFilter={vacancyFilter}
