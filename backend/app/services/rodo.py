@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
@@ -185,3 +186,35 @@ Zespół HostFlow
         payload={"candidate_id": candidate_id, "channel": "email"},
     )
     return True, "RODO email sent", notification
+
+
+def rodo_lead_audit_satisfied_from_candidate(candidate: Candidate) -> bool:
+    """True when lead-stage RODO was copied onto the candidate at conversion (read-only audit)."""
+    try:
+        extra = candidate._get_extra()
+    except Exception:
+        try:
+            extra = json.loads(candidate.extra or "{}")
+        except Exception:
+            extra = {}
+    if not isinstance(extra, dict):
+        return False
+    audit = extra.get("rodo_lead_audit")
+    if not isinstance(audit, dict):
+        return False
+    return bool(str(audit.get("sent_at") or "").strip())
+
+
+async def candidate_rodo_compliance_satisfied(
+    db: AsyncSession,
+    candidate_id: str,
+    *,
+    candidate: Candidate | None = None,
+) -> bool:
+    """RODO satisfied for contact/stage gates: row-level notification **or** lead audit copy."""
+    if await get_first_rodo_sent(db, candidate_id):
+        return True
+    cand = candidate or await db.get(Candidate, candidate_id)
+    if not cand:
+        return False
+    return rodo_lead_audit_satisfied_from_candidate(cand)

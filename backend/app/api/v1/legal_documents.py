@@ -17,7 +17,7 @@ from backend.app.models.legal_document import LegalDocument
 from backend.app.models.rodo_notification import RodoNotification
 from backend.app.legal.billing_terms_templates_v1 import ALL_LEGAL_DOC_TYPES, default_billing_template_items
 from backend.app.services.legal_documents import get_active_legal_document, list_active_for_tenant
-from backend.app.services.rodo import get_first_rodo_sent, send_rodo_email
+from backend.app.services.rodo import get_first_rodo_sent, rodo_lead_audit_satisfied_from_candidate, send_rodo_email
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
 
 router = APIRouter(prefix="/legal-documents", tags=["legal-documents"])
@@ -79,6 +79,8 @@ class RodoStatusOut(BaseModel):
     recipient: Optional[str] = None
     rodo_version_id: Optional[str] = None
     can_send: bool
+    """True when RODO was satisfied on the originating lead before conversion (read-only on candidate)."""
+    from_lead_conversion: bool = False
     # Hints when sent=false — why «Send RODO» may be disabled (UI / contact-attempts copy).
     candidate_has_email: bool = False
     active_rodo_template: bool = False
@@ -215,15 +217,46 @@ async def get_rodo_status(
     rodo_doc = await get_active_legal_document(db, str(tenant_id), "rodo_clause")
     has_email = bool(email)
     has_template = rodo_doc is not None
-    sent = first is not None
-    can_send = bool(has_email and has_template and not sent)
+    from_lead = bool(cand and rodo_lead_audit_satisfied_from_candidate(cand))
+    sent = first is not None or from_lead
+    lead_audit: dict = {}
+    if cand and from_lead:
+        try:
+            lead_audit = cand._get_extra().get("rodo_lead_audit") or {}
+        except Exception:
+            lead_audit = {}
+    if first:
+        sent_at = first.sent_at
+        recipient = first.recipient
+        version_id = first.rodo_version_id
+        sent_by = first.sent_by_user_id
+    elif from_lead and isinstance(lead_audit, dict):
+        raw_at = lead_audit.get("sent_at")
+        sent_at = None
+        if raw_at:
+            try:
+                s = str(raw_at).strip().replace("Z", "+00:00")
+                sent_at = datetime.fromisoformat(s)
+            except Exception:
+                sent_at = None
+        recipient = email or None
+        rv = str(lead_audit.get("rodo_version_id") or "").strip()
+        version_id = rv or (getattr(rodo_doc, "version_id", None) if rodo_doc else None)
+        sent_by = None
+    else:
+        sent_at = None
+        recipient = email or None
+        version_id = rodo_doc.version_id if rodo_doc else None
+        sent_by = None
+    can_send = bool(has_email and has_template and first is None and not from_lead)
     return RodoStatusOut(
         sent=sent,
-        sent_at=first.sent_at if first else None,
-        sent_by_user_id=first.sent_by_user_id if first else None,
-        recipient=first.recipient if first else email or None,
-        rodo_version_id=first.rodo_version_id if first else (rodo_doc.version_id if rodo_doc else None),
+        sent_at=sent_at,
+        sent_by_user_id=sent_by,
+        recipient=recipient,
+        rodo_version_id=version_id,
         can_send=can_send,
+        from_lead_conversion=bool(from_lead and first is None),
         candidate_has_email=has_email,
         active_rodo_template=has_template,
     )
@@ -240,6 +273,12 @@ async def send_rodo(
 
     db, tenant_id = db_tenant
     await ensure_candidate_access(db, str(tenant_id), str(candidate_id), current_user)
+    cand = await db.get(Candidate, str(candidate_id))
+    if cand and rodo_lead_audit_satisfied_from_candidate(cand):
+        raise HTTPException(
+            status_code=400,
+            detail="RODO was sent on the lead before conversion; use lead workspace for audit.",
+        )
     success, msg, notification = await send_rodo_email(
         db,
         candidate_id=str(candidate_id),

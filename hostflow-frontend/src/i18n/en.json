@@ -4522,7 +4522,8 @@
         "reason_no_email_detail": "The candidate has no email on file. Add an email in the profile, then send RODO from the block above.",
         "reason_no_template_detail": "There is no active RODO clause document for your organization. An administrator must publish a RODO text in Legal documents.",
         "reason_send_unavailable_detail": "RODO cannot be sent automatically yet — check the candidate email and that an active RODO clause exists for your tenant.",
-        "reason_ready_to_send_detail": "RODO has not been sent yet. Use “Send RODO” in the block above."
+        "reason_ready_to_send_detail": "RODO has not been sent yet. Use “Send RODO” in the block above.",
+        "from_lead_note": "RODO was sent at the lead stage before this candidate was created."
       },
       "contact_attempts": {
         "title": "Contact attempts",

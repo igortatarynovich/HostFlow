@@ -418,6 +418,37 @@ async def get_lead_detail_endpoint(
     return res.items[0]
 
 
+@router.post(
+    "/{lead_id}/compliance/rodo/send",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+)
+async def send_lead_rodo_compliance_endpoint(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Send art.14 RODO notice to the lead contact email; audit lives on ``lead.normalized['rodo']``."""
+    from backend.app.modules.leads import crud
+    from backend.app.services.lead_rodo import send_lead_rodo_email
+
+    db, tenant_uuid = db_tenant
+    tenant_id_str = str(tenant_uuid)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    ok, msg = await send_lead_rodo_email(
+        db,
+        lead=lead,
+        tenant_id=tenant_id_str,
+        actor_id=str(current_user.sub or "").strip() or None,
+    )
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    await db.commit()
+    return {"ok": True, "message": msg}
+
+
 @router.patch("/{lead_id}", response_model=LeadOut)
 async def update_lead_stage_endpoint(
     lead_id: str,

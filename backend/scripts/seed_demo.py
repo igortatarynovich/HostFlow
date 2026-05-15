@@ -386,18 +386,15 @@ async def seed_candidates(
     stages = [
         "new",
         "contacted",
+        "questionnaire_submitted",
         "docs_wait",
         "docs_got",
-        "permit_ordered",
-        "permit_received",
-        "visa",
-        "red_paper",
-        "trip_plan",
-        "at_client",
-        "employed",
-        "on_trip",
-        "probation_ok",
+        "ready_for_handoff",
+        "ready_for_hr",
+        "handoff_returned",
+        "processing_by_client",
         "rejected",
+        "declined",
     ]
 
     for i in range(1, 26):

@@ -22,6 +22,7 @@ function CandidateRodoSection({ candidateId, onSent, refreshTrigger = 0 }: Candi
     recipient: string | null
     rodo_version_id: string | null
     can_send: boolean
+    from_lead_conversion?: boolean
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -110,6 +111,13 @@ function CandidateRodoSection({ candidateId, onSent, refreshTrigger = 0 }: Candi
       )}
       {status.sent ? (
         <div className="mt-2 space-y-1 text-sm text-slate-600">
+          {status.from_lead_conversion ? (
+            <p className="text-xs text-slate-500">
+              {t('app.candidate_card.rodo.from_lead_note', {
+                defaultValue: 'RODO was sent at the lead stage before this candidate was created.',
+              })}
+            </p>
+          ) : null}
           <p>
             {t('app.candidate_card.rodo.sent_at')}:{' '}
             {status.sent_at ? formatDateTime(status.sent_at) : '—'}

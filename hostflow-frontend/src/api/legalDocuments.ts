@@ -83,6 +83,7 @@ export type RodoStatusOut = {
   recipient: string | null
   rodo_version_id: string | null
   can_send: boolean
+  from_lead_conversion?: boolean
   /** When sent=false: candidate card has an email (required to send RODO by email). */
   candidate_has_email?: boolean
   /** When sent=false: tenant has an active RODO clause document. */

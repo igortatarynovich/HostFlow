@@ -11,6 +11,12 @@ export const RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: ReadonlySet<string> = new S
   'employment_pending',
   'on_trip',
   'probation_ok',
+  'permit_ordered',
+  'permit_received',
+  'visa',
+  'red_paper',
+  'trip_plan',
+  'at_client',
 ])
 
 export function isPostRecruitmentStageCode(code: string | null | undefined): boolean {

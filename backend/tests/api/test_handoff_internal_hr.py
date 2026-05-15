@@ -343,6 +343,8 @@ async def test_meta_stages_recruiter_handoff_filter_excludes_post_hr_codes(
     assert "processing_by_hr" not in (body_r.get("order") or [])
     assert "processing_by_client" not in (body_r.get("order") or [])
     assert "employed" not in (body_r.get("order") or [])
+    assert "permit_received" not in (body_r.get("order") or [])
+    assert "employment_pending" not in (body_r.get("order") or [])
     assert "hired" not in (body_r.get("order") or [])
     # ready_for_hr — финал Recruitment; не входит в RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES (может быть в воронке).
     assert "rejected" in (body_r.get("order") or [])

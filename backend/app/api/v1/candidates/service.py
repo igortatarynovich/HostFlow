@@ -54,7 +54,7 @@ from backend.app.services.events import EventAudience
 from backend.app.services.automation_rules import run_rules as run_automation_rules
 from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.rodo import send_rodo_email as _send_rodo_email
-from backend.app.services.rodo import get_first_rodo_sent as _get_first_rodo_sent
+from backend.app.services.rodo import candidate_rodo_compliance_satisfied as _candidate_rodo_compliance_satisfied
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services.handoff import is_client_tenant as _is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
@@ -116,8 +116,7 @@ async def _enforce_rodo_before_contact_stage(
     # Create path runs this before INSERT: there is no row and no RODO yet; auto-send runs after commit.
     if not await _candidate_row_exists(db, candidate_id):
         return
-    first_rodo = await _get_first_rodo_sent(db, candidate_id)
-    if first_rodo is not None:
+    if await _candidate_rodo_compliance_satisfied(db, candidate_id):
         return
     raise HTTPException(
         status_code=409,

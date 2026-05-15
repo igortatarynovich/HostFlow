@@ -8,6 +8,7 @@ from enum import Enum
 class AuditEntityType(str, Enum):
     """Entity types for audit events."""
     candidate = "candidate"
+    lead = "lead"
     handoff = "handoff"
     rodo_notification = "rodo_notification"
     contact_attempt = "contact_attempt"

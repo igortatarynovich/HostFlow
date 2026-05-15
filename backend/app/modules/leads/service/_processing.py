@@ -836,6 +836,15 @@ async def process_normalized_lead(
     if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
         extra_fields["experience_eu_years"] = experience_eu_years
 
+    from backend.app.services.lead_rodo import rodo_lead_audit_for_candidate_extra
+
+    rodo_audit = rodo_lead_audit_for_candidate_extra(
+        normalized if isinstance(normalized, dict) else {},
+        str(lead.id),
+    )
+    if rodo_audit:
+        extra_fields["rodo_lead_audit"] = rodo_audit
+
     candidate_payload: Dict[str, Any] = {
         "first_name": first_name.strip() or "Meta",
         "last_name": last_name.strip() or "Lead",

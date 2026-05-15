@@ -18,7 +18,7 @@ from backend.app.services.audit import log_audit_event
 from backend.app.services.tenant_links import get_tenant_link
 from backend.app.services.notifications import notify
 from backend.app.services.tenant_email import send_email_for_tenant
-from backend.app.services.rodo import get_first_rodo_sent
+from backend.app.services.rodo import candidate_rodo_compliance_satisfied
 from backend.app.services.uos_auto_activities import ensure_candidate_stage_follow_up_task
 from backend.app.services.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
@@ -162,9 +162,9 @@ async def get_effective_contact_policy(
             candidate.vacancy_id,
         )
     
-    # RODO must be sent before contact attempts
-    first_rodo = await get_first_rodo_sent(db, candidate.id)
-    policy["rodo_sent"] = first_rodo is not None
+    # RODO must be sent before contact attempts (art.14) — candidate row or lead audit copy.
+    rodo_ok = await candidate_rodo_compliance_satisfied(db, candidate.id, candidate=candidate)
+    policy["rodo_sent"] = rodo_ok
 
     if not policy.get("enabled"):
         if not company_id:
@@ -324,9 +324,7 @@ async def create_attempt(
     if not cand:
         return None, "Candidate not found"
 
-    # RODO must be sent before contact attempts (art.14 compliance)
-    first_rodo = await get_first_rodo_sent(db, candidate_id)
-    if not first_rodo:
+    if not await candidate_rodo_compliance_satisfied(db, candidate_id, candidate=cand):
         return None, "RODO must be sent to candidate before logging contact attempts"
 
     policy = await get_effective_contact_policy(db, tenant_id, cand)

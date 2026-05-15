@@ -4024,7 +4024,8 @@
         "reason_no_email_detail": "Brak adresu e-mail kandydata. Uzupełnij e-mail w profilu, a następnie wyślij RODO w bloku powyżej.",
         "reason_no_template_detail": "Brak aktywnego dokumentu klauzuli RODO dla organizacji. Administrator musi opublikować tekst RODO w dokumentach prawnych.",
         "reason_send_unavailable_detail": "Automatyczne wysłanie RODO jest na razie niedostępne — sprawdź e-mail kandydata i aktywną klauzulę RODO dla tenanta.",
-        "reason_ready_to_send_detail": "Informacja RODO nie została jeszcze wysłana. Użyj „Wyślij informację RODO” w bloku powyżej."
+        "reason_ready_to_send_detail": "Informacja RODO nie została jeszcze wysłana. Użyj „Wyślij informację RODO” w bloku powyżej.",
+        "from_lead_note": "Informacja RODO została wysłana na etapie leada przed utworzeniem tej karty kandydata."
       },
       "contact_attempts": {
         "title": "Próby kontaktu",

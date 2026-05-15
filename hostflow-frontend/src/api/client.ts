@@ -1013,6 +1013,12 @@ export async function processLead(leadId: string) {
   return data;
 }
 
+/** POST /leads/{id}/compliance/rodo/send — art.14 notice at lead stage (before conversion). */
+export async function sendLeadRodoCompliance(leadId: string): Promise<{ ok: boolean; message: string }> {
+  const { data } = await api.post<{ ok: boolean; message: string }>(`/leads/${leadId}/compliance/rodo/send`);
+  return data;
+}
+
 export async function deleteLead(leadId: string): Promise<void> {
   await api.delete(`/leads/${leadId}`);
 }
