@@ -10,6 +10,8 @@ export type QuickViewKey =
 
 export type QuickDocFilter = { key: string; label: string; statuses: string[]; active: boolean }
 
+export type OperationalChip = { key: string; label: string; active: boolean; onClick: () => void }
+
 type CandidatesQuickViewsBarProps = {
   t: (key: string, options?: any) => string
   quickViewParam: string
@@ -20,6 +22,8 @@ type CandidatesQuickViewsBarProps = {
   quickFiltersExpanded: boolean
   onToggleQuickDocFilter: (statuses: string[], active: boolean) => void
   onQuickFiltersExpandedChange: (updater: (prev: boolean) => boolean) => void
+  /** When set (table toolbar), show only these operational chips instead of favorites + doc shortcuts. */
+  operationalChips?: OperationalChip[]
   savedViews?: UserSavedView[]
   onApplySavedView?: (view: UserSavedView) => void
   onDeleteSavedView?: (id: string) => void
@@ -46,6 +50,7 @@ export function CandidatesQuickViewsBar({
   onOpenSaveView,
   viewSaveEnabled = false,
   variant = 'rail',
+  operationalChips,
 }: CandidatesQuickViewsBarProps) {
   const QV_URL_KEYS = new Set<QuickViewKey>(['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week'])
 
@@ -81,6 +86,22 @@ export function CandidatesQuickViewsBar({
     'shrink-0 whitespace-nowrap pr-1 text-[10px] font-semibold uppercase leading-none tracking-wide text-slate-500'
 
   if (variant === 'tableToolbar') {
+    if (operationalChips && operationalChips.length > 0) {
+      return (
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
+          {operationalChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.onClick}
+              className={shortcutBtn(chip.active)}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )
+    }
     return (
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-end">
         <button

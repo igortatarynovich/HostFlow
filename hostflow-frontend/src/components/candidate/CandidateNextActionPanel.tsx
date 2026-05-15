@@ -67,6 +67,8 @@ export default function CandidateNextActionPanel(props: {
   /** When true, the full reminder form/list opens in a parent modal instead of inline in the rail. */
   reminderEditorInModal?: boolean
   onReminderModalOpenChange?: (open: boolean) => void
+  /** When true, hide operational CTAs (matches backend stage-or-status terminal guard). */
+  operationallyTerminal?: boolean
   /** Canonical stage (e.g. `contacted`, `docs_wait`) for suggested next step when no reminder. */
   canonicalStageCode?: string | null
   /** Next stage in journey order — used to advance operational hints after gates are satisfied. */
@@ -96,7 +98,10 @@ export default function CandidateNextActionPanel(props: {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [nowTs, setNowTs] = useState<number>(0)
 
-  const pipelineCompleted = isPipelineCompletedCanonicalStage(props.canonicalStageCode ?? undefined)
+  const pipelineCompleted = useMemo(() => {
+    if (props.operationallyTerminal) return true
+    return isPipelineCompletedCanonicalStage(props.canonicalStageCode ?? undefined)
+  }, [props.operationallyTerminal, props.canonicalStageCode])
 
   const issuesPresent = props.docsIssuesPresent ?? props.docsBlockersActive ?? false
   const pipelineBlocking = props.docsPipelineBlocking ?? props.docsBlockersActive ?? false

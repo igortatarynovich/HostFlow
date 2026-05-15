@@ -144,7 +144,7 @@ export function CandidatesFiltersActionsPanel({
                         })(),
                         vacancy: (c as any).vacancy?.title || (c as any).vacancy_title || '',
                         short_id: (c as any).short_id || '',
-                        manager: resolveManagerLabel(c) || '',
+                        manager: resolveManagerLabel(c) || t('app.candidates.table.manager_not_assigned', { defaultValue: 'Not assigned' }),
                         stage: c.stage,
                         docs_status: t(docsMeta.readinessLabelKey),
                         docs_ordered_at: docsMeta.orderDate ?? '',

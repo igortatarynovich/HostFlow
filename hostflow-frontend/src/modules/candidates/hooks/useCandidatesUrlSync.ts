@@ -49,6 +49,7 @@ export interface CandidatesUrlSyncCtx {
   // ---- deep-link target setters --------------------------------------
   setQ: Dispatch<SetStateAction<string>>
   setStageFilter: Dispatch<SetStateAction<string[]>>
+  setCandidateRowStatusFilter: Dispatch<SetStateAction<string[]>>
   setVacancyFilter: Dispatch<SetStateAction<string[]>>
   setStatusReasonFilter: Dispatch<SetStateAction<string[]>>
   setTextFilter: (key: keyof ColumnTextFilters, value: string) => void
@@ -65,7 +66,7 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     searchParams, setSearchParams,
     setViewMode, operationalQueue,
     filtersHydrated, resetCandidatesFiltersCore,
-    setQ, setStageFilter, setVacancyFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setStatusReasonFilter,
     setTextFilter, setManagerFilter, setPreferredChannelFilter,
     setOpsModeFilter, setInPolandFilter,
     setHandoffStatusFilter, setContactAttemptsFilter,
@@ -91,6 +92,7 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     if (!filtersHydrated) return
     const qParam = searchParams.get('q') || searchParams.get('query')
     const stagesQuery = searchParams.get('stages') || searchParams.get('stage')
+    const candidateStatusesQuery = searchParams.get('candidate_statuses')
     const filterParam = (searchParams.get('filter') || '').trim()
     const recruiterUnassignedParam = (searchParams.get('recruiter_unassigned') || '').trim()
     const vacancyParam = searchParams.get('vacancy_id') || searchParams.get('vacancy')
@@ -116,6 +118,7 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     const hasDeepLink =
       Boolean(qParam && String(qParam).trim()) ||
       stagesQuery ||
+      candidateStatusesQuery ||
       Boolean(filterParam) ||
       Boolean(recruiterUnassignedParam) ||
       vacancyParam ||
@@ -136,6 +139,9 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     if (qParam && String(qParam).trim()) setQ(String(qParam).trim())
     if (stagesQuery) {
       setStageFilter(normalizeArrayFilter(stagesQuery).map(mapWorkHubStage))
+    }
+    if (candidateStatusesQuery) {
+      setCandidateRowStatusFilter(normalizeArrayFilter(candidateStatusesQuery))
     }
     if (vacancyParam) setVacancyFilter(normalizeArrayFilter([vacancyParam]))
     if (reasonParam) setStatusReasonFilter(normalizeReasonList([reasonParam]))
@@ -160,6 +166,7 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     setTextFilter,
     setQ,
     setStageFilter,
+    setCandidateRowStatusFilter,
     setVacancyFilter,
     setStatusReasonFilter,
     setManagerFilter,

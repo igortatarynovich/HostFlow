@@ -235,6 +235,7 @@ async def test_internal_hr_handoff_locks_recruiter_edit_hr_can_edit_and_checklis
             "entity_type": "candidate",
             "entity_id": candidate_id,
             "type_filter": ["internal_hr_handoff_pending"],
+            "assignee_scope": "team",
             "due_to": due_to_pre,
         },
     )

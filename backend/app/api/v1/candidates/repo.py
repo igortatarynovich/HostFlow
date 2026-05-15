@@ -43,6 +43,8 @@ from backend.app.models.document import Document
 from backend.app.models.tenant import TenantLink
 from backend.app.models.enums import DocumentStatus
 from backend.app.services.tenant_visibility import TenantVisibility
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 
 
 __all__ = [
@@ -536,6 +538,15 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     if stages_norm:
         conds.append(Candidate.stage.in_(stages_norm))
 
+    # Row-level application/business state (``Candidate.status``) — separate from funnel ``Candidate.stage``.
+    cand_status_acc: list[str] = []
+    cand_status_acc += _to_list(filters.get("candidate_statuses"))
+    cand_status_acc += _to_list(filters.get("candidate_status"))
+    seen_cs: set[str] = set()
+    cand_status_norm = [s for s in cand_status_acc if s and not (s in seen_cs or seen_cs.add(s))]
+    if cand_status_norm:
+        conds.append(Candidate.status.in_(cand_status_norm))
+
     dt_from: Optional[datetime] = filters.get("dt_from")
     dt_to: Optional[datetime] = filters.get("dt_to")
     if dt_from:
@@ -780,6 +791,9 @@ async def count_candidates_insights(
     )
 
     stage_lower = func.lower(func.coalesce(Candidate.stage, ""))
+    status_lower = func.lower(func.coalesce(Candidate.status, ""))
+    _pc_t = tuple(PIPELINE_COMPLETED_STAGE_CODES)
+    ops_active = sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status)
     is_new_stage = or_(
         stage_lower == literal("new"),
         stage_lower.like("new_%"),
@@ -814,25 +828,42 @@ async def count_candidates_insights(
     start_day_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     thresh_24h = now_utc - timedelta(hours=24)
 
-    bn_no_contact = case((stage_lower.in_(("new", "no_answer")), 1), else_=0)
-    bn_docs_wait = case((stage_lower == literal("docs_wait"), 1), else_=0)
-    bn_interview_pending = case((stage_lower.in_(("contacted", "questionnaire_submitted")), 1), else_=0)
-    term_unassign = stage_lower.in_(("employed", "rejected", "declined", "probation_ok"))
+    bn_no_contact = case((and_(ops_active, stage_lower.in_(("new", "no_answer"))), 1), else_=0)
+    bn_docs_wait = case((and_(ops_active, stage_lower == literal("docs_wait")), 1), else_=0)
+    bn_interview_pending = case(
+        (and_(ops_active, stage_lower.in_(("contacted", "questionnaire_submitted"))), 1),
+        else_=0,
+    )
+    term_unassign = or_(stage_lower.in_(_pc_t), status_lower.in_(_pc_t))
     unassigned_recruiter = case((and_(Candidate.recruiter_id.is_(None), ~term_unassign), 1), else_=0)
 
     in_snap_new = stage_lower.in_(("new", "no_answer"))
     in_snap_docs = stage_lower.in_(("docs_wait", "docs_got"))
     in_snap_interview = stage_lower.in_(("contacted", "questionnaire_submitted"))
-    snap_terminal = stage_lower.in_(("rejected", "declined", "probation_ok"))
-    snap_new = case((in_snap_new, 1), else_=0)
-    snap_docs = case((in_snap_docs, 1), else_=0)
-    snap_interview = case((in_snap_interview, 1), else_=0)
-    snap_hired = case((stage_lower == literal("employed"), 1), else_=0)
+    snap_terminal = or_(
+        stage_lower.in_(("rejected", "declined", "probation_ok")),
+        status_lower.in_(("rejected", "declined", "probation_ok")),
+    )
+    snap_new = case((and_(ops_active, in_snap_new), 1), else_=0)
+    snap_docs = case((and_(ops_active, in_snap_docs), 1), else_=0)
+    snap_interview = case((and_(ops_active, in_snap_interview), 1), else_=0)
+    snap_hired = case(
+        (
+            and_(
+                ops_active,
+                or_(stage_lower == literal("employed"), status_lower == literal("employed")),
+            ),
+            1,
+        ),
+        else_=0,
+    )
     snap_onboarding = case(
         (
             and_(
+                ops_active,
                 ~snap_terminal,
                 stage_lower != literal("employed"),
+                status_lower != literal("employed"),
                 ~in_snap_new,
                 ~in_snap_docs,
                 ~in_snap_interview,
@@ -847,6 +878,7 @@ async def count_candidates_insights(
     stale_no_contact_24h = case(
         (
             and_(
+                ops_active,
                 stage_lower.in_(("new", "no_answer")),
                 Candidate.created_at < thresh_24h,
             ),
@@ -1165,6 +1197,49 @@ async def count_by_stage(
         .group_by(Candidate.stage)
     )
     return { (k or ""): int(v or 0) for k, v in rows.all() }
+
+
+async def distinct_candidate_list_facets(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    visibility: TenantVisibility | None,
+    filters: Dict[str, Any],
+) -> tuple[list[str], list[str]]:
+    """Distinct ``Candidate.stage`` and ``Candidate.status`` for list scope (tenant + ACL), ignoring funnel-only filters.
+
+    Excludes narrow list filters (stages, q, vacancy, …) so the UI can offer every stage/status that exists in the
+    tenant-visible dataset (e.g. ``handed_off``, ``ready_for_handoff``).
+    """
+    minimal: Dict[str, Any] = {"is_client_tenant": bool(filters.get("is_client_tenant"))}
+    for key in ("allowed_company_ids", "allowed_vacancy_ids", "allowed_manager_ids"):
+        if key in filters and filters[key] is not None:
+            minimal[key] = filters[key]
+    conds = _build_conditions(tenant_id, minimal, visibility)
+    base_where = and_(*conds)
+
+    stage_rows = await db.execute(
+        select(Candidate.stage)
+        .where(
+            base_where,
+            Candidate.stage.isnot(None),
+            func.length(func.trim(Candidate.stage)) > 0,
+        )
+        .distinct()
+    )
+    stages = sorted({str(s or "").strip() for (s,) in stage_rows.all() if (s or "").strip()})
+
+    status_rows = await db.execute(
+        select(Candidate.status)
+        .where(
+            base_where,
+            Candidate.status.isnot(None),
+            func.length(func.trim(Candidate.status)) > 0,
+        )
+        .distinct()
+    )
+    statuses = sorted({str(s or "").strip() for (s,) in status_rows.all() if (s or "").strip()})
+    return stages, statuses
 
 
 async def count_by_manager(

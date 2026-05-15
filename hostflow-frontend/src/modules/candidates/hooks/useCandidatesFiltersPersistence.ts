@@ -48,6 +48,7 @@ export interface CandidatesFiltersPersistenceCtx {
   // ---- hydration setters --------------------------------------------
   setQ: Dispatch<SetStateAction<string>>
   setStageFilter: Dispatch<SetStateAction<string[]>>
+  setCandidateRowStatusFilter: Dispatch<SetStateAction<string[]>>
   setVacancyFilter: Dispatch<SetStateAction<string[]>>
   setManagerFilter: Dispatch<SetStateAction<string[]>>
   setStatusReasonFilter: Dispatch<SetStateAction<string[]>>
@@ -74,6 +75,7 @@ export interface CandidatesFiltersPersistenceCtx {
   // ---- persistence values --------------------------------------------
   q: string
   stageFilter: string[]
+  candidateRowStatusFilter: string[]
   vacancyFilter: string[]
   managerFilter: string[]
   statusReasonFilter: string[]
@@ -102,14 +104,14 @@ export interface CandidatesFiltersPersistenceCtx {
 export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenceCtx): void {
   const {
     storageKey, filtersHydrated, setFiltersHydrated, persistedFiltersRef,
-    setQ, setStageFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
     setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
     setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
     setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
     setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
     setTextFilters, setIsFavoriteFilter, setIntakeApplicationKindFilter,
     setSortKey, setSortDir,
-    q, stageFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
+    q, stageFilter, candidateRowStatusFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
     docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
     opsModeFilter, polandBasisFilter, trailerTypesFilter,
     createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,
@@ -133,6 +135,12 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
           const restoredStage = normalizeArrayFilter(parsed.stage ?? parsed.stages)
           setStageFilter(restoredStage)
           applied = applied || restoredStage.length > 0
+
+          const restoredRowStatus = normalizeArrayFilter(
+            parsed.candidateRowStatus ?? parsed.candidate_row_status,
+          )
+          setCandidateRowStatusFilter(restoredRowStatus)
+          applied = applied || restoredRowStatus.length > 0
 
           const restoredVacancies = normalizeArrayFilter(parsed.vacancy ?? parsed.vacancyId ?? parsed.vacancies)
           setVacancyFilter(restoredVacancies)
@@ -256,6 +264,7 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
         JSON.stringify({
           q,
           stage: stageFilter,
+          candidateRowStatus: candidateRowStatusFilter,
           vacancies: vacancyFilter,
           managers: managerFilter,
           statusReason: statusReasonFilter,
@@ -286,7 +295,7 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
     }
   }, [
     storageKey, filtersHydrated,
-    q, stageFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
+    q, stageFilter, candidateRowStatusFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
     docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
     opsModeFilter, polandBasisFilter, trailerTypesFilter,
     createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,

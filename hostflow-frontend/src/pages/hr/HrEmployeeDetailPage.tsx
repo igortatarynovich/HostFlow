@@ -35,6 +35,7 @@ import { HrEmployeeDocumentsSection } from './HrEmployeeDocumentsSection'
 import WorkEligibilityJourneyWorkspace from '../../components/hr/WorkEligibilityJourneyWorkspace'
 import HrRecruitmentTransferSummary from '../../components/hr/HrRecruitmentTransferSummary'
 import HrLegalDocumentChecklist from '../../components/hr/HrLegalDocumentChecklist'
+import { HrEmployeeRightColumn } from '../../components/hr/HrEmployeeRightColumn'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
 
 const EMPLOYEE_STATUSES = [
@@ -110,13 +111,15 @@ function Section({
   title,
   children,
   defaultOpen = true,
+  id,
 }: {
   title: string
   children: React.ReactNode
   defaultOpen?: boolean
+  id?: string
 }) {
   return (
-    <details {...(defaultOpen ? { open: true } : {})} className="border border-slate-200 rounded-lg bg-white">
+    <details {...(defaultOpen ? { open: true } : {})} id={id} className="border border-slate-200 rounded-lg bg-white">
       <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-900 border-b border-slate-100">
         {title}
       </summary>
@@ -222,106 +225,32 @@ export default function HrEmployeeDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-6 max-w-5xl mx-auto w-full">
-      <PageBreadcrumb
-        items={[
-          { to: CRM_APP_PATHS.overview, label: t('app.nav.items.overview', { defaultValue: 'Insights' }) },
-          { to: CRM_APP_PATHS.hrEmployees, label: t('app.nav.items.hr_employees', { defaultValue: 'HR · Employees' }) },
-          { label: employee.display_name },
-        ]}
-      />
+    <div className="hr-employee-workspace w-full min-w-0">
+      <div className="w-full min-w-0">
+        <PageBreadcrumb
+          items={[
+            { to: CRM_APP_PATHS.overview, label: t('app.nav.items.overview', { defaultValue: 'Insights' }) },
+            { to: CRM_APP_PATHS.hrEmployees, label: t('app.nav.items.hr_employees', { defaultValue: 'HR · Employees' }) },
+            { label: employee.display_name },
+          ]}
+        />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">{employee.display_name}</h1>
-          <p className="text-xs text-slate-500 mt-1 font-mono">{employee.id}</p>
-        </div>
-        <Link
-          to={CRM_APP_PATHS.hrEmployees}
-          className="text-sm text-slate-600 hover:text-slate-900 underline-offset-2 hover:underline"
-        >
-          {t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
-        </Link>
-      </div>
-
-      {profile ? (
-        <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm space-y-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.hr.employee_operational.summary_kicker', { defaultValue: 'Operational summary' })}
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">{employee.display_name}</h1>
+            <p className="mt-1 font-mono text-xs text-slate-500">{employee.id}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200">
-              {profile.operational_summary.employee_status}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-900 ring-1 ring-indigo-100">
-              {t('app.hr.employee_operational.badge_compliance', {
-                defaultValue: 'Compliance: {v}',
-                values: { v: profile.operational_summary.compliance_status },
-              })}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-950 ring-1 ring-amber-100">
-              {t('app.hr.employee_operational.badge_risk', {
-                defaultValue: 'Risk: {v}',
-                values: { v: profile.operational_summary.risk_level },
-              })}
-            </span>
-          </div>
-          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-            <div>
-              <dt className="text-xs text-slate-500">
-                {t('app.nav.hr.directory.col_employer', { defaultValue: 'Employer' })}
-              </dt>
-              <dd className="font-medium text-slate-900">{profile.operational_summary.employer || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">{t('app.nav.hr.directory.col_client', { defaultValue: 'Client' })}</dt>
-              <dd className="font-medium text-slate-900">{profile.operational_summary.client || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">
-                {t('app.nav.hr.directory.col_position', { defaultValue: 'Position' })}
-              </dt>
-              <dd className="font-medium text-slate-900">{profile.operational_summary.position || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">
-                {t('app.nav.hr.directory.col_start', { defaultValue: 'Start' })}
-              </dt>
-              <dd className="font-medium text-slate-900">
-                {formatShortDateIso(profile.operational_summary.start_date)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">
-                {t('app.hr.employee_operational.probation_end', { defaultValue: 'Probation ends' })}
-              </dt>
-              <dd className="font-medium text-slate-900">
-                {formatShortDateIso(profile.operational_summary.probation_end)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">
-                {t('app.nav.hr.directory.col_assigned_hr', { defaultValue: 'Assigned HR' })}
-              </dt>
-              <dd className="font-medium text-slate-900">{profile.operational_summary.assigned_hr || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">{t('app.nav.hr.directory.col_missing', { defaultValue: 'Missing' })}</dt>
-              <dd className="font-medium text-slate-900 tabular-nums">
-                {profile.operational_summary.missing_documents_count}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">{t('app.nav.hr.directory.col_expiring', { defaultValue: 'Expiring' })}</dt>
-              <dd className="font-medium text-slate-900 tabular-nums">
-                {profile.operational_summary.expiring_documents_count}
-              </dd>
-            </div>
-          </dl>
+          <Link
+            to={CRM_APP_PATHS.hrEmployees}
+            className="text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
+          >
+            {t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
+          </Link>
         </div>
-      ) : null}
 
-      <Section title={t('app.hr.employee_operational.section_employment', { defaultValue: 'Employment' })}>
+        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
+          <div className="min-w-0 space-y-4">
+            <Section title={t('app.hr.employee_operational.section_employment', { defaultValue: 'Employment' })}>
         {profile && profile.employment_operational.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -357,19 +286,11 @@ export default function HrEmployeeDetailPage() {
       </Section>
 
       <Section title={t('app.hr.employee_operational.section_compliance', { defaultValue: 'Compliance & risk' })}>
-        {profile && profile.alerts.length > 0 ? (
-          <ul className="mb-3 space-y-1 text-sm text-slate-800">
-            {profile.alerts.map((a) => (
-              <li key={`${a.code}-${a.message}`} className="rounded border border-amber-100 bg-amber-50/80 px-3 py-2">
-                {a.message}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-slate-500 mb-3">
-            {t('app.hr.employee_operational.no_alerts', { defaultValue: 'No active alerts.' })}
-          </p>
-        )}
+        <p className="mb-3 text-sm text-slate-600 xl:hidden">
+          {t('app.hr.employee_operational.alerts_in_rail_hint', {
+            defaultValue: 'On wide screens, active alerts and timeline appear in the operational column on the right.',
+          })}
+        </p>
         {profile && profile.risks.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -391,7 +312,11 @@ export default function HrEmployeeDetailPage() {
               </tbody>
             </table>
           </div>
-        ) : null}
+        ) : (
+          <p className="text-sm text-slate-500">
+            {t('app.hr.employee_operational.no_risk_rows', { defaultValue: 'No risk rows in the read-model.' })}
+          </p>
+        )}
       </Section>
 
       <HrEmployeeDocumentsSection
@@ -402,20 +327,35 @@ export default function HrEmployeeDetailPage() {
         expiringQueue={profile?.documents_expiring}
       />
 
-      <Section title={t('app.hr.employee_operational.section_timeline', { defaultValue: 'Timeline' })}>
-        {profile && profile.timeline.length > 0 ? (
-          <ul className="space-y-2 text-sm max-h-80 overflow-y-auto">
-            {profile.timeline.map((ev) => (
-              <li key={ev.id} className="border-b border-slate-100 pb-2">
-                <div className="text-xs text-slate-500">{formatShortDateIso(ev.occurred_at)} · {ev.kind}</div>
-                <div className="font-medium text-slate-900">{ev.title}</div>
-                {ev.detail ? <div className="text-xs text-slate-600 mt-0.5 break-all">{ev.detail}</div> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-slate-500">{t('app.hr.employee_operational.timeline_empty', { defaultValue: 'No timeline events.' })}</p>
-        )}
+      <Section
+        defaultOpen
+        title={t('app.hr.work_eligibility.section_title', {
+          defaultValue: 'Work eligibility & statutory fees',
+        })}
+      >
+        <WorkEligibilityJourneyWorkspace
+          employeeId={employeeId}
+          profile={bundle.work_eligibility_profile ?? null}
+          paymentRequirements={bundle.work_eligibility_payment_requirements ?? []}
+          docSummary={
+            bundle.hr_document_context_summary ?? {
+              total: 0,
+              by_context_type: {},
+              items: [],
+            }
+          }
+          timeline={profile?.timeline ?? []}
+          manage={manage}
+          saving={saving}
+          onSaveEligibility={(payload) =>
+            runSave('work_eligibility', () => patchWorkforceWorkEligibility(employeeId, payload))
+          }
+          onSavePayment={(rid, payload) =>
+            runSave(`wel_pay_${rid}`, () =>
+              patchWorkforceWorkEligibilityPaymentRequirement(employeeId, rid, payload),
+            )
+          }
+        />
       </Section>
 
       <Section title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}>
@@ -454,37 +394,6 @@ export default function HrEmployeeDetailPage() {
         defaultOpen={false}
         onSave={(payload) => runSave('zus', () => patchWorkforceZusProfile(employeeId, payload))}
       />
-
-      <Section
-        defaultOpen
-        title={t('app.hr.work_eligibility.section_title', {
-          defaultValue: 'Work eligibility & statutory fees',
-        })}
-      >
-        <WorkEligibilityJourneyWorkspace
-          employeeId={employeeId}
-          profile={bundle.work_eligibility_profile ?? null}
-          paymentRequirements={bundle.work_eligibility_payment_requirements ?? []}
-          docSummary={
-            bundle.hr_document_context_summary ?? {
-              total: 0,
-              by_context_type: {},
-              items: [],
-            }
-          }
-          timeline={profile?.timeline ?? []}
-          manage={manage}
-          saving={saving}
-          onSaveEligibility={(payload) =>
-            runSave('work_eligibility', () => patchWorkforceWorkEligibility(employeeId, payload))
-          }
-          onSavePayment={(rid, payload) =>
-            runSave(`wel_pay_${rid}`, () =>
-              patchWorkforceWorkEligibilityPaymentRequirement(employeeId, rid, payload),
-            )
-          }
-        />
-      </Section>
 
       <LegalTaxProfileSection
         profile={bundle.tax_profile ?? null}
@@ -568,6 +477,14 @@ export default function HrEmployeeDetailPage() {
         t={t}
         defaultOpen={false}
       />
+          </div>
+          {profile ? (
+            <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+              <HrEmployeeRightColumn profile={profile} bundle={bundle} employeeId={employeeId} />
+            </aside>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1909,6 +1826,7 @@ function EmploymentsSection({
 
   return (
     <Section
+      id="hr-employee-employments"
       defaultOpen={defaultOpen}
       title={t('app.hr.employee_detail.section_contracts', { defaultValue: 'Contracts (employment)' })}
     >

@@ -7,6 +7,12 @@ import {
 } from './intakeResolution'
 import { leadSupportsManualProcess } from './leadCrm'
 
+/** Public-intake leads: no backend support for intake-decision / manual process — show read-only guidance only. */
+export function leadRecruitmentPublicIntakeReadonly(lead: Lead | null, isServicesTenant: boolean): boolean {
+  if (!lead || isServicesTenant || lead.candidate_id) return false
+  return String(lead.source || '').trim().toLowerCase() === 'public-intake'
+}
+
 /** One-line vacancy line for compact sticky header on lead intake workspace. */
 export function intakeStickyVacancySummary(
   lead: Lead,
@@ -155,7 +161,6 @@ export function leadQueueIntakeShellOk(lead: Lead, isServicesTenant: boolean): b
   const srcOk =
     src === 'meta' ||
     src === 'csv_import' ||
-    src === 'public-intake' ||
     lead.status === 'needs_routing' ||
     lead.status === 'duplicate_review'
   const hint = manualProcessBlockHint(lead)

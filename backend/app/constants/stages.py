@@ -299,6 +299,13 @@ PIPELINE_COMPLETED_STAGE_CODES: frozenset[str] = frozenset(TERMINAL_STATUSES) | 
     {"employed", "ready_for_hr", "hired", "processing_by_hr"}
 )
 
+# Ops analytics overview «stuck» — only real ``LABELS`` / ``STAGES_BY_GROUP`` codes (not legacy pseudo-stages).
+OVERVIEW_STUCK_AGENCY_STAGE: Final[str] = "docs_wait"
+OVERVIEW_STUCK_EMPLOYER_STAGE_CODES: Final[tuple[str, ...]] = tuple(STAGES_BY_GROUP["interview"])
+
+assert OVERVIEW_STUCK_AGENCY_STAGE in LABELS
+assert all(c in LABELS for c in OVERVIEW_STUCK_EMPLOYER_STAGE_CODES)
+
 # ----- Agency handoff lane (see ADR-002, stage_meta_recruitment_filter) -----
 # Recruitment roles must not jump into HR/client terminal lanes when handoff is enabled.
 RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: Final[frozenset[str]] = frozenset(
@@ -379,6 +386,25 @@ def is_pipeline_completed_stage(value: Optional[str]) -> bool:
     return bool(s) and s in PIPELINE_COMPLETED_STAGE_CODES
 
 
+def is_candidate_operationally_terminal(
+    *,
+    stage: Optional[str] = None,
+    status: Optional[str] = None,
+) -> bool:
+    """True when neither funnel work nor reminders should treat the row as «in pipeline».
+
+    Some flows set ``Candidate.status`` (row-level) to a completed code such as
+    ``rejected`` without updating ``Candidate.stage`` — next-action and ops
+    counters must still treat the candidate as closed.
+
+    Only **canonical** codes in ``PIPELINE_COMPLETED_STAGE_CODES`` count; arbitrary
+    row strings (e.g. ``returned_for_revision``) never match by accident.
+    """
+    if is_pipeline_completed_stage(stage):
+        return True
+    return is_pipeline_completed_stage(status)
+
+
 __all__ = [
     "DEFAULT_STAGE_CODE",
     "STAGES_BY_GROUP",
@@ -389,6 +415,8 @@ __all__ = [
     "ORDER",
     "PIPELINE_SEQUENCE",
     "PIPELINE_COMPLETED_STAGE_CODES",
+    "OVERVIEW_STUCK_AGENCY_STAGE",
+    "OVERVIEW_STUCK_EMPLOYER_STAGE_CODES",
     "TERMINAL_STATUSES",
     "STAGES",
     "STAGES_ORDER",
@@ -396,6 +424,7 @@ __all__ = [
     "INTERNAL_HR_HANDOFF_VISIBLE_STAGE_CODES",
     "CLIENT_HANDOFF_VISIBLE_STAGE_CODES",
     "is_pipeline_completed_stage",
+    "is_candidate_operationally_terminal",
     "is_stage_code",
     "code_for_label",
     "pipeline_for_stage_code",

@@ -1,6 +1,6 @@
 /**
- * Single place for App shell navigation policy (sidebar rail vs hubs).
- * Items stay in NAV_ITEMS for breadcrumbs / deep links; rail stays short and sectioned.
+ * App shell navigation policy: items hidden from the primary sidebar rail (still in NAV_ITEMS for deep links).
+ * Bucket order and hub/standalone keys live in `sidebarRailBuckets.ts` (guarded by `sidebarNavIntegrity` test).
  */
 export const APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS = [
   /** §2.14: primary entry via Candidates + queue param / dashboard. */

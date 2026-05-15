@@ -997,6 +997,17 @@ export async function submitLeadIntakeDecision(
   return data;
 }
 
+export type LeadDuplicateDecision = 'attach_existing' | 'create_new' | 'ignore';
+
+/** Operator resolution for leads in ``duplicate_review`` — canonical path to attach / override suggested match. */
+export async function submitLeadDuplicateDecision(
+  leadId: string,
+  payload: { decision: LeadDuplicateDecision; note?: string | null },
+) {
+  const { data } = await api.post<Lead>(`/leads/${leadId}/duplicate-decision`, payload);
+  return data;
+}
+
 export async function processLead(leadId: string) {
   const { data } = await api.post(`/leads/${leadId}/process`);
   return data;

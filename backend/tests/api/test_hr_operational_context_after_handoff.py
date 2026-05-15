@@ -148,7 +148,7 @@ async def test_hr_review_forbidden_for_recruiter_and_supervisor(
         company_id=company_id,
     )
 
-    lst = await client.get("/api/v1/workforce/employees", headers=recruiter_headers)
+    lst = await client.get("/api/v1/workforce/employees", headers=hr_officer_headers)
     assert lst.status_code == 200, lst.text
     matches = [e for e in lst.json() if str(e.get("candidate_id") or "") == str(candidate_id)]
     assert len(matches) == 1

@@ -29,6 +29,7 @@ export interface CandidatesFiltersStateCtx {
   // ---- text query / arrays --------------------------------------------
   setQ: Dispatch<SetStateAction<string>>
   setStageFilter: Dispatch<SetStateAction<string[]>>
+  setCandidateRowStatusFilter: Dispatch<SetStateAction<string[]>>
   setVacancyFilter: Dispatch<SetStateAction<string[]>>
   setManagerFilter: Dispatch<SetStateAction<string[]>>
   setStatusReasonFilter: Dispatch<SetStateAction<string[]>>
@@ -83,11 +84,17 @@ export interface CandidatesFiltersStateActions {
   handleResetFilters: () => void
 }
 
-const RESET_QUERY_KEYS = ['shadow_bucket', 'shadow_min_band', 'shadow_bucket_min_band', 'qv'] as const
+const RESET_QUERY_KEYS = [
+  'shadow_bucket',
+  'shadow_min_band',
+  'shadow_bucket_min_band',
+  'qv',
+  'candidate_statuses',
+] as const
 
 export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): CandidatesFiltersStateActions {
   const {
-    setQ, setStageFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
     setTagsFilter, setIsFavoriteFilter, setDocsStatusFilter, setDocsOrderedFilter,
     setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
     setTrailerTypesFilter, setDocsHasFilesFilter,
@@ -104,6 +111,9 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
     (filters) => {
       setQ(filters?.q ?? '')
       setStageFilter(normalizeArrayFilter(filters?.stage ?? filters?.stages))
+      setCandidateRowStatusFilter(
+        normalizeArrayFilter(filters?.candidateRowStatus ?? filters?.candidate_row_status),
+      )
       setVacancyFilter(normalizeArrayFilter(filters?.vacancy ?? filters?.vacancyId ?? filters?.vacancies))
       setManagerFilter(normalizeArrayFilter(filters?.managers ?? filters?.manager))
       setStatusReasonFilter(normalizeReasonList(filters?.statusReason ?? filters?.status_reason))
@@ -127,7 +137,7 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
       applyTableLayoutFromViewRef.current(filters)
     },
     [
-      setQ, setStageFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+      setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
       setTagsFilter, setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
       setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
       setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
@@ -138,6 +148,7 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
   const resetCandidatesFiltersCore = useCallback<CandidatesFiltersStateActions['resetCandidatesFiltersCore']>(() => {
     setQ('')
     setStageFilter([])
+    setCandidateRowStatusFilter([])
     setVacancyFilter([])
     setManagerFilter([])
     setStatusReasonFilter([])
@@ -168,7 +179,7 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
       /* ignore */
     }
   }, [
-    setQ, setStageFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
     setTagsFilter, setIsFavoriteFilter, setDocsStatusFilter, setDocsOrderedFilter,
     setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
     setTrailerTypesFilter, setCreatedRange, setFirstContactRange, setDocsValidRange,

@@ -9,12 +9,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.workforce_absence import WorkforceAbsence
+from backend.app.models.workforce_compliance_state import WorkforceComplianceState
 from backend.app.models.workforce_employment import WorkforceEmployment
+from backend.app.models.workforce_insurance_profile import WorkforceInsuranceProfile
 from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
 from backend.app.models.workforce_onboarding_task import WorkforceOnboardingTask
 from backend.app.models.workforce_payroll_profile import WorkforcePayrollProfile
+from backend.app.models.workforce_tax_profile import WorkforceTaxProfile
 from backend.app.models.workforce_zus_profile import WorkforceZusProfile
 from backend.app.services.workforce_employees import ensure_hr_profiles_bundle, get_employee
+from backend.app.services.workforce_hr_core_profiles import ensure_workforce_hr_core_profiles
 
 PAYROLL_STATUSES = frozenset(
     {
@@ -322,6 +326,139 @@ async def patch_leave_request(
             row.decided_at = _now()
         if actor_user_id and row.approver_user_id is None:
             row.approver_user_id = actor_user_id
+    _touch(row)
+    await db.flush()
+    return row
+
+
+_TAX_PATCH_KEYS = frozenset(
+    {"tax_residency_country", "tax_office", "pit2_submitted", "tax_deductible_costs_type", "young_person_relief"}
+)
+_INS_PATCH_KEYS = frozenset(
+    {
+        "zus_title_code",
+        "social_insurance",
+        "health_insurance",
+        "sickness_insurance",
+        "accident_insurance",
+        "zus_registration_type",
+        "registered_at",
+        "deregistered_at",
+        "status",
+    }
+)
+_COMP_PATCH_KEYS = frozenset(
+    {
+        "status",
+        "missing_count",
+        "expired_count",
+        "expiring_soon_count",
+        "high_risk_count",
+        "cannot_work",
+        "last_evaluated_at",
+        "reasons",
+    }
+)
+
+
+async def patch_tax_profile(
+    db: AsyncSession,
+    tenant_id: str,
+    employee_id: str,
+    patch: dict[str, Any],
+) -> Optional[WorkforceTaxProfile]:
+    if not await get_employee(db, tenant_id, employee_id):
+        return None
+    await ensure_workforce_hr_core_profiles(db, tenant_id, employee_id)
+    row = (
+        await db.execute(
+            select(WorkforceTaxProfile).where(
+                WorkforceTaxProfile.tenant_id == tenant_id,
+                WorkforceTaxProfile.employee_id == employee_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        return None
+    data = dict(patch)
+    if "pit2_monthly_amount" in data:
+        raw = data.pop("pit2_monthly_amount")
+        if raw is None or raw == "":
+            row.pit2_monthly_amount = None
+        else:
+            row.pit2_monthly_amount = _parse_decimal_str(str(raw))
+    for k, v in data.items():
+        if k in _TAX_PATCH_KEYS:
+            setattr(row, k, v)
+    _touch(row)
+    await db.flush()
+    return row
+
+
+async def patch_insurance_profile(
+    db: AsyncSession,
+    tenant_id: str,
+    employee_id: str,
+    patch: dict[str, Any],
+    *,
+    audit_actor_id: Optional[str] = None,
+) -> Optional[WorkforceInsuranceProfile]:
+    if not await get_employee(db, tenant_id, employee_id):
+        return None
+    await ensure_workforce_hr_core_profiles(db, tenant_id, employee_id)
+    row = (
+        await db.execute(
+            select(WorkforceInsuranceProfile).where(
+                WorkforceInsuranceProfile.tenant_id == tenant_id,
+                WorkforceInsuranceProfile.employee_id == employee_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        return None
+    before = {
+        "registered_at": row.registered_at,
+        "deregistered_at": row.deregistered_at,
+        "status": row.status,
+        "zus_registration_type": row.zus_registration_type,
+        "social_insurance": row.social_insurance,
+        "health_insurance": row.health_insurance,
+        "sickness_insurance": row.sickness_insurance,
+        "accident_insurance": row.accident_insurance,
+    }
+    for k, v in patch.items():
+        if k in _INS_PATCH_KEYS:
+            setattr(row, k, v)
+    _touch(row)
+    await db.flush()
+    from backend.app.services.workforce_zus_task_autocreate import sync_after_insurance_profile_patch
+
+    await sync_after_insurance_profile_patch(db, tenant_id, employee_id, before, actor_id=audit_actor_id)
+    return row
+
+
+async def patch_compliance_state(
+    db: AsyncSession,
+    tenant_id: str,
+    employee_id: str,
+    patch: dict[str, Any],
+) -> Optional[WorkforceComplianceState]:
+    if not await get_employee(db, tenant_id, employee_id):
+        return None
+    await ensure_workforce_hr_core_profiles(db, tenant_id, employee_id)
+    row = (
+        await db.execute(
+            select(WorkforceComplianceState).where(
+                WorkforceComplianceState.tenant_id == tenant_id,
+                WorkforceComplianceState.employee_id == employee_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not row:
+        return None
+    for k, v in patch.items():
+        if k in _COMP_PATCH_KEYS:
+            setattr(row, k, v)
     _touch(row)
     await db.flush()
     return row

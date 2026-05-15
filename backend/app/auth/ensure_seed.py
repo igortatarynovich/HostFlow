@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
 import uuid
 from typing import Optional, Set
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.session import async_session_maker
+from backend.app.models.document_ruleset import DocumentRulesetVersion
+from backend.app.services.default_tenant_ruleset_baseline import (
+    BASELINE_RULESET_COMMENT,
+    load_baseline_ruleset_dict,
+    ruleset_required_matrix_empty,
+)
 
 # Пароль хешируем через passlib[bcrypt]
 try:
@@ -130,6 +137,78 @@ async def _ensure_membership_with_role(
         print(f"[seed] user_membership ({membership_role}) insert skipped: {membership_err}")
 
 
+async def _ensure_default_tenant_document_ruleset_baseline(db: AsyncSession) -> None:
+    """Repair empty active ruleset rows for the default dev tenant (idempotent)."""
+    if not await _table_exists(db, "document_ruleset_versions"):
+        return
+    try:
+        baseline = load_baseline_ruleset_dict()
+    except Exception as exc:
+        print(f"[seed] ruleset baseline load skipped: {exc}")
+        return
+
+    res = await db.execute(
+        select(DocumentRulesetVersion).where(
+            DocumentRulesetVersion.tenant_id == DEFAULT_TENANT_ID,
+            DocumentRulesetVersion.is_active.is_(True),
+        )
+    )
+    changed = False
+    for row in res.scalars():
+        if not ruleset_required_matrix_empty(row.json_data):
+            continue
+        await db.execute(
+            update(DocumentRulesetVersion)
+            .where(DocumentRulesetVersion.id == row.id)
+            .values(json_data=baseline, comment=BASELINE_RULESET_COMMENT)
+        )
+        changed = True
+    if changed:
+        try:
+            await db.commit()
+            print("[seed] default-tenant document ruleset: repaired empty active row(s)")
+        except Exception as exc:
+            await db.rollback()
+            print(f"[seed] default-tenant ruleset repair commit failed: {exc}")
+            return
+
+    res_g = await db.execute(
+        select(DocumentRulesetVersion).where(
+            DocumentRulesetVersion.tenant_id == DEFAULT_TENANT_ID,
+            DocumentRulesetVersion.own_company_id.is_(None),
+            DocumentRulesetVersion.is_active.is_(True),
+        )
+    )
+    if any(not ruleset_required_matrix_empty(r.json_data) for r in res_g.scalars().all()):
+        return
+
+    mv = await db.scalar(
+        select(func.max(DocumentRulesetVersion.version)).where(
+            DocumentRulesetVersion.tenant_id == DEFAULT_TENANT_ID,
+            DocumentRulesetVersion.own_company_id.is_(None),
+        )
+    )
+    next_v = int(mv or 0) + 1
+    db.add(
+        DocumentRulesetVersion(
+            id=str(uuid.uuid4()),
+            tenant_id=DEFAULT_TENANT_ID,
+            own_company_id=None,
+            version=next_v,
+            json_data=baseline,
+            comment=BASELINE_RULESET_COMMENT,
+            is_active=True,
+            signature="",
+        )
+    )
+    try:
+        await db.commit()
+        print("[seed] default-tenant document ruleset: inserted global baseline version")
+    except Exception as exc:
+        await db.rollback()
+        print(f"[seed] default-tenant ruleset insert failed: {exc}")
+
+
 async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.datetime) -> None:
     """Dev/test HR officer on the default tenant (same pattern as admin seed)."""
     if pwd_context is None:
@@ -168,6 +247,12 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
         if "full_name" in cols:
             params["full_name"] = "HostFlow HR Officer (dev)"
             assignments.append("full_name = :full_name")
+        if "preferences" in cols:
+            params["preferences"] = json.dumps({})
+            if IS_SQLITE:
+                assignments.append("preferences = :preferences")
+            else:
+                assignments.append("preferences = CAST(:preferences AS jsonb)")
 
         if assignments:
             update_sql = ", ".join(assignments)
@@ -195,6 +280,30 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
     insert_cols: list[str] = []
     insert_vals: list[object] = []
 
+    if not await _user_exists(db, HR_OFFICER_EMAIL):
+        try:
+            if IS_SQLITE:
+                cnt_row = await db.execute(
+                    text(
+                        "SELECT COUNT(*) FROM users WHERE tenant_id = :tid "
+                        "AND lower(role) = lower(:role) AND is_active IS TRUE"
+                    ),
+                    {"tid": DEFAULT_TENANT_ID, "role": "hr_officer"},
+                )
+            else:
+                cnt_row = await db.execute(
+                    text(
+                        "SELECT COUNT(*) FROM users WHERE tenant_id = :tid "
+                        "AND lower(role::text) = lower(:role) AND is_active IS TRUE"
+                    ),
+                    {"tid": DEFAULT_TENANT_ID, "role": "hr_officer"},
+                )
+            cnt = int(cnt_row.scalar_one() or 0)
+        except Exception:
+            cnt = 0
+        if cnt > 0:
+            return
+
     def add(col: str, val: Optional[object]) -> None:
         if col in cols and val is not None:
             insert_cols.append(col)
@@ -209,6 +318,7 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
     add("created_at", now)
     add("updated_at", now)
     add("full_name", "HostFlow HR Officer (dev)")
+    add("preferences", json.dumps({}))
 
     if not insert_cols:
         print("[seed] HR officer: нет подходящих колонок users — пропускаю")
@@ -299,6 +409,9 @@ async def ensure_auth_seed() -> None:
             return
 
         cols = await _columns(db, "users")
+
+        if await _table_exists(db, "document_ruleset_versions"):
+            await _ensure_default_tenant_document_ruleset_baseline(db)
 
         async def ensure_membership(user_id: Optional[str], now: dt.datetime) -> None:
             if not user_id:

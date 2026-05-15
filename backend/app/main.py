@@ -4,6 +4,7 @@ import logging
 from logging.config import dictConfig
 import os
 import importlib
+import re
 import sys as _sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
@@ -143,6 +144,7 @@ try:
     from backend.app.api.v1 import legal_documents as legal_documents_router
     from backend.app.api.v1 import contact_attempts as contact_attempts_router
     from backend.app.api.v1 import handoffs as handoffs_router
+    from backend.app.api.v1 import hr_dashboard as hr_dashboard_router
     from backend.app.api.v1 import hr_inbox as hr_inbox_router
     from backend.app.api.v1.document_merge import router as document_merge_router
     from backend.app.api.v1.workforce.router import router as workforce_router
@@ -228,6 +230,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import legal_documents as legal_documents_router  # type: ignore[no-redef]
     from .api.v1 import contact_attempts as contact_attempts_router  # type: ignore[no-redef]
     from .api.v1 import handoffs as handoffs_router  # type: ignore[no-redef]
+    from .api.v1 import hr_dashboard as hr_dashboard_router  # type: ignore[no-redef]
     from .api.v1 import hr_inbox as hr_inbox_router  # type: ignore[no-redef]
     from .api.v1.document_merge import router as document_merge_router  # type: ignore[no-redef]
     from .api.v1.workforce.router import router as workforce_router  # type: ignore[no-redef]
@@ -564,6 +567,25 @@ async def serve_upload_file(file_path: str):
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("[uploads] presign failed for %s: %s", key, exc)
             raise HTTPException(status_code=500, detail="Storage unavailable") from None
+        doc_uuid_m = re.search(
+            r"(?:^|/)documents/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})(?:/|$)",
+            key,
+        )
+        if doc_uuid_m:
+            from backend.app.security.document_events import emit_document_security_event_v1
+            from backend.app.security.event_taxonomy import EVENT_DOCUMENT_SIGNED_URL_GENERATED
+
+            emit_document_security_event_v1(
+                event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+                result="success",
+                severity="info",
+                source="http:main:uploads_presign_redirect",
+                tenant_id=None,
+                document_id=doc_uuid_m.group(1).lower(),
+                access_kind=None,
+                has_presigned_url_shape=True,
+                response_mode="redirect_302",
+            )
         return RedirectResponse(url=url, status_code=302)
 
     # Filesystem backend: serve from disk as before.
@@ -836,6 +858,7 @@ app.include_router(legal_documents_router.router, prefix="/api/v1", tags=["legal
 app.include_router(contact_attempts_router.router, prefix="/api/v1", tags=["contact-attempts"])
 app.include_router(handoffs_router.router, prefix="/api/v1", tags=["handoffs"])
 app.include_router(hr_inbox_router.router, prefix="/api/v1", tags=["hr-inbox"])
+app.include_router(hr_dashboard_router.router, prefix="/api/v1", tags=["hr-dashboard"])
 app.include_router(document_merge_router, prefix="/api/v1", tags=["document-merge"])
 app.include_router(workforce_router, prefix="/api/v1", tags=["workforce"])
 app.include_router(global_search_router.router, prefix="/api/v1", tags=["search"])

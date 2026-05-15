@@ -30,7 +30,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 from backend.app.models import (
     ActivityLog,
     Candidate,
@@ -344,10 +344,7 @@ async def count_candidates_no_next_action_for_assignee(
         )
         .correlate(Candidate)
     )
-    active_stage = or_(
-        Candidate.stage.is_(None),
-        Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
-    )
+    active_stage = sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status)
     where = [
         Candidate.tenant_id == tenant_id,
         Candidate.deleted_at.is_(None),
@@ -384,10 +381,7 @@ async def count_candidate_overdue_reminders_for_assignee(
             Reminder.tenant_id == tenant_id,
             Candidate.tenant_id == tenant_id,
             Candidate.deleted_at.is_(None),
-            or_(
-                Candidate.stage.is_(None),
-                Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
-            ),
+            sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status),
             Reminder.assignee_id == assignee_id,
             Reminder.status.in_(active_statuses),
             or_(Reminder.status == ReminderStatus.overdue, Reminder.due_at < now),

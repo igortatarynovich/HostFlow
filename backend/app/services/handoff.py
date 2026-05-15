@@ -11,6 +11,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
+from backend.app.constants.hr_task_types import HANDOFF_HR_CHECKLIST, INTERNAL_HR_HANDOFF_PENDING
 from backend.app.models.access import UserCompanyAccess
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
@@ -348,6 +349,7 @@ async def _sync_application_after_handoff_returned(
 
 
 async def _first_active_hr_officer_user_id(db: AsyncSession, tenant_id: str) -> str | None:
+    """Prefer the most recently created active HR officer (stable with dev seed + test fixtures)."""
     res = await db.execute(
         select(User.id)
         .where(
@@ -355,7 +357,7 @@ async def _first_active_hr_officer_user_id(db: AsyncSession, tenant_id: str) -> 
             User.role == UserRole.hr_officer,
             User.is_active.is_(True),
         )
-        .order_by(User.id.asc())
+        .order_by(User.created_at.desc().nulls_last(), User.id.desc())
         .limit(1)
     )
     row = res.first()
@@ -391,7 +393,7 @@ async def _ensure_internal_hr_pending_handoff_activity(
         return
     stmt = select(Activity).where(
         Activity.tenant_id == tenant_id,
-        Activity.type == "internal_hr_handoff_pending",
+        Activity.type == INTERNAL_HR_HANDOFF_PENDING,
         Activity.related_entity_type == "candidate",
         Activity.related_entity_id == candidate_id,
     )
@@ -404,7 +406,7 @@ async def _ensure_internal_hr_pending_handoff_activity(
         Activity(
             id=str(uuid4()),
             tenant_id=tenant_id,
-            type="internal_hr_handoff_pending",
+            type=INTERNAL_HR_HANDOFF_PENDING,
             source_module="hr",
             related_entity_type="candidate",
             related_entity_id=candidate_id,
@@ -436,7 +438,7 @@ async def _terminalize_internal_hr_pending_handoff_activity(
         return
     stmt = select(Activity).where(
         Activity.tenant_id == tenant_id,
-        Activity.type == "internal_hr_handoff_pending",
+        Activity.type == INTERNAL_HR_HANDOFF_PENDING,
         Activity.related_entity_type == "candidate",
         Activity.related_entity_id == candidate_id,
     )
@@ -485,7 +487,7 @@ async def _ensure_internal_hr_handoff_checklist_activities(
                     Activity.tenant_id == tenant_id,
                     Activity.related_entity_type == "candidate",
                     Activity.related_entity_id == candidate_id,
-                    Activity.type == "handoff_hr_checklist",
+                    Activity.type == HANDOFF_HR_CHECKLIST,
                 )
             )
         )
@@ -504,7 +506,7 @@ async def _ensure_internal_hr_handoff_checklist_activities(
             Activity(
                 id=str(uuid4()),
                 tenant_id=tenant_id,
-                type="handoff_hr_checklist",
+                type=HANDOFF_HR_CHECKLIST,
                 source_module="hr",
                 related_entity_type="candidate",
                 related_entity_id=candidate_id,

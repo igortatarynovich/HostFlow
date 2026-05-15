@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -33,6 +34,73 @@ class ZusProfilePatch(BaseModel):
     insurance_coverage: Optional[dict[str, Any]] = None
     forms: Optional[list[Any]] = None
     meta: Optional[dict[str, Any]] = None
+
+
+# --- PR-2: legal / tax / insurance / compliance (storage; not payroll engine) ---
+class TaxProfilePatch(BaseModel):
+    tax_residency_country: Optional[str] = Field(default=None, max_length=8)
+    tax_office: Optional[str] = Field(default=None, max_length=64)
+    pit2_submitted: Optional[bool] = None
+    pit2_monthly_amount: Optional[str] = Field(
+        default=None, max_length=32, description="Decimal string or empty/null to clear"
+    )
+    tax_deductible_costs_type: Optional[str] = Field(default=None, max_length=32)
+    young_person_relief: Optional[bool] = None
+
+
+class InsuranceProfilePatch(BaseModel):
+    zus_title_code: Optional[str] = Field(default=None, max_length=32)
+    social_insurance: Optional[str] = Field(default=None, max_length=32)
+    health_insurance: Optional[str] = Field(default=None, max_length=32)
+    sickness_insurance: Optional[str] = Field(default=None, max_length=32)
+    accident_insurance: Optional[str] = Field(default=None, max_length=32)
+    zus_registration_type: Optional[str] = Field(default=None, max_length=64)
+    registered_at: Optional[date] = None
+    deregistered_at: Optional[date] = None
+    status: Optional[str] = Field(default=None, max_length=32)
+
+
+class ComplianceStatePatch(BaseModel):
+    status: Optional[str] = Field(default=None, max_length=32)
+    missing_count: Optional[int] = Field(default=None, ge=0)
+    expired_count: Optional[int] = Field(default=None, ge=0)
+    expiring_soon_count: Optional[int] = Field(default=None, ge=0)
+    high_risk_count: Optional[int] = Field(default=None, ge=0)
+    cannot_work: Optional[bool] = None
+    last_evaluated_at: Optional[datetime] = None
+    reasons: Optional[Any] = None
+
+
+class WorkEligibilityProfilePatch(BaseModel):
+    citizenship: Optional[str] = Field(default=None, max_length=8)
+    residence_status: Optional[str] = Field(default=None, max_length=32)
+    legal_stay_document_type: Optional[str] = Field(default=None, max_length=64)
+    legal_stay_valid_to: Optional[date] = None
+    requires_work_permit: Optional[bool] = None
+    work_permit_type: Optional[str] = Field(default=None, max_length=64)
+    work_permit_submission_method: Optional[str] = Field(default=None, max_length=64)
+    work_permit_application_status: Optional[str] = Field(default=None, max_length=64)
+    work_permit_submitted_at: Optional[date] = None
+    work_permit_received_at: Optional[date] = None
+    work_permit_valid_to: Optional[date] = None
+    red_paper_required: Optional[bool] = None
+    red_paper_status: Optional[str] = Field(default=None, max_length=32)
+    eligibility_status: Optional[str] = Field(default=None, max_length=32)
+    position_category: Optional[str] = Field(default=None, max_length=32)
+    work_country: Optional[str] = Field(default=None, max_length=8)
+    employer_country: Optional[str] = Field(default=None, max_length=8)
+    contract_type: Optional[str] = Field(default=None, max_length=64)
+    meta: Optional[dict[str, Any]] = None
+
+
+class WorkEligibilityPaymentRequirementPatch(BaseModel):
+    payment_status: Optional[str] = Field(default=None, max_length=16)
+    amount: Optional[Decimal] = None
+    currency: Optional[str] = Field(default=None, max_length=8)
+    due_at: Optional[date] = None
+    paid_at: Optional[datetime] = None
+    payment_reference: Optional[str] = Field(default=None, max_length=256)
+    receipt_document_id: Optional[str] = Field(default=None, max_length=36)
 
 
 # --- Employment / contract ---

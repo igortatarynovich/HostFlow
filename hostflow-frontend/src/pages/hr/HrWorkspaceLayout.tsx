@@ -3,11 +3,8 @@ import clsx from 'clsx'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
 
-const tabClass = ({ isActive }: { isActive: boolean }) =>
-  clsx(
-    'rounded-md px-3 py-2 text-sm font-medium transition',
-    isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-  )
+/** CRM standard tabs (see `components.css`: `.tabs`, `.tab`, `.tab-active`). */
+const tabClass = ({ isActive }: { isActive: boolean }) => clsx('tab', isActive && 'tab-active')
 
 export default function HrWorkspaceLayout() {
   const { t } = useI18n()
@@ -16,20 +13,20 @@ export default function HrWorkspaceLayout() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 lg:px-6">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3">
+      <header className="border-b border-brand-100 bg-white/95 px-4 py-4 shadow-sm ring-1 ring-black/5 lg:px-6">
+        <div className="flex w-full max-w-none flex-col gap-3">
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">
               {t('app.nav.hr.workspace.title', { defaultValue: 'HR workspace' })}
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-600">
               {t('app.nav.hr.workspace.subtitle', {
                 defaultValue:
                   'Operational HR: dashboard, workforce employees, inbox, tasks, and compliance (workforce + HR APIs).',
               })}
             </p>
           </div>
-          <nav className="flex flex-wrap gap-1" aria-label={t('app.nav.hr.workspace.nav_aria', { defaultValue: 'HR sections' })}>
+          <nav className="tabs flex-wrap" aria-label={t('app.nav.hr.workspace.nav_aria', { defaultValue: 'HR sections' })}>
             <NavLink to={p.hr} end className={tabClass}>
               {t('app.nav.hr.workspace.nav.dashboard', { defaultValue: 'Dashboard' })}
             </NavLink>
@@ -54,8 +51,8 @@ export default function HrWorkspaceLayout() {
           </nav>
         </div>
       </header>
-      <div className="flex-1 overflow-auto bg-slate-50/80 px-4 py-6 lg:px-6">
-        <div className="mx-auto max-w-6xl">
+      <div className="flex-1 overflow-auto bg-gradient-to-b from-brand-50/40 to-slate-50/90">
+        <div className="crm-page-inset max-w-none pb-8 pt-6">
           <Outlet key={location.pathname} />
         </div>
       </div>

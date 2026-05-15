@@ -270,7 +270,14 @@ def resolve_assignee_for_reminder_list(
         return str(explicit_assignee_id).strip()
     scope = str(assignee_scope or "mine").strip().lower()
     role = str(viewer_role or "").strip().lower()
-    if scope == "team" and role in ("administrator", "supervisor", "superadmin", "admin", "manager"):
+    if scope == "team" and role in (
+        "administrator",
+        "supervisor",
+        "superadmin",
+        "admin",
+        "manager",
+        "hr_officer",
+    ):
         return None
     return str(viewer_id).strip()
 

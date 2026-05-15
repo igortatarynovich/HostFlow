@@ -51,6 +51,8 @@ function formatShort(iso: string | null | undefined): string {
 
 type UnifiedRow = HrDocumentQueueItem & { queue: 'missing' | 'expiring' }
 
+const hubTabClass = ({ isActive }: { isActive: boolean }) => clsx('tab', isActive && 'tab-active')
+
 export default function HrDocumentsHubPage() {
   const { t } = useI18n()
   const location = useLocation()
@@ -167,64 +169,65 @@ export default function HrDocumentsHubPage() {
     return m
   }, [filtered, groupBy, t])
 
-  const tabClass = ({ isActive }: { isActive: boolean }) =>
-    clsx(
-      'rounded-md px-3 py-2 text-sm font-medium transition',
-      isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-    )
+  const queueStats = useMemo(() => {
+    const missingN = unified.filter((r) => r.queue === 'missing').length
+    const expiringN = unified.filter((r) => r.queue === 'expiring').length
+    return { missingN, expiringN, shown: filtered.length }
+  }, [filtered, unified])
 
   const p = CRM_APP_PATHS
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-base font-semibold tracking-tight text-slate-900">
             {t('app.hr.documents_hub.title', { defaultValue: 'HR documents hub' })}
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">
+          <p className="mt-1 max-w-4xl text-sm text-slate-600">
             {t('app.hr.documents_hub.subtitle', {
               defaultValue:
                 'Operational legal queues over internal HR handoffs — missing requirements, expiries, and verification follow-ups. Not the recruitment documents screen.',
             })}
           </p>
         </div>
-        <button
-          type="button"
-          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-          onClick={() => void load()}
-        >
+        <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
           {t('common.actions.refresh', { defaultValue: 'Refresh' })}
         </button>
       </div>
 
-      <nav className="flex flex-wrap gap-1 border-b border-slate-200 pb-2" aria-label={t('app.hr.documents_hub.tabs_aria', { defaultValue: 'Documents hub views' })}>
-        <NavLink to={p.hrDocuments} end className={tabClass}>
+      <nav
+        className="tabs flex-wrap gap-x-1 gap-y-0"
+        aria-label={t('app.hr.documents_hub.tabs_aria', { defaultValue: 'Documents hub views' })}
+      >
+        <NavLink to={p.hrDocuments} end className={hubTabClass}>
           {t('app.hr.documents_hub.tab_all', { defaultValue: 'All' })}
         </NavLink>
-        <NavLink to={p.hrDocumentsMissing} className={tabClass}>
+        <NavLink to={p.hrDocumentsMissing} className={hubTabClass}>
           {t('app.hr.documents_hub.tab_missing', { defaultValue: 'Missing' })}
         </NavLink>
-        <NavLink to={p.hrDocumentsExpiring} className={tabClass}>
+        <NavLink to={p.hrDocumentsExpiring} className={hubTabClass}>
           {t('app.hr.documents_hub.tab_expiring', { defaultValue: 'Expiring' })}
         </NavLink>
-        <NavLink to={p.hrDocumentsVerification} className={tabClass}>
+        <NavLink to={p.hrDocumentsVerification} className={hubTabClass}>
           {t('app.hr.documents_hub.tab_verification', { defaultValue: 'Verification' })}
         </NavLink>
       </nav>
 
-      {loading ? <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p> : null}
-      {err ? <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div> : null}
+      {loading ? <p className="text-sm text-slate-600">{t('common.loading', { defaultValue: 'Loading…' })}</p> : null}
+      {err ? <div className="alert-error">{err}</div> : null}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="card p-4 sm:p-5">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('app.hr.documents_hub.filters', { defaultValue: 'Filters' })}
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.hr.documents_hub.assignee', { defaultValue: 'Assignee scope' })}
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="label mb-0 text-xs text-slate-600">
+              {t('app.hr.documents_hub.assignee', { defaultValue: 'Assignee scope' })}
+            </span>
             <select
-              className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              className="input text-sm"
               value={assigneeScope}
               onChange={(e) => setAssigneeScope(e.target.value as HrAssigneeScope)}
             >
@@ -232,38 +235,42 @@ export default function HrDocumentsHubPage() {
               <option value="mine">{t('app.hr.documents_hub.scope_mine', { defaultValue: 'Mine' })}</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.hr.documents_hub.document_type', { defaultValue: 'Document type' })}
+          <label className="flex flex-col gap-1.5">
+            <span className="label mb-0 text-xs text-slate-600">
+              {t('app.hr.documents_hub.document_type', { defaultValue: 'Document type' })}
+            </span>
             <input
-              className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              className="input text-sm"
               value={docTypeFilter}
               onChange={(e) => setDocTypeFilter(e.target.value)}
               placeholder={t('app.hr.documents_hub.document_type_ph', { defaultValue: 'e.g. passport' })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.hr.documents_hub.employee_id', { defaultValue: 'Employee id contains' })}
+          <label className="flex flex-col gap-1.5">
+            <span className="label mb-0 text-xs text-slate-600">
+              {t('app.hr.documents_hub.employee_id', { defaultValue: 'Employee id contains' })}
+            </span>
             <input
-              className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-mono"
+              className="input font-mono text-xs"
               value={employeeFilter}
               onChange={(e) => setEmployeeFilter(e.target.value)}
               placeholder="uuid…"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.hr.documents_hub.status_contains', { defaultValue: 'Status contains' })}
-            <input
-              className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            />
+          <label className="flex flex-col gap-1.5">
+            <span className="label mb-0 text-xs text-slate-600">
+              {t('app.hr.documents_hub.status_contains', { defaultValue: 'Status contains' })}
+            </span>
+            <input className="input text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} />
           </label>
           {(view === 'expiring' || view === 'all' || view === 'verification') && (
             <>
-              <label className="flex flex-col gap-1 text-xs text-slate-600">
-                {t('app.hr.documents_hub.horizon', { defaultValue: 'Expiry horizon (days)' })}
+              <label className="flex flex-col gap-1.5">
+                <span className="label mb-0 text-xs text-slate-600">
+                  {t('app.hr.documents_hub.horizon', { defaultValue: 'Expiry horizon (days)' })}
+                </span>
                 <select
-                  className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                  className="input text-sm"
                   value={horizonDays}
                   onChange={(e) => setHorizonDays(Number(e.target.value) as 7 | 30 | 60 | 90)}
                 >
@@ -274,10 +281,12 @@ export default function HrDocumentsHubPage() {
                 </select>
               </label>
               {view === 'expiring' ? (
-                <label className="flex flex-col gap-1 text-xs text-slate-600">
-                  {t('app.hr.documents_hub.expiry_bucket', { defaultValue: 'Expiry bucket' })}
+                <label className="flex flex-col gap-1.5">
+                  <span className="label mb-0 text-xs text-slate-600">
+                    {t('app.hr.documents_hub.expiry_bucket', { defaultValue: 'Expiry bucket' })}
+                  </span>
                   <select
-                    className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                    className="input text-sm"
                     value={expiringStatus}
                     onChange={(e) => setExpiringStatus(e.target.value as 'all' | 'expired' | 'expiring')}
                   >
@@ -287,13 +296,11 @@ export default function HrDocumentsHubPage() {
                   </select>
                 </label>
               ) : null}
-              <label className="flex flex-col gap-1 text-xs text-slate-600">
-                {t('app.hr.documents_hub.risk', { defaultValue: 'Risk' })}
-                <select
-                  className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-                  value={riskFilter}
-                  onChange={(e) => setRiskFilter(e.target.value)}
-                >
+              <label className="flex flex-col gap-1.5">
+                <span className="label mb-0 text-xs text-slate-600">
+                  {t('app.hr.documents_hub.risk', { defaultValue: 'Risk' })}
+                </span>
+                <select className="input text-sm" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
                   <option value="">{t('app.hr.documents_hub.risk_any', { defaultValue: 'Any' })}</option>
                   <option value="high">{t('app.hr.documents_hub.risk_high', { defaultValue: 'High only' })}</option>
                   <option value="normal">{t('app.hr.documents_hub.risk_normal', { defaultValue: 'Normal' })}</option>
@@ -301,10 +308,12 @@ export default function HrDocumentsHubPage() {
               </label>
             </>
           )}
-          <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
-            {t('app.hr.documents_hub.group_by', { defaultValue: 'Group by' })}
+          <label className="flex flex-col gap-1.5 sm:col-span-2">
+            <span className="label mb-0 text-xs text-slate-600">
+              {t('app.hr.documents_hub.group_by', { defaultValue: 'Group by' })}
+            </span>
             <select
-              className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              className="input text-sm"
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as 'none' | 'employee' | 'document_type')}
             >
@@ -313,33 +322,31 @@ export default function HrDocumentsHubPage() {
               <option value="none">{t('app.hr.documents_hub.group_none', { defaultValue: 'Flat list' })}</option>
             </select>
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
+          <label className="flex cursor-pointer items-center gap-2 self-end text-sm text-slate-700 sm:col-span-2">
             <input type="checkbox" checked={requiredOnly} onChange={(e) => setRequiredOnly(e.target.checked)} />
             {t('app.hr.documents_hub.required_only', { defaultValue: 'Required items only' })}
           </label>
         </div>
-      </div>
+      </section>
 
       {!loading && !err && filtered.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('app.hr.documents_hub.empty', { defaultValue: 'No rows match this view.' })}</p>
+        <p className="text-sm text-slate-600">{t('app.hr.documents_hub.empty', { defaultValue: 'No rows match this view.' })}</p>
       ) : null}
 
       {!loading && !err && filtered.length > 0
         ? groupBy === 'none' || !grouped
-          ? (
-              <DocumentQueueTable rows={filtered} t={t} />
-            )
+          ? <DocumentQueueTable rows={filtered} t={t} />
           : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {[...grouped.entries()].map(([gkey, rows]) => (
-                  <section key={gkey} className="rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="border-b border-slate-100 px-4 py-2.5">
+                  <section key={gkey} className="card overflow-hidden">
+                    <div className="border-b border-slate-200 bg-brand-50/50 px-4 py-3 sm:px-5">
                       <h3 className="text-sm font-semibold text-slate-900">{humanizeToken(gkey)}</h3>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-600">
                         {t('app.hr.documents_hub.group_count', { defaultValue: '{n} row(s)', values: { n: rows.length } })}
                       </p>
                     </div>
-                    <DocumentQueueTable rows={rows} t={t} />
+                    <DocumentQueueTable rows={rows} t={t} embedded />
                   </section>
                 ))}
               </div>
@@ -352,105 +359,119 @@ export default function HrDocumentsHubPage() {
 function DocumentQueueTable({
   rows,
   t,
+  embedded,
 }: {
   rows: UnifiedRow[]
   t: (key: string, opts?: { defaultValue?: string; values?: Record<string, string | number> }) => string
+  embedded?: boolean
 }) {
+  const wrapClass = embedded ? 'overflow-x-auto' : 'card overflow-hidden'
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="w-full min-w-[880px] text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-          <tr>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_candidate', { defaultValue: 'Candidate' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_document', { defaultValue: 'Document' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_queue', { defaultValue: 'Queue' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_required', { defaultValue: 'Req.' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_status', { defaultValue: 'Status' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_expires', { defaultValue: 'Expires' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_risk', { defaultValue: 'Risk' })}</th>
-            <th className="px-3 py-2">{t('app.hr.documents_hub.col_actions', { defaultValue: 'Actions' })}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.handoff_id}-${row.document_type}-${row.queue}-${row.expires_at || 'x'}`} className="border-b border-slate-100 last:border-0">
-              <td className="px-3 py-2.5 align-top">
-                <div className="font-medium text-slate-900">{candidateLabel(row)}</div>
-                <div className="text-xs text-slate-500 font-mono">{row.handoff_id.slice(0, 8)}…</div>
-              </td>
-              <td className="px-3 py-2.5 align-top font-medium text-slate-900">{humanizeToken(row.document_type)}</td>
-              <td className="px-3 py-2.5 align-top">
-                <span
-                  className={clsx(
-                    'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                    row.queue === 'missing' ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-indigo-200 bg-indigo-50 text-indigo-950',
-                  )}
-                >
-                  {row.queue === 'missing'
-                    ? t('app.hr.documents_hub.queue_missing', { defaultValue: 'Missing' })
-                    : t('app.hr.documents_hub.queue_expiring', { defaultValue: 'Expiry' })}
-                </span>
-              </td>
-              <td className="px-3 py-2.5 align-top text-slate-700">{row.required ? '✓' : '—'}</td>
-              <td className="px-3 py-2.5 align-top">
-                <div className="text-slate-900">{humanizeToken(row.current_status)}</div>
-                {row.snapshot_status ? (
-                  <div className="text-xs text-slate-500">
-                    {t('app.hr.documents_hub.snapshot', { defaultValue: 'At hire: {s}', values: { s: humanizeToken(row.snapshot_status) } })}
-                  </div>
-                ) : null}
-              </td>
-              <td className="px-3 py-2.5 align-top tabular-nums text-slate-700">{formatShort(row.expires_at)}</td>
-              <td className="px-3 py-2.5 align-top">
-                <span
-                  className={clsx(
-                    'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                    row.risk === 'high' ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-slate-200 bg-slate-50 text-slate-700',
-                  )}
-                >
-                  {humanizeToken(row.risk)}
-                </span>
-              </td>
-              <td className="px-3 py-2.5 align-top">
-                <div className="flex flex-col gap-1.5">
-                  {row.workforce_employee_id ? (
-                    <Link
-                      className="text-xs font-medium text-indigo-700 hover:underline"
-                      to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(row.workforce_employee_id)}#hr-employee-linked-documents`}
-                    >
-                      {t('app.hr.documents_hub.open_employee', { defaultValue: 'Open employee' })}
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-slate-400">—</span>
-                  )}
-                  <Link
-                    className="text-xs font-medium text-slate-700 hover:underline"
-                    to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}
-                  >
-                    {t('app.hr.documents_hub.open_handoff', { defaultValue: 'Handoff' })}
-                  </Link>
-                  <button
-                    type="button"
-                    disabled
-                    className="cursor-not-allowed text-left text-xs text-slate-400"
-                    title={t('app.hr.documents_hub.planned_verify', { defaultValue: 'Document verification actions will use workforce APIs in a follow-up.' })}
-                  >
-                    {t('app.hr.documents_hub.mark_verified', { defaultValue: 'Mark verified' })}
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="cursor-not-allowed text-left text-xs text-slate-400"
-                    title={t('app.hr.documents_hub.planned_correction', { defaultValue: 'Request correction will open a guided task in a follow-up.' })}
-                  >
-                    {t('app.hr.documents_hub.request_correction', { defaultValue: 'Request correction' })}
-                  </button>
-                </div>
-              </td>
+    <div className={wrapClass}>
+      <div className="overflow-x-auto">
+        <table className="table min-w-[880px] text-left text-sm">
+          <thead>
+            <tr>
+              <th>{t('app.hr.documents_hub.col_candidate', { defaultValue: 'Candidate' })}</th>
+              <th>{t('app.hr.documents_hub.col_document', { defaultValue: 'Document' })}</th>
+              <th>{t('app.hr.documents_hub.col_queue', { defaultValue: 'Queue' })}</th>
+              <th>{t('app.hr.documents_hub.col_required', { defaultValue: 'Req.' })}</th>
+              <th>{t('app.hr.documents_hub.col_status', { defaultValue: 'Status' })}</th>
+              <th>{t('app.hr.documents_hub.col_expires', { defaultValue: 'Expires' })}</th>
+              <th>{t('app.hr.documents_hub.col_risk', { defaultValue: 'Risk' })}</th>
+              <th>{t('app.hr.documents_hub.col_actions', { defaultValue: 'Actions' })}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.handoff_id}-${row.document_type}-${row.queue}-${row.expires_at || 'x'}`}>
+                <td className="align-top">
+                  <div className="font-medium text-slate-900">{candidateLabel(row)}</div>
+                  <div className="font-mono text-xs text-slate-500">{row.handoff_id.slice(0, 8)}…</div>
+                </td>
+                <td className="align-top font-medium text-slate-900">{humanizeToken(row.document_type)}</td>
+                <td className="align-top">
+                  <span
+                    className={clsx(
+                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                      row.queue === 'missing'
+                        ? 'border-amber-200 bg-amber-50 text-amber-950'
+                        : 'border-brand-200 bg-brand-50 text-brand-900',
+                    )}
+                  >
+                    {row.queue === 'missing'
+                      ? t('app.hr.documents_hub.queue_missing', { defaultValue: 'Missing' })
+                      : t('app.hr.documents_hub.queue_expiring', { defaultValue: 'Expiry' })}
+                  </span>
+                </td>
+                <td className="align-top text-slate-700">{row.required ? '✓' : '—'}</td>
+                <td className="align-top">
+                  <div className="text-slate-900">{humanizeToken(row.current_status)}</div>
+                  {row.snapshot_status ? (
+                    <div className="text-xs text-slate-500">
+                      {t('app.hr.documents_hub.snapshot', {
+                        defaultValue: 'At hire: {s}',
+                        values: { s: humanizeToken(row.snapshot_status) },
+                      })}
+                    </div>
+                  ) : null}
+                </td>
+                <td className="align-top tabular-nums text-slate-700">{formatShort(row.expires_at)}</td>
+                <td className="align-top">
+                  <span
+                    className={clsx(
+                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                      row.risk === 'high' ? 'border-rose-200 bg-rose-50 text-rose-900' : 'badge border border-slate-200',
+                    )}
+                  >
+                    {humanizeToken(row.risk)}
+                  </span>
+                </td>
+                <td className="align-top">
+                  <div className="flex flex-col gap-1.5">
+                    {row.workforce_employee_id ? (
+                      <Link
+                        className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
+                        to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(row.workforce_employee_id)}#hr-employee-linked-documents`}
+                      >
+                        {t('app.hr.documents_hub.open_employee', { defaultValue: 'Open employee' })}
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                    <Link
+                      className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
+                      to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}
+                    >
+                      {t('app.hr.documents_hub.open_handoff', { defaultValue: 'Handoff' })}
+                    </Link>
+                    <button
+                      type="button"
+                      disabled
+                      className="cursor-not-allowed text-left text-xs text-slate-400"
+                      title={t('app.hr.documents_hub.planned_verify', {
+                        defaultValue: 'Document verification actions will use workforce APIs in a follow-up.',
+                      })}
+                    >
+                      {t('app.hr.documents_hub.mark_verified', { defaultValue: 'Mark verified' })}
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="cursor-not-allowed text-left text-xs text-slate-400"
+                      title={t('app.hr.documents_hub.planned_correction', {
+                        defaultValue: 'Request correction will open a guided task in a follow-up.',
+                      })}
+                    >
+                      {t('app.hr.documents_hub.request_correction', { defaultValue: 'Request correction' })}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

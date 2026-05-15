@@ -30,6 +30,30 @@ EVENT_AUTH_IMPERSONATION_DB_BIND = "auth.impersonation.db_bind"
 EVENT_RLS_TENANT_CONTEXT_EXECUTE_DENIED = "rls.tenant_context.execute_denied"
 EVENT_SUPERADMIN_META_LEADS_OPERATIONAL_REMAP = "superadmin.meta_leads.operational_remap"
 
+# Document / signed URL access (Phase 3 — v1 telemetry)
+EVENT_DOCUMENT_METADATA_READ = "document.metadata.read"
+EVENT_DOCUMENT_FILE_ACCESS_REQUESTED = "document.file.access_requested"
+EVENT_DOCUMENT_FILE_DOWNLOADED = "document.file.downloaded"
+EVENT_DOCUMENT_SIGNED_URL_GENERATED = "document.signed_url.generated"
+EVENT_DOCUMENT_SIGNED_URL_DENIED = "document.signed_url.denied"
+EVENT_DOCUMENT_SIGNED_URL_EXPIRED = "document.signed_url.expired"
+EVENT_DOCUMENT_SIGNED_URL_REPLAY_DENIED = "document.signed_url.replay_denied"
+
+# Export telemetry (v1 — CLASS 3 / insider-risk surface)
+EVENT_EXPORT_REQUESTED = "export.requested"
+EVENT_EXPORT_GENERATED = "export.generated"
+EVENT_EXPORT_DOWNLOADED = "export.downloaded"
+EVENT_EXPORT_DENIED = "export.denied"
+EVENT_EXPORT_EXPIRED = "export.expired"
+
+# Search / AI retrieval audit (governance PR — call sites follow separately)
+EVENT_SEARCH_RETRIEVAL_REQUESTED = "search.retrieval.requested"
+EVENT_SEARCH_RETRIEVAL_COMPLETED = "search.retrieval.completed"
+EVENT_SEARCH_RETRIEVAL_DENIED = "search.retrieval.denied"
+EVENT_AI_RETRIEVAL_REQUESTED = "ai.retrieval.requested"
+EVENT_AI_RETRIEVAL_COMPLETED = "ai.retrieval.completed"
+EVENT_AI_RETRIEVAL_DENIED = "ai.retrieval.denied"
+
 
 def validate_event_type(event_type: str) -> str:
     """Return normalized ``event_type`` or raise ``ValueError``."""

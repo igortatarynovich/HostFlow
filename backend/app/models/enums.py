@@ -103,6 +103,13 @@ class ScanPageStatus(str, Enum):
 
 
 class CandidateStage(str, enum.Enum):
+    """Legacy UI enum with **Russian display strings as values** — not the canonical ``candidates.stage`` codes.
+
+    Do **not** use for writes to ``Candidate.stage`` (canonical codes are ``new``, ``docs_wait``, … in
+    ``backend.app.constants.stages``). Kept for backwards compatibility in analytics / exports that
+    still branch on ``isinstance(..., CandidateStage)``.
+    """
+
     NEW = "Новый"
     NO_RESPONSE = "Не отвечает"
     CONTACT = "Контакт установлен"

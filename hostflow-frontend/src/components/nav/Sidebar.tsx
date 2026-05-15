@@ -46,6 +46,24 @@ import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
 import { resolveNavPlanFromTeamOverview, shouldShowFinanceNavSection } from '../../nav/financeNavVisibility'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
+import {
+  SIDEBAR_AGENCY_ANALYTICS_ORDER,
+  SIDEBAR_AGENCY_AUTOMATIONS_ORDER,
+  SIDEBAR_AGENCY_DASHBOARD_ORDER,
+  SIDEBAR_AGENCY_DOCUMENTS_ORDER,
+  SIDEBAR_AGENCY_INBOX_ORDER,
+  SIDEBAR_AGENCY_INTEGRATIONS_ORDER,
+  SIDEBAR_AGENCY_ORGANIZATION_ORDER,
+  SIDEBAR_AGENCY_PIPELINE_ORDER,
+  SIDEBAR_AGENCY_PROCESSING_ORDER,
+  SIDEBAR_AGENCY_PROFILE_ORDER,
+  SIDEBAR_AGENCY_SETTINGS_HUB_ORDER,
+  SIDEBAR_AGENCY_TASKS_ORDER,
+  SIDEBAR_AGENCY_TEAM_ORDER,
+  SIDEBAR_AGENCY_WORK_HUB_ORDER,
+  SIDEBAR_CLIENT_FLAT_ORDER,
+  financeSidebarOrder,
+} from '../../nav/sidebarRailBuckets'
 import { SidebarOwnCompanySection } from './SidebarOwnCompanySection'
 
 type SidebarProps = {
@@ -66,6 +84,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   overview: IconDashboard,
   analytics: IconChartBar,
   'work-hub': IconBriefcase,
+  'hr-workspace': IconUsersGroup,
   candidates: IconUsers,
   'candidates-no-next-action': IconUserQuestion,
   clients: IconBuilding,
@@ -200,6 +219,7 @@ export function Sidebar({
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
+      'hr-workspace': 'hr',
       clients: 'companies',
       vacancies: 'vacancies',
       documents: 'documents',
@@ -303,11 +323,6 @@ export function Sidebar({
     profileNavItems,
     sidebarBucketed,
   } = useMemo(() => {
-    /** Одна точка входа «Автоматизации»; правила, лог и распределение лидов — из хаба `/app/automations`. */
-    const automationsOrder = ['automations']
-    /** Одна ссылка «Интеграции» — детальные экраны только из хаба `/app/settings/integrations`. */
-    const integrationsOrder = ['settings-integrations']
-
     const pickOrdered = (order: string[]) => {
       const idx = new Map(order.map((k, i) => [k, i]))
       return visibleItems
@@ -316,17 +331,7 @@ export function Sidebar({
     }
 
     if (isClientTenant) {
-      const order = [
-        'overview',
-        'work-hub',
-        'inbox',
-        'candidates',
-        'do-procesowania',
-        'tasks',
-        'settings-integrations',
-        'profile',
-      ]
-      const flat = pickOrdered(order)
+      const flat = pickOrdered([...SIDEBAR_CLIENT_FLAT_ORDER])
       return {
         dashboardNavItems: [] as NavItem[],
         workHubNavItems: [] as NavItem[],
@@ -348,25 +353,22 @@ export function Sidebar({
       }
     }
 
-    const dashboardNavItems = pickOrdered(['overview'])
-    const workHubNavItems = pickOrdered(['work-hub'])
-    const inboxNavItems = pickOrdered(['inbox'])
-    const pipelineNavItems = pickOrdered(['candidates', 'clients', 'vacancies', 'leads'])
-    const tasksNavItems = pickOrdered(['tasks', 'calendar'])
-    const processingNavItems = pickOrdered(['do-procesowania'])
-    const teamNavItems = pickOrdered(['team-availability', 'my-availability', 'time-off'])
-    const financeKeys = showFinanceSidebarSection
-      ? (['service-orders', 'invoices', 'services'] as const)
-      : (['service-orders', 'services', 'invoices'] as const)
-    const financeNavItems = pickOrdered([...financeKeys])
-    const documentsNavItems = pickOrdered(['documents'])
-    const automationsNavItems = pickOrdered(automationsOrder)
-    const integrationsNavItems = pickOrdered(integrationsOrder)
-    const analyticsNavItems = pickOrdered([])
+    const dashboardNavItems = pickOrdered([...SIDEBAR_AGENCY_DASHBOARD_ORDER])
+    const workHubNavItems = pickOrdered([...SIDEBAR_AGENCY_WORK_HUB_ORDER])
+    const inboxNavItems = pickOrdered([...SIDEBAR_AGENCY_INBOX_ORDER])
+    const pipelineNavItems = pickOrdered([...SIDEBAR_AGENCY_PIPELINE_ORDER])
+    const tasksNavItems = pickOrdered([...SIDEBAR_AGENCY_TASKS_ORDER])
+    const processingNavItems = pickOrdered([...SIDEBAR_AGENCY_PROCESSING_ORDER])
+    const teamNavItems = pickOrdered([...SIDEBAR_AGENCY_TEAM_ORDER])
+    const financeNavItems = pickOrdered([...financeSidebarOrder(showFinanceSidebarSection)])
+    const documentsNavItems = pickOrdered([...SIDEBAR_AGENCY_DOCUMENTS_ORDER])
+    const automationsNavItems = pickOrdered([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER])
+    const integrationsNavItems = pickOrdered([...SIDEBAR_AGENCY_INTEGRATIONS_ORDER])
+    const analyticsNavItems = pickOrdered([...SIDEBAR_AGENCY_ANALYTICS_ORDER])
     const coreNavItems: NavItem[] = []
-    const organizationNavItems = pickOrdered(['my-company'])
-    const settingsHubNavItems = pickOrdered(['settings'])
-    const profileNavItems = pickOrdered(['profile'])
+    const organizationNavItems = pickOrdered([...SIDEBAR_AGENCY_ORGANIZATION_ORDER])
+    const settingsHubNavItems = pickOrdered([...SIDEBAR_AGENCY_SETTINGS_HUB_ORDER])
+    const profileNavItems = pickOrdered([...SIDEBAR_AGENCY_PROFILE_ORDER])
     return {
       dashboardNavItems,
       workHubNavItems,
@@ -411,6 +413,7 @@ export function Sidebar({
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
     if (item.key === 'work-hub') return location.pathname.startsWith(p.work) || location.pathname.startsWith(`${p.work}/`)
+    if (item.key === 'hr-workspace') return location.pathname === p.hr || location.pathname.startsWith(`${p.hr}/`)
     if (
       item.key === 'automations' ||
       item.key === 'automation-rules' ||

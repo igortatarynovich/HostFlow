@@ -1,4 +1,4 @@
-"""Workforce list/create: HR workspace roles include recruiters."""
+"""Workforce list/create: HR workspace roles (recruiters cannot list HR roster)."""
 
 from __future__ import annotations
 
@@ -33,10 +33,10 @@ async def test_hr_officer_create_employee_created(
 
 
 @pytest.mark.asyncio
-async def test_recruiter_list_workforce_employees_ok(
+async def test_recruiter_list_workforce_employees_forbidden(
     client: AsyncClient,
     recruiter_headers: Dict[str, str],
 ) -> None:
+    """HR employee list is HR-workspace only (not recruitment)."""
     resp = await client.get("/api/v1/workforce/employees", headers=recruiter_headers)
-    assert resp.status_code == 200, resp.text
-    assert isinstance(resp.json(), list)
+    assert resp.status_code == 403, resp.text

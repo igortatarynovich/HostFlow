@@ -353,7 +353,9 @@ function CandidateBasicSection({
               options={managers}
               value={candidate.manager || ''}
               onChange={(v) => onModelChange((m) => ({ ...m, manager: v || null, manager_id: v || null }))}
-              placeholder={selectTexts.empty}
+              placeholder={t('app.candidate_card.fields.manager_not_assigned', {
+                defaultValue: t('app.candidates.table.manager_not_assigned', { defaultValue: 'Not assigned' }),
+              })}
               searchPlaceholder={selectTexts.search}
               noResultsLabel={selectTexts.noResults}
             />

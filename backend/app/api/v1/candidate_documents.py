@@ -19,6 +19,15 @@ from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.security.document_events import (
+    emit_document_security_event_v1,
+    url_looks_presigned,
+)
+from backend.app.security.event_taxonomy import (
+    EVENT_DOCUMENT_FILE_DOWNLOADED,
+    EVENT_DOCUMENT_SIGNED_URL_DENIED,
+    EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+)
 from backend.app.services.own_company_doc_scope import (
     documents_scope_clause,
     ensure_candidate_own_company_scope,
@@ -330,13 +339,29 @@ async def _recalc_docs_progress(
     ``stage`` / ``status``). It is intentionally **not** blocked by the agency
     recruitment handoff lock: it mirrors document state for UI/analytics while
     document mutations themselves remain guarded by ``_check_document_edit_permission``.
+
+    Document rows are scoped with ``resolved_document_own_company_id`` so the
+    aggregate matches per-own-company document visibility (same as upload paths).
     """
+    cand = (
+        await db.execute(
+            select(Candidate).where(
+                Candidate.id == str(candidate_id),
+                Candidate.tenant_id == str(tenant_id),
+                Candidate.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if cand is None:
+        return {"total": 0, "uploaded": 0, "ready": 0, "submitted": 0, "planned": 0}
+
+    effective_own = resolved_document_own_company_id(cand, own_company_id)
     base = and_(
         Document.tenant_id == str(tenant_id),
         Document.candidate_id == str(candidate_id),
         Document.deleted_at.is_(None),
     )
-    scope = documents_scope_clause(own_company_id)
+    scope = documents_scope_clause(effective_own)
     if scope is not None:
         stmt = select(Document).join(Candidate, Candidate.id == Document.candidate_id).where(and_(base, scope))
     else:
@@ -637,7 +662,9 @@ async def list_candidate_documents(
             return []
 
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
-    ensure_candidate_own_company_scope(cand, own_company_id)
+    # Align with documents module: pin scope to the candidate's workspace when set,
+    # instead of 404 when active ``X-Own-Company-Id`` differs from ``Candidate.own_company_id``.
+    effective_own = resolved_document_own_company_id(cand, own_company_id)
     tenant_for_docs = cand.tenant_id
 
     # Если документы принадлежат другому тенанту, временно меняем контекст RLS
@@ -662,7 +689,7 @@ async def list_candidate_documents(
             Document.candidate_id == str(candidate_id),
             Document.deleted_at.is_(None),
         )
-        scope = documents_scope_clause(own_company_id)
+        scope = documents_scope_clause(effective_own)
         if scope is not None:
             stmt = (
                 select(Document)
@@ -1782,6 +1809,8 @@ async def get_candidate_document_file(
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id_hint = db_tenant
+    access_kind = str(db.info.get("security_access_kind") or "").strip() or None
+    actor_id = str(current_user.sub) if getattr(current_user, "sub", None) else None
     await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
     ensure_candidate_own_company_scope(cand, own_company_id)
@@ -1821,20 +1850,87 @@ async def get_candidate_document_file(
                 pass
 
     if not m or not m.path:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:candidate_documents:get_file",
+            tenant_id=str(tenant_for_docs),
+            document_id=str(doc_id),
+            access_kind=access_kind,
+            actor_id=actor_id,
+            candidate_id=str(candidate_id),
+            reason="document_or_file_missing",
+        )
         raise HTTPException(status_code=404, detail="File not found")
     ensure_document_own_company_matches(m, cand, own_company_id)
 
     try:
         ref = resolve_document_file_ref(m)
     except FileNotFoundError:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:candidate_documents:get_file",
+            tenant_id=str(tenant_for_docs),
+            document_id=str(doc_id),
+            access_kind=access_kind,
+            actor_id=actor_id,
+            document_class=str(m.doc_type) if getattr(m, "doc_type", None) else None,
+            candidate_id=str(candidate_id),
+            reason="file_not_found",
+        )
         raise HTTPException(status_code=404, detail="File not found") from None
 
     if ref.download_url:
         from fastapi.responses import RedirectResponse
 
+        presigned = url_looks_presigned(ref.download_url)
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+            result="success",
+            severity="info",
+            source="http:candidate_documents:get_file",
+            tenant_id=str(tenant_for_docs),
+            document_id=str(doc_id),
+            access_kind=access_kind,
+            actor_id=actor_id,
+            document_class=str(m.doc_type) if getattr(m, "doc_type", None) else None,
+            candidate_id=str(candidate_id),
+            has_presigned_url_shape=presigned,
+            response_mode="redirect_302",
+        )
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_FILE_DOWNLOADED,
+            result="success",
+            severity="info",
+            source="http:candidate_documents:get_file",
+            tenant_id=str(tenant_for_docs),
+            document_id=str(doc_id),
+            access_kind=access_kind,
+            actor_id=actor_id,
+            document_class=str(m.doc_type) if getattr(m, "doc_type", None) else None,
+            candidate_id=str(candidate_id),
+            response_mode="redirect_302",
+            has_presigned_url_shape=presigned,
+        )
         return RedirectResponse(url=ref.download_url, status_code=302)
 
     assert ref.local_path is not None  # guarded by resolve_document_file_ref
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_DOWNLOADED,
+        result="success",
+        severity="info",
+        source="http:candidate_documents:get_file",
+        tenant_id=str(tenant_for_docs),
+        document_id=str(doc_id),
+        access_kind=access_kind,
+        actor_id=actor_id,
+        document_class=str(m.doc_type) if getattr(m, "doc_type", None) else None,
+        candidate_id=str(candidate_id),
+        response_mode="file_stream",
+    )
     return FileResponse(
         str(ref.local_path),
         media_type=ref.media_type or "application/octet-stream",

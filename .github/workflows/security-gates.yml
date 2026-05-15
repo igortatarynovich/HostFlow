@@ -37,6 +37,16 @@ jobs:
       - name: Enforce canonical security event producers
         run: python3 scripts/security/check_no_raw_emit_security_event.py
 
+  telemetry-phase34-stability:
+    name: Phase 3/4 telemetry stabilization (helpers + logger heuristic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Document/export helpers use emit_security_event_v1 only
+        run: python3 scripts/security/check_telemetry_helpers_v1_only.py
+      - name: No logger lines mixing logger.*( with signed_url / export path hints
+        run: python3 scripts/security/check_no_sensitive_logger_bypass.py
+
   backend-bandit:
     name: Bandit (high severity)
     runs-on: ubuntu-latest

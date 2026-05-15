@@ -170,6 +170,13 @@ export function getCandidateVacancyId(candidate: UICandidate): string | null {
   return value && value !== 'null' ? value : null;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuidLike(value: unknown): boolean {
+  return typeof value === 'string' && UUID_RE.test(value.trim());
+}
+
 /**
  * Canonical assignee (Phase 2.6.G-5 Stage F).
  *
@@ -183,15 +190,16 @@ export function getCandidateVacancyId(candidate: UICandidate): string | null {
  * instead of reading `candidate.manager` directly.
  */
 export function getCandidateRecruiterId(candidate: UICandidate): string | null {
-  const raw =
-    (candidate as any)?.recruiter_id ??
-    (candidate as any)?.manager_id ??
-    (candidate as any)?.manager?.id ??
-    (candidate as any)?.manager ??
-    null;
-  if (!raw) return null;
-  const value = String(raw);
-  return value && value !== 'null' ? value : null;
+  const rid = (candidate as any)?.recruiter_id;
+  if (rid != null && isUuidLike(rid)) return String(rid).trim();
+  const mid = (candidate as any)?.manager_id;
+  if (mid != null && isUuidLike(mid)) return String(mid).trim();
+  const mobj = (candidate as any)?.manager;
+  if (mobj && typeof mobj === 'object' && mobj.id != null && isUuidLike(mobj.id)) {
+    return String(mobj.id).trim();
+  }
+  if (typeof mobj === 'string' && isUuidLike(mobj)) return mobj.trim();
+  return null;
 }
 
 /**

@@ -92,6 +92,8 @@ type UseCandidatesTableDataArgs = {
   // query/filter state
   q: string
   stageFilter: string[]
+  /** ``Candidate.status`` values (GET ``?statuses=``). */
+  candidateRowStatusFilter: string[]
   statusReasonFilter: string[]
   tagsFilter: string[]
   vacancyFilter: string[]
@@ -136,6 +138,7 @@ export function useCandidatesTableData({
 
   q,
   stageFilter,
+  candidateRowStatusFilter,
   statusReasonFilter,
   tagsFilter,
   vacancyFilter,
@@ -342,6 +345,7 @@ export function useCandidatesTableData({
               q: q || undefined,
               stage: stageFilter.length === 1 ? stageFilter[0] : undefined,
               stages: stageFilter.length > 0 ? stageFilter.join(',') : undefined,
+              statuses: candidateRowStatusFilter.length > 0 ? candidateRowStatusFilter.join(',') : undefined,
               status_reason: statusReasonFilter.length > 0 ? statusReasonFilter : undefined,
               tags: tagsFilter.length > 0 ? tagsFilter : undefined,
               vacancy_id: vacancyFilter.length > 0 ? vacancyFilter[0] : undefined,
@@ -534,6 +538,7 @@ export function useCandidatesTableData({
       t,
       q,
       stageFilter,
+      candidateRowStatusFilter,
       statusReasonFilter,
       tagsFilter,
       vacancyFilter,

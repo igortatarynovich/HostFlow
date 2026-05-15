@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,16 +20,37 @@ from backend.app.modules.documents import crud as documents_crud
 from backend.app.schemas.workforce_hr import (
     AbsenceCreate,
     AbsencePatch,
+    ComplianceStatePatch,
     EmploymentCreate,
     EmploymentPatch,
+    InsuranceProfilePatch,
     LeaveRequestCreate,
     LeaveRequestPatch,
     OnboardingTaskPatch,
     PayrollProfilePatch,
+    TaxProfilePatch,
+    WorkEligibilityPaymentRequirementPatch,
+    WorkEligibilityProfilePatch,
     ZusProfilePatch,
+)
+from backend.app.schemas.workforce_hr_core import (
+    WorkforceComplianceStateOut,
+    WorkforceHrDocumentContextOut,
+    WorkforceHrDocumentContextSummaryOut,
+    WorkforceInsuranceProfileOut,
+    WorkforceTaxProfileOut,
+    WorkforceWorkEligibilityPaymentRequirementOut,
+    WorkforceWorkEligibilityProfileOut,
+    WorkEligibilityJourneyOut,
 )
 from backend.app.services import workforce_hr_satellites as wh_sat
 from backend.app.services import workforce_employees as we_svc
+from backend.app.services import workforce_directory as wf_directory
+from backend.app.services import workforce_operational_profile as wf_op
+from backend.app.services import workforce_work_eligibility as wel_svc
+from backend.app.services import workforce_work_eligibility_payments as wel_pay_svc
+from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
+from backend.app.services.workforce_zus_task_autocreate import ensure_zus_registration_task
 from backend.app.services.audit import log_activity
 
 logger = logging.getLogger(__name__)
@@ -110,6 +131,9 @@ class EmployeeCreate(BaseModel):
     probation_end: Optional[date] = None
     notes: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
+    initial_insurance_zus_registration_type: Optional[str] = Field(default=None, max_length=64)
+    initial_insurance_status: Optional[str] = Field(default=None, max_length=32)
+    initial_eligibility_status: Optional[str] = Field(default=None, max_length=32)
 
 
 class EmployeePatch(BaseModel):
@@ -125,6 +149,29 @@ class EmployeePatch(BaseModel):
     termination_date: Optional[date] = None
     notes: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
+
+
+class EmployeeDirectoryRowOut(BaseModel):
+    employee_id: str
+    full_name: str
+    status: str
+    employer: Optional[str] = None
+    client: Optional[str] = None
+    position: Optional[str] = None
+    start_date: Optional[str] = None
+    assigned_hr: Optional[str] = None
+    assigned_hr_user_id: Optional[str] = None
+    handoff_id: Optional[str] = None
+    candidate_id: Optional[str] = None
+    compliance_status: str
+    missing_documents_count: int
+    expiring_documents_count: int
+    risk_level: str
+
+
+class EmployeeDirectoryPageOut(BaseModel):
+    items: List[EmployeeDirectoryRowOut]
+    total: int
 
 
 class HandoffIn(BaseModel):
@@ -241,6 +288,96 @@ class HrBundleOut(BaseModel):
     onboarding_tasks: List[OnboardingTaskOut]
     absences: List[AbsenceOut]
     leave_requests: List[LeaveRequestOut]
+    tax_profile: Optional[WorkforceTaxProfileOut] = None
+    insurance_profile: Optional[WorkforceInsuranceProfileOut] = None
+    work_eligibility_profile: Optional[WorkforceWorkEligibilityProfileOut] = None
+    work_eligibility_payment_requirements: List[WorkforceWorkEligibilityPaymentRequirementOut] = Field(
+        default_factory=list
+    )
+    compliance_state: Optional[WorkforceComplianceStateOut] = None
+    hr_document_context_summary: WorkforceHrDocumentContextSummaryOut = Field(
+        default_factory=WorkforceHrDocumentContextSummaryOut
+    )
+
+
+class OperationalSummaryOut(BaseModel):
+    employee_status: str
+    full_name: str
+    employer: Optional[str] = None
+    client: Optional[str] = None
+    position: Optional[str] = None
+    start_date: Optional[str] = None
+    probation_end: Optional[str] = None
+    assigned_hr: Optional[str] = None
+    assigned_hr_user_id: Optional[str] = None
+    handoff_id: Optional[str] = None
+    compliance_status: str
+    missing_documents_count: int
+    expiring_documents_count: int
+    risk_level: str
+
+
+class TransferMetadataOut(BaseModel):
+    handoff_id: Optional[str] = None
+    handoff_at: Optional[str] = None
+    handoff_by_user_id: Optional[str] = None
+    handoff_by_name: Optional[str] = None
+    candidate_id: Optional[str] = None
+    vacancy_id: Optional[str] = None
+
+
+class RecruiterSummaryOut(BaseModel):
+    captured_at: Optional[str] = None
+    candidate_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    stage: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ProfileAlertOut(BaseModel):
+    code: str
+    message: str
+
+
+class TimelineEventOut(BaseModel):
+    id: str
+    occurred_at: str
+    kind: str
+    title: str
+    detail: Optional[str] = None
+    actor_id: Optional[str] = None
+
+
+class EmploymentOperationalOut(BaseModel):
+    id: str
+    contract_type: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    is_active: bool = False
+    probation_end: Optional[str] = None
+    position: Optional[str] = None
+
+
+class EmployeeOperationalProfileOut(BaseModel):
+    """Single read-model for HR employee workspace (directory + bundle + queues + timeline)."""
+
+    employee: EmployeeOut
+    operational_summary: OperationalSummaryOut
+    transfer: TransferMetadataOut
+    recruiter_summary: RecruiterSummaryOut
+    hire_snapshot: Optional[dict[str, Any]] = None
+    documents_linked: List[CandDoc]
+    documents_missing: List[dict[str, Any]] = Field(default_factory=list)
+    documents_expiring: List[dict[str, Any]] = Field(default_factory=list)
+    risks: List[dict[str, Any]] = Field(default_factory=list)
+    alerts: List[ProfileAlertOut] = Field(default_factory=list)
+    onboarding_overdue_count: int = 0
+    timeline: List[TimelineEventOut] = Field(default_factory=list)
+    employment_operational: List[EmploymentOperationalOut] = Field(default_factory=list)
+    hr_bundle: HrBundleOut
 
 
 def _employment_out(row: Any) -> EmploymentOut:
@@ -352,6 +489,40 @@ def _leave_out(row: Any) -> LeaveRequestOut:
     )
 
 
+def _hr_bundle_out(bundle: dict[str, Any]) -> HrBundleOut:
+    summ = bundle.get("hr_document_context_summary") or {}
+    items_orm: list[Any] = list(summ.get("items") or [])
+    return HrBundleOut(
+        employments=[_employment_out(r) for r in bundle["employments"]],
+        payroll_profile=_payroll_out(bundle["payroll_profile"]) if bundle.get("payroll_profile") else None,
+        zus_profile=_zus_out(bundle["zus_profile"]) if bundle.get("zus_profile") else None,
+        onboarding_tasks=[_task_out(r) for r in bundle["onboarding_tasks"]],
+        absences=[_absence_out(r) for r in bundle["absences"]],
+        leave_requests=[_leave_out(r) for r in bundle["leave_requests"]],
+        tax_profile=WorkforceTaxProfileOut.model_validate(bundle["tax_profile"])
+        if bundle.get("tax_profile")
+        else None,
+        insurance_profile=WorkforceInsuranceProfileOut.model_validate(bundle["insurance_profile"])
+        if bundle.get("insurance_profile")
+        else None,
+        work_eligibility_profile=WorkforceWorkEligibilityProfileOut.model_validate(bundle["work_eligibility_profile"])
+        if bundle.get("work_eligibility_profile")
+        else None,
+        work_eligibility_payment_requirements=[
+            WorkforceWorkEligibilityPaymentRequirementOut.from_orm_row(r)
+            for r in (bundle.get("work_eligibility_payment_requirements") or [])
+        ],
+        compliance_state=WorkforceComplianceStateOut.model_validate(bundle["compliance_state"])
+        if bundle.get("compliance_state")
+        else None,
+        hr_document_context_summary=WorkforceHrDocumentContextSummaryOut(
+            total=int(summ.get("total") or 0),
+            by_context_type=dict(summ.get("by_context_type") or {}),
+            items=[WorkforceHrDocumentContextOut.model_validate(x) for x in items_orm],
+        ),
+    )
+
+
 @router.get(
     "/employees",
     response_model=List[EmployeeOut],
@@ -367,6 +538,43 @@ async def list_employees(
     tenant_id = str(tid)
     rows = await we_svc.list_employees(db, tenant_id, status=status, limit=limit, offset=offset)
     return [EmployeeOut.from_orm_row(r) for r in rows]
+
+
+@router.get(
+    "/employees/directory",
+    response_model=EmployeeDirectoryPageOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def list_employees_directory_endpoint(
+    status: Optional[str] = Query(None),
+    compliance_status: Optional[str] = Query(None),
+    risk_level: Optional[str] = Query(None),
+    missing_docs: Optional[bool] = Query(None),
+    expiring_docs: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> EmployeeDirectoryPageOut:
+    db, tid = db_tenant
+    items_raw, total = await wf_directory.list_employees_directory(
+        db,
+        tenant_id=str(tid),
+        viewer=ctx,
+        status=status,
+        compliance_status=compliance_status,
+        risk_level=risk_level,
+        missing_docs=missing_docs,
+        expiring_docs=expiring_docs,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+    return EmployeeDirectoryPageOut(
+        items=[EmployeeDirectoryRowOut.model_validate(r) for r in items_raw],
+        total=total,
+    )
 
 
 @router.get(
@@ -400,13 +608,58 @@ async def get_employee_hr_bundle(
     if not row:
         raise HTTPException(status_code=404, detail="Employee not found")
     bundle = await we_svc.get_hr_bundle(db, tenant_id, employee_id)
-    return HrBundleOut(
-        employments=[_employment_out(r) for r in bundle["employments"]],
-        payroll_profile=_payroll_out(bundle["payroll_profile"]) if bundle["payroll_profile"] else None,
-        zus_profile=_zus_out(bundle["zus_profile"]) if bundle["zus_profile"] else None,
-        onboarding_tasks=[_task_out(r) for r in bundle["onboarding_tasks"]],
-        absences=[_absence_out(r) for r in bundle["absences"]],
-        leave_requests=[_leave_out(r) for r in bundle["leave_requests"]],
+    return _hr_bundle_out(bundle)
+
+
+@router.get(
+    "/employees/{employee_id}/operational-profile",
+    response_model=EmployeeOperationalProfileOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def get_employee_operational_profile(
+    employee_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> EmployeeOperationalProfileOut:
+    """HR employee workspace read-model: one response for summary, compliance, documents, bundle, timeline."""
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    raw = await wf_op.collect_operational_profile_raw(
+        db, tenant_id=tenant_id, viewer=ctx, employee_id=employee_id
+    )
+    if not raw:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    emp = raw["employee"]
+    bundle = raw["bundle"]
+    cid = (emp.candidate_id or "").strip()
+    doc_rows: list[Any] = []
+    if cid:
+        doc_rows = await documents_crud.list_candidate_documents(
+            db,
+            tenant_id,
+            cid,
+            active_own_company_id=own_company_id,
+        )
+    cand_docs = [CandDoc.from_document(r) for r in doc_rows]
+    hb = _hr_bundle_out(bundle)
+    return EmployeeOperationalProfileOut(
+        employee=EmployeeOut.from_orm_row(emp),
+        operational_summary=OperationalSummaryOut.model_validate(raw["operational_summary"]),
+        transfer=TransferMetadataOut.model_validate(raw["transfer"]),
+        recruiter_summary=RecruiterSummaryOut.model_validate(raw["recruiter_summary"]),
+        hire_snapshot=raw.get("hire_snapshot"),
+        documents_linked=cand_docs,
+        documents_missing=list(raw.get("documents_missing") or []),
+        documents_expiring=list(raw.get("documents_expiring") or []),
+        risks=list(raw.get("risks") or []),
+        alerts=[ProfileAlertOut.model_validate(a) for a in raw.get("alerts") or []],
+        onboarding_overdue_count=int(raw.get("onboarding_overdue_count") or 0),
+        timeline=[TimelineEventOut.model_validate(ev) for ev in raw.get("timeline") or []],
+        employment_operational=[
+            EmploymentOperationalOut.model_validate(e) for e in raw.get("employment_operational") or []
+        ],
+        hr_bundle=hb,
     )
 
 
@@ -467,6 +720,9 @@ async def create_employee_endpoint(
         probation_end=payload.probation_end,
         notes=payload.notes,
         meta=payload.meta,
+        initial_insurance_zus_registration_type=payload.initial_insurance_zus_registration_type,
+        initial_insurance_status=payload.initial_insurance_status,
+        initial_eligibility_status=payload.initial_eligibility_status,
     )
     await db.commit()
     await db.refresh(row)
@@ -630,6 +886,191 @@ async def patch_zus_profile_endpoint(
     await db.commit()
     await db.refresh(row)
     return _zus_out(row)
+
+
+@router.patch(
+    "/employees/{employee_id}/tax-profile",
+    response_model=WorkforceTaxProfileOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_tax_profile_endpoint(
+    employee_id: str,
+    payload: TaxProfilePatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkforceTaxProfileOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    data = payload.model_dump(exclude_unset=True)
+    row = await wh_sat.patch_tax_profile(db, tenant_id, employee_id, data)
+    if not row:
+        raise HTTPException(status_code=404, detail="Employee or tax profile not found")
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="workforce.tax_profile_patch",
+        actor_id=current_user.sub,
+        target_type="workforce_tax_profile",
+        target_id=row.id,
+        payload={"employee_id": employee_id},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return WorkforceTaxProfileOut.model_validate(row)
+
+
+@router.patch(
+    "/employees/{employee_id}/insurance-profile",
+    response_model=WorkforceInsuranceProfileOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_insurance_profile_endpoint(
+    employee_id: str,
+    payload: InsuranceProfilePatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkforceInsuranceProfileOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    data = payload.model_dump(exclude_unset=True)
+    row = await wh_sat.patch_insurance_profile(
+        db, tenant_id, employee_id, data, audit_actor_id=str(current_user.sub)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Employee or insurance profile not found")
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="workforce.insurance_profile_patch",
+        actor_id=current_user.sub,
+        target_type="workforce_insurance_profile",
+        target_id=row.id,
+        payload={"employee_id": employee_id},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return WorkforceInsuranceProfileOut.model_validate(row)
+
+
+@router.patch(
+    "/employees/{employee_id}/work-eligibility",
+    response_model=WorkforceWorkEligibilityProfileOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_work_eligibility_profile_endpoint(
+    employee_id: str,
+    payload: WorkEligibilityProfilePatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkforceWorkEligibilityProfileOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    data = payload.model_dump(exclude_unset=True)
+    try:
+        row = await wel_svc.patch_work_eligibility_profile(db, tenant_id, employee_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    if not row:
+        raise HTTPException(status_code=404, detail="Employee or work eligibility profile not found")
+    await ensure_zus_registration_task(
+        db, employee_id, actor_id=str(current_user.sub), source="work_eligibility_profile"
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="workforce.work_eligibility_profile_patch",
+        actor_id=current_user.sub,
+        target_type="workforce_work_eligibility_profile",
+        target_id=row.id,
+        payload={"employee_id": employee_id},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return WorkforceWorkEligibilityProfileOut.model_validate(row)
+
+
+@router.get(
+    "/employees/{employee_id}/work-eligibility/journey",
+    response_model=WorkEligibilityJourneyOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def get_work_eligibility_journey_endpoint(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> WorkEligibilityJourneyOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    payload = await build_work_eligibility_journey(db, tenant_id, employee_id)
+    return WorkEligibilityJourneyOut.model_validate(payload)
+
+
+@router.patch(
+    "/employees/{employee_id}/work-eligibility/payment-requirements/{requirement_id}",
+    response_model=WorkforceWorkEligibilityPaymentRequirementOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_work_eligibility_payment_requirement_endpoint(
+    employee_id: str,
+    requirement_id: str,
+    payload: WorkEligibilityPaymentRequirementPatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkforceWorkEligibilityPaymentRequirementOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    data = payload.model_dump(exclude_unset=True)
+    row = await wel_pay_svc.patch_payment_requirement(db, tenant_id, employee_id, requirement_id, data)
+    if not row:
+        raise HTTPException(status_code=404, detail="Payment requirement not found")
+    await ensure_zus_registration_task(
+        db, employee_id, actor_id=str(current_user.sub), source="work_eligibility_payment"
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="workforce.work_eligibility_payment_requirement_patch",
+        actor_id=current_user.sub,
+        target_type="workforce_work_eligibility_payment_requirement",
+        target_id=row.id,
+        payload={"employee_id": employee_id},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return WorkforceWorkEligibilityPaymentRequirementOut.from_orm_row(row)
+
+
+@router.patch(
+    "/employees/{employee_id}/compliance-state",
+    response_model=WorkforceComplianceStateOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_compliance_state_endpoint(
+    employee_id: str,
+    payload: ComplianceStatePatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkforceComplianceStateOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    data = payload.model_dump(exclude_unset=True)
+    row = await wh_sat.patch_compliance_state(db, tenant_id, employee_id, data)
+    if not row:
+        raise HTTPException(status_code=404, detail="Employee or compliance state not found")
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="workforce.compliance_state_patch",
+        actor_id=current_user.sub,
+        target_type="workforce_compliance_state",
+        target_id=row.id,
+        payload={"employee_id": employee_id},
+    )
+    await db.commit()
+    await db.refresh(row)
+    return WorkforceComplianceStateOut.model_validate(row)
 
 
 @router.post(
@@ -849,3 +1290,8 @@ async def patch_leave_request_endpoint(
     await db.commit()
     await db.refresh(row)
     return _leave_out(row)
+
+
+from backend.app.api.v1.workforce import zus_workspace_router as _zus_ws_router  # noqa: E402
+
+router.include_router(_zus_ws_router.router, prefix="/zus-workspace", tags=["workforce-zus-workspace"])

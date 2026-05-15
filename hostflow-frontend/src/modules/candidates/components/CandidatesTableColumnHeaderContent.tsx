@@ -54,6 +54,9 @@ export interface CandidatesTableColumnHeaderCtx {
   stageFilterOptions: FilterOption[]
   stageFilter: string[]
   setStageFilter: (next: string[]) => void
+  candidateRowStatusFilterOptions: FilterOption[]
+  candidateRowStatusFilter: string[]
+  setCandidateRowStatusFilter: (next: string[]) => void
   preferredChannelOptions: FilterOption[]
   preferredChannelFilter: string[]
   setPreferredChannelFilter: (next: string[]) => void
@@ -226,6 +229,7 @@ export function CandidatesTableColumnHeaderContent({ columnKey, ctx }: Candidate
     vacancyFilterOptions, vacancyFilter, setVacancyFilter,
     managerFilterOptions, managerFilter, setManagerFilter,
     stageFilterOptions, stageFilter, setStageFilter,
+    candidateRowStatusFilterOptions, candidateRowStatusFilter, setCandidateRowStatusFilter,
     preferredChannelOptions, preferredChannelFilter, setPreferredChannelFilter,
     inPolandOptions, inPolandFilter, setInPolandFilter,
     polandBasisOptions, polandBasisFilter, setPolandBasisFilter,
@@ -330,12 +334,20 @@ export function CandidatesTableColumnHeaderContent({ columnKey, ctx }: Candidate
       return (
         <>
           {renderSortButton(columnLabelMap.stage, 'stage', ctx)}
-          <ColumnFilterMenu
-            title={t('app.candidates.filters.stage_menu')}
-            options={stageFilterOptions}
-            selected={stageFilter}
-            onChange={setStageFilter}
-          />
+          <div className="inline-flex flex-wrap items-center gap-1">
+            <ColumnFilterMenu
+              title={t('app.candidates.filters.stage_menu')}
+              options={stageFilterOptions}
+              selected={stageFilter}
+              onChange={setStageFilter}
+            />
+            <ColumnFilterMenu
+              title={t('app.candidates.filters.row_status_menu', { defaultValue: 'Status' })}
+              options={candidateRowStatusFilterOptions}
+              selected={candidateRowStatusFilter}
+              onChange={setCandidateRowStatusFilter}
+            />
+          </div>
         </>
       )
     case 'risk':

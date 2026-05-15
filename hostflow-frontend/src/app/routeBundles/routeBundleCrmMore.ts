@@ -4,6 +4,7 @@ export { default as AnalyticsLeadConversionFunnelPage } from '../../pages/Analyt
 export { default as LeadsDistributionPage } from '../../pages/LeadsDistributionPage'
 export { default as LeadsDistributionRulesPage } from '../../pages/LeadsDistributionRulesPage'
 export { default as DocumentsRegistryPage } from '../../pages/DocumentsRegistryPage'
+export { default as DocumentsHubPage } from '../../pages/documents/DocumentsHubPage'
 export { default as AutomationsHubPage } from '../../pages/AutomationsHubPage'
 export { default as AutomationLogPage } from '../../pages/AutomationLogPage'
 export { default as AutomationRulesPage } from '../../pages/AutomationRulesPage'

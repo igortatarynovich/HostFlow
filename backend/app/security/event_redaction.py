@@ -6,6 +6,16 @@ import json
 import re
 from typing import Any, Mapping
 
+_URLISH_RE = re.compile(r"https?://", re.IGNORECASE)
+_SENSITIVE_URL_MARKERS = (
+    "signature=",
+    "x-amz-",
+    "x-goog-",
+    "token=",
+    "access_token=",
+    "id_token=",
+)
+
 # Keys removed anywhere in extra (case-insensitive match on leaf keys).
 REDACTED_KEY_SUBSTRINGS: frozenset[str] = frozenset(
     {
@@ -44,6 +54,42 @@ FORBIDDEN_EXACT_KEYS: frozenset[str] = frozenset(
         "notes",
         "content",
         "document_bytes",
+        # Never ship raw URLs / tokens / human filenames in security event extra.
+        "url",
+        "signed_url",
+        "download_url",
+        "presigned_url",
+        "filename",
+        # Export / archive leaks (paths and row payloads must never appear in security extra).
+        "archive_path",
+        "export_path",
+        "rows",
+        "records",
+        "attachment_filename",
+        # Retrieval / AI / search leaks (never raw prompt, query, context, vectors).
+        "prompt",
+        "raw_prompt",
+        "system_prompt",
+        "user_prompt",
+        "raw_query",
+        "search_query",
+        "query_text",
+        "user_query",
+        "raw_context",
+        "prompt_context",
+        "retrieval_context",
+        "assembled_context",
+        "conversation_context",
+        "embedding",
+        "embeddings",
+        "vector",
+        "vectors",
+        "document_text",
+        "chunk_text",
+        "chunks",
+        # Generic names that must never carry raw retrieval payload in security ``extra``.
+        "context",
+        "query",
     }
 )
 
@@ -78,6 +124,8 @@ def _scrub_value(value: Any, depth: int) -> Any:
             return "[BINARY_REDACTED]"
         if len(value) > 512:
             return value[:256] + "…[TRUNCATED]"
+        if _URLISH_RE.search(value) and any(m in value.lower() for m in _SENSITIVE_URL_MARKERS):
+            return "[REDACTED_SENSITIVE_VALUE]"
         return value
     return value
 

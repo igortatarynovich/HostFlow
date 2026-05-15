@@ -11,14 +11,14 @@ from backend.app.api.v1.handoffs import HandoffOut
 from backend.app.api.v1.reminders_v2 import ReminderListResponse, ReminderOut
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.auth.hr_workforce_access import require_hr_workforce_module_access
+from backend.app.constants.hr_task_types import HR_TASK_TYPES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import reminder_tasks
+from backend.app.services.hr_documents_hub import list_hr_documents_hub
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
 from backend.app.services.hr_inbox import list_internal_hr_handoffs_for_hr_inbox
 
 router = APIRouter(prefix="/hr", tags=["hr-inbox"])
-
-HR_TASK_TYPES = ("internal_hr_handoff_pending", "handoff_hr_checklist")
 
 
 class HrHandoffInboxItem(BaseModel):
@@ -49,6 +49,39 @@ class HrDocumentQueueItem(BaseModel):
 class HrDocumentQueueListOut(BaseModel):
     total: int
     items: List[HrDocumentQueueItem]
+
+
+class HrDocumentHubRowOut(BaseModel):
+    """Unified HR legal document row (workforce HR document context + live document + compliance)."""
+
+    employee_id: str
+    employee_name: str
+    handoff_id: Optional[str] = None
+    document_id: str
+    document_type: str
+    legal_category: Optional[str] = None
+    document_group: Optional[str] = None
+    context_type: str
+    required: bool
+    verification_status: Optional[str] = None
+    current_status: str
+    expires_at: Optional[str] = None
+    risk: str
+    source: Optional[str] = None
+    missing: bool
+    expired: bool
+    expiring: bool
+    recommended_action: str
+    compliance_status: Optional[str] = None
+    compliance_cannot_work: Optional[bool] = None
+    handoff_snapshot_summary: dict[str, Any] = Field(default_factory=dict)
+    assignee_user_id: Optional[str] = None
+    work_eligibility_payment_requirement_ids: List[str] = Field(default_factory=list)
+
+
+class HrDocumentHubListOut(BaseModel):
+    total: int
+    items: List[HrDocumentHubRowOut]
 
 
 def _hr_assignee_scope_resolve(
@@ -162,6 +195,42 @@ def _horizon_days(v: int) -> int:
     if v not in (7, 30, 60, 90):
         raise HTTPException(status_code=400, detail="horizon_days must be one of 7, 30, 60, 90")
     return v
+
+
+@router.get("/documents/hub", response_model=HrDocumentHubListOut, tags=["hr-documents"])
+async def hr_documents_hub(
+    assignee_scope: str = Query("mine", pattern="^(mine|team)$"),
+    document_type: Optional[str] = Query(None),
+    legal_category: Optional[str] = Query(None),
+    employee_id_substr: Optional[str] = Query(None, description="Substring match on workforce employee id"),
+    horizon_days: int = Query(30, ge=7, le=90),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _: UserCtx = Depends(require_hr_workforce_module_access),
+    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+):
+    """Read-model over ``workforce_hr_document_contexts`` (linked docs + employee + compliance + handoff snapshot)."""
+    hz = _horizon_days(horizon_days)
+    db, tid = db_tenant
+    rows, total = await list_hr_documents_hub(
+        db,
+        tenant_id=str(tid),
+        viewer_id=str(current_user.sub),
+        viewer_role=str(current_user.role),
+        assignee_scope=assignee_scope,
+        document_type=document_type,
+        legal_category=legal_category,
+        employee_id_substr=employee_id_substr,
+        horizon_days=hz,
+        limit=limit,
+        offset=offset,
+    )
+    return HrDocumentHubListOut(
+        total=total,
+        items=[HrDocumentHubRowOut(**r) for r in rows],
+    )
 
 
 @router.get("/documents/missing", response_model=HrDocumentQueueListOut, tags=["hr-documents"])

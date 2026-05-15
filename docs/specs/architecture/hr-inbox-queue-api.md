@@ -35,7 +35,7 @@ Correct composition:
 |-------|--------|--------|
 | What was transferred | `candidate_handoff_snapshots.payload` | Immutable v1 JSON; written on `create_handoff`, not on accept. |
 | Handoff status | `candidate_handoffs` | e.g. `pending_review`, `accepted`, …; `destination = internal_hr` for this API. |
-| What to do now | `activities` | Pending accept task (`internal_hr_handoff_pending`), post-accept checklist (`handoff_hr_checklist`), etc. |
+| What to do now | `activities` | HR lane task types: `backend.app.constants.hr_task_types.HR_TASK_TYPES` (pending accept, post-accept checklist, …). |
 | HR / workforce row | `workforce_employees` | Linked after accept; `meta.internal_hr_handoff_id` ties back to handoff. |
 | Current documents | live `documents` | For operational queues (missing / expiring) — **not** implemented in the first backend PR; contract below. |
 | Historical documents at transfer | snapshot `documents` | For audit / “what recruitment asserted”. |
@@ -91,7 +91,12 @@ JSON object:
 
 - `items` — list of activity/reminder rows (`ReminderOut`-compatible), same enrichment rules as `GET /api/v1/activities` (titles, merges, etc.).
 
-Filtered `type` values (v1):
+Filtered `type` values (v1) — **canonical** `backend/app/constants/hr_task_types.py`:
+
+- `HR_TASK_TYPES` — tuple consumed by inbox, dashboard, and `/hr/tasks` filters.
+- `INTERNAL_HR_HANDOFF_PENDING`, `HANDOFF_HR_CHECKLIST` — the same strings used when materializing activities in the handoff service (prevents filter/write drift).
+
+Values:
 
 - `internal_hr_handoff_pending`
 - `handoff_hr_checklist`

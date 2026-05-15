@@ -93,10 +93,10 @@ Observability для HF трактуется как **часть security archit
 
 - **Статус фазы:** MVP (session guard) **+ hardening** — superadmin/support elevated bind, `actor_id` в runtime, worker `tenant_enforced_session`, CI для tenant isolation.
 - `TenantEnforcingAsyncSession` (`backend/app/db/tenant_session.py`) + `async_sessionmaker(..., class_=...)` в `backend/app/db/session.py`: при `tenant_rls_enforcement=True` на Postgres блокируется `execute`/`stream`, пока не завершён `bind_tenant_context_to_session` (флаги `rls_tenant_bound`, `_binding_tenant_context` на время bind).
-- `get_db_with_tenant` / `get_db_with_meta_leads_effective_tenant` выставляют `tenant_rls_enforcement=True` до bind; `bind_tenant_context_to_session` проверяет `set_config` через `current_setting` (без silent pass на Postgres). **Hardening:** superadmin с `X-Tenant-Id` ≠ JWT tenant — обязателен `X-HostFlow-Elevated-Reason` (+ опциональный `X-HostFlow-Elevated-Scope` из allowlist), `emit_security_event`; meta leads remap (`effective` ≠ header) — тот же контракт; `db.info["security_access_kind"]` / `security_elevated_*`.
+- `get_db_with_tenant` / `get_db_with_meta_leads_effective_tenant` выставляют `tenant_rls_enforcement=True` до bind; `bind_tenant_context_to_session` проверяет `set_config` через `current_setting` (без silent pass на Postgres). **Hardening:** superadmin с `X-Tenant-Id` ≠ JWT tenant — обязателен `X-HostFlow-Elevated-Reason` (+ опциональный `X-HostFlow-Elevated-Scope` из allowlist), `emit_security_event_v1`; meta leads remap (`effective` ≠ header) — тот же контракт; `db.info["security_access_kind"]` / `security_elevated_*`.
 - Webhooks Meta / generic inbound: `security_job_context` + bind + enforcement (`webhook.py`, `inbound_public.py`).
 - Worker helper: `tenant_enforced_session(..., actor_id=..., correlation_id=...)` — используется в `communications_scheduler` (per-tenant tick), ARQ `job_automation_evaluate_trigger`, sweep / risk_intel passes.
-- Security event v1: `emit_security_event` — всегда непустые `actor_id` (или `system:unknown`) и `correlation_id`; JWT deps и middleware сбрасывают contextvars через token reset.
+- Security event v1: `emit_security_event_v1` — всегда непустые `actor_id` (или `system:unknown`) и `correlation_id`; JWT deps и middleware сбрасывают contextvars через token reset.
 - Тесты: `tests/security/test_tenant_rls_session_guard.py`, `test_api_tenant_context_unit.py`, `test_superadmin_elevated_bind.py`; A/B API — `tests/api/test_tenant_isolation.py` (`@pytest.mark.postgres_integration`, Lifespan timeouts увеличены в `conftest`).
 
 ---
@@ -129,6 +129,8 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 3 — Signed URL telemetry
 
+**Статус (код):** **started — document telemetry v1** (`emit_security_event_v1` на read/presign/download путях документов; Phase 3 в целом остаётся в backlog для дашбордов/алертов).
+
 **Цель:** после архитектурной защиты (короткий TTL, private storage) добавить **доказуемость** доступа к байтам.
 
 **События (audit / security log)**
@@ -136,6 +138,13 @@ Observability для HF трактуется как **часть security archit
 - Генерация URL: кто, какой объект, TTL, scope, tenant.
 - Успешный доступ / отказ: IP, user-agent, причина отказа (expired, wrong tenant, signature mismatch, replay).
 - Попытки reuse / scan паттернов (массовый перебор ключей).
+
+**Реализовано (v1 telemetry, узкий scope):**
+
+- Таксономия `document.*` (`document.metadata.read`, `document.file.access_requested`, `document.file.downloaded`, `document.signed_url.generated` / `.denied`, плейсхолдеры `.expired` / `.replay_denied` на будущее), helper `emit_document_security_event_v1` + строгий allowlist `extra`.
+- Call sites: `modules/documents/router` (metadata, file-url, download, presign-upload), `api/v1/candidate_documents` (скачивание/redirect), `api/public/intake` (public presign + download), `/uploads/…` redirect presign в `main` при распознавании UUID в ключе `documents/{id}/…`.
+- Redaction: запрет ключей `url` / `signed_url` / `filename` и scrub URL-подстрок с подписью/token в значениях.
+- **Stabilization:** см. общий артефакт [`telemetry-phase3-4-mandatory-events.md`](./telemetry-phase3-4-mandatory-events.md) и job `telemetry-phase34-stability` в `security-gates.yml`.
 
 **Критерии готовности фазы (пример)**
 
@@ -146,7 +155,17 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 4 — Export anomaly detection
 
+**Статус (код):** **started — export telemetry v1** (`emit_security_event_v1` на синхронных export-путях; детекторы / пороги / bulk — по-прежнему backlog этой фазы).
+
 **Цель:** снизить **insider risk** и массовые выгрузки без блокировки легитимной работы.
+
+**Реализовано (v1 telemetry, узкий scope):**
+
+- Таксономия `export.*`: `export.requested`, `export.generated`, `export.downloaded`, `export.denied`, плейсхолдер `export.expired` (на будущее для TTL/async).
+- `export_events.py`: `emit_export_security_event_v1` + allowlist `extra` с полями `export_type`, `row_count`, `byte_size`, `filter_scope`, `async_job_id`, **`export_scope`**, **`contains_class3`**, **`bulk_operation`**, `reason`, `response_mode`.
+- Call sites: `modules/documents/router` (export.json / export.csv / export.zip bundle), `api/v1/analytics` (`/analytics/export`), `api/v1/admin/org_units` (`/export` snapshot).
+- Redaction: доп. запрет ключей `rows`, `records`, `archive_path`, `export_path`, `attachment_filename` в security `extra`.
+- **Stabilization (Phase 3+4):** таблица обязательных событий и анти-drift gates — [`telemetry-phase3-4-mandatory-events.md`](./telemetry-phase3-4-mandatory-events.md), job `telemetry-phase34-stability` в `security-gates.yml`.
 
 **Сигналы (примеры)**
 
@@ -190,6 +209,8 @@ Observability для HF трактуется как **часть security archit
 1. **Tenant-scoped** — никаких cross-tenant индексов/кэшей без явной модели handoff.
 2. **RBAC-scoped** — тот же policy layer, что и для API; никаких «admin search sees all fields».
 3. **Audit-scoped** — логируемые запросы контекста (что включили в prompt / retrieval, какой индекс, какой фильтр), без утечки CLASS 3 в логах.
+
+**Нормативный контракт (начало Phase 6, без call sites):** [`retrieval-audit-governance.md`](./retrieval-audit-governance.md) + `retrieval_events.py` (taxonomy + helper + redaction keys).
 
 **Направления работ**
 

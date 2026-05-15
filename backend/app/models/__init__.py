@@ -250,6 +250,20 @@ WorkforceZusProfile = _load_model_module("workforce_zus_profile").WorkforceZusPr
 WorkforceAbsence = _load_model_module("workforce_absence").WorkforceAbsence  # type: ignore[attr-defined]
 WorkforceLeaveRequest = _load_model_module("workforce_leave_request").WorkforceLeaveRequest  # type: ignore[attr-defined]
 WorkforceOnboardingTask = _load_model_module("workforce_onboarding_task").WorkforceOnboardingTask  # type: ignore[attr-defined]
+WorkforceTaxProfile = _load_model_module("workforce_tax_profile").WorkforceTaxProfile  # type: ignore[attr-defined]
+WorkforceInsuranceProfile = _load_model_module("workforce_insurance_profile").WorkforceInsuranceProfile  # type: ignore[attr-defined]
+WorkforceHrDocumentContext = _load_model_module("workforce_hr_document_context").WorkforceHrDocumentContext  # type: ignore[attr-defined]
+WorkforceComplianceState = _load_model_module("workforce_compliance_state").WorkforceComplianceState  # type: ignore[attr-defined]
+WorkforceZusWorkspaceTask = _load_model_module("workforce_zus_workspace_task").WorkforceZusWorkspaceTask  # type: ignore[attr-defined]
+WorkforceWorkEligibilityProfile = _load_model_module(
+    "workforce_work_eligibility_profile"
+).WorkforceWorkEligibilityProfile  # type: ignore[attr-defined]
+WorkPermitSubmissionChannel = _load_model_module(
+    "workforce_work_eligibility_profile"
+).WorkPermitSubmissionChannel  # type: ignore[attr-defined]
+WorkforceWorkEligibilityPaymentRequirement = _load_model_module(
+    "workforce_work_eligibility_payment_requirement"
+).WorkforceWorkEligibilityPaymentRequirement  # type: ignore[attr-defined]
 
 # Merge-document templates and generation logs
 MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
@@ -371,4 +385,11 @@ __all__ = [
     "WorkforceOnboardingTask",
     "WorkforcePayrollProfile",
     "WorkforceZusProfile",
+    "WorkforceTaxProfile",
+    "WorkforceInsuranceProfile",
+    "WorkforceHrDocumentContext",
+    "WorkforceComplianceState",
+    "WorkforceWorkEligibilityProfile",
+    "WorkPermitSubmissionChannel",
+    "WorkforceWorkEligibilityPaymentRequirement",
 ]

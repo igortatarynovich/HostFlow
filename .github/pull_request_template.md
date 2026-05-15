@@ -23,6 +23,14 @@
 | **Threat model updated?** (см. чекбокс ниже — обязателен при триггере CI) | |
 | **Security tests added or updated?** (`backend/tests/security/` или связанные API-тесты) | |
 | **Cross-tenant tests executed?** (локально или в CI; tenant A / tenant B) | |
+| **AI / LLM / embeddings / retrieval / semantic search touched?** | |
+| **Global search (non-tenant-scoped) touched?** | |
+
+## High-risk surfaces — mini-review (mandatory when touched)
+
+Если PR затрагивает **AI**, **search**, **exports**, **portals**, **automations**, **integrations**, **analytics** — заполните таблицу **Mini-review** в [`docs/security/security-review-checklist.md`](docs/security/security-review-checklist.md) (раздел *Mini-review: high-risk surfaces*).
+
+Если PR добавляет **AI assistant**, **global search**, **embeddings**, **retrieval layer** или **semantic search** — обязательны критерии раздела **Search / AI feature entry (merge criterion)** в том же файле.
 
 ## Threat model gate (mandatory when CI says so)
 

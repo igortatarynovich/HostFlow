@@ -9,7 +9,7 @@ import CandidateHandoffSection from '../../../components/candidate/CandidateHand
 import CandidateNextActionPanel from '../../../components/candidate/CandidateNextActionPanel'
 import CandidateRemindersSection from '../../../components/candidate/CandidateRemindersSection'
 import { Modal } from '../../../components/Modal'
-import { isPipelineCompletedCanonicalStage } from '../../../utils/candidatePipelineCompleted'
+import { isCandidateOperationallyTerminal } from '../../../utils/candidatePipelineCompleted'
 import StageTag from '../../../components/StageTag'
 import { docsIssuesPresent, docsPipelineBlocksForward } from '../../../utils/candidateStageDocPolicy'
 import { canonicalStageKey } from '../../../utils/stageLabels'
@@ -149,6 +149,11 @@ export function CandidatesSelectedPanel({
     workPanelCommsLinks?.emailRelativeUrl ?? buildInboxHubPath({ candidateId: cid, channel: 'email' })
 
   const canonicalStageForOps = stageCode ? canonicalStageKey(stageCode, null) || stageCode.toLowerCase() : null
+  const previewOperationallyTerminal = isCandidateOperationallyTerminal({
+    stage: selectedCandidate?.stage,
+    row_status: selectedCandidate?.row_status,
+    status: selectedCandidate?.status,
+  })
 
   return (
     <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -238,7 +243,7 @@ export function CandidatesSelectedPanel({
         </button>
       </div>
 
-      {!isPipelineCompletedCanonicalStage(canonicalStageForOps) && typeof (selectedCandidate as any).risk_score === 'number' ? (
+      {!previewOperationallyTerminal && typeof (selectedCandidate as any).risk_score === 'number' ? (
         <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             {t('app.candidates.preview.risk_title', { defaultValue: 'Risk (v1)' })}
@@ -318,6 +323,7 @@ export function CandidatesSelectedPanel({
           onReminderCreate={onReminderCreate}
           onReminderComplete={onReminderComplete}
           onReminderSnooze={onReminderSnooze}
+          operationallyTerminal={previewOperationallyTerminal}
           docsIssuesPresent={!selectedCandidate.masked && docsIssues}
           docsPipelineBlocking={!selectedCandidate.masked && docsPipelineBlocking}
           docsRequestDueLabel={t('common.today', { defaultValue: 'Today' })}
@@ -344,6 +350,7 @@ export function CandidatesSelectedPanel({
             pollingEnabled={false}
             stageSummaryLabel={stageSummaryLabel}
             docsPipelineBlocking={!selectedCandidate.masked && docsPipelineBlocking}
+            blockersPresentation={previewOperationallyTerminal ? 'historical' : 'operational'}
           />
         ) : null}
 

@@ -14,9 +14,19 @@ from backend.app.models.workforce_employment import WorkforceEmployment
 from backend.app.models.workforce_onboarding_task import WorkforceOnboardingTask
 from backend.app.models.workforce_payroll_profile import WorkforcePayrollProfile
 from backend.app.models.workforce_zus_profile import WorkforceZusProfile
+from backend.app.services.workforce_hr_core_profiles import ensure_workforce_hr_core_profiles, get_insurance_profile
+from backend.app.services.workforce_work_eligibility import (
+    ensure_work_eligibility_profile,
+    get_work_eligibility_profile,
+)
+from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
 from backend.app.models.workforce_absence import WorkforceAbsence
+from backend.app.models.workforce_compliance_state import WorkforceComplianceState
 from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
+from backend.app.models.workforce_insurance_profile import WorkforceInsuranceProfile
 from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
+from backend.app.models.workforce_tax_profile import WorkforceTaxProfile
 
 _logger = logging.getLogger(__name__)
 
@@ -93,6 +103,10 @@ async def list_employees(
 
 async def get_hr_bundle(db: AsyncSession, tenant_id: str, employee_id: str) -> dict[str, Any]:
     """Nested HR satellites for one employee (empty lists / nulls when nothing stored yet)."""
+    await ensure_workforce_hr_core_profiles(db, tenant_id, employee_id)
+    await ensure_work_eligibility_profile(db, tenant_id, employee_id)
+    await db.flush()
+
     emp_rows = (
         (
             await db.execute(
@@ -165,6 +179,78 @@ async def get_hr_bundle(db: AsyncSession, tenant_id: str, employee_id: str) -> d
         .scalars()
         .all()
     )
+
+    tax = (
+        await db.execute(
+            select(WorkforceTaxProfile).where(
+                WorkforceTaxProfile.tenant_id == tenant_id,
+                WorkforceTaxProfile.employee_id == employee_id,
+            )
+        )
+    ).scalar_one_or_none()
+    ins = (
+        await db.execute(
+            select(WorkforceInsuranceProfile).where(
+                WorkforceInsuranceProfile.tenant_id == tenant_id,
+                WorkforceInsuranceProfile.employee_id == employee_id,
+            )
+        )
+    ).scalar_one_or_none()
+    comp = (
+        await db.execute(
+            select(WorkforceComplianceState).where(
+                WorkforceComplianceState.tenant_id == tenant_id,
+                WorkforceComplianceState.employee_id == employee_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    ctx_total = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(WorkforceHrDocumentContext)
+                .where(
+                    WorkforceHrDocumentContext.tenant_id == tenant_id,
+                    WorkforceHrDocumentContext.employee_id == employee_id,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    grp_rows = (
+        await db.execute(
+            select(WorkforceHrDocumentContext.context_type, func.count())
+            .where(
+                WorkforceHrDocumentContext.tenant_id == tenant_id,
+                WorkforceHrDocumentContext.employee_id == employee_id,
+            )
+            .group_by(WorkforceHrDocumentContext.context_type)
+        )
+    ).all()
+    by_context_type: dict[str, int] = {}
+    for ct, c in grp_rows:
+        key = str(ct or "").strip() or "(empty)"
+        by_context_type[key] = int(c or 0)
+    ctx_items = list(
+        (
+            await db.execute(
+                select(WorkforceHrDocumentContext)
+                .where(
+                    WorkforceHrDocumentContext.tenant_id == tenant_id,
+                    WorkforceHrDocumentContext.employee_id == employee_id,
+                )
+                .order_by(WorkforceHrDocumentContext.created_at.desc())
+                .limit(100)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    wel = await get_work_eligibility_profile(db, tenant_id, employee_id)
+    pay_reqs = await list_payment_requirements(db, tenant_id, employee_id)
+
     return {
         "employments": emp_rows,
         "payroll_profile": pay,
@@ -172,6 +258,16 @@ async def get_hr_bundle(db: AsyncSession, tenant_id: str, employee_id: str) -> d
         "onboarding_tasks": tasks,
         "absences": absences,
         "leave_requests": leaves,
+        "tax_profile": tax,
+        "insurance_profile": ins,
+        "compliance_state": comp,
+        "work_eligibility_profile": wel,
+        "work_eligibility_payment_requirements": pay_reqs,
+        "hr_document_context_summary": {
+            "total": ctx_total,
+            "by_context_type": by_context_type,
+            "items": ctx_items,
+        },
     }
 
 
@@ -277,6 +373,8 @@ async def ensure_hr_profiles_bundle(db: AsyncSession, tenant_id: str, employee_i
                 )
             )
 
+    await ensure_workforce_hr_core_profiles(db, tenant_id, employee_id)
+    await ensure_work_eligibility_profile(db, tenant_id, employee_id)
     await db.flush()
 
 
@@ -296,6 +394,9 @@ async def create_employee(
     probation_end: Optional[date] = None,
     notes: Optional[str] = None,
     meta: Optional[dict[str, Any]] = None,
+    initial_insurance_zus_registration_type: Optional[str] = None,
+    initial_insurance_status: Optional[str] = None,
+    initial_eligibility_status: Optional[str] = None,
 ) -> WorkforceEmployee:
     st = status if status in ALLOWED_STATUS else "onboarding"
     row = WorkforceEmployee(
@@ -317,6 +418,20 @@ async def create_employee(
     db.add(row)
     await db.flush()
     await ensure_hr_profiles_bundle(db, tenant_id, row.id)
+    if (initial_insurance_zus_registration_type or "").strip():
+        ins = await get_insurance_profile(db, tenant_id, row.id)
+        if ins:
+            ins.zus_registration_type = str(initial_insurance_zus_registration_type).strip()[:64]
+            ins.status = str(initial_insurance_status or "pending_registration").strip()[:32]
+            await db.flush()
+    if (initial_eligibility_status or "").strip():
+        wel = await get_work_eligibility_profile(db, tenant_id, row.id)
+        if wel:
+            wel.eligibility_status = str(initial_eligibility_status).strip()[:32]
+            await db.flush()
+    from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
+
+    await sync_auto_tasks_after_employee_created(db, tenant_id, row.id)
     return row
 
 
@@ -343,6 +458,9 @@ async def handoff_from_candidate(
     existing = await find_employee_by_candidate(db, tenant_id, str(candidate.id))
     if existing:
         await ensure_hr_profiles_bundle(db, tenant_id, existing.id)
+        from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
+
+        await sync_auto_tasks_after_employee_created(db, tenant_id, existing.id)
         return existing
 
     parts = [candidate.first_name or "", candidate.last_name or ""]
@@ -368,6 +486,9 @@ async def handoff_from_candidate(
     db.add(row)
     await db.flush()
     await ensure_hr_profiles_bundle(db, tenant_id, row.id)
+    from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
+
+    await sync_auto_tasks_after_employee_created(db, tenant_id, row.id)
     return row
 
 

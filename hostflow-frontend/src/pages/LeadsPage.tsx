@@ -25,6 +25,7 @@ import {
   listLeads,
   listReminders,
   processLead,
+  submitLeadDuplicateDecision,
   submitLeadIntakeDecision,
   updateLeadStage,
   type OnboardingStatus,
@@ -1298,10 +1299,11 @@ export default function LeadsPage() {
     [notify, planLimitModal, t],
   )
 
-  const handleIntakeQualifyDuplicate = useCallback(
+  const handleDuplicateReviewCreateNew = useCallback(
     async (leadId: string) => {
+      setIntakeKeyboardBusyLeadId(leadId)
       try {
-        const updated = await submitLeadIntakeDecision(leadId, { decision: 'qualify' })
+        const updated = await submitLeadDuplicateDecision(leadId, { decision: 'create_new' })
         applyLeadPatchToList(updated)
         notify({ title: t('app.leads.detail.intake_resolution.intake_actions.success'), variant: 'success' })
         refreshLeadInsights()
@@ -1319,6 +1321,8 @@ export default function LeadsPage() {
           title: typeof detail === 'string' ? detail : JSON.stringify(detail),
           variant: 'error',
         })
+      } finally {
+        setIntakeKeyboardBusyLeadId(null)
       }
     },
     [applyLeadPatchToList, loadLeadTimeline, loadLeads, notify, offset, planLimitModal, refreshLeadInsights, selectedLeadId, t],
@@ -1354,7 +1358,7 @@ export default function LeadsPage() {
         setVacancyPickLeadId(lead.id)
         return
       case 'duplicate_review':
-        void handleIntakeQualifyDuplicate(lead.id)
+        void handleDuplicateReviewCreateNew(lead.id)
         return
       case 'process':
         void handleProcessLead(lead.id)
@@ -1367,7 +1371,7 @@ export default function LeadsPage() {
     }
   }, [
     handleConfirmLeadRouting,
-    handleIntakeQualifyDuplicate,
+    handleDuplicateReviewCreateNew,
     handleProcessLead,
     isServicesTenant,
     navigate,
@@ -2299,7 +2303,7 @@ export default function LeadsPage() {
                                         disabled={intakeKeyboardBusyLeadId === lead.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          void handleIntakeQualifyDuplicate(lead.id)
+                                          void handleDuplicateReviewCreateNew(lead.id)
                                         }}
                                       >
                                         {t('app.leads.intake_workspace.decision_rail.qualify_not_duplicate')}

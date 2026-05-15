@@ -337,7 +337,18 @@ async def create_tenant_link(
 @router.get(
     "/{tenant_id}/links",
     response_model=List[schemas.TenantLinkWithCompanyOut],
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.admin,
+                Role.owner,
+                Role.manager,
+                Role.recruiter,
+                Role.hr_officer,
+                Role.compliance_officer,
+            )
+        )
+    ],
 )
 async def list_tenant_links(
     tenant_id: UUID,

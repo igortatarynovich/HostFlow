@@ -10,7 +10,7 @@ from sqlalchemy import exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import Optional
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 from pydantic import BaseModel, Field
 
 class BulkStageIn(BaseModel):
@@ -41,6 +41,17 @@ class BulkDeleteItemOut(BaseModel):
     candidate_id: str
     ok: bool
     error: Optional[str] = None
+
+
+class CandidateListAvailableStatusesOut(BaseModel):
+    """Distinct pipeline stages and row-level status values visible to the current list scope (tenant + ACL)."""
+
+    schema_version: Literal[1] = 1
+    stages: list[str] = Field(default_factory=list)
+    statuses: list[str] = Field(
+        default_factory=list,
+        description="Distinct ``Candidate.status`` values (non-empty), if used by the tenant.",
+    )
 
 
 class CandidateUploadLinkOut(BaseModel):
@@ -122,6 +133,7 @@ from backend.app.api.v1.candidates.schemas import (
     RecruitmentApplicationOut,
 )
 from backend.app.services.recruitment_application_lifecycle import normalize_application_status
+from backend.app.services.recruitment_application_service import list_recruitment_applications_for_candidate
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     AgencyRecruitmentWriteBypass,
@@ -129,7 +141,8 @@ from backend.app.services.recruitment_handoff_write_guard import (
 )
 from backend.app.services.candidate_timeline import fetch_candidate_timeline_events
 from backend.app.services.candidate_work_panel import load_candidate_work_panel
-from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES, is_pipeline_completed_stage
+from backend.app.constants.stages import is_candidate_operationally_terminal, is_pipeline_completed_stage
+from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 
 
 
@@ -295,6 +308,7 @@ def _serialize_candidate_row(row: Tuple[_Any, ...]) -> Dict[str, Any]:
         "note": getattr(c, "note", None),
         "notes": getattr(c, "note", None),  # alias for legacy consumers
         "stage": getattr(c, "stage", None),
+        "row_status": getattr(c, "status", None),
         "status": getattr(c, "status", None) or getattr(c, "stage", None),
         "stage_label": stage_label,
         "status_reason": _status_reason_list(getattr(c, "status_reason", None)),
@@ -577,7 +591,17 @@ async def list_candidates(
     # filters
     stage: str | None = None,
     stages: str | None = None,
-    status: str | None = None,
+    status: str | None = Query(
+        default=None,
+        description=(
+            "Filter by ``Candidate.status`` (row-level application/business state). "
+            "Does **not** imply ``Candidate.stage``; combine with ``stage`` / ``stages`` for both axes."
+        ),
+    ),
+    statuses: str | None = Query(
+        default=None,
+        description="Comma-separated ``Candidate.status`` values (multi-select). Same semantics as ``status``.",
+    ),
     status_reason: Optional[List[str]] = Query(
         default=None,
         description="Коды причин отказа/отклонения (через запятую или повтор param).",
@@ -738,16 +762,10 @@ async def list_candidates(
     if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
         return {"total": 0, "items": []}
 
-    if status:
-        s = status.strip()
-        if s:
-            filters["status"] = s
-            filters["stage"] = s
-            filters["stages"] = [s]
-    elif stage:
+    # Funnel position: ``Candidate.stage`` only (``?stage`` / ``?stages``).
+    if stage:
         s = stage.strip()
         if s:
-            filters["status"] = s
             filters["stage"] = s
             filters["stages"] = [s]
 
@@ -755,6 +773,18 @@ async def list_candidates(
         arr = [x.strip() for x in stages.split(",") if x.strip()]
         if arr:
             filters["stages"] = arr
+
+    # Row-level state: ``Candidate.status`` only — never mixed into ``stages`` (legacy quirk removed).
+    cand_status_vals: list[str] = []
+    if status:
+        s = status.strip()
+        if s:
+            cand_status_vals.append(s)
+    if statuses:
+        cand_status_vals.extend(x.strip() for x in statuses.split(",") if x.strip())
+    if cand_status_vals:
+        seen_row: set[str] = set()
+        filters["candidate_statuses"] = [x for x in cand_status_vals if x and (x not in seen_row and not seen_row.add(x))]
 
     if status_reason:
         reason_codes: List[str] = []
@@ -1047,7 +1077,10 @@ async def list_candidates(
                 candidate_by_id[cid] = c
         try:
             now = datetime.now(timezone.utc)
-            if candidate_by_id and all(is_pipeline_completed_stage(getattr(c, "stage", None)) for c in candidate_by_id.values()):
+            if candidate_by_id and all(
+                is_candidate_operationally_terminal(stage=getattr(c, "stage", None), status=getattr(c, "status", None))
+                for c in candidate_by_id.values()
+            ):
                 risk_map = {
                     cid: CandidateRisk(
                         risk_score=0,
@@ -1159,6 +1192,8 @@ async def list_candidates(
             "phone_country_code": getattr(c, "phone_country_code", None),
             "email": getattr(c, "email", None),
             "stage": getattr(c, "stage", None),
+            "row_status": getattr(c, "status", None),
+            "status": getattr(c, "status", None) or getattr(c, "stage", None),
             # Менеджер: отображаем красивое имя, а сырой id отдаём отдельно
             "manager": manager_name or manager_raw or "",
             "manager_name": manager_name or manager_raw or "",
@@ -1357,6 +1392,50 @@ async def list_candidates(
 
 
 @router.get(
+    "/available-statuses",
+    response_model=CandidateListAvailableStatusesOut,
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+)
+async def candidates_available_statuses(
+    scope_tenant_id: UUID | None = Query(
+        default=None,
+        description="Same as list: optional tenant scope override (e.g. superadmin workspace).",
+    ),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    """Distinct ``Candidate.stage`` / ``Candidate.status`` for the tenant list scope (ignores funnel-only meta).
+
+    Options reflect rows the user could see on the candidates table (same scope + ACL as ``GET /candidates`` with no
+    stage/status/q/vacancy filters), including terminal or handoff-related stages when present in the dataset.
+    """
+    db, tenant_id = db_tenant
+    scope_tenant = (
+        str(scope_tenant_id) if scope_tenant_id
+        else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+    try:
+        await db.execute(
+            text("SELECT set_config('app.tenant_id', :tid, true)"),
+            {"tid": scope_tenant},
+        )
+    except Exception:
+        pass
+    visibility = get_tenant_visibility(db, scope_tenant)
+    client_tenant = await is_client_tenant_for_list(db, scope_tenant)
+    filters: dict[str, object] = {"is_client_tenant": client_tenant}
+    if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
+        return CandidateListAvailableStatusesOut(schema_version=1, stages=[], statuses=[])
+    stages, statuses = await cand_repo.distinct_candidate_list_facets(
+        db,
+        scope_tenant,
+        visibility=visibility,
+        filters=filters,
+    )
+    return CandidateListAvailableStatusesOut(schema_version=1, stages=stages, statuses=statuses)
+
+
+@router.get(
     "/no-next-action",
     summary="Operational view: candidates without an active next action (reminder).",
     dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
@@ -1397,7 +1476,7 @@ async def list_candidates_no_next_action(
     Next action contract v1:
     - a candidate has a "next action" iff there exists an active reminder for (entity_type='candidate', entity_id=candidate.id)
       assigned to the selected assignee with status in {pending,new,overdue}.
-    - Pipeline-completed candidates (rejected, declined, employed, probation_ok) are never listed — no operational follow-up.
+    - Pipeline-completed candidates (by ``stage`` **or** row ``status`` matching completed codes) are never listed.
     """
     db, tenant_id = db_tenant
     scope_tenant = (
@@ -1423,10 +1502,7 @@ async def list_candidates_no_next_action(
         .correlate(Candidate)
     )
 
-    active_pipeline = or_(
-        Candidate.stage.is_(None),
-        Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
-    )
+    active_pipeline = sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status)
     where = [
         Candidate.tenant_id == scope_tenant,
         Candidate.deleted_at.is_(None),
@@ -1862,7 +1938,10 @@ async def get_candidate(
 
     try:
         now_r = datetime.now(timezone.utc)
-        if is_pipeline_completed_stage(getattr(cand_row, "stage", None)):
+        if is_candidate_operationally_terminal(
+            stage=getattr(cand_row, "stage", None),
+            status=getattr(cand_row, "status", None),
+        ):
             r = {
                 "risk_score": 0,
                 "risk_band": "low",
@@ -2028,17 +2107,46 @@ async def get_candidate_change_log(
 
 
 def _recruitment_application_to_out(row: RecruitmentApplication) -> RecruitmentApplicationOut:
+    """Map ORM row → API; tolerate legacy NULL/odd JSON so list endpoint does not 500."""
+    applied = getattr(row, "applied_at", None)
+    if applied is None:
+        applied = datetime.now(timezone.utc)
+
+    raw_meta = getattr(row, "meta", None)
+    meta: Dict[str, Any]
+    if isinstance(raw_meta, dict):
+        meta = dict(raw_meta)
+    elif isinstance(raw_meta, str) and raw_meta.strip():
+        try:
+            parsed = json.loads(raw_meta)
+            meta = dict(parsed) if isinstance(parsed, dict) else {}
+        except Exception:
+            meta = {}
+    else:
+        meta = {}
+
+    def _opt_id(val: Any) -> Optional[str]:
+        if val is None:
+            return None
+        s = str(val).strip()
+        return s or None
+
+    cyc_raw = getattr(row, "application_cycle", None)
+    application_cycle: Optional[str] = None
+    if cyc_raw is not None:
+        application_cycle = str(cyc_raw).strip() or None
+
     return RecruitmentApplicationOut(
-        id=str(row.id),
-        candidate_id=str(row.candidate_id),
-        lead_id=str(row.lead_id) if getattr(row, "lead_id", None) else None,
-        vacancy_id=str(row.vacancy_id) if getattr(row, "vacancy_id", None) else None,
-        source=str(getattr(row, "source", None) or "meta"),
-        recruiter_id=str(row.recruiter_id) if getattr(row, "recruiter_id", None) else None,
-        applied_at=row.applied_at,
+        id=str(getattr(row, "id", "") or "").strip(),
+        candidate_id=str(getattr(row, "candidate_id", "") or "").strip(),
+        lead_id=_opt_id(getattr(row, "lead_id", None)),
+        vacancy_id=_opt_id(getattr(row, "vacancy_id", None)),
+        source=str(getattr(row, "source", None) or "meta").strip() or "meta",
+        recruiter_id=_opt_id(getattr(row, "recruiter_id", None)),
+        applied_at=applied,
         status=normalize_application_status(getattr(row, "status", None)),
-        application_cycle=getattr(row, "application_cycle", None),
-        meta=dict(row.meta) if isinstance(getattr(row, "meta", None), dict) else {},
+        application_cycle=application_cycle,
+        meta=meta,
     )
 
 

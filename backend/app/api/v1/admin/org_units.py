@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,6 +17,8 @@ from backend.app.services.audit import log_activity
 from backend.app.services import org_structure as org_svc
 from backend.app.services.org_structure import OrgStructureError
 from backend.app.services.users import record_user_audit
+from backend.app.security.export_events import clip_export_filter_scope, emit_export_security_event_v1
+from backend.app.security.event_taxonomy import EVENT_EXPORT_GENERATED, EVENT_EXPORT_REQUESTED
 
 router = APIRouter(prefix="/admin/org-units", tags=["admin-org-units"])
 
@@ -44,7 +47,49 @@ async def org_export(
 ):
     db, tid = db_tenant
     tenant_id = str(tid)
-    return await org_svc.export_org_structure_snapshot(db, tenant_id)
+    access_kind = str(db.info.get("security_access_kind") or "").strip() or None
+    _src = "http:admin_org_units:export_snapshot"
+    _et = "org_structure_json"
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_src,
+        tenant_id=tenant_id,
+        access_kind=access_kind,
+        entity_type="tenant",
+        entity_id=tenant_id,
+        export_type=_et,
+        actor_id=str(ctx.sub),
+        filter_scope=clip_export_filter_scope("org_units_snapshot"),
+        export_scope="tenant_org_structure",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    snapshot = await org_svc.export_org_structure_snapshot(db, tenant_id)
+    units = snapshot.get("units") or []
+    row_count = len(units) if isinstance(units, list) else 0
+    byte_size = len(json.dumps(snapshot, default=str).encode("utf-8"))
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_src,
+        tenant_id=tenant_id,
+        access_kind=access_kind,
+        entity_type="tenant",
+        entity_id=tenant_id,
+        export_type=_et,
+        actor_id=str(ctx.sub),
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope("org_units_snapshot"),
+        export_scope="tenant_org_structure",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="inline_json",
+    )
+    return snapshot
 
 
 @router.post("/import", response_model=Dict[str, Any], dependencies=[Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES))])

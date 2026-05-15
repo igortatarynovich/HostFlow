@@ -609,6 +609,8 @@ export default function EmployeeLinkedCandidateJourney({
         stageJourneySignals={stageJourneySignals}
         completedStageCodes={completedStageCodes}
         currentStageCode={model.stage}
+        candidateRowStatus={(model as any).row_status}
+        candidateStatus={model.status}
         stageLabelIntl={stageLabelIntl}
         docsBlockers={docsBlockers}
         docsPipelineBlocking={docsPipelineBlockingValue}

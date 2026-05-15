@@ -2,7 +2,12 @@ import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconAlertTriangle } from '@tabler/icons-react'
 
-import { confirmLeadVacancy, listVacancies, submitLeadIntakeDecision } from '../../api/client'
+import {
+  confirmLeadVacancy,
+  listVacancies,
+  submitLeadDuplicateDecision,
+  submitLeadIntakeDecision,
+} from '../../api/client'
 import type { Lead } from '../../api/types'
 import { useToast } from '../Toast'
 import { useI18n } from '../../i18n'
@@ -15,7 +20,8 @@ import {
 } from '../../utils/intakeResolution'
 import { leadSupportsManualProcess } from '../../utils/leadCrm'
 import { intakeFitReviewSummary } from '../../utils/leadIntakeSnapshotGroups'
-import { intakeWorkspaceHeader } from '../../utils/leadIntakeWorkspace'
+import LeadIntakePublicIntakeReadonlyNotice from './LeadIntakePublicIntakeReadonlyNotice'
+import { intakeWorkspaceHeader, leadRecruitmentPublicIntakeReadonly } from '../../utils/leadIntakeWorkspace'
 
 export type LeadIntakeDecisionRailLayout = 'panel' | 'embedded'
 
@@ -75,7 +81,6 @@ export default function LeadIntakeDecisionRail({
   const srcOk =
     src === 'meta' ||
     src === 'csv_import' ||
-    src === 'public-intake' ||
     lead.status === 'needs_routing' ||
     lead.status === 'duplicate_review'
   const hintOk =
@@ -229,6 +234,33 @@ export default function LeadIntakeDecisionRail({
       note: rejectNote.trim() || null,
     })
   }, [notify, rejectNote, rejectReason, runIntakeDecision, t])
+
+  const runDuplicateCreateNew = useCallback(async () => {
+    setActing(true)
+    try {
+      const updated = await submitLeadDuplicateDecision(lead.id, { decision: 'create_new' })
+      onLeadUpdated(updated)
+      notify({ title: t('app.leads.detail.intake_resolution.intake_actions.success'), variant: 'success' })
+      setRejectNote('')
+      setRequestInfoNote('')
+      setRejectExpanded(false)
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.intake_resolution.intake_actions.failed'))) {
+        return
+      }
+      const detail =
+        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.leads.detail.intake_resolution.intake_actions.failed')
+      notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
+    } finally {
+      setActing(false)
+    }
+  }, [lead.id, notify, onLeadUpdated, planLimitModal, t])
+
+  if (leadRecruitmentPublicIntakeReadonly(lead, false)) {
+    return <LeadIntakePublicIntakeReadonlyNotice layout={layout} />
+  }
 
   if (!shellOk) {
     return (
@@ -415,7 +447,7 @@ export default function LeadIntakeDecisionRail({
             type="button"
             className="btn-primary w-full rounded-xl py-3.5 text-base font-semibold shadow-sm disabled:opacity-50"
             disabled={acting}
-            onClick={() => void runIntakeDecision({ decision: 'qualify' })}
+            onClick={() => void runDuplicateCreateNew()}
           >
             {acting ? t('common.loading') : t('app.leads.intake_workspace.decision_rail.qualify_not_duplicate')}
           </button>

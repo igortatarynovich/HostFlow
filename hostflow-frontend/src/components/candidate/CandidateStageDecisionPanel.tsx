@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import clsx from 'clsx'
 import CandidateStageJourneyPanel from './CandidateStageJourneyPanel'
 import { useI18n } from '../../i18n'
-import { isPipelineCompletedCanonicalStage } from '../../utils/candidatePipelineCompleted'
+import { isCandidateOperationallyTerminal } from '../../utils/candidatePipelineCompleted'
 import { canonicalStageKey } from '../../utils/stageLabels'
 import { operationalHintForStageResolved } from '../../utils/stageOperationalHints'
 
@@ -30,6 +30,9 @@ type Props = {
   stageJourneySignals?: Array<{ key: string; label: string }>
   completedStageCodes: Set<string>
   currentStageCode: string | null | undefined
+  /** Raw row status / display status for terminal detection when stage lags auto-reject, etc. */
+  candidateRowStatus?: string | null
+  candidateStatus?: string | null
   stageLabelIntl: (code: string) => string
 
   docsBlockers: DocsBlockers
@@ -62,6 +65,8 @@ export default function CandidateStageDecisionPanel({
   stageJourneySignals,
   completedStageCodes,
   currentStageCode,
+  candidateRowStatus,
+  candidateStatus,
   stageLabelIntl,
   docsBlockers,
   docsPipelineBlocking,
@@ -76,11 +81,15 @@ export default function CandidateStageDecisionPanel({
 
   const stripStages = journeyPanelStages ?? stageJourneyStages
 
-  const pipelineCompleted = useMemo(() => {
-    const c =
-      canonicalStageKey(currentStageCode, null) || String(currentStageCode || '').trim().toLowerCase() || ''
-    return isPipelineCompletedCanonicalStage(c)
-  }, [currentStageCode])
+  const pipelineCompleted = useMemo(
+    () =>
+      isCandidateOperationallyTerminal({
+        stage: currentStageCode,
+        row_status: candidateRowStatus,
+        status: candidateStatus,
+      }),
+    [currentStageCode, candidateRowStatus, candidateStatus],
+  )
 
   const pipelineForwardBlocked =
     !pipelineCompleted &&

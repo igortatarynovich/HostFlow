@@ -78,6 +78,11 @@ type Props = {
    * `getSummary` when `ready` + non-null `summary`. Omit on candidate card (always fetch).
    */
   embeddedDocumentsSummary?: CandidateDocsRailEmbeddedDocumentsSummary
+  /**
+   * When ``historical``, missing/problematic docs use informational framing (closed candidate).
+   * Does not hide the checklist (unlike ``docsPipelineBlocking === false`` for early funnel).
+   */
+  blockersPresentation?: 'operational' | 'historical'
 }
 
 type RowStatus = 'missing' | 'expiring' | 'valid' | 'in_progress'
@@ -107,6 +112,7 @@ export default function CandidateDocsRailPanel({
   pipelineWaiverReadOnlyCard = false,
   embeddedDocumentsSummary,
   primaryStepHighlight = false,
+  blockersPresentation = 'operational',
 }: Props) {
   const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
@@ -176,12 +182,14 @@ export default function CandidateDocsRailPanel({
   const showMissingList = missing.length > 0 || problematic.length > 0
   const showInProgressOnly = !showMissingList && inProgressTypes.length > 0
   const pipelineBlockingEffective =
-    docsPipelineBlocking !== undefined
-      ? docsPipelineBlocking
-      : showMissingList || showInProgressOnly
+    blockersPresentation === 'historical'
+      ? false
+      : docsPipelineBlocking !== undefined
+        ? docsPipelineBlocking
+        : showMissingList || showInProgressOnly
 
   /** Hide checklist / blockers / request waiver noise when parent says docs do not block (e.g. New). */
-  const hideEarlyStageDocDetails = docsPipelineBlocking === false
+  const hideEarlyStageDocDetails = docsPipelineBlocking === false && blockersPresentation !== 'historical'
 
   const waiverSectionVisible = useMemo(() => {
     if (docsPipelineBlocking === false && pipelineOverrides.length === 0) {
@@ -406,9 +414,13 @@ export default function CandidateDocsRailPanel({
               : showMissingList || showInProgressOnly
                 ? pipelineBlockingEffective
                   ? t('app.candidate_card.documents.blockers_subtitle', { defaultValue: 'Blockers stop the pipeline' })
-                  : t('app.candidate_card.documents.blockers_subtitle_soft', {
-                      defaultValue: 'Checklist visible — not blocking this stage',
-                    })
+                  : blockersPresentation === 'historical'
+                    ? t('app.candidate_card.documents.blockers_subtitle_historical', {
+                        defaultValue: 'Checklist snapshot — informational for a closed candidate (not blocking).',
+                      })
+                    : t('app.candidate_card.documents.blockers_subtitle_soft', {
+                        defaultValue: 'Checklist visible — not blocking this stage',
+                      })
                 : t('app.candidate_card.documents.ok_subtitle', { defaultValue: 'Ready to move forward' })}
           </div>
         </div>

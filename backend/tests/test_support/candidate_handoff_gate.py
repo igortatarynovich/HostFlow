@@ -12,6 +12,7 @@ DEFAULT_HANDOFF_GATE_DOC_TYPES: tuple[str, ...] = (
     "code95",
     "tacho_card",
     "national_id",
+    "passport",
 )
 
 

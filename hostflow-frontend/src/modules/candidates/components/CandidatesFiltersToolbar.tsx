@@ -11,7 +11,7 @@
 // so the call site stays a one-liner.
 
 import { type Dispatch, type Ref, type SetStateAction } from 'react'
-import { CandidatesQuickViewsBar, type QuickDocFilter, type QuickViewKey } from './CandidatesQuickViewsBar'
+import { CandidatesQuickViewsBar, type QuickDocFilter, type QuickViewKey, type OperationalChip } from './CandidatesQuickViewsBar'
 import { FilterBadges } from './FilterBadges'
 import type { TranslateFn, LocaleCode } from '../../../i18n'
 import type { UserSavedView } from '../../../api/types'
@@ -50,6 +50,8 @@ export interface CandidatesFiltersToolbarProps {
   quickFiltersExpanded: boolean
   toggleQuickDocFilter: (statuses: string[], active: boolean) => void
   setQuickFiltersExpanded: (updater: (prev: boolean) => boolean) => void
+  /** Replaces favorites + doc chips in the table toolbar when non-empty. */
+  operationalChips?: OperationalChip[]
   savedViews: UserSavedView[]
   applyView: (view: UserSavedView) => void
   deleteView: (id: string) => void | Promise<void>
@@ -63,6 +65,8 @@ export interface CandidatesFiltersToolbarProps {
   // ---- filter values + setters ---------------------------------------
   stageFilter: string[]
   setStageFilter: Dispatch<SetStateAction<string[]>>
+  candidateRowStatusFilter: string[]
+  setCandidateRowStatusFilter: Dispatch<SetStateAction<string[]>>
   managerFilter: string[]
   setManagerFilter: Dispatch<SetStateAction<string[]>>
   vacancyFilter: string[]
@@ -117,6 +121,7 @@ export interface CandidatesFiltersToolbarProps {
   getTrailerTypeLabel: (kind: string) => string
   docsStatusFilterOptions: FilterOption[]
   docsOrderFilterOptions: FilterOption[]
+  candidateRowStatusLabel: (code: string) => string
 }
 
 export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
@@ -127,9 +132,14 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
     isFavoriteFilter, setIsFavoriteFilter,
     quickDocFilters, quickFiltersExpanded,
     toggleQuickDocFilter, setQuickFiltersExpanded,
+    operationalChips,
     savedViews, applyView, deleteView,
-    stageOptions, stageLabelMap, managers, vacancies,
+    stageOptions: _stageOptions,
+    stageLabelMap,
+    managers: _managers,
+    vacancies: _vacancies,
     stageFilter, setStageFilter,
+    candidateRowStatusFilter, setCandidateRowStatusFilter,
     managerFilter, setManagerFilter,
     vacancyFilter, setVacancyFilter,
     hasFilterBadges, textFilters, setTextFilter,
@@ -153,6 +163,7 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
     preferredChannelLabelMap, inPolandLabelMap, opsModeLabelMap,
     getPolandBasisLabel, getTrailerTypeLabel,
     docsStatusFilterOptions, docsOrderFilterOptions,
+    candidateRowStatusLabel,
   } = props
 
   return (
@@ -182,65 +193,13 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
           quickFiltersExpanded={quickFiltersExpanded}
           onToggleQuickDocFilter={toggleQuickDocFilter}
           onQuickFiltersExpandedChange={setQuickFiltersExpanded}
+          operationalChips={operationalChips}
           savedViews={savedViews}
           onApplySavedView={applyView}
           onDeleteSavedView={(id) => {
             void deleteView(id)
           }}
         />
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.candidates.quick_filters.label', { defaultValue: 'Quick filters' })}
-        </span>
-        <select
-          className="input h-9 max-w-[11rem] py-1 text-xs"
-          aria-label={t('app.candidates.quick_filters.stage', { defaultValue: 'Stage' })}
-          value={stageFilter.length === 1 ? stageFilter[0] : ''}
-          onChange={(e) => {
-            const v = e.target.value.trim()
-            setStageFilter(v ? [v] : [])
-          }}
-        >
-          <option value="">{t('app.candidates.quick_filters.all_stages', { defaultValue: 'All stages' })}</option>
-          {stageOptions.map((s) => (
-            <option key={s} value={s}>
-              {stageLabelMap[s] ?? s}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input h-9 max-w-[11rem] py-1 text-xs"
-          aria-label={t('app.candidates.quick_filters.manager', { defaultValue: 'Manager' })}
-          value={managerFilter.length === 1 ? managerFilter[0] : ''}
-          onChange={(e) => {
-            const v = e.target.value.trim()
-            setManagerFilter(v ? [v] : [])
-          }}
-        >
-          <option value="">{t('app.candidates.quick_filters.all_managers', { defaultValue: 'All managers' })}</option>
-          {managers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name || m.id}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input h-9 max-w-[12rem] py-1 text-xs"
-          aria-label={t('app.candidates.quick_filters.vacancy', { defaultValue: 'Vacancy' })}
-          value={vacancyFilter.length === 1 ? vacancyFilter[0] : ''}
-          onChange={(e) => {
-            const v = e.target.value.trim()
-            setVacancyFilter(v ? [v] : [])
-          }}
-        >
-          <option value="">{t('app.candidates.quick_filters.all_vacancies', { defaultValue: 'All vacancies' })}</option>
-          {vacancies.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.title || v.id}
-            </option>
-          ))}
-        </select>
       </div>
       {hasFilterBadges ? (
         <div className="mt-2 border-t border-slate-200/90 pt-2">
@@ -249,6 +208,7 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
             q={q}
             textFilters={textFilters}
             stageFilter={stageFilter}
+            candidateRowStatusFilter={candidateRowStatusFilter}
             vacancyFilter={vacancyFilter}
             managerFilter={managerFilter}
             statusReasonFilter={statusReasonFilter}
@@ -280,10 +240,12 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
             getTrailerTypeLabel={getTrailerTypeLabel}
             docsStatusOptions={docsStatusFilterOptions}
             docsOrderFilterOptions={docsOrderFilterOptions}
+            candidateRowStatusLabel={candidateRowStatusLabel}
             locale={locale}
             onQChange={setQ}
             onTextFilterChange={setTextFilter}
             onStageFilterChange={setStageFilter}
+            onCandidateRowStatusFilterChange={setCandidateRowStatusFilter}
             onVacancyFilterChange={setVacancyFilter}
             onManagerFilterChange={setManagerFilter}
             onStatusReasonFilterChange={setStatusReasonFilter}

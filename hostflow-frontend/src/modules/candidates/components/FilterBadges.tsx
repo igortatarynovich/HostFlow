@@ -10,6 +10,7 @@ interface FilterBadgesProps {
   textFilters: ColumnTextFilters
   stageFilter: string[]
   vacancyFilter: string[]
+  candidateRowStatusFilter?: string[]
   managerFilter: string[]
   statusReasonFilter: string[]
   docsStatusFilter: string[]
@@ -39,10 +40,13 @@ interface FilterBadgesProps {
   getTrailerTypeLabel: (code: string) => string
   docsStatusOptions: Array<{ value: string; label: string }>
   docsOrderFilterOptions: Array<{ value: string; label: string }>
+  /** Human-readable label for row-level ``status`` filter codes (never raw JSON in badges). */
+  candidateRowStatusLabel?: (code: string) => string
   locale: string
   onQChange: (value: string) => void
   onTextFilterChange: (key: keyof ColumnTextFilters, value: string) => void
   onStageFilterChange: (filter: (prev: string[]) => string[]) => void
+  onCandidateRowStatusFilterChange?: (filter: (prev: string[]) => string[]) => void
   onVacancyFilterChange: (filter: (prev: string[]) => string[]) => void
   onManagerFilterChange: (filter: (prev: string[]) => string[]) => void
   onStatusReasonFilterChange: (filter: (prev: string[]) => string[]) => void
@@ -70,6 +74,7 @@ export function FilterBadges({
   textFilters,
   stageFilter,
   vacancyFilter,
+  candidateRowStatusFilter = [],
   managerFilter,
   statusReasonFilter,
   docsStatusFilter,
@@ -99,10 +104,12 @@ export function FilterBadges({
   getTrailerTypeLabel,
   docsStatusOptions,
   docsOrderFilterOptions,
+  candidateRowStatusLabel,
   locale,
   onQChange,
   onTextFilterChange,
   onStageFilterChange,
+  onCandidateRowStatusFilterChange,
   onVacancyFilterChange,
   onManagerFilterChange,
   onStatusReasonFilterChange,
@@ -175,6 +182,21 @@ export function FilterBadges({
         <span className="badge" key={`stage-${code}`}>
           {t('app.candidates.filters.stage', { values: { value: stageLabelMap[code] || code } })}
           <button className="ml-2 text-xs" onClick={() => onStageFilterChange((prev) => prev.filter((item) => item !== code))}>{removeGlyph}</button>
+        </span>
+      ))}
+      {candidateRowStatusFilter.map((code) => (
+        <span className="badge" key={`row-status-${code}`}>
+          {t('app.candidates.filters.row_status_badge', {
+            values: { value: candidateRowStatusLabel ? candidateRowStatusLabel(code) : code },
+          })}
+          <button
+            className="ml-2 text-xs"
+            onClick={() =>
+              onCandidateRowStatusFilterChange?.((prev) => prev.filter((item) => item !== code))
+            }
+          >
+            {removeGlyph}
+          </button>
         </span>
       ))}
       {vacancyFilter.map((id) => (

@@ -28,6 +28,25 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.security.document_events import (
+    emit_document_security_event_v1,
+    url_looks_presigned,
+)
+from backend.app.security.export_events import (
+    clip_export_filter_scope,
+    emit_export_security_event_v1,
+)
+from backend.app.security.event_taxonomy import (
+    EVENT_DOCUMENT_FILE_ACCESS_REQUESTED,
+    EVENT_DOCUMENT_FILE_DOWNLOADED,
+    EVENT_DOCUMENT_METADATA_READ,
+    EVENT_DOCUMENT_SIGNED_URL_DENIED,
+    EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+    EVENT_EXPORT_DENIED,
+    EVENT_EXPORT_DOWNLOADED,
+    EVENT_EXPORT_GENERATED,
+    EVENT_EXPORT_REQUESTED,
+)
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
@@ -131,6 +150,55 @@ from .validators import validate_meta
 
 router = APIRouter(prefix="/db", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+
+def _db_access_kind(session: AsyncSession) -> Optional[str]:
+    raw = session.info.get("security_access_kind")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s or None
+
+
+async def _candidate_documents_export_access(
+    session: AsyncSession,
+    tenant_id: UUID,
+    candidate_id: UUID,
+    *,
+    workspace_own_company_header: Optional[str],
+    viewer_channel: str,
+    export_type: str,
+    source: str,
+) -> tuple[DocumentAccessContext, Optional[str]]:
+    """Resolve read access for candidate document exports; emit ``export.denied`` on HTTP errors."""
+    access_kind = _db_access_kind(session)
+    try:
+        ctx = await _candidate_documents_read_access(
+            session,
+            str(tenant_id),
+            candidate_id,
+            workspace_own_company_header=workspace_own_company_header,
+            viewer_channel=viewer_channel,
+        )
+        return ctx, access_kind
+    except HTTPException as exc:
+        emit_export_security_event_v1(
+            event_type=EVENT_EXPORT_DENIED,
+            result="denied",
+            severity="low",
+            source=source,
+            tenant_id=str(tenant_id),
+            access_kind=access_kind,
+            entity_type="candidate",
+            entity_id=str(candidate_id),
+            export_type=export_type,
+            filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+            reason=f"http_{exc.status_code}",
+            export_scope="single_candidate",
+            contains_class3=True,
+            bulk_operation=False,
+        )
+        raise
 
 
 def resolve_document_viewer_channel(
@@ -1447,6 +1515,7 @@ async def api_get_document(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentWithChecksOut:
     session, tenant_id = db_dep
+    access_kind = _db_access_kind(session)
     doc, doc_tenant_id, _ = await _get_document_with_access(
         session,
         str(tenant_id),
@@ -1455,6 +1524,16 @@ async def api_get_document(
         viewer_channel=viewer_channel,
     )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_METADATA_READ,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_document",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found_or_invisible",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     checks: List[Any] = []
     last_check = None
@@ -1474,6 +1553,17 @@ async def api_get_document(
         checks_payload = [_check_to_out(item) for item in checks]
     else:
         checks_payload = []
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_METADATA_READ,
+        result="success",
+        severity="info",
+        source="http:documents_router:get_document",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+    )
     return DocumentWithChecksOut(**out.model_dump(), checks=checks_payload)
 
 
@@ -1565,7 +1655,8 @@ async def api_presign_upload(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
-    doc, _, _, _ = await _get_document_with_mutation_access(
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
         session,
         str(tenant_id),
         str(document_id),
@@ -1573,8 +1664,31 @@ async def api_presign_upload(
         viewer_channel=viewer_channel,
     )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:presign_upload",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
-    return presign_upload(str(document_id))
+    out = presign_upload(str(document_id))
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+        result="success",
+        severity="info",
+        source="http:documents_router:presign_upload",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+        upload_presign=True,
+    )
+    return out
 
 
 @router.get("/documents/{document_id}/file-url")
@@ -1586,7 +1700,8 @@ async def api_get_document_file_url(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
-    doc, _, _ = await _get_document_with_access(
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _ = await _get_document_with_access(
         session,
         str(tenant_id),
         str(document_id),
@@ -1594,20 +1709,112 @@ async def api_get_document_file_url(
         viewer_channel=viewer_channel,
     )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found_or_invisible",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
     entry = select_file_entry(files, version=version)
     if not entry:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_entry_not_found",
+            file_version=version,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     try:
         path = resolve_file_path(entry)
     except ValueError as exc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="invalid_file_entry",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found") from exc
     if not path.exists():
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_not_on_disk",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     url = entry.get("url") or doc.path
     if not url:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="url_not_configured",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found")
+    presigned_shape = url_looks_presigned(str(url))
+    fv = entry.get("version")
+    file_version = int(fv) if isinstance(fv, int) else None
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_ACCESS_REQUESTED,
+        result="success",
+        severity="info",
+        source="http:documents_router:get_file_url",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+        file_version=file_version,
+        has_presigned_url_shape=presigned_shape,
+    )
+    if presigned_shape:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+            result="success",
+            severity="info",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            file_version=file_version,
+            has_presigned_url_shape=True,
+        )
     return {
         "url": url,
         "expires_at": None,
@@ -1625,7 +1832,8 @@ async def api_download_document_file(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> FileResponse:
     session, tenant_id = db_dep
-    doc, _, _ = await _get_document_with_access(
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _ = await _get_document_with_access(
         session,
         str(tenant_id),
         str(document_id),
@@ -1633,16 +1841,65 @@ async def api_download_document_file(
         viewer_channel=viewer_channel,
     )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found_or_invisible",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
     entry = select_file_entry(files, version=version)
     if not entry:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_entry_not_found",
+            file_version=version,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     try:
         path = resolve_file_path(entry)
     except ValueError as exc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="invalid_file_entry",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found") from exc
     if not path.exists():
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_not_on_disk",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     media_type = file_entry_media_type(entry)
     filename = entry.get("name") or path.name
@@ -1654,6 +1911,21 @@ async def api_download_document_file(
     version_value = entry.get("version")
     if version_value is not None:
         response.headers["X-Document-Version"] = str(version_value)
+    fv = entry.get("version")
+    file_version = int(fv) if isinstance(fv, int) else None
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_DOWNLOADED,
+        result="success",
+        severity="info",
+        source="http:documents_router:download_file",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+        file_version=file_version,
+        response_mode="file_stream",
+    )
     return response
 
 
@@ -1996,12 +2268,16 @@ async def api_export_documents_json(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    doc_access = await _candidate_documents_read_access(
+    _source = "http:documents_router:export_documents_json"
+    _export_type = "candidate_documents_json"
+    doc_access, access_kind = await _candidate_documents_export_access(
         session,
-        str(tenant_id),
+        tenant_id,
         candidate_id,
         workspace_own_company_header=own_company_id,
         viewer_channel=viewer_channel,
+        export_type=_export_type,
+        source=_source,
     )
     cand_ctx = doc_access.candidate_context
     own_for_docs = doc_access.resolved_workspace_own_company_id
@@ -2065,6 +2341,41 @@ async def api_export_documents_json(
             "physical_documents_visible_to_viewer": physical_visible,
             "physical_documents_filtered_out": max(0, physical_total - physical_visible),
         }
+    row_count = len(serialized)
+    byte_size = len(json.dumps(out, default=str).encode("utf-8"))
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="inline_json",
+    )
     return out
 
 
@@ -2076,12 +2387,16 @@ async def api_export_documents_csv(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
-    doc_access = await _candidate_documents_read_access(
+    _source = "http:documents_router:export_documents_csv"
+    _export_type = "candidate_documents_csv"
+    doc_access, access_kind = await _candidate_documents_export_access(
         session,
-        str(tenant_id),
+        tenant_id,
         candidate_id,
         workspace_own_company_header=own_company_id,
         viewer_channel=viewer_channel,
+        export_type=_export_type,
+        source=_source,
     )
     cand_ctx = doc_access.candidate_context
     own_for_docs = doc_access.resolved_workspace_own_company_id
@@ -2137,6 +2452,59 @@ async def api_export_documents_csv(
             }
         )
     output.seek(0)
+    row_count = len(docs)
+    byte_size = len(output.getvalue().encode("utf-8"))
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_DOWNLOADED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
     filename = f"candidate_{candidate_id}_documents.csv"
     return StreamingResponse(
         output,
@@ -2153,12 +2521,16 @@ async def api_export_candidate_bundle(
     viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
-    doc_access = await _candidate_documents_read_access(
+    _source = "http:documents_router:export_candidate_bundle_zip"
+    _export_type = "candidate_documents_bundle_zip"
+    doc_access, access_kind = await _candidate_documents_export_access(
         session,
-        str(tenant_id),
+        tenant_id,
         candidate_id,
         workspace_own_company_header=own_company_id,
         viewer_channel=viewer_channel,
+        export_type=_export_type,
+        source=_source,
     )
     cand_ctx = doc_access.candidate_context
     own_for_docs = doc_access.resolved_workspace_own_company_id
@@ -2230,6 +2602,59 @@ async def api_export_candidate_bundle(
         zf.writestr("documents.csv", docs_csv.getvalue())
 
     buf.seek(0)
+    row_count = len(docs)
+    byte_size = len(buf.getvalue())
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_DOWNLOADED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
     filename = f"candidate_{candidate_id}_bundle.zip"
     return StreamingResponse(
         buf,

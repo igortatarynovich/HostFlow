@@ -25,6 +25,36 @@ import {
 } from '../../api/candidate_stages'
 import { Modal } from '../Modal'
 import { useI18n } from '../../i18n'
+import { translateStageLabel } from '../../utils/stageLabels'
+
+/** Canonical codes aligned with ``backend.app.constants.stages.ORDER`` (deduped; no legacy profile aliases). */
+const CANONICAL_STAGE_ADD_ORDER: string[] = [
+  'new',
+  'no_answer',
+  'contacted',
+  'questionnaire_submitted',
+  'docs_wait',
+  'docs_got',
+  'permit_ordered',
+  'permit_received',
+  'visa',
+  'red_paper',
+  'trip_plan',
+  'at_client',
+  'employment_pending',
+  'on_trip',
+  'probation_ok',
+  'employed',
+  'rejected',
+  'declined',
+  'ready_for_handoff',
+  'ready_for_hr',
+  'processing_by_hr',
+  'hired',
+  'processing_by_client',
+  'docs_submitted_permit',
+  'handoff_returned',
+]
 
 export interface StageConfig {
   stage_code: string
@@ -338,26 +368,11 @@ export default function StageConstructor({
   )
 
   const availableSystemStages = useMemo(() => {
-    // System stages that are not yet in the profile
     const usedCodes = new Set(value.map((s) => s.stage_code))
-    const systemStages: Array<{ code: string; label: string }> = [
-      { code: 'new', label: t('app.candidate_card.stages.new') },
-      { code: 'contacted', label: t('app.candidate_card.stages.contacted') },
-      { code: 'docs_wait', label: t('app.candidate_card.stages.docs_wait') },
-      { code: 'docs_got', label: t('app.candidate_card.stages.docs_got') },
-      { code: 'permit_ordered', label: t('app.candidate_card.stages.permit_ordered') },
-      { code: 'permit_got', label: t('app.candidate_card.stages.permit_got') },
-      { code: 'visa', label: t('app.candidate_card.stages.visa') },
-      { code: 'red_paper_ordered', label: t('app.candidate_card.stages.red_paper_ordered') },
-      { code: 'arrival_planned', label: t('app.candidate_card.stages.arrival_planned') },
-      { code: 'on_client_base', label: t('app.candidate_card.stages.on_client_base') },
-      { code: 'left_to_trip', label: t('app.candidate_card.stages.left_to_trip') },
-      { code: 'probation_passed', label: t('app.candidate_card.stages.probation_passed') },
-      { code: 'employed', label: t('app.candidate_card.stages.employed') },
-      { code: 'rejected', label: t('app.candidate_card.stages.rejected') },
-    ]
-
-    return systemStages.filter((stage) => !usedCodes.has(stage.code))
+    return CANONICAL_STAGE_ADD_ORDER.filter((code) => !usedCodes.has(code)).map((code) => ({
+      code,
+      label: translateStageLabel(t, code, null),
+    }))
   }, [value, t])
 
   const handleAddSystemStage = useCallback(

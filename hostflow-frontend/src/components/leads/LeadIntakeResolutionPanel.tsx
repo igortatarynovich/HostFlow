@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { confirmLeadVacancy, listVacancies, submitLeadIntakeDecision } from '../../api/client'
+import { confirmLeadVacancy, listVacancies, submitLeadDuplicateDecision, submitLeadIntakeDecision } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { useToast } from '../Toast'
 import { useI18n } from '../../i18n'
@@ -11,6 +11,8 @@ import {
   manualProcessBlockHint,
 } from '../../utils/intakeResolution'
 import { leadSupportsManualProcess } from '../../utils/leadCrm'
+import { leadRecruitmentPublicIntakeReadonly } from '../../utils/leadIntakeWorkspace'
+import LeadIntakePublicIntakeReadonlyNotice from './LeadIntakePublicIntakeReadonlyNotice'
 import LeadIntakeUnifiedDecisionHeader from './LeadIntakeUnifiedDecisionHeader'
 
 type Props = {
@@ -73,7 +75,6 @@ export default function LeadIntakeResolutionPanel({
   const srcOk =
     src === 'meta' ||
     src === 'csv_import' ||
-    src === 'public-intake' ||
     lead.status === 'needs_routing' ||
     lead.status === 'duplicate_review'
   const hintOk =
@@ -229,6 +230,39 @@ export default function LeadIntakeResolutionPanel({
     })
   }, [notify, rejectNote, rejectReason, runIntakeDecision, t])
 
+  const duplicateReviewActive = String(lead.status || '').trim().toLowerCase() === 'duplicate_review'
+
+  const runDuplicateCreateNew = useCallback(async () => {
+    setActing(true)
+    try {
+      const updated = await submitLeadDuplicateDecision(lead.id, { decision: 'create_new' })
+      onLeadUpdated(updated)
+      notify({ title: t('app.leads.detail.intake_resolution.intake_actions.success'), variant: 'success' })
+      setRejectNote('')
+      setRequestInfoNote('')
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.intake_resolution.intake_actions.failed'))) {
+        return
+      }
+      const detail =
+        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.leads.detail.intake_resolution.intake_actions.failed')
+      const msg = typeof detail === 'string' ? detail : JSON.stringify(detail)
+      notify({ title: msg, variant: 'error' })
+    } finally {
+      setActing(false)
+    }
+  }, [lead.id, notify, onLeadUpdated, planLimitModal, t])
+
+  if (leadRecruitmentPublicIntakeReadonly(lead, isServicesTenant)) {
+    return (
+      <div className={className}>
+        <LeadIntakePublicIntakeReadonlyNotice layout={embedded ? 'embedded' : 'panel'} />
+      </div>
+    )
+  }
+
   if (!shellOk) return null
 
   if (embedded && !showIntakeDecisions) return null
@@ -334,6 +368,17 @@ export default function LeadIntakeResolutionPanel({
 
       {intakeRejected ? (
         <p className="mt-3 text-xs font-medium text-slate-700">{t('app.leads.detail.intake_resolution.intake_actions.rejected_banner')}</p>
+      ) : duplicateReviewActive ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            className="inline-flex h-9 items-center rounded-lg bg-brand-600 px-3 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+            disabled={acting}
+            onClick={() => void runDuplicateCreateNew()}
+          >
+            {acting ? t('common.loading') : t('app.leads.intake_workspace.decision_rail.qualify_not_duplicate')}
+          </button>
+        </div>
       ) : (
         <>
           <div className="mt-4 flex flex-wrap gap-2">

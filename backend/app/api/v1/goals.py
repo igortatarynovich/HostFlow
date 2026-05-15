@@ -6,16 +6,16 @@ from typing import Any, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 from backend.app.models import Candidate, Reminder, Tenant
 from backend.app.services.reminder_ops_counts import count_overdue_reminders_ops_scoped
 from backend.app.models.reminder import ReminderStatus
-from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 
 
 router = APIRouter(tags=["goals"])
@@ -83,10 +83,7 @@ def _ensure_share_token(settings: dict[str, Any]) -> tuple[dict[str, Any], str, 
 
 async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: str) -> dict[str, Any]:
     active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
-    active_stage = or_(
-        Candidate.stage.is_(None),
-        Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
-    )
+    active_stage = sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status)
 
     total_candidates = (
         await db.execute(

@@ -50,6 +50,12 @@ from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 from backend.app.modules.documents.router import _build_synthetic_documents  # type: ignore
 from backend.app.services.document_files import resolve_document_file
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
+from backend.app.security.document_events import emit_document_security_event_v1
+from backend.app.security.event_taxonomy import (
+    EVENT_DOCUMENT_FILE_DOWNLOADED,
+    EVENT_DOCUMENT_SIGNED_URL_DENIED,
+    EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+)
 from backend.app.services.extractors import auto_fill_from_file
 from backend.app.services import reminders as reminders_service
 from backend.app.models.enums import DocumentStatus
@@ -2730,6 +2736,19 @@ async def presign_public_document_upload(
     filename = payload.filename.strip() or f"{payload.doc_type}.bin"
     key = _build_storage_key(candidate, filename)
     url = f"/api/v1/public/uploads/{token}/{key}"
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+        result="success",
+        severity="info",
+        source="http:public_intake:presign_apply",
+        tenant_id=str(tenant_id),
+        document_id=None,
+        access_kind=None,
+        document_class=payload.doc_type.strip(),
+        candidate_id=str(candidate.id),
+        upload_presign=True,
+        intake_channel="apply_token",
+    )
     return PublicPresignResponse(
         key=key,
         url=url,
@@ -2779,10 +2798,36 @@ async def presign_status_document_upload(
         phone_country_code=payload.phone_country_code,
         phone=payload.phone,
     ):
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:public_intake:presign_status",
+            tenant_id=str(tenant_id),
+            document_id=None,
+            access_kind=None,
+            document_class=payload.doc_type.strip(),
+            candidate_id=str(candidate.id),
+            reason="contact_verification_failed",
+            intake_channel="status_share",
+        )
         raise HTTPException(status_code=403, detail="Contact verification failed")
     filename = payload.filename.strip() or f"{payload.doc_type}.bin"
     key = _build_storage_key(candidate, filename)
     url = f"/api/v1/public/uploads/{share_token}/{key}"
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+        result="success",
+        severity="info",
+        source="http:public_intake:presign_status",
+        tenant_id=str(tenant_id),
+        document_id=None,
+        access_kind=None,
+        document_class=payload.doc_type.strip(),
+        candidate_id=str(candidate.id),
+        upload_presign=True,
+        intake_channel="status_share",
+    )
     return PublicPresignResponse(
         key=key,
         url=url,
@@ -2916,11 +2961,49 @@ async def download_public_document_file(
     )
     doc = await db.scalar(stmt)
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:public_intake:download_apply",
+            tenant_id=str(tenant_id),
+            document_id=str(doc_id),
+            access_kind=None,
+            candidate_id=str(candidate.id),
+            reason="document_not_found",
+            intake_channel="apply_token",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     try:
         file_path, media_type, filename = resolve_document_file(doc)
     except FileNotFoundError:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:public_intake:download_apply",
+            tenant_id=str(tenant_id),
+            document_id=str(doc_id),
+            access_kind=None,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(candidate.id),
+            reason="file_not_found",
+            intake_channel="apply_token",
+        )
         raise HTTPException(status_code=404, detail="File not found") from None
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_DOWNLOADED,
+        result="success",
+        severity="info",
+        source="http:public_intake:download_apply",
+        tenant_id=str(tenant_id),
+        document_id=str(doc_id),
+        access_kind=None,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(candidate.id),
+        response_mode="file_stream",
+        intake_channel="apply_token",
+    )
     return FileResponse(str(file_path), media_type=media_type, filename=filename)
 
 
@@ -2944,11 +3027,49 @@ async def download_status_document_file(
     )
     doc = await db.scalar(stmt)
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:public_intake:download_status",
+            tenant_id=str(tenant_id),
+            document_id=str(doc_id),
+            access_kind=None,
+            candidate_id=str(candidate.id),
+            reason="document_not_found",
+            intake_channel="status_share",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     try:
         file_path, media_type, filename = resolve_document_file(doc)
     except FileNotFoundError:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:public_intake:download_status",
+            tenant_id=str(tenant_id),
+            document_id=str(doc_id),
+            access_kind=None,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(candidate.id),
+            reason="file_not_found",
+            intake_channel="status_share",
+        )
         raise HTTPException(status_code=404, detail="File not found") from None
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_DOWNLOADED,
+        result="success",
+        severity="info",
+        source="http:public_intake:download_status",
+        tenant_id=str(tenant_id),
+        document_id=str(doc_id),
+        access_kind=None,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(candidate.id),
+        response_mode="file_stream",
+        intake_channel="status_share",
+    )
     return FileResponse(str(file_path), media_type=media_type, filename=filename)
 
 

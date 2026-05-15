@@ -93,6 +93,8 @@ export type ListResp =
 
 export type CandidateFilterSnapshot = {
   stage: string[];
+  /** ``Candidate.status`` column (see list payload ``row_status``). */
+  rowStatuses: string[];
   vacancy: string[];
   manager: string[];
   statusReasons: string[];

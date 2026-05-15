@@ -79,6 +79,44 @@
 
 ---
 
+## Mini-review: high-risk surfaces (обязательно при затрагивании)
+
+Если PR затрагивает **любую** из колонок ниже — заполните соответствующую строку (даже если ответ «нет изменений в поведении»).
+
+| Surface | Tenant scope | RBAC | Telemetry (`emit_security_event_v1` / helpers) | Raw payload leakage | Retrieval governance | Document / export logging |
+|---------|--------------|------|--------------------------------------------------|---------------------|----------------------|---------------------------|
+| **AI / LLM** | | | | | | |
+| **Search (global / full-text)** | | | | | | |
+| **Exports** | | | | | N/A | |
+| **Portals (client / candidate)** | | | | | N/A | |
+| **Automations** | | | | | N/A | |
+| **Integrations / webhooks** | | | | | N/A | |
+| **Analytics / reporting** | | | | | N/A | |
+
+**Проверять кратко:** tenant scope, RBAC, telemetry, утечки raw payload, retrieval governance (если есть RAG/embeddings), document/export audit.
+
+---
+
+## Search / AI feature entry (merge criterion)
+
+**Ни одна** фича из списка ниже **не merge’ится** без явного подтверждения в PR (чекбоксы или ссылка на спеку с тем же содержанием):
+
+- AI assistant / copilot-подобные сценарии
+- Global search (не scoped tenant)
+- Embeddings / vector store
+- Retrieval layer / RAG
+- Semantic search
+
+**Обязательно до merge:**
+
+- [ ] Доступ к данным только через **retrieval helper** (или эквивалент из SSOT), без ad-hoc SQL/ORM в «умном» слое.
+- [ ] **Tenant scope** enforced end-to-end (включая фоновые джобы и кэш ключей).
+- [ ] **RBAC scope** совпадает с тем, что видит пользователь в UI/API.
+- [ ] **Audit event** (`emit_security_event_v1` + правильный `event_type` / `source`) на чувствительных операциях.
+- [ ] **Нет** логирования raw prompt / полного retrieval payload в application logs или `extra` security events (только хэши/length/redacted summary по политике).
+
+---
+
 ## Incident Response runbooks
 
 ### A. Подозрение на утечку данных между тенантами или наружу

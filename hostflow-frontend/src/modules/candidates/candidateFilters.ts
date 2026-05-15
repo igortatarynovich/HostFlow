@@ -83,6 +83,14 @@ export function filterCandidates(
       return false
     }
 
+    if (snapshot.rowStatuses.length) {
+      const raw = (item as { row_status?: string | null }).row_status
+      const v = raw != null && String(raw).trim() !== '' ? String(raw).trim() : null
+      if (!v || !snapshot.rowStatuses.includes(v)) {
+        return false
+      }
+    }
+
     if (snapshot.vacancy.length) {
       const candidateVacancy =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

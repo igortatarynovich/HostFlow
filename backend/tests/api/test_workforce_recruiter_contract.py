@@ -19,8 +19,14 @@ async def test_workforce_router_mounted_not_404(client: AsyncClient, recruiter_h
 
 
 @pytest.mark.asyncio
-async def test_recruiter_list_employees_shape(client: AsyncClient, recruiter_headers: Dict[str, str]) -> None:
+async def test_recruiter_list_employees_forbidden(client: AsyncClient, recruiter_headers: Dict[str, str]) -> None:
     resp = await client.get("/api/v1/workforce/employees", headers=recruiter_headers)
+    assert resp.status_code == 403, resp.text
+
+
+@pytest.mark.asyncio
+async def test_hr_officer_list_employees_shape(client: AsyncClient, hr_officer_headers: Dict[str, str]) -> None:
+    resp = await client.get("/api/v1/workforce/employees", headers=hr_officer_headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert isinstance(body, list)
@@ -34,10 +40,10 @@ async def test_recruiter_list_employees_shape(client: AsyncClient, recruiter_hea
 @pytest.mark.asyncio
 async def test_recruiter_create_get_patch_employee(
     client: AsyncClient,
-    recruiter_headers: Dict[str, str],
+    hr_officer_headers: Dict[str, str],
     bootstrap: Dict[str, str],
 ) -> None:
-    h = {**recruiter_headers, "Content-Type": "application/json"}
+    h = {**hr_officer_headers, "Content-Type": "application/json"}
     create = await client.post(
         "/api/v1/workforce/employees",
         headers=h,
@@ -53,7 +59,7 @@ async def test_recruiter_create_get_patch_employee(
     emp_id = data["id"]
     assert data.get("tenant_id")
 
-    one = await client.get(f"/api/v1/workforce/employees/{emp_id}", headers=recruiter_headers)
+    one = await client.get(f"/api/v1/workforce/employees/{emp_id}", headers=hr_officer_headers)
     assert one.status_code == 200, one.text
     assert one.json()["id"] == emp_id
 
@@ -69,10 +75,10 @@ async def test_recruiter_create_get_patch_employee(
 @pytest.mark.asyncio
 async def test_recruiter_hr_bundle_shape(
     client: AsyncClient,
-    recruiter_headers: Dict[str, str],
+    hr_officer_headers: Dict[str, str],
     bootstrap: Dict[str, str],
 ) -> None:
-    h = {**recruiter_headers, "Content-Type": "application/json"}
+    h = {**hr_officer_headers, "Content-Type": "application/json"}
     create = await client.post(
         "/api/v1/workforce/employees",
         headers=h,
@@ -81,7 +87,7 @@ async def test_recruiter_hr_bundle_shape(
     assert create.status_code == 201, create.text
     emp_id = create.json()["id"]
 
-    res = await client.get(f"/api/v1/workforce/employees/{emp_id}/hr-bundle", headers=recruiter_headers)
+    res = await client.get(f"/api/v1/workforce/employees/{emp_id}/hr-bundle", headers=hr_officer_headers)
     assert res.status_code == 200, res.text
     bundle: Dict[str, Any] = res.json()
     assert set(bundle.keys()) >= {
@@ -91,14 +97,15 @@ async def test_recruiter_hr_bundle_shape(
         "onboarding_tasks",
         "absences",
         "leave_requests",
+        "work_eligibility_payment_requirements",
     }
     assert isinstance(bundle["employments"], list)
     assert isinstance(bundle["onboarding_tasks"], list)
 
 
 @pytest.mark.asyncio
-async def test_recruiter_link_user_options_shape(client: AsyncClient, recruiter_headers: Dict[str, str]) -> None:
-    resp = await client.get("/api/v1/workforce/employees/link-user-options", headers=recruiter_headers)
+async def test_recruiter_link_user_options_shape(client: AsyncClient, hr_officer_headers: Dict[str, str]) -> None:
+    resp = await client.get("/api/v1/workforce/employees/link-user-options", headers=hr_officer_headers)
     assert resp.status_code == 200, resp.text
     rows = resp.json()
     assert isinstance(rows, list)
@@ -110,11 +117,11 @@ async def test_recruiter_link_user_options_shape(client: AsyncClient, recruiter_
 @pytest.mark.asyncio
 async def test_recruiter_employee_documents_with_candidate(
     client: AsyncClient,
-    recruiter_headers: Dict[str, str],
+    hr_officer_headers: Dict[str, str],
     bootstrap: Dict[str, str],
     candidate_id: str,
 ) -> None:
-    h = {**recruiter_headers, "Content-Type": "application/json"}
+    h = {**hr_officer_headers, "Content-Type": "application/json"}
     cid = candidate_id
     create = await client.post(
         "/api/v1/workforce/employees",
@@ -129,7 +136,7 @@ async def test_recruiter_employee_documents_with_candidate(
     assert create.status_code == 201, create.text
     emp_id = create.json()["id"]
 
-    res = await client.get(f"/api/v1/workforce/employees/{emp_id}/documents", headers=recruiter_headers)
+    res = await client.get(f"/api/v1/workforce/employees/{emp_id}/documents", headers=hr_officer_headers)
     assert res.status_code == 200, res.text
     assert isinstance(res.json(), list)
 
@@ -137,10 +144,10 @@ async def test_recruiter_employee_documents_with_candidate(
 @pytest.mark.asyncio
 async def test_recruiter_delete_employee(
     client: AsyncClient,
-    recruiter_headers: Dict[str, str],
+    hr_officer_headers: Dict[str, str],
     bootstrap: Dict[str, str],
 ) -> None:
-    h = {**recruiter_headers, "Content-Type": "application/json"}
+    h = {**hr_officer_headers, "Content-Type": "application/json"}
     create = await client.post(
         "/api/v1/workforce/employees",
         headers=h,
@@ -148,9 +155,9 @@ async def test_recruiter_delete_employee(
     )
     assert create.status_code == 201, create.text
     emp_id = create.json()["id"]
-    del_res = await client.delete(f"/api/v1/workforce/employees/{emp_id}", headers=recruiter_headers)
+    del_res = await client.delete(f"/api/v1/workforce/employees/{emp_id}", headers=hr_officer_headers)
     assert del_res.status_code == 204, del_res.text
-    gone = await client.get(f"/api/v1/workforce/employees/{emp_id}", headers=recruiter_headers)
+    gone = await client.get(f"/api/v1/workforce/employees/{emp_id}", headers=hr_officer_headers)
     assert gone.status_code == 404, gone.text
 
 

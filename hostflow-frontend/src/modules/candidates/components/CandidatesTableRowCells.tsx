@@ -249,7 +249,7 @@ export function CandidatesTableRowCells({ index, c, ctx }: CandidatesTableRowCel
             : (c.short_id || t('common.labels.not_available'))
         } else if (columnKey === 'manager') {
           const managerName = resolveManagerLabel(c)
-          cellContent = managerName || t('common.labels.not_available')
+          cellContent = managerName || t('app.candidates.table.manager_not_assigned', { defaultValue: 'Not assigned' })
         } else if (columnKey === 'stage') {
           cellContent = <CandidatesTableRowStageCell candidate={c} />
         } else if (columnKey === 'risk') {
