@@ -7,6 +7,7 @@ export type HandoffOut = {
   agency_tenant_id: string
   client_company_id: string | null
   client_tenant_id: string | null
+  destination?: string | null
   requested_by_user_id: string
   requested_at: string
   assigned_to_user_id: string | null
@@ -39,7 +40,12 @@ export async function getAvailableClients(): Promise<AvailableClientOut[]> {
 
 export async function createHandoff(
   candidateId: UUID,
-  payload: { client_company_id?: string; client_tenant_id?: string; assigned_to_user_id?: string }
+  payload: {
+    client_company_id?: string
+    client_tenant_id?: string
+    assigned_to_user_id?: string
+    destination?: 'client_portal' | 'internal_hr'
+  },
 ): Promise<HandoffOut> {
   const { data } = await api.post<HandoffOut>(`/handoffs/candidates/${candidateId}`, payload)
   return data

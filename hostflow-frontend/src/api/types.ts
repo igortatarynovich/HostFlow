@@ -1499,6 +1499,10 @@ export interface MetaStages {
   groups: Record<string, string[]>;     // column -> codes[]
   column_of: Record<string, string>;    // code -> column
   order: string[];                      // ordered codes
+  /** Present when /meta/stages is narrowed for recruitment roles (agency handoff). */
+  stage_visibility_mode?: string | null;
+  /** Back-compat flag from API; when true, list filters should not surface post-handoff stage noise. */
+  recruiter_handoff_stage_filter?: boolean | null;
   reason_choices?: Record<string, { code: string; label: string }[]>;
   custom_stages?: Array<{
     code: string;

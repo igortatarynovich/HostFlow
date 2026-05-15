@@ -25,6 +25,8 @@ export type TenantLink = {
 
 export type TenantLinkUpdate = {
   handoff_enabled?: boolean
+  handoff_to_client?: boolean
+  handoff_to_internal_hr?: boolean
   contact_policy?: ContactPolicy
   see_vacancies?: boolean
   see_reduced_profiles?: boolean
@@ -142,6 +144,33 @@ export function getContactPolicy(link: TenantLink): ContactPolicy {
     post_action: policy.post_action === 'stage_change' ? 'stage_change' : 'auto_reject',
     stage_code: policy.stage_code ?? null,
   }
+}
+
+/** Matches backend `TenantLink.get_handoff_to_client` (default true). */
+export function getHandoffToClient(link: TenantLink): boolean {
+  const features = link.features_json as Record<string, unknown> | null | undefined
+  return features?.handoff_to_client !== false
+}
+
+/** Matches backend `TenantLink.get_handoff_to_internal_hr`. */
+export function getHandoffToInternalHr(link: TenantLink): boolean {
+  const features = link.features_json as Record<string, unknown> | null | undefined
+  return Boolean(features?.handoff_to_internal_hr)
+}
+
+export type PrimaryHandoffDestination = 'client_portal' | 'internal_hr'
+
+/**
+ * Single primary handoff lane for the candidate card when both destinations are enabled
+ * defaults to the client portal; turn off "to client" in the link to use internal HR only.
+ */
+export function resolvePrimaryHandoffDestination(link: TenantLink | null): PrimaryHandoffDestination | null {
+  if (!link || !link.handoff_enabled) return null
+  const toClient = getHandoffToClient(link)
+  const toHr = getHandoffToInternalHr(link)
+  if (toHr && !toClient) return 'internal_hr'
+  if (toClient) return 'client_portal'
+  return null
 }
 
 export async function listTenantLinks(tenantId: string): Promise<TenantLink[]> {

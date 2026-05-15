@@ -36,6 +36,8 @@ interface CandidateHeaderProps {
   onEditToggle?: () => void
   editMode?: boolean
   onOpenHandoff?: () => void
+  /** When set, replaces the handoff button with a read-only status line (active handoff). */
+  handoffReadonlyText?: string | null
   handoffDisabled?: boolean
   handoffLabel?: string
   onDeleteRequest: () => void
@@ -77,6 +79,7 @@ function CandidateHeader({
   onEditToggle,
   editMode = false,
   onOpenHandoff,
+  handoffReadonlyText = null,
   handoffDisabled = false,
   handoffLabel,
   onDeleteRequest,
@@ -217,14 +220,23 @@ function CandidateHeader({
             )}
             {!isNew && (
               <>
-                <button
-                  type="button"
-                  className="rounded-lg border border-white bg-white px-3 py-1.5 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
-                  onClick={onOpenHandoff}
-                  disabled={handoffDisabled}
-                >
-                  {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
-                </button>
+                {handoffReadonlyText ? (
+                  <div
+                    className="max-w-md rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-left text-xs font-medium leading-snug text-white"
+                    role="status"
+                  >
+                    {handoffReadonlyText}
+                  </div>
+                ) : onOpenHandoff ? (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-white bg-white px-3 py-1.5 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
+                    onClick={onOpenHandoff}
+                    disabled={handoffDisabled}
+                  >
+                    {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                  </button>
+                ) : null}
                 {onOpenActivity ? (
                   <button
                     type="button"

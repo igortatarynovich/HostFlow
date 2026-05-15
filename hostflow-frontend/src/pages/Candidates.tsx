@@ -40,6 +40,7 @@ import {
   translateReasonLabel,
   translateStageLabel,
 } from '../utils/stageLabels'
+import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -542,6 +543,11 @@ export default function Candidates(){
     if (!isClientRole) return base
     return base.filter((code) => meta.meta?.[code]?.visible_for_client)
   }, [meta, isClientRole])
+
+  const recruitmentListStageFilterActive = Boolean(
+    meta?.recruiter_handoff_stage_filter || meta?.stage_visibility_mode === 'recruitment_handoff',
+  )
+
   const reasonOptions = useMemo(() => {
     if (!meta?.reason_choices) return []
     const out: {
@@ -1150,8 +1156,11 @@ export default function Candidates(){
 
   const stageFilterOptions = useMemo(() => {
     const selected = new Set(stageFilter.map((s) => String(s || '').trim().toLowerCase()).filter(Boolean))
+    const allowStage = (code: string) =>
+      !recruitmentListStageFilterActive || !isPostRecruitmentStageCode(code)
     return stageOptions
       .filter((code) => {
+        if (!allowStage(code)) return false
         const c = String(code || '').trim().toLowerCase()
         return stagePresence.has(code) || (c && selected.has(c))
       })
@@ -1159,7 +1168,7 @@ export default function Candidates(){
         value: code,
         label: translateStageLabel(t, code, stageLabelMap[code] || code),
       }))
-  }, [stageOptions, stagePresence, stageLabelMap, t, stageFilter])
+  }, [stageOptions, stagePresence, stageLabelMap, t, stageFilter, recruitmentListStageFilterActive])
 
   const pruneSelectionByOptions = useCallback(
     (selected: string[], options: Array<{ value: string }>) => {

@@ -66,7 +66,7 @@ import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { servicesWorkspacePath } from '../modules/services/utils'
 import { useI18n, type TranslateFn } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
-import { isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
+import { isCandidateOperationallyTerminal, isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
 import { scoreMissingHintForStage } from '../utils/candidateMissingDataHints'
 import {
@@ -83,7 +83,6 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { handoffFromCandidate } from '../api/workforce'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
@@ -111,7 +110,8 @@ import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPan
 import RailPrimaryStepFrame from '../components/candidate/RailPrimaryStepFrame'
 import { railHasUrgentReminder, resolveRailPrimaryFocus } from '../utils/railPrimaryFocus'
 import { createHandoff, getAvailableClients, getHandoffStatus, type AvailableClientOut, type HandoffStatusResponse } from '../api/handoffs'
-import { listTenantLinks } from '../api/tenantLinks'
+import { listTenantLinks, resolvePrimaryHandoffDestination, type TenantLink } from '../api/tenantLinks'
+import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
 import { deriveDocsMeta } from '../modules/candidates/utils'
 import {
   ADDRESS_KEYS,
@@ -714,21 +714,21 @@ export default function CandidateCard(){
     return CRM_APP_PATHS.candidates
   }, [location.state])
   const [isHandoffEnabledForCurrentCompany, setIsHandoffEnabledForCurrentCompany] = useState(false)
-  const isClientJourneyView = isClientTenant || isHandoffEnabledForCurrentCompany
+  const [companyHandoffLink, setCompanyHandoffLink] = useState<TenantLink | null>(null)
   const [model, setModel] = useState<Candidate | null>(null)
   const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
   const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
-  const [workforceHandoffBusy, setWorkforceHandoffBusy] = useState(false)
-
   useEffect(() => {
     if (isClientTenant) {
       setIsHandoffEnabledForCurrentCompany(false)
+      setCompanyHandoffLink(null)
       return
     }
     const companyId = String(model?.company_id || '').trim()
     const agencyTenantId = String(tenantId || '').trim()
     if (!agencyTenantId || !companyId) {
       setIsHandoffEnabledForCurrentCompany(false)
+      setCompanyHandoffLink(null)
       return
     }
     let cancelled = false
@@ -736,13 +736,19 @@ export default function CandidateCard(){
       try {
         const links = await listTenantLinks(agencyTenantId)
         if (cancelled) return
-        const matched = links.find((link) =>
-          String(link.client_company_id || '').trim() === companyId ||
-          String(link.handoff_include_company_id || '').trim() === companyId,
-        )
+        const matched =
+          links.find(
+            (link) =>
+              String(link.client_company_id || '').trim() === companyId ||
+              String(link.handoff_include_company_id || '').trim() === companyId,
+          ) || null
+        setCompanyHandoffLink(matched)
         setIsHandoffEnabledForCurrentCompany(Boolean(matched?.handoff_enabled))
       } catch {
-        if (!cancelled) setIsHandoffEnabledForCurrentCompany(false)
+        if (!cancelled) {
+          setIsHandoffEnabledForCurrentCompany(false)
+          setCompanyHandoffLink(null)
+        }
       }
     })()
     return () => {
@@ -2900,29 +2906,73 @@ export default function CandidateCard(){
     void refreshHandoffMeta()
   }, [isNew, model?.id, refreshHandoffMeta])
 
+  const primaryHandoffDestination = useMemo(
+    () => resolvePrimaryHandoffDestination(companyHandoffLink),
+    [companyHandoffLink],
+  )
+
+  const handoffClientsForCompany = useMemo(() => {
+    const cid = String(model?.company_id || '').trim()
+    if (!cid) return handoffClients
+    return handoffClients.filter((c) => String(c.client_company_id || '').trim() === cid)
+  }, [handoffClients, model?.company_id])
+
+  const showAgencyHandoffHeader = useMemo(() => {
+    if (isNew || isMasked || isClientTenant) return false
+    if (!can('candidates.manage')) return false
+    if (!isHandoffEnabledForCurrentCompany || !primaryHandoffDestination) return false
+    if (primaryHandoffDestination === 'internal_hr') {
+      return Boolean(String(model?.company_id || '').trim())
+    }
+    return handoffClientsForCompany.length > 0
+  }, [
+    can,
+    handoffClientsForCompany.length,
+    isClientTenant,
+    isHandoffEnabledForCurrentCompany,
+    isMasked,
+    isNew,
+    model?.company_id,
+    primaryHandoffDestination,
+  ])
+
   const handleHandoffCreate = useCallback(async () => {
-    if (!model?.id || !handoffClientLinkId) return
-    const selectedClient = handoffClients.find((x) => x.link_id === handoffClientLinkId) || null
-    if (!selectedClient) return
-    const payload = selectedClient.client_company_id
-      ? { client_company_id: selectedClient.client_company_id }
-      : selectedClient.client_tenant_id
-        ? { client_tenant_id: selectedClient.client_tenant_id }
-        : null
-    if (!payload) return
+    if (!model?.id || !primaryHandoffDestination) return
     try {
       setHandoffSubmitting(true)
-      await createHandoff(model.id as UUID, payload)
+      if (primaryHandoffDestination === 'internal_hr') {
+        const cid = String(model.company_id || '').trim()
+        if (!cid) return
+        await createHandoff(model.id as UUID, { client_company_id: cid, destination: 'internal_hr' })
+      } else {
+        if (!handoffClientLinkId) return
+        const selectedClient = handoffClients.find((x) => x.link_id === handoffClientLinkId) || null
+        if (!selectedClient) return
+        const payload = selectedClient.client_company_id
+          ? { client_company_id: selectedClient.client_company_id, destination: 'client_portal' as const }
+          : selectedClient.client_tenant_id
+            ? { client_tenant_id: selectedClient.client_tenant_id, destination: 'client_portal' as const }
+            : null
+        if (!payload) return
+        await createHandoff(model.id as UUID, payload)
+      }
       setHandoffModalOpen(false)
       setHandoffClientLinkId('')
       await refreshHandoffMeta()
       await handleAttemptCreated()
       notify({
-        title: t('app.candidate_card.handoff.created'),
+        title:
+          primaryHandoffDestination === 'internal_hr'
+            ? t('app.candidate_card.handoff.created_internal')
+            : t('app.candidate_card.handoff.created'),
         variant: 'success',
       })
     } catch (e: any) {
-      if (!planLimitModal?.showPlanLimitIfNeeded(e, t('app.candidate_card.handoff.transfer_btn'))) {
+      const transferLabel =
+        primaryHandoffDestination === 'internal_hr'
+          ? t('app.candidate_card.handoff.transfer_internal_hr_btn')
+          : t('app.candidate_card.handoff.transfer_client_btn')
+      if (!planLimitModal?.showPlanLimitIfNeeded(e, transferLabel)) {
         notify({
           title: e?.response?.data?.detail || e?.message || t('app.common.messages.unexpected'),
           variant: 'error',
@@ -2931,7 +2981,25 @@ export default function CandidateCard(){
     } finally {
       setHandoffSubmitting(false)
     }
-  }, [handoffClientLinkId, handoffClients, handleAttemptCreated, model?.id, notify, planLimitModal, refreshHandoffMeta, t])
+  }, [
+    handoffClientLinkId,
+    handoffClients,
+    handleAttemptCreated,
+    model?.company_id,
+    model?.id,
+    notify,
+    planLimitModal,
+    primaryHandoffDestination,
+    refreshHandoffMeta,
+    t,
+  ])
+
+  useEffect(() => {
+    if (!handoffModalOpen || primaryHandoffDestination !== 'client_portal') return
+    if (handoffClientLinkId) return
+    const first = handoffClientsForCompany[0]
+    if (first) setHandoffClientLinkId(first.link_id)
+  }, [handoffModalOpen, primaryHandoffDestination, handoffClientsForCompany, handoffClientLinkId])
 
   const handleReminderComplete = useCallback(async (id: string) => {
     try {
@@ -3111,13 +3179,32 @@ export default function CandidateCard(){
   )
 
   const candidateDataReadOnly = !isNew && candidateEditPhase !== 'editing'
-  const handoffLocked = Boolean(handoffStatus?.pending || handoffStatus?.accepted || handoffLoading)
-  const handoffRequestedAt = handoffStatus?.accepted?.requested_at || handoffStatus?.pending?.requested_at || null
-  const handoffButtonLabel = handoffRequestedAt
-    ? t('app.candidate_card.handoff.transferred_at', {
-        values: { date: formatDateTime(handoffRequestedAt, locale) || handoffRequestedAt },
-      })
-    : t('app.candidate_card.handoff.transfer_btn')
+  const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
+  const handoffReadonlySummary = useMemo(() => {
+    if (!handoffActiveBlock || handoffLoading) return null
+    const pending = handoffStatus?.pending
+    const accepted = handoffStatus?.accepted
+    const row = pending || accepted
+    if (!row) return null
+    const dest = String(row.destination || 'client_portal').toLowerCase() === 'internal_hr' ? 'internal_hr' : 'client'
+    const dateRaw = row.requested_at
+    const date = dateRaw ? formatDateTime(dateRaw, locale) || dateRaw : '—'
+    if (pending) {
+      return dest === 'internal_hr'
+        ? t('app.candidate_card.handoff.readonly_pending_internal', { values: { date } })
+        : t('app.candidate_card.handoff.readonly_pending_client', { values: { date } })
+    }
+    return dest === 'internal_hr'
+      ? t('app.candidate_card.handoff.readonly_accepted_internal', { values: { date } })
+      : t('app.candidate_card.handoff.readonly_accepted_client', { values: { date } })
+  }, [handoffActiveBlock, handoffLoading, handoffStatus, locale, t])
+
+  const handoffPrimaryActionLabel = useMemo(() => {
+    if (!primaryHandoffDestination) return t('app.candidate_card.handoff.transfer_btn')
+    return primaryHandoffDestination === 'internal_hr'
+      ? t('app.candidate_card.handoff.transfer_internal_hr_btn')
+      : t('app.candidate_card.handoff.transfer_client_btn')
+  }, [primaryHandoffDestination, t])
 
   // Pipedrive-style indicator: show how long candidate is in current stage.
   // Best-effort: uses stage history and loads quietly (does not block UI).
@@ -3211,7 +3298,11 @@ export default function CandidateCard(){
     const allowedJourneyStages = new Set(journeyOrder)
     const journeyOrderRank = new Map(journeyOrder.map((code, idx) => [code, idx] as const))
 
-    function buildOrderedStages(codesInput: string[], narrowForClientFacingStrip: boolean) {
+    function buildOrderedStages(
+      codesInput: string[],
+      narrowForClientFacingStrip: boolean,
+      stripPostRecruitment: boolean,
+    ) {
       const uniq = Array.from(new Set((codesInput || []).filter(Boolean)))
       const main: Array<{ code: string; label: string }> = []
       uniq.forEach((raw) => {
@@ -3224,10 +3315,11 @@ export default function CandidateCard(){
         if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
           return
         }
-        if (narrowForClientFacingStrip && isClientJourneyView && !allowedJourneyStages.has(canonical)) return
+        if (stripPostRecruitment && isPostRecruitmentStageCode(canonical)) return
+        if (narrowForClientFacingStrip && isClientTenant && !allowedJourneyStages.has(canonical)) return
         main.push({ code, label })
       })
-      if (narrowForClientFacingStrip && isClientJourneyView) {
+      if (narrowForClientFacingStrip && isClientTenant) {
         return [...main].sort((a, b) => {
           const aCanonical = canonicalStageKey(a.code, a.label) || ''
           const bCanonical = canonicalStageKey(b.code, b.label) || ''
@@ -3242,8 +3334,9 @@ export default function CandidateCard(){
       return main
     }
 
-    const orderedPipeline = buildOrderedStages(codesForPipeline, false)
-    const orderedDisplay = buildOrderedStages(codesForDisplay, true)
+    const stripRecruitmentBoundary = !isClientTenant
+    const orderedPipeline = buildOrderedStages(codesForPipeline, false, stripRecruitmentBoundary)
+    const orderedDisplay = buildOrderedStages(codesForDisplay, true, stripRecruitmentBoundary)
 
     const currentCode = String(model?.stage || '')
     const currentCanonical = canonicalStageKey(currentCode, null) || ''
@@ -3283,17 +3376,33 @@ export default function CandidateCard(){
     (model as any)?.intake_status,
     (model as any)?.intake_submitted_at,
     t,
-    isClientJourneyView,
     isClientTenant,
   ])
+
+  const operationallyTerminal = useMemo(
+    () =>
+      isCandidateOperationallyTerminal({
+        stage: model?.stage,
+        row_status: model?.row_status,
+        status: model?.status,
+      }),
+    [model?.stage, model?.row_status, model?.status],
+  )
 
   /** Align doc policy with journey display (e.g. no_answer maps to contacted for gating). */
   const effectiveStageForDocPolicy = useMemo(() => {
     const stored =
       canonicalStageKey(model?.stage ?? null, null) || String(model?.stage || '').trim().toLowerCase() || null
-    if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
+    if (
+      isCandidateOperationallyTerminal({
+        stage: model?.stage,
+        row_status: model?.row_status,
+        status: model?.status,
+      })
+    )
+      return stored
     return String(stageJourneyDisplayStage || model?.stage || '').trim() || null
-  }, [stageJourneyDisplayStage, model?.stage])
+  }, [stageJourneyDisplayStage, model?.stage, model?.row_status, model?.status])
 
   const pipelineRelaxedTypes = useMemo(
     () => pipelineRelaxedTypesFromOverrides(pipelineOverrides),
@@ -3346,7 +3455,7 @@ export default function CandidateCard(){
    * After leaving those stages (contacted, declined, etc.), the block is omitted.
    */
   const showContactAttemptsPriorityRail = useMemo(() => {
-    if (!model?.id || isMasked || isNew) return false
+    if (!model?.id || isMasked || isNew || operationallyTerminal) return false
     if (model.contact_policy_enabled !== true) return false
     const raw = String(model?.stage ?? '').trim()
     if (!raw) return false
@@ -3359,11 +3468,13 @@ export default function CandidateCard(){
     isMasked,
     isNew,
     hiringGatesRuntime,
+    operationallyTerminal,
   ])
 
   /** One highlighted block in the work rail — overdue reminder first, then same order as forward stage gates. */
   const railPrimaryFocus = useMemo(() => {
     if (!model?.id || isNew) return null
+    if (operationallyTerminal) return null
     const now = Date.now()
     if (isMasked) {
       if (railHasUrgentReminder(reminders, now)) return 'next_action'
@@ -3388,6 +3499,7 @@ export default function CandidateCard(){
     contactAttemptPipelineBlockingValue,
     showContactAttemptsPriorityRail,
     vacancyPipelineBlockingValue,
+    operationallyTerminal,
   ])
 
   /**
@@ -3414,11 +3526,13 @@ export default function CandidateCard(){
 
   const pipelineWaiverReadOnlyCard = useMemo(
     () =>
-      showPipelineWaiverSection &&
-      !canRequestPipelineOverride &&
-      (can('candidates.manage') || can('documents.manage')) &&
-      model?.can_edit === false,
+      operationallyTerminal ||
+      (showPipelineWaiverSection &&
+        !canRequestPipelineOverride &&
+        (can('candidates.manage') || can('documents.manage')) &&
+        model?.can_edit === false),
     [
+      operationallyTerminal,
       showPipelineWaiverSection,
       canRequestPipelineOverride,
       can,
@@ -3428,21 +3542,40 @@ export default function CandidateCard(){
 
   /** Canonical stage for operational hints (next action) — prefer stored stage when pipeline is finished. */
   const canonicalStageForOps = useMemo(() => {
+    const term = isCandidateOperationallyTerminal({
+      stage: model?.stage,
+      row_status: model?.row_status,
+      status: model?.status,
+    })
     const stored =
       canonicalStageKey(model?.stage ?? null, null) || String(model?.stage || '').trim().toLowerCase() || ''
+    if (term) {
+      if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
+      const rs = String(model?.row_status ?? model?.status ?? '').trim().toLowerCase()
+      if (rs && isPipelineCompletedCanonicalStage(rs)) return rs
+      return stored || rs || null
+    }
     if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
     const raw = String(stageJourneyDisplayStage || model?.stage || '').trim()
     if (!raw) return null
     return canonicalStageKey(raw, null) || raw.toLowerCase()
-  }, [stageJourneyDisplayStage, model?.stage])
+  }, [stageJourneyDisplayStage, model?.stage, model?.row_status, model?.status])
 
   const employerDataMissingForHint = useMemo(() => {
     const stage = canonicalStageForOps || ''
-    if (isPipelineCompletedCanonicalStage(stage)) return false
+    if (
+      isCandidateOperationallyTerminal({
+        stage: model?.stage,
+        row_status: model?.row_status,
+        status: model?.status,
+      }) ||
+      isPipelineCompletedCanonicalStage(stage)
+    )
+      return false
     const companyId = String(model?.company_id || '').trim()
     const vacancyId = String(model?.vacancy_id || '').trim()
     return !companyId && !vacancyId
-  }, [canonicalStageForOps, model?.company_id, model?.vacancy_id])
+  }, [canonicalStageForOps, model?.company_id, model?.vacancy_id, model?.stage, model?.row_status, model?.status])
 
   const missingDataHints = useMemo(() => {
     if (!model?.id || isMasked) return []
@@ -3732,32 +3865,6 @@ export default function CandidateCard(){
     ],
   )
 
-  const onWorkforceHandoffFromCandidate = useCallback(async () => {
-    if (isNew || !model?.id || isMasked) return
-    setWorkforceHandoffBusy(true)
-    try {
-      const emp = await handoffFromCandidate(String(model.id), {})
-      notify({
-        variant: 'success',
-        title: t('app.candidate_card.workforce_handoff_success', {
-          defaultValue: 'HR employee record linked',
-        }),
-      })
-      nav(`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(emp.id)}`)
-    } catch (err: unknown) {
-      notify({
-        title: formatErrorForDisplay(err, {
-          fallback: t('app.candidate_card.workforce_handoff_error', {
-            defaultValue: 'Could not create HR employee record',
-          }),
-        }),
-        variant: 'error',
-      })
-    } finally {
-      setWorkforceHandoffBusy(false)
-    }
-  }, [isNew, isMasked, model?.id, nav, notify, t])
-
   if (loading || !model) {
     return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
   }
@@ -3782,9 +3889,12 @@ export default function CandidateCard(){
         onDelete={handleDelete}
         onEditToggle={toggleCandidateEditMode}
         editMode={candidateEditPhase !== 'idle'}
-        onOpenHandoff={() => setHandoffModalOpen(true)}
-        handoffDisabled={handoffLocked}
-        handoffLabel={handoffButtonLabel}
+        onOpenHandoff={
+          showAgencyHandoffHeader && !handoffActiveBlock ? () => setHandoffModalOpen(true) : undefined
+        }
+        handoffReadonlyText={showAgencyHandoffHeader ? handoffReadonlySummary : null}
+        handoffDisabled={handoffLoading}
+        handoffLabel={handoffPrimaryActionLabel}
         onDeleteRequest={handleDeleteRequest}
         onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
         backPath={originPath}
@@ -3816,6 +3926,8 @@ export default function CandidateCard(){
               stageJourneySignals={stageJourneySignals}
               completedStageCodes={completedStageCodes}
               currentStageCode={model.stage}
+              candidateRowStatus={model.row_status}
+              candidateStatus={model.status}
               stageLabelIntl={stageLabelIntl}
               docsBlockers={docsBlockers}
               docsPipelineBlocking={docsPipelineBlockingValue}
@@ -3826,28 +3938,6 @@ export default function CandidateCard(){
               onMoveStage={handleStageJourneyChange}
               onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
             />
-            {can('candidates.manage') && !isMasked ? (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={workforceHandoffBusy}
-                  onClick={() => void onWorkforceHandoffFromCandidate()}
-                  className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  {workforceHandoffBusy
-                    ? t('common.loading')
-                    : t('app.candidate_card.workforce_handoff_button', {
-                        defaultValue: 'Open / create HR employee (from this candidate)',
-                      })}
-                </button>
-                <span className="text-[11px] text-slate-500 max-w-md">
-                  {t('app.candidate_card.workforce_handoff_hint', {
-                    defaultValue:
-                      'Creating the HR record is also triggered automatically when the candidate stage becomes «Employed».',
-                  })}
-                </span>
-              </div>
-            ) : null}
           </div>
         ) : null}
       />
@@ -4090,6 +4180,7 @@ export default function CandidateCard(){
                 onReminderCreate={handleCreateReminder}
                 onReminderComplete={handleReminderComplete}
                 onReminderSnooze={handleReminderSnooze}
+                operationallyTerminal={operationallyTerminal}
                 canonicalStageCode={canonicalStageForOps}
                 nextPipelineStageCode={nextPipelineStageCodeForOps}
                 employerDataMissing={employerDataMissingForHint}
@@ -4128,6 +4219,7 @@ export default function CandidateCard(){
                 onApprovePipelineOverride={handleApprovePipelineOverride}
                 onRejectPipelineOverride={handleRejectPipelineOverride}
                 primaryStepHighlight={railPrimaryFocus === 'docs'}
+                blockersPresentation={operationallyTerminal ? 'historical' : 'operational'}
               />
 
               {!isMasked ? (
@@ -4187,22 +4279,31 @@ export default function CandidateCard(){
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-slate-900">
-                {t('app.candidate_card.handoff.transfer_btn')}
-              </div>
+              <div className="text-sm font-semibold text-slate-900">{handoffPrimaryActionLabel}</div>
               <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
                 {t('common.actions.close')}
               </button>
             </div>
 
-            {handoffLocked ? (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                {handoffRequestedAt
-                  ? t('app.candidate_card.handoff.transferred_at', {
-                      values: { date: formatDateTime(handoffRequestedAt, locale) || handoffRequestedAt },
-                    })
-                  : t('app.candidate_card.handoff.locked_detail')}
-              </div>
+            {primaryHandoffDestination === 'internal_hr' ? (
+              <>
+                <p className="mt-3 text-sm text-slate-600">
+                  {t('app.candidate_card.handoff.internal_hr_modal_hint')}
+                </p>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
+                    {t('common.actions.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={handoffSubmitting}
+                    onClick={() => void handleHandoffCreate()}
+                  >
+                    {handoffSubmitting ? t('common.saving') : handoffPrimaryActionLabel}
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <div className="mt-3">
@@ -4213,7 +4314,7 @@ export default function CandidateCard(){
                     onChange={(e) => setHandoffClientLinkId(e.target.value)}
                   >
                     <option value="">—</option>
-                    {handoffClients.map((c) => (
+                    {handoffClientsForCompany.map((c) => (
                       <option key={c.link_id} value={c.link_id}>
                         {c.client_name}
                       </option>
@@ -4230,9 +4331,7 @@ export default function CandidateCard(){
                     disabled={!handoffClientLinkId || handoffSubmitting}
                     onClick={() => void handleHandoffCreate()}
                   >
-                    {handoffSubmitting
-                      ? t('common.saving')
-                      : t('app.candidate_card.handoff.transfer_btn')}
+                    {handoffSubmitting ? t('common.saving') : handoffPrimaryActionLabel}
                   </button>
                 </div>
               </>
