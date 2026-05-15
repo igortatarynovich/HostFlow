@@ -136,6 +136,140 @@ export type WorkforceLeaveRequest = {
   updated_at: string
 }
 
+/** PR-1/2: legal tax row (not payroll calculation). */
+export type WorkforceTaxProfile = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  tax_residency_country?: string | null
+  tax_office?: string | null
+  pit2_submitted: boolean
+  pit2_monthly_amount?: string | number | null
+  tax_deductible_costs_type?: string | null
+  young_person_relief: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** PR-1/2: social / ZUS legal materialisation (distinct from `zus_profile` registration row). */
+export type WorkforceInsuranceProfile = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  zus_title_code?: string | null
+  social_insurance?: string | null
+  health_insurance?: string | null
+  sickness_insurance?: string | null
+  accident_insurance?: string | null
+  zus_registration_type?: string | null
+  registered_at?: string | null
+  deregistered_at?: string | null
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export type WorkforceComplianceState = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  status: string
+  missing_count: number
+  expired_count: number
+  expiring_soon_count: number
+  high_risk_count: number
+  cannot_work: boolean
+  last_evaluated_at?: string | null
+  reasons?: unknown
+  created_at: string
+  updated_at: string
+}
+
+export type WorkforceHrDocumentContextRow = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  document_id: string
+  context_type: string
+  legal_category?: string | null
+  document_group?: string | null
+  required: boolean
+  verified: boolean
+  verification_status?: string | null
+  expires_at?: string | null
+  source?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WorkforceHrDocumentContextSummary = {
+  total: number
+  by_context_type: Record<string, number>
+  items: WorkforceHrDocumentContextRow[]
+}
+
+export type WorkforceWorkEligibilityProfile = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  citizenship?: string | null
+  residence_status?: string | null
+  legal_stay_document_type?: string | null
+  legal_stay_valid_to?: string | null
+  requires_work_permit?: boolean | null
+  work_permit_type?: string | null
+  work_permit_submission_method?: string | null
+  work_permit_application_status?: string | null
+  work_permit_submitted_at?: string | null
+  work_permit_received_at?: string | null
+  work_permit_valid_to?: string | null
+  red_paper_required?: boolean | null
+  red_paper_status?: string | null
+  eligibility_status: string
+  position_category?: string | null
+  work_country?: string | null
+  employer_country?: string | null
+  contract_type?: string | null
+  meta?: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export type WorkforceWorkEligibilityPaymentRequirement = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  requirement_type: string
+  amount?: string | null
+  currency: string
+  payment_status: string
+  due_at?: string | null
+  paid_at?: string | null
+  payment_reference?: string | null
+  receipt_document_id?: string | null
+  blocks_step?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WorkEligibilityJourneyStep = {
+  step_code: string
+  label: string
+  status: string
+  blockers: string[]
+  required_documents: string[]
+  linked_payment_requirement_id?: string | null
+  linked_document_id?: string | null
+  action_label?: string | null
+  action_url?: string | null
+  external_submission_url?: string | null
+}
+
+export type WorkEligibilityJourney = {
+  steps: WorkEligibilityJourneyStep[]
+  recommended_next_action: string
+}
+
 export type WorkforceHrBundle = {
   employments: WorkforceEmployment[]
   payroll_profile: WorkforcePayrollProfile | null
@@ -143,10 +277,150 @@ export type WorkforceHrBundle = {
   onboarding_tasks: WorkforceOnboardingTask[]
   absences: WorkforceAbsence[]
   leave_requests: WorkforceLeaveRequest[]
+  tax_profile: WorkforceTaxProfile | null
+  insurance_profile: WorkforceInsuranceProfile | null
+  compliance_state: WorkforceComplianceState | null
+  work_eligibility_profile: WorkforceWorkEligibilityProfile | null
+  work_eligibility_payment_requirements: WorkforceWorkEligibilityPaymentRequirement[]
+  hr_document_context_summary: WorkforceHrDocumentContextSummary
+}
+
+/** GET `/workforce/employees/:id/operational-profile` (HR workspace read-model). */
+export type WorkforceOperationalSummary = {
+  employee_status: string
+  full_name: string
+  employer?: string | null
+  client?: string | null
+  position?: string | null
+  start_date?: string | null
+  probation_end?: string | null
+  assigned_hr?: string | null
+  assigned_hr_user_id?: string | null
+  handoff_id?: string | null
+  compliance_status: string
+  missing_documents_count: number
+  expiring_documents_count: number
+  risk_level: string
+}
+
+export type WorkforceTransferMetadata = {
+  handoff_id?: string | null
+  handoff_at?: string | null
+  handoff_by_user_id?: string | null
+  handoff_by_name?: string | null
+  candidate_id?: string | null
+  vacancy_id?: string | null
+}
+
+export type WorkforceRecruiterSummary = {
+  captured_at?: string | null
+  candidate_id?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+  phone?: string | null
+  stage?: string | null
+  status?: string | null
+}
+
+export type WorkforceProfileAlert = { code: string; message: string }
+
+export type WorkforceTimelineEvent = {
+  id: string
+  occurred_at: string
+  kind: string
+  title: string
+  detail?: string | null
+  actor_id?: string | null
+}
+
+export type WorkforceEmploymentOperational = {
+  id: string
+  contract_type: string
+  start_date?: string | null
+  end_date?: string | null
+  is_active: boolean
+  probation_end?: string | null
+  position?: string | null
+}
+
+export type WorkforceEmployeeOperationalProfile = {
+  employee: WorkforceEmployee
+  operational_summary: WorkforceOperationalSummary
+  transfer: WorkforceTransferMetadata
+  recruiter_summary: WorkforceRecruiterSummary
+  documents_linked: Array<Record<string, unknown>>
+  documents_missing: Array<Record<string, unknown>>
+  documents_expiring: Array<Record<string, unknown>>
+  risks: Array<Record<string, unknown>>
+  alerts: WorkforceProfileAlert[]
+  onboarding_overdue_count: number
+  timeline: WorkforceTimelineEvent[]
+  employment_operational: WorkforceEmploymentOperational[]
+  hire_snapshot: Record<string, unknown> | null
+  hr_bundle: WorkforceHrBundle
 }
 
 export async function listWorkforceEmployees(params?: { status?: string }): Promise<WorkforceEmployee[]> {
   const { data } = await http.get<WorkforceEmployee[]>('/workforce/employees', { params })
+  return data
+}
+
+/** Read-model: GET `/workforce/employees/directory` (single batch for HR directory UI). */
+export type WorkforceEmployeeDirectoryRow = {
+  employee_id: string
+  full_name: string
+  status: string
+  employer?: string | null
+  client?: string | null
+  position?: string | null
+  start_date?: string | null
+  assigned_hr?: string | null
+  assigned_hr_user_id?: string | null
+  handoff_id?: string | null
+  candidate_id?: string | null
+  compliance_status: string
+  missing_documents_count: number
+  expiring_documents_count: number
+  risk_level: string
+}
+
+export type WorkforceEmployeeDirectoryPage = {
+  items: WorkforceEmployeeDirectoryRow[]
+  total: number
+}
+
+export async function listWorkforceEmployeesDirectory(params?: {
+  status?: string
+  compliance_status?: string
+  risk_level?: string
+  missing_docs?: boolean
+  expiring_docs?: boolean
+  search?: string
+  limit?: number
+  offset?: number
+}): Promise<WorkforceEmployeeDirectoryPage> {
+  const { data } = await http.get<WorkforceEmployeeDirectoryPage>('/workforce/employees/directory', {
+    params: {
+      status: params?.status || undefined,
+      compliance_status: params?.compliance_status || undefined,
+      risk_level: params?.risk_level || undefined,
+      missing_docs: params?.missing_docs === true ? true : undefined,
+      expiring_docs: params?.expiring_docs === true ? true : undefined,
+      search: params?.search?.trim() || undefined,
+      limit: params?.limit,
+      offset: params?.offset,
+    },
+  })
+  return data
+}
+
+export async function getWorkforceEmployeeOperationalProfile(
+  employeeId: string,
+): Promise<WorkforceEmployeeOperationalProfile> {
+  const { data } = await http.get<WorkforceEmployeeOperationalProfile>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/operational-profile`,
+  )
   return data
 }
 
@@ -208,12 +482,10 @@ function pickCandDocDownloadUrl(raw: Record<string, unknown>): string | null {
   return null
 }
 
-export async function listWorkforceEmployeeDocuments(
-  employeeId: string,
-): Promise<WorkforceEmployeeDocumentRow[]> {
-  const { data } = await http.get<Array<Record<string, unknown>>>(
-    `/workforce/employees/${encodeURIComponent(employeeId)}/documents`,
-  )
+/** Map CandDoc-shaped API JSON to document table rows (same as listWorkforceEmployeeDocuments). */
+export function candDocRecordsToEmployeeDocumentRows(
+  data: Array<Record<string, unknown>>,
+): WorkforceEmployeeDocumentRow[] {
   return (data || []).map((raw) => {
     const doc = normalizeDocument(raw)
     let downloadUrl = pickCandDocDownloadUrl(raw)
@@ -225,6 +497,15 @@ export async function listWorkforceEmployeeDocuments(
     const daysLeft = typeof dl === 'number' && Number.isFinite(dl) ? dl : null
     return { document: doc, downloadUrl, daysLeft }
   })
+}
+
+export async function listWorkforceEmployeeDocuments(
+  employeeId: string,
+): Promise<WorkforceEmployeeDocumentRow[]> {
+  const { data } = await http.get<Array<Record<string, unknown>>>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/documents`,
+  )
+  return candDocRecordsToEmployeeDocumentRows(data || [])
 }
 
 export async function patchWorkforcePayrollProfile(
@@ -244,6 +525,75 @@ export async function patchWorkforceZusProfile(
 ): Promise<WorkforceZusProfile> {
   const { data } = await http.patch<WorkforceZusProfile>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/zus-profile`,
+    payload,
+  )
+  return data
+}
+
+export async function patchWorkforceTaxProfile(
+  employeeId: string,
+  payload: Partial<
+    Omit<WorkforceTaxProfile, 'id' | 'tenant_id' | 'employee_id' | 'created_at' | 'updated_at'>
+  > & { pit2_monthly_amount?: string | null },
+): Promise<WorkforceTaxProfile> {
+  const { data } = await http.patch<WorkforceTaxProfile>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/tax-profile`,
+    payload,
+  )
+  return data
+}
+
+export async function patchWorkforceInsuranceProfile(
+  employeeId: string,
+  payload: Partial<
+    Omit<WorkforceInsuranceProfile, 'id' | 'tenant_id' | 'employee_id' | 'created_at' | 'updated_at'>
+  >,
+): Promise<WorkforceInsuranceProfile> {
+  const { data } = await http.patch<WorkforceInsuranceProfile>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/insurance-profile`,
+    payload,
+  )
+  return data
+}
+
+export async function patchWorkforceWorkEligibility(
+  employeeId: string,
+  payload: Record<string, unknown>,
+): Promise<WorkforceWorkEligibilityProfile> {
+  const { data } = await http.patch<WorkforceWorkEligibilityProfile>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/work-eligibility`,
+    payload,
+  )
+  return data
+}
+
+export async function getWorkEligibilityJourney(employeeId: string): Promise<WorkEligibilityJourney> {
+  const { data } = await http.get<WorkEligibilityJourney>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/work-eligibility/journey`,
+  )
+  return data
+}
+
+export async function patchWorkforceWorkEligibilityPaymentRequirement(
+  employeeId: string,
+  requirementId: string,
+  payload: Record<string, unknown>,
+): Promise<WorkforceWorkEligibilityPaymentRequirement> {
+  const { data } = await http.patch<WorkforceWorkEligibilityPaymentRequirement>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/work-eligibility/payment-requirements/${encodeURIComponent(requirementId)}`,
+    payload,
+  )
+  return data
+}
+
+export async function patchWorkforceComplianceState(
+  employeeId: string,
+  payload: Partial<
+    Omit<WorkforceComplianceState, 'id' | 'tenant_id' | 'employee_id' | 'created_at' | 'updated_at'>
+  >,
+): Promise<WorkforceComplianceState> {
+  const { data } = await http.patch<WorkforceComplianceState>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/compliance-state`,
     payload,
   )
   return data

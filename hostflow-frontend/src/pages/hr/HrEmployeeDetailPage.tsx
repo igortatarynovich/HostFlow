@@ -1,27 +1,41 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import {
   createWorkforceAbsence,
   createWorkforceEmployment,
   createWorkforceLeaveRequest,
-  getWorkforceEmployee,
-  getWorkforceHrBundle,
+  candDocRecordsToEmployeeDocumentRows,
+  getWorkforceEmployeeOperationalProfile,
   patchWorkforceAbsence,
+  patchWorkforceComplianceState,
   patchWorkforceEmployee,
   patchWorkforceEmployment,
+  patchWorkforceInsuranceProfile,
   patchWorkforceLeaveRequest,
   patchWorkforceOnboardingTask,
   patchWorkforcePayrollProfile,
+  patchWorkforceTaxProfile,
+  patchWorkforceWorkEligibility,
+  patchWorkforceWorkEligibilityPaymentRequirement,
   patchWorkforceZusProfile,
+  type WorkforceComplianceState,
   type WorkforceEmployee,
+  type WorkforceEmployeeOperationalProfile,
   type WorkforceHrBundle,
+  type WorkforceInsuranceProfile,
+  type WorkforceTaxProfile,
+  type WorkforceWorkEligibilityPaymentRequirement,
 } from '../../api/workforce'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
 import { PageBreadcrumb } from '../../components/nav/PageBreadcrumb'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { HrEmployeeDocumentsSection } from './HrEmployeeDocumentsSection'
+import WorkEligibilityJourneyWorkspace from '../../components/hr/WorkEligibilityJourneyWorkspace'
+import HrRecruitmentTransferSummary from '../../components/hr/HrRecruitmentTransferSummary'
+import HrLegalDocumentChecklist from '../../components/hr/HrLegalDocumentChecklist'
+import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
 
 const EMPLOYEE_STATUSES = [
   'onboarding',
@@ -45,6 +59,18 @@ const PAYROLL_STATUSES = [
 const PAY_TYPES = ['fixed_salary', 'hourly', 'per_km', 'per_route', 'mixed'] as const
 
 const ZUS_STATUSES = ['not_submitted', 'submitted', 'active', 'correction_required', 'deregistered'] as const
+
+/** Legal insurance profile row (not ZUS registration workflow). */
+const INSURANCE_LEGAL_STATUSES = ['draft', 'registered', 'suspended', 'deregistered'] as const
+
+/** `datetime-local` value from an API ISO string (local wall time). */
+function isoToDatetimeLocalValue(iso: string | null | undefined): string {
+  if (iso == null || iso === '') return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 function stringifyJsonField(value: Record<string, unknown> | null | undefined): string {
   if (value == null) return ''
@@ -83,12 +109,14 @@ function parseOptionalJsonObject(
 function Section({
   title,
   children,
+  defaultOpen = true,
 }: {
   title: string
-  children: ReactNode
+  children: React.ReactNode
+  defaultOpen?: boolean
 }) {
   return (
-    <details open className="border border-slate-200 rounded-lg bg-white">
+    <details {...(defaultOpen ? { open: true } : {})} className="border border-slate-200 rounded-lg bg-white">
       <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-900 border-b border-slate-100">
         {title}
       </summary>
@@ -102,10 +130,12 @@ export default function HrEmployeeDetailPage() {
   const { t } = useI18n()
   const { can } = usePermissions()
   const { notify } = useToast()
-  const [employee, setEmployee] = useState<WorkforceEmployee | null>(null)
-  const [bundle, setBundle] = useState<WorkforceHrBundle | null>(null)
+  const [profile, setProfile] = useState<WorkforceEmployeeOperationalProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+
+  const employee = profile?.employee ?? null
+  const bundle = profile?.hr_bundle ?? null
 
   const manage = can('workforce.manage')
 
@@ -113,15 +143,10 @@ export default function HrEmployeeDetailPage() {
     if (!employeeId) return
     setLoading(true)
     try {
-      const [emp, b] = await Promise.all([
-        getWorkforceEmployee(employeeId),
-        getWorkforceHrBundle(employeeId),
-      ])
-      setEmployee(emp)
-      setBundle(b)
+      const p = await getWorkforceEmployeeOperationalProfile(employeeId)
+      setProfile(p)
     } catch {
-      setEmployee(null)
-      setBundle(null)
+      setProfile(null)
       notify({
         variant: 'error',
         title: t('app.hr.employee_detail.load_error', { defaultValue: 'Could not load employee' }),
@@ -135,14 +160,10 @@ export default function HrEmployeeDetailPage() {
     if (can('workforce.view') && employeeId) void load()
   }, [can, employeeId, load])
 
-  const snapshotPretty = useMemo(() => {
-    if (!employee?.candidate_snapshot) return ''
-    try {
-      return JSON.stringify(employee.candidate_snapshot, null, 2)
-    } catch {
-      return ''
-    }
-  }, [employee?.candidate_snapshot])
+  const prefetchedDocRows = useMemo(() => {
+    if (!profile) return undefined
+    return candDocRecordsToEmployeeDocumentRows((profile.documents_linked || []) as Array<Record<string, unknown>>)
+  }, [profile])
 
   const runSave = async (key: string, fn: () => Promise<void>) => {
     setSaving(key)
@@ -166,7 +187,7 @@ export default function HrEmployeeDetailPage() {
   if (!can('workforce.view')) {
     return (
       <div className="p-6 text-sm text-slate-600">
-        {t('app.hr.employees.forbidden', { defaultValue: 'You do not have access to the HR workspace.' })}
+        {t('app.nav.hr.employees.forbidden', { defaultValue: 'You do not have access to the HR workspace.' })}
       </div>
     )
   }
@@ -223,6 +244,190 @@ export default function HrEmployeeDetailPage() {
         </Link>
       </div>
 
+      {profile ? (
+        <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm space-y-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.employee_operational.summary_kicker', { defaultValue: 'Operational summary' })}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200">
+              {profile.operational_summary.employee_status}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-900 ring-1 ring-indigo-100">
+              {t('app.hr.employee_operational.badge_compliance', {
+                defaultValue: 'Compliance: {v}',
+                values: { v: profile.operational_summary.compliance_status },
+              })}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-950 ring-1 ring-amber-100">
+              {t('app.hr.employee_operational.badge_risk', {
+                defaultValue: 'Risk: {v}',
+                values: { v: profile.operational_summary.risk_level },
+              })}
+            </span>
+          </div>
+          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+            <div>
+              <dt className="text-xs text-slate-500">
+                {t('app.nav.hr.directory.col_employer', { defaultValue: 'Employer' })}
+              </dt>
+              <dd className="font-medium text-slate-900">{profile.operational_summary.employer || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">{t('app.nav.hr.directory.col_client', { defaultValue: 'Client' })}</dt>
+              <dd className="font-medium text-slate-900">{profile.operational_summary.client || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">
+                {t('app.nav.hr.directory.col_position', { defaultValue: 'Position' })}
+              </dt>
+              <dd className="font-medium text-slate-900">{profile.operational_summary.position || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">
+                {t('app.nav.hr.directory.col_start', { defaultValue: 'Start' })}
+              </dt>
+              <dd className="font-medium text-slate-900">
+                {formatShortDateIso(profile.operational_summary.start_date)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">
+                {t('app.hr.employee_operational.probation_end', { defaultValue: 'Probation ends' })}
+              </dt>
+              <dd className="font-medium text-slate-900">
+                {formatShortDateIso(profile.operational_summary.probation_end)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">
+                {t('app.nav.hr.directory.col_assigned_hr', { defaultValue: 'Assigned HR' })}
+              </dt>
+              <dd className="font-medium text-slate-900">{profile.operational_summary.assigned_hr || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">{t('app.nav.hr.directory.col_missing', { defaultValue: 'Missing' })}</dt>
+              <dd className="font-medium text-slate-900 tabular-nums">
+                {profile.operational_summary.missing_documents_count}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">{t('app.nav.hr.directory.col_expiring', { defaultValue: 'Expiring' })}</dt>
+              <dd className="font-medium text-slate-900 tabular-nums">
+                {profile.operational_summary.expiring_documents_count}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+
+      <Section title={t('app.hr.employee_operational.section_employment', { defaultValue: 'Employment' })}>
+        {profile && profile.employment_operational.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b text-slate-600">
+                  <th className="py-2 pr-2">{t('app.hr.employee_operational.col_contract', { defaultValue: 'Contract' })}</th>
+                  <th className="py-2 pr-2">{t('app.hr.employee_operational.col_position', { defaultValue: 'Position' })}</th>
+                  <th className="py-2 pr-2">{t('app.hr.employee_operational.col_start', { defaultValue: 'Start' })}</th>
+                  <th className="py-2 pr-2">{t('app.hr.employee_operational.col_end', { defaultValue: 'End' })}</th>
+                  <th className="py-2 pr-2">{t('app.hr.employee_operational.col_probation', { defaultValue: 'Probation' })}</th>
+                  <th className="py-2">{t('app.hr.employee_operational.col_active', { defaultValue: 'Active' })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profile.employment_operational.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-50">
+                    <td className="py-2 pr-2 font-mono text-xs">{row.contract_type}</td>
+                    <td className="py-2 pr-2">{row.position || '—'}</td>
+                    <td className="py-2 pr-2">{formatShortDateIso(row.start_date)}</td>
+                    <td className="py-2 pr-2">{formatShortDateIso(row.end_date)}</td>
+                    <td className="py-2 pr-2">{formatShortDateIso(row.probation_end)}</td>
+                    <td className="py-2">{row.is_active ? '✓' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">
+            {t('app.hr.employee_operational.no_employment_rows', { defaultValue: 'No employment rows yet.' })}
+          </p>
+        )}
+      </Section>
+
+      <Section title={t('app.hr.employee_operational.section_compliance', { defaultValue: 'Compliance & risk' })}>
+        {profile && profile.alerts.length > 0 ? (
+          <ul className="mb-3 space-y-1 text-sm text-slate-800">
+            {profile.alerts.map((a) => (
+              <li key={`${a.code}-${a.message}`} className="rounded border border-amber-100 bg-amber-50/80 px-3 py-2">
+                {a.message}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500 mb-3">
+            {t('app.hr.employee_operational.no_alerts', { defaultValue: 'No active alerts.' })}
+          </p>
+        )}
+        {profile && profile.risks.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-slate-600 border-b">
+                  <th className="py-1 pr-2">{t('app.hr.employee_operational.risk_code', { defaultValue: 'Code' })}</th>
+                  <th className="py-1 pr-2">{t('app.hr.employee_operational.risk_severity', { defaultValue: 'Severity' })}</th>
+                  <th className="py-1">{t('app.hr.employee_operational.risk_reason', { defaultValue: 'Reason' })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profile.risks.slice(0, 20).map((r, i) => (
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-1 pr-2 font-mono">{String(r.risk_code ?? '—')}</td>
+                    <td className="py-1 pr-2">{String(r.severity ?? '—')}</td>
+                    <td className="py-1">{String(r.reason ?? r.message ?? '—')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </Section>
+
+      <HrEmployeeDocumentsSection
+        employeeId={employeeId}
+        candidateId={employee.candidate_id}
+        prefetchedRows={prefetchedDocRows}
+        missingQueue={profile?.documents_missing}
+        expiringQueue={profile?.documents_expiring}
+      />
+
+      <Section title={t('app.hr.employee_operational.section_timeline', { defaultValue: 'Timeline' })}>
+        {profile && profile.timeline.length > 0 ? (
+          <ul className="space-y-2 text-sm max-h-80 overflow-y-auto">
+            {profile.timeline.map((ev) => (
+              <li key={ev.id} className="border-b border-slate-100 pb-2">
+                <div className="text-xs text-slate-500">{formatShortDateIso(ev.occurred_at)} · {ev.kind}</div>
+                <div className="font-medium text-slate-900">{ev.title}</div>
+                {ev.detail ? <div className="text-xs text-slate-600 mt-0.5 break-all">{ev.detail}</div> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">{t('app.hr.employee_operational.timeline_empty', { defaultValue: 'No timeline events.' })}</p>
+        )}
+      </Section>
+
+      <Section title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}>
+        <p className="text-xs text-slate-600 mb-3">
+          {t('app.hr.employee_operational.source_hint', {
+            defaultValue:
+              'Read-only context from recruitment at hire. Day-to-day HR work lives in tasks, documents, and workflows above.',
+          })}
+        </p>
+        {profile ? <HrRecruitmentTransferSummary profile={profile} linkedDocRows={prefetchedDocRows} /> : null}
+      </Section>
+
       <OverviewSection
         employee={employee}
         manage={manage}
@@ -232,12 +437,11 @@ export default function HrEmployeeDetailPage() {
         }
       />
 
-      <HrEmployeeDocumentsSection employeeId={employeeId} candidateId={employee.candidate_id} />
-
       <PayrollSection
         profile={bundle.payroll_profile}
         manage={manage}
         saving={saving === 'payroll'}
+        defaultOpen={false}
         onSave={(payload) =>
           runSave('payroll', () => patchWorkforcePayrollProfile(employeeId, payload))
         }
@@ -247,8 +451,80 @@ export default function HrEmployeeDetailPage() {
         profile={bundle.zus_profile}
         manage={manage}
         saving={saving === 'zus'}
+        defaultOpen={false}
         onSave={(payload) => runSave('zus', () => patchWorkforceZusProfile(employeeId, payload))}
       />
+
+      <Section
+        defaultOpen
+        title={t('app.hr.work_eligibility.section_title', {
+          defaultValue: 'Work eligibility & statutory fees',
+        })}
+      >
+        <WorkEligibilityJourneyWorkspace
+          employeeId={employeeId}
+          profile={bundle.work_eligibility_profile ?? null}
+          paymentRequirements={bundle.work_eligibility_payment_requirements ?? []}
+          docSummary={
+            bundle.hr_document_context_summary ?? {
+              total: 0,
+              by_context_type: {},
+              items: [],
+            }
+          }
+          timeline={profile?.timeline ?? []}
+          manage={manage}
+          saving={saving}
+          onSaveEligibility={(payload) =>
+            runSave('work_eligibility', () => patchWorkforceWorkEligibility(employeeId, payload))
+          }
+          onSavePayment={(rid, payload) =>
+            runSave(`wel_pay_${rid}`, () =>
+              patchWorkforceWorkEligibilityPaymentRequirement(employeeId, rid, payload),
+            )
+          }
+        />
+      </Section>
+
+      <LegalTaxProfileSection
+        profile={bundle.tax_profile ?? null}
+        manage={manage}
+        saving={saving === 'legal_tax'}
+        defaultOpen={false}
+        onSave={(payload) => runSave('legal_tax', () => patchWorkforceTaxProfile(employeeId, payload))}
+      />
+
+      <LegalInsuranceProfileSection
+        profile={bundle.insurance_profile ?? null}
+        manage={manage}
+        saving={saving === 'legal_insurance'}
+        defaultOpen={false}
+        onSave={(payload) => runSave('legal_insurance', () => patchWorkforceInsuranceProfile(employeeId, payload))}
+      />
+
+      <StoredComplianceStateSection
+        state={bundle.compliance_state ?? null}
+        manage={manage}
+        saving={saving === 'legal_compliance'}
+        defaultOpen={false}
+        onSave={(payload) => runSave('legal_compliance', () => patchWorkforceComplianceState(employeeId, payload))}
+        notify={notify}
+      />
+
+      <Section
+        defaultOpen={false}
+        title={t('app.hr.employee_operational.section_legal_documents', { defaultValue: 'Legal document checklist' })}
+      >
+        <HrLegalDocumentChecklist
+          summary={
+            bundle.hr_document_context_summary ?? {
+              total: 0,
+              by_context_type: {},
+              items: [],
+            }
+          }
+        />
+      </Section>
 
       <EmploymentsSection
         employeeId={employeeId}
@@ -258,12 +534,14 @@ export default function HrEmployeeDetailPage() {
         onReload={load}
         notify={notify}
         t={t}
+        defaultOpen={false}
       />
 
       <OnboardingSection
         tasks={bundle.onboarding_tasks}
         manage={manage}
         saving={saving}
+        overdueCount={profile?.onboarding_overdue_count ?? 0}
         onMarkDone={(taskId) =>
           runSave(`task-${taskId}`, () => patchWorkforceOnboardingTask(taskId, { status: 'done' }))
         }
@@ -277,6 +555,7 @@ export default function HrEmployeeDetailPage() {
         onReload={load}
         notify={notify}
         t={t}
+        defaultOpen={false}
       />
 
       <LeaveSection
@@ -287,26 +566,8 @@ export default function HrEmployeeDetailPage() {
         onReload={load}
         notify={notify}
         t={t}
+        defaultOpen={false}
       />
-
-      {snapshotPretty ? (
-        <Section title={t('app.hr.employee_detail.snapshot', { defaultValue: 'Candidate snapshot (hire)' })}>
-          <pre className="text-xs bg-slate-50 border border-slate-100 rounded p-3 overflow-x-auto max-h-64 overflow-y-auto">
-            {snapshotPretty}
-          </pre>
-        </Section>
-      ) : null}
-
-      {employee.candidate_id ? (
-        <div className="text-sm">
-          <Link
-            className="text-brand-600 hover:underline"
-            to={`${CRM_APP_PATHS.candidates}/${encodeURIComponent(employee.candidate_id)}`}
-          >
-            {t('app.hr.employee_detail.open_candidate', { defaultValue: 'Open linked candidate' })}
-          </Link>
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -337,7 +598,7 @@ function OverviewSection({
     <Section title={t('app.hr.employee_detail.section_overview', { defaultValue: 'Overview' })}>
       <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          {t('app.hr.employees.display_name', { defaultValue: 'Full name' })}
+          {t('app.nav.hr.employees.display_name', { defaultValue: 'Full name' })}
           <input
             className="border border-slate-200 rounded px-2 py-1.5 text-sm"
             value={display_name}
@@ -346,7 +607,7 @@ function OverviewSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          {t('app.hr.employees.col_status', { defaultValue: 'Status' })}
+          {t('app.nav.hr.employees.col_status', { defaultValue: 'Status' })}
           <select
             className="border border-slate-200 rounded px-2 py-1.5 text-sm"
             value={status}
@@ -361,7 +622,7 @@ function OverviewSection({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          {t('app.hr.employees.col_hire', { defaultValue: 'Hire date' })}
+          {t('app.nav.hr.employees.col_hire', { defaultValue: 'Hire date' })}
           <input
             type="date"
             className="border border-slate-200 rounded px-2 py-1.5 text-sm"
@@ -396,11 +657,13 @@ function PayrollSection({
   manage,
   saving,
   onSave,
+  defaultOpen = true,
 }: {
   profile: WorkforceHrBundle['payroll_profile']
   manage: boolean
   saving: boolean
   onSave: (p: Parameters<typeof patchWorkforcePayrollProfile>[1]) => void
+  defaultOpen?: boolean
 }) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -437,14 +700,17 @@ function PayrollSection({
 
   if (!profile) {
     return (
-      <Section title={t('app.hr.employee_detail.section_payroll', { defaultValue: 'Payroll profile' })}>
+      <Section
+        defaultOpen={defaultOpen}
+        title={t('app.hr.employee_detail.section_payroll', { defaultValue: 'Payroll profile' })}
+      >
         <p className="text-sm text-slate-500">{t('app.hr.employee_detail.no_payroll', { defaultValue: 'No payroll row yet.' })}</p>
       </Section>
     )
   }
 
   return (
-    <Section title={t('app.hr.employee_detail.section_payroll', { defaultValue: 'Payroll profile' })}>
+    <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_payroll', { defaultValue: 'Payroll profile' })}>
       <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Pay type
@@ -624,11 +890,13 @@ function ZusSection({
   manage,
   saving,
   onSave,
+  defaultOpen = true,
 }: {
   profile: WorkforceHrBundle['zus_profile']
   manage: boolean
   saving: boolean
   onSave: (p: Parameters<typeof patchWorkforceZusProfile>[1]) => void
+  defaultOpen?: boolean
 }) {
   const { t } = useI18n()
   const [registration_status, setRegStatus] = useState(profile?.registration_status || 'not_submitted')
@@ -646,14 +914,14 @@ function ZusSection({
 
   if (!profile) {
     return (
-      <Section title={t('app.hr.employee_detail.section_zus', { defaultValue: 'ZUS' })}>
+      <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_zus', { defaultValue: 'ZUS' })}>
         <p className="text-sm text-slate-500">{t('app.hr.employee_detail.no_zus', { defaultValue: 'No ZUS row yet.' })}</p>
       </Section>
     )
   }
 
   return (
-    <Section title={t('app.hr.employee_detail.section_zus', { defaultValue: 'ZUS' })}>
+    <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_zus', { defaultValue: 'ZUS' })}>
       <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Registration status
@@ -722,6 +990,823 @@ function ZusSection({
   )
 }
 
+function WorkEligibilitySection({
+  employeeId,
+  profile,
+  paymentRequirements,
+  manage,
+  saving,
+  onSaveEligibility,
+  onSavePayment,
+  t,
+}: {
+  employeeId: string
+  profile: WorkforceWorkEligibilityProfile | null
+  paymentRequirements: WorkforceWorkEligibilityPaymentRequirement[]
+  manage: boolean
+  saving: string | null
+  onSaveEligibility: (p: Record<string, unknown>) => Promise<void>
+  onSavePayment: (rid: string, p: Record<string, unknown>) => Promise<void>
+  t: ReturnType<typeof useI18n>['t']
+}) {
+  const [journey, setJourney] = useState<WorkEligibilityJourney | null>(null)
+  const [journeyLoading, setJourneyLoading] = useState(true)
+
+  const paySig = paymentRequirements.map((r) => `${r.id}:${r.payment_status}:${r.updated_at}`).join('|')
+
+  const reloadJourney = useCallback(async () => {
+    setJourneyLoading(true)
+    try {
+      const j = await getWorkEligibilityJourney(employeeId)
+      setJourney(j)
+    } catch {
+      setJourney(null)
+    } finally {
+      setJourneyLoading(false)
+    }
+  }, [employeeId])
+
+  useEffect(() => {
+    void reloadJourney()
+  }, [employeeId, profile?.updated_at, paySig, reloadJourney])
+
+  const [citizenship, setCitizenship] = useState(profile?.citizenship || '')
+  const [positionCategory, setPositionCategory] = useState(profile?.position_category || '')
+  const [eligibilityStatus, setEligibilityStatus] = useState(profile?.eligibility_status || 'not_evaluated')
+  const [requiresPermit, setRequiresPermit] = useState<boolean>(profile?.requires_work_permit !== false)
+  const [appStatus, setAppStatus] = useState(profile?.work_permit_application_status || '')
+  const [redPaper, setRedPaper] = useState(profile?.red_paper_status || '')
+
+  useEffect(() => {
+    if (!profile) return
+    setCitizenship(profile.citizenship || '')
+    setPositionCategory(profile.position_category || '')
+    setEligibilityStatus(profile.eligibility_status || 'not_evaluated')
+    setRequiresPermit(profile.requires_work_permit !== false)
+    setAppStatus(profile.work_permit_application_status || '')
+    setRedPaper(profile.red_paper_status || '')
+  }, [profile])
+
+  return (
+    <Section
+      defaultOpen
+      title={t('app.hr.work_eligibility.section_title', {
+        defaultValue: 'Work eligibility & statutory fees',
+      })}
+    >
+      <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">
+          {t('app.hr.work_eligibility.journey_title', { defaultValue: 'Work eligibility journey' })}
+        </h3>
+        {journeyLoading ? (
+          <p className="text-xs text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
+        ) : journey ? (
+          <>
+            <p className="text-sm text-slate-700 mb-3">{journey.recommended_next_action}</p>
+            <ol className="space-y-2">
+              {journey.steps.map((step) => (
+                <li
+                  key={step.step_code}
+                  className="flex flex-wrap items-start gap-2 text-sm border border-slate-200 rounded-md bg-white px-3 py-2"
+                >
+                  <span
+                    className={`mt-0.5 inline-flex h-6 min-w-[4.5rem] items-center justify-center rounded text-xs font-medium ${
+                      step.status === 'done' || step.status === 'not_required'
+                        ? 'bg-slate-200 text-slate-700'
+                        : step.status === 'current'
+                          ? 'bg-indigo-600 text-white'
+                          : step.status === 'blocked'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-amber-100 text-amber-900'
+                    }`}
+                  >
+                    {step.status}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-slate-900">{step.label}</div>
+                    <div className="text-xs text-slate-500 font-mono">{step.step_code}</div>
+                    {(step.blockers?.length ?? 0) > 0 ? (
+                      <div className="text-xs text-rose-700 mt-1">
+                        {(step.blockers ?? []).join(' · ')}
+                      </div>
+                    ) : null}
+                    {(step.required_documents?.length ?? 0) > 0 ? (
+                      <div className="text-xs text-slate-600 mt-1">
+                        Docs: {(step.required_documents ?? []).join(', ')}
+                      </div>
+                    ) : null}
+                    {step.action_label ? (
+                      <div className="text-xs text-slate-700 mt-1">{step.action_label}</div>
+                    ) : null}
+                    {step.external_submission_url ? (
+                      <a
+                        href={step.external_submission_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-indigo-700 underline mt-1 inline-block"
+                      >
+                        {t('app.hr.work_eligibility.external_link', { defaultValue: 'External portal' })}
+                      </a>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <p className="text-xs text-rose-700">
+            {t('app.hr.work_eligibility.journey_error', { defaultValue: 'Could not load journey.' })}
+          </p>
+        )}
+      </div>
+
+      <details className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50">
+        <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-slate-600">
+          {t('app.hr.work_eligibility.raw_toggle', {
+            defaultValue: 'Raw eligibility fields & payment rows (advanced)',
+          })}
+        </summary>
+        <div className="px-3 pb-4 pt-1 border-t border-slate-100">
+          {!profile ? (
+            <p className="text-sm text-slate-500">
+              {t('app.hr.work_eligibility.no_profile', { defaultValue: 'No work eligibility profile yet.' })}
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+              <label className="flex flex-col gap-1 text-xs text-slate-600">
+                {t('app.hr.work_eligibility.citizenship', { defaultValue: 'Citizenship (ISO2)' })}
+                <input
+                  className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+                  disabled={!manage}
+                  value={citizenship}
+                  onChange={(e) => setCitizenship(e.target.value.toUpperCase())}
+                  maxLength={8}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-600">
+                {t('app.hr.work_eligibility.position', { defaultValue: 'Position category' })}
+                <input
+                  className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+                  disabled={!manage}
+                  value={positionCategory}
+                  onChange={(e) => setPositionCategory(e.target.value)}
+                  placeholder="driver"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-600">
+                {t('app.hr.work_eligibility.status', { defaultValue: 'Eligibility status' })}
+                <input
+                  className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+                  disabled={!manage}
+                  value={eligibilityStatus}
+                  onChange={(e) => setEligibilityStatus(e.target.value)}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-600 mt-5">
+                <input
+                  type="checkbox"
+                  disabled={!manage}
+                  checked={requiresPermit}
+                  onChange={(e) => setRequiresPermit(e.target.checked)}
+                />
+                {t('app.hr.work_eligibility.requires_permit', { defaultValue: 'Requires work permit' })}
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-600">
+                {t('app.hr.work_eligibility.permit_app', { defaultValue: 'Work permit application status' })}
+                <input
+                  className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+                  disabled={!manage}
+                  value={appStatus}
+                  onChange={(e) => setAppStatus(e.target.value)}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-600">
+                {t('app.hr.work_eligibility.red_paper', { defaultValue: 'Red paper status' })}
+                <input
+                  className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+                  disabled={!manage}
+                  value={redPaper}
+                  onChange={(e) => setRedPaper(e.target.value)}
+                />
+              </label>
+              {manage ? (
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    disabled={saving === 'work_eligibility'}
+                    className="px-3 py-1.5 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
+                    onClick={() =>
+                      void onSaveEligibility({
+                        citizenship: citizenship.trim() || null,
+                        position_category: positionCategory.trim() || null,
+                        eligibility_status: eligibilityStatus.trim() || null,
+                        requires_work_permit: requiresPermit,
+                        work_permit_application_status: appStatus.trim() || null,
+                        red_paper_status: redPaper.trim() || null,
+                      }).then(() => {
+                        void reloadJourney()
+                      })
+                    }
+                  >
+                    {t('app.hr.employee_detail.save', { defaultValue: 'Save' })}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-2">
+              {t('app.hr.work_eligibility.payments_title', { defaultValue: 'Work eligibility payments' })}
+            </h3>
+            {paymentRequirements.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                {t('app.hr.work_eligibility.payments_empty', {
+                  defaultValue: 'No fee rows. They appear for third-country drivers when position is set to driver.',
+                })}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border border-slate-200 rounded">
+                  <thead className="bg-slate-50 text-left text-xs text-slate-600">
+                    <tr>
+                      <th className="px-2 py-2">{t('app.hr.work_eligibility.col_type', { defaultValue: 'Type' })}</th>
+                      <th className="px-2 py-2">{t('app.hr.work_eligibility.col_amount', { defaultValue: 'Amount' })}</th>
+                      <th className="px-2 py-2">{t('app.hr.work_eligibility.col_status', { defaultValue: 'Status' })}</th>
+                      <th className="px-2 py-2">{t('app.hr.work_eligibility.col_blocks', { defaultValue: 'Blocks' })}</th>
+                      <th className="px-2 py-2">
+                        {t('app.hr.work_eligibility.col_reference', { defaultValue: 'Reference' })}
+                      </th>
+                      <th className="px-2 py-2">
+                        {t('app.hr.work_eligibility.col_receipt', { defaultValue: 'Receipt doc id' })}
+                      </th>
+                      <th className="px-2 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentRequirements.map((row) => (
+                      <PaymentRequirementRow
+                        key={row.id}
+                        row={row}
+                        manage={manage}
+                        saving={saving === `wel_pay_${row.id}`}
+                        onMarkWaived={() =>
+                          void onSavePayment(row.id, { payment_status: 'waived' }).then(() => {
+                            void reloadJourney()
+                          })
+                        }
+                        onSaveDetails={(patch) =>
+                          void onSavePayment(row.id, patch).then(() => {
+                            void reloadJourney()
+                          })
+                        }
+                        t={t}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </details>
+    </Section>
+  )
+}
+
+function PaymentRequirementRow({
+  row,
+  manage,
+  saving,
+  onMarkWaived,
+  onSaveDetails,
+  t,
+}: {
+  row: WorkforceWorkEligibilityPaymentRequirement
+  manage: boolean
+  saving: boolean
+  onMarkWaived: () => void
+  onSaveDetails: (p: Record<string, unknown>) => void
+  t: ReturnType<typeof useI18n>['t']
+}) {
+  const [reference, setReference] = useState(row.payment_reference || '')
+  const [receiptId, setReceiptId] = useState(row.receipt_document_id || '')
+  useEffect(() => {
+    setReference(row.payment_reference || '')
+    setReceiptId(row.receipt_document_id || '')
+  }, [row.payment_reference, row.receipt_document_id])
+
+  return (
+    <tr className="border-t border-slate-100">
+      <td className="px-2 py-2 font-mono text-xs">{row.requirement_type}</td>
+      <td className="px-2 py-2">
+        {row.amount ?? '—'} {row.currency}
+      </td>
+      <td className="px-2 py-2">{row.payment_status}</td>
+      <td className="px-2 py-2 text-xs text-slate-600">{row.blocks_step ?? '—'}</td>
+      <td className="px-2 py-2">
+        <input
+          className="border border-slate-200 rounded px-1 py-0.5 text-xs w-full max-w-[140px]"
+          disabled={!manage}
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+        />
+      </td>
+      <td className="px-2 py-2">
+        <input
+          className="border border-slate-200 rounded px-1 py-0.5 text-xs w-full max-w-[120px]"
+          disabled={!manage}
+          value={receiptId}
+          onChange={(e) => setReceiptId(e.target.value)}
+        />
+      </td>
+      <td className="px-2 py-2 whitespace-nowrap">
+        {manage ? (
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              disabled={saving}
+              className="text-xs px-2 py-0.5 rounded bg-emerald-700 text-white disabled:opacity-50"
+              onClick={() => {
+                onSaveDetails({
+                  payment_reference: reference.trim() || null,
+                  receipt_document_id: receiptId.trim() || null,
+                  payment_status: 'paid',
+                })
+              }}
+            >
+              {t('app.hr.work_eligibility.mark_paid', { defaultValue: 'Mark paid' })}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              className="text-xs px-2 py-0.5 rounded border border-slate-300 disabled:opacity-50"
+              onClick={onMarkWaived}
+            >
+              {t('app.hr.work_eligibility.waive', { defaultValue: 'Waive' })}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              className="text-xs px-2 py-0.5 rounded border border-slate-300 disabled:opacity-50"
+              onClick={() =>
+                onSaveDetails({
+                  payment_reference: reference.trim() || null,
+                  receipt_document_id: receiptId.trim() || null,
+                })
+              }
+            >
+              {t('app.hr.work_eligibility.save_ref', { defaultValue: 'Save ref' })}
+            </button>
+          </div>
+        ) : null}
+      </td>
+    </tr>
+  )
+}
+
+function LegalTaxProfileSection({
+  profile,
+  manage,
+  saving,
+  onSave,
+  defaultOpen = true,
+}: {
+  profile: WorkforceTaxProfile | null
+  manage: boolean
+  saving: boolean
+  onSave: (p: Parameters<typeof patchWorkforceTaxProfile>[1]) => void
+  defaultOpen?: boolean
+}) {
+  const { t } = useI18n()
+  const [tax_residency_country, setResidency] = useState(profile?.tax_residency_country || '')
+  const [tax_office, setOffice] = useState(profile?.tax_office || '')
+  const [pit2_submitted, setPit2] = useState(Boolean(profile?.pit2_submitted))
+  const [pit2_monthly_amount, setPit2Amt] = useState(
+    profile?.pit2_monthly_amount != null ? String(profile.pit2_monthly_amount) : '',
+  )
+  const [tax_deductible_costs_type, setCosts] = useState(profile?.tax_deductible_costs_type || '')
+  const [young_person_relief, setYoung] = useState(Boolean(profile?.young_person_relief))
+
+  useEffect(() => {
+    if (!profile) return
+    setResidency(profile.tax_residency_country || '')
+    setOffice(profile.tax_office || '')
+    setPit2(Boolean(profile.pit2_submitted))
+    setPit2Amt(profile.pit2_monthly_amount != null ? String(profile.pit2_monthly_amount) : '')
+    setCosts(profile.tax_deductible_costs_type || '')
+    setYoung(Boolean(profile.young_person_relief))
+  }, [profile])
+
+  if (!profile) {
+    return (
+      <Section
+        defaultOpen={defaultOpen}
+        title={t('app.hr.employee_legal.section_tax', { defaultValue: 'Tax profile (legal)' })}
+      >
+        <p className="text-sm text-slate-500">
+          {t('app.hr.employee_legal.no_tax_profile', { defaultValue: 'No tax profile row yet.' })}
+        </p>
+      </Section>
+    )
+  }
+
+  return (
+    <Section
+      defaultOpen={defaultOpen}
+      title={t('app.hr.employee_legal.section_tax', { defaultValue: 'Tax profile (legal)' })}
+    >
+      <p className="text-xs text-slate-600 mb-3">
+        {t('app.hr.employee_legal.tax_hint', {
+          defaultValue: 'PIT-oriented legal fields. This is not payroll calculation.',
+        })}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.tax_residency', { defaultValue: 'Tax residency (country code)' })}
+          <input
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono uppercase"
+            disabled={!manage}
+            value={tax_residency_country}
+            onChange={(e) => setResidency(e.target.value)}
+            maxLength={8}
+            placeholder="PL"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.tax_office', { defaultValue: 'Tax office' })}
+          <input
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={tax_office}
+            onChange={(e) => setOffice(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-row items-center gap-2 text-xs text-slate-600">
+          <input type="checkbox" disabled={!manage} checked={pit2_submitted} onChange={(e) => setPit2(e.target.checked)} />
+          {t('app.hr.employee_legal.pit2_submitted', { defaultValue: 'PIT-2 submitted' })}
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.pit2_monthly', { defaultValue: 'PIT-2 monthly amount' })}
+          <input
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={pit2_monthly_amount}
+            onChange={(e) => setPit2Amt(e.target.value)}
+            placeholder="0.00"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
+          {t('app.hr.employee_legal.deductible_costs', { defaultValue: 'Tax-deductible costs type' })}
+          <input
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={tax_deductible_costs_type}
+            onChange={(e) => setCosts(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-row items-center gap-2 text-xs text-slate-600 sm:col-span-2">
+          <input type="checkbox" disabled={!manage} checked={young_person_relief} onChange={(e) => setYoung(e.target.checked)} />
+          {t('app.hr.employee_legal.young_relief', { defaultValue: 'Young person relief' })}
+        </label>
+      </div>
+      {manage ? (
+        <button
+          type="button"
+          disabled={saving}
+          className="mt-3 px-3 py-1.5 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
+          onClick={() =>
+            onSave({
+              tax_residency_country: tax_residency_country.trim() || null,
+              tax_office: tax_office.trim() || null,
+              pit2_submitted,
+              pit2_monthly_amount: pit2_monthly_amount.trim() || null,
+              tax_deductible_costs_type: tax_deductible_costs_type.trim() || null,
+              young_person_relief,
+            })
+          }
+        >
+          {t('app.hr.employee_detail.save', { defaultValue: 'Save' })}
+        </button>
+      ) : null}
+    </Section>
+  )
+}
+
+function LegalInsuranceProfileSection({
+  profile,
+  manage,
+  saving,
+  onSave,
+  defaultOpen = true,
+}: {
+  profile: WorkforceInsuranceProfile | null
+  manage: boolean
+  saving: boolean
+  onSave: (p: Parameters<typeof patchWorkforceInsuranceProfile>[1]) => void
+  defaultOpen?: boolean
+}) {
+  const { t } = useI18n()
+  const [zus_title_code, setTitle] = useState(profile?.zus_title_code || '')
+  const [social_insurance, setSocial] = useState(profile?.social_insurance || '')
+  const [health_insurance, setHealth] = useState(profile?.health_insurance || '')
+  const [sickness_insurance, setSick] = useState(profile?.sickness_insurance || '')
+  const [accident_insurance, setAcc] = useState(profile?.accident_insurance || '')
+  const [zus_registration_type, setRegType] = useState(profile?.zus_registration_type || '')
+  const [registered_at, setRegAt] = useState(profile?.registered_at || '')
+  const [deregistered_at, setDereg] = useState(profile?.deregistered_at || '')
+  const [status, setStatus] = useState(profile?.status || 'draft')
+
+  useEffect(() => {
+    if (!profile) return
+    setTitle(profile.zus_title_code || '')
+    setSocial(profile.social_insurance || '')
+    setHealth(profile.health_insurance || '')
+    setSick(profile.sickness_insurance || '')
+    setAcc(profile.accident_insurance || '')
+    setRegType(profile.zus_registration_type || '')
+    setRegAt(profile.registered_at || '')
+    setDereg(profile.deregistered_at || '')
+    setStatus(profile.status || 'draft')
+  }, [profile])
+
+  if (!profile) {
+    return (
+      <Section
+        defaultOpen={defaultOpen}
+        title={t('app.hr.employee_legal.section_insurance', { defaultValue: 'Insurance / ZUS (legal)' })}
+      >
+        <p className="text-sm text-slate-500">
+          {t('app.hr.employee_legal.no_insurance', { defaultValue: 'No insurance profile row yet.' })}
+        </p>
+      </Section>
+    )
+  }
+
+  return (
+    <Section
+      defaultOpen={defaultOpen}
+      title={t('app.hr.employee_legal.section_insurance', { defaultValue: 'Insurance / ZUS (legal)' })}
+    >
+      <p className="text-xs text-slate-600 mb-3">
+        {t('app.hr.employee_legal.insurance_hint', {
+          defaultValue:
+            'Legal insurance materialisation. Distinct from the “ZUS” registration section above (workflow / forms).',
+        })}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.zus_title_code', { defaultValue: 'ZUS title code' })}
+          <input
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono"
+            disabled={!manage}
+            value={zus_title_code}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.insurance_status', { defaultValue: 'Profile status' })}
+          <select
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            {INSURANCE_LEGAL_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.social', { defaultValue: 'Social insurance' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm" disabled={!manage} value={social_insurance} onChange={(e) => setSocial(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.health', { defaultValue: 'Health insurance' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm" disabled={!manage} value={health_insurance} onChange={(e) => setHealth(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.sickness', { defaultValue: 'Sickness insurance' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm" disabled={!manage} value={sickness_insurance} onChange={(e) => setSick(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.accident', { defaultValue: 'Accident insurance' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm" disabled={!manage} value={accident_insurance} onChange={(e) => setAcc(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
+          {t('app.hr.employee_legal.zus_reg_type', { defaultValue: 'ZUS registration type' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm" disabled={!manage} value={zus_registration_type} onChange={(e) => setRegType(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.registered_at', { defaultValue: 'Registered at' })}
+          <input
+            type="date"
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={registered_at ? registered_at.slice(0, 10) : ''}
+            onChange={(e) => setRegAt(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.deregistered_at', { defaultValue: 'Deregistered at' })}
+          <input
+            type="date"
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={deregistered_at ? deregistered_at.slice(0, 10) : ''}
+            onChange={(e) => setDereg(e.target.value)}
+          />
+        </label>
+      </div>
+      {manage ? (
+        <button
+          type="button"
+          disabled={saving}
+          className="mt-3 px-3 py-1.5 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
+          onClick={() =>
+            onSave({
+              zus_title_code: zus_title_code.trim() || null,
+              social_insurance: social_insurance.trim() || null,
+              health_insurance: health_insurance.trim() || null,
+              sickness_insurance: sickness_insurance.trim() || null,
+              accident_insurance: accident_insurance.trim() || null,
+              zus_registration_type: zus_registration_type.trim() || null,
+              registered_at: registered_at ? registered_at.slice(0, 10) : null,
+              deregistered_at: deregistered_at ? deregistered_at.slice(0, 10) : null,
+              status,
+            })
+          }
+        >
+          {t('app.hr.employee_detail.save', { defaultValue: 'Save' })}
+        </button>
+      ) : null}
+    </Section>
+  )
+}
+
+function StoredComplianceStateSection({
+  state,
+  manage,
+  saving,
+  onSave,
+  notify,
+  defaultOpen = true,
+}: {
+  state: WorkforceComplianceState | null
+  manage: boolean
+  saving: boolean
+  onSave: (p: Parameters<typeof patchWorkforceComplianceState>[1]) => void
+  notify: ReturnType<typeof useToast>['notify']
+  defaultOpen?: boolean
+}) {
+  const { t } = useI18n()
+  const [status, setStatus] = useState(state?.status || 'not_evaluated')
+  const [missing_count, setMissing] = useState(String(state?.missing_count ?? 0))
+  const [expired_count, setExpired] = useState(String(state?.expired_count ?? 0))
+  const [expiring_soon_count, setExpSoon] = useState(String(state?.expiring_soon_count ?? 0))
+  const [high_risk_count, setHigh] = useState(String(state?.high_risk_count ?? 0))
+  const [cannot_work, setCannot] = useState(Boolean(state?.cannot_work))
+  const [last_evaluated_at, setEvalAt] = useState(() => isoToDatetimeLocalValue(state?.last_evaluated_at))
+  const [reasons_json, setReasonsJson] = useState(() => stringifyJsonField((state?.reasons as Record<string, unknown>) ?? undefined))
+
+  useEffect(() => {
+    if (!state) return
+    setStatus(state.status || 'not_evaluated')
+    setMissing(String(state.missing_count ?? 0))
+    setExpired(String(state.expired_count ?? 0))
+    setExpSoon(String(state.expiring_soon_count ?? 0))
+    setHigh(String(state.high_risk_count ?? 0))
+    setCannot(Boolean(state.cannot_work))
+    setEvalAt(isoToDatetimeLocalValue(state.last_evaluated_at))
+    setReasonsJson(stringifyJsonField((state.reasons as Record<string, unknown>) ?? undefined))
+  }, [state])
+
+  if (!state) {
+    return (
+      <Section
+        defaultOpen={defaultOpen}
+        title={t('app.hr.employee_legal.section_compliance_state', { defaultValue: 'Compliance state (stored)' })}
+      >
+        <p className="text-sm text-slate-500">
+          {t('app.hr.employee_legal.no_compliance', { defaultValue: 'No compliance state row yet.' })}
+        </p>
+      </Section>
+    )
+  }
+
+  const parseIntSafe = (raw: string, label: string): number | undefined => {
+    const s = raw.trim()
+    if (!s) return 0
+    const n = Number.parseInt(s, 10)
+    if (!Number.isFinite(n) || n < 0) {
+      notify({ variant: 'error', title: `${label}: ${t('app.hr.employee_legal.invalid_int', { defaultValue: 'invalid non-negative integer' })}` })
+      return undefined
+    }
+    return n
+  }
+
+  return (
+    <Section
+      defaultOpen={defaultOpen}
+      title={t('app.hr.employee_legal.section_compliance_state', { defaultValue: 'Compliance state (stored)' })}
+    >
+      <p className="text-xs text-slate-600 mb-3">
+        {t('app.hr.employee_legal.compliance_hint', {
+          defaultValue: 'Persisted snapshot for dashboards and exports. Queues above remain the operational signal.',
+        })}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.compliance_status', { defaultValue: 'Status' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm" disabled={!manage} value={status} onChange={(e) => setStatus(e.target.value)} />
+        </label>
+        <label className="flex flex-row items-center gap-2 text-xs text-slate-600">
+          <input type="checkbox" disabled={!manage} checked={cannot_work} onChange={(e) => setCannot(e.target.checked)} />
+          {t('app.hr.employee_legal.cannot_work', { defaultValue: 'Cannot work (legal block)' })}
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.missing_count', { defaultValue: 'Missing count' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm tabular-nums" disabled={!manage} value={missing_count} onChange={(e) => setMissing(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.expired_count', { defaultValue: 'Expired count' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm tabular-nums" disabled={!manage} value={expired_count} onChange={(e) => setExpired(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.expiring_soon', { defaultValue: 'Expiring soon count' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm tabular-nums" disabled={!manage} value={expiring_soon_count} onChange={(e) => setExpSoon(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600">
+          {t('app.hr.employee_legal.high_risk', { defaultValue: 'High risk count' })}
+          <input className="border border-slate-200 rounded px-2 py-1.5 text-sm tabular-nums" disabled={!manage} value={high_risk_count} onChange={(e) => setHigh(e.target.value)} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
+          {t('app.hr.employee_legal.last_evaluated', { defaultValue: 'Last evaluated (local)' })}
+          <input
+            type="datetime-local"
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            disabled={!manage}
+            value={last_evaluated_at}
+            onChange={(e) => setEvalAt(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
+          {t('app.hr.employee_legal.reasons_json', { defaultValue: 'Reasons (JSON)' })}
+          <textarea
+            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono min-h-[5rem]"
+            disabled={!manage}
+            value={reasons_json}
+            onChange={(e) => setReasonsJson(e.target.value)}
+            spellCheck={false}
+          />
+        </label>
+      </div>
+      {manage ? (
+        <button
+          type="button"
+          disabled={saving}
+          className="mt-3 px-3 py-1.5 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
+          onClick={() => {
+            const mi = parseIntSafe(missing_count, 'missing_count')
+            const ex = parseIntSafe(expired_count, 'expired_count')
+            const es = parseIntSafe(expiring_soon_count, 'expiring_soon_count')
+            const hr = parseIntSafe(high_risk_count, 'high_risk_count')
+            if (mi === undefined || ex === undefined || es === undefined || hr === undefined) return
+            const reasons = parseOptionalJsonObject(reasons_json, t('app.hr.employee_legal.reasons_json', { defaultValue: 'Reasons (JSON)' }), notify)
+            if (reasons === undefined) return
+            let lastEv: string | null = null
+            if (last_evaluated_at.trim()) {
+              const d = new Date(last_evaluated_at)
+              if (Number.isNaN(d.getTime())) {
+                notify({ variant: 'error', title: t('app.hr.employee_legal.bad_datetime', { defaultValue: 'Invalid last evaluated datetime' }) })
+                return
+              }
+              lastEv = d.toISOString()
+            } else {
+              lastEv = null
+            }
+            onSave({
+              status: status.trim() || undefined,
+              missing_count: mi,
+              expired_count: ex,
+              expiring_soon_count: es,
+              high_risk_count: hr,
+              cannot_work,
+              last_evaluated_at: lastEv,
+              reasons,
+            })
+          }}
+        >
+          {t('app.hr.employee_detail.save', { defaultValue: 'Save' })}
+        </button>
+      ) : null}
+    </Section>
+  )
+}
+
+
 function EmploymentsSection({
   employeeId,
   rows,
@@ -730,6 +1815,7 @@ function EmploymentsSection({
   onReload,
   notify,
   t,
+  defaultOpen = true,
 }: {
   employeeId: string
   rows: WorkforceHrBundle['employments']
@@ -738,6 +1824,7 @@ function EmploymentsSection({
   onReload: () => Promise<void>
   notify: ReturnType<typeof useToast>['notify']
   t: (key: string, opts?: { defaultValue?: string }) => string
+  defaultOpen?: boolean
 }) {
   const [contract_type, setContractType] = useState('umowa_o_prace')
   const [drafts, setDrafts] = useState<
@@ -821,7 +1908,10 @@ function EmploymentsSection({
   }
 
   return (
-    <Section title={t('app.hr.employee_detail.section_contracts', { defaultValue: 'Contracts (employment)' })}>
+    <Section
+      defaultOpen={defaultOpen}
+      title={t('app.hr.employee_detail.section_contracts', { defaultValue: 'Contracts (employment)' })}
+    >
       {manage ? (
         <div className="flex flex-wrap items-end gap-2 mb-4 border border-slate-100 rounded p-3 bg-slate-50/80">
           <label className="text-xs text-slate-600 flex flex-col gap-1">
@@ -1005,16 +2095,26 @@ function OnboardingSection({
   tasks,
   manage,
   saving,
+  overdueCount = 0,
   onMarkDone,
 }: {
   tasks: WorkforceHrBundle['onboarding_tasks']
   manage: boolean
   saving: string | null
+  overdueCount?: number
   onMarkDone: (taskId: string) => void
 }) {
   const { t } = useI18n()
   return (
     <Section title={t('app.hr.employee_detail.section_onboarding', { defaultValue: 'Onboarding' })}>
+      {overdueCount > 0 ? (
+        <p className="mb-3 rounded border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-950">
+          {t('app.hr.employee_operational.onboarding_overdue', {
+            defaultValue: '{count} task(s) overdue',
+            values: { count: overdueCount },
+          })}
+        </p>
+      ) : null}
       <ul className="space-y-2">
         {tasks.map((task) => (
           <li key={task.id} className="flex flex-wrap items-center justify-between gap-2 border border-slate-100 rounded px-3 py-2">
@@ -1047,6 +2147,7 @@ function AbsencesSection({
   onReload,
   notify,
   t,
+  defaultOpen = true,
 }: {
   employeeId: string
   rows: WorkforceHrBundle['absences']
@@ -1055,6 +2156,7 @@ function AbsencesSection({
   onReload: () => Promise<void>
   notify: ReturnType<typeof useToast>['notify']
   t: (key: string, opts?: { defaultValue?: string }) => string
+  defaultOpen?: boolean
 }) {
   const [absence_type, setType] = useState('sick_leave')
   const [start_date, setStart] = useState('')
@@ -1084,7 +2186,7 @@ function AbsencesSection({
   }
 
   return (
-    <Section title={t('app.hr.employee_detail.section_absences', { defaultValue: 'Absences' })}>
+    <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_absences', { defaultValue: 'Absences' })}>
       {manage ? (
         <div className="flex flex-wrap gap-2 items-end mb-4 p-3 bg-slate-50/80 rounded border border-slate-100">
           <label className="text-xs flex flex-col gap-1">
@@ -1164,6 +2266,7 @@ function LeaveSection({
   onReload,
   notify,
   t,
+  defaultOpen = true,
 }: {
   employeeId: string
   rows: WorkforceHrBundle['leave_requests']
@@ -1172,6 +2275,7 @@ function LeaveSection({
   onReload: () => Promise<void>
   notify: ReturnType<typeof useToast>['notify']
   t: (key: string, opts?: { defaultValue?: string }) => string
+  defaultOpen?: boolean
 }) {
   const [leave_type, setLeaveType] = useState('urlop_wypoczynkowy')
   const [start_date, setStart] = useState('')
@@ -1204,7 +2308,7 @@ function LeaveSection({
   }
 
   return (
-    <Section title={t('app.hr.employee_detail.section_leave', { defaultValue: 'Leave requests' })}>
+    <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_leave', { defaultValue: 'Leave requests' })}>
       {manage ? (
         <div className="flex flex-wrap gap-2 items-end mb-4 p-3 bg-slate-50/80 rounded border border-slate-100">
           <label className="text-xs flex flex-col gap-1">
