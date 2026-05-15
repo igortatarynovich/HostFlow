@@ -99,6 +99,122 @@ function blockerMessage(t: ReturnType<typeof useI18n>['t'], code: string): strin
   return code.replace(/_/g, ' ')
 }
 
+function legalStayFeeStepHasExplain(step: WorkEligibilityJourneyStep): boolean {
+  if (step.step_code !== 'legal_stay' && step.step_code !== 'work_permit_fee') return false
+  const factKeys = step.input_facts ? Object.keys(step.input_facts) : []
+  return Boolean(
+    step.decision_reason ||
+      step.rule_code ||
+      factKeys.length > 0 ||
+      step.confidence != null ||
+      step.cannot_determine_reason ||
+      step.primary_action ||
+      (step.secondary_actions?.length ?? 0) > 0 ||
+      (step.document_actions?.length ?? 0) > 0 ||
+      (step.payment_actions?.length ?? 0) > 0,
+  )
+}
+
+function explainLegalFeeBlock(step: WorkEligibilityJourneyStep, t: ReturnType<typeof useI18n>['t']): ReactNode {
+  if (!legalStayFeeStepHasExplain(step)) return null
+  const facts = step.input_facts
+  return (
+    <div className="mt-2 rounded-lg border border-slate-100 bg-white/90 p-2 text-xs text-slate-800 space-y-2">
+      {step.decision_reason ? <p className="leading-relaxed">{step.decision_reason}</p> : null}
+      {step.cannot_determine_reason ? (
+        <p className="rounded border border-amber-100 bg-amber-50/90 px-2 py-1 text-[11px] font-medium text-amber-950">
+          {t('app.hr.work_eligibility.cannot_determine', {
+            defaultValue: 'Missing to decide: {detail}',
+            values: { detail: step.cannot_determine_reason.replace(/_/g, ' ') },
+          })}
+        </p>
+      ) : null}
+      {step.confidence != null ? (
+        <p className="text-[11px] text-slate-600">
+          {t('app.hr.work_eligibility.confidence', {
+            defaultValue: 'Confidence: {pct}%',
+            values: { pct: Math.round(Math.min(1, Math.max(0, step.confidence)) * 100) },
+          })}
+        </p>
+      ) : null}
+      {step.rule_code ? (
+        <p className="font-mono text-[10px] text-slate-500">
+          {t('app.hr.work_eligibility.rule_code', { defaultValue: 'Rule' })}: {step.rule_code}
+        </p>
+      ) : null}
+      {facts && Object.keys(facts).length > 0 ? (
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.work_eligibility.input_facts', { defaultValue: 'Inputs' })}
+          </div>
+          <dl className="mt-1 grid grid-cols-1 gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
+          {Object.entries(facts).map(([k, v]) => (
+            <div key={k} className="flex flex-wrap gap-1">
+              <dt className="font-medium text-slate-500">{k}</dt>
+              <dd className="font-mono text-slate-800">{v === null || v === undefined || v === '' ? '—' : String(v)}</dd>
+            </div>
+          ))}
+          </dl>
+        </div>
+      ) : null}
+      {step.primary_action ? (
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.work_eligibility.primary_action', { defaultValue: 'Recommended action' })}
+          </div>
+          <a className="btn-primary btn-sm mt-1 inline-flex" href={step.primary_action.href || '#hr-employee-work-eligibility'}>
+            {step.primary_action.label}
+          </a>
+        </div>
+      ) : null}
+      {step.secondary_actions && step.secondary_actions.length > 0 ? (
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.work_eligibility.secondary_actions', { defaultValue: 'Other actions' })}
+          </div>
+          <ul className="mt-1 flex flex-wrap gap-2">
+            {step.secondary_actions.map((a) => (
+              <li key={a.code}>
+                <a className="btn-secondary btn-sm" href={a.href || '#hr-employee-linked-documents'}>
+                  {a.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {step.document_actions && step.document_actions.length > 0 ? (
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.work_eligibility.doc_actions', { defaultValue: 'Document actions' })}
+          </div>
+          <ul className="mt-1 flex flex-wrap gap-2">
+            {step.document_actions.map((a) => (
+              <li key={a.code}>
+                <a className="btn-secondary btn-sm" href={a.href || '#hr-employee-linked-documents'}>
+                  {a.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {step.payment_actions && step.payment_actions.length > 0 ? (
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.work_eligibility.payment_actions', { defaultValue: 'Payment actions' })}
+          </div>
+          <ul className="mt-1 list-inside list-disc text-[11px] text-slate-700">
+            {step.payment_actions.map((a) => (
+              <li key={a.code}>{a.label}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function statusBadgeClass(status: string): string {
   switch (status) {
     case 'done':
@@ -107,6 +223,8 @@ function statusBadgeClass(status: string): string {
       return 'border-indigo-300 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200'
     case 'blocked':
       return 'border-rose-200 bg-rose-50 text-rose-900'
+    case 'needs_data':
+      return 'border-amber-200 bg-amber-50 text-amber-950'
     case 'pending':
       return 'border-slate-200 bg-slate-50 text-slate-600'
     case 'not_required':
@@ -125,6 +243,7 @@ function stepCardShell(status: string, children: ReactNode): ReactElement {
         status === 'done' && 'border-emerald-100 bg-white shadow-sm',
         status === 'current' && 'border-indigo-200 bg-white shadow-md ring-1 ring-indigo-100',
         status === 'blocked' && 'border-rose-200 bg-white shadow-sm',
+        status === 'needs_data' && 'border-amber-200 bg-amber-50/40 shadow-sm',
         status === 'pending' && 'border-slate-200 bg-slate-50/60',
         status === 'not_required' && 'border-transparent bg-transparent py-1',
       )}
@@ -353,12 +472,11 @@ export default function WorkEligibilityJourneyWorkspace({
         <p className="mt-3 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
       ) : journey ? (
         <>
-          <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5 text-sm text-indigo-950">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-800">
-              {t('app.hr.work_eligibility.next_action', { defaultValue: 'Recommended next' })}
-            </span>
-            <p className="mt-1 text-sm leading-snug">{journey.recommended_next_action}</p>
-          </div>
+          <p className="mt-3 text-[11px] text-slate-500 xl:hidden">
+            {t('app.hr.work_eligibility.next_in_rail', {
+              defaultValue: 'On wide screens, the next HR action appears at the top of the right column.',
+            })}
+          </p>
 
           <div className="relative mt-4 space-y-2 pl-1">
             <div className="absolute left-[11px] top-2 bottom-2 w-px bg-slate-200" aria-hidden />
@@ -370,6 +488,7 @@ export default function WorkEligibilityJourneyWorkspace({
                 const isFee = payRow && (step.step_code === 'work_permit_fee' || step.step_code === 'red_paper_fee')
 
                 if (step.status === 'not_required') {
+                  const showExplain = legalStayFeeStepHasExplain(step)
                   return (
                     <li key={step.step_code} className="relative flex gap-3 pl-7">
                       <span
@@ -380,11 +499,14 @@ export default function WorkEligibilityJourneyWorkspace({
                       </span>
                       {stepCardShell(
                         step.status,
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-slate-500">{step.label}</span>
-                          <span className={clsx('rounded-full border px-2 py-0.5 text-[10px] font-medium', statusBadgeClass(step.status))}>
-                            {t('app.hr.work_eligibility.status.not_required', { defaultValue: 'Not required' })}
-                          </span>
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-slate-500">{step.label}</span>
+                            <span className={clsx('rounded-full border px-2 py-0.5 text-[10px] font-medium', statusBadgeClass(step.status))}>
+                              {t('app.hr.work_eligibility.status.not_required', { defaultValue: 'Not required' })}
+                            </span>
+                          </div>
+                          {showExplain ? <div className="mt-2">{explainLegalFeeBlock(step, t)}</div> : null}
                         </div>,
                       )}
                     </li>
@@ -399,11 +521,13 @@ export default function WorkEligibilityJourneyWorkspace({
                         step.status === 'done' && 'border-emerald-400 text-emerald-600',
                         step.status === 'current' && 'border-indigo-500 text-indigo-600',
                         step.status === 'blocked' && 'border-rose-400 text-rose-600',
+                        step.status === 'needs_data' && 'border-amber-500 text-amber-700',
                         step.status === 'pending' && 'border-slate-300 text-slate-500',
                       )}
                       aria-hidden
                     >
                       {step.status === 'done' ? '✓' : ''}
+                      {step.status === 'needs_data' ? '?' : ''}
                     </span>
                     {stepCardShell(
                       step.status,
@@ -417,6 +541,8 @@ export default function WorkEligibilityJourneyWorkspace({
                             {step.status === 'done' && t('app.hr.work_eligibility.status.done', { defaultValue: 'Completed' })}
                             {step.status === 'current' && t('app.hr.work_eligibility.status.current', { defaultValue: 'In focus' })}
                             {step.status === 'blocked' && t('app.hr.work_eligibility.status.blocked', { defaultValue: 'Blocked' })}
+                            {step.status === 'needs_data' &&
+                              t('app.hr.work_eligibility.status.needs_data', { defaultValue: 'Needs data' })}
                             {step.status === 'pending' && t('app.hr.work_eligibility.status.pending', { defaultValue: 'Waiting' })}
                           </span>
                         </div>
@@ -427,6 +553,7 @@ export default function WorkEligibilityJourneyWorkspace({
                             ))}
                           </ul>
                         ) : null}
+                        {explainLegalFeeBlock(step, t)}
                         {step.external_submission_url ? (
                           <div className="mt-2">
                             <a href={step.external_submission_url} target="_blank" rel="noreferrer" className="btn-secondary btn-sm inline-flex">

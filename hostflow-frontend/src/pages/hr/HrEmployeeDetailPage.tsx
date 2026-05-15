@@ -328,6 +328,7 @@ export default function HrEmployeeDetailPage() {
       />
 
       <Section
+        id="hr-employee-work-eligibility"
         defaultOpen
         title={t('app.hr.work_eligibility.section_title', {
           defaultValue: 'Work eligibility & statutory fees',
@@ -480,7 +481,7 @@ export default function HrEmployeeDetailPage() {
           </div>
           {profile ? (
             <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-              <HrEmployeeRightColumn profile={profile} bundle={bundle} />
+              <HrEmployeeRightColumn employeeId={employeeId} profile={profile} bundle={bundle} />
             </aside>
           ) : null}
         </div>

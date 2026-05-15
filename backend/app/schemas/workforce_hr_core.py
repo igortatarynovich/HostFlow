@@ -115,6 +115,16 @@ class WorkforceWorkEligibilityProfileOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class JourneyActionOut(BaseModel):
+    """Single HR / system action surfaced on a journey step (upload, pay, open portal, …)."""
+
+    code: str
+    label: str
+    href: Optional[str] = None
+    document_type: Optional[str] = None
+    payment_requirement_id: Optional[str] = None
+
+
 class WorkEligibilityJourneyStepOut(BaseModel):
     step_code: str
     label: str
@@ -126,11 +136,34 @@ class WorkEligibilityJourneyStepOut(BaseModel):
     action_label: Optional[str] = None
     action_url: Optional[str] = None
     external_submission_url: Optional[str] = None
+    decision_reason: Optional[str] = None
+    rule_code: Optional[str] = None
+    input_facts: Optional[dict[str, Any]] = None
+    confidence: Optional[float] = None
+    cannot_determine_reason: Optional[str] = None
+    primary_action: Optional[JourneyActionOut] = None
+    secondary_actions: list[JourneyActionOut] = Field(default_factory=list)
+    document_actions: list[JourneyActionOut] = Field(default_factory=list)
+    payment_actions: list[JourneyActionOut] = Field(default_factory=list)
+
+
+class NextHrActionOut(BaseModel):
+    """Structured focal action for the HR operational rail (derived from journey)."""
+
+    title: str
+    step_code: Optional[str] = None
+    step_status: Optional[str] = None
+    reason: Optional[str] = None
+    blockers: list[str] = Field(default_factory=list)
+    cannot_determine_reason: Optional[str] = None
+    primary_cta: Optional[JourneyActionOut] = None
+    secondary_ctas: list[JourneyActionOut] = Field(default_factory=list)
 
 
 class WorkEligibilityJourneyOut(BaseModel):
     steps: list[WorkEligibilityJourneyStepOut]
     recommended_next_action: str
+    next_hr_action: Optional[NextHrActionOut] = None
 
 
 class WorkforceHrDocumentContextOut(BaseModel):

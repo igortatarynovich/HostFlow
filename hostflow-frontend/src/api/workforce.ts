@@ -252,6 +252,14 @@ export type WorkforceWorkEligibilityPaymentRequirement = {
   updated_at: string
 }
 
+export type JourneyAction = {
+  code: string
+  label: string
+  href?: string | null
+  document_type?: string | null
+  payment_requirement_id?: string | null
+}
+
 export type WorkEligibilityJourneyStep = {
   step_code: string
   label: string
@@ -263,11 +271,32 @@ export type WorkEligibilityJourneyStep = {
   action_label?: string | null
   action_url?: string | null
   external_submission_url?: string | null
+  decision_reason?: string | null
+  rule_code?: string | null
+  input_facts?: Record<string, unknown> | null
+  confidence?: number | null
+  cannot_determine_reason?: string | null
+  primary_action?: JourneyAction | null
+  secondary_actions?: JourneyAction[]
+  document_actions?: JourneyAction[]
+  payment_actions?: JourneyAction[]
+}
+
+export type NextHrAction = {
+  title: string
+  step_code?: string | null
+  step_status?: string | null
+  reason?: string | null
+  blockers: string[]
+  cannot_determine_reason?: string | null
+  primary_cta?: JourneyAction | null
+  secondary_ctas: JourneyAction[]
 }
 
 export type WorkEligibilityJourney = {
   steps: WorkEligibilityJourneyStep[]
   recommended_next_action: string
+  next_hr_action?: NextHrAction | null
 }
 
 export type WorkforceHrBundle = {

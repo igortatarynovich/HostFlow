@@ -3,15 +3,18 @@
  * employment summary, and quick navigation. Sticky wrapper applied by parent.
  * Uses the same CRM primitives (card, links) as the rest of the app — layout/density only.
  */
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
-import type {
-  WorkforceEmployeeOperationalProfile,
-  WorkforceHrBundle,
-  WorkforceOperationalSummary,
-  WorkforceProfileAlert,
-  WorkforceTimelineEvent,
+import {
+  getWorkEligibilityJourney,
+  type NextHrAction,
+  type WorkforceEmployeeOperationalProfile,
+  type WorkforceHrBundle,
+  type WorkforceOperationalSummary,
+  type WorkforceProfileAlert,
+  type WorkforceTimelineEvent,
 } from '../../api/workforce'
 import { formatShortDateIso } from './hrEmployeeUiFormat'
 
@@ -188,6 +191,118 @@ function EmploymentPeek({
   )
 }
 
+function NextHrActionPanel({ employeeId }: { employeeId: string }) {
+  const { t } = useI18n()
+  const [data, setData] = useState<NextHrAction | null | undefined>(undefined)
+  const [recommendedFallback, setRecommendedFallback] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const j = await getWorkEligibilityJourney(employeeId)
+      setData(j.next_hr_action ?? null)
+      setRecommendedFallback((j.recommended_next_action || '').trim())
+    } catch {
+      setData(null)
+      setRecommendedFallback('')
+    } finally {
+      setLoading(false)
+    }
+  }, [employeeId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  if (loading) {
+    return (
+      <div className="card border-indigo-100 bg-indigo-50/50 p-4">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
+          {t('app.hr.employee_rail.next_hr_action', { defaultValue: 'Next HR action' })}
+        </div>
+        <p className="mt-2 text-xs text-slate-600">{t('common.loading', { defaultValue: 'Loading…' })}</p>
+      </div>
+    )
+  }
+
+  if (!data && !recommendedFallback) {
+    return null
+  }
+
+  if (!data && recommendedFallback) {
+    return (
+      <div className="card border-indigo-100 bg-gradient-to-b from-indigo-50/90 to-white p-4 shadow-sm">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
+          {t('app.hr.employee_rail.next_hr_action', { defaultValue: 'Next HR action' })}
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-slate-800">{recommendedFallback}</p>
+        <div className="mt-3">
+          <a href="#hr-employee-work-eligibility" className="btn-secondary btn-sm inline-flex">
+            {t('app.hr.employee_rail.open_journey', { defaultValue: 'Open work eligibility' })}
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return null
+  }
+
+  const cta = data.primary_cta
+  const ctaHref = cta?.href || '#hr-employee-work-eligibility'
+
+  return (
+    <div className="card border-indigo-100 bg-gradient-to-b from-indigo-50/90 to-white p-4 shadow-sm">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
+        {t('app.hr.employee_rail.next_hr_action', { defaultValue: 'Next HR action' })}
+      </div>
+      <h3 className="mt-2 text-sm font-semibold leading-snug text-slate-900">{data.title}</h3>
+      {data.reason ? <p className="mt-2 text-xs leading-relaxed text-slate-700">{data.reason}</p> : null}
+      {data.cannot_determine_reason ? (
+        <p className="mt-1 text-[11px] font-medium text-amber-900">
+          {t('app.hr.employee_rail.cannot_determine', {
+            defaultValue: 'Needs data: {code}',
+            values: { code: data.cannot_determine_reason.replace(/_/g, ' ') },
+          })}
+        </p>
+      ) : null}
+      {data.blockers?.length ? (
+        <ul className="mt-2 list-inside list-disc text-[11px] text-rose-800">
+          {data.blockers.map((b) => (
+            <li key={b}>{b.replace(/_/g, ' ')}</li>
+          ))}
+        </ul>
+      ) : null}
+      {cta ? (
+        <div className="mt-3">
+          <a href={ctaHref} className="btn-primary btn-sm inline-flex">
+            {cta.label}
+          </a>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <a href="#hr-employee-work-eligibility" className="btn-secondary btn-sm inline-flex">
+            {t('app.hr.employee_rail.open_journey', { defaultValue: 'Open work eligibility' })}
+          </a>
+        </div>
+      )}
+      {data.secondary_ctas?.length ? (
+        <ul className="mt-2 space-y-1 text-[11px] text-brand-800">
+          {data.secondary_ctas.map((a) => (
+            <li key={a.code}>
+              <a className="font-medium hover:underline" href={a.href || '#hr-employee-work-eligibility'}>
+                {a.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 function QuickActionsPanel() {
   const { t } = useI18n()
   const p = CRM_APP_PATHS
@@ -223,14 +338,17 @@ function QuickActionsPanel() {
 }
 
 export function HrEmployeeRightColumn({
+  employeeId,
   profile,
   bundle,
 }: {
+  employeeId: string
   profile: WorkforceEmployeeOperationalProfile
   bundle: WorkforceHrBundle
 }) {
   return (
     <div className="flex flex-col gap-4">
+      <NextHrActionPanel employeeId={employeeId} />
       <HrEmployeeOperationalRail
         summary={profile.operational_summary}
         zusRegistrationStatus={bundle.zus_profile?.registration_status}
