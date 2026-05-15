@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 from backend.app.models import Candidate, Reminder
 from backend.app.models.reminder import ReminderStatus
 
-_ACTIVE_CANDIDATE_FOR_OPS = or_(
-    Candidate.stage.is_(None),
-    Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
-)
+_ACTIVE_CANDIDATE_FOR_OPS = sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status)
 
 
 async def count_overdue_reminders_ops_scoped(

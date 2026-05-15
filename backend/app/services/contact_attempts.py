@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
@@ -28,6 +29,7 @@ from backend.app.services.candidate_workforce_lock import (
     is_candidate_locked_by_workforce,
     observe_skipped_system_candidate_mutation_due_to_workforce_lock,
 )
+from backend.app.services.candidate_lifecycle import maybe_apply_candidate_operationally_terminal_cleanup
 from backend.app.models.tenant import TenantLink
 
 DEFAULT_MAX_ATTEMPTS = 3
@@ -235,6 +237,8 @@ async def _apply_auto_reject(
     actor_id: Optional[str],
 ) -> None:
     """Set candidate to rejected, send final notification, log audit."""
+    old_stage = str(getattr(candidate, "stage", None) or "").strip() or None
+    old_status = str(getattr(candidate, "status", None) or "").strip() or None
     candidate.status = "rejected"
     reasons = list(candidate.status_reason or [])
     if "no_contact_after_3_attempts" not in reasons:
@@ -255,6 +259,24 @@ async def _apply_auto_reject(
     )
     db.add(notif)
     await db.flush()
+
+    try:
+        await maybe_apply_candidate_operationally_terminal_cleanup(
+            db,
+            tenant_id=tenant_id,
+            candidate_id=str(candidate.id),
+            old_stage=old_stage,
+            old_status=old_status,
+            new_stage=str(getattr(candidate, "stage", None) or "").strip() or None,
+            new_status=str(getattr(candidate, "status", None) or "").strip() or None,
+            actor_id=actor_id,
+        )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "candidate operational terminal cleanup failed after auto_reject tenant=%s candidate=%s",
+            tenant_id,
+            candidate.id,
+        )
 
     if recipient:
         subject = "HostFlow – brak kontaktu"

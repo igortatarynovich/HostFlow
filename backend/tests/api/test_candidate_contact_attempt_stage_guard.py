@@ -26,6 +26,13 @@ async def test_forward_blocked_new_without_attempt_when_policy_on(client, manage
     async def _count_zero(*args, **kwargs):
         return 0
 
+    async def _noop_rodo(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "backend.app.api.v1.candidates.service._enforce_rodo_before_contact_stage",
+        _noop_rodo,
+    )
     monkeypatch.setattr(
         "backend.app.services.contact_attempts.get_effective_contact_policy",
         _policy_on,
@@ -71,6 +78,13 @@ async def test_forward_allowed_new_when_attempt_counted(client, manager_headers,
     async def _count_one(*args, **kwargs):
         return 1
 
+    async def _noop_rodo(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "backend.app.api.v1.candidates.service._enforce_rodo_before_contact_stage",
+        _noop_rodo,
+    )
     monkeypatch.setattr(
         "backend.app.services.contact_attempts.get_effective_contact_policy",
         _policy_on,

@@ -1,6 +1,19 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _noop_rodo_enforcement_for_doc_pipeline_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """RODO gate is a separate compliance slice; these tests focus on doc/vacancy gates only."""
+
+    async def _noop(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "backend.app.api.v1.candidates.service._enforce_rodo_before_contact_stage",
+        _noop,
+    )
+
+
 @pytest.mark.anyio
 async def test_forward_blocked_docs_wait_to_docs_got_without_documents(client, manager_headers):
     """Mirrors UI: at docs_wait+, missing required docs block forward moves."""

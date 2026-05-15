@@ -18,7 +18,7 @@ def test_agency_base_without_industry() -> None:
     p = business_funnel_presets("agency", None)
     assert p["candidate"]["name"] == "Candidate Pipeline"
     assert [s[0] for s in p["candidate"]["stages"]][0] == "new"
-    assert "waiting_docs" in [s[0] for s in p["candidate"]["stages"]]
+    assert "docs_wait" in [s[0] for s in p["candidate"]["stages"]]
 
 
 def test_agency_transport_candidate_longer_chain() -> None:

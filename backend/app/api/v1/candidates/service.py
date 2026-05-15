@@ -68,7 +68,7 @@ from backend.app.services.candidate_hr_internal_lane_patch import (
 )
 from backend.app.services.candidate_lifecycle import (
     apply_candidate_deletion_cleanup,
-    maybe_apply_candidate_terminal_cleanup,
+    maybe_apply_candidate_operationally_terminal_cleanup,
 )
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause
 from backend.app.services.tenant_visibility import TenantVisibility
@@ -850,6 +850,8 @@ async def update_candidate_full(
     history_reason_text: Optional[str] = None
     new_stage_code: Optional[str] = None
     old_stage_code = str(getattr(c, "stage", None) or "").strip() or None
+    old_status_code = str(getattr(c, "status", None) or "").strip() or None
+    candidate_refresh_after_write = False
     status_reason_raw = payload.pop("status_reason", _UNSET)
     if status_reason_raw is _UNSET:
         status_reason_raw = status_reason_override
@@ -1337,6 +1339,7 @@ async def update_candidate_full(
 
             await db.commit()
             await db.refresh(c)
+            candidate_refresh_after_write = True
             email_after = str(getattr(c, "email", "") or "").strip()
 
             # Phase 2.6.G-5 Stage C — emit audit-trail row for
@@ -1493,6 +1496,7 @@ async def update_candidate_full(
             db.add(history_entry)
             await db.commit()
             await db.refresh(c)
+            candidate_refresh_after_write = True
             email_after = str(getattr(c, "email", "") or "").strip()
         except Exception as e:
             await db.rollback()
@@ -1565,17 +1569,19 @@ async def update_candidate_full(
             except Exception:
                 pass
 
-    # G-1 zero-leak: when candidate moves into a terminal stage (rejected / declined / employed /
-    # probation_ok), silence operational signals so the bell, /app/tasks and the calendar don't keep
-    # nagging operators about a closed file. Best-effort — never break the stage transition.
-    if stage_changed and new_stage_code:
+    # G-1 zero-leak: entering operational terminal (canonical completed stage **or** row-level
+    # ``status`` in the completed set) cancels reminders / planner / bell noise. Runs after any
+    # PATCH that persisted and refreshed the candidate row — not only ``stage_changed``.
+    if candidate_refresh_after_write:
         try:
-            await maybe_apply_candidate_terminal_cleanup(
+            await maybe_apply_candidate_operationally_terminal_cleanup(
                 db,
                 tenant_id=tenant_id,
                 candidate_id=candidate_id,
                 old_stage=old_stage_code,
-                new_stage=new_stage_code,
+                old_status=old_status_code,
+                new_stage=str(getattr(c, "stage", None) or "").strip() or None,
+                new_status=str(getattr(c, "status", None) or "").strip() or None,
                 actor_id=actor_id,
             )
             await db.commit()
@@ -1774,6 +1780,9 @@ async def bulk_update_stage(
                 )
                 continue
 
+            old_stage_bulk = str(getattr(c, "stage", None) or "").strip() or None
+            old_status_bulk = str(getattr(c, "status", None) or "").strip() or None
+
             await db.execute(
                 update(Candidate)
                 .where(Candidate.id == cid, Candidate.tenant_id == tenant_id)
@@ -1799,12 +1808,14 @@ async def bulk_update_stage(
 
             # G-1 zero-leak: silence reminders/notifications/planner for terminal stages.
             try:
-                await maybe_apply_candidate_terminal_cleanup(
+                await maybe_apply_candidate_operationally_terminal_cleanup(
                     db,
                     tenant_id=tenant_id,
                     candidate_id=cid,
-                    old_stage=getattr(c, "stage", None),
+                    old_stage=old_stage_bulk,
+                    old_status=old_status_bulk,
                     new_stage=normalized,
+                    new_status=normalized,
                     actor_id=actor_id,
                 )
                 await db.commit()

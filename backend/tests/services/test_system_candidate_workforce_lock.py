@@ -45,8 +45,8 @@ async def test_run_expiry_notifications_skips_docs_wait_stage_when_workforce_loc
         await _set_tenant(session, tenant_id)
         cand = await session.get(Candidate, candidate_id)
         assert cand is not None
-        cand.stage = "interview"
-        cand.status = "interview"
+        cand.stage = "docs_got"
+        cand.status = "docs_got"
         await session.flush()
 
         session.add(
@@ -101,7 +101,7 @@ async def test_run_expiry_notifications_skips_docs_wait_stage_when_workforce_loc
         await _set_tenant(session, tenant_id)
         cand2 = await session.get(Candidate, candidate_id)
         assert cand2 is not None
-        assert str(cand2.stage or "").lower() == "interview"
+        assert str(cand2.stage or "").lower() == "docs_got"
 
 
 @pytest.mark.anyio

@@ -3,7 +3,9 @@
 Closes G-1 from `docs/specs/operations-loop.md`:
 
 When a candidate moves into a "completed pipeline" stage (`PIPELINE_COMPLETED_STAGE_CODES`,
-i.e. `rejected` / `declined` / `probation_ok` / `employed`) or gets soft-deleted, the
+i.e. `rejected` / `declined` / `probation_ok` / `employed`) **or** the row-level `Candidate.status`
+enters the same completed set without a matching stage change (see
+`is_candidate_operationally_terminal`), or the candidate gets soft-deleted, the
 operational signals tied to that candidate must be silenced:
 
 1. Active deadline-only `Activity` rows (``starts_at IS NULL``) for
@@ -43,7 +45,11 @@ from typing import Optional
 from sqlalchemy import and_, not_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.constants.stages import (
+    PIPELINE_COMPLETED_STAGE_CODES,
+    is_candidate_operationally_terminal,
+    is_pipeline_completed_stage,
+)
 from backend.app.models.candidate import Candidate
 # Phase 2.1 (ADR-012, 2026-05-09): import ``Activity`` via the
 # ``backend.app.models.reminder`` alias (``Reminder is Activity``
@@ -165,6 +171,50 @@ async def apply_candidate_terminal_cleanup(
     )
 
 
+def _terminal_cleanup_marker(
+    *,
+    new_stage: Optional[str],
+    new_status: Optional[str],
+) -> Optional[str]:
+    """Pick a canonical completed code for audit payloads (prefer stage, then status)."""
+    if is_pipeline_completed_stage(new_stage):
+        return (new_stage or "").strip().lower() or None
+    if is_pipeline_completed_stage(new_status):
+        return (new_status or "").strip().lower() or None
+    return (new_stage or new_status or "").strip().lower() or None
+
+
+async def maybe_apply_candidate_operationally_terminal_cleanup(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    old_stage: Optional[str],
+    old_status: Optional[str],
+    new_stage: Optional[str],
+    new_status: Optional[str],
+    actor_id: Optional[str],
+) -> Optional[CandidateLifecycleCleanupResult]:
+    """Run G-1 cleanup when the row *enters* operational terminal (stage or `status`).
+
+    Covers PATCH paths that sync stage/status and internal services that only flip
+    ``Candidate.status`` to a completed code (e.g. auto-reject after no contact).
+    """
+    old_t = is_candidate_operationally_terminal(stage=old_stage, status=old_status)
+    new_t = is_candidate_operationally_terminal(stage=new_stage, status=new_status)
+    if not new_t or old_t:
+        return None
+    marker = _terminal_cleanup_marker(new_stage=new_stage, new_status=new_status)
+    return await apply_candidate_terminal_cleanup(
+        db,
+        tenant_id=tenant_id,
+        candidate_id=candidate_id,
+        new_stage=marker,
+        actor_id=actor_id,
+        reason="candidate_operationally_terminal",
+    )
+
+
 async def maybe_apply_candidate_terminal_cleanup(
     db: AsyncSession,
     *,
@@ -174,23 +224,21 @@ async def maybe_apply_candidate_terminal_cleanup(
     new_stage: Optional[str],
     actor_id: Optional[str],
 ) -> Optional[CandidateLifecycleCleanupResult]:
-    """Run cleanup only when the stage *transitioned into* a terminal code.
+    """Run cleanup when the stage *transitioned into* a terminal pipeline code.
 
-    Re-entering the same terminal stage is a no-op (we don't want to keep re-cancelling
-    rows that were re-created manually after the first cleanup).
+    Prefer :func:`maybe_apply_candidate_operationally_terminal_cleanup` when both
+    ``stage`` and ``status`` are known — this wrapper assumes they stay aligned with
+    ``old_stage`` / ``new_stage`` (bulk stage updates, legacy callers).
     """
-    if not is_terminal_stage(new_stage):
-        return None
-    old = (old_stage or "").strip().lower()
-    if old in LIFECYCLE_TERMINATED_STAGE_CODES:
-        return None
-    return await apply_candidate_terminal_cleanup(
+    return await maybe_apply_candidate_operationally_terminal_cleanup(
         db,
         tenant_id=tenant_id,
         candidate_id=candidate_id,
+        old_stage=old_stage,
+        old_status=old_stage,
         new_stage=new_stage,
+        new_status=new_stage,
         actor_id=actor_id,
-        reason="candidate_stage_terminal",
     )
 
 
@@ -352,8 +400,9 @@ def silenced_candidate_ids_subquery(tenant_id: str):
     """Subquery: ids of candidates whose operational signals should be hidden.
 
     A candidate is "silenced" when:
-      * `stage IN PIPELINE_COMPLETED_STAGE_CODES` (rejected / declined / employed / probation_ok),
-      * OR `deleted_at IS NOT NULL` (soft-deleted).
+      * `stage IN PIPELINE_COMPLETED_STAGE_CODES`, or
+      * `status IN PIPELINE_COMPLETED_STAGE_CODES` (row-level completed without stage sync), or
+      * `deleted_at IS NOT NULL` (soft-deleted).
 
     Used as `WHERE NOT (entity_type='candidate' AND entity_id IN <this subquery>)`
     in `GET /reminders`, `GET /notifications`, `GET /communications/planner/events`
@@ -365,6 +414,7 @@ def silenced_candidate_ids_subquery(tenant_id: str):
             Candidate.tenant_id == tenant_id,
             or_(
                 Candidate.stage.in_(tuple(LIFECYCLE_TERMINATED_STAGE_CODES)),
+                Candidate.status.in_(tuple(LIFECYCLE_TERMINATED_STAGE_CODES)),
                 Candidate.deleted_at.is_not(None),
             ),
         )
@@ -403,6 +453,7 @@ __all__ = [
     "apply_candidate_terminal_cleanup",
     "exclude_completed_candidate_entities_clause",
     "is_terminal_stage",
+    "maybe_apply_candidate_operationally_terminal_cleanup",
     "maybe_apply_candidate_terminal_cleanup",
     "silenced_candidate_ids_subquery",
 ]

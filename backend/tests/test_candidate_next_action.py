@@ -345,7 +345,8 @@ async def test_advanced_candidate_with_contact_logged_yields_idle(
 ) -> None:
     candidate = await db.get(Candidate, candidate_id)
     assert candidate is not None
-    candidate.stage = "interview"
+    candidate.stage = "docs_got"
+    candidate.status = "docs_got"
     db.add(
         ContactAttempt(
             id=str(uuid.uuid4()),

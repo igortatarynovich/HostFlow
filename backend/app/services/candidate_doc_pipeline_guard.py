@@ -34,6 +34,7 @@ from backend.app.services.hiring_pipeline_gates import (
     resolve_hiring_pipeline_gates,
     vacancy_gate_applies,
 )
+from backend.app.services import contact_attempts as _contact_attempts
 
 # Back-compat: defaults match `hiring_pipeline_gates.default_hiring_pipeline_gates()`.
 STAGES_WITHOUT_DOC_PIPELINE_BLOCK: FrozenSet[str] = default_hiring_pipeline_gates().stages_without_doc_pipeline_block
@@ -314,15 +315,10 @@ async def enforce_pipeline_contact_attempt_forward_block(
     if not contact_attempt_gate_applies(canon_old, g):
         return
 
-    from backend.app.services.contact_attempts import (
-        count_contact_attempts,
-        get_effective_contact_policy,
-    )
-
-    policy = await get_effective_contact_policy(db, tenant_id, candidate)
+    policy = await _contact_attempts.get_effective_contact_policy(db, tenant_id, candidate)
     if not policy.get("enabled"):
         return
-    n = await count_contact_attempts(db, str(candidate.id))
+    n = await _contact_attempts.count_contact_attempts(db, str(candidate.id))
     if n >= 1:
         return
     raise HTTPException(

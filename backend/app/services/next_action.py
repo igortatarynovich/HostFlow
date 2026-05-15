@@ -29,7 +29,7 @@ mystery.
 For a candidate the order is:
 
 1. `deleted_at IS NOT NULL`          → kind=done       (terminal_deleted)
-2. stage ∈ PIPELINE_COMPLETED_STAGE  → kind=done       (terminal_stage_<code>)
+2. stage **or** row status ∈ PIPELINE_COMPLETED  → kind=done       (terminal_stage_<code>)
 3. pending `CandidateHandoff` exists → kind=handoff_*  (await on agency / decide on client)
 4. active reminder with min due_at   → kind=reminder
 5. zero contact attempts logged      → kind=contact    (operator hasn't reached out yet)
@@ -51,7 +51,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.spa_paths import TASKS, spa_candidate, spa_inbox_thread, spa_lead, spa_vacancy
-from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES, is_candidate_operationally_terminal
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.communication import CommunicationThread
@@ -188,6 +188,8 @@ async def compute_candidate_next_action(
         # decide HTTP semantics.
         return _idle_dto(entity_id=candidate_id_str, reason="candidate_not_found")
 
+    stage_code = str(candidate.stage or "").strip().lower()
+
     # 1. Soft-deleted: terminal forever.
     if candidate.deleted_at is not None:
         return NextActionDTO(
@@ -202,17 +204,19 @@ async def compute_candidate_next_action(
             hint_key=None,
         )
 
-    # 2. Pipeline-completed stage: terminal until stage changes.
-    stage_code = (candidate.stage or "").strip().lower()
-    if stage_code in PIPELINE_COMPLETED_STAGE_CODES:
+    # 2. Pipeline completed: canonical **stage** or row-level **status** (e.g. auto-reject without stage move).
+    if is_candidate_operationally_terminal(stage=candidate.stage, status=candidate.status):
+        st = (candidate.stage or "").strip().lower()
+        row = (candidate.status or "").strip().lower()
+        marker = st if st in PIPELINE_COMPLETED_STAGE_CODES else row
         return NextActionDTO(
             entity_type="candidate",
             entity_id=candidate_id_str,
             kind=NextActionKind.DONE,
             priority=NextActionPriority.IDLE,
-            reason_code=f"terminal_stage_{stage_code}",
-            title=f"Closed: {stage_code}",
-            title_key=f"app.next_action.done.stage_{stage_code}",
+            reason_code=f"terminal_stage_{marker}",
+            title=f"Closed: {marker}",
+            title_key=f"app.next_action.done.stage_{marker}",
             hint="No action needed — pipeline outcome recorded.",
             hint_key="app.next_action.done.hint",
         )
