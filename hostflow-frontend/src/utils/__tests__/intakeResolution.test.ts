@@ -65,11 +65,21 @@ describe('manualProcessBlockHint', () => {
     expect(manualProcessBlockHint(lead)).toBe('VACANCY_NOT_CONFIRMED')
   })
 
-  it('vacancy confirmed → no client-side process block', () => {
+  it('vacancy confirmed without RODO compliance → LEAD_RODO_REQUIRED', () => {
     const lead = metaLead({
       status: 'new',
       vacancy_id: '00000000-0000-4000-8000-000000000099',
       vacancy_routing_confirmed: true,
+    })
+    expect(manualProcessBlockHint(lead)).toBe('LEAD_RODO_REQUIRED')
+  })
+
+  it('vacancy confirmed + RODO sent → no client-side process block', () => {
+    const lead = metaLead({
+      status: 'new',
+      vacancy_id: '00000000-0000-4000-8000-000000000099',
+      vacancy_routing_confirmed: true,
+      normalized: { rodo: { status: 'sent', sent_at: '2026-01-02T00:00:00+00:00' } },
     })
     expect(manualProcessBlockHint(lead)).toBeNull()
   })

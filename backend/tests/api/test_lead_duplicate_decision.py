@@ -14,6 +14,7 @@ from backend.app.models import Candidate, Lead, RecruitmentApplication
 from backend.app.models.audit import ActivityLog
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.modules.leads.service import _helpers
+from backend.tests.api.lead_rodo_test_utils import satisfy_lead_rodo_via_source_for_tests
 from backend.tests.api.test_leads_meta import (
     _ensure_company,
     _ensure_vacancy,
@@ -187,6 +188,8 @@ async def test_duplicate_decision_create_new_then_process(client, manager_header
     assert dec.status_code == 200, dec.text
     assert dec.json()["status"] == "needs_routing"
 
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
+
     proc = await client.post(
         f"/api/v1/leads/{lead_id}/process",
         headers=manager_headers,
@@ -353,6 +356,8 @@ async def test_duplicate_decision_ignore_skips_suggested_without_candidate(clien
             )
         )
         assert int(app_cnt_before.scalar_one() or 0) == 0
+
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
 
     proc = await client.post(
         f"/api/v1/leads/{lead_id}/process",

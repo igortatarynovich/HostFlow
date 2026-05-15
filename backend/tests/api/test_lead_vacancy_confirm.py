@@ -9,6 +9,7 @@ import sqlalchemy as sa
 from backend.app.db.session import async_session_maker
 from backend.app.models import Lead
 from backend.app.core.settings import settings
+from backend.tests.api.lead_rodo_test_utils import satisfy_lead_rodo_via_source_for_tests
 from backend.tests.api.test_leads_meta import (
     _ensure_company,
     _ensure_meta_settings,
@@ -76,6 +77,8 @@ async def test_confirm_vacancy_then_process_assisted(client, manager_headers, te
     norm = confirmed.get("normalized") or {}
     assert isinstance(norm.get("intake_vacancy_confirm_v1"), dict)
     assert str(norm["intake_vacancy_confirm_v1"].get("vacancy_id")) == str(vacancy_id)
+
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
 
     proc = await client.post(f"/api/v1/leads/{lead_id}/process", headers=manager_headers)
     assert proc.status_code == 200, proc.text

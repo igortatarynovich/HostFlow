@@ -202,6 +202,11 @@ def rodo_lead_audit_satisfied_from_candidate(candidate: Candidate) -> bool:
     audit = extra.get("rodo_lead_audit")
     if not isinstance(audit, dict):
         return False
+    via = str(audit.get("via") or "").strip().lower()
+    if via == "source_provided":
+        return True
+    if via == "satisfied":
+        return True
     return bool(str(audit.get("sent_at") or "").strip())
 
 

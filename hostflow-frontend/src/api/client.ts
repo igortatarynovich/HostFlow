@@ -1019,6 +1019,16 @@ export async function sendLeadRodoCompliance(leadId: string): Promise<{ ok: bool
   return data;
 }
 
+/** POST /leads/{id}/compliance/rodo/source-provided — art.14 covered at source (no email). */
+export async function markLeadRodoSourceProvided(leadId: string, opts?: { note?: string }): Promise<{ ok: boolean }> {
+  const params: Record<string, string> = {}
+  if (opts?.note != null && String(opts.note).trim()) params.note = String(opts.note).trim()
+  const { data } = await api.post<{ ok: boolean }>(`/leads/${leadId}/compliance/rodo/source-provided`, null, {
+    params: Object.keys(params).length ? params : undefined,
+  })
+  return data
+}
+
 export async function deleteLead(leadId: string): Promise<void> {
   await api.delete(`/leads/${leadId}`);
 }

@@ -61,6 +61,7 @@ import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import {
+  leadRodoSatisfied,
   leadRoutingTableAction,
   manualProcessBlockHint,
   manualProcessBlockedUserMessage,
@@ -1183,10 +1184,17 @@ export default function LeadsPage() {
           variant: 'success',
         })
         refreshLeadInsights()
-        if (thenProcess) {
+        if (thenProcess && leadRodoSatisfied(updated)) {
           await handleProcessLead(leadId)
         } else {
           await loadLeads(offset)
+          if (thenProcess && !leadRodoSatisfied(updated)) {
+            notify({
+              title: t('app.leads.routing.process_skipped_rodo_title'),
+              description: t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED'),
+              variant: 'warning',
+            })
+          }
         }
         if (selectedLeadId === leadId) void loadLeadTimeline(leadId)
       } catch (err: unknown) {
@@ -1478,6 +1486,14 @@ export default function LeadsPage() {
     }
     if (!leadQueueIntakeShortcutActionsAllowed(lead, isServicesTenant)) {
       notify({ title: t('app.leads.queue_keyboard.action_unavailable'), variant: 'warning' })
+      return
+    }
+    if (!leadRodoSatisfied(lead)) {
+      notify({
+        title: t('app.leads.queue_keyboard.action_unavailable'),
+        description: t('app.leads.queue_keyboard.rodo_first'),
+        variant: 'warning',
+      })
       return
     }
     setQuickRequestInfoLeadId(lead.id)
@@ -2750,26 +2766,45 @@ export default function LeadsPage() {
                       <summary className="cursor-pointer text-xs font-semibold text-slate-700">
                         {t('app.leads.intake_workspace.more.contact')}
                       </summary>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {selectedLead.normalized?.phone &&
-                        String(selectedLead.normalized.phone).replace(/\D/g, '').length > 0 ? (
-                          <a
-                            href={`tel:${String(selectedLead.normalized.phone).replace(/\s/g, '')}`}
-                            className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold"
-                          >
-                            <IconPhone size={18} stroke={1.75} aria-hidden />
-                            {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
-                          </a>
+                      <div className="mt-2 space-y-2">
+                        {!leadRodoSatisfied(selectedLead) ? (
+                          <p className="text-xs text-amber-900">{t('app.leads.intake_workspace.more.contact_rodo_locked')}</p>
                         ) : null}
-                        {selectedLead.normalized?.email && String(selectedLead.normalized.email).includes('@') ? (
-                          <a
-                            href={`mailto:${encodeURIComponent(selectedLead.normalized.email)}`}
-                            className="btn-secondary inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold"
-                          >
-                            <IconMail size={18} stroke={1.75} aria-hidden />
-                            {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
-                          </a>
-                        ) : null}
+                        <div className="flex flex-wrap gap-2">
+                          {selectedLead.normalized?.phone &&
+                          String(selectedLead.normalized.phone).replace(/\D/g, '').length > 0 ? (
+                            leadRodoSatisfied(selectedLead) ? (
+                              <a
+                                href={`tel:${String(selectedLead.normalized.phone).replace(/\s/g, '')}`}
+                                className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold"
+                              >
+                                <IconPhone size={18} stroke={1.75} aria-hidden />
+                                {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
+                              </a>
+                            ) : (
+                              <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
+                                <IconPhone size={18} stroke={1.75} aria-hidden />
+                                {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
+                              </span>
+                            )
+                          ) : null}
+                          {selectedLead.normalized?.email && String(selectedLead.normalized.email).includes('@') ? (
+                            leadRodoSatisfied(selectedLead) ? (
+                              <a
+                                href={`mailto:${encodeURIComponent(String(selectedLead.normalized.email))}`}
+                                className="btn-secondary inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold"
+                              >
+                                <IconMail size={18} stroke={1.75} aria-hidden />
+                                {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
+                              </a>
+                            ) : (
+                              <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
+                                <IconMail size={18} stroke={1.75} aria-hidden />
+                                {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
+                              </span>
+                            )
+                          ) : null}
+                        </div>
                       </div>
                     </details>
                   ) : null}
@@ -2816,7 +2851,15 @@ export default function LeadsPage() {
                         >
                           <option value="">{t('app.leads.inbox.stage_unset')}</option>
                           {CRM_STAGE_VALUES.map((v) => (
-                            <option key={v} value={v}>
+                            <option
+                              key={v}
+                              value={v}
+                              disabled={
+                                v === 'contacted' &&
+                                !selectedLead.candidate_id &&
+                                !leadRodoSatisfied(selectedLead)
+                              }
+                            >
                               {stageLabels[v] ?? v}
                             </option>
                           ))}

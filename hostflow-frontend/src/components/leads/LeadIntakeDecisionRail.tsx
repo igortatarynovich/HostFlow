@@ -4,7 +4,10 @@ import { IconAlertTriangle } from '@tabler/icons-react'
 
 import {
   confirmLeadVacancy,
+  getLead,
   listVacancies,
+  markLeadRodoSourceProvided,
+  sendLeadRodoCompliance,
   submitLeadDuplicateDecision,
   submitLeadIntakeDecision,
 } from '../../api/client'
@@ -14,6 +17,7 @@ import { useI18n } from '../../i18n'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
+  leadRodoSatisfied,
   leadRoutingTableAction,
   leadStatusAllowsIntakeDecision,
   manualProcessBlockHint,
@@ -69,6 +73,9 @@ export default function LeadIntakeDecisionRail({
   const [requestInfoNote, setRequestInfoNote] = useState('')
   const [vacancyOverrideOpen, setVacancyOverrideOpen] = useState(false)
   const [rejectExpanded, setRejectExpanded] = useState(false)
+  const [rodoBusy, setRodoBusy] = useState(false)
+
+  const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
 
   const src = String(lead.source || '').toLowerCase()
   const blockHint = manualProcessBlockHint(lead)
@@ -150,6 +157,42 @@ export default function LeadIntakeDecisionRail({
     if (shellOk && vacancyOverrideOpen && vacancies.length === 0 && !loadingVacancies) void loadVacancies()
   }, [shellOk, vacancyOverrideOpen, vacancies.length, loadingVacancies, loadVacancies])
 
+  const sendRodoNotice = useCallback(async () => {
+    setRodoBusy(true)
+    try {
+      await sendLeadRodoCompliance(lead.id)
+      const updated = await getLead(lead.id)
+      onLeadUpdated(updated)
+      notify({ title: t('app.leads.intake_workspace.decision_rail.rodo_send_success', { defaultValue: 'RODO notice sent.' }), variant: 'success' })
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.leads.intake_workspace.decision_rail.rodo_send_failed', { defaultValue: 'Could not send RODO notice.' })
+      notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
+    } finally {
+      setRodoBusy(false)
+    }
+  }, [lead.id, notify, onLeadUpdated, t])
+
+  const markRodoSourceProvided = useCallback(async () => {
+    setRodoBusy(true)
+    try {
+      await markLeadRodoSourceProvided(lead.id)
+      const updated = await getLead(lead.id)
+      onLeadUpdated(updated)
+      notify({ title: t('app.leads.intake_workspace.decision_rail.rodo_source_marked', { defaultValue: 'Marked as covered at source.' }), variant: 'success' })
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.leads.intake_workspace.decision_rail.rodo_source_failed', { defaultValue: 'Could not update RODO status.' })
+      notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
+    } finally {
+      setRodoBusy(false)
+    }
+  }, [lead.id, notify, onLeadUpdated, t])
+
   const sortedVacancies = useMemo(() => {
     const pin = suggestedId || currentVacancyId
     if (!pin) return vacancies
@@ -181,7 +224,7 @@ export default function LeadIntakeDecisionRail({
       onLeadUpdated(updated)
       notify({ title: t('app.leads.detail.intake_resolution.confirm_success'), variant: 'success' })
       setVacancyOverrideOpen(false)
-      await onRequestProcess()
+      if (rodoOk) await onRequestProcess()
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.intake_resolution.confirm_failed'))) {
         return
@@ -194,7 +237,7 @@ export default function LeadIntakeDecisionRail({
     } finally {
       setConfirming(false)
     }
-  }, [lead.id, notify, onLeadUpdated, onRequestProcess, planLimitModal, selectedVacancyId, t])
+  }, [lead.id, notify, onLeadUpdated, onRequestProcess, planLimitModal, selectedVacancyId, t, rodoOk])
 
   const runIntakeDecision = useCallback(
     async (body: Parameters<typeof submitLeadIntakeDecision>[1]) => {
@@ -289,6 +332,45 @@ export default function LeadIntakeDecisionRail({
 
   return (
     <div className={outerClass}>
+      {!intakeRejected && !lead.candidate_id ? (
+        <div
+          className={clsx(
+            'space-y-3 rounded-xl px-3 py-3 text-sm ring-1',
+            rodoOk ? 'bg-emerald-500/[0.08] text-emerald-950 ring-emerald-900/10' : 'bg-amber-500/[0.1] text-amber-950 ring-amber-800/15',
+          )}
+          role="status"
+        >
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-800">
+            {t('app.leads.intake_workspace.decision_rail.rodo_required_title')}
+          </p>
+          {!rodoOk ? (
+            <>
+              <p className="text-xs leading-relaxed text-amber-900/95">{t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <button
+                  type="button"
+                  className="btn-primary inline-flex justify-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  disabled={rodoBusy}
+                  onClick={() => void sendRodoNotice()}
+                >
+                  {rodoBusy ? t('app.leads.intake_workspace.decision_rail.rodo_sending') : t('app.leads.intake_workspace.decision_rail.send_rodo_notice')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary inline-flex justify-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  disabled={rodoBusy}
+                  onClick={() => void markRodoSourceProvided()}
+                >
+                  {t('app.leads.intake_workspace.decision_rail.mark_source_provided')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs font-medium text-emerald-900">{t('app.leads.intake_workspace.decision_rail.rodo_ok_hint')}</p>
+          )}
+        </div>
+      ) : null}
+
       <header className="space-y-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{t('app.leads.intake_workspace.decision_rail.title')}</p>
         <p className="text-sm text-slate-600">{t('app.leads.intake_workspace.decision_rail.subtitle')}</p>
@@ -325,7 +407,7 @@ export default function LeadIntakeDecisionRail({
                 type="button"
                 className="btn-primary w-full rounded-xl py-3.5 text-base font-semibold shadow-sm disabled:opacity-50"
                 disabled={busy || poolBusy}
-                onClick={() => onConfirmRouting(routing.vacancyId, true)}
+                onClick={() => onConfirmRouting(routing.vacancyId, rodoOk)}
               >
                 {busy ? t('common.loading') : t('app.leads.intake_workspace.unified.confirm_and_create')}
               </button>
@@ -471,7 +553,7 @@ export default function LeadIntakeDecisionRail({
               <textarea
                 className="input min-h-[4rem] w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 py-2 text-sm ring-1 ring-slate-900/[0.06] focus:ring-2 focus:ring-brand-500/25"
                 value={requestInfoNote}
-                disabled={acting}
+                disabled={acting || !rodoOk}
                 placeholder={t('app.leads.detail.intake_resolution.intake_actions.note_placeholder')}
                 onChange={(e) => setRequestInfoNote(e.target.value)}
               />
@@ -479,7 +561,7 @@ export default function LeadIntakeDecisionRail({
             <button
               type="button"
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-              disabled={acting}
+              disabled={acting || !rodoOk}
               onClick={() =>
                 void runIntakeDecision({
                   decision: 'request_info',

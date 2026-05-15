@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
+  leadRodoSatisfied,
   leadStatusAllowsIntakeDecision,
   manualProcessBlockHint,
 } from '../../utils/intakeResolution'
@@ -71,6 +72,7 @@ export default function LeadIntakeResolutionPanel({
   const [confirmThenProcess, setConfirmThenProcess] = useState(true)
 
   const src = String(lead.source || '').toLowerCase()
+  const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
   const blockHint = manualProcessBlockHint(lead)
   const srcOk =
     src === 'meta' ||
@@ -409,12 +411,15 @@ export default function LeadIntakeResolutionPanel({
           </div>
 
           <div className="mt-4 flex flex-col gap-2">
+            {!rodoOk && !lead.candidate_id ? (
+              <p className="max-w-lg text-xs text-amber-900">{t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}</p>
+            ) : null}
             <label className="text-xs text-slate-600">
               <span className="block">{t('app.leads.detail.intake_resolution.intake_actions.request_info_label')}</span>
               <textarea
                 className="input mt-1 min-h-[4rem] w-full max-w-lg rounded-lg border-slate-300 bg-white px-2 py-1.5 text-sm"
                 value={requestInfoNote}
-                disabled={acting}
+                disabled={acting || !rodoOk}
                 placeholder={t('app.leads.detail.intake_resolution.intake_actions.note_placeholder')}
                 onChange={(e) => setRequestInfoNote(e.target.value)}
               />
@@ -422,7 +427,7 @@ export default function LeadIntakeResolutionPanel({
             <button
               type="button"
               className="btn-secondary h-9 w-fit rounded-lg px-3 text-xs disabled:opacity-50"
-              disabled={acting}
+              disabled={acting || !rodoOk}
               onClick={() =>
                 void runIntakeDecision({
                   decision: 'request_info',

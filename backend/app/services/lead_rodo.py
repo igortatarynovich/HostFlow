@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
@@ -23,9 +22,64 @@ def lead_normalized_rodo_block(normalized: Optional[Dict[str, Any]]) -> Dict[str
     return raw if isinstance(raw, dict) else {}
 
 
+def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool:
+    """Art.14 satisfied at lead when notice was emailed, explicitly waived as satisfied, or marked source-provided."""
+    block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
+    st = str(block.get("status") or "").strip().lower()
+    if st in ("sent", "satisfied", "source_provided"):
+        return True
+    return bool(str(block.get("sent_at") or "").strip())
+
+
+def lead_rodo_satisfied(lead: Lead) -> bool:
+    return lead_rodo_satisfied_from_normalized(lead.normalized if isinstance(lead.normalized, dict) else None)
+
+
+LEAD_RODO_ACTION_PROCESS = "process"
+LEAD_RODO_ACTION_REQUEST_INFO = "request_info"
+LEAD_RODO_ACTION_CONTACTED_STAGE = "contacted_stage"
+LEAD_RODO_ACTION_COMMUNICATION_CALL = "communication_call"
+LEAD_RODO_ACTION_COMMUNICATION_EMAIL = "communication_email"
+LEAD_RODO_ACTION_COMMUNICATION_WHATSAPP = "communication_whatsapp"
+LEAD_RODO_ACTION_REQUEST_DOCUMENTS = "request_documents"
+
+_LEAD_RODO_GATED_ACTIONS: frozenset[str] = frozenset(
+    {
+        LEAD_RODO_ACTION_PROCESS,
+        LEAD_RODO_ACTION_REQUEST_INFO,
+        LEAD_RODO_ACTION_CONTACTED_STAGE,
+        LEAD_RODO_ACTION_COMMUNICATION_CALL,
+        LEAD_RODO_ACTION_COMMUNICATION_EMAIL,
+        LEAD_RODO_ACTION_COMMUNICATION_WHATSAPP,
+        LEAD_RODO_ACTION_REQUEST_DOCUMENTS,
+    }
+)
+
+
+def lead_rodo_required_block_code(lead: Lead, action: str) -> Optional[str]:
+    """
+    Return ``LEAD_RODO_REQUIRED`` when the action must be blocked until lead RODO is satisfied, else ``None``.
+
+    Converted leads (``candidate_id`` set) are not gated here — candidate-level RODO applies instead.
+
+    ``LEAD_RODO_ACTION_COMMUNICATION_*`` and ``LEAD_RODO_ACTION_REQUEST_DOCUMENTS`` are reserved for
+    lead-scoped outbound APIs (e.g. contact attempts); call this helper at those boundaries.
+    """
+    if getattr(lead, "candidate_id", None):
+        return None
+    act = str(action or "").strip().lower()
+    if act not in _LEAD_RODO_GATED_ACTIONS:
+        return None
+    if lead_rodo_satisfied(lead):
+        return None
+    return "LEAD_RODO_REQUIRED"
+
+
 def lead_rodo_sent_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool:
+    """True when outbound art.14 email was already sent (blocks duplicate send; ``source_provided`` alone does not)."""
     block = lead_normalized_rodo_block(normalized)
-    if str(block.get("status") or "").strip().lower() == "sent":
+    st = str(block.get("status") or "").strip().lower()
+    if st in ("sent", "satisfied"):
         return True
     return bool(str(block.get("sent_at") or "").strip())
 
@@ -160,20 +214,67 @@ async def send_lead_rodo_email(
 
 def rodo_lead_audit_for_candidate_extra(lead_normalized: Optional[Dict[str, Any]], lead_id: str) -> Optional[Dict[str, Any]]:
     """Shape copied into ``Candidate.extra['rodo_lead_audit']`` after conversion (read-only on candidate)."""
+    if not isinstance(lead_normalized, dict):
+        return None
+    if not lead_rodo_satisfied_from_normalized(lead_normalized):
+        return None
     block = lead_normalized_rodo_block(lead_normalized)
-    if not lead_rodo_sent_from_normalized(lead_normalized if isinstance(lead_normalized, dict) else {}):
+    st = str(block.get("status") or "").strip().lower()
+    base: Dict[str, Any] = {"lead_id": str(lead_id)}
+    if st == "source_provided":
+        return {
+            **base,
+            "via": "source_provided",
+            "source_provided_at": block.get("source_provided_at"),
+            "source_provided_by": block.get("source_provided_by"),
+        }
+    if st == "satisfied":
+        return {**base, "via": "satisfied"}
+    if not lead_rodo_sent_from_normalized(lead_normalized):
         return None
     return {
+        **base,
         "sent_at": block.get("sent_at"),
         "channel": block.get("channel") or "email",
         "rodo_version_id": block.get("rodo_version_id"),
-        "lead_id": str(lead_id),
     }
 
 
+def mark_lead_rodo_source_provided(
+    lead: Lead,
+    *,
+    actor_id: Optional[str] = None,
+    note: Optional[str] = None,
+) -> None:
+    """Stamp ``normalized['rodo'].status = source_provided`` (e.g. public intake already included art.14)."""
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    prev = lead_normalized_rodo_block(norm)
+    block: Dict[str, Any] = {**prev} if prev else {}
+    now = datetime.now(timezone.utc).isoformat()
+    block["status"] = "source_provided"
+    block["source_provided_at"] = now
+    if actor_id:
+        block["source_provided_by"] = str(actor_id).strip()
+    if note:
+        block["source_provided_note"] = str(note).strip()[:2000]
+    norm["rodo"] = block
+    lead.normalized = norm
+
+
 __all__ = [
+    "LEAD_RODO_ACTION_COMMUNICATION_CALL",
+    "LEAD_RODO_ACTION_COMMUNICATION_EMAIL",
+    "LEAD_RODO_ACTION_COMMUNICATION_WHATSAPP",
+    "LEAD_RODO_ACTION_CONTACTED_STAGE",
+    "LEAD_RODO_ACTION_PROCESS",
+    "LEAD_RODO_ACTION_REQUEST_DOCUMENTS",
+    "LEAD_RODO_ACTION_REQUEST_INFO",
     "lead_normalized_rodo_block",
+    "lead_rodo_required_block_code",
+    "lead_rodo_satisfied",
+    "lead_rodo_satisfied_from_normalized",
     "lead_rodo_sent_from_normalized",
+    "mark_lead_rodo_source_provided",
     "rodo_lead_audit_for_candidate_extra",
     "send_lead_rodo_email",
 ]

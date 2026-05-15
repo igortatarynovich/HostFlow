@@ -231,7 +231,7 @@ async def get_rodo_status(
         version_id = first.rodo_version_id
         sent_by = first.sent_by_user_id
     elif from_lead and isinstance(lead_audit, dict):
-        raw_at = lead_audit.get("sent_at")
+        raw_at = lead_audit.get("sent_at") or lead_audit.get("source_provided_at")
         sent_at = None
         if raw_at:
             try:

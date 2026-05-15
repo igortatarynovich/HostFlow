@@ -449,6 +449,35 @@ async def send_lead_rodo_compliance_endpoint(
     return {"ok": True, "message": msg}
 
 
+@router.post(
+    "/{lead_id}/compliance/rodo/source-provided",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+)
+async def mark_lead_rodo_source_provided_endpoint(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    note: str | None = Query(None, max_length=2000, description="Optional operator note (why source counts as art.14)."),
+) -> Dict[str, Any]:
+    """Mark art.14 as satisfied via source (no outbound email). Persists ``lead.normalized['rodo']``."""
+    from backend.app.modules.leads import crud
+    from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+
+    db, tenant_uuid = db_tenant
+    tenant_id_str = str(tenant_uuid)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    mark_lead_rodo_source_provided(
+        lead,
+        actor_id=str(current_user.sub or "").strip() or None,
+        note=note,
+    )
+    await db.commit()
+    return {"ok": True}
+
+
 @router.patch("/{lead_id}", response_model=LeadOut)
 async def update_lead_stage_endpoint(
     lead_id: str,
@@ -466,6 +495,17 @@ async def update_lead_stage_endpoint(
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    from backend.app.services.lead_rodo import LEAD_RODO_ACTION_CONTACTED_STAGE, lead_rodo_required_block_code
+
+    if "stage" in payload.model_fields_set and payload.stage is not None:
+        stage_will_change = str(payload.stage or "") != str(getattr(lead, "stage", None) or "")
+        if stage_will_change and str(payload.stage or "").strip().lower() == "contacted":
+            if lead_rodo_required_block_code(lead, LEAD_RODO_ACTION_CONTACTED_STAGE):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"code": "LEAD_RODO_REQUIRED"},
+                )
 
     prev_stage = getattr(lead, "stage", None)
     prev_status = getattr(lead, "status", None)

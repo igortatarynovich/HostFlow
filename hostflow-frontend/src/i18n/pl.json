@@ -5919,7 +5919,8 @@
         "no_primary": "Brak głównej akcji dla tego leada.",
         "action_unavailable": "Ten skrót nie jest dostępny dla wybranego leada.",
         "duplicate_first": "Najpierw rozwiąż duplikat (Enter).",
-        "request_info_hint": "Opcjonalna notatka — dołączona do prośby o informacje."
+        "request_info_hint": "Opcjonalna notatka — dołączona do prośby o informacje.",
+        "rodo_first": "Wyślij informację art. 14 RODO lub oznacz pokrycie u źródła, zanim poprosisz leada o dane."
       },
       "detail": {
         "wayfinding_title": "Inne obszary CRM",
@@ -6096,7 +6097,8 @@
           "VACANCY_NOT_CONFIRMED": "Potwierdź routing oferty na panelu intake przed Process.",
           "INTAKE_ROUTING_INCOMPLETE": "Dokończ routing intake (oferta lub ścieżka puli) przed Process.",
           "INTAKE_INFO_REQUESTED": "Na intake poproszono o informacje. Uzupełnij lead lub anuluj prośbę przed Process.",
-          "INTAKE_IDENTITY_UNCLEAR": "Tożsamość leada na intake jest niejasna. Rozwiąż to przed Process."
+          "INTAKE_IDENTITY_UNCLEAR": "Tożsamość leada na intake jest niejasna. Rozwiąż to przed Process.",
+          "LEAD_RODO_REQUIRED": "Wyślij informację RODO (art. 14) lub oznacz, że została już pokryta u źródła, zanim skontaktujesz się lub utworzysz kandydata."
         }
       },
       "pipeline_errors": {
@@ -6161,6 +6163,7 @@
         "pick_modal_hint": "Potwierdź trasę dla tego leada. Możesz od razu uruchomić przetwarzanie.",
         "pick_modal_confirm": "Potwierdź przypisanie",
         "confirm_then_process": "Potem automatycznie uruchom przetwarzanie",
+        "process_skipped_rodo_title": "Trasa zapisana — przetwarzanie czeka na RODO",
         "next_step_hint": "Oczekuje na trasę — potwierdź sugerowaną ofertę, aby odblokować „Przetwórz”.",
         "inbox_focus_title": "Intake: najpierw przypisanie do oferty",
         "expand_crm_tools": "Etap, przypomnienia, oś czasu"
@@ -6171,7 +6174,8 @@
         "services_hint": "Leady serwisowe obsługujesz na pełnej stronie (zamówienia i rozliczenia).",
         "owner": "Właściciel",
         "more": {
-          "contact": "Telefon i e-mail"
+          "contact": "Telefon i e-mail",
+          "contact_rodo_locked": "Telefon i e-mail są zablokowane do czasu spełnienia RODO / art. 14 (panel intake)."
         },
         "section": {
           "lead_data": "Dane leada",
@@ -6264,7 +6268,17 @@
           "reject_open": "Odrzuć…",
           "reject_cancel": "Zamknij formularz",
           "qualify_not_duplicate": "To nie duplikat — kontynuuj",
-          "fit_clear": "Brak automatycznych ostrzeżeń dopasowania dla tego leada."
+          "fit_clear": "Brak automatycznych ostrzeżeń dopasowania dla tego leada.",
+          "rodo_required_title": "Wymagane RODO",
+          "rodo_required_hint": "Wyślij informację RODO/GDPR na e-mail leada albo potwierdź, że została już pokryta u źródła (np. public intake), zanim zadzwonisz, poprosisz o dane lub utworzysz kandydata.",
+          "send_rodo_notice": "Wyślij informację RODO",
+          "mark_source_provided": "Informacja pokryta u źródła",
+          "rodo_sending": "Wysyłanie…",
+          "rodo_ok_hint": "RODO / art. 14 jest spełnione dla tego leada.",
+          "rodo_send_success": "Wysłano informację RODO.",
+          "rodo_send_failed": "Nie udało się wysłać informacji RODO.",
+          "rodo_source_marked": "Oznaczono jako pokryte u źródła.",
+          "rodo_source_failed": "Nie udało się zaktualizować statusu RODO."
         },
         "public_intake_readonly": {
           "title": "Lead z public intake",

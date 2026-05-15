@@ -23,6 +23,7 @@ from backend.tests.api.test_leads_meta import (
     _meta_payload,
     _signature_for_payload,
 )
+from backend.tests.api.lead_rodo_test_utils import satisfy_lead_rodo_via_source_for_tests
 
 
 @pytest.mark.anyio
@@ -170,6 +171,8 @@ async def test_intake_request_info_blocks_process(client, manager_headers, tenan
     )
     lead_id = ingest.json()["lead_id"]
 
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
+
     await client.post(
         f"/api/v1/leads/{lead_id}/intake-decision",
         headers=manager_headers,
@@ -274,6 +277,8 @@ async def test_pool_intent_process_without_vacancy_creates_candidate_and_applica
     )
     assert pool.status_code == 200, pool.text
 
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
+
     proc = await client.post(f"/api/v1/leads/{lead_id}/process", headers=manager_headers)
     assert proc.status_code == 200, proc.text
     out = proc.json()
@@ -335,6 +340,8 @@ async def test_qualify_after_confirm_vacancy_allows_process(client, manager_head
         json={"decision": "qualify"},
     )
     assert q.status_code == 200, q.text
+
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
 
     proc = await client.post(f"/api/v1/leads/{lead_id}/process", headers=manager_headers)
     assert proc.status_code == 200, proc.text

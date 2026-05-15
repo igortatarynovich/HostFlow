@@ -5919,7 +5919,8 @@
         "no_primary": "No primary action for this lead.",
         "action_unavailable": "This shortcut is not available for the selected lead.",
         "duplicate_first": "Resolve duplicate review first (Enter).",
-        "request_info_hint": "Optional note — sent with the info request."
+        "request_info_hint": "Optional note — sent with the info request.",
+        "rodo_first": "Send the art.14 RODO notice or mark it as covered at source before requesting information from this lead."
       },
       "detail": {
         "wayfinding_title": "Other CRM areas",
@@ -6096,7 +6097,8 @@
           "VACANCY_NOT_CONFIRMED": "Confirm vacancy routing on the intake panel before processing.",
           "INTAKE_ROUTING_INCOMPLETE": "Complete intake routing (vacancy or pool path) before processing.",
           "INTAKE_INFO_REQUESTED": "Information was requested at intake. Update the lead or clear the request before processing.",
-          "INTAKE_IDENTITY_UNCLEAR": "Lead identity is unclear at intake. Resolve identity before processing."
+          "INTAKE_IDENTITY_UNCLEAR": "Lead identity is unclear at intake. Resolve identity before processing.",
+          "LEAD_RODO_REQUIRED": "Send the art.14 GDPR/RODO notice or mark it as covered at source before contacting or converting this lead."
         }
       },
       "pipeline_errors": {
@@ -6161,6 +6163,7 @@
         "pick_modal_hint": "Confirm routing for this lead. You can run Process immediately after.",
         "pick_modal_confirm": "Confirm routing",
         "confirm_then_process": "Then run Process automatically",
+        "process_skipped_rodo_title": "Routing saved — process waits for RODO",
         "next_step_hint": "Routing is waiting — confirm the suggested vacancy to unblock Process.",
         "inbox_focus_title": "Intake: resolve routing first",
         "expand_crm_tools": "Stage, follow-ups, timeline"
@@ -6171,7 +6174,8 @@
         "services_hint": "Service leads are managed on the full page (orders & billing).",
         "owner": "Owner",
         "more": {
-          "contact": "Call & email"
+          "contact": "Call & email",
+          "contact_rodo_locked": "Call and email are disabled until RODO / art.14 is satisfied (use the intake rail)."
         },
         "section": {
           "lead_data": "Lead details",
@@ -6264,7 +6268,17 @@
           "reject_open": "Reject…",
           "reject_cancel": "Close reject form",
           "qualify_not_duplicate": "Not a duplicate — continue",
-          "fit_clear": "No automated fit warnings on this lead."
+          "fit_clear": "No automated fit warnings on this lead.",
+          "rodo_required_title": "RODO required",
+          "rodo_required_hint": "Send the art.14 GDPR/RODO notice to the lead email, or confirm the notice was already covered at source (e.g. public intake), before calling, requesting info, or creating a candidate.",
+          "send_rodo_notice": "Send RODO notice",
+          "mark_source_provided": "Notice covered at source",
+          "rodo_sending": "Sending…",
+          "rodo_ok_hint": "RODO / art.14 is satisfied for this lead.",
+          "rodo_send_success": "RODO notice sent.",
+          "rodo_send_failed": "Could not send RODO notice.",
+          "rodo_source_marked": "Marked as covered at source.",
+          "rodo_source_failed": "Could not update RODO status."
         },
         "public_intake_readonly": {
           "title": "Public intake lead",

@@ -34,10 +34,24 @@ export type ManualProcessBlockCode =
   | 'INTAKE_ROUTING_INCOMPLETE'
   | 'INTAKE_INFO_REQUESTED'
   | 'INTAKE_IDENTITY_UNCLEAR'
+  | 'LEAD_RODO_REQUIRED'
 
 function normalizedRecord(lead: Lead | null): Record<string, unknown> {
   const n = lead?.normalized
   return n && typeof n === 'object' && !Array.isArray(n) ? (n as Record<string, unknown>) : {}
+}
+
+/** Mirrors backend ``lead_rodo_satisfied`` — art.14 closed at lead (sent / satisfied / source_provided / legacy sent_at). */
+export function leadRodoSatisfied(lead: Pick<Lead, 'normalized' | 'candidate_id'> | null): boolean {
+  if (!lead || lead.candidate_id) return true
+  const n = normalizedRecord(lead as Lead)
+  const raw = n.rodo
+  const block = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const st = String(block.status || '')
+    .trim()
+    .toLowerCase()
+  if (st === 'sent' || st === 'satisfied' || st === 'source_provided') return true
+  return Boolean(String(block.sent_at || '').trim())
 }
 
 function intakeResolutionStatus(lead: Lead | null): string {
@@ -79,10 +93,12 @@ export function manualProcessBlockHint(lead: Lead | null): ManualProcessBlockCod
   const poolIntent = Boolean(lead.funnel_id) || n.recruitment_pool_intent_v1 === true
   if (poolIntent && !hasVac) {
     if (!['pooled', 'qualified'].includes(irSt)) return 'INTAKE_POOL_PATH_REQUIRED'
+    if (!leadRodoSatisfied(lead)) return 'LEAD_RODO_REQUIRED'
     return null
   }
 
   if (hasVac && !lead.vacancy_routing_confirmed) return 'VACANCY_NOT_CONFIRMED'
+  if (hasVac && lead.vacancy_routing_confirmed && !leadRodoSatisfied(lead)) return 'LEAD_RODO_REQUIRED'
   if (!hasVac && !poolIntent) return 'INTAKE_ROUTING_INCOMPLETE'
 
   return null
@@ -110,7 +126,8 @@ export function manualProcessBlockedUserMessage(
 export function leadIntakeWorkspaceBlocking(lead: Lead | null, isServicesTenant: boolean): boolean {
   if (!lead || isServicesTenant || lead.candidate_id) return false
   if (!leadSupportsManualProcess(lead)) return false
-  if (manualProcessBlockHint(lead)) return true
+  const hint = manualProcessBlockHint(lead)
+  if (hint && hint !== 'LEAD_RODO_REQUIRED') return true
   const st = String(lead.status || '')
     .trim()
     .toLowerCase()

@@ -316,6 +316,11 @@ def lead_processing_error_as_http(exc: LeadProcessingError) -> HTTPException:
         )
     if exc.status == "not_found":
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message)
+    if exc.message == "LEAD_RODO_REQUIRED":
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "LEAD_RODO_REQUIRED"},
+        )
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message)
 
 
