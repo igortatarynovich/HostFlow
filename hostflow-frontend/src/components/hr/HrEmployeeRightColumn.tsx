@@ -188,7 +188,7 @@ function EmploymentPeek({
   )
 }
 
-function QuickActionsPanel({ employeeId }: { employeeId: string }) {
+function QuickActionsPanel() {
   const { t } = useI18n()
   const p = CRM_APP_PATHS
   return (
@@ -225,11 +225,9 @@ function QuickActionsPanel({ employeeId }: { employeeId: string }) {
 export function HrEmployeeRightColumn({
   profile,
   bundle,
-  employeeId,
 }: {
   profile: WorkforceEmployeeOperationalProfile
   bundle: WorkforceHrBundle
-  employeeId: string
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -242,7 +240,7 @@ export function HrEmployeeRightColumn({
       <AlertsPanel alerts={profile.alerts} />
       <EmploymentPeek rows={profile.employment_operational} />
       <TimelinePanel events={profile.timeline} />
-      <QuickActionsPanel employeeId={employeeId} />
+      <QuickActionsPanel />
     </div>
   )
 }

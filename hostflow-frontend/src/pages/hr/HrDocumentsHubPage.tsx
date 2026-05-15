@@ -196,6 +196,7 @@ export default function HrDocumentsHubPage() {
         </button>
       </div>
 
+      <div className="sticky top-0 z-20 -mx-1 mb-4 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
       <nav
         className="tabs flex-wrap gap-x-1 gap-y-0"
         aria-label={t('app.hr.documents_hub.tabs_aria', { defaultValue: 'Documents hub views' })}
@@ -216,6 +217,20 @@ export default function HrDocumentsHubPage() {
 
       {loading ? <p className="text-sm text-slate-600">{t('common.loading', { defaultValue: 'Loading…' })}</p> : null}
       {err ? <div className="alert-error">{err}</div> : null}
+
+      {!loading && !err ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="badge border border-slate-200 font-medium tabular-nums">
+            {t('app.hr.documents_hub.stat_shown', { defaultValue: 'Rows: {n}', values: { n: queueStats.shown } })}
+          </span>
+          <span className="badge border border-amber-100 bg-amber-50/90 font-medium tabular-nums text-amber-950">
+            {t('app.hr.documents_hub.stat_missing', { defaultValue: 'Missing queue: {n}', values: { n: queueStats.missingN } })}
+          </span>
+          <span className="badge border border-brand-100 bg-brand-50/90 font-medium tabular-nums text-brand-900">
+            {t('app.hr.documents_hub.stat_expiring', { defaultValue: 'Expiry queue: {n}', values: { n: queueStats.expiringN } })}
+          </span>
+        </div>
+      ) : null}
 
       <section className="card p-4 sm:p-5">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -328,6 +343,7 @@ export default function HrDocumentsHubPage() {
           </label>
         </div>
       </section>
+      </div>
 
       {!loading && !err && filtered.length === 0 ? (
         <p className="text-sm text-slate-600">{t('app.hr.documents_hub.empty', { defaultValue: 'No rows match this view.' })}</p>
@@ -369,7 +385,7 @@ function DocumentQueueTable({
   return (
     <div className={wrapClass}>
       <div className="overflow-x-auto">
-        <table className="table min-w-[880px] text-left text-sm">
+        <table className="table w-full min-w-[1280px] text-left text-sm">
           <thead>
             <tr>
               <th>{t('app.hr.documents_hub.col_candidate', { defaultValue: 'Candidate' })}</th>

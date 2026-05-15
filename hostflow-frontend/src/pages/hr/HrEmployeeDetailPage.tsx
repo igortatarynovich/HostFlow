@@ -480,7 +480,7 @@ export default function HrEmployeeDetailPage() {
           </div>
           {profile ? (
             <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-              <HrEmployeeRightColumn profile={profile} bundle={bundle} employeeId={employeeId} />
+              <HrEmployeeRightColumn profile={profile} bundle={bundle} />
             </aside>
           ) : null}
         </div>
