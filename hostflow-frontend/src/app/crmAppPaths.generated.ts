@@ -18,6 +18,20 @@ export const CRM_APP_PATHS = {
   agencyClients: "/app/clients",
   clientsLinkBase: "/app/clients/link",
   hr: "/app/hr",
+  /** Internal HR inbox (handoffs); uses /api/v1/hr/* only. */
+  hrInbox: "/app/hr/inbox",
+  /** HR lane reminder tasks; uses /api/v1/hr/tasks. */
+  hrTasks: "/app/hr/tasks",
+  /** HR compliance document queues; uses /api/v1/hr/documents/*. */
+  hrCompliance: "/app/hr/compliance",
+  hrDocuments: "/app/hr/documents",
+  hrDocumentsMissing: "/app/hr/documents/missing",
+  hrDocumentsExpiring: "/app/hr/documents/expiring",
+  hrDocumentsVerification: "/app/hr/documents/verification",
+  /** ZUS operational workspace; uses /api/v1/workforce/zus-workspace/*. */
+  hrZusWorkspace: "/app/hr/zus-workspace",
+  /** Handoff detail + snapshot under HR workspace shell. */
+  hrHandoffs: "/app/hr/handoffs",
   hrEmployees: "/app/hr/employees",
   candidates: "/app/candidates",
   candidatesNoNextActionPage: "/app/candidates/no-next-action",

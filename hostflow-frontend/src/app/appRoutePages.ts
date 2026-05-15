@@ -12,6 +12,7 @@ const loadCandidateCard = () => import('./routeBundles/routeBundleCandidateCard'
 const loadInvoices = () => import('./routeBundles/routeBundleInvoices')
 const loadComms = () => import('./routeBundles/routeBundleComms')
 const loadAdmin = () => import('./routeBundles/routeBundleAdmin')
+const loadHrWorkspace = () => import('./routeBundles/routeBundleHrWorkspace')
 
 export const WorkHubPage = lazy(() => loadCrmCore().then((m) => ({ default: m.WorkHubPage })))
 export const Dashboard = lazy(() => loadCrmCore().then((m) => ({ default: m.Dashboard })))
@@ -36,6 +37,7 @@ export const AgencyClientsPage = lazy(() => loadCrmCore().then((m) => ({ default
 export const ClientLinkDetailPage = lazy(() => loadCrmCore().then((m) => ({ default: m.ClientLinkDetailPage })))
 export const DoProcesowaniaPage = lazy(() => loadCrmCore().then((m) => ({ default: m.DoProcesowaniaPage })))
 export const DocumentsRegistryPage = lazy(() => loadCrmMore().then((m) => ({ default: m.DocumentsRegistryPage })))
+export const DocumentsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.DocumentsHubPage })))
 export const AutomationsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationsHubPage })))
 export const AutomationLogPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationLogPage })))
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
@@ -118,5 +120,18 @@ export const CustomFieldsPage = lazy(() => loadAdmin().then((m) => ({ default: m
 export const BillingWorkspacePage = lazy(() => loadAdmin().then((m) => ({ default: m.BillingWorkspacePage })))
 export const EmailSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.EmailSettingsPage })))
 export const TenantLinksSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantLinksSettingsPage })))
+
+export const HrWorkspaceLayout = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrWorkspaceLayout })))
+export const HrDashboardPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrDashboardPage })))
+export const HrInboxPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrInboxPage })))
+export const HrTasksPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrTasksPage })))
+export const HrComplianceDocumentsPage = lazy(() =>
+  loadHrWorkspace().then((m) => ({ default: m.HrComplianceDocumentsPage })),
+)
+export const HrDocumentsHubPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrDocumentsHubPage })))
+export const HrZusWorkspacePage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrZusWorkspacePage })))
+export const HrEmployeesPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrEmployeesPage })))
+export const HrEmployeeDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrEmployeeDetailPage })))
+export const HrHandoffDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrHandoffDetailPage })))
 export const LeadFormsSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadFormsSettingsPage })))
 export const LegalDocumentsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LegalDocumentsPage })))

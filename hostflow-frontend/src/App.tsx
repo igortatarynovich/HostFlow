@@ -5,7 +5,19 @@ import Login from './pages/Login'
 import { AppShell } from './app/AppShell'
 import { WorkAreaLayout } from './app/WorkAreaLayout'
 import { WorkPathAliasRedirect } from './app/WorkPathAliasRedirect'
-import { CommunicationsCalendarPage, RemindersPage } from './app/appRoutePages'
+import {
+  CommunicationsCalendarPage,
+  HrComplianceDocumentsPage,
+  HrDashboardPage,
+  HrDocumentsHubPage,
+  HrEmployeeDetailPage,
+  HrEmployeesPage,
+  HrHandoffDetailPage,
+  HrInboxPage,
+  HrTasksPage,
+  HrWorkspaceLayout,
+  RemindersPage,
+} from './app/appRoutePages'
 import WorkOrganizerPage from './pages/WorkOrganizerPage'
 import CommunicationsFeatureGate from './components/communications/CommunicationsFeatureGate'
 import { ACTIVATION_PATHS } from './app/activationRoutes'
@@ -165,7 +177,108 @@ export default function App(){
               />
               <Route path="*" element={<WorkPathAliasRedirect />} />
             </Route>
-            {APP_ROUTES.filter((r) => r.key !== 'work' && r.key !== 'work-tasks').map(({ key, path, Component, permission }) => (
+            <Route
+              path="hr"
+              element={
+                <RoutePermissionGuard permission="workforce.view">
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrWorkspaceLayout />
+                  </LazyRoute>
+                </RoutePermissionGuard>
+              }
+            >
+              <Route
+                index
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrDashboardPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="employees"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrEmployeesPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="employees/:employeeId"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrEmployeeDetailPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="inbox"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrInboxPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="tasks"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrTasksPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="compliance"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrComplianceDocumentsPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="documents"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrDocumentsHubPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="documents/missing"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrDocumentsHubPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="documents/expiring"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrDocumentsHubPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="documents/verification"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrDocumentsHubPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="handoffs/:id"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrHandoffDetailPage />
+                  </LazyRoute>
+                }
+              />
+            </Route>
+            {APP_ROUTES.filter(
+              (r) => r.key !== 'work' && r.key !== 'work-tasks' && !r.key.startsWith('hr-'),
+            ).map(({ key, path, Component, permission }) => (
               <Route
                 key={key}
                 path={path}
