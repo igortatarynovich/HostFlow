@@ -1,10 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
-import { fetchHrTasks } from '../../api/hrWorkspace'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { ReminderRecord } from '../../api/types/notification'
+import { fetchHrTasks, type HrAssigneeScope } from '../../api/hrWorkspace'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
+
+function formatDue(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) return String(iso)
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' }).format(ms)
+  } catch {
+    return String(iso)
+  }
+}
 
 export default function HrTasksPage() {
   const { t } = useI18n()
-  const [data, setData] = useState<any>(null)
+  const [assigneeScope, setAssigneeScope] = useState<HrAssigneeScope>('team')
+  const [data, setData] = useState<{ items: ReminderRecord[] } | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -12,14 +27,15 @@ export default function HrTasksPage() {
     setLoading(true)
     setErr(null)
     try {
-      const d = await fetchHrTasks({ assignee_scope: 'team', limit: 200 })
+      const d = await fetchHrTasks({ assignee_scope: assigneeScope, limit: 200 })
       setData(d)
-    } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || t('common.errors.request_failed'))
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
+      setErr(ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'))
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [assigneeScope, t])
 
   useEffect(() => {
     void load()
@@ -27,35 +43,124 @@ export default function HrTasksPage() {
 
   const items = data?.items ?? []
 
+  const stats = useMemo(() => {
+    const overdue = items.filter((r) => (r.status || '').toLowerCase() === 'overdue').length
+    return { n: items.length, overdue }
+  }, [items])
+
+  const entityHref = (r: ReminderRecord): string | null => {
+    const et = String(r.entity_type || '').toLowerCase()
+    const id = String(r.entity_id || '').trim()
+    if (!id) return null
+    if (et === 'candidate') return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(id)}`
+    if (et === 'lead') return `${CRM_APP_PATHS.leads}/${encodeURIComponent(id)}`
+    return null
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900">{t('app.nav.hr.tasks.heading', { defaultValue: 'HR tasks' })}</h2>
-        <button
-          type="button"
-          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-          onClick={() => void load()}
-        >
-          {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-        </button>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight text-slate-900">
+            {t('app.nav.hr.tasks.heading', { defaultValue: 'HR tasks' })}
+          </h2>
+          <p className="mt-1 max-w-4xl text-sm text-slate-600">
+            {t('app.nav.hr.tasks.subtitle', {
+              defaultValue: 'Reminder-backed HR task list (assignee scope). Open entity when linked.',
+            })}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrZusWorkspace}>
+            {t('app.nav.hr.tasks.quick_zus', { defaultValue: 'ZUS workspace' })}
+          </Link>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
+            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          </button>
+        </div>
       </div>
-      {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
-      {err && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
-      )}
-      <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        {items.map((r: any) => (
-          <li key={r.id} className="px-4 py-3">
-            <div className="text-sm font-medium text-slate-900">{r.title || r.type || r.id}</div>
-            {r.due_at ? <div className="text-xs text-slate-500">{r.due_at}</div> : null}
-          </li>
-        ))}
-        {!items.length && !loading ? (
-          <li className="px-4 py-8 text-center text-sm text-slate-500">
-            {t('app.nav.hr.tasks.empty', { defaultValue: 'No HR tasks.' })}
-          </li>
+
+      <div className="sticky top-0 z-20 -mx-1 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
+        {!loading && !err ? (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="badge border border-slate-200 font-medium tabular-nums">
+              {t('app.nav.hr.tasks.stat_rows', { defaultValue: 'Rows: {n}', values: { n: stats.n } })}
+            </span>
+            <span className="badge border border-rose-100 bg-rose-50/90 font-medium tabular-nums text-rose-900">
+              {t('app.nav.hr.tasks.stat_overdue', { defaultValue: 'Overdue status: {n}', values: { n: stats.overdue } })}
+            </span>
+          </div>
         ) : null}
-      </ul>
+
+        <section className="card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.nav.hr.tasks.filters', { defaultValue: 'Scope' })}
+          </div>
+          <div className="mt-2 flex flex-wrap items-end gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.tasks.assignee', { defaultValue: 'Assignee scope' })}</span>
+              <select className="input text-sm" value={assigneeScope} onChange={(e) => setAssigneeScope(e.target.value as HrAssigneeScope)}>
+                <option value="team">{t('app.nav.hr.tasks.scope_team', { defaultValue: 'Team' })}</option>
+                <option value="mine">{t('app.nav.hr.tasks.scope_mine', { defaultValue: 'Mine' })}</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      {loading ? <p className="text-sm text-slate-600">{t('common.loading')}</p> : null}
+      {err ? <div className="alert-error">{err}</div> : null}
+
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="table w-full min-w-[1100px] text-left text-sm">
+            <thead>
+              <tr>
+                <th>{t('app.nav.hr.tasks.col_title', { defaultValue: 'Title' })}</th>
+                <th>{t('app.nav.hr.tasks.col_type', { defaultValue: 'Type' })}</th>
+                <th>{t('app.nav.hr.tasks.col_status', { defaultValue: 'Status' })}</th>
+                <th>{t('app.nav.hr.tasks.col_due', { defaultValue: 'Due' })}</th>
+                <th>{t('app.nav.hr.tasks.col_entity', { defaultValue: 'Entity' })}</th>
+                <th>{t('app.nav.hr.tasks.col_sla', { defaultValue: 'SLA' })}</th>
+                <th className="w-32">{t('app.nav.hr.tasks.col_actions', { defaultValue: 'Actions' })}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r) => {
+                const href = entityHref(r)
+                return (
+                  <tr key={String(r.id)}>
+                    <td className="font-medium text-slate-900">{r.title || r.type || String(r.id)}</td>
+                    <td className="font-mono text-xs text-slate-700">{r.type}</td>
+                    <td className="text-slate-700">{r.status}</td>
+                    <td className="whitespace-nowrap text-xs text-slate-600">{formatDue(r.due_at)}</td>
+                    <td className="max-w-[14rem] truncate font-mono text-xs text-slate-600" title={`${r.entity_type}:${r.entity_id}`}>
+                      {r.entity_id ? `${r.entity_type}:${r.entity_id}` : '—'}
+                    </td>
+                    <td className="text-xs text-slate-600">{r.sla_status || '—'}</td>
+                    <td>
+                      {href ? (
+                        <Link className="text-sm font-medium text-brand-700 hover:underline" to={href}>
+                          {t('app.nav.hr.tasks.open_entity', { defaultValue: 'Open' })}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {!items.length && !loading ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-600">
+                    {t('app.nav.hr.tasks.empty', { defaultValue: 'No HR tasks.' })}
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

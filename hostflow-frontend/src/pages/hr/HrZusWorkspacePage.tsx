@@ -108,6 +108,14 @@ export default function HrZusWorkspacePage() {
     [t],
   )
 
+  const stats = useMemo(() => {
+    const open = items.filter((r) => r.status === 'open').length
+    const inProg = items.filter((r) => r.status === 'in_progress').length
+    const blocked = items.filter((r) => r.status === 'blocked').length
+    const done = items.filter((r) => r.status === 'done').length
+    return { open, inProg, blocked, done, loaded: items.length, total }
+  }, [items, total])
+
   const onCreate = async () => {
     if (!cEmployee.trim()) return
     setCSaving(true)
@@ -143,101 +151,120 @@ export default function HrZusWorkspacePage() {
   const employeeHref = useMemo(() => (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`, [])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900">
-          {t('app.nav.hr.zus_workspace.heading', { defaultValue: 'ZUS workspace' })}
-        </h2>
-        <p className="text-sm text-slate-600 mt-1">
-          {t('app.nav.hr.zus_workspace.subtitle', {
-            defaultValue:
-              'Operational queue: registrations, deregistrations, ZUA/ZZA/ZWUA, monthly settlement, export placeholders. No ZUS API or Płatnik export in this MVP.',
-          })}
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.nav.hr.zus_workspace.filters', { defaultValue: 'Filters' })}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight text-slate-900">
+            {t('app.nav.hr.zus_workspace.heading', { defaultValue: 'ZUS workspace' })}
+          </h2>
+          <p className="mt-1 max-w-4xl text-sm text-slate-600">
+            {t('app.nav.hr.zus_workspace.subtitle', {
+              defaultValue:
+                'Operational queue: registrations, deregistrations, ZUA/ZZA/ZWUA, monthly settlement, export placeholders. No ZUS API or Płatnik export in this MVP.',
+            })}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-3 items-end">
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.nav.hr.zus_workspace.f_status', { defaultValue: 'Status' })}
-            <input
-              className="border border-slate-200 rounded px-2 py-1.5 text-sm w-36"
-              value={fStatus}
-              onChange={(e) => setFStatus(e.target.value)}
-              placeholder="open"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}
-            <select
-              className="border border-slate-200 rounded px-2 py-1.5 text-sm min-w-[11rem]"
-              value={fLane}
-              onChange={(e) => setFLane(e.target.value)}
-            >
-              <option value="">{t('app.nav.hr.zus_workspace.f_all', { defaultValue: 'All' })}</option>
-              {LANES.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {t(`app.nav.hr.zus_workspace.${l.i18n}`, { defaultValue: l.value })}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.nav.hr.zus_workspace.f_form', { defaultValue: 'Form (ZUA/ZZA/ZWUA)' })}
-            <select className="border border-slate-200 rounded px-2 py-1.5 text-sm" value={fFormKind} onChange={(e) => setFFormKind(e.target.value)}>
-              <option value="">{t('app.nav.hr.zus_workspace.f_all', { defaultValue: 'All' })}</option>
-              {FORM_KINDS.map((fk) => (
-                <option key={fk} value={fk}>
-                  {fk}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.nav.hr.zus_workspace.f_assignee', { defaultValue: 'Assigned HR (user id)' })}
-            <input
-              className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono w-44"
-              value={fAssignee}
-              onChange={(e) => setFAssignee(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.nav.hr.zus_workspace.f_due_after', { defaultValue: 'Due from (date)' })}
-            <input type="date" className="border border-slate-200 rounded px-2 py-1.5 text-sm" value={fDueAfter} onChange={(e) => setFDueAfter(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-600">
-            {t('app.nav.hr.zus_workspace.f_due_before', { defaultValue: 'Due to (date)' })}
-            <input type="date" className="border border-slate-200 rounded px-2 py-1.5 text-sm" value={fDueBefore} onChange={(e) => setFDueBefore(e.target.value)} />
-          </label>
-          <button
-            type="button"
-            className="rounded-md border border-slate-200 bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
-            onClick={() => void load()}
-          >
+        <div className="flex flex-wrap gap-2">
+          <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrTasks}>
+            {t('app.nav.hr.zus_workspace.quick_tasks', { defaultValue: 'HR tasks' })}
+          </Link>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
       </div>
 
-      {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
-      {err && <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>}
+      <div className="sticky top-0 z-20 -mx-1 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
+        {!loading && !err ? (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="badge border border-slate-200 font-medium tabular-nums">
+              {t('app.nav.hr.zus_workspace.stat_total', { defaultValue: 'API total: {n}', values: { n: stats.total } })}
+            </span>
+            <span className="badge border border-slate-200 font-medium tabular-nums">
+              {t('app.nav.hr.zus_workspace.stat_loaded', { defaultValue: 'Loaded: {n}', values: { n: stats.loaded } })}
+            </span>
+            <span className="badge border border-emerald-100 bg-emerald-50/90 font-medium tabular-nums text-emerald-900">
+              {t('app.nav.hr.zus_workspace.stat_open', { defaultValue: 'Open: {n}', values: { n: stats.open } })}
+            </span>
+            <span className="badge border border-brand-100 bg-brand-50/90 font-medium tabular-nums text-brand-900">
+              {t('app.nav.hr.zus_workspace.stat_in_progress', { defaultValue: 'In progress: {n}', values: { n: stats.inProg } })}
+            </span>
+            <span className="badge border border-rose-100 bg-rose-50/90 font-medium tabular-nums text-rose-900">
+              {t('app.nav.hr.zus_workspace.stat_blocked', { defaultValue: 'Blocked: {n}', values: { n: stats.blocked } })}
+            </span>
+            <span className="badge border border-slate-200 font-medium tabular-nums text-slate-700">
+              {t('app.nav.hr.zus_workspace.stat_done', { defaultValue: 'Done: {n}', values: { n: stats.done } })}
+            </span>
+          </div>
+        ) : null}
+
+        <section className="card p-4 sm:p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.nav.hr.zus_workspace.filters', { defaultValue: 'Filters' })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-end gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_status', { defaultValue: 'Status' })}</span>
+              <input
+                className="input w-36 text-sm"
+                value={fStatus}
+                onChange={(e) => setFStatus(e.target.value)}
+                placeholder="open"
+              />
+            </label>
+            <label className="flex min-w-[11rem] flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}</span>
+              <select className="input text-sm" value={fLane} onChange={(e) => setFLane(e.target.value)}>
+                <option value="">{t('app.nav.hr.zus_workspace.f_all', { defaultValue: 'All' })}</option>
+                {LANES.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {t(`app.nav.hr.zus_workspace.${l.i18n}`, { defaultValue: l.value })}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_form', { defaultValue: 'Form (ZUA/ZZA/ZWUA)' })}</span>
+              <select className="input text-sm" value={fFormKind} onChange={(e) => setFFormKind(e.target.value)}>
+                <option value="">{t('app.nav.hr.zus_workspace.f_all', { defaultValue: 'All' })}</option>
+                {FORM_KINDS.map((fk) => (
+                  <option key={fk} value={fk}>
+                    {fk}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_assignee', { defaultValue: 'Assigned HR (user id)' })}</span>
+              <input className="input w-44 font-mono text-sm" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_due_after', { defaultValue: 'Due from (date)' })}</span>
+              <input type="date" className="input text-sm" value={fDueAfter} onChange={(e) => setFDueAfter(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_due_before', { defaultValue: 'Due to (date)' })}</span>
+              <input type="date" className="input text-sm" value={fDueBefore} onChange={(e) => setFDueBefore(e.target.value)} />
+            </label>
+            <button type="button" className="btn-primary btn-sm" onClick={() => void load()}>
+              {t('app.nav.hr.zus_workspace.apply_filters', { defaultValue: 'Apply' })}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      {loading ? <p className="text-sm text-slate-600">{t('common.loading')}</p> : null}
+      {err ? <div className="alert-error">{err}</div> : null}
 
       {manage ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <section className="card space-y-3 p-4">
           <h3 className="text-sm font-semibold text-slate-900">
             {t('app.nav.hr.zus_workspace.create_heading', { defaultValue: 'Add queue row' })}
           </h3>
-          <div className="flex flex-wrap gap-3 items-end">
-            <label className="flex flex-col gap-1 text-xs text-slate-600">
-              {t('app.nav.hr.zus_workspace.col_employee', { defaultValue: 'Employee' })}
-              <select
-                className="border border-slate-200 rounded px-2 py-1.5 text-sm min-w-[14rem]"
-                value={cEmployee}
-                onChange={(e) => setCEmployee(e.target.value)}
-              >
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex min-w-[14rem] flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_employee', { defaultValue: 'Employee' })}</span>
+              <select className="input text-sm" value={cEmployee} onChange={(e) => setCEmployee(e.target.value)}>
                 <option value="">{t('app.nav.hr.zus_workspace.pick_employee', { defaultValue: 'Select…' })}</option>
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>
@@ -246,9 +273,9 @@ export default function HrZusWorkspacePage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-xs text-slate-600">
-              {t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}
-              <select className="border border-slate-200 rounded px-2 py-1.5 text-sm" value={cLane} onChange={(e) => setCLane(e.target.value as ZusWorkspaceLane)}>
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}</span>
+              <select className="input text-sm" value={cLane} onChange={(e) => setCLane(e.target.value as ZusWorkspaceLane)}>
                 {LANES.map((l) => (
                   <option key={l.value} value={l.value}>
                     {t(`app.nav.hr.zus_workspace.${l.i18n}`, { defaultValue: l.value })}
@@ -256,64 +283,64 @@ export default function HrZusWorkspacePage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-xs text-slate-600">
-              {t('app.nav.hr.zus_workspace.col_kind', { defaultValue: 'Task kind' })}
-              <input className="border border-slate-200 rounded px-2 py-1.5 text-sm w-52" value={cTaskKind} onChange={(e) => setCTaskKind(e.target.value)} />
+            <label className="flex flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_kind', { defaultValue: 'Task kind' })}</span>
+              <input className="input w-52 text-sm" value={cTaskKind} onChange={(e) => setCTaskKind(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-slate-600">
-              {t('app.nav.hr.zus_workspace.col_title', { defaultValue: 'Title' })}
-              <input className="border border-slate-200 rounded px-2 py-1.5 text-sm w-56" value={cTitle} onChange={(e) => setCTitle(e.target.value)} placeholder="e.g. Zgłoszenie do ZUS" />
+            <label className="flex min-w-[14rem] flex-1 flex-col gap-1.5">
+              <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_title', { defaultValue: 'Title' })}</span>
+              <input
+                className="input text-sm"
+                value={cTitle}
+                onChange={(e) => setCTitle(e.target.value)}
+                placeholder="e.g. Zgłoszenie do ZUS"
+              />
             </label>
-            <button
-              type="button"
-              disabled={cSaving || !cEmployee}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-              onClick={() => void onCreate()}
-            >
+            <button type="button" disabled={cSaving || !cEmployee} className="btn-primary btn-sm" onClick={() => void onCreate()}>
               {t('app.nav.hr.zus_workspace.create_btn', { defaultValue: 'Create' })}
             </button>
           </div>
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-3 flex justify-between items-center">
+      <section className="card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
           <h3 className="text-sm font-semibold text-slate-900">
             {t('app.nav.hr.zus_workspace.table_heading', { defaultValue: 'Queue ({{n}})', values: { n: total } })}
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-xs text-slate-600">
+          <table className="table w-full min-w-[1280px] text-left text-sm">
+            <thead>
               <tr>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_employee', { defaultValue: 'Employee' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_lane', { defaultValue: 'Lane' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_kind', { defaultValue: 'Task kind' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_forms', { defaultValue: 'Form' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_status', { defaultValue: 'Status' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_due', { defaultValue: 'Due' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_export', { defaultValue: 'Export' })}</th>
-                <th className="px-3 py-2">{t('app.nav.hr.zus_workspace.col_actions', { defaultValue: 'Actions' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_employee', { defaultValue: 'Employee' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_lane', { defaultValue: 'Lane' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_kind', { defaultValue: 'Task kind' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_forms', { defaultValue: 'Form' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_status', { defaultValue: 'Status' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_due', { defaultValue: 'Due' })}</th>
+                <th>{t('app.nav.hr.zus_workspace.col_export', { defaultValue: 'Export' })}</th>
+                <th className="w-36">{t('app.nav.hr.zus_workspace.col_actions', { defaultValue: 'Actions' })}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {items.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50/80">
-                  <td className="px-3 py-2">
+                <tr key={row.id}>
+                  <td>
                     <Link className="font-medium text-brand-700 hover:underline" to={employeeHref(row.employee_id)}>
                       {row.employee_display_name || row.employee_id}
                     </Link>
                     <div className="text-[10px] font-mono text-slate-400">{row.employee_id}</div>
                   </td>
-                  <td className="px-3 py-2 text-xs">{laneLabel(row.workspace_lane)}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{row.task_kind}</td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="text-xs">{laneLabel(row.workspace_lane)}</td>
+                  <td className="font-mono text-xs">{row.task_kind}</td>
+                  <td className="text-xs">
                     {row.form_kind ? `${row.form_kind}${row.form_status ? ` · ${row.form_status}` : ''}` : '—'}
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     {manage ? (
                       <select
-                        className="border border-slate-200 rounded px-1 py-0.5 text-xs"
+                        className="input py-1 text-xs"
                         value={row.status}
                         onChange={(e) => void onPatchStatus(row, e.target.value)}
                       >
@@ -327,10 +354,10 @@ export default function HrZusWorkspacePage() {
                       row.status
                     )}
                   </td>
-                  <td className="px-3 py-2 text-xs whitespace-nowrap">{formatDue(row.due_at)}</td>
-                  <td className="px-3 py-2 text-xs">{row.export_status || '—'}</td>
-                  <td className="px-3 py-2">
-                    <Link to={employeeHref(row.employee_id)} className="text-xs text-brand-700 hover:underline">
+                  <td className="whitespace-nowrap text-xs">{formatDue(row.due_at)}</td>
+                  <td className="text-xs">{row.export_status || '—'}</td>
+                  <td>
+                    <Link to={employeeHref(row.employee_id)} className="text-xs font-medium text-brand-700 hover:underline">
                       {t('app.nav.hr.zus_workspace.open_employee', { defaultValue: 'Profile' })}
                     </Link>
                   </td>
@@ -338,7 +365,7 @@ export default function HrZusWorkspacePage() {
               ))}
               {!items.length && !loading ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="py-8 text-center text-slate-600">
                     {t('app.nav.hr.zus_workspace.empty', { defaultValue: 'No tasks match filters.' })}
                   </td>
                 </tr>
