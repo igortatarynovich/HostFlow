@@ -156,8 +156,22 @@ def document_type_primary_visibility_scope(doc_type: str | None) -> str:
 
 
 def document_visible_to_viewer(doc_type: str | None, viewer_channel: str) -> bool:
+    """
+    Read filter for list/detail surfaces.
+
+    Primary scope comes from ``document_type_primary_visibility_scope`` (catalog hint).
+    Recruitment also needs **hr**- and **transport**-scoped driver compliance types in the
+    same candidate workspace (upload + checklist); those rows are still created from the
+    recruitment shell, so hiding them caused empty lists after successful upload (201 + 200).
+    """
     primary = document_type_primary_visibility_scope(doc_type)
-    return primary in viewer_readable_scopes(viewer_channel)
+    scopes = viewer_readable_scopes(viewer_channel)
+    if primary in scopes:
+        return True
+    ch = normalize_viewer_channel(viewer_channel)
+    if ch == "recruitment" and primary in ("hr", "transport"):
+        return True
+    return False
 
 
 def document_operation_allowed(

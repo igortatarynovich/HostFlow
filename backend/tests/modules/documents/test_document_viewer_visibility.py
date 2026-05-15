@@ -34,6 +34,8 @@ def test_document_visible_to_viewer_matrix() -> None:
     assert document_visible_to_viewer("driver_license", "transport")
     assert document_visible_to_viewer("driver_license", "hr")
     assert document_visible_to_viewer("medical_certificate", "hr")
+    assert document_visible_to_viewer("medical_certificate", "recruitment")
+    assert document_visible_to_viewer("adr", "recruitment")
     assert not document_visible_to_viewer("medical_certificate", "transport")
     assert document_visible_to_viewer("shared_notice", "finance")
 
