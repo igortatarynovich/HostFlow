@@ -386,20 +386,28 @@ async def ops_counters(
         )
     ).scalar_one() or 0
 
-    # Draft intake stale (24h+)
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    draft_intake_stale = (
-        await db.execute(
-            select(func.count())
-            .select_from(Candidate)
-            .where(
-                Candidate.tenant_id == tenant_id_str,
-                Candidate.deleted_at.is_(None),
-                Candidate.intake_status == "draft",
-                Candidate.updated_at < cutoff.replace(tzinfo=None),
+    # Draft intake stale (24h+). Isolated: schema / tz drift must not fail the whole dashboard.
+    draft_intake_stale = 0
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        draft_intake_stale = (
+            await db.execute(
+                select(func.count())
+                .select_from(Candidate)
+                .where(
+                    Candidate.tenant_id == tenant_id_str,
+                    Candidate.deleted_at.is_(None),
+                    Candidate.intake_status == "draft",
+                    Candidate.updated_at < cutoff.replace(tzinfo=None),
+                )
             )
-        )
-    ).scalar_one() or 0
+        ).scalar_one() or 0
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        draft_intake_stale = 0
 
     # Automation rules enabled
     try:

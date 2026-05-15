@@ -2918,7 +2918,8 @@ export default function CandidateCard(){
   }, [handoffClients, model?.company_id])
 
   const showAgencyHandoffHeader = useMemo(() => {
-    if (isNew || isMasked || isClientTenant) return false
+    const masked = model?.masked === true
+    if (isNew || masked || isClientTenant) return false
     if (!can('candidates.manage')) return false
     if (!isHandoffEnabledForCurrentCompany || !primaryHandoffDestination) return false
     if (primaryHandoffDestination === 'internal_hr') {
@@ -2930,9 +2931,9 @@ export default function CandidateCard(){
     handoffClientsForCompany.length,
     isClientTenant,
     isHandoffEnabledForCurrentCompany,
-    isMasked,
     isNew,
     model?.company_id,
+    model?.masked,
     primaryHandoffDestination,
   ])
 
