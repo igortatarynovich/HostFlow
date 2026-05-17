@@ -21,3 +21,5 @@ async def test_candidates_available_statuses_smoke(client, manager_headers) -> N
     assert data.get("schema_version") == 1
     assert isinstance(data.get("stages"), list)
     assert isinstance(data.get("statuses"), list)
+    assert isinstance(data.get("vacancy_ids"), list)
+    assert isinstance(data.get("assignee_ids"), list)

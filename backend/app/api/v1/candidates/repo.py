@@ -1199,17 +1199,23 @@ async def count_by_stage(
     return { (k or ""): int(v or 0) for k, v in rows.all() }
 
 
+_ASSIGNEE_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.I,
+)
+
+
 async def distinct_candidate_list_facets(
     db: AsyncSession,
     tenant_id: str,
     *,
     visibility: TenantVisibility | None,
     filters: Dict[str, Any],
-) -> tuple[list[str], list[str]]:
-    """Distinct ``Candidate.stage`` and ``Candidate.status`` for list scope (tenant + ACL), ignoring funnel-only filters.
+) -> tuple[list[str], list[str], list[str], list[str]]:
+    """Distinct stage/status/vacancy/assignee values for list scope (tenant + ACL), ignoring funnel-only filters.
 
-    Excludes narrow list filters (stages, q, vacancy, …) so the UI can offer every stage/status that exists in the
-    tenant-visible dataset (e.g. ``handed_off``, ``ready_for_handoff``).
+    Excludes narrow list filters (stages, q, vacancy, …) so the UI can offer column filter options grounded in the
+    full tenant-visible dataset, not only the current page.
     """
     minimal: Dict[str, Any] = {"is_client_tenant": bool(filters.get("is_client_tenant"))}
     for key in ("allowed_company_ids", "allowed_vacancy_ids", "allowed_manager_ids"):
@@ -1239,7 +1245,43 @@ async def distinct_candidate_list_facets(
         .distinct()
     )
     statuses = sorted({str(s or "").strip() for (s,) in status_rows.all() if (s or "").strip()})
-    return stages, statuses
+
+    vac_rows = await db.execute(
+        select(Candidate.vacancy_id)
+        .where(
+            base_where,
+            Candidate.vacancy_id.isnot(None),
+            func.length(func.trim(Candidate.vacancy_id)) > 0,
+        )
+        .distinct()
+    )
+    vacancy_ids = sorted({str(v or "").strip() for (v,) in vac_rows.all() if (v or "").strip()})
+
+    rid_rows = await db.execute(
+        select(Candidate.recruiter_id)
+        .where(
+            base_where,
+            Candidate.recruiter_id.isnot(None),
+            func.length(func.trim(Candidate.recruiter_id)) > 0,
+        )
+        .distinct()
+    )
+    mgr_rows = await db.execute(
+        select(Candidate.manager)
+        .where(
+            base_where,
+            Candidate.manager.isnot(None),
+            func.length(func.trim(Candidate.manager)) > 0,
+        )
+        .distinct()
+    )
+    assignee_ids: set[str] = set()
+    for (val,) in list(rid_rows.all()) + list(mgr_rows.all()):
+        s = str(val or "").strip()
+        if s and _ASSIGNEE_UUID_RE.match(s):
+            assignee_ids.add(s)
+    assignee_sorted = sorted(assignee_ids)
+    return stages, statuses, vacancy_ids, assignee_sorted
 
 
 async def count_by_manager(

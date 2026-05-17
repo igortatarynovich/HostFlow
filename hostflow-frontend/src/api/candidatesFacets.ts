@@ -4,6 +4,8 @@ export type CandidateListAvailableStatuses = {
   schema_version: 1
   stages: string[]
   statuses: string[]
+  vacancy_ids?: string[]
+  assignee_ids?: string[]
 }
 
 /** Distinct ``stage`` / ``status`` column values for the tenant list scope (same ACL as ``GET /candidates``). */

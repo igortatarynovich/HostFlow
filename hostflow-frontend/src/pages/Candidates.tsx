@@ -172,6 +172,10 @@ import {
   TEAM_WORK_PANEL_ASSIGNEE_ROLES,
   WP_ASSIGNEE_STORAGE_KEY,
 } from '../modules/candidates/internal'
+import {
+  fetchCandidateListAvailableStatuses,
+  type CandidateListAvailableStatuses,
+} from '../api/candidatesFacets'
 
 export default function Candidates(){
   const { t, locale } = useI18n()
@@ -533,6 +537,8 @@ export default function Candidates(){
   })
 
   const [saveViewIncludeTableLayout, setSaveViewIncludeTableLayout] = useState(true)
+
+  const [listColumnFacets, setListColumnFacets] = useState<CandidateListAvailableStatuses | null>(null)
 
   const meta = useMetaStages()
   const { role, isClientTenant } = usePermissions()
@@ -1150,7 +1156,7 @@ export default function Candidates(){
   )
 
   const stagePresence = useMemo(() => {
-    // Only stages actually present in current data set.
+    // Stages on the loaded page (fallback until tenant facets load).
     const set = new Set<string>()
     enrichedItems.forEach((item) => {
       if (item.stage) set.add(String(item.stage))
@@ -1158,21 +1164,74 @@ export default function Candidates(){
     return set
   }, [enrichedItems])
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const scopeTid = currentTenantId ?? me?.tenant_id
+        const data = await fetchCandidateListAvailableStatuses(
+          scopeTid ? { scope_tenant_id: String(scopeTid) } : undefined,
+        )
+        if (!cancelled) setListColumnFacets(data)
+      } catch {
+        if (!cancelled) setListColumnFacets(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tenantScopeKey, currentTenantId, me?.tenant_id])
+
   const stageFilterOptions = useMemo(() => {
-    const selected = new Set(stageFilter.map((s) => String(s || '').trim().toLowerCase()).filter(Boolean))
     const allowStage = (code: string) =>
       !recruitmentListStageFilterActive || !isPostRecruitmentStageCode(code)
-    return stageOptions
-      .filter((code) => {
-        if (!allowStage(code)) return false
-        const c = String(code || '').trim().toLowerCase()
-        return stagePresence.has(code) || (c && selected.has(c))
-      })
-      .map((code) => ({
-        value: code,
-        label: translateStageLabel(t, code, stageLabelMap[code] || code),
-      }))
-  }, [stageOptions, stagePresence, stageLabelMap, t, stageFilter, recruitmentListStageFilterActive])
+
+    const facetStages = listColumnFacets?.stages?.length
+      ? listColumnFacets.stages
+      : Array.from(stagePresence)
+    const presentNorm = new Set<string>()
+    const rawByNorm = new Map<string, string>()
+    const ingest = (raw: string) => {
+      const trimmed = String(raw || '').trim()
+      const n = trimmed.toLowerCase()
+      if (!n) return
+      presentNorm.add(n)
+      if (!rawByNorm.has(n)) rawByNorm.set(n, trimmed)
+    }
+    facetStages.forEach(ingest)
+    stageFilter.forEach(ingest)
+
+    const ordered: string[] = []
+    const seen = new Set<string>()
+    const push = (code: string) => {
+      const trimmed = String(code || '').trim()
+      const n = trimmed.toLowerCase()
+      if (!n || seen.has(n)) return
+      if (!allowStage(trimmed)) return
+      if (!presentNorm.has(n)) return
+      seen.add(n)
+      ordered.push(trimmed)
+    }
+    for (const code of stageOptions) {
+      push(code)
+    }
+    for (const n of [...presentNorm].sort()) {
+      if (seen.has(n)) continue
+      push(rawByNorm.get(n) ?? n)
+    }
+    return ordered.map((code) => ({
+      value: code,
+      label: translateStageLabel(t, code, stageLabelMap[code] || code),
+    }))
+  }, [
+    stageOptions,
+    stagePresence,
+    stageLabelMap,
+    t,
+    stageFilter,
+    recruitmentListStageFilterActive,
+    listColumnFacets?.stages,
+  ])
 
   const pruneSelectionByOptions = useCallback(
     (selected: string[], options: Array<{ value: string }>) => {
@@ -1447,7 +1506,9 @@ export default function Candidates(){
     reasonOptions,
     vacancyFilter, managerFilter, statusReasonFilter, docsStatusFilter,
     docsOrderedFilter, docsHasFilesFilter, preferredChannelFilter,
-    inPolandFilter, opsModeFilter, polandBasisFilter, trailerTypesFilter,
+    inPolandFilter, opsModeFilter,     polandBasisFilter, trailerTypesFilter,
+    facetVacancyIds: listColumnFacets?.vacancy_ids ?? [],
+    facetAssigneeIds: listColumnFacets?.assignee_ids ?? [],
   })
 
   const quickStageOptions = useMemo(
@@ -1545,19 +1606,20 @@ export default function Candidates(){
     const map = new Map<string, string>()
     const labelFor = (value: string) =>
       t(`app.candidates.row_status.${value}`, { defaultValue: value })
-    enrichedItems.forEach((item) => {
-      const raw = (item as { row_status?: string | null }).row_status
+    const add = (raw: string | null | undefined) => {
       const v = raw != null && String(raw).trim() !== '' ? String(raw).trim() : null
-      if (v && !map.has(v)) map.set(v, labelFor(v))
+      if (!v || map.has(v)) return
+      map.set(v, labelFor(v))
+    }
+    ;(listColumnFacets?.statuses ?? []).forEach((s) => add(s))
+    enrichedItems.forEach((item) => {
+      add((item as { row_status?: string | null }).row_status)
     })
-    candidateRowStatusFilter.forEach((code) => {
-      const v = String(code || '').trim()
-      if (v && !map.has(v)) map.set(v, labelFor(v))
-    })
+    candidateRowStatusFilter.forEach((code) => add(code))
     return Array.from(map.entries())
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, candidateRowStatusFilter, t])
+  }, [enrichedItems, candidateRowStatusFilter, t, listColumnFacets?.statuses])
 
   const candidateRowStatusLabel = useCallback(
     (code: string) => {

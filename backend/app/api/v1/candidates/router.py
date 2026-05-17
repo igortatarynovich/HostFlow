@@ -44,13 +44,24 @@ class BulkDeleteItemOut(BaseModel):
 
 
 class CandidateListAvailableStatusesOut(BaseModel):
-    """Distinct pipeline stages and row-level status values visible to the current list scope (tenant + ACL)."""
+    """Distinct column values for list filters (tenant + ACL, no funnel-only filters)."""
 
     schema_version: Literal[1] = 1
     stages: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(
         default_factory=list,
         description="Distinct ``Candidate.status`` values (non-empty), if used by the tenant.",
+    )
+    vacancy_ids: list[str] = Field(
+        default_factory=list,
+        description="Distinct non-empty ``Candidate.vacancy_id`` in scope.",
+    )
+    assignee_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Distinct UUID-like ``Candidate.recruiter_id`` / ``Candidate.manager`` values in scope "
+            "(matches list assignee filter semantics)."
+        ),
     )
 
 
@@ -1452,14 +1463,22 @@ async def candidates_available_statuses(
     client_tenant = await is_client_tenant_for_list(db, scope_tenant)
     filters: dict[str, object] = {"is_client_tenant": client_tenant}
     if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
-        return CandidateListAvailableStatusesOut(schema_version=1, stages=[], statuses=[])
-    stages, statuses = await cand_repo.distinct_candidate_list_facets(
+        return CandidateListAvailableStatusesOut(
+            schema_version=1, stages=[], statuses=[], vacancy_ids=[], assignee_ids=[]
+        )
+    stages, statuses, vacancy_ids, assignee_ids = await cand_repo.distinct_candidate_list_facets(
         db,
         scope_tenant,
         visibility=visibility,
         filters=filters,
     )
-    return CandidateListAvailableStatusesOut(schema_version=1, stages=stages, statuses=statuses)
+    return CandidateListAvailableStatusesOut(
+        schema_version=1,
+        stages=stages,
+        statuses=statuses,
+        vacancy_ids=vacancy_ids,
+        assignee_ids=assignee_ids,
+    )
 
 
 @router.get(

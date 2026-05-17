@@ -1,8 +1,9 @@
 // src/modules/candidates/hooks/useCandidatesFilterOptions.ts
 //
-// Builds 13 column-filter dropdown option lists from the enriched
-// candidate list only. Each list is built from `enrichedItems`, so the UI
-// shows only values that currently exist in data.
+// Builds column-filter dropdown option lists. Vacancy and assignee options merge
+// tenant-scoped facet ids from ``GET /candidates/available-statuses`` with labels
+// from the current page and catalog maps so filters reflect the full list scope,
+// not only the loaded page.
 //
 // Extracted from inline `useMemo` blocks in `src/pages/Candidates.tsx`
 // (Phase 1 #4 god-component split).
@@ -64,6 +65,11 @@ export interface CandidatesFilterOptionsCtx {
   opsModeFilter: CandidateOpsMode[]
   polandBasisFilter: string[]
   trailerTypesFilter: string[]
+
+  /** Distinct vacancy ids in tenant list scope (from ``/candidates/available-statuses``). */
+  facetVacancyIds?: string[]
+  /** Distinct assignee user ids in tenant list scope (same endpoint). */
+  facetAssigneeIds?: string[]
 }
 
 export interface CandidatesFilterOptionsResult {
@@ -90,6 +96,8 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
     preferredChannelLabelMap, inPolandLabelMap, opsModeLabelMap,
     getPolandBasisLabel, getTrailerTypeLabel,
     reasonOptions,
+    facetVacancyIds = [],
+    facetAssigneeIds = [],
   } = ctx
 
   const vacancyFilterOptions = useMemo<FilterOption[]>(() => {
@@ -110,8 +118,15 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
         t('app.candidates.labels.untitled')
       ensure(id, title)
     })
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, vacancyLabelMap, t])
+    facetVacancyIds.forEach((id) => {
+      const sid = String(id || '').trim()
+      if (!sid || map.has(sid)) return
+      map.set(sid, vacancyLabelMap.get(sid) || t('app.candidates.labels.untitled'))
+    })
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [enrichedItems, vacancyLabelMap, t, facetVacancyIds])
 
   const managerFilterOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, string>()
@@ -125,8 +140,15 @@ export function useCandidatesFilterOptions(ctx: CandidatesFilterOptionsCtx): Can
       const label = resolveManagerLabel(item) || id
       ensure(id, label)
     })
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [enrichedItems, resolveManagerLabel])
+    facetAssigneeIds.forEach((id) => {
+      const sid = String(id || '').trim()
+      if (!sid || map.has(sid)) return
+      map.set(sid, managerLabelMap.get(sid) || sid)
+    })
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [enrichedItems, resolveManagerLabel, managerLabelMap, facetAssigneeIds])
 
   const reasonFilterOptions = useMemo<FilterOption[]>(() => {
     const present = new Set<string>()

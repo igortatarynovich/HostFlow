@@ -362,7 +362,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         required_files=_sides_required("id_card", **ID_CARD_FRAME),
         expiry_rule=_expiry_rule("expires_at"),
         default_expire_in_days=1825,
-        aliases=("tachograph_card", "karta_tachografu", "tachograph"),
+        aliases=("tachograph_card", "karta_tachografu", "tachograph", "card_tacho"),
         owner_summary_weight=70,
     ),
     DocumentTypeDefinition(

@@ -1447,8 +1447,17 @@ async def api_create_candidate_document(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
     viewer_channel: str = Depends(resolve_document_viewer_channel),
+    current_user: UserCtx = Depends(get_current_user),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    from backend.app.services.candidate_operational_write import ensure_candidate_operational_write_allowed
+
+    await ensure_candidate_operational_write_allowed(
+        session,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate_id),
+        role=str(getattr(current_user, "role", "") or ""),
+    )
     logger.info(f"[create_doc] Received request for candidate {candidate_id}, parsed payload: {payload.model_dump()}")
     doc_access = await _candidate_documents_mutation_access(
         session,
