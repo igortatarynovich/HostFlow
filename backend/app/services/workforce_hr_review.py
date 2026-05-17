@@ -1,0 +1,665 @@
+"""HR acceptance review workflow (stage A): checklist, basis, approve / return / reject."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.models.workforce_hr_review import (
+    HR_REVIEW_STATUS_APPROVED,
+    HR_REVIEW_STATUS_IN_PROGRESS,
+    HR_REVIEW_STATUS_REJECTED,
+    HR_REVIEW_STATUS_RETURNED,
+    HR_REVIEW_STATUS_WAITING_DOCUMENTS,
+    HR_REVIEW_STATUS_WAITING_PAYMENTS,
+    HR_REVIEW_STATUS_WAITING_RED_PAPER,
+    HR_REVIEW_STATUS_WAITING_WORK_PERMIT,
+    HR_REVIEW_TERMINAL_STATUSES,
+    WorkforceHrReview,
+)
+from backend.app.services import workforce_employees as we_svc
+from backend.app.services.handoff import return_handoff
+from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
+from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
+from backend.app.services.workforce_work_eligibility_rules import payment_row_satisfied
+
+CHECKLIST_ITEM_CODES: tuple[str, ...] = (
+    "identity_verified",
+    "legal_stay_verified",
+    "work_permit_verified",
+    "red_paper_verified",
+    "required_payments_confirmed",
+    "documents_uploaded",
+    "zus_readiness_confirmed",
+    "employment_data_complete",
+)
+
+CHECKLIST_LABELS: dict[str, str] = {
+    "identity_verified": "Identity verified",
+    "legal_stay_verified": "Legal stay verified",
+    "work_permit_verified": "Work permit verified",
+    "red_paper_verified": "Red paper verified",
+    "required_payments_confirmed": "Required payments confirmed",
+    "documents_uploaded": "Documents uploaded",
+    "zus_readiness_confirmed": "ZUS readiness confirmed",
+    "employment_data_complete": "Employment data complete",
+}
+
+REQUIRED_CHECKLIST_ITEMS = frozenset(CHECKLIST_ITEM_CODES)
+
+ITEM_SATISFIED = "satisfied"
+ITEM_BLOCKED = "blocked"
+ITEM_NEEDS_ATTENTION = "needs_attention"
+ITEM_UNKNOWN = "unknown"
+
+
+class HrReviewBlockedError(Exception):
+    def __init__(self, *, blockers: list[str], failed_items: list[str]):
+        self.blockers = blockers
+        self.failed_items = failed_items
+        super().__init__("HR_REVIEW_BLOCKED")
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _handoff_id_from_employee(employee: WorkforceEmployee) -> Optional[str]:
+    meta = employee.meta if isinstance(employee.meta, dict) else {}
+    hid = str(meta.get("internal_hr_handoff_id") or "").strip()
+    return hid or None
+
+
+def _journey_step_by_code(journey: dict[str, Any], code: str) -> Optional[dict[str, Any]]:
+    for s in journey.get("steps") or []:
+        if isinstance(s, dict) and str(s.get("step_code") or "") == code:
+            return s
+    return None
+
+
+def _step_satisfied(step: Optional[dict[str, Any]]) -> bool:
+    if not step:
+        return False
+    st = str(step.get("status") or "").strip().lower()
+    if st == "done":
+        return True
+    if st == "not_required":
+        conf = step.get("confidence")
+        if conf is not None and float(conf) >= 0.85:
+            return True
+        if step.get("decision_reason") and not step.get("cannot_determine_reason"):
+            return True
+    return False
+
+
+def _step_blocked(step: Optional[dict[str, Any]]) -> bool:
+    if not step:
+        return True
+    st = str(step.get("status") or "").strip().lower()
+    return st in ("blocked", "needs_data", "current", "pending")
+
+
+def _merge_manual_item(prev: Optional[dict[str, Any]], auto: dict[str, Any]) -> dict[str, Any]:
+    if not prev or not isinstance(prev, dict):
+        return auto
+    if str(prev.get("source") or "") == "manual" and str(prev.get("status") or "") == ITEM_SATISFIED:
+        out = {**auto, **prev}
+        out["source"] = "manual"
+        return out
+    return {**prev, **auto}
+
+
+async def ensure_hr_review_for_employee(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+) -> WorkforceHrReview:
+    tid = str(tenant_id).strip()
+    eid = str(employee.id).strip()
+    row = (
+        await db.execute(
+            select(WorkforceHrReview).where(
+                WorkforceHrReview.tenant_id == tid,
+                WorkforceHrReview.employee_id == eid,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        row = WorkforceHrReview(
+            tenant_id=tid,
+            employee_id=eid,
+            handoff_id=_handoff_id_from_employee(employee),
+            status=HR_REVIEW_STATUS_IN_PROGRESS,
+            checklist_json={"items": []},
+            blockers_json=[],
+            decision_basis_json={},
+        )
+        db.add(row)
+        await db.flush()
+    elif not row.handoff_id:
+        hid = _handoff_id_from_employee(employee)
+        if hid:
+            row.handoff_id = hid
+            await db.flush()
+    await _sync_review_from_sources(db, tid, employee, row)
+    return row
+
+
+async def _sync_review_from_sources(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+    review: WorkforceHrReview,
+) -> None:
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        return
+
+    eid = str(employee.id)
+    bundle = await we_svc.get_hr_bundle(db, tenant_id, eid)
+    journey = await build_work_eligibility_journey(db, tenant_id, eid)
+    payments = await list_payment_requirements(db, tenant_id, eid)
+    comp = bundle.get("compliance_state")
+    compliance_reasons = list(getattr(comp, "reasons", None) or []) if comp else []
+    missing_docs_count = int(getattr(comp, "missing_count", 0) or 0) if comp else 0
+
+    legal = _journey_step_by_code(journey, "legal_stay")
+    wp_app = _journey_step_by_code(journey, "work_permit_application")
+    wp_recv = _journey_step_by_code(journey, "work_permit_received")
+    rp_recv = _journey_step_by_code(journey, "red_paper_received")
+    zus = _journey_step_by_code(journey, "zus_registration")
+
+    snap = employee.candidate_snapshot if isinstance(employee.candidate_snapshot, dict) else {}
+    identity_ok = bool(
+        (employee.display_name or "").strip()
+        and (
+            str(snap.get("email") or "").strip()
+            or str(snap.get("phone") or "").strip()
+            or employee.candidate_id
+        )
+    )
+
+    pay_blockers: list[str] = []
+    for p in payments:
+        st = str(getattr(p, "payment_status", "") or "").strip().lower()
+        if st in ("required", "pending") and not payment_row_satisfied(p):
+            pay_blockers.append(f"payment:{getattr(p, 'requirement_type', 'fee')}")
+
+    employments = list(bundle.get("employments") or [])
+    employment_ok = any(
+        str(getattr(e, "contract_type", "") or "").strip() and getattr(e, "start_date", None) for e in employments
+    )
+
+    doc_summary = bundle.get("hr_document_context_summary") or {}
+    doc_items = doc_summary.get("items") if isinstance(doc_summary, dict) else []
+    required_unverified = 0
+    if isinstance(doc_items, list):
+        for it in doc_items:
+            if not isinstance(it, dict):
+                continue
+            if it.get("required") and not it.get("verified"):
+                required_unverified += 1
+
+    docs_ok = missing_docs_count == 0 and required_unverified == 0
+
+    prev_items = {}
+    raw_cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    for it in raw_cl.get("items") or []:
+        if isinstance(it, dict) and it.get("item_code"):
+            prev_items[str(it["item_code"])] = it
+
+    def item(code: str, *, satisfied: bool, blocked: bool, basis: dict[str, Any], blockers: list[str]) -> dict[str, Any]:
+        if satisfied:
+            st = ITEM_SATISFIED
+        elif blocked:
+            st = ITEM_BLOCKED
+        else:
+            st = ITEM_NEEDS_ATTENTION
+        auto = {
+            "item_code": code,
+            "label": CHECKLIST_LABELS.get(code, code),
+            "status": st,
+            "source": "auto",
+            "required": code in REQUIRED_CHECKLIST_ITEMS,
+            "blockers": blockers,
+            "basis": basis,
+            "verified_by_user_id": None,
+            "verified_at": None,
+        }
+        return _merge_manual_item(prev_items.get(code), auto)
+
+    items = [
+        item(
+            "identity_verified",
+            satisfied=identity_ok,
+            blocked=not identity_ok,
+            basis={"employee_display_name": employee.display_name, "snapshot": snap},
+            blockers=[] if identity_ok else ["identity_incomplete"],
+        ),
+        item(
+            "legal_stay_verified",
+            satisfied=_step_satisfied(legal),
+            blocked=_step_blocked(legal) and not _step_satisfied(legal),
+            basis={"journey_step": legal},
+            blockers=list(legal.get("blockers") or []) if legal else ["legal_stay_unknown"],
+        ),
+        item(
+            "work_permit_verified",
+            satisfied=_step_satisfied(wp_recv) or (_step_satisfied(wp_app) and _step_satisfied(wp_recv)),
+            blocked=(_step_blocked(wp_recv) or _step_blocked(wp_app)) and not _step_satisfied(wp_recv),
+            basis={"journey_steps": {"application": wp_app, "received": wp_recv}},
+            blockers=list((wp_recv or wp_app or {}).get("blockers") or []),
+        ),
+        item(
+            "red_paper_verified",
+            satisfied=_step_satisfied(rp_recv),
+            blocked=_step_blocked(rp_recv) and not _step_satisfied(rp_recv),
+            basis={"journey_step": rp_recv},
+            blockers=list(rp_recv.get("blockers") or []) if rp_recv else [],
+        ),
+        item(
+            "required_payments_confirmed",
+            satisfied=len(pay_blockers) == 0,
+            blocked=len(pay_blockers) > 0,
+            basis={"payments_count": len(payments), "payment_blockers": pay_blockers},
+            blockers=pay_blockers,
+        ),
+        item(
+            "documents_uploaded",
+            satisfied=docs_ok,
+            blocked=not docs_ok,
+            basis={"missing_documents_count": missing_docs_count, "required_unverified": required_unverified},
+            blockers=(["missing_documents"] if missing_docs_count else [])
+            + (["unverified_required"] if required_unverified else []),
+        ),
+        item(
+            "zus_readiness_confirmed",
+            satisfied=_step_satisfied(zus),
+            blocked=_step_blocked(zus) and not _step_satisfied(zus),
+            basis={"journey_step": zus},
+            blockers=list(zus.get("blockers") or []) if zus else ["zus_unknown"],
+        ),
+        item(
+            "employment_data_complete",
+            satisfied=employment_ok,
+            blocked=not employment_ok,
+            basis={"employment_rows": len(employments)},
+            blockers=[] if employment_ok else ["employment_incomplete"],
+        ),
+    ]
+
+    blockers: list[str] = []
+    failed_required: list[str] = []
+    for it in items:
+        if not it.get("required"):
+            continue
+        if str(it.get("status") or "") != ITEM_SATISFIED:
+            failed_required.append(str(it["item_code"]))
+            for b in it.get("blockers") or []:
+                bs = str(b).strip()
+                if bs and bs not in blockers:
+                    blockers.append(bs)
+
+    review.checklist_json = {"items": items}
+    review.blockers_json = blockers
+    review.decision_basis_json = await build_hr_decision_basis(
+        db,
+        tenant_id,
+        employee,
+        journey=journey,
+        compliance_reasons=compliance_reasons,
+    )
+    review.status = _derive_status_from_blockers(blockers, failed_required)
+    if (review.corrections_note or "").strip() and review.status not in HR_REVIEW_TERMINAL_STATUSES:
+        review.status = HR_REVIEW_STATUS_WAITING_DOCUMENTS
+    await db.flush()
+
+
+def _derive_status_from_blockers(blockers: list[str], failed_items: list[str]) -> str:
+    if not failed_items:
+        return HR_REVIEW_STATUS_IN_PROGRESS
+    joined = " ".join(blockers).lower()
+    if any(x in joined for x in ("document", "missing_doc", "unverified")):
+        return HR_REVIEW_STATUS_WAITING_DOCUMENTS
+    if any(x in joined for x in ("payment", "fee")):
+        return HR_REVIEW_STATUS_WAITING_PAYMENTS
+    if "red_paper" in joined:
+        return HR_REVIEW_STATUS_WAITING_RED_PAPER
+    if any(x in joined for x in ("work_permit", "permit")):
+        return HR_REVIEW_STATUS_WAITING_WORK_PERMIT
+    return HR_REVIEW_STATUS_IN_PROGRESS
+
+
+async def build_hr_decision_basis(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+    *,
+    journey: Optional[dict[str, Any]] = None,
+    compliance_reasons: Optional[list[Any]] = None,
+) -> dict[str, Any]:
+    eid = str(employee.id)
+    if journey is None:
+        journey = await build_work_eligibility_journey(db, tenant_id, eid)
+    if compliance_reasons is None:
+        bundle = await we_svc.get_hr_bundle(db, tenant_id, eid)
+        comp = bundle.get("compliance_state")
+        compliance_reasons = list(getattr(comp, "reasons", None) or []) if comp else []
+
+    steps_out = []
+    for s in journey.get("steps") or []:
+        if not isinstance(s, dict):
+            continue
+        steps_out.append(
+            {
+                "step_code": s.get("step_code"),
+                "label": s.get("label"),
+                "status": s.get("status"),
+                "rule_code": s.get("rule_code"),
+                "decision_reason": s.get("decision_reason"),
+                "cannot_determine_reason": s.get("cannot_determine_reason"),
+                "input_facts": s.get("input_facts"),
+                "blockers": s.get("blockers"),
+            }
+        )
+
+    return {
+        "generated_at": _now().isoformat(),
+        "handoff_id": _handoff_id_from_employee(employee),
+        "candidate_snapshot": employee.candidate_snapshot,
+        "eligibility_steps": steps_out,
+        "compliance_reasons": compliance_reasons[:20],
+        "recommended_next_action": journey.get("recommended_next_action"),
+        "next_hr_action": journey.get("next_hr_action"),
+    }
+
+
+def _documents_for_approval(bundle: dict[str, Any], journey: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    summary = bundle.get("hr_document_context_summary") or {}
+    items = summary.get("items") if isinstance(summary, dict) else []
+
+    def ctx_row(label: str, context_types: tuple[str, ...]) -> dict[str, Any]:
+        match = None
+        if isinstance(items, list):
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                ct = str(it.get("context_type") or "").strip().lower()
+                if ct in context_types:
+                    match = it
+                    break
+        if match:
+            st = "verified" if match.get("verified") else "uploaded" if match.get("document_id") else "missing"
+        else:
+            st = "missing"
+        return {
+            "document_key": label,
+            "label": label,
+            "status": st,
+            "context_type": match.get("context_type") if match else None,
+            "document_id": match.get("document_id") if match else None,
+            "verified": bool(match.get("verified")) if match else False,
+            "expires_at": match.get("expires_at") if match else None,
+        }
+
+    rows.append(ctx_row("Legal stay", ("legal_stay", "residence_permit", "visa")))
+    rows.append(ctx_row("Work permit", ("work_permit", "work_permit_application")))
+    rows.append(ctx_row("Red paper", ("red_paper", "red_paper_certificate")))
+    rows.append(ctx_row("Medical", ("medical", "medical_certificate")))
+    rows.append(ctx_row("Psychological", ("psychological", "psychological_certificate")))
+
+    legal = _journey_step_by_code(journey, "legal_stay")
+    if legal and str(legal.get("status") or "") == "needs_data":
+        for r in rows:
+            if r["document_key"] == "Legal stay":
+                r["status"] = "needs_data"
+                r["basis"] = legal.get("cannot_determine_reason") or legal.get("decision_reason")
+    return rows
+
+
+async def build_hr_review_panel(
+    db: AsyncSession,
+    tenant_id: str,
+    employee_id: str,
+) -> Optional[dict[str, Any]]:
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        return None
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    bundle = await we_svc.get_hr_bundle(db, tenant_id, employee_id)
+    journey = await build_work_eligibility_journey(db, tenant_id, employee_id)
+
+    items = []
+    cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    for it in cl.get("items") or []:
+        if isinstance(it, dict):
+            items.append(it)
+
+    blockers = list(review.blockers_json or [])
+    failed_required = [
+        str(it["item_code"])
+        for it in items
+        if it.get("required") and str(it.get("status") or "") != ITEM_SATISFIED
+    ]
+    can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
+
+    next_action = None
+    if blockers:
+        next_action = f"Resolve: {', '.join(blockers[:3])}"
+    elif journey.get("next_hr_action") and isinstance(journey["next_hr_action"], dict):
+        next_action = journey["next_hr_action"].get("title") or journey.get("recommended_next_action")
+    else:
+        next_action = journey.get("recommended_next_action")
+
+    return {
+        "review_id": review.id,
+        "employee_id": employee_id,
+        "handoff_id": review.handoff_id,
+        "status": review.status,
+        "checklist": items,
+        "blockers": blockers,
+        "failed_required_items": failed_required,
+        "can_approve": can_approve,
+        "next_required_action": next_action,
+        "decision_basis": review.decision_basis_json,
+        "documents_for_approval": _documents_for_approval(bundle, journey),
+        "corrections_note": review.corrections_note,
+        "return_reason": review.return_reason,
+        "reject_reason": review.reject_reason,
+        "decided_by_user_id": review.decided_by_user_id,
+        "decided_at": review.decided_at.isoformat() if review.decided_at else None,
+    }
+
+
+async def update_hr_review_checklist_item(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    item_code: str,
+    actor_user_id: str,
+    satisfied: bool = True,
+) -> WorkforceHrReview:
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise ValueError("EMPLOYEE_NOT_FOUND")
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+
+    code = str(item_code or "").strip()
+    if code not in CHECKLIST_LABELS:
+        raise ValueError("INVALID_CHECKLIST_ITEM")
+
+    cl = dict(review.checklist_json or {"items": []})
+    items = list(cl.get("items") or [])
+    found = False
+    for i, it in enumerate(items):
+        if not isinstance(it, dict):
+            continue
+        if str(it.get("item_code") or "") != code:
+            continue
+        items[i] = {
+            **it,
+            "item_code": code,
+            "label": CHECKLIST_LABELS[code],
+            "status": ITEM_SATISFIED if satisfied else ITEM_NEEDS_ATTENTION,
+            "source": "manual",
+            "required": code in REQUIRED_CHECKLIST_ITEMS,
+            "blockers": [] if satisfied else it.get("blockers") or [],
+            "basis": it.get("basis") or {},
+            "verified_by_user_id": actor_user_id if satisfied else None,
+            "verified_at": _now().isoformat() if satisfied else None,
+        }
+        found = True
+        break
+    if not found:
+        items.append(
+            {
+                "item_code": code,
+                "label": CHECKLIST_LABELS[code],
+                "status": ITEM_SATISFIED if satisfied else ITEM_NEEDS_ATTENTION,
+                "source": "manual",
+                "required": code in REQUIRED_CHECKLIST_ITEMS,
+                "blockers": [],
+                "basis": {},
+                "verified_by_user_id": actor_user_id if satisfied else None,
+                "verified_at": _now().isoformat() if satisfied else None,
+            }
+        )
+    cl["items"] = items
+    review.checklist_json = cl
+    await _sync_review_from_sources(db, tenant_id, emp, review)
+    return review
+
+
+async def _assert_can_approve(review: WorkforceHrReview) -> None:
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+    cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    failed: list[str] = []
+    blockers: list[str] = list(review.blockers_json or [])
+    for it in cl.get("items") or []:
+        if not isinstance(it, dict) or not it.get("required"):
+            continue
+        if str(it.get("status") or "") != ITEM_SATISFIED:
+            failed.append(str(it["item_code"]))
+    if failed:
+        raise HrReviewBlockedError(blockers=blockers, failed_items=failed)
+
+
+async def approve_hr_review(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    actor_user_id: str,
+) -> WorkforceHrReview:
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise ValueError("EMPLOYEE_NOT_FOUND")
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    await _sync_review_from_sources(db, tenant_id, emp, review)
+    await _assert_can_approve(review)
+    now = _now()
+    review.status = HR_REVIEW_STATUS_APPROVED
+    review.decided_by_user_id = actor_user_id
+    review.decided_at = now
+    review.blockers_json = []
+    if emp.status == "onboarding":
+        emp.status = "active"
+    await db.flush()
+    return review
+
+
+async def return_hr_review_to_recruitment(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    actor_user_id: str,
+    return_reason: str,
+) -> WorkforceHrReview:
+    reason = str(return_reason or "").strip()
+    if not reason:
+        raise ValueError("RETURN_REASON_REQUIRED")
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise ValueError("EMPLOYEE_NOT_FOUND")
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+
+    hid = review.handoff_id or _handoff_id_from_employee(emp)
+    if hid:
+        handoff, err = await return_handoff(
+            db,
+            handoff_id=hid,
+            reviewed_by_user_id=actor_user_id,
+            return_reason=reason,
+            tenant_id=tenant_id,
+        )
+        if err:
+            raise ValueError(err)
+
+    review.status = HR_REVIEW_STATUS_RETURNED
+    review.return_reason = reason
+    review.decided_by_user_id = actor_user_id
+    review.decided_at = _now()
+    await db.flush()
+    return review
+
+
+async def request_hr_review_corrections(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    actor_user_id: str,
+    note: str,
+) -> WorkforceHrReview:
+    note_s = str(note or "").strip()
+    if not note_s:
+        raise ValueError("CORRECTIONS_NOTE_REQUIRED")
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise ValueError("EMPLOYEE_NOT_FOUND")
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+    review.corrections_note = note_s
+    await _sync_review_from_sources(db, tenant_id, emp, review)
+    review.decided_by_user_id = None
+    review.decided_at = None
+    await db.flush()
+    return review
+
+
+async def reject_hr_review(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    actor_user_id: str,
+    reject_reason: str,
+) -> WorkforceHrReview:
+    reason = str(reject_reason or "").strip()
+    if not reason:
+        raise ValueError("REJECT_REASON_REQUIRED")
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise ValueError("EMPLOYEE_NOT_FOUND")
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+    review.status = HR_REVIEW_STATUS_REJECTED
+    review.reject_reason = reason
+    review.decided_by_user_id = actor_user_id
+    review.decided_at = _now()
+    emp.status = "terminated"
+    await db.flush()
+    return review

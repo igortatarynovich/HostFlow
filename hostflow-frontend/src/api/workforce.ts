@@ -299,6 +299,48 @@ export type WorkEligibilityJourney = {
   next_hr_action?: NextHrAction | null
 }
 
+export type HrReviewChecklistItem = {
+  item_code: string
+  label: string
+  status: string
+  source: string
+  required: boolean
+  blockers: string[]
+  basis: Record<string, unknown>
+  verified_by_user_id?: string | null
+  verified_at?: string | null
+}
+
+export type HrReviewDocumentRow = {
+  document_key: string
+  label: string
+  status: string
+  context_type?: string | null
+  document_id?: string | null
+  verified: boolean
+  expires_at?: string | null
+  basis?: string | null
+}
+
+export type HrReviewPanel = {
+  review_id: string
+  employee_id: string
+  handoff_id?: string | null
+  status: string
+  checklist: HrReviewChecklistItem[]
+  blockers: string[]
+  failed_required_items: string[]
+  can_approve: boolean
+  next_required_action?: string | null
+  decision_basis?: Record<string, unknown> | null
+  documents_for_approval: HrReviewDocumentRow[]
+  corrections_note?: string | null
+  return_reason?: string | null
+  reject_reason?: string | null
+  decided_by_user_id?: string | null
+  decided_at?: string | null
+}
+
 export type WorkforceHrBundle = {
   employments: WorkforceEmployment[]
   payroll_profile: WorkforcePayrollProfile | null
@@ -599,6 +641,62 @@ export async function patchWorkforceWorkEligibility(
 export async function getWorkEligibilityJourney(employeeId: string): Promise<WorkEligibilityJourney> {
   const { data } = await http.get<WorkEligibilityJourney>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/work-eligibility/journey`,
+  )
+  return data
+}
+
+export async function getWorkforceHrReview(employeeId: string): Promise<HrReviewPanel> {
+  const { data } = await http.get<HrReviewPanel>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review`,
+  )
+  return data
+}
+
+export async function patchWorkforceHrReviewChecklistItem(
+  employeeId: string,
+  itemCode: string,
+  satisfied: boolean,
+): Promise<HrReviewPanel> {
+  const { data } = await http.patch<HrReviewPanel>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review/checklist/${encodeURIComponent(itemCode)}`,
+    { satisfied },
+  )
+  return data
+}
+
+export async function approveWorkforceHrReview(employeeId: string): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review/approve`,
+  )
+  return data
+}
+
+export async function returnWorkforceHrReviewToRecruitment(
+  employeeId: string,
+  reason: string,
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review/return-to-recruitment`,
+    { reason },
+  )
+  return data
+}
+
+export async function requestWorkforceHrReviewCorrections(
+  employeeId: string,
+  note: string,
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review/request-corrections`,
+    { note },
+  )
+  return data
+}
+
+export async function rejectWorkforceHrReview(employeeId: string, reason: string): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review/reject`,
+    { reason },
   )
   return data
 }

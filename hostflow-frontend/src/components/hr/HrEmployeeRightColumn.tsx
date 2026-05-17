@@ -3,12 +3,13 @@
  * employment summary, and quick navigation. Sticky wrapper applied by parent.
  * Uses the same CRM primitives (card, links) as the rest of the app — layout/density only.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
 import {
   getWorkEligibilityJourney,
+  type HrReviewPanel,
   type NextHrAction,
   type WorkforceEmployeeOperationalProfile,
   type WorkforceHrBundle,
@@ -134,29 +135,78 @@ function AlertsPanel({ alerts }: { alerts: WorkforceProfileAlert[] }) {
   )
 }
 
+const HR_REVIEW_TERMINAL = new Set(['approved_for_employment', 'returned_to_recruitment', 'rejected_by_hr'])
+
+function TimelineEventList({ events }: { events: WorkforceTimelineEvent[] }) {
+  return (
+    <ul className="space-y-2 text-xs">
+      {events.map((ev) => (
+        <li key={ev.id} className="border-b border-slate-100 pb-2 last:border-0">
+          <div className="text-[10px] text-slate-500">
+            {formatShortDateIso(ev.occurred_at)} · {ev.kind}
+          </div>
+          <div className="font-medium text-slate-900">{ev.title}</div>
+          {ev.detail ? <div className="mt-0.5 break-all text-slate-600">{ev.detail}</div> : null}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function TimelinePanel({ events }: { events: WorkforceTimelineEvent[] }) {
   const { t } = useI18n()
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const peek = events.slice(0, 3)
+
   return (
-    <div className="card flex max-h-[min(22rem,40vh)] min-h-0 flex-col p-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {t('app.hr.employee_operational.section_timeline', { defaultValue: 'Timeline' })}
+    <>
+      <div className="card p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.employee_operational.section_timeline', { defaultValue: 'Timeline' })}
+          </div>
+          {events.length > 3 ? (
+            <button
+              type="button"
+              className="text-[11px] font-medium text-brand-700 hover:underline"
+              onClick={() => dialogRef.current?.showModal()}
+            >
+              {t('app.hr.employee_rail.timeline_full', { defaultValue: 'Open full history' })}
+            </button>
+          ) : null}
+        </div>
+        {peek.length === 0 ? (
+          <p className="mt-2 text-xs text-slate-500">{t('app.hr.employee_operational.timeline_empty', { defaultValue: 'No timeline events.' })}</p>
+        ) : (
+          <div className="mt-2">
+            <TimelineEventList events={peek} />
+          </div>
+        )}
+        {events.length > 3 ? (
+          <button type="button" className="btn-secondary btn-sm mt-3 w-full" onClick={() => dialogRef.current?.showModal()}>
+            {t('app.hr.employee_rail.timeline_full', { defaultValue: 'Open full history' })}
+          </button>
+        ) : null}
       </div>
-      {events.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-500">{t('app.hr.employee_operational.timeline_empty', { defaultValue: 'No timeline events.' })}</p>
-      ) : (
-        <ul className="mt-2 flex-1 space-y-2 overflow-y-auto pr-1 text-xs">
-          {events.map((ev) => (
-            <li key={ev.id} className="border-b border-slate-100 pb-2 last:border-0">
-              <div className="text-[10px] text-slate-500">
-                {formatShortDateIso(ev.occurred_at)} · {ev.kind}
-              </div>
-              <div className="font-medium text-slate-900">{ev.title}</div>
-              {ev.detail ? <div className="mt-0.5 break-all text-slate-600">{ev.detail}</div> : null}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      <dialog
+        ref={dialogRef}
+        className="max-h-[85vh] w-[min(32rem,92vw)] rounded-xl border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/40"
+      >
+        <div className="flex max-h-[85vh] flex-col">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('app.hr.employee_rail.timeline_modal_title', { defaultValue: 'Full timeline' })}
+            </h3>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => dialogRef.current?.close()}>
+              {t('common.close', { defaultValue: 'Close' })}
+            </button>
+          </div>
+          <div className="overflow-y-auto px-4 py-3">
+            <TimelineEventList events={events} />
+          </div>
+        </div>
+      </dialog>
+    </>
   )
 }
 
@@ -191,11 +241,54 @@ function EmploymentPeek({
   )
 }
 
-function NextHrActionPanel({ employeeId }: { employeeId: string }) {
+function NextHrActionFromReview({ panel }: { panel: HrReviewPanel }) {
+  const { t } = useI18n()
+  const title =
+    panel.next_required_action?.trim() ||
+    (panel.blockers.length
+      ? t('app.hr.review.rail_blockers', { defaultValue: 'Resolve HR review blockers' })
+      : t('app.hr.review.rail_continue', { defaultValue: 'Continue HR review' }))
+
+  return (
+    <div className="card border-indigo-100 bg-gradient-to-b from-indigo-50/90 to-white p-4 shadow-sm">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
+        {t('app.hr.employee_rail.next_hr_action', { defaultValue: 'Next HR action' })}
+      </div>
+      <h3 className="mt-2 text-sm font-semibold leading-snug text-slate-900">{title}</h3>
+      {panel.blockers.length ? (
+        <ul className="mt-2 list-inside list-disc text-[11px] text-rose-800">
+          {panel.blockers.map((b) => (
+            <li key={b}>{b.replace(/_/g, ' ')}</li>
+          ))}
+        </ul>
+      ) : null}
+      {!panel.can_approve && panel.failed_required_items.length ? (
+        <p className="mt-2 text-[11px] text-slate-600">
+          {t('app.hr.review.rail_items', {
+            defaultValue: 'Required: {items}',
+            values: { items: panel.failed_required_items.join(', ') },
+          })}
+        </p>
+      ) : null}
+      <div className="mt-3">
+        <a href="#hr-employee-review" className="btn-primary btn-sm inline-flex">
+          {t('app.hr.review.rail_open', { defaultValue: 'Open HR review' })}
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function NextHrActionPanel({ employeeId, hrReview }: { employeeId: string; hrReview?: HrReviewPanel | null }) {
   const { t } = useI18n()
   const [data, setData] = useState<NextHrAction | null | undefined>(undefined)
   const [recommendedFallback, setRecommendedFallback] = useState('')
   const [loading, setLoading] = useState(true)
+
+  const showReviewFirst =
+    hrReview &&
+    !HR_REVIEW_TERMINAL.has(hrReview.status) &&
+    Boolean(hrReview.next_required_action?.trim() || hrReview.blockers.length || !hrReview.can_approve)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -214,6 +307,10 @@ function NextHrActionPanel({ employeeId }: { employeeId: string }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  if (showReviewFirst && hrReview) {
+    return <NextHrActionFromReview panel={hrReview} />
+  }
 
   if (loading) {
     return (
@@ -341,14 +438,16 @@ export function HrEmployeeRightColumn({
   employeeId,
   profile,
   bundle,
+  hrReview,
 }: {
   employeeId: string
   profile: WorkforceEmployeeOperationalProfile
   bundle: WorkforceHrBundle
+  hrReview?: HrReviewPanel | null
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <NextHrActionPanel employeeId={employeeId} />
+      <NextHrActionPanel employeeId={employeeId} hrReview={hrReview} />
       <HrEmployeeOperationalRail
         summary={profile.operational_summary}
         zusRegistrationStatus={bundle.zus_profile?.registration_status}

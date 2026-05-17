@@ -264,6 +264,7 @@ WorkPermitSubmissionChannel = _load_model_module(
 WorkforceWorkEligibilityPaymentRequirement = _load_model_module(
     "workforce_work_eligibility_payment_requirement"
 ).WorkforceWorkEligibilityPaymentRequirement  # type: ignore[attr-defined]
+WorkforceHrReview = _load_model_module("workforce_hr_review").WorkforceHrReview  # type: ignore[attr-defined]
 
 # Merge-document templates and generation logs
 MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
@@ -392,4 +393,5 @@ __all__ = [
     "WorkforceWorkEligibilityProfile",
     "WorkPermitSubmissionChannel",
     "WorkforceWorkEligibilityPaymentRequirement",
+    "WorkforceHrReview",
 ]

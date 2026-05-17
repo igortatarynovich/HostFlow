@@ -209,3 +209,57 @@ class WorkforceHrDocumentContextSummaryOut(BaseModel):
     total: int = 0
     by_context_type: dict[str, int] = Field(default_factory=dict)
     items: list[WorkforceHrDocumentContextOut] = Field(default_factory=list)
+
+
+class HrReviewChecklistItemOut(BaseModel):
+    item_code: str
+    label: str
+    status: str
+    source: str = "auto"
+    required: bool = True
+    blockers: list[str] = Field(default_factory=list)
+    basis: dict[str, Any] = Field(default_factory=dict)
+    verified_by_user_id: Optional[str] = None
+    verified_at: Optional[str] = None
+
+
+class HrReviewDocumentRowOut(BaseModel):
+    document_key: str
+    label: str
+    status: str
+    context_type: Optional[str] = None
+    document_id: Optional[str] = None
+    verified: bool = False
+    expires_at: Optional[str] = None
+    basis: Optional[str] = None
+
+
+class HrReviewPanelOut(BaseModel):
+    review_id: str
+    employee_id: str
+    handoff_id: Optional[str] = None
+    status: str
+    checklist: list[HrReviewChecklistItemOut] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    failed_required_items: list[str] = Field(default_factory=list)
+    can_approve: bool = False
+    next_required_action: Optional[str] = None
+    decision_basis: Optional[dict[str, Any]] = None
+    documents_for_approval: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    corrections_note: Optional[str] = None
+    return_reason: Optional[str] = None
+    reject_reason: Optional[str] = None
+    decided_by_user_id: Optional[str] = None
+    decided_at: Optional[str] = None
+
+
+class HrReviewChecklistPatchIn(BaseModel):
+    satisfied: bool = True
+
+
+class HrReviewNoteIn(BaseModel):
+    note: str = Field(..., min_length=1, max_length=4000)
+
+
+class HrReviewReasonIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=4000)

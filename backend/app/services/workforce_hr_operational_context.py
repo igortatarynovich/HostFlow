@@ -84,4 +84,8 @@ async def ensure_hr_operational_context(
             )
         await db.flush()
 
+    from backend.app.services.workforce_hr_review import ensure_hr_review_for_employee
+
+    await ensure_hr_review_for_employee(db, tid, employee)
+
     return row

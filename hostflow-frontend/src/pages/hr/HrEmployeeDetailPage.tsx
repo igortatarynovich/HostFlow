@@ -7,6 +7,8 @@ import {
   createWorkforceLeaveRequest,
   candDocRecordsToEmployeeDocumentRows,
   getWorkforceEmployeeOperationalProfile,
+  getWorkforceHrReview,
+  type HrReviewPanel,
   patchWorkforceAbsence,
   patchWorkforceComplianceState,
   patchWorkforceEmployee,
@@ -36,6 +38,7 @@ import WorkEligibilityJourneyWorkspace from '../../components/hr/WorkEligibility
 import HrRecruitmentTransferSummary from '../../components/hr/HrRecruitmentTransferSummary'
 import HrLegalDocumentChecklist from '../../components/hr/HrLegalDocumentChecklist'
 import { HrEmployeeRightColumn } from '../../components/hr/HrEmployeeRightColumn'
+import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
 
 const EMPLOYEE_STATUSES = [
@@ -134,6 +137,7 @@ export default function HrEmployeeDetailPage() {
   const { can } = usePermissions()
   const { notify } = useToast()
   const [profile, setProfile] = useState<WorkforceEmployeeOperationalProfile | null>(null)
+  const [hrReview, setHrReview] = useState<HrReviewPanel | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
 
@@ -146,10 +150,15 @@ export default function HrEmployeeDetailPage() {
     if (!employeeId) return
     setLoading(true)
     try {
-      const p = await getWorkforceEmployeeOperationalProfile(employeeId)
+      const [p, review] = await Promise.all([
+        getWorkforceEmployeeOperationalProfile(employeeId),
+        getWorkforceHrReview(employeeId).catch(() => null),
+      ])
       setProfile(p)
+      setHrReview(review)
     } catch {
       setProfile(null)
+      setHrReview(null)
       notify({
         variant: 'error',
         title: t('app.hr.employee_detail.load_error', { defaultValue: 'Could not load employee' }),
@@ -250,6 +259,17 @@ export default function HrEmployeeDetailPage() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
           <div className="min-w-0 space-y-4">
+            {hrReview ? (
+              <HrReviewPanelCard
+                employeeId={employeeId}
+                panel={hrReview}
+                manage={manage}
+                onUpdated={(next) => {
+                  setHrReview(next)
+                  void load()
+                }}
+              />
+            ) : null}
             <Section title={t('app.hr.employee_operational.section_employment', { defaultValue: 'Employment' })}>
         {profile && profile.employment_operational.length > 0 ? (
           <div className="overflow-x-auto">
@@ -481,7 +501,7 @@ export default function HrEmployeeDetailPage() {
           </div>
           {profile ? (
             <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-              <HrEmployeeRightColumn employeeId={employeeId} profile={profile} bundle={bundle} />
+              <HrEmployeeRightColumn employeeId={employeeId} profile={profile} bundle={bundle} hrReview={hrReview} />
             </aside>
           ) : null}
         </div>
