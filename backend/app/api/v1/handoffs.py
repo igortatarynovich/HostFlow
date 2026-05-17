@@ -15,6 +15,8 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
 from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_readable
+from backend.app.auth.deps import Role, require_roles
+from backend.app.schemas.workforce_hr_core import HrReviewChecklistPatchIn, HrReviewPanelOut
 from backend.app.services.handoff import (
     create_handoff,
     accept_handoff,
@@ -30,6 +32,8 @@ from backend.app.services.handoff import (
     get_pending_handoff_for_agency,
     get_accepted_handoff_for_agency,
 )
+
+HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)
 
 router = APIRouter(prefix="/handoffs", tags=["handoffs"])
 
@@ -597,3 +601,106 @@ async def get_handoff_status(
         "accepted": await handoff_with_names(accepted),
         "client_owns": client_owns,
     }
+
+
+def _hr_review_http_error(exc: Exception) -> HTTPException:
+    from backend.app.services.workforce_hr_review import HrReviewBlockedError
+
+    if isinstance(exc, HrReviewBlockedError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "HR_REVIEW_BLOCKED",
+                "blockers": exc.blockers,
+                "failed_checklist_items": exc.failed_items,
+            },
+        )
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=400, detail=str(exc))
+    return HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get(
+    "/{handoff_id}/hr-review",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def get_handoff_hr_review(
+    handoff_id: UUID,
+    db_tenant=Depends(get_db_with_tenant),
+):
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    panel = await hr_review_svc.build_hr_review_panel_for_handoff(db, str(tenant_id), str(handoff_id))
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.patch(
+    "/{handoff_id}/hr-review/checklist/{item_code}",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def patch_handoff_hr_review_checklist(
+    handoff_id: UUID,
+    item_code: str,
+    body: HrReviewChecklistPatchIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    try:
+        await hr_review_svc.update_hr_review_checklist_item_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            item_code=item_code,
+            actor_user_id=current_user.sub,
+            satisfied=body.satisfied,
+        )
+        panel = await hr_review_svc.build_hr_review_panel_for_handoff(db, str(tenant_id), str(handoff_id))
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/approve",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_hr_review_approve(
+    handoff_id: UUID,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services.hr_acceptance_orchestrator import approve_employment_for_handoff
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
+    try:
+        emp, _review = await approve_employment_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            actor_user_id=current_user.sub,
+        )
+        panel = await hr_review_svc.build_hr_review_panel(db, str(tenant_id), str(emp.id))
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)

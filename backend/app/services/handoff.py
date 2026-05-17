@@ -24,7 +24,6 @@ from backend.app.models.company import Company
 from backend.app.models.tenant import Tenant, TenantType
 from backend.app.services.tenant_links import get_tenant_link, list_links_for_agency
 from backend.app.models.activity import Activity, ActivityStatus
-from backend.app.services.workforce_hr_operational_context import ensure_hr_operational_context
 from backend.app.services import workforce_employees as workforce_employees_service
 from backend.app.services.recruitment_application_service import get_application_for_handoff
 from backend.app.services.recruitment_application_lifecycle import (
@@ -182,9 +181,15 @@ async def can_agency_edit(
     candidate_id: str,
     agency_tenant_id: str,
 ) -> bool:
-    """Agency-tenant users may edit candidate dossier unless recruitment is locked by handoff / intent."""
+    """Agency-tenant users may edit candidate dossier unless HR workforce or handoff locks recruitment."""
+    from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
+
     cand = await db.get(Candidate, candidate_id)
     if not cand or str(cand.tenant_id) != agency_tenant_id:
+        return False
+    if await is_candidate_locked_by_workforce(
+        db, tenant_id=agency_tenant_id, candidate_id=candidate_id
+    ):
         return False
     locked, _ = await is_recruitment_recruiter_write_locked_by_handoff(
         db, agency_tenant_id=agency_tenant_id, candidate_id=candidate_id
@@ -762,33 +767,19 @@ async def accept_handoff(
         )
     if cand:
         if dest == "internal_hr":
-            # PR-4: materialize workforce + HR operational context only after HR accepts.
             cand.stage = "processing_by_hr"
             if hasattr(cand, "status"):
                 cand.status = "processing_by_hr"
             await db.flush()
-            actor_wf = str(reviewed_by_user_id or handoff.requested_by_user_id or "").strip() or "system"
-            emp = await workforce_employees_service.handoff_from_candidate(
+            from backend.app.services.hr_acceptance_orchestrator import accept_internal_hr_handoff
+
+            await accept_internal_hr_handoff(
                 db,
-                str(handoff.agency_tenant_id),
-                cand,
-                hire_date=None,
-                actor_user_id=actor_wf,
+                handoff=handoff,
+                candidate=cand,
+                reviewed_by_user_id=reviewed_by_user_id,
+                tenant_id=tenant_id,
             )
-            md = dict(emp.meta or {})
-            md["internal_hr_handoff_id"] = handoff.id
-            emp.meta = md
-            await db.flush()
-            await ensure_hr_operational_context(db, str(handoff.agency_tenant_id), emp)
-            await _ensure_internal_hr_handoff_checklist_activities(
-                db,
-                tenant_id=str(handoff.agency_tenant_id),
-                candidate_id=str(handoff.candidate_id),
-                handoff_id=handoff.id,
-                assignee_user_id=handoff.assigned_to_user_id,
-                created_by_user_id=actor_wf,
-            )
-            await db.flush()
         else:
             cand.stage = "processing_by_client"
             if hasattr(cand, "status"):

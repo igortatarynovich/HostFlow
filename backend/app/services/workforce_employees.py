@@ -454,13 +454,15 @@ async def handoff_from_candidate(
     *,
     hire_date: Optional[date],
     actor_user_id: str,
+    seed_hr_bundle: bool = True,
 ) -> WorkforceEmployee:
     existing = await find_employee_by_candidate(db, tenant_id, str(candidate.id))
     if existing:
-        await ensure_hr_profiles_bundle(db, tenant_id, existing.id)
-        from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
+        if seed_hr_bundle:
+            await ensure_hr_profiles_bundle(db, tenant_id, existing.id)
+            from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
 
-        await sync_auto_tasks_after_employee_created(db, tenant_id, existing.id)
+            await sync_auto_tasks_after_employee_created(db, tenant_id, existing.id)
         return existing
 
     parts = [candidate.first_name or "", candidate.last_name or ""]
@@ -485,11 +487,25 @@ async def handoff_from_candidate(
     )
     db.add(row)
     await db.flush()
-    await ensure_hr_profiles_bundle(db, tenant_id, row.id)
-    from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
+    if seed_hr_bundle:
+        await ensure_hr_profiles_bundle(db, tenant_id, row.id)
+        from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
 
-    await sync_auto_tasks_after_employee_created(db, tenant_id, row.id)
+        await sync_auto_tasks_after_employee_created(db, tenant_id, row.id)
     return row
+
+
+async def delete_employee_for_return_to_recruitment(
+    db: AsyncSession,
+    tenant_id: str,
+    employee_id: str,
+) -> None:
+    """Remove workforce row so recruitment regains operational ownership (§6.7 return-to-recruitment)."""
+    emp = await get_employee(db, tenant_id, employee_id)
+    if not emp:
+        return
+    await db.delete(emp)
+    await db.flush()
 
 
 async def stamp_candidate_workforce_termination(

@@ -8,6 +8,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.candidate import Candidate
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_APPROVED,
@@ -129,17 +130,38 @@ async def ensure_hr_review_for_employee(
         )
     ).scalar_one_or_none()
     if row is None:
-        row = WorkforceHrReview(
-            tenant_id=tid,
-            employee_id=eid,
-            handoff_id=_handoff_id_from_employee(employee),
-            status=HR_REVIEW_STATUS_IN_PROGRESS,
-            checklist_json={"items": []},
-            blockers_json=[],
-            decision_basis_json={},
-        )
-        db.add(row)
-        await db.flush()
+        cid = str(employee.candidate_id or "").strip() or None
+        orphan = None
+        if cid:
+            orphan = (
+                await db.execute(
+                    select(WorkforceHrReview).where(
+                        WorkforceHrReview.tenant_id == tid,
+                        WorkforceHrReview.candidate_id == cid,
+                        WorkforceHrReview.employee_id.is_(None),
+                    )
+                )
+            ).scalar_one_or_none()
+        if orphan is not None:
+            row = orphan
+            row.employee_id = eid
+            hid = _handoff_id_from_employee(employee)
+            if hid and not row.handoff_id:
+                row.handoff_id = hid
+            await db.flush()
+        else:
+            row = WorkforceHrReview(
+                tenant_id=tid,
+                employee_id=eid,
+                candidate_id=cid,
+                handoff_id=_handoff_id_from_employee(employee),
+                status=HR_REVIEW_STATUS_IN_PROGRESS,
+                checklist_json={"items": []},
+                blockers_json=[],
+                decision_basis_json={},
+            )
+            db.add(row)
+            await db.flush()
     elif not row.handoff_id:
         hid = _handoff_id_from_employee(employee)
         if hid:
@@ -147,6 +169,151 @@ async def ensure_hr_review_for_employee(
             await db.flush()
     await _sync_review_from_sources(db, tid, employee, row)
     return row
+
+
+async def get_hr_review_by_handoff(
+    db: AsyncSession,
+    tenant_id: str,
+    handoff_id: str,
+) -> Optional[WorkforceHrReview]:
+    tid = str(tenant_id).strip()
+    hid = str(handoff_id).strip()
+    return (
+        await db.execute(
+            select(WorkforceHrReview).where(
+                WorkforceHrReview.tenant_id == tid,
+                WorkforceHrReview.handoff_id == hid,
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def ensure_hr_review_for_handoff(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    handoff_id: str,
+    candidate_id: str,
+) -> WorkforceHrReview:
+    tid = str(tenant_id).strip()
+    hid = str(handoff_id).strip()
+    cid = str(candidate_id).strip()
+    row = await get_hr_review_by_handoff(db, tid, hid)
+    if row is None:
+        row = WorkforceHrReview(
+            tenant_id=tid,
+            handoff_id=hid,
+            candidate_id=cid,
+            employee_id=None,
+            status=HR_REVIEW_STATUS_IN_PROGRESS,
+            checklist_json={"items": []},
+            blockers_json=[],
+            decision_basis_json={},
+        )
+        db.add(row)
+        await db.flush()
+    elif not row.candidate_id:
+        row.candidate_id = cid
+        await db.flush()
+    await _sync_review_from_candidate_handoff(db, tid, cid, row)
+    return row
+
+
+def _recompute_review_blockers_from_checklist(review: WorkforceHrReview) -> None:
+    cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    items = [it for it in (cl.get("items") or []) if isinstance(it, dict)]
+    blockers: list[str] = []
+    failed_required: list[str] = []
+    for it in items:
+        if not it.get("required"):
+            continue
+        if str(it.get("status") or "") != ITEM_SATISFIED:
+            failed_required.append(str(it["item_code"]))
+            for b in it.get("blockers") or []:
+                bs = str(b).strip()
+                if bs and bs not in blockers:
+                    blockers.append(bs)
+    review.blockers_json = blockers
+    if review.status not in HR_REVIEW_TERMINAL_STATUSES:
+        review.status = _derive_status_from_blockers(blockers, failed_required)
+        if (review.corrections_note or "").strip():
+            review.status = HR_REVIEW_STATUS_WAITING_DOCUMENTS
+
+
+async def _sync_review_from_candidate_handoff(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate_id: str,
+    review: WorkforceHrReview,
+) -> None:
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        return
+    cand = await db.get(Candidate, candidate_id)
+    if not cand:
+        return
+
+    from backend.app.modules.documents import crud as documents_crud
+
+    docs = await documents_crud.list_candidate_documents(
+        db, tenant_id, candidate_id, include_deleted=False
+    )
+    n_docs = len(docs)
+    identity_ok = bool((cand.first_name or "").strip() and (cand.last_name or "").strip())
+    docs_ok = n_docs > 0
+
+    prev_items = {}
+    cl_old = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    for it in cl_old.get("items") or []:
+        if isinstance(it, dict) and it.get("item_code"):
+            prev_items[str(it["item_code"])] = it
+
+    def item(code: str, *, satisfied: bool, blocked: bool, basis: dict, blockers: list[str]) -> dict[str, Any]:
+        prev = prev_items.get(code)
+        auto = {
+            "item_code": code,
+            "label": CHECKLIST_LABELS[code],
+            "status": ITEM_SATISFIED if satisfied else (ITEM_BLOCKED if blocked else ITEM_NEEDS_ATTENTION),
+            "source": "auto",
+            "required": code in REQUIRED_CHECKLIST_ITEMS,
+            "blockers": blockers,
+            "basis": basis,
+            "verified_by_user_id": None,
+            "verified_at": None,
+        }
+        return _merge_manual_item(prev, auto)
+
+    items = [
+        item("identity_verified", satisfied=identity_ok, blocked=False, basis={"candidate_id": candidate_id}, blockers=[]),
+        item("legal_stay_verified", satisfied=False, blocked=False, basis={"pre_employee": True}, blockers=[]),
+        item("work_permit_verified", satisfied=False, blocked=False, basis={"pre_employee": True}, blockers=[]),
+        item("red_paper_verified", satisfied=False, blocked=False, basis={"pre_employee": True}, blockers=[]),
+        item(
+            "required_payments_confirmed",
+            satisfied=False,
+            blocked=False,
+            basis={"pre_employee": True},
+            blockers=[],
+        ),
+        item(
+            "documents_uploaded",
+            satisfied=docs_ok,
+            blocked=not docs_ok,
+            basis={"documents_count": n_docs},
+            blockers=[] if docs_ok else ["missing_documents"],
+        ),
+        item("zus_readiness_confirmed", satisfied=False, blocked=False, basis={"pre_employee": True}, blockers=[]),
+        item("employment_data_complete", satisfied=False, blocked=True, basis={"pre_employee": True}, blockers=["employment_pending_approve"]),
+    ]
+    review.checklist_json = {"items": items}
+    _recompute_review_blockers_from_checklist(review)
+    review.decision_basis_json = {
+        "generated_at": _now().isoformat(),
+        "handoff_id": review.handoff_id,
+        "candidate_id": candidate_id,
+        "pre_employee_review": True,
+        "documents_count": n_docs,
+    }
+    await db.flush()
 
 
 async def _sync_review_from_sources(
@@ -552,6 +719,27 @@ async def _assert_can_approve(review: WorkforceHrReview) -> None:
         raise HrReviewBlockedError(blockers=blockers, failed_items=failed)
 
 
+async def approve_hr_review_record(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    review: WorkforceHrReview,
+    employee: WorkforceEmployee,
+    actor_user_id: str,
+) -> WorkforceHrReview:
+    await _sync_review_from_sources(db, tenant_id, employee, review)
+    await _assert_can_approve(review)
+    now = _now()
+    review.status = HR_REVIEW_STATUS_APPROVED
+    review.decided_by_user_id = actor_user_id
+    review.decided_at = now
+    review.blockers_json = []
+    if employee.status == "onboarding":
+        employee.status = "active"
+    await db.flush()
+    return review
+
+
 async def approve_hr_review(
     db: AsyncSession,
     *,
@@ -563,15 +751,129 @@ async def approve_hr_review(
     if not emp:
         raise ValueError("EMPLOYEE_NOT_FOUND")
     review = await ensure_hr_review_for_employee(db, tenant_id, emp)
-    await _sync_review_from_sources(db, tenant_id, emp, review)
-    await _assert_can_approve(review)
-    now = _now()
-    review.status = HR_REVIEW_STATUS_APPROVED
-    review.decided_by_user_id = actor_user_id
-    review.decided_at = now
-    review.blockers_json = []
-    if emp.status == "onboarding":
-        emp.status = "active"
+    return await approve_hr_review_record(
+        db,
+        tenant_id=tenant_id,
+        review=review,
+        employee=emp,
+        actor_user_id=actor_user_id,
+    )
+
+
+async def build_hr_review_panel_for_handoff(
+    db: AsyncSession,
+    tenant_id: str,
+    handoff_id: str,
+) -> Optional[dict[str, Any]]:
+    review = await get_hr_review_by_handoff(db, tenant_id, handoff_id)
+    if not review:
+        return None
+    if review.employee_id:
+        return await build_hr_review_panel(db, tenant_id, str(review.employee_id))
+
+    cid = str(review.candidate_id or "").strip()
+    if cid:
+        await _sync_review_from_candidate_handoff(db, tenant_id, cid, review)
+
+    items = []
+    cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    for it in cl.get("items") or []:
+        if isinstance(it, dict):
+            items.append(it)
+    blockers = list(review.blockers_json or [])
+    failed_required = [
+        str(it["item_code"])
+        for it in items
+        if it.get("required") and str(it.get("status") or "") != ITEM_SATISFIED
+    ]
+    can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
+    next_action = f"Resolve: {', '.join(blockers[:3])}" if blockers else "Complete HR review checklist"
+
+    return {
+        "review_id": review.id,
+        "employee_id": review.employee_id,
+        "handoff_id": review.handoff_id,
+        "candidate_id": review.candidate_id,
+        "status": review.status,
+        "checklist": items,
+        "blockers": blockers,
+        "failed_required_items": failed_required,
+        "can_approve": can_approve,
+        "next_required_action": next_action,
+        "decision_basis": review.decision_basis_json,
+        "documents_for_approval": [],
+        "corrections_note": review.corrections_note,
+        "return_reason": review.return_reason,
+        "reject_reason": review.reject_reason,
+        "decided_by_user_id": review.decided_by_user_id,
+        "decided_at": review.decided_at.isoformat() if review.decided_at else None,
+    }
+
+
+async def update_hr_review_checklist_item_for_handoff(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    handoff_id: str,
+    item_code: str,
+    actor_user_id: str,
+    satisfied: bool = True,
+) -> WorkforceHrReview:
+    review = await get_hr_review_by_handoff(db, tenant_id, handoff_id)
+    if not review:
+        raise ValueError("HR_REVIEW_NOT_FOUND")
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+
+    code = str(item_code or "").strip()
+    if code not in CHECKLIST_LABELS:
+        raise ValueError("INVALID_CHECKLIST_ITEM")
+
+    cl = dict(review.checklist_json or {"items": []})
+    items = list(cl.get("items") or [])
+    found = False
+    for i, it in enumerate(items):
+        if not isinstance(it, dict):
+            continue
+        if str(it.get("item_code") or "") != code:
+            continue
+        items[i] = {
+            **it,
+            "item_code": code,
+            "label": CHECKLIST_LABELS[code],
+            "status": ITEM_SATISFIED if satisfied else ITEM_NEEDS_ATTENTION,
+            "source": "manual",
+            "required": code in REQUIRED_CHECKLIST_ITEMS,
+            "blockers": [] if satisfied else it.get("blockers") or [],
+            "basis": it.get("basis") or {},
+            "verified_by_user_id": actor_user_id if satisfied else None,
+            "verified_at": _now().isoformat() if satisfied else None,
+        }
+        found = True
+        break
+    if not found:
+        items.append(
+            {
+                "item_code": code,
+                "label": CHECKLIST_LABELS[code],
+                "status": ITEM_SATISFIED if satisfied else ITEM_NEEDS_ATTENTION,
+                "source": "manual",
+                "required": code in REQUIRED_CHECKLIST_ITEMS,
+                "blockers": [],
+                "basis": {},
+                "verified_by_user_id": actor_user_id if satisfied else None,
+                "verified_at": _now().isoformat() if satisfied else None,
+            }
+        )
+    cl["items"] = items
+    review.checklist_json = cl
+
+    if review.employee_id:
+        emp = await we_svc.get_employee(db, tenant_id, str(review.employee_id))
+        if emp:
+            await _sync_review_from_sources(db, tenant_id, emp, review)
+            return review
+    _recompute_review_blockers_from_checklist(review)
     await db.flush()
     return review
 
@@ -610,6 +912,7 @@ async def return_hr_review_to_recruitment(
     review.return_reason = reason
     review.decided_by_user_id = actor_user_id
     review.decided_at = _now()
+    emp.status = "returned_to_recruitment"
     await db.flush()
     return review
 

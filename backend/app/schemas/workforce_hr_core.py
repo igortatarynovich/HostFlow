@@ -236,7 +236,8 @@ class HrReviewDocumentRowOut(BaseModel):
 
 class HrReviewPanelOut(BaseModel):
     review_id: str
-    employee_id: str
+    employee_id: Optional[str] = None
+    candidate_id: Optional[str] = None
     handoff_id: Optional[str] = None
     status: str
     checklist: list[HrReviewChecklistItemOut] = Field(default_factory=list)

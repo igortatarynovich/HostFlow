@@ -106,7 +106,7 @@ Alias product language: **`needs_more_documents`** ≈ `waiting_documents` + cor
 ## 6. Checklist before Stage B PR
 
 - [ ] ADR or section in handoff-contract updated for accept vs approve
-- [ ] Feature flag: `hr_accept_v2` or tenant setting for delayed workforce creation
+- [x] Feature flag: `tenant.settings.delayed_hr_workforce_creation` (default `false`; orchestrator in `hr_acceptance_orchestrator.py`)
 - [ ] Integration tests: accept without approve → no payroll automation; approve → automations fire once
 - [ ] UI: rename CTAs (“Take into processing” vs “Approve for employment”)
 - [ ] Remove Stage A assumption in docs §3 table (workforce on accept)

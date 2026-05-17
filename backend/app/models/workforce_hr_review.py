@@ -47,7 +47,7 @@ HR_REVIEW_ACTIVE_STATUSES = frozenset(
 class WorkforceHrReview(Base, TimestampMixin):
     __tablename__ = "workforce_hr_reviews"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "employee_id", name="uq_workforce_hr_review_tenant_employee"),
+        UniqueConstraint("tenant_id", "handoff_id", name="uq_workforce_hr_review_tenant_handoff"),
         {"extend_existing": True},
     )
 
@@ -55,10 +55,16 @@ class WorkforceHrReview(Base, TimestampMixin):
     tenant_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    employee_id: Mapped[str] = mapped_column(
+    candidate_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("candidates.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    employee_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("workforce_employees.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     handoff_id: Mapped[Optional[str]] = mapped_column(
