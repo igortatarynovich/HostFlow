@@ -191,6 +191,13 @@ function TimelinePanel({ events }: { events: WorkforceTimelineEvent[] }) {
       <dialog
         ref={dialogRef}
         className="max-h-[85vh] w-[min(32rem,92vw)] rounded-xl border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/40"
+        onCancel={(e) => {
+          e.preventDefault()
+          dialogRef.current?.close()
+        }}
+        onClick={(e) => {
+          if (e.target === dialogRef.current) dialogRef.current.close()
+        }}
       >
         <div className="flex max-h-[85vh] flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
@@ -271,7 +278,16 @@ function NextHrActionFromReview({ panel }: { panel: HrReviewPanel }) {
         </p>
       ) : null}
       <div className="mt-3">
-        <a href="#hr-employee-review" className="btn-primary btn-sm inline-flex">
+        <a
+          href="#hr-employee-review"
+          className="btn-primary btn-sm inline-flex"
+          onClick={(e) => {
+            e.preventDefault()
+            const el = document.getElementById('hr-employee-review')
+            el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            el?.focus({ preventScroll: true })
+          }}
+        >
           {t('app.hr.review.rail_open', { defaultValue: 'Open HR review' })}
         </a>
       </div>

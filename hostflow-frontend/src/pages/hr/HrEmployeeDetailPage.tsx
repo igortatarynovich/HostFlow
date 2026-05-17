@@ -168,6 +168,16 @@ export default function HrEmployeeDetailPage() {
     }
   }, [employeeId, notify, t])
 
+  const refreshProfile = useCallback(async () => {
+    if (!employeeId) return
+    try {
+      const p = await getWorkforceEmployeeOperationalProfile(employeeId)
+      setProfile(p)
+    } catch {
+      /* keep current profile; review panel already reflects latest HR review */
+    }
+  }, [employeeId])
+
   useEffect(() => {
     if (can('workforce.view') && employeeId) void load()
   }, [can, employeeId, load])
@@ -266,7 +276,7 @@ export default function HrEmployeeDetailPage() {
                 manage={manage}
                 onUpdated={(next) => {
                   setHrReview(next)
-                  void load()
+                  void refreshProfile()
                 }}
               />
             ) : null}

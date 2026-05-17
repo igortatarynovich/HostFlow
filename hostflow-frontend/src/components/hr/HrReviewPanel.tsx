@@ -73,7 +73,8 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
   return (
     <section
       id="hr-employee-review"
-      className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-b from-indigo-50/90 to-white p-4 shadow-sm sm:p-5"
+      tabIndex={-1}
+      className="scroll-mt-24 rounded-2xl border-2 border-indigo-200 bg-gradient-to-b from-indigo-50/90 to-white p-4 shadow-sm sm:p-5 focus:outline-none"
       aria-labelledby="hr-review-heading"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
