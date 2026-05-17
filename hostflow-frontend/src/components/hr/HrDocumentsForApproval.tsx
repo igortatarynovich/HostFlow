@@ -4,7 +4,6 @@ import { useI18n } from '../../i18n'
 
 type Props = {
   documents: HrReviewDocumentRow[]
-  employeeId?: string | null
 }
 
 function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentRow): string {
@@ -20,7 +19,7 @@ function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentR
   return raw.replace(/_/g, ' ') || '—'
 }
 
-export default function HrDocumentsForApproval({ documents, employeeId }: Props) {
+export default function HrDocumentsForApproval({ documents }: Props) {
   const { t } = useI18n()
   if (documents.length === 0) return null
 
@@ -52,8 +51,14 @@ export default function HrDocumentsForApproval({ documents, employeeId }: Props)
                   </td>
                   <td className="py-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      {d.document_id ? (
-                        <HrDocumentOpenButton documentId={d.document_id} employeeId={employeeId} />
+                      {d.open_url || d.file_url ? (
+                        <HrDocumentOpenButton openUrl={d.open_url ?? d.file_url} />
+                      ) : d.document_id ? (
+                        <span className="text-slate-400 text-[10px]">
+                          {t('app.hr.employee_detail.doc_open_pending', {
+                            defaultValue: 'File link pending',
+                          })}
+                        </span>
                       ) : (
                         <a href={scrollHref} className="font-medium text-brand-700 hover:underline">
                           {t('app.hr.review.open_docs', { defaultValue: 'Open' })}
@@ -64,10 +69,9 @@ export default function HrDocumentsForApproval({ documents, employeeId }: Props)
                           {t('app.hr.review.upload_docs', { defaultValue: 'Upload' })}
                         </a>
                       ) : null}
-                      {!d.verified && raw !== 'missing' && d.document_id ? (
+                      {!d.verified && raw !== 'missing' && (d.open_url || d.file_url) ? (
                         <HrDocumentOpenButton
-                          documentId={d.document_id}
-                          employeeId={employeeId}
+                          openUrl={d.open_url ?? d.file_url}
                           label={t('app.hr.review.verify_docs', { defaultValue: 'Verify' })}
                         />
                       ) : null}

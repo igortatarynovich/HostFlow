@@ -114,10 +114,7 @@ export default function HrHandoffDetailPage() {
                   void load()
                 }}
               />
-              <HrDocumentsForApproval
-                documents={hrReview.documents_for_approval}
-                employeeId={empId}
-              />
+              <HrDocumentsForApproval documents={hrReview.documents_for_approval} />
               {empId ? (
                 <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
               ) : null}

@@ -148,6 +148,25 @@ Not “a new ACL product”. Rather:
 
 Phase 1 **wires** endpoints through the resolver (stubs allowed). Phase 2 **replaces** remaining ad-hoc authorization and **fills in** visibility / process-lock behavior using policies — without introducing a separate policy graph product (see **§12**).
 
+#### Phase 2 — Document **open** context (file route selection)
+
+**Problem:** `X-Document-Viewer-Channel` controls **list/read filtering** per surface (`recruitment` sees recruitment+shared; `hr` sees hr+shared). HR **employee / handoff review** must open **all linked candidate documents** (recruitment, transport, hr, shared) for work eligibility — using `hr` channel on `GET /api/v1/db/documents/{id}/file` returns **404** for transport/recruitment types even when the row exists.
+
+**Decision:** Introduce **`resolve_document_open(DocumentOpenContext) → DocumentOpenDecision`** (see `backend/app/modules/documents/document_open_resolver.py`):
+
+| Surface | Canonical file route | Visibility for open |
+|--------|----------------------|---------------------|
+| `hr_workforce_employee` | `GET /api/v1/workforce/employees/{employee_id}/documents/{document_id}/file` | All linked candidate docs |
+| `hr_handoff_review` | Workforce route when `employee_id` known; else `GET /api/v1/handoffs/{handoff_id}/documents/{document_id}/file` | Handoff / review set |
+| `recruitment_candidate` | `GET /api/v1/candidates/{candidate_id}/documents/{document_id}/file` or `/db/…` | Recruitment channel scope |
+| `client_portal` | `GET /api/v1/client-portal/documents/{document_id}/file` (reserved) | Shared-only v1 |
+
+**API contract:** Workforce list, operational-profile `documents_linked`, and HR review `documents_for_approval` return **`open_url`**, **`file_url`** (same value), and **`document_open_context`**. Clients **must not** construct file URLs or choose between `/db`, `/candidates`, and `/workforce` locally.
+
+**Audit:** File open requests emit `document.file.access_requested` with `open_surface`, `file_route`, `workforce_employee_id`, `handoff_id`, `candidate_id`.
+
+**Rule:** HR employee context **≠** `GET /db/documents/...` + `X-Document-Viewer-Channel: hr`.
+
 #### Phase 2 — Viewer channel read visibility (policy functions, not a graph)
 
 Clients declare the **viewing surface** with HTTP header **`X-Document-Viewer-Channel`**: `recruitment` \| `hr` \| `transport` \| `finance`. If the header is **omitted**, the channel defaults to **`recruitment`**. **Invalid** values → **HTTP 422** (no silent fallback to a “nearest” channel).

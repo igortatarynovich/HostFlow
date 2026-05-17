@@ -232,6 +232,9 @@ class HrReviewDocumentRowOut(BaseModel):
     verified: bool = False
     expires_at: Optional[str] = None
     basis: Optional[str] = None
+    open_url: Optional[str] = None
+    file_url: Optional[str] = None
+    document_open_context: Optional[str] = None
 
 
 class HrReviewProcessStageOut(BaseModel):

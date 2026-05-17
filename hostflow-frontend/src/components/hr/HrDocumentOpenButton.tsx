@@ -5,16 +5,14 @@ import { useToast } from '../Toast'
 import { openHrDocumentInNewTab } from '../../utils/hrDocumentOpen'
 
 type Props = {
-  documentId: string
-  employeeId?: string | null
+  openUrl?: string | null
   label?: string
   className?: string
   variant?: 'link' | 'button'
 }
 
 export default function HrDocumentOpenButton({
-  documentId,
-  employeeId,
+  openUrl,
   label,
   className,
   variant = 'link',
@@ -23,11 +21,12 @@ export default function HrDocumentOpenButton({
   const { notify } = useToast()
   const [busy, setBusy] = useState(false)
   const text = label ?? t('app.hr.review.open_docs', { defaultValue: 'Open' })
+  const disabled = busy || !String(openUrl || '').trim()
 
   const onOpen = async () => {
     setBusy(true)
     try {
-      await openHrDocumentInNewTab(documentId, { employeeId })
+      await openHrDocumentInNewTab({ openUrl })
     } catch {
       notify({
         variant: 'error',
@@ -45,7 +44,7 @@ export default function HrDocumentOpenButton({
       <button
         type="button"
         className={clsx('btn-secondary btn-sm', className)}
-        disabled={busy}
+        disabled={disabled}
         onClick={() => void onOpen()}
       >
         {text}
@@ -57,7 +56,7 @@ export default function HrDocumentOpenButton({
     <button
       type="button"
       className={clsx('font-medium text-brand-700 hover:underline disabled:opacity-50', className)}
-      disabled={busy}
+      disabled={disabled}
       onClick={() => void onOpen()}
     >
       {text}

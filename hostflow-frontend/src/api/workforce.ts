@@ -320,6 +320,9 @@ export type HrReviewDocumentRow = {
   verified: boolean
   expires_at?: string | null
   basis?: string | null
+  open_url?: string | null
+  file_url?: string | null
+  document_open_context?: string | null
 }
 
 export type HrReviewProcessStage = {
@@ -592,6 +595,8 @@ export type WorkforceEmployeeDocumentRow = {
 }
 
 function pickCandDocDownloadUrl(raw: Record<string, unknown>): string | null {
+  const open = raw.open_url
+  if (typeof open === 'string' && open.trim()) return open.trim()
   const top = raw.file_url
   if (typeof top === 'string' && top.trim()) return top.trim()
   const list = raw.file_list

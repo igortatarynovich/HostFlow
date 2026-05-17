@@ -245,10 +245,9 @@ export default function HrReviewPanelCard({
                       </td>
                       <td className="py-1.5">
                         <div className="flex flex-wrap gap-2">
-                          {d.document_id ? (
+                          {d.open_url || d.file_url ? (
                             <HrDocumentOpenButton
-                              documentId={d.document_id}
-                              employeeId={employeeId}
+                              openUrl={d.open_url ?? d.file_url}
                               label={action.label}
                             />
                           ) : (

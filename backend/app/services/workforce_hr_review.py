@@ -27,6 +27,9 @@ from backend.app.services import workforce_employees as we_svc
 from backend.app.services.handoff import return_handoff
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
+from backend.app.modules.documents.document_open_service import (
+    enrich_documents_for_approval_open_urls,
+)
 from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_work_eligibility_rules import payment_row_satisfied
@@ -625,11 +628,19 @@ async def build_hr_review_panel(
     else:
         next_action = journey.get("recommended_next_action")
 
+    hid = review.handoff_id or _handoff_id_from_employee(emp)
+    docs_for_approval = enrich_documents_for_approval_open_urls(
+        _documents_for_approval(bundle, journey),
+        tenant_id=tenant_id,
+        workforce_employee_id=employee_id,
+        handoff_id=str(hid) if hid else None,
+    )
+
     panel = {
         "review_id": review.id,
         "employee_id": employee_id,
         "candidate_id": emp.candidate_id,
-        "handoff_id": review.handoff_id or _handoff_id_from_employee(emp),
+        "handoff_id": hid,
         "status": review.status,
         "checklist": items,
         "blockers": blockers,
@@ -637,14 +648,13 @@ async def build_hr_review_panel(
         "can_approve": can_approve,
         "next_required_action": next_action,
         "decision_basis": review.decision_basis_json,
-        "documents_for_approval": _documents_for_approval(bundle, journey),
+        "documents_for_approval": docs_for_approval,
         "corrections_note": review.corrections_note,
         "return_reason": review.return_reason,
         "reject_reason": review.reject_reason,
         "decided_by_user_id": review.decided_by_user_id,
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
-    hid = panel.get("handoff_id")
     handoff_status = None
     transferred_at = None
     if hid:
@@ -833,6 +843,13 @@ async def build_hr_review_panel_for_handoff(
             parts = [str(cand.first_name or "").strip(), str(cand.last_name or "").strip()]
             cand_name = " ".join(p for p in parts if p).strip() or None
 
+    docs_for_approval = enrich_documents_for_approval_open_urls(
+        [],
+        tenant_id=tenant_id,
+        workforce_employee_id=str(review.employee_id) if review.employee_id else None,
+        handoff_id=hid,
+    )
+
     panel = {
         "review_id": review.id,
         "employee_id": review.employee_id,
@@ -845,7 +862,7 @@ async def build_hr_review_panel_for_handoff(
         "can_approve": can_approve,
         "next_required_action": next_action,
         "decision_basis": review.decision_basis_json,
-        "documents_for_approval": [],
+        "documents_for_approval": docs_for_approval,
         "corrections_note": review.corrections_note,
         "return_reason": review.return_reason,
         "reject_reason": review.reject_reason,

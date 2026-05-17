@@ -165,9 +165,8 @@ export function HrEmployeeDocumentsSection({
                       {daysLeft != null ? daysLeft : '—'}
                     </td>
                     <td className="py-1.5">
-                      {d.id ? (
-                        <HrDocumentOpenButton documentId={d.id} employeeId={employeeId} />
-                      ) : downloadUrl && downloadUrl.startsWith('http') ? (
+                      {downloadUrl &&
+                      (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) ? (
                         <a
                           href={downloadUrl}
                           target="_blank"
@@ -176,6 +175,8 @@ export function HrEmployeeDocumentsSection({
                         >
                           {t('app.hr.employee_detail.doc_open', { defaultValue: 'Open' })}
                         </a>
+                      ) : downloadUrl ? (
+                        <HrDocumentOpenButton openUrl={downloadUrl} />
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}

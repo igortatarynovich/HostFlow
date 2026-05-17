@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from backend.app.auth.deps import get_current_user, UserCtx
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
@@ -704,3 +705,59 @@ async def post_handoff_hr_review_approve(
         raise HTTPException(status_code=404, detail="HR review not found")
     await db.commit()
     return HrReviewPanelOut.model_validate(panel)
+
+
+@router.get(
+    "/{handoff_id}/documents/{document_id}/file",
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def get_handoff_document_file(
+    handoff_id: UUID,
+    document_id: UUID,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+):
+    """HR handoff review file open — workforce route when employee exists."""
+    from backend.app.models.candidate_handoff import CandidateHandoff
+    from backend.app.models.workforce_employee import WorkforceEmployee
+    from backend.app.modules.documents.document_open_service import (
+        stream_workforce_employee_document_file,
+    )
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    review = await hr_review_svc.get_hr_review_by_handoff(db, str(tenant_id), str(handoff_id))
+    emp_id: Optional[str] = str(review.employee_id) if review and review.employee_id else None
+
+    if not emp_id:
+        handoff = await db.get(CandidateHandoff, str(handoff_id))
+        if not handoff:
+            raise HTTPException(status_code=404, detail="Handoff not found")
+        cid = str(handoff.candidate_id or "").strip()
+        if cid:
+            row = await db.execute(
+                select(WorkforceEmployee)
+                .where(
+                    WorkforceEmployee.tenant_id == str(tenant_id),
+                    WorkforceEmployee.candidate_id == cid,
+                )
+                .limit(1)
+            )
+            found = row.scalar_one_or_none()
+            if found:
+                emp_id = str(found.id)
+
+    if not emp_id:
+        raise HTTPException(status_code=404, detail="Workforce employee not found for handoff")
+
+    return await stream_workforce_employee_document_file(
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+        workforce_employee_id=emp_id,
+        document_id=document_id,
+        surface="hr_handoff_review",
+        handoff_id=str(handoff_id),
+    )

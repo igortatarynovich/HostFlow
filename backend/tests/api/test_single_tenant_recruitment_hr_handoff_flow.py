@@ -132,7 +132,10 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
         hr_dump,
     ), hr_dump
     for row in hr_body:
-        assert row.get("file_url") in (None, "")
+        fid = row.get("id")
+        assert row.get("document_open_context") == "hr_workforce_employee"
+        url = row.get("open_url") or row.get("file_url")
+        assert url == f"/api/v1/workforce/employees/{emp_id}/documents/{fid}/file"
 
     patch_hired = await client.patch(
         f"/api/v1/candidates/{candidate_id}",

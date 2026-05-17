@@ -479,6 +479,8 @@ class CandDoc(BaseModel):
     file_list: List[Dict[str, Any]] = Field(default_factory=list)
     filename: Optional[str] = None
     file_url: Optional[str] = None
+    open_url: Optional[str] = None
+    document_open_context: Optional[str] = None
     workflow: Dict[str, Any] = Field(default_factory=dict)
     meta: Dict[str, Any] = Field(default_factory=dict)
     days_left: Optional[int] = None

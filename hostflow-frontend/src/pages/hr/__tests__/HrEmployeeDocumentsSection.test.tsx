@@ -69,12 +69,25 @@ describe('HrEmployeeDocumentsSection', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows open button when document has id', async () => {
-    mockListDocs.mockResolvedValue([{ document: baseDoc, downloadUrl: null, daysLeft: null }])
+  it('shows open button when API provides workforce open_url', async () => {
+    mockListDocs.mockResolvedValue([
+      {
+        document: baseDoc,
+        downloadUrl: '/api/v1/workforce/employees/emp-1/documents/doc-uuid-1/file',
+        daysLeft: null,
+      },
+    ])
     renderSection()
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /open/i })).toBeInTheDocument()
     })
+  })
+
+  it('shows dash when no open_url from API', async () => {
+    mockListDocs.mockResolvedValue([{ document: baseDoc, downloadUrl: null, daysLeft: null }])
+    renderSection()
+    await waitFor(() => expect(screen.getByText('Passport')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /open/i })).not.toBeInTheDocument()
   })
 
   it('shows external link only for http presigned urls', async () => {
