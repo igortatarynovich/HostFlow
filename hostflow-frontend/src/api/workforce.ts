@@ -322,9 +322,65 @@ export type HrReviewDocumentRow = {
   basis?: string | null
 }
 
+export type HrReviewProcessStage = {
+  code: string
+  label: string
+  state: 'done' | 'current' | 'blocked' | 'pending' | 'skipped' | string
+}
+
+export type HrReviewHero = {
+  candidate_display_name?: string | null
+  handoff_id?: string | null
+  handoff_status?: string | null
+  review_status: string
+  vacancy_label?: string | null
+  transferred_at?: string | null
+  transferred_by?: string | null
+  employee_status?: string | null
+  has_employee?: boolean
+  current_stage_code?: string | null
+  current_stage_label?: string | null
+  state_message?: string
+  process_stages?: HrReviewProcessStage[]
+}
+
+export type HrReviewNextAction = {
+  title: string
+  reason?: string
+  blockers?: string[]
+  primary_label?: string | null
+  primary_anchor?: string | null
+  secondary_label?: string | null
+  secondary_anchor?: string | null
+}
+
+export type HrReviewDecisionReadiness = {
+  checklist_done: number
+  checklist_total: number
+  can_approve: boolean
+  approve_blocked_reason?: string | null
+  post_approve_effects?: string[]
+}
+
+export type HrReviewTimelineEvent = {
+  at?: string | null
+  kind: string
+  label: string
+}
+
+export type HrReviewEligibilitySummary = {
+  current_step_code?: string | null
+  current_step_title?: string | null
+  current_step_status?: string | null
+  recommended_next_action?: string | null
+  blockers?: string[]
+  decision_basis?: Record<string, unknown> | null
+}
+
 export type HrReviewPanel = {
   review_id: string
-  employee_id: string
+  employee_id?: string | null
+  candidate_id?: string | null
   handoff_id?: string | null
   status: string
   checklist: HrReviewChecklistItem[]
@@ -339,6 +395,12 @@ export type HrReviewPanel = {
   reject_reason?: string | null
   decided_by_user_id?: string | null
   decided_at?: string | null
+  mode?: 'hr_review_case' | 'employee_profile' | string | null
+  hero?: HrReviewHero | null
+  next_action?: HrReviewNextAction | null
+  decision_readiness?: HrReviewDecisionReadiness | null
+  recent_timeline?: HrReviewTimelineEvent[]
+  work_eligibility_summary?: HrReviewEligibilitySummary | null
 }
 
 export type WorkforceHrBundle = {

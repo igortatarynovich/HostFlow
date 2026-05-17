@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_APPROVED,
@@ -26,6 +27,8 @@ from backend.app.services import workforce_employees as we_svc
 from backend.app.services.handoff import return_handoff
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
+from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
+from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_work_eligibility_rules import payment_row_satisfied
 
 CHECKLIST_ITEM_CODES: tuple[str, ...] = (
@@ -622,10 +625,11 @@ async def build_hr_review_panel(
     else:
         next_action = journey.get("recommended_next_action")
 
-    return {
+    panel = {
         "review_id": review.id,
         "employee_id": employee_id,
-        "handoff_id": review.handoff_id,
+        "candidate_id": emp.candidate_id,
+        "handoff_id": review.handoff_id or _handoff_id_from_employee(emp),
         "status": review.status,
         "checklist": items,
         "blockers": blockers,
@@ -640,6 +644,24 @@ async def build_hr_review_panel(
         "decided_by_user_id": review.decided_by_user_id,
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
+    hid = panel.get("handoff_id")
+    handoff_status = None
+    transferred_at = None
+    if hid:
+        ho = await db.get(CandidateHandoff, str(hid))
+        if ho:
+            handoff_status = str(ho.status or "")
+            transferred_at = ho.requested_at.isoformat() if ho.requested_at else None
+    delayed = await delayed_hr_workforce_creation_enabled(db, tenant_id)
+    return enrich_hr_review_panel(
+        panel,
+        handoff_status=handoff_status,
+        candidate_display_name=emp.display_name,
+        employee_status=str(emp.status or ""),
+        journey=journey,
+        delayed_workforce=delayed,
+        transferred_at=transferred_at,
+    )
 
 
 async def update_hr_review_checklist_item(
@@ -800,7 +822,18 @@ async def build_hr_review_panel_for_handoff(
     can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
     next_action = f"Resolve: {', '.join(blockers[:3])}" if blockers else "Complete HR review checklist"
 
-    return {
+    hid = str(handoff_id).strip()
+    handoff = await db.get(CandidateHandoff, hid)
+    handoff_status = str(handoff.status or "") if handoff else None
+    transferred_at = handoff.requested_at.isoformat() if handoff and handoff.requested_at else None
+    cand_name = None
+    if review.candidate_id:
+        cand = await db.get(Candidate, str(review.candidate_id))
+        if cand:
+            parts = [str(cand.first_name or "").strip(), str(cand.last_name or "").strip()]
+            cand_name = " ".join(p for p in parts if p).strip() or None
+
+    panel = {
         "review_id": review.id,
         "employee_id": review.employee_id,
         "handoff_id": review.handoff_id,
@@ -819,6 +852,14 @@ async def build_hr_review_panel_for_handoff(
         "decided_by_user_id": review.decided_by_user_id,
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
+    delayed = await delayed_hr_workforce_creation_enabled(db, tenant_id)
+    return enrich_hr_review_panel(
+        panel,
+        handoff_status=handoff_status,
+        candidate_display_name=cand_name,
+        transferred_at=transferred_at,
+        delayed_workforce=delayed,
+    )
 
 
 async def update_hr_review_checklist_item_for_handoff(

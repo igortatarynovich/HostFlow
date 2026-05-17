@@ -16,6 +16,7 @@ import {
   HrInboxPage,
   HrTasksPage,
   HrWorkspaceLayout,
+  HrZusWorkspacePage,
   RemindersPage,
 } from './app/appRoutePages'
 import WorkOrganizerPage from './pages/WorkOrganizerPage'
@@ -272,6 +273,20 @@ export default function App(){
                 element={
                   <LazyRoute loadingLabel={t('common.loading')}>
                     <HrHandoffDetailPage />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="zus"
+                element={
+                  <Navigate to="../zus-workspace" replace />
+                }
+              />
+              <Route
+                path="zus-workspace"
+                element={
+                  <LazyRoute loadingLabel={t('common.loading')}>
+                    <HrZusWorkspacePage />
                   </LazyRoute>
                 }
               />

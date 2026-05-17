@@ -234,6 +234,61 @@ class HrReviewDocumentRowOut(BaseModel):
     basis: Optional[str] = None
 
 
+class HrReviewProcessStageOut(BaseModel):
+    code: str
+    label: str
+    state: str
+
+
+class HrReviewHeroOut(BaseModel):
+    candidate_display_name: Optional[str] = None
+    handoff_id: Optional[str] = None
+    handoff_status: Optional[str] = None
+    review_status: str
+    vacancy_label: Optional[str] = None
+    transferred_at: Optional[str] = None
+    transferred_by: Optional[str] = None
+    employee_status: Optional[str] = None
+    has_employee: bool = False
+    current_stage_code: Optional[str] = None
+    current_stage_label: Optional[str] = None
+    state_message: str = ""
+    process_stages: list[HrReviewProcessStageOut] = Field(default_factory=list)
+
+
+class HrReviewNextActionOut(BaseModel):
+    title: str
+    reason: str = ""
+    blockers: list[str] = Field(default_factory=list)
+    primary_label: Optional[str] = None
+    primary_anchor: Optional[str] = None
+    secondary_label: Optional[str] = None
+    secondary_anchor: Optional[str] = None
+
+
+class HrReviewDecisionReadinessOut(BaseModel):
+    checklist_done: int = 0
+    checklist_total: int = 0
+    can_approve: bool = False
+    approve_blocked_reason: Optional[str] = None
+    post_approve_effects: list[str] = Field(default_factory=list)
+
+
+class HrReviewTimelineEventOut(BaseModel):
+    at: Optional[str] = None
+    kind: str
+    label: str
+
+
+class HrReviewEligibilitySummaryOut(BaseModel):
+    current_step_code: Optional[str] = None
+    current_step_title: Optional[str] = None
+    current_step_status: Optional[str] = None
+    recommended_next_action: Optional[str] = None
+    blockers: list[str] = Field(default_factory=list)
+    decision_basis: Optional[Any] = None
+
+
 class HrReviewPanelOut(BaseModel):
     review_id: str
     employee_id: Optional[str] = None
@@ -252,6 +307,12 @@ class HrReviewPanelOut(BaseModel):
     reject_reason: Optional[str] = None
     decided_by_user_id: Optional[str] = None
     decided_at: Optional[str] = None
+    mode: Optional[str] = None
+    hero: Optional[HrReviewHeroOut] = None
+    next_action: Optional[HrReviewNextActionOut] = None
+    decision_readiness: Optional[HrReviewDecisionReadinessOut] = None
+    recent_timeline: list[HrReviewTimelineEventOut] = Field(default_factory=list)
+    work_eligibility_summary: Optional[HrReviewEligibilitySummaryOut] = None
 
 
 class HrReviewChecklistPatchIn(BaseModel):

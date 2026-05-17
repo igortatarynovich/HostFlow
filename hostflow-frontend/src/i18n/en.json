@@ -367,6 +367,33 @@
         "rail_blockers": "Resolve HR review blockers",
         "rail_continue": "Continue HR review"
       },
+      "review_case": {
+        "badge": "HR review case",
+        "profile_badge": "Employee profile",
+        "untitled": "HR case",
+        "handoff": "Handoff",
+        "transferred": "Transferred",
+        "next_action": "Next HR action",
+        "continue_review": "Continue HR review",
+        "critical_blockers": "Critical blockers",
+        "decision_readiness": "Decision readiness",
+        "checklist_progress": "Checklist: {done}/{total}",
+        "approve_yes": "Approve allowed",
+        "approve_no": "Approve blocked",
+        "quick_actions": "Quick actions",
+        "open_eligibility": "Open work eligibility",
+        "recent_history": "Recent history",
+        "no_events": "No events yet.",
+        "full_history": "Open full history",
+        "docs_required": "Documents required for approval",
+        "current_step": "Current step",
+        "step_status": "Status",
+        "blockers": "Blockers",
+        "eligibility_after_employee": "Full eligibility journey is available after workforce employee is linked.",
+        "show_journey": "Show full eligibility journey",
+        "hide_journey": "Hide full eligibility journey",
+        "after_approval": "After employment approval"
+      },
       "employee_operational": {
         "summary_kicker": "Operational summary",
         "badge_compliance": "Compliance: {v}",
@@ -719,7 +746,8 @@
           "queue_returned_to_recruitment": "Returned to recruitment",
           "queue_rejected_by_hr": "Rejected by HR",
           "filter_queue": "Filter by queue",
-          "delayed_hint": "Workforce is created only after employment approval."
+          "delayed_hint": "Workforce is created only after employment approval.",
+          "accepted_unavailable": "Accepted handoff queue is unavailable (backend version mismatch). Pending pickup still loads below."
         },
         "handoff": {
           "back_inbox": "Back to inbox",

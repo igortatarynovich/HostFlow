@@ -743,6 +743,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     permission: 'workforce.view',
   },
   {
+    key: 'hr-zus-legacy-alias',
+    path: 'hr/zus',
+    Component: () => <Navigate to={CRM.hrZusWorkspace} replace />,
+    permission: 'workforce.view',
+  },
+  {
     key: 'hr-zus-workspace',
     path: seg(CRM.hrZusWorkspace),
     Component: HrZusWorkspacePage,

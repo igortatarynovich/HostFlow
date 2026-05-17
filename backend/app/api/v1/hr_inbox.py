@@ -166,20 +166,6 @@ async def hr_inbox_context(
     return HrInboxContextOut(delayed_hr_workforce_creation=delayed)
 
 
-@router.get("/handoffs/{handoff_id}", response_model=HrHandoffInboxItem)
-async def hr_handoff_inbox_row(
-    handoff_id: str,
-    db_tenant=Depends(get_db_with_tenant),
-    _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
-):
-    db, tid = db_tenant
-    row = await get_internal_hr_handoff_inbox_row(db, tenant_id=str(tid), handoff_id=str(handoff_id))
-    if not row:
-        raise HTTPException(status_code=404, detail="Handoff not found")
-    return _inbox_item_from_row(row)
-
-
 @router.get("/handoffs/accepted", response_model=HrHandoffInboxListOut)
 async def hr_handoffs_accepted(
     limit: int = Query(50, ge=1, le=200),
@@ -200,6 +186,20 @@ async def hr_handoffs_accepted(
     delayed = await delayed_hr_workforce_creation_enabled(db, str(tid))
     items = [_inbox_item_from_row(r) for r in rows]
     return HrHandoffInboxListOut(total=total, items=items, delayed_hr_workforce_creation=delayed)
+
+
+@router.get("/handoffs/{handoff_id}", response_model=HrHandoffInboxItem)
+async def hr_handoff_inbox_row(
+    handoff_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    _: UserCtx = Depends(require_hr_workforce_module_access),
+    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+):
+    db, tid = db_tenant
+    row = await get_internal_hr_handoff_inbox_row(db, tenant_id=str(tid), handoff_id=str(handoff_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    return _inbox_item_from_row(row)
 
 
 @router.get("/tasks", response_model=ReminderListResponse)

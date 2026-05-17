@@ -33,24 +33,48 @@ export default function HrInboxPage() {
   const [accepted, setAccepted] = useState<{ total: number; items: HrHandoffInboxItem[] } | null>(null)
   const [delayedFlag, setDelayedFlag] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [acceptedUnavailable, setAcceptedUnavailable] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [acceptingId, setAcceptingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setErr(null)
+    setAcceptedUnavailable(null)
     try {
-      const [ctx, p, a] = await Promise.all([
-        fetchHrInboxContext(),
-        fetchHrHandoffsPending(),
-        fetchHrHandoffsAccepted(),
-      ])
+      const ctx = await fetchHrInboxContext()
       setDelayedFlag(Boolean(ctx.delayed_hr_workforce_creation))
-      setPending(p)
-      setAccepted(a)
     } catch (e: unknown) {
       const ex = e as { response?: { data?: { detail?: string } }; message?: string }
       setErr(ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'))
+      setLoading(false)
+      return
+    }
+
+    try {
+      setPending(await fetchHrHandoffsPending())
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
+      setErr(ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'))
+      setPending(null)
+    }
+
+    try {
+      setAccepted(await fetchHrHandoffsAccepted())
+    } catch (e: unknown) {
+      const ex = e as { response?: { status?: number; data?: { detail?: string } }; message?: string }
+      if (ex?.response?.status === 404) {
+        setAccepted({ total: 0, items: [] })
+        setAcceptedUnavailable(
+          t('app.nav.hr.inbox.accepted_unavailable', {
+            defaultValue:
+              'Accepted handoff queue is unavailable (backend version mismatch). Pending pickup still loads below.',
+          }),
+        )
+      } else {
+        setErr(ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'))
+        setAccepted(null)
+      }
     } finally {
       setLoading(false)
     }
@@ -209,6 +233,11 @@ export default function HrInboxPage() {
       </div>
 
       {loading ? <p className="text-sm text-slate-600">{t('common.loading')}</p> : null}
+      {acceptedUnavailable ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950">
+          {acceptedUnavailable}
+        </p>
+      ) : null}
       {err ? <div className="alert-error">{err}</div> : null}
 
       <div className="card overflow-hidden">

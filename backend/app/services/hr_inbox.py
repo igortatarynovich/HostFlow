@@ -22,6 +22,7 @@ from backend.app.models.workforce_hr_review import (
     WorkforceHrReview,
 )
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
+from backend.app.services.workforce_hr_review import ensure_hr_review_for_handoff
 
 # Operational queue codes for HR inbox (Stage B UX).
 QUEUE_AWAITING_PICKUP = "awaiting_hr_pickup"
@@ -104,6 +105,32 @@ async def _reviews_by_handoff_ids(
         )
     ).scalars().all()
     return {str(r.handoff_id): r for r in rows if r.handoff_id}
+
+
+async def _ensure_reviews_for_inbox_rows(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    status: str,
+    handoffs: Sequence[CandidateHandoff],
+    reviews_by_hid: dict[str, WorkforceHrReview],
+    delayed_workforce: bool,
+) -> dict[str, WorkforceHrReview]:
+    """Materialize review rows for accepted internal-HR handoffs (Stage B compatibility)."""
+    if str(status) != "accepted" or not delayed_workforce:
+        return reviews_by_hid
+    out = dict(reviews_by_hid)
+    for handoff in handoffs:
+        hid = str(handoff.id)
+        if hid in out or not handoff.candidate_id:
+            continue
+        out[hid] = await ensure_hr_review_for_handoff(
+            db,
+            tenant_id=tenant_id,
+            handoff_id=hid,
+            candidate_id=str(handoff.candidate_id),
+        )
+    return out
 
 
 def enrich_handoff_inbox_row(
@@ -226,8 +253,16 @@ async def list_internal_hr_handoffs_for_hr_inbox(
     handoffs_only = [p[0] for p in pairs]
     wf_by_hid = await _workforce_employee_id_by_handoff(db, tenant_id=tid, handoffs=handoffs_only)
     hid_list = [str(h.id) for h in handoffs_only]
-    reviews_by_hid = await _reviews_by_handoff_ids(db, tenant_id=tid, handoff_ids=hid_list)
     delayed_workforce = await delayed_hr_workforce_creation_enabled(db, tid)
+    reviews_by_hid = await _reviews_by_handoff_ids(db, tenant_id=tid, handoff_ids=hid_list)
+    reviews_by_hid = await _ensure_reviews_for_inbox_rows(
+        db,
+        tenant_id=tid,
+        status=st,
+        handoffs=handoffs_only,
+        reviews_by_hid=reviews_by_hid,
+        delayed_workforce=delayed_workforce,
+    )
 
     items: list[dict[str, Any]] = []
     for handoff, snap in pairs:
@@ -266,8 +301,16 @@ async def get_internal_hr_handoff_inbox_row(
     ).scalar_one_or_none()
     snap_dict = dict(snap_row.payload) if snap_row is not None else None
     wf_map = await _workforce_employee_id_by_handoff(db, tenant_id=tid, handoffs=[handoff])
-    reviews = await _reviews_by_handoff_ids(db, tenant_id=tid, handoff_ids=[hid])
     delayed_workforce = await delayed_hr_workforce_creation_enabled(db, tid)
+    reviews = await _reviews_by_handoff_ids(db, tenant_id=tid, handoff_ids=[hid])
+    reviews = await _ensure_reviews_for_inbox_rows(
+        db,
+        tenant_id=tid,
+        status=str(handoff.status or ""),
+        handoffs=[handoff],
+        reviews_by_hid=reviews,
+        delayed_workforce=delayed_workforce,
+    )
     return enrich_handoff_inbox_row(
         handoff=handoff,
         snapshot=snap_dict,

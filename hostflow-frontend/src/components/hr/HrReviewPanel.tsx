@@ -28,6 +28,7 @@ type Props = {
   onUpdated: (p: HrReviewPanel) => void
   employeeId?: string
   handoffId?: string
+  hideDocuments?: boolean
 }
 
 function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentRow): string {
@@ -62,7 +63,14 @@ function docPrimaryAction(
   return { label: t('app.hr.review.open_docs', { defaultValue: 'Open' }), href: base }
 }
 
-export default function HrReviewPanelCard({ panel, manage, onUpdated, employeeId: employeeIdProp, handoffId }: Props) {
+export default function HrReviewPanelCard({
+  panel,
+  manage,
+  onUpdated,
+  employeeId: employeeIdProp,
+  handoffId,
+  hideDocuments = false,
+}: Props) {
   const employeeId = (employeeIdProp || panel.employee_id || '').trim()
   const useHandoffApi = Boolean(handoffId) && !employeeId
   const { t } = useI18n()
@@ -209,7 +217,7 @@ export default function HrReviewPanelCard({ panel, manage, onUpdated, employeeId
         })}
       </ul>
 
-      {panel.documents_for_approval.length > 0 ? (
+      {!hideDocuments && panel.documents_for_approval.length > 0 ? (
         <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-3">
           <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-600">
             {t('app.hr.review.docs_title', { defaultValue: 'Documents for approval' })}

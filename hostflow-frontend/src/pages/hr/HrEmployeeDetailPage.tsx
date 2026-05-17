@@ -39,6 +39,10 @@ import HrRecruitmentTransferSummary from '../../components/hr/HrRecruitmentTrans
 import HrLegalDocumentChecklist from '../../components/hr/HrLegalDocumentChecklist'
 import { HrEmployeeRightColumn } from '../../components/hr/HrEmployeeRightColumn'
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
+import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
+import HrNextActionRail from '../../components/hr/HrNextActionRail'
+import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
+import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
 
 const EMPLOYEE_STATUSES = [
@@ -145,6 +149,16 @@ export default function HrEmployeeDetailPage() {
   const bundle = profile?.hr_bundle ?? null
 
   const manage = can('workforce.manage')
+  const isReviewCase = Boolean(
+    hrReview &&
+      hrReview.status !== 'approved_for_employment' &&
+      hrReview.mode !== 'employee_profile',
+  )
+
+  const scrollToAnchor = (anchor: string) => {
+    const sel = anchor.startsWith('#') ? anchor : `#${anchor}`
+    document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const load = useCallback(async () => {
     if (!employeeId) return
@@ -254,11 +268,13 @@ export default function HrEmployeeDetailPage() {
           ]}
         />
 
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">{employee.display_name}</h1>
-            <p className="mt-1 font-mono text-xs text-slate-500">{employee.id}</p>
-          </div>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+          {!isReviewCase ? (
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-slate-900">{employee.display_name}</h1>
+              <p className="mt-1 font-mono text-xs text-slate-500">{employee.id}</p>
+            </div>
+          ) : null}
           <Link
             to={CRM_APP_PATHS.hrEmployees}
             className="text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
@@ -267,18 +283,32 @@ export default function HrEmployeeDetailPage() {
           </Link>
         </div>
 
+        {hrReview ? <HrReviewCaseHero panel={hrReview} displayName={employee.display_name} /> : null}
+
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
           <div className="min-w-0 space-y-4">
             {hrReview ? (
-              <HrReviewPanelCard
+              <>
+                <HrReviewPanelCard
+                  employeeId={employeeId}
+                  handoffId={hrReview.handoff_id ?? undefined}
+                  panel={hrReview}
+                  hideDocuments
+                  manage={manage}
+                  onUpdated={(next) => {
+                    setHrReview(next)
+                    void refreshProfile()
+                  }}
+                />
+                <HrDocumentsForApproval documents={hrReview.documents_for_approval} />
+              </>
+            ) : null}
+            {isReviewCase ? (
+              <HrWorkEligibilityCompact
+                panel={hrReview!}
                 employeeId={employeeId}
-                handoffId={hrReview.handoff_id ?? undefined}
-                panel={hrReview}
                 manage={manage}
-                onUpdated={(next) => {
-                  setHrReview(next)
-                  void refreshProfile()
-                }}
+                onRefresh={() => void refreshProfile()}
               />
             ) : null}
             <Section title={t('app.hr.employee_operational.section_employment', { defaultValue: 'Employment' })}>
@@ -358,6 +388,7 @@ export default function HrEmployeeDetailPage() {
         expiringQueue={profile?.documents_expiring}
       />
 
+      {!isReviewCase ? (
       <Section
         id="hr-employee-work-eligibility"
         defaultOpen
@@ -389,8 +420,9 @@ export default function HrEmployeeDetailPage() {
           }
         />
       </Section>
+      ) : null}
 
-      <Section title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}>
+      <Section title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })} defaultOpen={!isReviewCase}>
         <p className="text-xs text-slate-600 mb-3">
           {t('app.hr.employee_operational.source_hint', {
             defaultValue:
@@ -512,7 +544,17 @@ export default function HrEmployeeDetailPage() {
           </div>
           {profile ? (
             <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-              <HrEmployeeRightColumn employeeId={employeeId} profile={profile} bundle={bundle} hrReview={hrReview} />
+              {isReviewCase && hrReview ? (
+                <HrNextActionRail
+                  panel={hrReview}
+                  employeeId={employeeId}
+                  profileAlerts={profile.alerts}
+                  profileTimeline={profile.timeline}
+                  onScrollTo={scrollToAnchor}
+                />
+              ) : (
+                <HrEmployeeRightColumn employeeId={employeeId} profile={profile} bundle={bundle} hrReview={hrReview} />
+              )}
             </aside>
           ) : null}
         </div>

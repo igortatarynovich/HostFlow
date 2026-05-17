@@ -138,3 +138,83 @@ async def test_hr_inbox_pending_tasks_accepted_and_recruiter_forbidden(
     assert ab["total"] >= 1
     row = next(x for x in ab["items"] if x["handoff"]["id"] == hid)
     assert row.get("workforce_employee_id") is not None
+
+
+@pytest.mark.anyio
+async def test_hr_handoffs_accepted_route_not_shadowed_by_detail(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+    hr_officer_headers: dict[str, str],
+) -> None:
+    """Static /handoffs/accepted must not match /handoffs/{handoff_id} (regression for prod 404)."""
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    company_id = data["company_id"]
+    mod = await client.patch(
+        "/api/v1/settings/team/modules",
+        headers=manager_headers,
+        json={"hr": True},
+    )
+    assert mod.status_code == 200, mod.text
+    await _ensure_tenant_link_internal_hr(
+        client, manager_headers=manager_headers, tenant_id=tenant_id, company_id=company_id
+    )
+
+    accepted = await client.get(
+        "/api/v1/hr/handoffs/accepted",
+        headers=hr_officer_headers,
+    )
+    assert accepted.status_code == 200, accepted.text
+    body = accepted.json()
+    assert "items" in body
+    assert "total" in body
+    assert body.get("detail") != "Handoff not found"
+
+
+@pytest.mark.anyio
+async def test_hr_dashboard_and_inbox_handoff_counts_align(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+    hr_officer_headers: dict[str, str],
+) -> None:
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    company_id = data["company_id"]
+    mod = await client.patch(
+        "/api/v1/settings/team/modules",
+        headers=manager_headers,
+        json={"hr": True},
+    )
+    assert mod.status_code == 200, mod.text
+    await _ensure_tenant_link_internal_hr(
+        client, manager_headers=manager_headers, tenant_id=tenant_id, company_id=company_id
+    )
+
+    tag = uuid.uuid4().hex[:8]
+    create_resp = await client.post(
+        "/api/v1/candidates",
+        headers=manager_headers,
+        json={"first_name": "Align", "last_name": f"T{tag}", "company_id": company_id},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    candidate_id = create_resp.json()["id"]
+    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+    await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=manager_headers,
+        json={"stage": "ready_for_handoff"},
+    )
+    ho = await client.post(
+        f"/api/v1/handoffs/candidates/{candidate_id}",
+        headers={**recruiter_headers, "Content-Type": "application/json"},
+        json={"client_company_id": company_id, "destination": "internal_hr"},
+    )
+    assert ho.status_code == 201, ho.text
+
+    summary = await client.get("/api/v1/hr/dashboard/summary", headers=hr_officer_headers)
+    assert summary.status_code == 200, summary.text
+    pending = await client.get("/api/v1/hr/handoffs/pending", headers=hr_officer_headers)
+    assert pending.status_code == 200, pending.text
+    counts = summary.json()["counts"]
+    assert counts["handoffs_pending"] == pending.json()["total"]

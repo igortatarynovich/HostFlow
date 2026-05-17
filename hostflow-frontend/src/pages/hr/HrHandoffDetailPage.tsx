@@ -8,6 +8,10 @@ import {
   type HrHandoffInboxItem,
 } from '../../api/hrWorkspace'
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
+import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
+import HrNextActionRail from '../../components/hr/HrNextActionRail'
+import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
+import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 import type { HrReviewPanel } from '../../api/workforce'
@@ -76,63 +80,100 @@ export default function HrHandoffDetailPage() {
 
   const isPickup = row?.operational_queue === 'awaiting_hr_pickup'
   const empId = row?.workforce_employee_id || hrReview?.employee_id || undefined
+  const displayName = row?.candidate_display_name || undefined
+
+  const scrollTo = (anchor: string) => {
+    const sel = anchor.startsWith('#') ? anchor : `#${anchor}`
+    document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Link to={CRM_APP_PATHS.hrInbox} className="text-sm font-medium text-brand-700 hover:text-brand-900">
-          ← {t('app.nav.hr.handoff.back_inbox', { defaultValue: 'Back to inbox' })}
-        </Link>
-      </div>
-      <h2 className="text-base font-semibold text-slate-900">
-        {t('app.nav.hr.handoff.title', { defaultValue: 'Internal HR handoff' })}
-        {row?.candidate_display_name ? ` · ${row.candidate_display_name}` : null}
-      </h2>
-      <p className="text-sm text-slate-600">
-        {t('app.nav.hr.handoff.hint', {
-          defaultValue:
-            'Review transfer data, take the case into HR review, then approve for employment when ready.',
-        })}
-      </p>
+      <Link to={CRM_APP_PATHS.hrInbox} className="text-sm font-medium text-brand-700 hover:text-brand-900">
+        ← {t('app.nav.hr.handoff.back_inbox', { defaultValue: 'Back to inbox' })}
+      </Link>
 
       {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
       {err && (
         <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
       )}
 
-      {row && !loading ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-          <span className="font-semibold">{row.operational_queue.replace(/_/g, ' ')}</span>
-          {row.hr_review_status ? <span className="ml-2">· {row.hr_review_status.replace(/_/g, ' ')}</span> : null}
-        </div>
+      {row && hrReview && !isPickup ? (
+        <>
+          <HrReviewCaseHero panel={hrReview} displayName={displayName} />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+            <div className="min-w-0 space-y-4">
+              <HrReviewPanelCard
+                handoffId={id!}
+                employeeId={empId}
+                panel={hrReview}
+                hideDocuments
+                manage
+                onUpdated={(next) => {
+                  setHrReview(next)
+                  void load()
+                }}
+              />
+              <HrDocumentsForApproval documents={hrReview.documents_for_approval} />
+              {empId ? (
+                <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
+              ) : null}
+              {row.snapshot ? (
+                <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
+                  <h2 className="font-semibold text-slate-900">
+                    {t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t('app.hr.employee_operational.source_hint', {
+                      defaultValue: 'Read-only context from recruitment at transfer.',
+                    })}
+                  </p>
+                  <pre className="mt-2 max-h-48 overflow-auto rounded bg-white p-2 text-[10px] text-slate-600">
+                    {JSON.stringify(row.snapshot, null, 2)}
+                  </pre>
+                </section>
+              ) : null}
+            </div>
+            <HrNextActionRail panel={hrReview} employeeId={empId} onScrollTo={scrollTo} />
+          </div>
+        </>
       ) : null}
 
-      {isPickup && !loading ? (
-        <div>
+      {row && isPickup && !loading ? (
+        <>
+          <HrReviewCaseHero
+            panel={{
+              review_id: '',
+              status: 'awaiting_hr_pickup',
+              checklist: [],
+              blockers: [],
+              failed_required_items: [],
+              can_approve: false,
+              documents_for_approval: [],
+              handoff_id: id,
+              hero: {
+                candidate_display_name: displayName,
+                handoff_id: id,
+                handoff_status: row.handoff.status,
+                review_status: 'awaiting_hr_pickup',
+                state_message: t('app.nav.hr.handoff.hint', {
+                  defaultValue: 'Take this case into HR review to start document and compliance checks.',
+                }),
+                process_stages: [
+                  { code: 'transferred_from_recruitment', label: 'Transferred', state: 'done' },
+                  { code: 'hr_pickup', label: 'HR pickup', state: 'current' },
+                  { code: 'document_verification', label: 'Documents', state: 'pending' },
+                  { code: 'legal_eligibility', label: 'Eligibility', state: 'pending' },
+                  { code: 'hr_decision', label: 'Decision', state: 'pending' },
+                  { code: 'employee_onboarding', label: 'Employee', state: 'pending' },
+                ],
+              },
+            }}
+            displayName={displayName}
+          />
           <button type="button" className="btn-primary" disabled={accepting} onClick={() => void handleAcceptPickup()}>
             {t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' })}
           </button>
-        </div>
-      ) : null}
-
-      {hrReview && !isPickup ? (
-        <>
-          <p className="text-sm text-slate-600">
-            {t('app.nav.hr.handoff.accepted_notice', {
-              defaultValue:
-                'Case is in HR review. Complete the checklist below, then approve for employment when ready.',
-            })}
-          </p>
-          <HrReviewPanelCard
-            handoffId={id!}
-            employeeId={empId}
-            panel={hrReview}
-            manage
-            onUpdated={(next) => {
-              setHrReview(next)
-              void load()
-            }}
-          />
         </>
       ) : null}
 
