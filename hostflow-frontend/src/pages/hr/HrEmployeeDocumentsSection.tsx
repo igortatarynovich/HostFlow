@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { listWorkforceEmployeeDocuments, type WorkforceEmployeeDocumentRow } from '../../api/workforce'
+import HrDocumentOpenButton from '../../components/hr/HrDocumentOpenButton'
 
 type Props = {
   employeeId: string
@@ -164,7 +165,9 @@ export function HrEmployeeDocumentsSection({
                       {daysLeft != null ? daysLeft : '—'}
                     </td>
                     <td className="py-1.5">
-                      {downloadUrl ? (
+                      {d.id ? (
+                        <HrDocumentOpenButton documentId={d.id} employeeId={employeeId} />
+                      ) : downloadUrl && downloadUrl.startsWith('http') ? (
                         <a
                           href={downloadUrl}
                           target="_blank"

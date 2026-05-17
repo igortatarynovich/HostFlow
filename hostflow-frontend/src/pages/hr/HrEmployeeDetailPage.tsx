@@ -300,7 +300,10 @@ export default function HrEmployeeDetailPage() {
                     void refreshProfile()
                   }}
                 />
-                <HrDocumentsForApproval documents={hrReview.documents_for_approval} />
+                <HrDocumentsForApproval
+                  documents={hrReview.documents_for_approval}
+                  employeeId={employeeId}
+                />
               </>
             ) : null}
             {isReviewCase ? (

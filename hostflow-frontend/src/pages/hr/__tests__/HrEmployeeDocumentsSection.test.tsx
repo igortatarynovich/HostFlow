@@ -15,8 +15,8 @@ vi.mock('../../../api/workforce', () => ({
   recordWorkforceDocumentHrReview: vi.fn(),
 }))
 
-vi.mock('../../../api/documents/list', () => ({
-  listDocumentChecks: vi.fn(),
+vi.mock('../../../utils/hrDocumentOpen', () => ({
+  openHrDocumentInNewTab: vi.fn(),
 }))
 
 vi.mock('../../../store/useAuth', () => ({
@@ -69,22 +69,22 @@ describe('HrEmployeeDocumentsSection', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows file link when row has downloadUrl (workforce documents API)', async () => {
+  it('shows open button when document has id', async () => {
+    mockListDocs.mockResolvedValue([{ document: baseDoc, downloadUrl: null, daysLeft: null }])
+    renderSection()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /open/i })).toBeInTheDocument()
+    })
+  })
+
+  it('shows external link only for http presigned urls', async () => {
     mockListDocs.mockResolvedValue([
-      { document: baseDoc, downloadUrl: 'https://example.com/presigned.pdf', daysLeft: null },
+      { document: { ...baseDoc, id: '' }, downloadUrl: 'https://example.com/presigned.pdf', daysLeft: null },
     ])
     renderSection()
     await waitFor(() => {
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('href', 'https://example.com/presigned.pdf')
-      expect(link).toHaveAttribute('target', '_blank')
     })
-  })
-
-  it('does not show file link when downloadUrl is absent', async () => {
-    mockListDocs.mockResolvedValue([{ document: baseDoc, downloadUrl: null, daysLeft: null }])
-    renderSection()
-    await waitFor(() => expect(screen.getByText('Passport')).toBeInTheDocument())
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 })

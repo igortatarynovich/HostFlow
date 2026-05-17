@@ -632,6 +632,38 @@ export function candDocRecordsToEmployeeDocumentRows(
   })
 }
 
+const parseContentDispositionFilename = (value: string | null | undefined): string | null => {
+  if (!value) return null
+  const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(value)
+  if (!match?.[1]) return null
+  try {
+    return decodeURIComponent(match[1].replace(/["']/g, ''))
+  } catch {
+    return match[1].replace(/["']/g, '')
+  }
+}
+
+/** Stream file for HR workspace (no viewer-channel filter; all linked candidate docs). */
+export async function downloadWorkforceEmployeeDocumentFile(
+  employeeId: string,
+  documentId: string,
+): Promise<{ blob: Blob; filename: string | null; contentType: string | null }> {
+  const response = await http.get<Blob>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/documents/${encodeURIComponent(documentId)}/file`,
+    { responseType: 'blob' },
+  )
+  const headers = response.headers as Record<string, unknown>
+  const getHeader = (name: string): string | undefined => {
+    const direct = headers[name] ?? headers[name.toLowerCase()]
+    return typeof direct === 'string' ? direct : undefined
+  }
+  return {
+    blob: response.data,
+    filename: parseContentDispositionFilename(getHeader('content-disposition')),
+    contentType: getHeader('content-type') ?? null,
+  }
+}
+
 export async function listWorkforceEmployeeDocuments(
   employeeId: string,
 ): Promise<WorkforceEmployeeDocumentRow[]> {

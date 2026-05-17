@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
-from backend.app.api.v1.candidate_documents import CandDoc
+from backend.app.api.v1.candidate_documents import CandDoc, get_candidate_document_file
 from backend.app.api.v1.candidates.service import get_candidate
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
@@ -646,7 +646,11 @@ async def get_employee_operational_profile(
             cid,
             active_own_company_id=own_company_id,
         )
-    cand_docs = [CandDoc.from_document(r) for r in doc_rows]
+    cand_docs: list[CandDoc] = []
+    for r in doc_rows:
+        cd = CandDoc.from_document(r, hr_workforce_view=True)
+        cd.file_url = f"/api/v1/workforce/employees/{employee_id}/documents/{r.id}/file"
+        cand_docs.append(cd)
     hb = _hr_bundle_out(bundle)
     return EmployeeOperationalProfileOut(
         employee=EmployeeOut.from_orm_row(emp),
@@ -696,7 +700,45 @@ async def list_employee_documents_via_candidate_link(
         cid,
         active_own_company_id=own_company_id,
     )
-    return [CandDoc.from_document(r, hr_workforce_view=True) for r in rows]
+    out: list[CandDoc] = []
+    for r in rows:
+        cd = CandDoc.from_document(r, hr_workforce_view=True)
+        cd.file_url = f"/api/v1/workforce/employees/{employee_id}/documents/{r.id}/file"
+        out.append(cd)
+    return out
+
+
+@router.get(
+    "/employees/{employee_id}/documents/{document_id}/file",
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def get_employee_document_file(
+    employee_id: str,
+    document_id: UUID,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+):
+    """Stream linked candidate document for HR workspace (Bearer auth; not a raw /candidates/... link)."""
+    db, tid = db_tenant
+    emp = await we_svc.get_employee(db, str(tid), employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    cid = (emp.candidate_id or "").strip()
+    if not cid:
+        raise HTTPException(status_code=404, detail="No linked candidate")
+    from backend.app.models.document import Document
+
+    doc_row = await db.get(Document, str(document_id))
+    if not doc_row or str(doc_row.candidate_id or "") != cid:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return await get_candidate_document_file(
+        UUID(cid),
+        document_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
 
 
 @router.post(

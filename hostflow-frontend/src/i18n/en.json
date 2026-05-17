@@ -203,7 +203,8 @@
         "doc_col_expires": "Expires",
         "doc_col_days_left": "Days left",
         "doc_col_file": "File",
-        "doc_open": "Open"
+        "doc_open": "Open",
+        "doc_open_error": "Could not open document file"
       },
       "work_eligibility": {
         "section_title": "Work eligibility & statutory fees",

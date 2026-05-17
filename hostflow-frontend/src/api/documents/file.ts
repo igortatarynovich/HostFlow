@@ -12,9 +12,17 @@ const parseContentDisposition = (value: string | null | undefined): string | nul
   }
 };
 
-export async function downloadDocumentFile(docId: string): Promise<DocumentFileDownload> {
+export async function downloadDocumentFile(
+  docId: string,
+  options?: { viewerChannel?: string },
+): Promise<DocumentFileDownload> {
+  const requestHeaders: Record<string, string> = {}
+  if (options?.viewerChannel) {
+    requestHeaders['X-Document-Viewer-Channel'] = options.viewerChannel
+  }
   const response = await docsApi.get<Blob>(`/documents/${docId}/file`, {
-    responseType: "blob",
+    responseType: 'blob',
+    headers: Object.keys(requestHeaders).length ? requestHeaders : undefined,
   });
   const headers = response.headers as any;
   const getHeader = (name: string): string | undefined => {
@@ -34,9 +42,17 @@ export async function downloadDocumentFile(docId: string): Promise<DocumentFileD
   };
 }
 
-export async function getDocumentFileUrl(docId: string): Promise<{ url: string; expires_at?: string }> {
+export async function getDocumentFileUrl(
+  docId: string,
+  options?: { viewerChannel?: string },
+): Promise<{ url: string; expires_at?: string }> {
+  const requestHeaders: Record<string, string> = {}
+  if (options?.viewerChannel) {
+    requestHeaders['X-Document-Viewer-Channel'] = options.viewerChannel
+  }
   const { data } = await docsApi.get<{ url: string; expires_at?: string }>(
-    `/documents/${docId}/file-url`
+    `/documents/${docId}/file-url`,
+    { headers: Object.keys(requestHeaders).length ? requestHeaders : undefined },
   );
   return data;
 }

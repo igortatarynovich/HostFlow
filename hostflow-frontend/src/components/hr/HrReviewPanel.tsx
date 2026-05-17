@@ -13,6 +13,7 @@ import {
 } from '../../api/workforce'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
+import HrDocumentOpenButton from './HrDocumentOpenButton'
 
 const TERMINAL = new Set(['approved_for_employment', 'returned_to_recruitment', 'rejected_by_hr'])
 
@@ -244,14 +245,17 @@ export default function HrReviewPanelCard({
                       </td>
                       <td className="py-1.5">
                         <div className="flex flex-wrap gap-2">
-                          <a href={action.href} className="font-medium text-brand-700 hover:underline">
-                            {action.label}
-                          </a>
-                          {!d.verified && d.status !== 'missing' ? (
-                            <a href={action.href} className="text-[11px] text-slate-600 hover:underline">
-                              {t('app.hr.review.replace_doc', { defaultValue: 'Replace' })}
+                          {d.document_id ? (
+                            <HrDocumentOpenButton
+                              documentId={d.document_id}
+                              employeeId={employeeId}
+                              label={action.label}
+                            />
+                          ) : (
+                            <a href={action.href} className="font-medium text-brand-700 hover:underline">
+                              {action.label}
                             </a>
-                          ) : null}
+                          )}
                         </div>
                       </td>
                     </tr>

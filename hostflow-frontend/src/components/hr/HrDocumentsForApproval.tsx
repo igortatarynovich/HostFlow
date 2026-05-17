@@ -1,8 +1,10 @@
 import type { HrReviewDocumentRow } from '../../api/workforce'
+import HrDocumentOpenButton from './HrDocumentOpenButton'
 import { useI18n } from '../../i18n'
 
 type Props = {
   documents: HrReviewDocumentRow[]
+  employeeId?: string | null
 }
 
 function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentRow): string {
@@ -18,7 +20,7 @@ function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentR
   return raw.replace(/_/g, ' ') || '—'
 }
 
-export default function HrDocumentsForApproval({ documents }: Props) {
+export default function HrDocumentsForApproval({ documents, employeeId }: Props) {
   const { t } = useI18n()
   if (documents.length === 0) return null
 
@@ -39,7 +41,7 @@ export default function HrDocumentsForApproval({ documents }: Props) {
           <tbody>
             {documents.map((d) => {
               const raw = String(d.status || '').toLowerCase()
-              const href = '#hr-employee-linked-documents'
+              const scrollHref = '#hr-employee-linked-documents'
               return (
                 <tr key={d.document_key} className="border-b border-slate-50 last:border-0">
                   <td className="py-2 pr-2 font-medium text-slate-800">{d.label}</td>
@@ -49,24 +51,25 @@ export default function HrDocumentsForApproval({ documents }: Props) {
                     </span>
                   </td>
                   <td className="py-2">
-                    <div className="flex flex-wrap gap-2">
-                      <a href={href} className="font-medium text-brand-700 hover:underline">
-                        {t('app.hr.review.open_docs', { defaultValue: 'Open' })}
-                      </a>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {d.document_id ? (
+                        <HrDocumentOpenButton documentId={d.document_id} employeeId={employeeId} />
+                      ) : (
+                        <a href={scrollHref} className="font-medium text-brand-700 hover:underline">
+                          {t('app.hr.review.open_docs', { defaultValue: 'Open' })}
+                        </a>
+                      )}
                       {raw === 'missing' ? (
-                        <a href={href} className="text-brand-700 hover:underline">
+                        <a href={scrollHref} className="text-brand-700 hover:underline">
                           {t('app.hr.review.upload_docs', { defaultValue: 'Upload' })}
                         </a>
                       ) : null}
-                      {!d.verified && raw !== 'missing' ? (
-                        <>
-                          <a href={href} className="text-brand-700 hover:underline">
-                            {t('app.hr.review.verify_docs', { defaultValue: 'Verify' })}
-                          </a>
-                          <a href={href} className="text-slate-600 hover:underline">
-                            {t('app.hr.review.replace_doc', { defaultValue: 'Replace' })}
-                          </a>
-                        </>
+                      {!d.verified && raw !== 'missing' && d.document_id ? (
+                        <HrDocumentOpenButton
+                          documentId={d.document_id}
+                          employeeId={employeeId}
+                          label={t('app.hr.review.verify_docs', { defaultValue: 'Verify' })}
+                        />
                       ) : null}
                     </div>
                   </td>
