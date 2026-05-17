@@ -134,6 +134,7 @@ from backend.app.api.v1.candidates.schemas import (
 )
 from backend.app.services.recruitment_application_lifecycle import normalize_application_status
 from backend.app.services.recruitment_application_service import list_recruitment_applications_for_candidate
+from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     AgencyRecruitmentWriteBypass,
@@ -402,6 +403,16 @@ def _candidate_value_for_key(candidate: Candidate, key: str) -> Any:
     return None
 
 
+def _candidate_owned_value_is_meaningful(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, dict)):
+        return bool(value)
+    return True
+
+
 def _detect_candidate_override_changes(
     candidate: Candidate,
     incoming: Dict[str, Any],
@@ -417,6 +428,22 @@ def _detect_candidate_override_changes(
             changed_fields.append(key)
             diff_payload[key] = {"old": old_val, "new": new_val}
     return changed_fields, diff_payload
+
+
+def _candidate_owned_corrections_requiring_override_reason(
+    candidate: Candidate,
+    incoming: Dict[str, Any],
+) -> List[str]:
+    """Owned-field updates that replace an already meaningful value (not first fill)."""
+    correction_fields: List[str] = []
+    for key in _CANDIDATE_OWNED_OVERRIDE_KEYS:
+        if key not in incoming:
+            continue
+        new_val = _normalize_compare_value(incoming.get(key))
+        old_val = _normalize_compare_value(_candidate_value_for_key(candidate, key))
+        if old_val != new_val and _candidate_owned_value_is_meaningful(old_val):
+            correction_fields.append(key)
+    return correction_fields
 
 
 def _candidate_patch_is_close_action(payload: Dict[str, Any]) -> bool:
@@ -1920,6 +1947,15 @@ async def get_candidate(
         else:
             out["can_edit"] = False
 
+    from backend.app.services.candidate_operational_write import build_candidate_operational_permissions
+
+    out["permissions"] = await build_candidate_operational_permissions(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        client_tenant=client_tenant,
+    )
+
     # Contact-attempt readiness for stage UI (plan: New → at least one attempt when policy on).
     cand_row = row[0]
     try:
@@ -2406,6 +2442,7 @@ async def patch_candidate(
     client_tenant = await is_client_tenant(db, tenant_id_str)
     recruitment_locked = False
     recruitment_lock_reason: Optional[str] = None
+    workforce_locked = False
     recruitment_lock_override_used = False
 
     if client_tenant:
@@ -2415,7 +2452,11 @@ async def patch_candidate(
         recruitment_locked, recruitment_lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         )
-        if recruitment_locked:
+        workforce_locked = await is_candidate_locked_by_workforce(
+            db, tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+        )
+        operational_locked = recruitment_locked or workforce_locked
+        if operational_locked:
             role_l = str(getattr(current_user, "role", "") or "").strip().lower()
             or_raw = (payload or {}).get("override_reason")
             if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and str(or_raw or "").strip():
@@ -2425,9 +2466,18 @@ async def patch_candidate(
             ):
                 recruitment_lock_override_used = True
             else:
+                lock_detail = (
+                    recruitment_lock_reason
+                    if recruitment_locked
+                    else ("workforce_hr_ownership" if workforce_locked else "handoff")
+                )
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Recruitment locked ({recruitment_lock_reason or 'handoff'}): cannot edit candidate",
+                    detail=(
+                        f"Recruitment locked ({lock_detail}): cannot edit candidate"
+                        if recruitment_locked
+                        else "candidate_readonly"
+                    ),
                 )
 
     # Allow only known fields to be updated to avoid accidental overwrites
@@ -2530,6 +2580,20 @@ async def patch_candidate(
     if not data:
         raise HTTPException(status_code=400, detail="No valid fields to update")
 
+    if "stage" in data:
+        role_lane = str(getattr(current_user, "role", "") or "").strip().lower()
+        if role_lane != "hr_officer":
+            from backend.app.services.stage_meta_recruitment_filter import (
+                enforce_agency_handoff_stage_change_allowed,
+            )
+
+            await enforce_agency_handoff_stage_change_allowed(
+                db,
+                tenant_id=tenant_id_str,
+                user=current_user,
+                new_stage_code=str(data["stage"]),
+            )
+
     _candidate_patch_side_effect_fields = frozenset(
         {
             "stage",
@@ -2571,17 +2635,25 @@ async def patch_candidate(
         raise HTTPException(status_code=404, detail="Candidate not found")
 
     override_fields, override_diff = _detect_candidate_override_changes(current_candidate, data)
-    if override_fields and not override_reason:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "override_reason_required",
-                "message": "override_reason is required for candidate-owned field updates",
-                "fields": override_fields,
-            },
+    correction_fields = _candidate_owned_corrections_requiring_override_reason(
+        current_candidate, data
+    )
+    role_l_owned = str(getattr(current_user, "role", "") or "").strip().lower()
+    if correction_fields and not override_reason:
+        requires_override_reason = (
+            recruitment_locked
+            or workforce_locked
+            or role_l_owned in RECRUITMENT_LOCK_OVERRIDE_ROLES
         )
-
-    patch_keys_for_audit = sorted(data.keys())
+        if requires_override_reason:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "override_reason_required",
+                    "message": "override_reason is required for candidate-owned field updates",
+                    "fields": correction_fields,
+                },
+            )
 
     agency_bypass: Optional[AgencyRecruitmentWriteBypass] = None
     if not client_tenant and recruitment_lock_override_used and override_reason:
@@ -2624,27 +2696,6 @@ async def patch_candidate(
             None,
         )
     response_payload = _serialize_candidate_row(row)
-
-    if recruitment_lock_override_used and override_reason:
-        try:
-            await log_audit_event(
-                db,
-                tenant_id=tenant_id_str,
-                event_type=AuditEventType.recruitment_lock_write_override,
-                entity_type=AuditEntityType.candidate,
-                entity_id=str(candidate_id),
-                actor_id=current_user.sub,
-                payload={
-                    "operation": "candidate_patch",
-                    "lock_reason": recruitment_lock_reason or "handoff",
-                    "override_reason": override_reason,
-                    "actor_role": str(getattr(current_user, "role", "") or "").strip().lower(),
-                    "updated_fields": patch_keys_for_audit,
-                },
-            )
-            await db.commit()
-        except Exception:
-            await db.rollback()
 
     if override_fields and override_reason:
         try:

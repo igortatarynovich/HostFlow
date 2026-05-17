@@ -458,6 +458,14 @@ async def handoff_from_candidate(
 ) -> WorkforceEmployee:
     existing = await find_employee_by_candidate(db, tenant_id, str(candidate.id))
     if existing:
+        status_l = str(getattr(existing, "status", "") or "").strip().lower()
+        if status_l in ("returned_to_recruitment", "returned"):
+            now = _now()
+            existing.status = "onboarding"
+            existing.handoff_at = now
+            existing.handoff_by_user_id = actor_user_id
+            existing.candidate_snapshot = _candidate_snapshot(candidate)
+            await db.flush()
         if seed_hr_bundle:
             await ensure_hr_profiles_bundle(db, tenant_id, existing.id)
             from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created

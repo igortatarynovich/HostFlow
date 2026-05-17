@@ -306,12 +306,16 @@ async def test_internal_hr_handoff_locks_recruiter_edit_hr_can_edit_and_checklis
     assert "medical_examination" in keys
     assert "psychological_assessment" in keys
 
-    ret = await client.post(
-        f"/api/v1/handoffs/{ho.json()['id']}/return",
+    emps = await client.get("/api/v1/workforce/employees", headers=hr_officer_headers)
+    assert emps.status_code == 200, emps.text
+    wf_rows = [r for r in emps.json() if str(r.get("candidate_id") or "") == str(candidate_id)]
+    assert len(wf_rows) == 1, emps.json()
+    wf_ret = await client.post(
+        f"/api/v1/workforce/employees/{wf_rows[0]['id']}/hr-review/return-to-recruitment",
         headers={**hr_officer_headers, "Content-Type": "application/json"},
-        json={"return_reason": "needs recruiter fix"},
+        json={"reason": "needs recruiter fix"},
     )
-    assert ret.status_code == 200, ret.text
+    assert wf_ret.status_code == 200, wf_ret.text
 
     rec_get2 = await client.get(
         f"/api/v1/candidates/{candidate_id}",

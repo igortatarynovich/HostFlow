@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Optional
 
 from sqlalchemy import insert
@@ -16,6 +17,12 @@ from backend.app.core.audit_events import AuditEntityType, AuditEventType
 # safe and preserve the full value inside ``payload.target_id_full`` so
 # audit trails remain queryable.
 _AUDIT_TARGET_ID_LIMIT = 36
+
+
+def _audit_enum_value(value: Enum | str) -> str:
+    if isinstance(value, Enum):
+        return str(value.value)
+    return str(value)
 
 
 def _split_target_id(value: Optional[str]) -> tuple[Optional[str], Optional[str]]:
@@ -76,9 +83,9 @@ async def log_audit_event(
     await log_activity(
         db,
         tenant_id=tenant_id,
-        action=str(event_type),
+        action=_audit_enum_value(event_type),
         actor_id=actor_id,
-        target_type=str(entity_type),
+        target_type=_audit_enum_value(entity_type),
         target_id=entity_id,
         payload=payload or {},
         ip=ip,

@@ -73,6 +73,7 @@ from backend.app.services.candidate_lifecycle import (
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause
 from backend.app.services.tenant_visibility import TenantVisibility
 from backend.app.modules.documents import crud as documents_crud
+from backend.app.modules.documents.crud import get_last_document_checks_map
 from backend.app.modules.documents.rules_engine import compute_candidate_checklist
 from backend.app.services.document_orders import missing_base_requirements
 from backend.app.services.document_ruleset import load_default_ruleset
@@ -203,7 +204,9 @@ async def _enforce_docs_ready_for_handoff_stage(
         active_own_company_id=own_company_id,
     )
     active_docs = [doc for doc in existing_docs if getattr(doc, "deleted_at", None) is None]
-    missing = missing_base_requirements(checklist, active_docs)
+    doc_ids = [str(d.id) for d in active_docs if getattr(d, "id", None)]
+    last_checks = await get_last_document_checks_map(db, tenant_id, doc_ids) if doc_ids else {}
+    missing = missing_base_requirements(checklist, active_docs, last_check_by_document_id=last_checks)
     from backend.app.api.v1.candidates.pipeline_overrides_service import (
         approved_handoff_relaxed_types,
     )
@@ -824,7 +827,7 @@ async def update_candidate_full(
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=candidate_home_tenant, candidate_id=str(candidate_id)
         ):
-            assert_hr_internal_lane_patch_keys_allowed(set(payload.keys()))
+            assert_hr_internal_lane_patch_keys_allowed(set(payload.keys()), payload)
 
     source_update_present = "source" in payload
     origin_update_present = "origin" in payload
@@ -1335,6 +1338,42 @@ async def update_candidate_full(
                     reason=history_reason_text,
                 )
                 db.add(history_entry)
+
+            if agency_recruitment_bypass and str(agency_recruitment_bypass.override_reason or "").strip():
+                from backend.app.core.audit_events import AuditEntityType, AuditEventType
+                from backend.app.services.audit import log_audit_event
+                from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
+                from backend.app.services.recruitment_handoff_write_guard import (
+                    is_recruitment_recruiter_write_locked_by_handoff,
+                )
+
+                _locked, _lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
+                    db,
+                    agency_tenant_id=candidate_home_tenant,
+                    candidate_id=str(candidate_id),
+                )
+                lock_reason_audit = _lock_reason or (
+                    "workforce_hr_ownership"
+                    if await is_candidate_locked_by_workforce(
+                        db, tenant_id=candidate_home_tenant, candidate_id=str(candidate_id)
+                    )
+                    else "handoff"
+                )
+                await log_audit_event(
+                    db,
+                    tenant_id=candidate_home_tenant,
+                    event_type=AuditEventType.recruitment_lock_write_override,
+                    entity_type=AuditEntityType.candidate,
+                    entity_id=str(candidate_id),
+                    actor_id=actor_id,
+                    payload={
+                        "operation": "candidate_patch",
+                        "lock_reason": lock_reason_audit,
+                        "override_reason": agency_recruitment_bypass.override_reason,
+                        "actor_role": str(agency_recruitment_bypass.actor_role or "").strip().lower(),
+                        "updated_fields": sorted(changes.keys()),
+                    },
+                )
 
             await db.commit()
             await db.refresh(c)

@@ -119,16 +119,34 @@ async def add_candidate_note(
 ):
     """Append a tenant-scoped note row.
 
-    **Internal visibility (``visibility=internal``):** no recruitment-handoff lock check and no
-    follow-up writes (no candidate PATCH, no ``log_activity``/webhooks, no automation/SLA hooks).
-    This endpoint is intentionally a single ``INSERT`` into ``candidate_notes`` so internal
-    coordination cannot move stage/status or notify HR/client channels.
+    All visibilities are subject to workforce / handoff operational lock (403 ``candidate_readonly``).
+    Internal notes remain a single ``INSERT`` with no candidate PATCH or automation side effects.
 
-    **Non-internal:** subject to ``is_recruitment_recruiter_write_locked_by_handoff``; privileged
-    bypass requires ``override_reason`` and emits ``recruitment_lock_write_override`` audit after success.
+    **Non-internal:** privileged bypass with ``override_reason`` emits ``recruitment_lock_write_override`` audit.
     """
     tenant_id = str(user.tenant_id)
+    role_l = str(getattr(user, "role", "") or "").strip().lower()
     lock_override_note_ctx: Optional[dict[str, str]] = None
+
+    async with async_session_maker() as op_db:
+        try:
+            await op_db.execute(
+                text("SELECT set_config('app.tenant_id', :tid, false)"),
+                {"tid": tenant_id},
+            )
+        except Exception:
+            pass
+        from backend.app.services.candidate_operational_write import (
+            ensure_candidate_operational_write_allowed,
+        )
+
+        await ensure_candidate_operational_write_allowed(
+            op_db,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            role=role_l,
+        )
+
     if payload.visibility != "internal":
         async with async_session_maker() as check_db:
             try:

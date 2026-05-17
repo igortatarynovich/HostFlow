@@ -1,8 +1,8 @@
 """HR workforce materialization lock for system/background code paths (no HTTP UserCtx).
 
-API routes continue to use ``ensure_candidate_operational_write_allowed``; schedulers and
-similar call sites use ``is_candidate_locked_by_workforce`` so automation does not move
-recruitment stage/status while a ``WorkforceEmployee`` row exists for the candidate.
+HTTP routes use ``ensure_candidate_operational_write_allowed`` (``candidate_operational_write``);
+schedulers and similar call sites use ``is_candidate_locked_by_workforce`` so automation does not
+move recruitment stage/status while a ``WorkforceEmployee`` row exists for the candidate.
 """
 
 from __future__ import annotations
@@ -33,7 +33,13 @@ async def is_candidate_locked_by_workforce(
     tid = str(tenant_id or "").strip()
     if not cid or not tid:
         return False
-    return (await find_employee_by_candidate(db, tid, cid)) is not None
+    emp = await find_employee_by_candidate(db, tid, cid)
+    if emp is None:
+        return False
+    status = str(getattr(emp, "status", "") or "").strip().lower()
+    if status in ("returned_to_recruitment", "returned", "terminated"):
+        return False
+    return True
 
 
 async def observe_skipped_system_candidate_mutation_due_to_workforce_lock(

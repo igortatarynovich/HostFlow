@@ -113,6 +113,17 @@ async def create_activity(
     current_user: UserCtx = Depends(get_current_user),
 ) -> ActivityOut:
     db, tenant_id = db_tenant
+    if str(body.entity_type or "").strip().lower() == "candidate" and body.entity_id:
+        from backend.app.services.candidate_operational_write import (
+            ensure_candidate_operational_write_allowed,
+        )
+
+        await ensure_candidate_operational_write_allowed(
+            db,
+            tenant_id=str(tenant_id),
+            candidate_id=str(body.entity_id),
+            role=str(getattr(current_user, "role", "") or ""),
+        )
     reminder = await reminder_tasks.create_reminder(
         db,
         tenant_id=str(tenant_id),

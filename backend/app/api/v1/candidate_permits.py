@@ -13,6 +13,7 @@ from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate_children import CandidatePermit
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.services.candidate_operational_write import ensure_candidate_operational_write_allowed
 
 
 router = APIRouter(prefix="/candidates", tags=["candidate-permits"], redirect_slashes=False)
@@ -87,6 +88,13 @@ async def create_permit(
     tenant_str = str(tenant_id)
     if current_user.role in RESTRICTED_ROLES:
         await ensure_candidate_access(db, tenant_str, str(candidate_id), current_user)
+
+    await ensure_candidate_operational_write_allowed(
+        db,
+        tenant_id=tenant_str,
+        candidate_id=str(candidate_id),
+        role=str(getattr(current_user, "role", "") or ""),
+    )
 
     permit_id = str(uuid.uuid4())
     await db.execute(

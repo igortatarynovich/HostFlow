@@ -476,7 +476,7 @@ class CandDoc(BaseModel):
     days_left: Optional[int] = None
 
     @classmethod
-    def from_document(cls, d: Document) -> "CandDoc":
+    def from_document(cls, d: Document, *, hr_workforce_view: bool = False) -> "CandDoc":
         meta = d.meta if isinstance(d.meta, dict) else _load_extra(getattr(d, "meta", None))
         files_list = getattr(d, "files", None) or []
         files_dict: Dict[str, Any] = {}
@@ -509,8 +509,14 @@ class CandDoc(BaseModel):
         elif getattr(d, "path", None):
             file_url = _public_url(d.path)
 
-        if getattr(d, "candidate_id", None) and getattr(d, "id", None):
+        if (
+            not hr_workforce_view
+            and getattr(d, "candidate_id", None)
+            and getattr(d, "id", None)
+        ):
             file_url = _candidate_document_download_url(str(d.candidate_id), str(d.id))
+        elif hr_workforce_view:
+            file_url = None
 
         issue_date = getattr(d, "issue_date", None)
         expire_date = getattr(d, "expire_date", None)

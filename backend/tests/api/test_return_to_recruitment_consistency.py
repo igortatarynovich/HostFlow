@@ -45,6 +45,7 @@ async def _count_employees_for_candidate(session, tenant_id: str, candidate_id: 
         .where(
             WorkforceEmployee.tenant_id == tenant_id,
             WorkforceEmployee.candidate_id == candidate_id,
+            WorkforceEmployee.status.notin_(("returned_to_recruitment", "returned", "terminated")),
         )
     )
     return int(r.scalar_one() or 0)
@@ -100,16 +101,14 @@ async def test_return_to_recruitment_releases_operational_lock_and_repeat_handof
     )
     assert acc.status_code == 200, acc.text
 
-    wf = await client.post(
-        f"/api/v1/workforce/employees/from-candidate/{candidate_id}",
-        headers={**recruiter_headers, "Content-Type": "application/json"},
-        json={},
-    )
-    assert wf.status_code in (200, 201), wf.text
-    employee_id = wf.json()["id"]
-
     async with async_session_maker() as session:
         assert await _count_employees_for_candidate(session, tenant_id, candidate_id) == 1
+
+    lst = await client.get("/api/v1/workforce/employees", headers=hr_officer_headers)
+    assert lst.status_code == 200, lst.text
+    matches = [r for r in lst.json() if str(r.get("candidate_id") or "") == str(candidate_id)]
+    assert len(matches) == 1, lst.json()
+    employee_id = str(matches[0]["id"])
 
     rec_json = {**recruiter_headers, "Content-Type": "application/json"}
     locked_detail = await client.get(f"/api/v1/candidates/{candidate_id}", headers=recruiter_headers)
@@ -127,12 +126,12 @@ async def test_return_to_recruitment_releases_operational_lock_and_repeat_handof
     assert locked_patch.status_code == 403, locked_patch.text
 
     ret = await client.post(
-        f"/api/v1/workforce/employees/{employee_id}/return-to-recruitment",
+        f"/api/v1/workforce/employees/{employee_id}/hr-review/return-to-recruitment",
         headers={**hr_officer_headers, "Content-Type": "application/json"},
-        json={"return_reason": "§6.7 regression — return releases recruitment operational lock"},
+        json={"reason": "§6.7 regression — return releases recruitment operational lock"},
     )
     assert ret.status_code == 200, ret.text
-    assert ret.json()["status"] == "returned"
+    assert ret.json().get("status") == "returned_to_recruitment"
 
     async with async_session_maker() as session:
         assert await _count_employees_for_candidate(session, tenant_id, candidate_id) == 0

@@ -228,6 +228,39 @@ async def _init_data() -> Dict[str, str]:
         async with async_session_maker() as session:
             await _set_tenant(session, DEFAULT_TENANT_ID)
 
+            if session.get_bind().dialect.name == "postgresql":
+                await session.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS candidate_permits (
+                            id VARCHAR(36) PRIMARY KEY,
+                            tenant_id VARCHAR(36) NOT NULL,
+                            candidate_id VARCHAR(36) NOT NULL,
+                            permit_type VARCHAR(64) NOT NULL,
+                            number VARCHAR(128),
+                            status VARCHAR(32) NOT NULL,
+                            issued_on VARCHAR(32),
+                            expires_on VARCHAR(32),
+                            meta TEXT,
+                            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        )
+                        """
+                    )
+                )
+                await session.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_candidate_permits_candidate "
+                        "ON candidate_permits(candidate_id)"
+                    )
+                )
+                await session.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_candidate_permits_tenant "
+                        "ON candidate_permits(tenant_id)"
+                    )
+                )
+
             admin = await session.scalar(
                 select(User).where(func.lower(User.email) == admin_email.lower())
             )

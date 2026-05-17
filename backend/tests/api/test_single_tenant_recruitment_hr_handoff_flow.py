@@ -47,6 +47,7 @@ async def _count_active_documents(session, tenant_id: str, candidate_id: str) ->
 
 
 async def _count_employees_for_candidate(session, tenant_id: str, candidate_id: str) -> int:
+    """Active workforce rows linked to candidate (excludes returned-to-recruitment)."""
     await _set_rls_tenant(session, tenant_id)
     r = await session.execute(
         select(func.count())
@@ -54,6 +55,7 @@ async def _count_employees_for_candidate(session, tenant_id: str, candidate_id: 
         .where(
             WorkforceEmployee.tenant_id == tenant_id,
             WorkforceEmployee.candidate_id == candidate_id,
+            WorkforceEmployee.status.notin_(("returned_to_recruitment", "returned", "terminated")),
         )
     )
     return int(r.scalar_one() or 0)
@@ -90,11 +92,11 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     assert doc_resp.status_code == 201, doc_resp.text
     doc_id = doc_resp.json()["id"]
 
+    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+
     async with async_session_maker() as session:
         n_docs_before = await _count_active_documents(session, tenant_id, candidate_id)
-    assert n_docs_before == 1
-
-    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+    assert n_docs_before >= 1
 
     await internal_hr_handoff_create_and_accept(
         client,
