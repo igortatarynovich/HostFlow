@@ -1,12 +1,14 @@
 import clsx from 'clsx'
 import { useCallback, useState } from 'react'
 
+import { approveHandoffHrReview, patchHandoffHrReviewChecklistItem } from '../../api/hrWorkspace'
 import {
   approveWorkforceHrReview,
   patchWorkforceHrReviewChecklistItem,
   rejectWorkforceHrReview,
   requestWorkforceHrReviewCorrections,
   returnWorkforceHrReviewToRecruitment,
+  type HrReviewDocumentRow,
   type HrReviewPanel,
 } from '../../api/workforce'
 import { useI18n } from '../../i18n'
@@ -21,13 +23,48 @@ function statusLabel(t: ReturnType<typeof useI18n>['t'], status: string): string
 }
 
 type Props = {
-  employeeId: string
   panel: HrReviewPanel
   manage: boolean
   onUpdated: (p: HrReviewPanel) => void
+  employeeId?: string
+  handoffId?: string
 }
 
-export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated }: Props) {
+function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentRow): string {
+  const raw = String(d.status || '').toLowerCase()
+  if (d.verified || raw === 'verified') {
+    return t('app.hr.review.doc_status.verified', { defaultValue: 'Verified' })
+  }
+  if (raw === 'missing') return t('app.hr.review.doc_status.missing', { defaultValue: 'Missing' })
+  if (raw === 'needs_data') return t('app.hr.review.doc_status.needs_data', { defaultValue: 'Needs data' })
+  if (raw === 'uploaded' || raw === 'pending') {
+    return t('app.hr.review.doc_status.pending', { defaultValue: 'Awaiting verification' })
+  }
+  if (raw.includes('expir')) return t('app.hr.review.doc_status.expiring', { defaultValue: 'Expiring' })
+  return raw.replace(/_/g, ' ') || '—'
+}
+
+function docPrimaryAction(
+  t: ReturnType<typeof useI18n>['t'],
+  d: HrReviewDocumentRow,
+): { label: string; href: string } {
+  const raw = String(d.status || '').toLowerCase()
+  const base = '#hr-employee-linked-documents'
+  if (d.verified || raw === 'verified') {
+    return { label: t('app.hr.review.open_docs', { defaultValue: 'Open' }), href: base }
+  }
+  if (raw === 'missing') {
+    return { label: t('app.hr.review.upload_docs', { defaultValue: 'Upload' }), href: base }
+  }
+  if (raw === 'uploaded' || raw === 'pending') {
+    return { label: t('app.hr.review.verify_docs', { defaultValue: 'Verify' }), href: base }
+  }
+  return { label: t('app.hr.review.open_docs', { defaultValue: 'Open' }), href: base }
+}
+
+export default function HrReviewPanelCard({ panel, manage, onUpdated, employeeId: employeeIdProp, handoffId }: Props) {
+  const employeeId = (employeeIdProp || panel.employee_id || '').trim()
+  const useHandoffApi = Boolean(handoffId) && !employeeId
   const { t } = useI18n()
   const { notify } = useToast()
   const [busy, setBusy] = useState(false)
@@ -39,6 +76,24 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
   const [showCorrections, setShowCorrections] = useState(false)
 
   const terminal = TERMINAL.has(panel.status)
+  const canEmployeeActions = Boolean(employeeId)
+
+  const patchChecklist = useCallback(
+    (itemCode: string, satisfied: boolean) => {
+      if (useHandoffApi && handoffId) {
+        return patchHandoffHrReviewChecklistItem(handoffId, itemCode, satisfied)
+      }
+      return patchWorkforceHrReviewChecklistItem(employeeId, itemCode, satisfied)
+    },
+    [employeeId, handoffId, useHandoffApi],
+  )
+
+  const approveReview = useCallback(() => {
+    if (useHandoffApi && handoffId) {
+      return approveHandoffHrReview(handoffId)
+    }
+    return approveWorkforceHrReview(employeeId)
+  }, [employeeId, handoffId, useHandoffApi])
 
   const run = useCallback(
     async (fn: () => Promise<HrReviewPanel>) => {
@@ -139,7 +194,7 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
                     className="mt-1 rounded border-slate-300"
                     checked={ok}
                     disabled={busy}
-                    onChange={(e) => void run(() => patchWorkforceHrReviewChecklistItem(employeeId, it.item_code, e.target.checked))}
+                    onChange={(e) => void run(() => patchChecklist(it.item_code, e.target.checked))}
                   />
                 ) : (
                   <span className="mt-0.5 text-xs">{ok ? '✓' : '○'}</span>
@@ -169,21 +224,31 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
                 </tr>
               </thead>
               <tbody>
-                {panel.documents_for_approval.map((d) => (
-                  <tr key={d.document_key} className="border-b border-slate-50 last:border-0">
-                    <td className="py-1.5 pr-2 font-medium text-slate-800">{d.label}</td>
-                    <td className="py-1.5 pr-2">
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium">
-                        {d.status}
-                      </span>
-                    </td>
-                    <td className="py-1.5">
-                      <a href="#hr-employee-linked-documents" className="font-medium text-brand-700 hover:underline">
-                        {t('app.hr.review.open_docs', { defaultValue: 'Open / upload' })}
-                      </a>
-                    </td>
-                  </tr>
-                ))}
+                {panel.documents_for_approval.map((d) => {
+                  const action = docPrimaryAction(t, d)
+                  return (
+                    <tr key={d.document_key} className="border-b border-slate-50 last:border-0">
+                      <td className="py-1.5 pr-2 font-medium text-slate-800">{d.label}</td>
+                      <td className="py-1.5 pr-2">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium">
+                          {docStatusLabel(t, d)}
+                        </span>
+                      </td>
+                      <td className="py-1.5">
+                        <div className="flex flex-wrap gap-2">
+                          <a href={action.href} className="font-medium text-brand-700 hover:underline">
+                            {action.label}
+                          </a>
+                          {!d.verified && d.status !== 'missing' ? (
+                            <a href={action.href} className="text-[11px] text-slate-600 hover:underline">
+                              {t('app.hr.review.replace_doc', { defaultValue: 'Replace' })}
+                            </a>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -196,28 +261,32 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
             type="button"
             className="btn-primary btn-sm"
             disabled={busy || !panel.can_approve}
-            onClick={() => void run(() => approveWorkforceHrReview(employeeId))}
+            onClick={() => void run(() => approveReview())}
           >
             {t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}
           </button>
-          <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => setShowCorrections((x) => !x)}>
-            {t('app.hr.review.request_corrections', { defaultValue: 'Request corrections' })}
-          </button>
-          <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => setShowReturn((x) => !x)}>
-            {t('app.hr.review.return', { defaultValue: 'Return to recruitment' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50"
-            disabled={busy}
-            onClick={() => setShowReject((x) => !x)}
-          >
-            {t('app.hr.review.reject', { defaultValue: 'Reject' })}
-          </button>
+          {canEmployeeActions ? (
+            <>
+              <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => setShowCorrections((x) => !x)}>
+                {t('app.hr.review.request_corrections', { defaultValue: 'Request corrections' })}
+              </button>
+              <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => setShowReturn((x) => !x)}>
+                {t('app.hr.review.return', { defaultValue: 'Return to recruitment' })}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50"
+                disabled={busy}
+                onClick={() => setShowReject((x) => !x)}
+              >
+                {t('app.hr.review.reject', { defaultValue: 'Reject' })}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
 
-      {showCorrections && manage && !terminal ? (
+      {showCorrections && manage && !terminal && canEmployeeActions ? (
         <ReasonForm
           value={correctionsNote}
           onChange={setCorrectionsNote}
@@ -234,7 +303,7 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
         />
       ) : null}
 
-      {showReturn && manage && !terminal ? (
+      {showReturn && manage && !terminal && canEmployeeActions ? (
         <ReasonForm
           value={returnReason}
           onChange={setReturnReason}
@@ -251,7 +320,7 @@ export default function HrReviewPanelCard({ employeeId, panel, manage, onUpdated
         />
       ) : null}
 
-      {showReject && manage && !terminal ? (
+      {showReject && manage && !terminal && canEmployeeActions ? (
         <ReasonForm
           value={rejectReason}
           onChange={setRejectReason}

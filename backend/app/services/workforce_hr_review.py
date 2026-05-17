@@ -751,6 +751,17 @@ async def approve_hr_review(
     if not emp:
         raise ValueError("EMPLOYEE_NOT_FOUND")
     review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    hid = (review.handoff_id or _handoff_id_from_employee(emp) or "").strip()
+    if hid:
+        from backend.app.services.hr_acceptance_orchestrator import approve_employment_for_handoff
+
+        _emp, review = await approve_employment_for_handoff(
+            db,
+            tenant_id=tenant_id,
+            handoff_id=hid,
+            actor_user_id=actor_user_id,
+        )
+        return review
     return await approve_hr_review_record(
         db,
         tenant_id=tenant_id,

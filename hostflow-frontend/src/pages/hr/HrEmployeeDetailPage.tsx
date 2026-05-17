@@ -272,6 +272,7 @@ export default function HrEmployeeDetailPage() {
             {hrReview ? (
               <HrReviewPanelCard
                 employeeId={employeeId}
+                handoffId={hrReview.handoff_id ?? undefined}
                 panel={hrReview}
                 manage={manage}
                 onUpdated={(next) => {

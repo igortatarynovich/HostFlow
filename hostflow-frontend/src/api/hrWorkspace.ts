@@ -3,11 +3,47 @@
  * Do not use this module for generic candidate CRUD; operational HR screens must not depend on Candidates API.
  */
 import { api } from './client'
+import type { HandoffOut } from './handoffs'
+import type { HrReviewPanel } from './workforce'
 
 const HR = '/hr'
 const HANDOFFS = '/handoffs'
 
 export type HrAssigneeScope = 'mine' | 'team'
+
+export type HrOperationalQueue =
+  | 'awaiting_hr_pickup'
+  | 'hr_review_in_progress'
+  | 'awaiting_documents'
+  | 'awaiting_payments'
+  | 'awaiting_work_permit'
+  | 'awaiting_red_paper'
+  | 'approved_for_employment'
+  | 'returned_to_recruitment'
+  | 'rejected_by_hr'
+
+export type HrHandoffInboxItem = {
+  handoff: HandoffOut
+  snapshot?: Record<string, unknown> | null
+  workforce_employee_id?: string | null
+  hr_review_id?: string | null
+  hr_review_status?: string | null
+  operational_queue: HrOperationalQueue | string
+  candidate_display_name?: string | null
+  delayed_hr_workforce_creation?: boolean
+  can_approve_for_employment?: boolean
+  awaiting_employment_approval?: boolean
+}
+
+export type HrHandoffInboxListOut = {
+  total: number
+  items: HrHandoffInboxItem[]
+  delayed_hr_workforce_creation?: boolean
+}
+
+export type HrInboxContext = {
+  delayed_hr_workforce_creation: boolean
+}
 
 export async function fetchHrDashboardSummary(params?: { assignee_scope?: HrAssigneeScope }) {
   const { data } = await api.get(`${HR}/dashboard/summary`, {
@@ -33,17 +69,51 @@ export async function fetchHrDashboardHighRisk(params?: {
   return data
 }
 
+export async function fetchHrInboxContext(): Promise<HrInboxContext> {
+  const { data } = await api.get<HrInboxContext>(`${HR}/inbox/context`)
+  return data
+}
+
 export async function fetchHrHandoffsPending(params?: { limit?: number; offset?: number }) {
-  const { data } = await api.get(`${HR}/handoffs/pending`, {
+  const { data } = await api.get<HrHandoffInboxListOut>(`${HR}/handoffs/pending`, {
     params: { limit: params?.limit ?? 50, offset: params?.offset ?? 0 },
   })
   return data
 }
 
 export async function fetchHrHandoffsAccepted(params?: { limit?: number; offset?: number }) {
-  const { data } = await api.get(`${HR}/handoffs/accepted`, {
+  const { data } = await api.get<HrHandoffInboxListOut>(`${HR}/handoffs/accepted`, {
     params: { limit: params?.limit ?? 50, offset: params?.offset ?? 0 },
   })
+  return data
+}
+
+export async function fetchHrHandoffInboxRow(handoffId: string): Promise<HrHandoffInboxItem> {
+  const { data } = await api.get<HrHandoffInboxItem>(`${HR}/handoffs/${encodeURIComponent(handoffId)}`)
+  return data
+}
+
+export async function fetchHandoffHrReview(handoffId: string): Promise<HrReviewPanel> {
+  const { data } = await api.get<HrReviewPanel>(`${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review`)
+  return data
+}
+
+export async function patchHandoffHrReviewChecklistItem(
+  handoffId: string,
+  itemCode: string,
+  satisfied: boolean,
+): Promise<HrReviewPanel> {
+  const { data } = await api.patch<HrReviewPanel>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review/checklist/${encodeURIComponent(itemCode)}`,
+    { satisfied },
+  )
+  return data
+}
+
+export async function approveHandoffHrReview(handoffId: string): Promise<HrReviewPanel> {
+  const { data } = await api.post<HrReviewPanel>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review/approve`,
+  )
   return data
 }
 

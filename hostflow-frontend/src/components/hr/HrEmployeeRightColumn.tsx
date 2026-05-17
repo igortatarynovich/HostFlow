@@ -248,11 +248,25 @@ function EmploymentPeek({
   )
 }
 
+function sortBlockersForRail(blockers: string[]): string[] {
+  const score = (b: string) => {
+    const s = b.toLowerCase()
+    if (s.includes('document') || s.includes('missing_doc') || s.includes('unverified')) return 0
+    if (s.includes('payment') || s.includes('fee')) return 1
+    if (s.includes('permit') || s.includes('legal') || s.includes('stay')) return 2
+    if (s.includes('zus')) return 3
+    if (s.includes('risk')) return 4
+    return 5
+  }
+  return [...blockers].sort((a, b) => score(a) - score(b))
+}
+
 function NextHrActionFromReview({ panel }: { panel: HrReviewPanel }) {
   const { t } = useI18n()
+  const orderedBlockers = sortBlockersForRail(panel.blockers || [])
   const title =
     panel.next_required_action?.trim() ||
-    (panel.blockers.length
+    (orderedBlockers.length
       ? t('app.hr.review.rail_blockers', { defaultValue: 'Resolve HR review blockers' })
       : t('app.hr.review.rail_continue', { defaultValue: 'Continue HR review' }))
 
@@ -262,9 +276,9 @@ function NextHrActionFromReview({ panel }: { panel: HrReviewPanel }) {
         {t('app.hr.employee_rail.next_hr_action', { defaultValue: 'Next HR action' })}
       </div>
       <h3 className="mt-2 text-sm font-semibold leading-snug text-slate-900">{title}</h3>
-      {panel.blockers.length ? (
+      {orderedBlockers.length ? (
         <ul className="mt-2 list-inside list-disc text-[11px] text-rose-800">
-          {panel.blockers.map((b) => (
+          {orderedBlockers.map((b) => (
             <li key={b}>{b.replace(/_/g, ' ')}</li>
           ))}
         </ul>

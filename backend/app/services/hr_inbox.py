@@ -11,6 +11,140 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
 from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.models.workforce_hr_review import (
+    HR_REVIEW_STATUS_APPROVED,
+    HR_REVIEW_STATUS_REJECTED,
+    HR_REVIEW_STATUS_RETURNED,
+    HR_REVIEW_STATUS_WAITING_DOCUMENTS,
+    HR_REVIEW_STATUS_WAITING_PAYMENTS,
+    HR_REVIEW_STATUS_WAITING_RED_PAPER,
+    HR_REVIEW_STATUS_WAITING_WORK_PERMIT,
+    WorkforceHrReview,
+)
+from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
+
+# Operational queue codes for HR inbox (Stage B UX).
+QUEUE_AWAITING_PICKUP = "awaiting_hr_pickup"
+QUEUE_HR_REVIEW_IN_PROGRESS = "hr_review_in_progress"
+QUEUE_AWAITING_DOCUMENTS = "awaiting_documents"
+QUEUE_AWAITING_PAYMENTS = "awaiting_payments"
+QUEUE_AWAITING_WORK_PERMIT = "awaiting_work_permit"
+QUEUE_AWAITING_RED_PAPER = "awaiting_red_paper"
+QUEUE_APPROVED = "approved_for_employment"
+QUEUE_RETURNED = "returned_to_recruitment"
+QUEUE_REJECTED = "rejected_by_hr"
+
+
+def _candidate_display_from_snapshot(snapshot: dict[str, Any] | None) -> str | None:
+    if not isinstance(snapshot, dict):
+        return None
+    cand = snapshot.get("candidate")
+    if isinstance(cand, dict):
+        parts = [str(cand.get("first_name") or "").strip(), str(cand.get("last_name") or "").strip()]
+        name = " ".join(p for p in parts if p).strip()
+        if name:
+            return name
+        email = str(cand.get("email") or "").strip()
+        if email:
+            return email
+    summary = snapshot.get("candidate_snapshot_summary")
+    if isinstance(summary, dict):
+        dn = str(summary.get("display_name") or summary.get("name") or "").strip()
+        if dn:
+            return dn
+    return None
+
+
+def derive_operational_queue(
+    *,
+    handoff_status: str,
+    hr_review_status: str | None,
+    workforce_employee_id: str | None,
+    employment_approved: bool,
+) -> str:
+    """Map handoff + review to HR inbox queue semantics."""
+    hs = str(handoff_status or "").strip()
+    rs = str(hr_review_status or "").strip() if hr_review_status else None
+
+    if hs == "pending_review":
+        return QUEUE_AWAITING_PICKUP
+    if hs == "returned" or rs == HR_REVIEW_STATUS_RETURNED:
+        return QUEUE_RETURNED
+    if hs == "rejected" or rs == HR_REVIEW_STATUS_REJECTED:
+        return QUEUE_REJECTED
+    if employment_approved or rs == HR_REVIEW_STATUS_APPROVED:
+        return QUEUE_APPROVED
+    if rs == HR_REVIEW_STATUS_WAITING_DOCUMENTS:
+        return QUEUE_AWAITING_DOCUMENTS
+    if rs == HR_REVIEW_STATUS_WAITING_PAYMENTS:
+        return QUEUE_AWAITING_PAYMENTS
+    if rs == HR_REVIEW_STATUS_WAITING_WORK_PERMIT:
+        return QUEUE_AWAITING_WORK_PERMIT
+    if rs == HR_REVIEW_STATUS_WAITING_RED_PAPER:
+        return QUEUE_AWAITING_RED_PAPER
+    if hs == "accepted":
+        return QUEUE_HR_REVIEW_IN_PROGRESS
+    return QUEUE_HR_REVIEW_IN_PROGRESS
+
+
+async def _reviews_by_handoff_ids(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    handoff_ids: list[str],
+) -> dict[str, WorkforceHrReview]:
+    if not handoff_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(WorkforceHrReview).where(
+                WorkforceHrReview.tenant_id == str(tenant_id),
+                WorkforceHrReview.handoff_id.in_(handoff_ids),
+            )
+        )
+    ).scalars().all()
+    return {str(r.handoff_id): r for r in rows if r.handoff_id}
+
+
+def enrich_handoff_inbox_row(
+    *,
+    handoff: CandidateHandoff,
+    snapshot: dict[str, Any] | None,
+    workforce_employee_id: str | None,
+    review: WorkforceHrReview | None,
+    delayed_workforce: bool,
+) -> dict[str, Any]:
+    review_status = review.status if review else None
+    emp_id = workforce_employee_id or (str(review.employee_id) if review and review.employee_id else None)
+    employment_approved = review_status == HR_REVIEW_STATUS_APPROVED
+    operational_queue = derive_operational_queue(
+        handoff_status=str(handoff.status),
+        hr_review_status=review_status,
+        workforce_employee_id=emp_id,
+        employment_approved=employment_approved,
+    )
+    return {
+        "handoff": handoff,
+        "snapshot": snapshot,
+        "workforce_employee_id": emp_id,
+        "hr_review_id": str(review.id) if review else None,
+        "hr_review_status": review_status,
+        "operational_queue": operational_queue,
+        "candidate_display_name": _candidate_display_from_snapshot(snapshot),
+        "delayed_hr_workforce_creation": delayed_workforce,
+        "can_approve_for_employment": bool(
+            review
+            and review_status not in (HR_REVIEW_STATUS_APPROVED, HR_REVIEW_STATUS_RETURNED, HR_REVIEW_STATUS_REJECTED)
+            and operational_queue
+            not in (QUEUE_AWAITING_PICKUP, QUEUE_APPROVED, QUEUE_RETURNED, QUEUE_REJECTED)
+        ),
+        "awaiting_employment_approval": bool(
+            delayed_workforce
+            and str(handoff.status) == "accepted"
+            and not employment_approved
+            and operational_queue not in (QUEUE_RETURNED, QUEUE_REJECTED)
+        ),
+    }
 
 
 async def _workforce_employee_id_by_handoff(
@@ -91,14 +225,53 @@ async def list_internal_hr_handoffs_for_hr_inbox(
 
     handoffs_only = [p[0] for p in pairs]
     wf_by_hid = await _workforce_employee_id_by_handoff(db, tenant_id=tid, handoffs=handoffs_only)
+    hid_list = [str(h.id) for h in handoffs_only]
+    reviews_by_hid = await _reviews_by_handoff_ids(db, tenant_id=tid, handoff_ids=hid_list)
+    delayed_workforce = await delayed_hr_workforce_creation_enabled(db, tid)
 
     items: list[dict[str, Any]] = []
     for handoff, snap in pairs:
+        snap_dict = dict(snap.payload) if snap is not None else None
+        hid = str(handoff.id)
         items.append(
-            {
-                "handoff": handoff,
-                "snapshot": dict(snap.payload) if snap is not None else None,
-                "workforce_employee_id": wf_by_hid.get(str(handoff.id)),
-            }
+            enrich_handoff_inbox_row(
+                handoff=handoff,
+                snapshot=snap_dict,
+                workforce_employee_id=wf_by_hid.get(hid),
+                review=reviews_by_hid.get(hid),
+                delayed_workforce=delayed_workforce,
+            )
         )
     return items, total
+
+
+async def get_internal_hr_handoff_inbox_row(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    handoff_id: str,
+) -> dict[str, Any] | None:
+    """Single enriched inbox row for handoff detail screen."""
+    tid = str(tenant_id).strip()
+    hid = str(handoff_id).strip()
+    handoff = await db.get(CandidateHandoff, hid)
+    if not handoff or str(handoff.agency_tenant_id) != tid:
+        return None
+    if str(getattr(handoff, "destination", "") or "").strip().lower() != "internal_hr":
+        return None
+    snap_row = (
+        await db.execute(
+            select(CandidateHandoffSnapshot).where(CandidateHandoffSnapshot.handoff_id == hid)
+        )
+    ).scalar_one_or_none()
+    snap_dict = dict(snap_row.payload) if snap_row is not None else None
+    wf_map = await _workforce_employee_id_by_handoff(db, tenant_id=tid, handoffs=[handoff])
+    reviews = await _reviews_by_handoff_ids(db, tenant_id=tid, handoff_ids=[hid])
+    delayed_workforce = await delayed_hr_workforce_creation_enabled(db, tid)
+    return enrich_handoff_inbox_row(
+        handoff=handoff,
+        snapshot=snap_dict,
+        workforce_employee_id=wf_map.get(hid),
+        review=reviews.get(hid),
+        delayed_workforce=delayed_workforce,
+    )

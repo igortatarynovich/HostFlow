@@ -2,29 +2,55 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { fetchHrHandoffsAccepted, fetchHrHandoffsPending } from '../../api/hrWorkspace'
+import {
+  fetchHrHandoffsAccepted,
+  fetchHrHandoffsPending,
+  fetchHrInboxContext,
+  type HrHandoffInboxItem,
+  type HrOperationalQueue,
+} from '../../api/hrWorkspace'
+import { acceptHandoff } from '../../api/handoffs'
 import { useI18n } from '../../i18n'
+import { useToast } from '../../components/Toast'
 
 const tabBtn = (active: boolean) =>
   clsx('tab cursor-pointer border-0 bg-transparent', active && 'tab-active')
 
+type InboxTab = 'all' | 'pending' | 'accepted'
+
+const TERMINAL_QUEUES = new Set<HrOperationalQueue>([
+  'approved_for_employment',
+  'returned_to_recruitment',
+  'rejected_by_hr',
+])
+
 export default function HrInboxPage() {
   const { t } = useI18n()
-  const [tab, setTab] = useState<'pending' | 'accepted'>('pending')
-  const [pending, setPending] = useState<any>(null)
-  const [accepted, setAccepted] = useState<any>(null)
+  const { notify } = useToast()
+  const [tab, setTab] = useState<InboxTab>('all')
+  const [queueFilter, setQueueFilter] = useState<HrOperationalQueue | 'all'>('all')
+  const [pending, setPending] = useState<{ total: number; items: HrHandoffInboxItem[] } | null>(null)
+  const [accepted, setAccepted] = useState<{ total: number; items: HrHandoffInboxItem[] } | null>(null)
+  const [delayedFlag, setDelayedFlag] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [acceptingId, setAcceptingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setErr(null)
     try {
-      const [p, a] = await Promise.all([fetchHrHandoffsPending(), fetchHrHandoffsAccepted()])
+      const [ctx, p, a] = await Promise.all([
+        fetchHrInboxContext(),
+        fetchHrHandoffsPending(),
+        fetchHrHandoffsAccepted(),
+      ])
+      setDelayedFlag(Boolean(ctx.delayed_hr_workforce_creation))
       setPending(p)
       setAccepted(a)
-    } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || t('common.errors.request_failed'))
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
+      setErr(ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'))
     } finally {
       setLoading(false)
     }
@@ -34,13 +60,64 @@ export default function HrInboxPage() {
     void load()
   }, [load])
 
-  const data = tab === 'pending' ? pending : accepted
-  const items = data?.items ?? []
-  const total = data?.total ?? 0
-  const pendingTotal = pending?.total ?? 0
-  const acceptedTotal = accepted?.total ?? 0
+  const allItems = useMemo(() => {
+    const p = pending?.items ?? []
+    const a = accepted?.items ?? []
+    return [...p, ...a]
+  }, [pending, accepted])
 
-  const empHref = useMemo(() => (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`, [])
+  const tabItems = useMemo(() => {
+    if (tab === 'pending') return pending?.items ?? []
+    if (tab === 'accepted') return accepted?.items ?? []
+    return allItems.filter((row) => !TERMINAL_QUEUES.has(row.operational_queue as HrOperationalQueue))
+  }, [tab, pending, accepted, allItems])
+
+  const items = useMemo(() => {
+    if (queueFilter === 'all') return tabItems
+    return tabItems.filter((row) => row.operational_queue === queueFilter)
+  }, [tabItems, queueFilter])
+
+  const queueLabel = (q: string) => {
+    const key = `app.nav.hr.inbox.queue_${q}`
+    const tr = t(key, { defaultValue: '' })
+    return tr && tr !== key ? tr : q.replace(/_/g, ' ')
+  }
+
+  const handleAcceptPickup = async (handoffId: string) => {
+    setAcceptingId(handoffId)
+    try {
+      await acceptHandoff(handoffId)
+      notify({
+        variant: 'success',
+        title: t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' }),
+      })
+      await load()
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
+      notify({
+        variant: 'error',
+        title: ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'),
+      })
+    } finally {
+      setAcceptingId(null)
+    }
+  }
+
+  const empHref = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`
+  const handoffHref = (id: string) => `${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(id)}`
+
+  const queueChips: Array<HrOperationalQueue | 'all'> = [
+    'all',
+    'awaiting_hr_pickup',
+    'hr_review_in_progress',
+    'awaiting_documents',
+    'awaiting_payments',
+    'awaiting_work_permit',
+    'awaiting_red_paper',
+    'approved_for_employment',
+    'returned_to_recruitment',
+    'rejected_by_hr',
+  ]
 
   return (
     <div className="space-y-4">
@@ -58,23 +135,40 @@ export default function HrInboxPage() {
         </div>
       </div>
 
+      {delayedFlag ? (
+        <p className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-xs text-indigo-950">
+          {t('app.nav.hr.inbox.delayed_hint', {
+            defaultValue: 'Workforce is created only after employment approval.',
+          })}
+        </p>
+      ) : null}
+
       <div className="sticky top-0 z-20 -mx-1 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
         {!loading && !err ? (
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="badge border border-slate-200 font-medium tabular-nums">
-              {t('app.nav.hr.inbox.stat_pending', { defaultValue: 'Pending: {n}', values: { n: pendingTotal } })}
+              {t('app.nav.hr.inbox.stat_pending', {
+                defaultValue: 'Awaiting pickup: {n}',
+                values: { n: pending?.total ?? 0 },
+              })}
             </span>
             <span className="badge border border-slate-200 font-medium tabular-nums">
-              {t('app.nav.hr.inbox.stat_accepted', { defaultValue: 'Accepted: {n}', values: { n: acceptedTotal } })}
+              {t('app.nav.hr.inbox.stat_accepted', {
+                defaultValue: 'In review: {n}',
+                values: { n: accepted?.total ?? 0 },
+              })}
             </span>
             <span className="badge border border-brand-100 bg-brand-50/90 font-medium tabular-nums text-brand-900">
-              {t('app.nav.hr.inbox.stat_tab', { defaultValue: 'This tab: {n}', values: { n: total } })}
+              {t('app.nav.hr.inbox.stat_tab', {
+                defaultValue: 'This tab: {n}',
+                values: { n: items.length },
+              })}
             </span>
           </div>
         ) : null}
 
-        <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist" aria-label={t('app.nav.hr.inbox.tabs_aria', { defaultValue: 'Inbox queues' })}>
-          {(['pending', 'accepted'] as const).map((k) => (
+        <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist">
+          {(['all', 'pending', 'accepted'] as const).map((k) => (
             <button
               key={k}
               type="button"
@@ -83,9 +177,32 @@ export default function HrInboxPage() {
               className={tabBtn(tab === k)}
               onClick={() => setTab(k)}
             >
-              {k === 'pending'
-                ? t('app.nav.hr.inbox.tab_pending', { defaultValue: 'Pending' })
-                : t('app.nav.hr.inbox.tab_accepted', { defaultValue: 'Accepted' })}
+              {k === 'all'
+                ? t('app.nav.hr.inbox.tab_all', { defaultValue: 'All active' })
+                : k === 'pending'
+                  ? t('app.nav.hr.inbox.tab_pending', { defaultValue: 'Awaiting pickup' })
+                  : t('app.nav.hr.inbox.tab_accepted', { defaultValue: 'In HR review' })}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <span className="self-center text-[10px] font-semibold uppercase text-slate-500">
+            {t('app.nav.hr.inbox.filter_queue', { defaultValue: 'Filter by queue' })}
+          </span>
+          {queueChips.map((q) => (
+            <button
+              key={q}
+              type="button"
+              className={clsx(
+                'rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                queueFilter === q
+                  ? 'border-indigo-300 bg-indigo-50 text-indigo-950'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+              )}
+              onClick={() => setQueueFilter(q)}
+            >
+              {q === 'all' ? t('common.all', { defaultValue: 'All' }) : queueLabel(q)}
             </button>
           ))}
         </div>
@@ -102,35 +219,63 @@ export default function HrInboxPage() {
             <table className="table w-full min-w-[960px] text-left text-sm">
               <thead>
                 <tr>
-                  <th>{t('app.nav.hr.inbox.col_handoff', { defaultValue: 'Handoff' })}</th>
-                  <th>{t('app.nav.hr.inbox.col_status', { defaultValue: 'Status' })}</th>
+                  <th>{t('app.nav.hr.inbox.col_queue', { defaultValue: 'Queue' })}</th>
                   <th>{t('app.nav.hr.inbox.col_candidate', { defaultValue: 'Candidate' })}</th>
+                  <th>{t('app.nav.hr.inbox.col_handoff', { defaultValue: 'Handoff' })}</th>
                   <th>{t('app.nav.hr.inbox.col_employee', { defaultValue: 'Workforce' })}</th>
-                  <th className="w-40">{t('app.nav.hr.inbox.col_actions', { defaultValue: 'Actions' })}</th>
+                  <th className="w-48">{t('app.nav.hr.inbox.col_actions', { defaultValue: 'Actions' })}</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((row: any) => {
+                {items.map((row) => {
                   const h = row.handoff
-                  const id = h?.id as string | undefined
-                  const wf = row.workforce_employee_id as string | undefined
-                  const cand = h?.candidate_id as string | undefined
+                  const id = h?.id
+                  const wf = row.workforce_employee_id
+                  const isPickup = row.operational_queue === 'awaiting_hr_pickup'
                   return (
                     <tr key={id || Math.random().toString(36)}>
-                      <td className="font-mono text-xs text-slate-800">{id || '—'}</td>
-                      <td className="text-slate-700">{h?.status ?? '—'}</td>
-                      <td className="font-mono text-xs text-slate-600">{cand || '—'}</td>
-                      <td className="font-mono text-xs text-slate-600">{wf || '—'}</td>
+                      <td>
+                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-800">
+                          {queueLabel(String(row.operational_queue))}
+                        </span>
+                      </td>
+                      <td className="font-medium text-slate-900">
+                        {row.candidate_display_name || h?.candidate_id || '—'}
+                      </td>
+                      <td className="font-mono text-xs text-slate-600">{id || '—'}</td>
+                      <td className="font-mono text-xs text-slate-600">
+                        {wf ? (
+                          <Link className="text-brand-700 hover:underline" to={empHref(wf)}>
+                            {wf.slice(0, 8)}…
+                          </Link>
+                        ) : row.awaiting_employment_approval ? (
+                          <span className="text-amber-800">{t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}</span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td>
                         <div className="flex flex-col gap-1">
+                          {isPickup && id ? (
+                            <button
+                              type="button"
+                              className="btn-primary btn-sm text-left"
+                              disabled={acceptingId === id}
+                              onClick={() => void handleAcceptPickup(id)}
+                            >
+                              {t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' })}
+                            </button>
+                          ) : null}
                           {id ? (
-                            <Link className="text-sm font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(id)}`}>
-                              {t('app.nav.hr.inbox.view_snapshot', { defaultValue: 'Snapshot' })}
+                            <Link className="text-sm font-medium text-brand-700 hover:underline" to={handoffHref(id)}>
+                              {isPickup
+                                ? t('app.nav.hr.inbox.view_snapshot', { defaultValue: 'Open case' })
+                                : t('app.nav.hr.inbox.view_review', { defaultValue: 'HR review' })}
                             </Link>
                           ) : null}
                           {wf ? (
                             <Link className="text-xs font-medium text-brand-700 hover:underline" to={empHref(wf)}>
-                              {t('app.nav.hr.inbox.open_employee', { defaultValue: 'Employee' })}
+                              {t('app.nav.hr.inbox.open_employee', { defaultValue: 'Employee profile' })}
                             </Link>
                           ) : null}
                         </div>

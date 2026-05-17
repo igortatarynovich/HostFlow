@@ -16,7 +16,11 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import reminder_tasks
 from backend.app.services.hr_documents_hub import list_hr_documents_hub
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
-from backend.app.services.hr_inbox import list_internal_hr_handoffs_for_hr_inbox
+from backend.app.services.hr_inbox import (
+    get_internal_hr_handoff_inbox_row,
+    list_internal_hr_handoffs_for_hr_inbox,
+)
+from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 
 router = APIRouter(prefix="/hr", tags=["hr-inbox"])
 
@@ -25,11 +29,38 @@ class HrHandoffInboxItem(BaseModel):
     handoff: HandoffOut
     snapshot: Optional[dict[str, Any]] = None
     workforce_employee_id: Optional[str] = None
+    hr_review_id: Optional[str] = None
+    hr_review_status: Optional[str] = None
+    operational_queue: str
+    candidate_display_name: Optional[str] = None
+    delayed_hr_workforce_creation: bool = False
+    can_approve_for_employment: bool = False
+    awaiting_employment_approval: bool = False
 
 
 class HrHandoffInboxListOut(BaseModel):
     total: int
     items: List[HrHandoffInboxItem]
+    delayed_hr_workforce_creation: bool = False
+
+
+class HrInboxContextOut(BaseModel):
+    delayed_hr_workforce_creation: bool = False
+
+
+def _inbox_item_from_row(row: dict[str, Any]) -> HrHandoffInboxItem:
+    return HrHandoffInboxItem(
+        handoff=HandoffOut.model_validate(row["handoff"]),
+        snapshot=row.get("snapshot"),
+        workforce_employee_id=row.get("workforce_employee_id"),
+        hr_review_id=row.get("hr_review_id"),
+        hr_review_status=row.get("hr_review_status"),
+        operational_queue=str(row.get("operational_queue") or "hr_review_in_progress"),
+        candidate_display_name=row.get("candidate_display_name"),
+        delayed_hr_workforce_creation=bool(row.get("delayed_hr_workforce_creation")),
+        can_approve_for_employment=bool(row.get("can_approve_for_employment")),
+        awaiting_employment_approval=bool(row.get("awaiting_employment_approval")),
+    )
 
 
 class HrDocumentQueueItem(BaseModel):
@@ -119,15 +150,34 @@ async def hr_handoffs_pending(
         limit=limit,
         offset=offset,
     )
-    items = [
-        HrHandoffInboxItem(
-            handoff=HandoffOut.model_validate(r["handoff"]),
-            snapshot=r.get("snapshot"),
-            workforce_employee_id=r.get("workforce_employee_id"),
-        )
-        for r in rows
-    ]
-    return HrHandoffInboxListOut(total=total, items=items)
+    delayed = await delayed_hr_workforce_creation_enabled(db, str(tid))
+    items = [_inbox_item_from_row(r) for r in rows]
+    return HrHandoffInboxListOut(total=total, items=items, delayed_hr_workforce_creation=delayed)
+
+
+@router.get("/inbox/context", response_model=HrInboxContextOut)
+async def hr_inbox_context(
+    db_tenant=Depends(get_db_with_tenant),
+    _: UserCtx = Depends(require_hr_workforce_module_access),
+    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+):
+    db, tid = db_tenant
+    delayed = await delayed_hr_workforce_creation_enabled(db, str(tid))
+    return HrInboxContextOut(delayed_hr_workforce_creation=delayed)
+
+
+@router.get("/handoffs/{handoff_id}", response_model=HrHandoffInboxItem)
+async def hr_handoff_inbox_row(
+    handoff_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    _: UserCtx = Depends(require_hr_workforce_module_access),
+    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+):
+    db, tid = db_tenant
+    row = await get_internal_hr_handoff_inbox_row(db, tenant_id=str(tid), handoff_id=str(handoff_id))
+    if not row:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    return _inbox_item_from_row(row)
 
 
 @router.get("/handoffs/accepted", response_model=HrHandoffInboxListOut)
@@ -147,15 +197,9 @@ async def hr_handoffs_accepted(
         limit=limit,
         offset=offset,
     )
-    items = [
-        HrHandoffInboxItem(
-            handoff=HandoffOut.model_validate(r["handoff"]),
-            snapshot=r.get("snapshot"),
-            workforce_employee_id=r.get("workforce_employee_id"),
-        )
-        for r in rows
-    ]
-    return HrHandoffInboxListOut(total=total, items=items)
+    delayed = await delayed_hr_workforce_creation_enabled(db, str(tid))
+    items = [_inbox_item_from_row(r) for r in rows]
+    return HrHandoffInboxListOut(total=total, items=items, delayed_hr_workforce_creation=delayed)
 
 
 @router.get("/tasks", response_model=ReminderListResponse)
