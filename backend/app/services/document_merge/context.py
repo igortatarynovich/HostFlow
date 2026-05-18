@@ -15,7 +15,10 @@ from backend.app.models import (
     WorkforceEmployee,
     WorkforceEmployment,
 )
-from backend.app.services.workforce_downstream_identity import evaluate_contract_merge_identity
+from backend.app.services.workforce_downstream_identity import (
+    apply_trusted_identity_merge_variables,
+    evaluate_contract_merge_identity,
+)
 
 
 def _date_iso(val: Optional[date]) -> Optional[str]:
@@ -130,14 +133,13 @@ async def build_merge_context(
             ctx["trusted_identity"] = {}
         else:
             bindings = dict(prep.bindings)
-            ctx["trusted_identity"] = bindings
+            apply_trusted_identity_merge_variables(ctx, bindings)
             ctx["identity"] = {
                 "source": "verified_fields",
                 "blocked": False,
                 "projection_status": prep.projection_status,
                 "review_id": prep.review_id,
             }
-            ctx["bindings"].update(bindings)
             # Operational display name only — not legal SoT
             if bindings.get("legal_name"):
                 ctx["employee"] = {

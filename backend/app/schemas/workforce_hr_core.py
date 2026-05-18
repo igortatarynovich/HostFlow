@@ -335,6 +335,37 @@ class HrEmploymentIdentityProjectionOut(BaseModel):
     ready_for_downstream: bool = False
 
 
+class TrustedIdentityConsumerBlockOut(BaseModel):
+    consumer: str
+    block_code: Optional[str] = None
+
+
+class TrustedIdentityConsumerPrepOut(BaseModel):
+    consumer: str
+    allowed: bool = False
+    block_code: Optional[str] = None
+    ready: bool = False
+    projection_status: Optional[str] = None
+    binding_keys: list[str] = Field(default_factory=list)
+
+
+class TrustedIdentityPrepStatusOut(BaseModel):
+    employee_id: str
+    review_id: Optional[str] = None
+    projection_status: str
+    derived_at: Optional[str] = None
+    attributes: dict[str, Optional[str]] = Field(default_factory=dict)
+    allowed_consumers: list[str] = Field(default_factory=list)
+    blocked_consumers: list[TrustedIdentityConsumerBlockOut] = Field(default_factory=list)
+    consumers: list[TrustedIdentityConsumerPrepOut] = Field(default_factory=list)
+    missing_fields: list[str] = Field(default_factory=list)
+    missing_field_codes: list[str] = Field(default_factory=list)
+    conflicted_fields: list[str] = Field(default_factory=list)
+    conflicted_field_codes: list[str] = Field(default_factory=list)
+    stale_fields: list[str] = Field(default_factory=list)
+    ready_for_downstream: bool = False
+
+
 class HrReviewProcessStageOut(BaseModel):
     code: str
     label: str

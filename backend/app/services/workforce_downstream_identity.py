@@ -8,8 +8,11 @@ from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.services.employment_identity_read_adapter import (
+    CONSUMER_CLIENT_FORM,
     CONSUMER_CONTRACT_GENERATION,
+    CONSUMER_EXPORT,
     CONSUMER_PAYROLL_PREP,
+    CONSUMER_PERMIT_APPLICATION,
     CONSUMER_ZUS_PREPARATION,
     TrustedEmploymentIdentityRead,
     TrustedIdentityAccessError,
@@ -73,6 +76,17 @@ def identity_attributes_to_bindings(attributes: dict[str, Optional[str]]) -> dic
 
 def bindings_from_trusted_read(trusted: TrustedEmploymentIdentityRead) -> dict[str, Any]:
     return identity_attributes_to_bindings(trusted.attributes)
+
+
+def apply_trusted_identity_merge_variables(
+    ctx: dict[str, Any], bindings: dict[str, Any]
+) -> None:
+    """Expose ``trusted_identity.*`` for merge templates (PR8)."""
+    namespace = {k: v for k, v in bindings.items() if v is not None}
+    ctx["trusted_identity"] = namespace
+    for key, value in namespace.items():
+        ctx.setdefault("bindings", {})[f"trusted_identity.{key}"] = value
+    ctx["bindings"].update(namespace)
 
 
 async def _evaluate(
@@ -142,4 +156,28 @@ async def evaluate_contract_merge_identity(
 ) -> DownstreamIdentityPrepResult:
     return await _evaluate(
         db, tenant_id=tenant_id, employee_id=employee_id, consumer=CONSUMER_CONTRACT_GENERATION
+    )
+
+
+async def evaluate_permit_application(
+    db: AsyncSession, tenant_id: str, employee_id: str
+) -> DownstreamIdentityPrepResult:
+    return await _evaluate(
+        db, tenant_id=tenant_id, employee_id=employee_id, consumer=CONSUMER_PERMIT_APPLICATION
+    )
+
+
+async def evaluate_export_identity(
+    db: AsyncSession, tenant_id: str, employee_id: str
+) -> DownstreamIdentityPrepResult:
+    return await _evaluate(
+        db, tenant_id=tenant_id, employee_id=employee_id, consumer=CONSUMER_EXPORT
+    )
+
+
+async def evaluate_client_form_identity(
+    db: AsyncSession, tenant_id: str, employee_id: str
+) -> DownstreamIdentityPrepResult:
+    return await _evaluate(
+        db, tenant_id=tenant_id, employee_id=employee_id, consumer=CONSUMER_CLIENT_FORM
     )

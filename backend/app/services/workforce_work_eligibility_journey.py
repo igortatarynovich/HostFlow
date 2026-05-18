@@ -34,6 +34,7 @@ from backend.app.services.workforce_zus_task_autocreate import (
     pick_registration_form_kind,
     should_offer_registration_task,
 )
+from backend.app.services.workforce_downstream_identity import evaluate_permit_application
 
 _TODAY = date.today
 
@@ -534,6 +535,8 @@ async def build_work_eligibility_journey(
     red_needed = wel is None or wel.red_paper_required is not False
     fee_path = bool(wel and foreign_driver_fee_rows_expected(wel))
 
+    permit_identity_prep = await evaluate_permit_application(db, tid, eid)
+
     wp_fee = _pay_by_type(payments, REQUIREMENT_WORK_PERMIT_FEE)
     rp_fee = _pay_by_type(payments, REQUIREMENT_RED_PAPER_FEE)
 
@@ -551,6 +554,12 @@ async def build_work_eligibility_journey(
             return _step_pack("done", [], [])
         if wel and _app_submitted(wel):
             return _step_pack("done", [], [])
+        if permit_identity_prep.blocked:
+            return _step_pack(
+                "blocked",
+                [f"trusted_identity:{permit_identity_prep.block_code}"],
+                ["work_permit_application"],
+            )
         return _step_pack("pending", [], ["work_permit_application"])
 
     def wp_recv_eval() -> dict[str, Any]:

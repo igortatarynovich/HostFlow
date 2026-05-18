@@ -59,6 +59,25 @@ Denied automation reads raise `TrustedIdentityAccessError` with `code` e.g. `TRU
 
 Service: `workforce_downstream_identity.py` — `evaluate_*_preparation`, `DownstreamIdentityPrepResult`.
 
+## PR8 — Template variables + prep status
+
+### Merge templates
+
+Use dotted paths, e.g. `{{ trusted_identity.legal_name }}`, `{{ trusted_identity.pesel }}`.
+
+`apply_trusted_identity_merge_variables` sets `ctx.trusted_identity` and `bindings["trusted_identity.*"]`.
+
+### Consumers wired
+
+| Consumer | Wired in |
+|----------|----------|
+| `permit_application` | `workforce_work_eligibility_journey` — work permit application step |
+| `export` / `client_form` | Prep evaluators + prep-status API (guards for future export/forms) |
+
+### API
+
+`GET /api/v1/workforce/employees/{id}/trusted-identity/prep-status` — projection status, allowed/blocked consumers, missing/conflict/stale fields.
+
 ## Next
 
-Additional consumers (export, client_form, permit_application) and merge template variable migration.
+Contract generation automation, ZUS export, payroll run — all via adapter bindings only.

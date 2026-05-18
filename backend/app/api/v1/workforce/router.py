@@ -48,6 +48,7 @@ from backend.app.schemas.workforce_hr_core import (
     HrReviewReasonIn,
     HrVerifiedFieldOut,
     HrVerifiedFieldOverrideIn,
+    TrustedIdentityPrepStatusOut,
     WorkforceComplianceStateOut,
     WorkforceHrDocumentContextOut,
     WorkforceHrDocumentContextSummaryOut,
@@ -1578,6 +1579,29 @@ async def post_employee_document_request_correction(
         raise HTTPException(status_code=404, detail="Employee not found")
     await db.commit()
     return HrReviewPanelOut.model_validate(panel)
+
+
+@router.get(
+    "/employees/{employee_id}/trusted-identity/prep-status",
+    response_model=TrustedIdentityPrepStatusOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def get_employee_trusted_identity_prep_status(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TrustedIdentityPrepStatusOut:
+    from backend.app.services.trusted_identity_prep_status import build_trusted_identity_prep_status
+
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    payload = await build_trusted_identity_prep_status(
+        db, tenant_id=tenant_id, employee_id=employee_id
+    )
+    await db.commit()
+    return TrustedIdentityPrepStatusOut.model_validate(payload)
 
 
 @router.get(

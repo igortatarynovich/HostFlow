@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.app.services.document_merge.context import build_merge_context
+from backend.app.services.document_merge.render import resolve_path
 from backend.app.services.employment_identity_read_adapter import CONSUMER_CONTRACT_GENERATION
 from backend.app.services.workforce_downstream_identity import DownstreamIdentityPrepResult
 
@@ -90,3 +91,5 @@ async def test_merge_context_complete_adds_bindings() -> None:
     assert ctx["bindings"]["legal_name"] == "Jan Kowalski"
     assert ctx["trusted_identity"]["pesel"] == "123"
     assert ctx["employee"]["display_name"] == "Jan Kowalski"
+    assert resolve_path(ctx, "trusted_identity.legal_name") == "Jan Kowalski"
+    assert resolve_path(ctx, "trusted_identity.pesel") == "123"
