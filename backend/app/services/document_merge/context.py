@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Trusted HR identity for workforce cases: use employment_identity_read_adapter
+# (consumer contract_generation), not candidate snapshot or raw employee profile.
+
 from datetime import date, datetime, timezone
 from typing import Any, Dict, Optional
 
