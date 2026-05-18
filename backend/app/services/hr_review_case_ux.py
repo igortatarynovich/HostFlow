@@ -14,7 +14,7 @@ from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_WAITING_WORK_PERMIT,
     HR_REVIEW_TERMINAL_STATUSES,
 )
-from backend.app.services.hr_review_current_task import build_current_task
+from backend.app.services.hr_review_current_task import build_current_task, build_task_priority_ladder
 
 STAGE_TRANSFERRED = "transferred_from_recruitment"
 STAGE_HR_PICKUP = "hr_pickup"
@@ -424,6 +424,8 @@ def enrich_hr_review_panel(
             handoff_id=panel.get("handoff_id"),
         )
 
+    current_type = str(current_task.get("task_type") or "") if current_task else None
+
     out = dict(panel)
     out.update(
         {
@@ -434,6 +436,7 @@ def enrich_hr_review_panel(
             "recent_timeline": timeline,
             "work_eligibility_summary": _compact_eligibility(journey),
             "current_task": current_task,
+            "task_priority_v1": build_task_priority_ladder(current_type or None) if mode == "hr_review_case" else [],
         }
     )
     return out

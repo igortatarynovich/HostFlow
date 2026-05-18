@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from backend.app.services.hr_review_current_task import build_current_task
+from backend.app.services.hr_review_current_task import (
+    TASK_PRIORITY_V1,
+    TASK_PRIORITY_V1_TOTAL,
+    build_current_task,
+    build_task_priority_ladder,
+)
 
 
 def _checklist_item(code: str, *, satisfied: bool) -> dict:
@@ -13,6 +18,39 @@ def _checklist_item(code: str, *, satisfied: bool) -> dict:
         "required": True,
         "blockers": [] if satisfied else [f"{code}_blocker"],
     }
+
+
+def test_v1_catalog_has_eight_steps_in_order() -> None:
+    assert TASK_PRIORITY_V1_TOTAL == 8
+    codes = [c[0] for c in TASK_PRIORITY_V1]
+    assert codes[0] == "take_into_review"
+    assert codes[-1] == "ready_to_approve"
+
+
+def test_priority_ladder_marks_current_step() -> None:
+    ladder = build_task_priority_ladder("verify_documents")
+    assert len(ladder) == 8
+    current = [r for r in ladder if r["state"] == "current"]
+    assert len(current) == 1
+    assert current[0]["task_type"] == "verify_documents"
+    assert current[0]["step"] == 2
+
+
+def test_documents_win_over_eligibility_needs_data() -> None:
+    """v1: step 2 beats step 3 even when journey also needs_data."""
+    task = build_current_task(
+        handoff_status="accepted",
+        review_status="hr_review_in_progress",
+        can_approve=False,
+        blockers=["missing_documents"],
+        failed_required=["documents_uploaded"],
+        checklist=[_checklist_item("documents_uploaded", satisfied=False)],
+        documents_for_approval=[{"document_key": "passport", "label": "Passport", "status": "missing"}],
+        journey={"steps": [{"step_code": "citizenship", "status": "needs_data"}]},
+    )
+    assert task is not None
+    assert task["task_type"] == "verify_documents"
+    assert task["priority_step"] == 2
 
 
 def test_take_into_review_when_handoff_pending() -> None:
@@ -28,6 +66,7 @@ def test_take_into_review_when_handoff_pending() -> None:
     )
     assert task is not None
     assert task["task_type"] == "take_into_review"
+    assert task["priority_step"] == 1
     assert task["blocks_approval"] is True
 
 

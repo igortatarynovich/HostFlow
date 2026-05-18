@@ -1,8 +1,14 @@
-"""HR review case: single prioritized ``current_task`` for Employment Case workspace (PR2)."""
+"""HR review case: single prioritized ``current_task`` for Employment Case workspace (PR2).
+
+**Operational priority v1 (default system order, tenant-overridable later):**
+
+See ``TASK_PRIORITY_V1`` and ``docs/specs/workflows/hr-review-task-priority-v1.md``.
+The first matching rule wins; tests assert this ordering.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Sequence
 
 from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_APPROVED,
@@ -25,6 +31,52 @@ HrCurrentTaskType = Literal[
     "complete_employment_data",
     "ready_to_approve",
 ]
+
+# Canonical v1 ladder: (task_type, short label, one-line meaning for docs/UI/tests).
+TASK_PRIORITY_V1: Sequence[tuple[HrCurrentTaskType, str, str]] = (
+    (
+        "take_into_review",
+        "Take into review",
+        "HR has not accepted the recruitment handoff into active review.",
+    ),
+    (
+        "verify_documents",
+        "Verify documents",
+        "Required hire documents are missing or not yet verified.",
+    ),
+    (
+        "fill_missing_data",
+        "Fill missing data",
+        "Decision inputs are incomplete (citizenship, work country, identity, etc.).",
+    ),
+    (
+        "verify_work_eligibility",
+        "Verify work eligibility",
+        "Legal stay, work permit, or red paper are not confirmed.",
+    ),
+    (
+        "confirm_payments",
+        "Confirm payments",
+        "Mandatory statutory fees block submission or approval.",
+    ),
+    (
+        "prepare_zus",
+        "Prepare ZUS",
+        "HR review is nearly ready but ZUS readiness is not closed.",
+    ),
+    (
+        "complete_employment_data",
+        "Complete employment data",
+        "Employment contract / start data required for hire is incomplete.",
+    ),
+    (
+        "ready_to_approve",
+        "Ready to approve",
+        "No blockers remain; approve for employment is allowed.",
+    ),
+)
+
+TASK_PRIORITY_V1_TOTAL = len(TASK_PRIORITY_V1)
 
 ANCHOR_REVIEW = "#hr-employee-review"
 ANCHOR_DOCUMENTS = "#hr-review-documents"
@@ -93,6 +145,29 @@ def _action(label: str, anchor: str | None = None) -> dict[str, Any]:
     return {"label": label, "anchor": anchor}
 
 
+def _priority_step_for(task_type: HrCurrentTaskType) -> int:
+    for i, (code, _, _) in enumerate(TASK_PRIORITY_V1, start=1):
+        if code == task_type:
+            return i
+    return 0
+
+
+def build_task_priority_ladder(current_task_type: str | None) -> list[dict[str, Any]]:
+    """Full v1 priority order for UI; marks which step is the active ``current_task``."""
+    out: list[dict[str, Any]] = []
+    for step, (code, label, summary) in enumerate(TASK_PRIORITY_V1, start=1):
+        out.append(
+            {
+                "step": step,
+                "task_type": code,
+                "label": label,
+                "summary": summary,
+                "state": "current" if code == current_task_type else "idle",
+            }
+        )
+    return out
+
+
 def _task(
     *,
     task_type: HrCurrentTaskType,
@@ -108,12 +183,16 @@ def _task(
     related_checklist_items: list[str] | None = None,
     completion_condition: str,
 ) -> dict[str, Any]:
+    step = _priority_step_for(task_type)
     return {
         "task_type": task_type,
         "title": title,
         "description": description,
         "why": why,
         "priority": priority,
+        "priority_step": step,
+        "priority_total": TASK_PRIORITY_V1_TOTAL,
+        "priority_catalog_label": next((lbl for c, lbl, _ in TASK_PRIORITY_V1 if c == task_type), title),
         "blocks_approval": blocks_approval,
         "primary_action": primary_action,
         "secondary_actions": list(secondary_actions or []),

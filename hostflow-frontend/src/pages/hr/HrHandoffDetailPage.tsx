@@ -174,6 +174,8 @@ export default function HrHandoffDetailPage() {
                   'Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.',
               }),
               priority: 'critical',
+              priority_step: 1,
+              priority_total: 8,
               blocks_approval: true,
               primary_action: { label: t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' }), anchor: '#hr-handoff-accept' },
               secondary_actions: [{ label: t('app.hr.review_case.view_handoff', { defaultValue: 'View handoff summary' }), anchor: '#hr-handoff-summary' }],

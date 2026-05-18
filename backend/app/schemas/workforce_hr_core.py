@@ -310,6 +310,9 @@ class HrReviewCurrentTaskOut(BaseModel):
     description: str
     why: str
     priority: str = "normal"
+    priority_step: int = 0
+    priority_total: int = 8
+    priority_catalog_label: Optional[str] = None
     blocks_approval: bool = True
     primary_action: HrReviewTaskActionOut
     secondary_actions: list[HrReviewTaskActionOut] = Field(default_factory=list)
@@ -317,6 +320,14 @@ class HrReviewCurrentTaskOut(BaseModel):
     related_documents: list[HrReviewRelatedDocumentOut] = Field(default_factory=list)
     related_checklist_items: list[str] = Field(default_factory=list)
     completion_condition: str = ""
+
+
+class HrReviewTaskPriorityStepOut(BaseModel):
+    step: int
+    task_type: str
+    label: str
+    summary: str = ""
+    state: str = "idle"
 
 
 class HrReviewPanelOut(BaseModel):
@@ -344,6 +355,7 @@ class HrReviewPanelOut(BaseModel):
     recent_timeline: list[HrReviewTimelineEventOut] = Field(default_factory=list)
     work_eligibility_summary: Optional[HrReviewEligibilitySummaryOut] = None
     current_task: Optional[HrReviewCurrentTaskOut] = None
+    task_priority_v1: list[HrReviewTaskPriorityStepOut] = Field(default_factory=list)
 
 
 class HrReviewChecklistPatchIn(BaseModel):

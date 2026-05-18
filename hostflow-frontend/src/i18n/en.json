@@ -407,7 +407,9 @@
         "task_take_desc": "Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.",
         "task_take_why": "Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.",
         "task_take_done": "Handoff status becomes accepted and the HR review checklist is active.",
-        "view_handoff": "View handoff summary"
+        "view_handoff": "View handoff summary",
+        "priority_step": "Step {{step}} of {{total}}",
+        "priority_ladder_toggle": "System priority order (v1)"
       },
       "employee_operational": {
         "summary_kicker": "Operational summary",

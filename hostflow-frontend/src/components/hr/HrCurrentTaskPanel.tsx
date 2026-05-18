@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import clsx from 'clsx'
-import type { HrReviewCurrentTask, HrReviewPanel } from '../../api/workforce'
+import type { HrReviewCurrentTask, HrReviewPanel, HrReviewTaskPriorityStep } from '../../api/workforce'
 import { useI18n } from '../../i18n'
 
 type Props = {
   task: HrReviewCurrentTask
+  priorityLadder?: HrReviewTaskPriorityStep[]
   onScrollTo?: (anchor: string) => void
 }
 
@@ -24,11 +26,46 @@ function priorityClass(priority: string): string {
   }
 }
 
-export default function HrCurrentTaskPanel({ task, onScrollTo }: Props) {
+function TaskPriorityLadder({ ladder }: { ladder: HrReviewTaskPriorityStep[] }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  if (!ladder.length) return null
+
+  return (
+    <details className="mt-4 rounded-lg border border-slate-200/90 bg-white/60" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-semibold text-slate-600">
+        {t('app.hr.review_case.priority_ladder_toggle', {
+          defaultValue: 'System priority order (v1)',
+        })}
+      </summary>
+      <ol className="border-t border-slate-200/80 px-3 py-2 space-y-1.5">
+        {ladder.map((row) => (
+          <li
+            key={row.task_type}
+            className={clsx(
+              'flex gap-2 text-xs rounded-md px-2 py-1',
+              row.state === 'current' ? 'bg-brand-100/80 font-semibold text-brand-950' : 'text-slate-600',
+            )}
+          >
+            <span className="tabular-nums text-slate-500 w-5 shrink-0">{row.step}.</span>
+            <span>
+              <span className="text-slate-900">{row.label}</span>
+              {row.summary ? <span className="block font-normal text-slate-500 mt-0.5">{row.summary}</span> : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </details>
+  )
+}
+
+export default function HrCurrentTaskPanel({ task, priorityLadder, onScrollTo }: Props) {
   const { t } = useI18n()
   const blockers = task.related_checklist_items?.length
     ? task.related_checklist_items.map((c) => c.replace(/_/g, ' '))
     : []
+  const step = task.priority_step ?? 0
+  const total = task.priority_total ?? 8
 
   return (
     <section
@@ -39,8 +76,20 @@ export default function HrCurrentTaskPanel({ task, onScrollTo }: Props) {
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
             {t('app.hr.review_case.current_task_kicker', { defaultValue: 'What to do now' })}
+            {step > 0 ? (
+              <span className="ml-2 font-normal normal-case text-slate-500">
+                {t('app.hr.review_case.priority_step', {
+                  defaultValue: 'Step {{step}} of {{total}}',
+                  step,
+                  total,
+                })}
+              </span>
+            ) : null}
           </p>
           <h2 className="mt-1 text-lg font-semibold text-slate-900">{task.title}</h2>
+          {task.priority_catalog_label && task.priority_catalog_label !== task.title ? (
+            <p className="mt-0.5 text-xs text-slate-500">{task.priority_catalog_label}</p>
+          ) : null}
         </div>
         {task.blocks_approval ? (
           <span className="inline-flex rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-900">
@@ -116,6 +165,8 @@ export default function HrCurrentTaskPanel({ task, onScrollTo }: Props) {
         </span>
         {task.completion_condition}
       </p>
+
+      {priorityLadder && priorityLadder.length > 0 ? <TaskPriorityLadder ladder={priorityLadder} /> : null}
     </section>
   )
 }
@@ -128,5 +179,11 @@ export function HrCurrentTaskPanelFromReview({
   onScrollTo?: (anchor: string) => void
 }) {
   if (!panel.current_task) return null
-  return <HrCurrentTaskPanel task={panel.current_task} onScrollTo={onScrollTo} />
+  return (
+    <HrCurrentTaskPanel
+      task={panel.current_task}
+      priorityLadder={panel.task_priority_v1}
+      onScrollTo={onScrollTo}
+    />
+  )
 }

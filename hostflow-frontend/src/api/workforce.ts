@@ -392,12 +392,23 @@ export type HrReviewRelatedDocument = {
   status?: string | null
 }
 
+export type HrReviewTaskPriorityStep = {
+  step: number
+  task_type: string
+  label: string
+  summary?: string
+  state?: string
+}
+
 export type HrReviewCurrentTask = {
   task_type: string
   title: string
   description: string
   why: string
   priority: string
+  priority_step?: number
+  priority_total?: number
+  priority_catalog_label?: string | null
   blocks_approval: boolean
   primary_action: HrReviewTaskAction
   secondary_actions?: HrReviewTaskAction[]
@@ -432,6 +443,7 @@ export type HrReviewPanel = {
   recent_timeline?: HrReviewTimelineEvent[]
   work_eligibility_summary?: HrReviewEligibilitySummary | null
   current_task?: HrReviewCurrentTask | null
+  task_priority_v1?: HrReviewTaskPriorityStep[]
 }
 
 export type WorkforceHrBundle = {
