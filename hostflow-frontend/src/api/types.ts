@@ -860,6 +860,9 @@ export interface MetaLeadSettings {
   pull_field_data_from_graph?: boolean;
   /** Fallback vacancy order when ad/ID mapping is empty (Tenant.settings.lead_fit_routing_v1). */
   lead_fit_ordered_vacancy_ids?: UUID[];
+  lead_rodo_send_mode?: 'manual' | 'auto_on_lead_created' | 'auto_on_first_action';
+  lead_rodo_channels?: string[];
+  lead_rodo_template_id?: string | null;
   field_mapping?: MetaLeadFieldMappingRule[];
   plan_field_mapping_rules_limit?: number | null;
   plan_meta_credentials_limit?: number | null;
@@ -882,6 +885,9 @@ export interface MetaLeadSettingsPatch {
   mask_pii_in_logs?: boolean;
   pull_field_data_from_graph?: boolean;
   lead_fit_ordered_vacancy_ids?: UUID[];
+  lead_rodo_send_mode?: 'manual' | 'auto_on_lead_created' | 'auto_on_first_action';
+  lead_rodo_channels?: string[];
+  lead_rodo_template_id?: string | null;
   field_mapping?: MetaLeadFieldMappingRule[];
   webhook_url?: string | null;
   webhook_verify_token?: string | null;

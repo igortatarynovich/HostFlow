@@ -340,10 +340,18 @@ async def enrich_meta_leads_tenant_context(
 
 
 async def get_settings(db: AsyncSession, tenant_id: str) -> MetaLeadSettingsOut:
+    from backend.app.services.lead_rodo_settings import get_lead_rodo_settings, lead_rodo_settings_to_api_dict
+
     entry = await _ensure_settings(db, tenant_id)
     base = _settings_to_schema(entry)
     ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
-    base = base.model_copy(update={"lead_fit_ordered_vacancy_ids": ordered})
+    rodo = await get_lead_rodo_settings(db, tenant_id)
+    base = base.model_copy(
+        update={
+            "lead_fit_ordered_vacancy_ids": ordered,
+            **lead_rodo_settings_to_api_dict(rodo),
+        }
+    )
     return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
 
 
@@ -545,7 +553,14 @@ async def update_settings(
         updates = payload.model_dump(exclude_unset=True)
     else:  # pragma: no cover - Pydantic v1 fallback
         updates = payload.dict(exclude_unset=True)
+    fields_set = getattr(payload, "model_fields_set", None) or set()
     fit_ordered = updates.pop("lead_fit_ordered_vacancy_ids", None)
+    rodo_mode = updates.pop("lead_rodo_send_mode", None)
+    rodo_channels = updates.pop("lead_rodo_channels", None)
+    rodo_template = updates.pop("lead_rodo_template_id", None)
+    rodo_settings_touched = any(
+        k in fields_set for k in ("lead_rodo_send_mode", "lead_rodo_channels", "lead_rodo_template_id")
+    )
     if "webhook_verify_token" in updates:
         token = updates["webhook_verify_token"]
         updates["webhook_verify_token"] = token.strip() or None if token is not None else None
@@ -563,9 +578,28 @@ async def update_settings(
     await crud.update_meta_settings(db, entry, **updates)
     if fit_ordered is not None:
         await _persist_lead_fit_ordered_vacancy_ids(db, tenant_id, fit_ordered)
+    if rodo_settings_touched:
+        from backend.app.services.lead_rodo_settings import persist_lead_rodo_settings
+
+        await persist_lead_rodo_settings(
+            db,
+            tenant_id,
+            send_mode=rodo_mode,
+            channels=rodo_channels,
+            template_id=rodo_template if "lead_rodo_template_id" in fields_set else None,
+            clear_template_id="lead_rodo_template_id" in fields_set and rodo_template is None,
+        )
     base = _settings_to_schema(entry)
     ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
-    base = base.model_copy(update={"lead_fit_ordered_vacancy_ids": ordered})
+    from backend.app.services.lead_rodo_settings import get_lead_rodo_settings, lead_rodo_settings_to_api_dict
+
+    rodo = await get_lead_rodo_settings(db, tenant_id)
+    base = base.model_copy(
+        update={
+            "lead_fit_ordered_vacancy_ids": ordered,
+            **lead_rodo_settings_to_api_dict(rodo),
+        }
+    )
     return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
 
 

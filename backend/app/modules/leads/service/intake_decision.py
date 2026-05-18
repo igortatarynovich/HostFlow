@@ -25,7 +25,7 @@ from backend.app.modules.leads.service._helpers import (
 from backend.app.services.lead_rodo import (
     LEAD_RODO_ACTION_PROCESS,
     LEAD_RODO_ACTION_REQUEST_INFO,
-    lead_rodo_required_block_code,
+    ensure_lead_rodo_allows_action,
 )
 from backend.app.services.audit import log_activity
 from backend.app.services.recruitment_application_service import _explicit_pool_intent
@@ -97,13 +97,19 @@ def _stamp_intake_resolution_v1(
     }
 
 
-def manual_process_block_code(lead: Lead) -> Optional[str]:
+async def manual_process_block_code(
+    db: AsyncSession,
+    tenant_id: str,
+    lead: Lead,
+) -> Optional[str]:
     """Return a stable machine code if ``POST .../process`` must be blocked, else None."""
     if getattr(lead, "candidate_id", None):
         return None
     src = str(getattr(lead, "source", "") or "").strip().lower()
     if src not in _MANUAL_SOURCES:
-        rodo = lead_rodo_required_block_code(lead, LEAD_RODO_ACTION_PROCESS)
+        rodo = await ensure_lead_rodo_allows_action(
+            db, tenant_id=tenant_id, lead=lead, action=LEAD_RODO_ACTION_PROCESS
+        )
         if rodo:
             return rodo
         return None
@@ -129,14 +135,18 @@ def manual_process_block_code(lead: Lead) -> Optional[str]:
     if pool and not has_vac:
         if not pool_intake_manual_convert_ready(lead, norm):
             return "INTAKE_POOL_PATH_REQUIRED"
-        rodo = lead_rodo_required_block_code(lead, LEAD_RODO_ACTION_PROCESS)
+        rodo = await ensure_lead_rodo_allows_action(
+            db, tenant_id=tenant_id, lead=lead, action=LEAD_RODO_ACTION_PROCESS
+        )
         return rodo if rodo else None
 
     if has_vac:
         _, vac_confirmed = lead_vacancy_routing_aux(norm, getattr(lead, "vacancy_id", None))
         if not vac_confirmed:
             return "VACANCY_NOT_CONFIRMED"
-        rodo = lead_rodo_required_block_code(lead, LEAD_RODO_ACTION_PROCESS)
+        rodo = await ensure_lead_rodo_allows_action(
+            db, tenant_id=tenant_id, lead=lead, action=LEAD_RODO_ACTION_PROCESS
+        )
         return rodo if rodo else None
 
     return "INTAKE_ROUTING_INCOMPLETE"
@@ -237,7 +247,9 @@ async def apply_lead_intake_decision(
         await db.flush()
 
     elif dec == INTAKE_DECISION_REQUEST_INFO:
-        if lead_rodo_required_block_code(lead, LEAD_RODO_ACTION_REQUEST_INFO):
+        if await ensure_lead_rodo_allows_action(
+            db, tenant_id=tenant_id, lead=lead, action=LEAD_RODO_ACTION_REQUEST_INFO
+        ):
             raise LeadProcessingError("invalid", "LEAD_RODO_REQUIRED")
         _stamp_intake_resolution_v1(
             norm,

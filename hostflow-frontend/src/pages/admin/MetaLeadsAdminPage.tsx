@@ -419,6 +419,8 @@ export default function MetaLeadsAdminPage() {
   const effectiveProcessingMode = (settingsDraft.leads_processing_mode_v1 ??
     settings?.leads_processing_mode_v1 ??
     'assisted') as LeadsProcessingModeV1
+  const effectiveLeadRodoSendMode =
+    settingsDraft.lead_rodo_send_mode ?? settings?.lead_rodo_send_mode ?? 'manual'
   const autoCreateAppliesToMode = effectiveProcessingMode === 'automatic'
 
   const mappingRulesLimit = settings?.plan_field_mapping_rules_limit ?? null
@@ -2077,6 +2079,30 @@ export default function MetaLeadsAdminPage() {
                 <option value="automatic">{t('admin.meta_leads.settings.processing_mode_automatic')}</option>
               </select>
               <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.processing_mode_hint')}</p>
+            </label>
+            <label className="text-sm text-slate-700 md:col-span-2">
+              <span className="block font-medium text-slate-800">
+                {t('admin.meta_leads.settings.lead_rodo_send_mode_label')}
+              </span>
+              <select
+                className="input mt-1 w-full max-w-md"
+                value={effectiveLeadRodoSendMode}
+                onChange={(event) =>
+                  handleSettingsChange(
+                    'lead_rodo_send_mode',
+                    event.target.value as MetaLeadSettingsPatch['lead_rodo_send_mode'],
+                  )
+                }
+              >
+                <option value="manual">{t('admin.meta_leads.settings.lead_rodo_send_mode_manual')}</option>
+                <option value="auto_on_lead_created">
+                  {t('admin.meta_leads.settings.lead_rodo_send_mode_auto_created')}
+                </option>
+                <option value="auto_on_first_action">
+                  {t('admin.meta_leads.settings.lead_rodo_send_mode_auto_first_action')}
+                </option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_rodo_send_mode_hint')}</p>
             </label>
             <label
               className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}

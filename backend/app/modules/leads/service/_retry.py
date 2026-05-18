@@ -111,7 +111,7 @@ async def retry_meta_leads(
         else:
             payload_dict = dict(payload_raw)
 
-        block = manual_process_block_code(lead)
+        block = await manual_process_block_code(db, tenant_id, lead)
         if block:
             outcomes.append(
                 MetaLeadRetryOutcome(

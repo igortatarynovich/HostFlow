@@ -198,7 +198,7 @@ async def _bulk_auto_process_single_lead(
             "error": "Lead payload is missing",
         }
     # Same doctrine as ``POST /leads/{id}/process``: bulk must not bypass intake / routing gates.
-    block = manual_process_block_code(lead)
+    block = await manual_process_block_code(db, tenant_id, lead)
     if block:
         return {
             "lead_id": lid,

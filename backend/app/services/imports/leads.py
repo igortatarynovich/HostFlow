@@ -498,7 +498,7 @@ async def run_import_job(
                 # Same doctrine as ``POST /leads/{id}/process`` and bulk queues: re-import must not
                 # run conversion while intake / routing blocks apply to the stored row.
                 if existing:
-                    block = leads_service.manual_process_block_code(existing)
+                    block = await leads_service.manual_process_block_code(session, tenant_id, existing)
                     if block:
                         failed_rows += 1
                         errors.append({"row": row_number, "error": block})

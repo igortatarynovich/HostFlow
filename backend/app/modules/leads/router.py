@@ -496,12 +496,17 @@ async def update_lead_stage_endpoint(
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    from backend.app.services.lead_rodo import LEAD_RODO_ACTION_CONTACTED_STAGE, lead_rodo_required_block_code
+    from backend.app.services.lead_rodo import LEAD_RODO_ACTION_CONTACTED_STAGE, ensure_lead_rodo_allows_action
 
     if "stage" in payload.model_fields_set and payload.stage is not None:
         stage_will_change = str(payload.stage or "") != str(getattr(lead, "stage", None) or "")
         if stage_will_change and str(payload.stage or "").strip().lower() == "contacted":
-            if lead_rodo_required_block_code(lead, LEAD_RODO_ACTION_CONTACTED_STAGE):
+            if await ensure_lead_rodo_allows_action(
+                db,
+                tenant_id=tenant_id_str,
+                lead=lead,
+                action=LEAD_RODO_ACTION_CONTACTED_STAGE,
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail={"code": "LEAD_RODO_REQUIRED"},
@@ -1238,7 +1243,7 @@ async def process_lead_endpoint(
     if not getattr(lead, "payload", None):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lead payload is missing")
 
-    block = service.manual_process_block_code(lead)
+    block = await service.manual_process_block_code(db, tenant_id_str, lead)
     if block:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

@@ -412,7 +412,9 @@ async def process_normalized_lead(
             # Prefer active OwnCompany if provided; otherwise fall back to vacancy.
             lead.own_company_id = own_company_id or (getattr(vacancy, "own_company_id", None) if vacancy else None)
         lead.payload = payload
-        lead.normalized = normalized
+        from backend.app.services.lead_rodo import normalized_merging_lead_rodo
+
+        lead.normalized = normalized_merging_lead_rodo(lead, normalized)
         lead.ad_id = normalized.get("ad_id")
         await db.flush()
 
@@ -423,6 +425,19 @@ async def process_normalized_lead(
         normalized=normalized,
     )
     await db.flush()
+
+    if created_new:
+        from backend.app.services.lead_rodo_auto import apply_lead_rodo_on_ingest
+
+        await apply_lead_rodo_on_ingest(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            source=source,
+            normalized=lead.normalized if isinstance(lead.normalized, dict) else normalized,
+            is_new_lead=True,
+        )
+        await db.flush()
 
     # At this point `lead.own_company_id` is known (from vacancy or OwnCompany fallback),
     # so we can determine the scenario using OwnCompany settings.

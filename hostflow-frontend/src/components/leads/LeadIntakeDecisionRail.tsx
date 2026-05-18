@@ -17,6 +17,7 @@ import { useI18n } from '../../i18n'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
+  leadRodoNoticeStatus,
   leadRodoSatisfied,
   leadRoutingTableAction,
   leadStatusAllowsIntakeDecision,
@@ -76,6 +77,7 @@ export default function LeadIntakeDecisionRail({
   const [rodoBusy, setRodoBusy] = useState(false)
 
   const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
+  const rodoStatus = useMemo(() => leadRodoNoticeStatus(lead), [lead])
 
   const src = String(lead.source || '').toLowerCase()
   const blockHint = manualProcessBlockHint(lead)
@@ -345,7 +347,13 @@ export default function LeadIntakeDecisionRail({
           </p>
           {!rodoOk ? (
             <>
-              <p className="text-xs leading-relaxed text-amber-900/95">{t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}</p>
+              <p className="text-xs leading-relaxed text-amber-900/95">
+                {rodoStatus === 'pending_channel'
+                  ? t('app.leads.intake_workspace.decision_rail.rodo_pending_channel')
+                  : rodoStatus === 'failed'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
+                    : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
+              </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"

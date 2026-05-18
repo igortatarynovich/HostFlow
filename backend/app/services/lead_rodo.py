@@ -15,6 +15,16 @@ from backend.app.services.legal_documents import get_active_legal_document
 from backend.app.services.tenant_email import send_email_for_tenant
 
 
+def normalized_merging_lead_rodo(lead: Lead, normalized: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep ``normalized['rodo']`` when pipeline code replaces the rest of ``lead.normalized``."""
+    out = dict(normalized or {})
+    existing = lead.normalized if isinstance(lead.normalized, dict) else {}
+    rodo = existing.get("rodo")
+    if isinstance(rodo, dict) and rodo:
+        out["rodo"] = dict(rodo)
+    return out
+
+
 def lead_normalized_rodo_block(normalized: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     if not isinstance(normalized, dict):
         return {}
@@ -29,6 +39,41 @@ def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) ->
     if st in ("sent", "satisfied", "source_provided"):
         return True
     return bool(str(block.get("sent_at") or "").strip())
+
+
+def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]) -> str:
+    """
+    UI / API contract: ``sent`` | ``failed`` | ``pending_channel`` | ``manual_required`` | ``source_provided``.
+    """
+    block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
+    st = str(block.get("status") or "").strip().lower()
+    if st == "source_provided":
+        return "source_provided"
+    if st in ("sent", "satisfied") or block.get("sent_at"):
+        return "sent"
+    if st == "failed":
+        return "failed"
+    if st == "pending_channel":
+        return "pending_channel"
+    return "manual_required"
+
+
+def mark_lead_rodo_pending_channel(lead: Lead, *, reason: str = "no_channel") -> None:
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    block["status"] = "pending_channel"
+    block["pending_reason"] = str(reason or "no_channel").strip()[:256]
+    norm["rodo"] = block
+    lead.normalized = norm
+
+
+def mark_lead_rodo_failed(lead: Lead, *, reason: str) -> None:
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    block["status"] = "failed"
+    block["failure_reason"] = str(reason or "").strip()[:2000]
+    norm["rodo"] = block
+    lead.normalized = norm
 
 
 def lead_rodo_satisfied(lead: Lead) -> bool:
@@ -54,6 +99,28 @@ _LEAD_RODO_GATED_ACTIONS: frozenset[str] = frozenset(
         LEAD_RODO_ACTION_REQUEST_DOCUMENTS,
     }
 )
+
+
+async def ensure_lead_rodo_allows_action(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    action: str,
+) -> Optional[str]:
+    """
+    Return ``LEAD_RODO_REQUIRED`` when the action is blocked, else ``None``.
+    May trigger auto-on-first-action send when configured.
+    """
+    code = lead_rodo_required_block_code(lead, action)
+    if code is None:
+        return None
+    from backend.app.services.lead_rodo_auto import maybe_auto_send_before_gated_action
+
+    await maybe_auto_send_before_gated_action(db, tenant_id=tenant_id, lead=lead)
+    if lead_rodo_satisfied(lead):
+        return None
+    return "LEAD_RODO_REQUIRED"
 
 
 def lead_rodo_required_block_code(lead: Lead, action: str) -> Optional[str]:
@@ -117,20 +184,39 @@ Zespół HostFlow
 Команда HostFlow"""
 
 
+def _resolve_lead_email_for_channel(
+    normalized: Dict[str, Any],
+    channels: tuple[str, ...],
+) -> tuple[Optional[str], Optional[str]]:
+    """Return (email, channel_name) for the first configured channel we can use."""
+    for ch in channels:
+        if ch == "email":
+            email = str(normalized.get("email") or "").strip()
+            if email:
+                return email, "email"
+    return None, None
+
+
 async def send_lead_rodo_email(
     db: AsyncSession,
     *,
     lead: Lead,
     tenant_id: str,
     actor_id: Optional[str] = None,
+    channels: tuple[str, ...] = ("email",),
+    template_id: Optional[str] = None,
+    auto_trigger: Optional[str] = None,
+    ingest_source: Optional[str] = None,
 ) -> Tuple[bool, str]:
     """
     Send RODO notice to the lead contact email; persist audit under ``lead.normalized['rodo']``.
     Does not create ``RodoNotification`` (candidate row may not exist yet).
     """
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
-    email = str(norm.get("email") or "").strip()
-    if not email:
+    email, channel = _resolve_lead_email_for_channel(norm, channels)
+    if not email or not channel:
+        mark_lead_rodo_pending_channel(lead, reason="no_channel")
+        await db.flush()
         await log_audit_event(
             db,
             tenant_id=tenant_id,
@@ -138,14 +224,36 @@ async def send_lead_rodo_email(
             entity_type=AuditEntityType.lead,
             entity_id=str(lead.id),
             actor_id=actor_id,
-            payload={"reason": "Lead has no email in normalized"},
+            payload={
+                "reason": "Lead has no channel for RODO",
+                "notice_status": "pending_channel",
+                "auto_trigger": auto_trigger,
+                "ingest_source": ingest_source,
+            },
         )
-        return False, "Lead has no email"
+        return False, "No email or channel for RODO"
 
     if lead_rodo_sent_from_normalized(norm):
         return False, "RODO already sent for this lead"
 
     rodo_doc = await get_active_legal_document(db, tenant_id, "rodo_clause")
+    if template_id and str(template_id).strip():
+        from sqlalchemy import select
+
+        from backend.app.models.legal_document import LegalDocument
+
+        override = (
+            await db.execute(
+                select(LegalDocument).where(
+                    LegalDocument.tenant_id == tenant_id,
+                    LegalDocument.type == "rodo_clause",
+                    LegalDocument.version_id == str(template_id).strip(),
+                    LegalDocument.is_active.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        if override is not None:
+            rodo_doc = override
     if not rodo_doc:
         await log_audit_event(
             db,
@@ -177,6 +285,8 @@ async def send_lead_rodo_email(
         )
     except Exception as e:
         reason = str(e) if str(e) else type(e).__name__
+        mark_lead_rodo_failed(lead, reason=reason)
+        await db.flush()
         await log_audit_event(
             db,
             tenant_id=tenant_id,
@@ -184,7 +294,12 @@ async def send_lead_rodo_email(
             entity_type=AuditEntityType.lead,
             entity_id=str(lead.id),
             actor_id=actor_id,
-            payload={"reason": f"Email send failed: {reason}"},
+            payload={
+                "reason": f"Email send failed: {reason}",
+                "notice_status": "failed",
+                "auto_trigger": auto_trigger,
+                "ingest_source": ingest_source,
+            },
         )
         return False, f"Failed to send email: {reason}"
 
@@ -192,10 +307,14 @@ async def send_lead_rodo_email(
     rodo_block: Dict[str, Any] = {
         "status": "sent",
         "sent_at": now,
-        "channel": "email",
+        "channel": channel,
         "recipient": email,
         "rodo_version_id": str(rodo_doc.version_id),
     }
+    if auto_trigger:
+        rodo_block["auto_trigger"] = str(auto_trigger).strip()
+    if ingest_source:
+        rodo_block["ingest_source"] = str(ingest_source).strip()
     norm["rodo"] = rodo_block
     lead.normalized = norm
     await db.flush()
@@ -207,7 +326,12 @@ async def send_lead_rodo_email(
         entity_type=AuditEntityType.lead,
         entity_id=str(lead.id),
         actor_id=actor_id,
-        payload={"channel": "email", "lead_id": str(lead.id)},
+        payload={
+            "channel": channel,
+            "lead_id": str(lead.id),
+            "auto_trigger": auto_trigger,
+            "ingest_source": ingest_source,
+        },
     )
     return True, "RODO email sent for lead"
 
@@ -262,6 +386,8 @@ def mark_lead_rodo_source_provided(
 
 
 __all__ = [
+    "normalized_merging_lead_rodo",
+    "ensure_lead_rodo_allows_action",
     "LEAD_RODO_ACTION_COMMUNICATION_CALL",
     "LEAD_RODO_ACTION_COMMUNICATION_EMAIL",
     "LEAD_RODO_ACTION_COMMUNICATION_WHATSAPP",
@@ -270,7 +396,10 @@ __all__ = [
     "LEAD_RODO_ACTION_REQUEST_DOCUMENTS",
     "LEAD_RODO_ACTION_REQUEST_INFO",
     "lead_normalized_rodo_block",
+    "lead_rodo_notice_status_from_normalized",
     "lead_rodo_required_block_code",
+    "mark_lead_rodo_failed",
+    "mark_lead_rodo_pending_channel",
     "lead_rodo_satisfied",
     "lead_rodo_satisfied_from_normalized",
     "lead_rodo_sent_from_normalized",

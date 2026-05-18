@@ -20,6 +20,17 @@ from backend.tests.api.test_leads_meta import (
 )
 
 
+@pytest.fixture(autouse=True)
+async def _lead_rodo_manual_mode_for_gate_tests(client, manager_headers):
+    """Gate tests assume outbound RODO is not sent on Meta ingest (manual tenant mode)."""
+    res = await client.patch(
+        "/api/v1/settings/leads/settings",
+        headers=manager_headers,
+        json={"lead_rodo_send_mode": "manual"},
+    )
+    assert res.status_code == 200, res.text
+
+
 async def _seed_active_rodo_clause(db, tenant_id: str) -> None:
     doc = LegalDocument(
         id=str(uuid.uuid4()),

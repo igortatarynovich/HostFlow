@@ -42,6 +42,31 @@ function normalizedRecord(lead: Lead | null): Record<string, unknown> {
 }
 
 /** Mirrors backend ``lead_rodo_satisfied`` — art.14 closed at lead (sent / satisfied / source_provided / legacy sent_at). */
+export type LeadRodoNoticeStatus =
+  | 'sent'
+  | 'failed'
+  | 'pending_channel'
+  | 'manual_required'
+  | 'source_provided'
+
+/** Mirrors backend ``lead_rodo_notice_status_from_normalized`` for lead rail UI. */
+export function leadRodoNoticeStatus(
+  lead: Pick<Lead, 'normalized' | 'candidate_id'> | null,
+): LeadRodoNoticeStatus | null {
+  if (!lead || lead.candidate_id) return null
+  const n = normalizedRecord(lead as Lead)
+  const raw = n.rodo
+  const block = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const st = String(block.status || '')
+    .trim()
+    .toLowerCase()
+  if (st === 'source_provided') return 'source_provided'
+  if (st === 'sent' || st === 'satisfied' || Boolean(String(block.sent_at || '').trim())) return 'sent'
+  if (st === 'failed') return 'failed'
+  if (st === 'pending_channel') return 'pending_channel'
+  return 'manual_required'
+}
+
 export function leadRodoSatisfied(lead: Pick<Lead, 'normalized' | 'candidate_id'> | null): boolean {
   if (!lead || lead.candidate_id) return true
   const n = normalizedRecord(lead as Lead)
