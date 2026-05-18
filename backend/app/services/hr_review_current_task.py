@@ -79,7 +79,8 @@ TASK_PRIORITY_V1: Sequence[tuple[HrCurrentTaskType, str, str]] = (
 TASK_PRIORITY_V1_TOTAL = len(TASK_PRIORITY_V1)
 
 ANCHOR_REVIEW = "#hr-employee-review"
-ANCHOR_DOCUMENTS = "#hr-review-documents"
+ANCHOR_DOCUMENTS = "#hr-data-verification"
+ANCHOR_DATA_VERIFICATION = "#hr-data-verification"
 ANCHOR_ELIGIBILITY = "#hr-review-eligibility"
 ANCHOR_HANDOFF_ACCEPT = "#hr-handoff-accept"
 
@@ -214,6 +215,7 @@ def build_current_task(
     documents_for_approval: list[dict[str, Any]],
     journey: dict[str, Any] | None,
     handoff_id: str | None = None,
+    data_verification_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Pick one prioritized task for the Employment Case workspace."""
     rs = str(review_status or "").strip()
@@ -225,6 +227,9 @@ def build_current_task(
     failed = list(failed_required or [])
     bl = list(blockers or [])
     missing_docs = _missing_approval_documents(documents_for_approval)
+    dv = data_verification_summary or {}
+    dv_pending = int(dv.get("pending_count") or 0) + int(dv.get("missing_count") or 0) + int(dv.get("conflict_count") or 0)
+    dv_critical_gap = int(dv.get("critical_total") or 0) > int(dv.get("critical_verified") or 0)
 
     # 1. Handoff not accepted
     if hs == "pending_review":
@@ -241,26 +246,42 @@ def build_current_task(
             completion_condition="Handoff status becomes accepted and the HR review checklist is active.",
         )
 
-    # 2. Missing required documents
-    if missing_docs or _item_unsatisfied(items, "documents_uploaded") or rs == HR_REVIEW_STATUS_WAITING_DOCUMENTS:
+    # 2. Data & document verification (unified workspace)
+    if (
+        missing_docs
+        or _item_unsatisfied(items, "documents_uploaded")
+        or _item_unsatisfied(items, "identity_verified")
+        or dv_pending > 0
+        or dv_critical_gap
+        or rs == HR_REVIEW_STATUS_WAITING_DOCUMENTS
+    ):
         labels = ", ".join(str(d.get("label") or d.get("document_key")) for d in missing_docs[:4])
         doc_codes = [str(d.get("document_key")) for d in missing_docs if d.get("document_key")]
+        if missing_docs:
+            desc = (
+                f"Upload and verify required hire documents{': ' + labels if labels else ''}. "
+                "Then confirm recruiter data against each document."
+            )
+            primary = _action("Start data verification", ANCHOR_DATA_VERIFICATION)
+        else:
+            desc = (
+                "Review recruiter-provided values against uploaded documents. "
+                "Confirm or correct each field — verified data becomes the source for contracts, ZUS, and payroll."
+            )
+            primary = _action("Start data verification", ANCHOR_DATA_VERIFICATION)
         return _task(
             task_type="verify_documents",
-            title="Verify required documents",
-            description=(
-                f"Open and verify each required hire document{': ' + labels if labels else ''}. "
-                "Mark checklist items satisfied only after files match identity and stay rules."
-            ),
-            why="Employment approval is blocked until mandatory documents are present and verified in the HR channel.",
+            title="Verify candidate data and documents",
+            description=desc,
+            why="These values will be used in the employment contract, ZUS registration, and permit applications — only confirmed data becomes trusted.",
             priority="critical",
             blocks_approval=True,
-            primary_action=_action("Open document review", ANCHOR_DOCUMENTS),
-            secondary_actions=[_action("HR review checklist", ANCHOR_REVIEW)],
-            target_anchor=ANCHOR_DOCUMENTS,
+            primary_action=primary,
+            secondary_actions=[_action("HR decision checklist", ANCHOR_REVIEW)],
+            target_anchor=ANCHOR_DATA_VERIFICATION,
             related_documents=_related_documents(documents_for_approval),
-            related_checklist_items=["documents_uploaded"] + doc_codes[:6],
-            completion_condition="All required documents are uploaded and verified; document blockers are cleared.",
+            related_checklist_items=["documents_uploaded", "identity_verified"] + doc_codes[:6],
+            completion_condition="Required documents are present, field values are confirmed against documents, and critical verified fields are complete.",
         )
 
     # 3. Missing input data

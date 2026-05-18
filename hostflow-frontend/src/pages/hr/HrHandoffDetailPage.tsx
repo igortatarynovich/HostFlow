@@ -10,9 +10,7 @@ import {
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
-import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
-import HrVerifiedFieldsPanel from '../../components/hr/HrVerifiedFieldsPanel'
-import HrEmploymentIdentitySummary from '../../components/hr/HrEmploymentIdentitySummary'
+import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
@@ -109,6 +107,16 @@ export default function HrHandoffDetailPage() {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
             <div className="min-w-0 space-y-4">
               <HrCurrentTaskPanelFromReview panel={hrReview} onScrollTo={scrollTo} />
+              <HrDataVerificationWorkspace
+                panel={hrReview}
+                handoffId={id}
+                employeeId={empId}
+                manage
+                onPanelUpdated={(next) => {
+                  setHrReview(next)
+                  void load()
+                }}
+              />
               <HrReviewPanelCard
                 handoffId={id!}
                 employeeId={empId}
@@ -120,27 +128,6 @@ export default function HrHandoffDetailPage() {
                   void load()
                 }}
               />
-              <HrDocumentsForApproval
-                documents={hrReview.documents_for_approval}
-                handoffId={id}
-                employeeId={empId}
-                manage
-                onPanelUpdated={(next) => {
-                  setHrReview(next)
-                  void load()
-                }}
-              />
-              <HrVerifiedFieldsPanel
-                panel={hrReview}
-                handoffId={id}
-                employeeId={empId}
-                manage
-                onPanelUpdated={(next) => {
-                  setHrReview(next)
-                  void load()
-                }}
-              />
-              <HrEmploymentIdentitySummary panel={hrReview} />
               {empId ? (
                 <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
               ) : null}

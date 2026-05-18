@@ -41,13 +41,11 @@ import { HrEmployeeRightColumn } from '../../components/hr/HrEmployeeRightColumn
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
-import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
-import HrVerifiedFieldsPanel from '../../components/hr/HrVerifiedFieldsPanel'
-import HrEmploymentIdentitySummary from '../../components/hr/HrEmploymentIdentitySummary'
+import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
-import { isEmploymentCaseWorkspace } from '../../utils/hrEmploymentCaseMode'
+import { isEmploymentCaseWorkspace, isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
 
 const EMPLOYEE_STATUSES = [
   'onboarding',
@@ -306,39 +304,30 @@ export default function HrEmployeeDetailPage() {
             {caseWorkspace && hrReview ? (
               <HrCurrentTaskPanelFromReview panel={hrReview} onScrollTo={scrollToAnchor} />
             ) : null}
+            {hrReview && (caseWorkspace || isEmployeeOperationalProfile(hrReview)) ? (
+              <HrDataVerificationWorkspace
+                panel={hrReview}
+                employeeId={employeeId}
+                handoffId={hrReview.handoff_id ?? undefined}
+                manage={manage}
+                onPanelUpdated={(next) => {
+                  setHrReview(next)
+                  void refreshProfile()
+                }}
+              />
+            ) : null}
             {hrReview ? (
-              <>
-                <HrReviewPanelCard
-                  employeeId={employeeId}
-                  handoffId={hrReview.handoff_id ?? undefined}
-                  panel={hrReview}
-                  hideDocuments
-                  manage={manage}
-                  onUpdated={(next) => {
-                    setHrReview(next)
-                    void refreshProfile()
-                  }}
-                />
-                <HrDocumentsForApproval
-                  documents={hrReview.documents_for_approval}
-                  employeeId={employeeId}
-                  manage={manage}
-                  onPanelUpdated={(next) => {
-                    setHrReview(next)
-                    void refreshProfile()
-                  }}
-                />
-                <HrVerifiedFieldsPanel
-                  panel={hrReview}
-                  employeeId={employeeId}
-                  manage={manage}
-                  onPanelUpdated={(next) => {
-                    setHrReview(next)
-                    void refreshProfile()
-                  }}
-                />
-                <HrEmploymentIdentitySummary panel={hrReview} />
-              </>
+              <HrReviewPanelCard
+                employeeId={employeeId}
+                handoffId={hrReview.handoff_id ?? undefined}
+                panel={hrReview}
+                hideDocuments
+                manage={manage}
+                onUpdated={(next) => {
+                  setHrReview(next)
+                  void refreshProfile()
+                }}
+              />
             ) : null}
             {caseWorkspace ? (
               <HrWorkEligibilityCompact

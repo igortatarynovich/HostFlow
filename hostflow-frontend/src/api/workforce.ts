@@ -391,6 +391,11 @@ export type HrReviewDecisionReadiness = {
   can_approve: boolean
   approve_blocked_reason?: string | null
   post_approve_effects?: string[]
+  data_verification_verified?: number
+  data_verification_total?: number
+  data_verification_critical_verified?: number
+  data_verification_critical_total?: number
+  identity_status?: string | null
 }
 
 export type HrReviewTimelineEvent = {
@@ -499,6 +504,41 @@ export type HrEmploymentIdentityProjection = {
   ready_for_downstream?: boolean
 }
 
+export type HrDataVerificationItem = {
+  field_code: string
+  label: string
+  recruiter_value?: string | null
+  recruiter_profile_values?: Record<string, unknown>
+  current_verified_value?: string | null
+  source_document_type?: string | null
+  source_document_id?: string | null
+  source_document_label?: string | null
+  document_open_url?: string | null
+  document_verification_id?: string | null
+  status: string
+  used_for?: string[]
+  required_for_approval?: boolean
+  can_confirm?: boolean
+  can_correct?: boolean
+  can_request_info?: boolean
+  can_mark_not_applicable?: boolean
+  conflict_reason?: string | null
+  missing_reason?: string | null
+}
+
+export type HrDataVerificationSummary = {
+  total: number
+  verified_count: number
+  pending_count: number
+  missing_count: number
+  conflict_count: number
+  critical_total: number
+  critical_verified: number
+  documents_missing: number
+  identity_status?: string | null
+  ready_for_approval?: boolean
+}
+
 export type HrReviewPanel = {
   review_id: string
   employee_id?: string | null
@@ -528,6 +568,8 @@ export type HrReviewPanel = {
   verified_fields?: HrVerifiedField[]
   verified_fields_summary?: HrVerifiedFieldsSummary | null
   employment_identity?: HrEmploymentIdentityProjection | null
+  data_verification_items?: HrDataVerificationItem[]
+  data_verification_summary?: HrDataVerificationSummary | null
 }
 
 export type WorkforceHrBundle = {

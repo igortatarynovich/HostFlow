@@ -76,16 +76,10 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
           <h3 className="text-xs font-bold uppercase tracking-wide text-rose-800">
             {t('app.hr.review_case.critical_blockers', { defaultValue: 'Critical blockers' })}
           </h3>
-          <ul className="mt-2 space-y-1.5 text-xs text-slate-800">
-            {blockers.slice(0, 8).map((b) => (
-              <li key={b} className="flex gap-2">
-                <span className="text-rose-500" aria-hidden>
-                  ●
-                </span>
-                <span>{b.replace(/_/g, ' ')}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-2 text-xs text-slate-800">{blockers[0]?.replace(/_/g, ' ')}</p>
+          {blockers.length > 1 ? (
+            <p className="mt-1 text-[11px] text-slate-500">+{blockers.length - 1} more in checklist</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -100,6 +94,17 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
               values: { done: readiness.checklist_done, total: readiness.checklist_total },
             })}
           </p>
+          {readiness.data_verification_total != null && readiness.data_verification_total > 0 ? (
+            <p className="mt-1 text-xs text-slate-600">
+              Data verified: {readiness.data_verification_verified ?? 0}/{readiness.data_verification_total}
+              {readiness.data_verification_critical_total
+                ? ` · critical ${readiness.data_verification_critical_verified ?? 0}/${readiness.data_verification_critical_total}`
+                : ''}
+            </p>
+          ) : null}
+          {readiness.identity_status ? (
+            <p className="mt-1 text-xs text-slate-600">Identity: {readiness.identity_status}</p>
+          ) : null}
           <p
             className={clsx(
               'mt-1 text-xs font-semibold',
@@ -129,7 +134,7 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
         </h3>
         <ul className="mt-2 space-y-1 text-sm">
           <li>
-            <button type="button" className="text-brand-700 hover:underline" onClick={() => onScrollTo?.('#hr-review-documents')}>
+            <button type="button" className="text-brand-700 hover:underline" onClick={() => onScrollTo?.('#hr-data-verification')}>
               {t('app.hr.review.open_docs', { defaultValue: 'Open documents' })}
             </button>
           </li>

@@ -304,6 +304,41 @@ class HrVerifiedFieldsSummaryOut(BaseModel):
     blockers: list[str] = Field(default_factory=list)
 
 
+class HrDataVerificationItemOut(BaseModel):
+    field_code: str
+    label: str
+    recruiter_value: Optional[str] = None
+    recruiter_profile_values: dict[str, Any] = Field(default_factory=dict)
+    current_verified_value: Optional[str] = None
+    source_document_type: Optional[str] = None
+    source_document_id: Optional[str] = None
+    source_document_label: Optional[str] = None
+    document_open_url: Optional[str] = None
+    document_verification_id: Optional[str] = None
+    status: str
+    used_for: list[str] = Field(default_factory=list)
+    required_for_approval: bool = False
+    can_confirm: bool = False
+    can_correct: bool = False
+    can_request_info: bool = False
+    can_mark_not_applicable: bool = False
+    conflict_reason: Optional[str] = None
+    missing_reason: Optional[str] = None
+
+
+class HrDataVerificationSummaryOut(BaseModel):
+    total: int = 0
+    verified_count: int = 0
+    pending_count: int = 0
+    missing_count: int = 0
+    conflict_count: int = 0
+    critical_total: int = 0
+    critical_verified: int = 0
+    documents_missing: int = 0
+    identity_status: Optional[str] = None
+    ready_for_approval: bool = False
+
+
 class HrVerifiedFieldOverrideIn(BaseModel):
     verified_value: str = Field(..., min_length=1, max_length=2000)
     override_reason: str = Field(..., min_length=1, max_length=2000)
@@ -507,6 +542,8 @@ class HrReviewPanelOut(BaseModel):
     verified_fields: list[HrVerifiedFieldOut] = Field(default_factory=list)
     verified_fields_summary: Optional[HrVerifiedFieldsSummaryOut] = None
     employment_identity: Optional[HrEmploymentIdentityProjectionOut] = None
+    data_verification_items: list[HrDataVerificationItemOut] = Field(default_factory=list)
+    data_verification_summary: Optional[HrDataVerificationSummaryOut] = None
 
 
 class HrReviewChecklistPatchIn(BaseModel):

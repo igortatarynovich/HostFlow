@@ -218,6 +218,7 @@ def build_next_action(
     documents_for_approval: list[dict[str, Any]],
     journey: dict[str, Any] | None,
     can_approve: bool,
+    data_verification_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if str(review_status) == HR_REVIEW_STATUS_APPROVED:
         return {
@@ -230,26 +231,31 @@ def build_next_action(
             "secondary_anchor": None,
         }
 
+    dv = data_verification_summary or {}
+    dv_pending = int(dv.get("pending_count") or 0) + int(dv.get("missing_count") or 0)
     missing_docs = [
         d for d in documents_for_approval if str(d.get("status") or "").lower() in ("missing", "needs_data")
     ]
-    if missing_docs:
+    if missing_docs or dv_pending > 0 or not dv.get("ready_for_approval", True):
         names = ", ".join(str(d.get("label") or d.get("document_key")) for d in missing_docs[:4])
+        reason = f"Missing or incomplete: {names}" if missing_docs else (
+            f"Fields to verify: {dv_pending} pending · critical {dv.get('critical_verified', 0)}/{dv.get('critical_total', 0)}"
+        )
         return {
-            "title": "Verify required documents",
-            "reason": f"Missing or incomplete: {names}",
-            "blockers": blockers[:8],
-            "primary_label": "Open document review",
-            "primary_anchor": "#hr-review-documents",
-            "secondary_label": "Work eligibility",
-            "secondary_anchor": "#hr-review-eligibility",
+            "title": "Verify candidate data and documents",
+            "reason": reason,
+            "blockers": blockers[:3],
+            "primary_label": "Start data verification",
+            "primary_anchor": "#hr-data-verification",
+            "secondary_label": "HR decision checklist",
+            "secondary_anchor": "#hr-employee-review",
         }
 
     if blockers or failed_required:
         return {
             "title": "Resolve blockers before approval",
             "reason": ", ".join((failed_required or blockers)[:4]).replace("_", " "),
-            "blockers": blockers[:8],
+            "blockers": blockers[:3],
             "primary_label": "Open HR review checklist",
             "primary_anchor": "#hr-employee-review",
             "secondary_label": None,
@@ -261,7 +267,7 @@ def build_next_action(
         return {
             "title": str(na.get("title") or journey.get("recommended_next_action") or "Continue work eligibility"),
             "reason": str(na.get("reason") or na.get("description") or ""),
-            "blockers": blockers[:8],
+            "blockers": blockers[:3],
             "primary_label": "Open work eligibility",
             "primary_anchor": "#hr-review-eligibility",
             "secondary_label": None,
@@ -282,7 +288,7 @@ def build_next_action(
     return {
         "title": "Complete HR review checklist",
         "reason": "Satisfy required checklist items and document verification.",
-        "blockers": blockers[:8],
+        "blockers": blockers[:3],
         "primary_label": "Open checklist",
         "primary_anchor": "#hr-employee-review",
         "secondary_label": None,
@@ -299,13 +305,18 @@ def build_decision_readiness(
     review_status: str,
     delayed_workforce: bool,
     verified_fields_summary: dict[str, Any] | None = None,
+    data_verification_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     done, total = _checklist_progress(checklist)
     reason = None
     vf_summary = verified_fields_summary or {}
+    dv_summary = data_verification_summary or {}
     vf_blockers = list(vf_summary.get("blockers") or [])
     if not can_approve:
-        if vf_blockers and not vf_summary.get("ready"):
+        if dv_summary and not dv_summary.get("ready_for_approval"):
+            pending = int(dv_summary.get("pending_count") or 0) + int(dv_summary.get("missing_count") or 0)
+            reason = f"Data verification incomplete ({pending} fields pending)"
+        elif vf_blockers and not vf_summary.get("ready"):
             reason = vf_blockers[0]
         elif failed_required:
             reason = f"Required checklist incomplete: {', '.join(failed_required[:5])}"
@@ -326,13 +337,20 @@ def build_decision_readiness(
     elif str(review_status) != HR_REVIEW_STATUS_APPROVED:
         post_approve = ["Finalizes HR review and continues onboarding pipeline"]
 
-    return {
+    out: dict[str, Any] = {
         "checklist_done": done,
         "checklist_total": total,
         "can_approve": can_approve,
         "approve_blocked_reason": reason,
         "post_approve_effects": post_approve,
     }
+    if dv_summary:
+        out["data_verification_verified"] = int(dv_summary.get("verified_count") or 0)
+        out["data_verification_total"] = int(dv_summary.get("total") or 0)
+        out["data_verification_critical_verified"] = int(dv_summary.get("critical_verified") or 0)
+        out["data_verification_critical_total"] = int(dv_summary.get("critical_total") or 0)
+        out["identity_status"] = dv_summary.get("identity_status")
+    return out
 
 
 def build_recent_timeline(panel: dict[str, Any]) -> list[dict[str, Any]]:
@@ -404,6 +422,7 @@ def enrich_hr_review_panel(
         documents_for_approval=docs,
         journey=journey,
         can_approve=bool(panel.get("can_approve")),
+        data_verification_summary=panel.get("data_verification_summary"),
     )
     readiness = build_decision_readiness(
         checklist=items,
@@ -413,6 +432,7 @@ def enrich_hr_review_panel(
         review_status=review_status,
         delayed_workforce=delayed_workforce,
         verified_fields_summary=panel.get("verified_fields_summary"),
+        data_verification_summary=panel.get("data_verification_summary"),
     )
     timeline = recent_timeline if recent_timeline is not None else build_recent_timeline(panel)
 
@@ -428,6 +448,7 @@ def enrich_hr_review_panel(
             documents_for_approval=docs,
             journey=journey,
             handoff_id=panel.get("handoff_id"),
+            data_verification_summary=panel.get("data_verification_summary"),
         )
 
     current_type = str(current_task.get("task_type") or "") if current_task else None

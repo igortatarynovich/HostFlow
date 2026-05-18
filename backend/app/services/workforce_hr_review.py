@@ -35,6 +35,7 @@ from backend.app.services.hr_document_verification import (
     enrich_approval_rows_with_verification,
     sync_checklist_from_verifications,
 )
+from backend.app.services.hr_data_verification import rebuild_panel_checklists_after_data_verification
 from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
 from backend.app.services import hr_verified_fields as vf_svc
 from backend.app.services.employment_identity_read_adapter import (
@@ -633,7 +634,7 @@ async def _attach_verified_fields_to_panel(
         raise_on_denied=False,
     )
     panel["employment_identity"] = trusted.projection
-    return panel
+    return await rebuild_panel_checklists_after_data_verification(db, tenant_id, review, panel)
 
 
 async def build_hr_review_panel(
