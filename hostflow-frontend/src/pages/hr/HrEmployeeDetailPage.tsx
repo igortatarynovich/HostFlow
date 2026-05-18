@@ -44,6 +44,7 @@ import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
+import { isEmploymentCaseWorkspace } from '../../utils/hrEmploymentCaseMode'
 
 const EMPLOYEE_STATUSES = [
   'onboarding',
@@ -149,11 +150,7 @@ export default function HrEmployeeDetailPage() {
   const bundle = profile?.hr_bundle ?? null
 
   const manage = can('workforce.manage')
-  const isReviewCase = Boolean(
-    hrReview &&
-      hrReview.status !== 'approved_for_employment' &&
-      hrReview.mode !== 'employee_profile',
-  )
+  const caseWorkspace = isEmploymentCaseWorkspace(hrReview)
 
   const scrollToAnchor = (anchor: string) => {
     const sel = anchor.startsWith('#') ? anchor : `#${anchor}`
@@ -250,8 +247,13 @@ export default function HrEmployeeDetailPage() {
         <p className="text-sm text-slate-600 mb-4">
           {t('app.hr.employee_detail.not_found', { defaultValue: 'Employee not found.' })}
         </p>
-        <Link className="text-sm text-brand-600 hover:underline" to={CRM_APP_PATHS.hrEmployees}>
-          {t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
+        <Link
+          className="text-sm text-brand-600 hover:underline"
+          to={caseWorkspace ? CRM_APP_PATHS.hrInbox : CRM_APP_PATHS.hrEmployees}
+        >
+          {caseWorkspace
+            ? t('app.hr.review_case.back_to_inbox', { defaultValue: '← Back to HR inbox' })
+            : t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
         </Link>
       </div>
     )
@@ -263,23 +265,34 @@ export default function HrEmployeeDetailPage() {
         <PageBreadcrumb
           items={[
             { to: CRM_APP_PATHS.overview, label: t('app.nav.items.overview', { defaultValue: 'Insights' }) },
-            { to: CRM_APP_PATHS.hrEmployees, label: t('app.nav.items.hr_employees', { defaultValue: 'HR · Employees' }) },
-            { label: employee.display_name },
+            {
+              to: caseWorkspace ? CRM_APP_PATHS.hrInbox : CRM_APP_PATHS.hrEmployees,
+              label: caseWorkspace
+                ? t('app.nav.items.hr_inbox', { defaultValue: 'HR Inbox' })
+                : t('app.nav.items.hr_employees', { defaultValue: 'HR · Employees' }),
+            },
+            {
+              label: caseWorkspace
+                ? `${t('app.hr.review_case.badge', { defaultValue: 'HR review case' })} · ${employee.display_name}`
+                : employee.display_name,
+            },
           ]}
         />
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          {!isReviewCase ? (
+          {!caseWorkspace ? (
             <div>
               <h1 className="text-xl font-semibold tracking-tight text-slate-900">{employee.display_name}</h1>
               <p className="mt-1 font-mono text-xs text-slate-500">{employee.id}</p>
             </div>
           ) : null}
           <Link
-            to={CRM_APP_PATHS.hrEmployees}
+            to={caseWorkspace ? CRM_APP_PATHS.hrInbox : CRM_APP_PATHS.hrEmployees}
             className="text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
           >
-            {t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
+            {caseWorkspace
+              ? t('app.hr.review_case.back_to_inbox', { defaultValue: '← Back to HR inbox' })
+              : t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
           </Link>
         </div>
 
@@ -303,7 +316,7 @@ export default function HrEmployeeDetailPage() {
                 <HrDocumentsForApproval documents={hrReview.documents_for_approval} />
               </>
             ) : null}
-            {isReviewCase ? (
+            {caseWorkspace ? (
               <HrWorkEligibilityCompact
                 panel={hrReview!}
                 employeeId={employeeId}
@@ -311,6 +324,22 @@ export default function HrEmployeeDetailPage() {
                 onRefresh={() => void refreshProfile()}
               />
             ) : null}
+            {caseWorkspace && profile ? (
+              <Section
+                title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}
+                defaultOpen
+              >
+                <p className="text-xs text-slate-600 mb-3">
+                  {t('app.hr.review_case.handoff_summary_hint', {
+                    defaultValue:
+                      'Read-only context from recruitment at hire. Verify documents in the approval list above.',
+                  })}
+                </p>
+                <HrRecruitmentTransferSummary profile={profile} linkedDocRows={prefetchedDocRows} compact />
+              </Section>
+            ) : null}
+            {!caseWorkspace ? (
+              <>
             <Section title={t('app.hr.employee_operational.section_employment', { defaultValue: 'Employment' })}>
         {profile && profile.employment_operational.length > 0 ? (
           <div className="overflow-x-auto">
@@ -388,7 +417,6 @@ export default function HrEmployeeDetailPage() {
         expiringQueue={profile?.documents_expiring}
       />
 
-      {!isReviewCase ? (
       <Section
         id="hr-employee-work-eligibility"
         defaultOpen
@@ -420,9 +448,8 @@ export default function HrEmployeeDetailPage() {
           }
         />
       </Section>
-      ) : null}
 
-      <Section title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })} defaultOpen={!isReviewCase}>
+      <Section title={t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })} defaultOpen>
         <p className="text-xs text-slate-600 mb-3">
           {t('app.hr.employee_operational.source_hint', {
             defaultValue:
@@ -541,10 +568,12 @@ export default function HrEmployeeDetailPage() {
         t={t}
         defaultOpen={false}
       />
+              </>
+            ) : null}
           </div>
           {profile ? (
             <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-              {isReviewCase && hrReview ? (
+              {caseWorkspace && hrReview ? (
                 <HrNextActionRail
                   panel={hrReview}
                   employeeId={employeeId}

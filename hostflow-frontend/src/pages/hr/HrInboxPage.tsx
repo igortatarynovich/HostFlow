@@ -274,9 +274,13 @@ export default function HrInboxPage() {
                       <td className="font-mono text-xs text-slate-600">{id || '—'}</td>
                       <td className="font-mono text-xs text-slate-600">
                         {wf ? (
-                          <Link className="text-brand-700 hover:underline" to={empHref(wf)}>
-                            {wf.slice(0, 8)}…
-                          </Link>
+                          row.hr_review_status === 'approved_for_employment' ? (
+                            <Link className="text-brand-700 hover:underline" to={empHref(wf)}>
+                              {wf.slice(0, 8)}…
+                            </Link>
+                          ) : (
+                            <span title={wf}>{wf.slice(0, 8)}…</span>
+                          )
                         ) : row.awaiting_employment_approval ? (
                           <span className="text-amber-800">{t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}</span>
                         ) : (
@@ -302,9 +306,9 @@ export default function HrInboxPage() {
                                 : t('app.nav.hr.inbox.view_review', { defaultValue: 'HR review' })}
                             </Link>
                           ) : null}
-                          {wf ? (
+                          {wf && row.hr_review_status === 'approved_for_employment' ? (
                             <Link className="text-xs font-medium text-brand-700 hover:underline" to={empHref(wf)}>
-                              {t('app.nav.hr.inbox.open_employee', { defaultValue: 'Employee profile' })}
+                              {t('app.hr.review_case.open_employee_profile', { defaultValue: 'Open employee profile' })}
                             </Link>
                           ) : null}
                         </div>

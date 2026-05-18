@@ -12,6 +12,8 @@ import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
+import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
+import { isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 import type { HrReviewPanel } from '../../api/workforce'
@@ -118,21 +120,7 @@ export default function HrHandoffDetailPage() {
               {empId ? (
                 <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
               ) : null}
-              {row.snapshot ? (
-                <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
-                  <h2 className="font-semibold text-slate-900">
-                    {t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t('app.hr.employee_operational.source_hint', {
-                      defaultValue: 'Read-only context from recruitment at transfer.',
-                    })}
-                  </p>
-                  <pre className="mt-2 max-h-48 overflow-auto rounded bg-white p-2 text-[10px] text-slate-600">
-                    {JSON.stringify(row.snapshot, null, 2)}
-                  </pre>
-                </section>
-              ) : null}
+              <HrHandoffContextSummary row={row} />
             </div>
             <HrNextActionRail panel={hrReview} employeeId={empId} onScrollTo={scrollTo} />
           </div>
@@ -177,9 +165,9 @@ export default function HrHandoffDetailPage() {
         </>
       ) : null}
 
-      {empId ? (
+      {empId && isEmployeeOperationalProfile(hrReview) ? (
         <Link className="text-sm font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}`}>
-          {t('app.nav.hr.inbox.open_employee', { defaultValue: 'Employee profile' })}
+          {t('app.hr.review_case.open_employee_profile', { defaultValue: 'Open employee profile' })}
         </Link>
       ) : null}
     </div>

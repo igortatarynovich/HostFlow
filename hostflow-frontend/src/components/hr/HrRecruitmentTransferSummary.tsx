@@ -61,12 +61,14 @@ function pickDocListFromLinked(
 type Props = {
   profile: WorkforceEmployeeOperationalProfile
   linkedDocRows?: WorkforceEmployeeDocumentRow[] | null
+  /** Hide hire-time document list (review case uses documents_for_approval). */
+  compact?: boolean
 }
 
 /**
  * Readable recruitment → HR handoff (replaces raw hire_snapshot JSON on the employee profile).
  */
-export default function HrRecruitmentTransferSummary({ profile, linkedDocRows }: Props) {
+export default function HrRecruitmentTransferSummary({ profile, linkedDocRows, compact = false }: Props) {
   const { t } = useI18n()
   const snap = profile.hire_snapshot && typeof profile.hire_snapshot === 'object' ? profile.hire_snapshot : null
   const rs = profile.recruiter_summary
@@ -180,6 +182,7 @@ export default function HrRecruitmentTransferSummary({ profile, linkedDocRows }:
         </div>
       </div>
 
+      {!compact ? (
       <div className="rounded-xl border border-slate-200 bg-white p-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('app.hr.employee_operational.documents_at_handoff', { defaultValue: 'Documents at hire' })}
@@ -201,6 +204,8 @@ export default function HrRecruitmentTransferSummary({ profile, linkedDocRows }:
           </ul>
         )}
       </div>
+      ) : null}
+
 
       <div className="rounded-xl border border-slate-200 bg-white p-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">

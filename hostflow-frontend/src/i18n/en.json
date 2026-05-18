@@ -393,7 +393,10 @@
         "eligibility_after_employee": "Full eligibility journey is available after workforce employee is linked.",
         "show_journey": "Show full eligibility journey",
         "hide_journey": "Hide full eligibility journey",
-        "after_approval": "After employment approval"
+        "after_approval": "After employment approval",
+        "back_to_inbox": "← Back to HR inbox",
+        "handoff_summary_hint": "Read-only context from recruitment at hire. Verify documents in the approval list above.",
+        "open_employee_profile": "Open employee profile"
       },
       "employee_operational": {
         "summary_kicker": "Operational summary",
@@ -632,6 +635,7 @@
         "documents": "Documents",
         "hr_workspace": "HR workspace",
         "hr_employees": "HR · Employees",
+        "hr_inbox": "HR Inbox",
         "orders": "Orders",
         "services": "Services & orders",
         "invoices": "Invoices",
