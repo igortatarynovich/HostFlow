@@ -97,6 +97,11 @@ async def generate_merge_document(
         extra_bindings=merged_bindings,
     )
 
+    identity_meta = ctx.get("identity") if isinstance(ctx.get("identity"), dict) else {}
+    if employee is not None and identity_meta.get("blocked"):
+        code = str(identity_meta.get("block_code") or "TRUSTED_IDENTITY_DENIED")
+        raise ValueError(code)
+
     rendered = render_merge_text(
         template.body_text,
         context=ctx,

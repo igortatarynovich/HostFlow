@@ -15,6 +15,7 @@ from backend.app.models import (
     WorkforceEmployee,
     WorkforceEmployment,
 )
+from backend.app.services.workforce_downstream_identity import evaluate_contract_merge_identity
 
 
 def _date_iso(val: Optional[date]) -> Optional[str]:
@@ -23,21 +24,28 @@ def _date_iso(val: Optional[date]) -> Optional[str]:
     return val.isoformat()
 
 
-def _candidate_dict(c: Candidate) -> Dict[str, Any]:
+def _candidate_dict(c: Candidate, *, include_identity: bool = False) -> Dict[str, Any]:
+    """Recruitment contact context only. Legal identity fields omitted unless ``include_identity``."""
     birth = c.birth_date
-    return {
+    out: Dict[str, Any] = {
         "id": c.id,
-        "first_name": c.first_name,
-        "last_name": c.last_name,
-        "full_name": f"{c.first_name} {c.last_name}".strip(),
         "email": c.email,
         "phone": c.phone,
         "address": c.address,
         "address_latin": c.address_latin,
-        "birth_date": _date_iso(birth) if isinstance(birth, date) else (str(birth) if birth else None),
         "stage": c.stage,
         "own_company_id": c.own_company_id,
     }
+    if include_identity:
+        out.update(
+            {
+                "first_name": c.first_name,
+                "last_name": c.last_name,
+                "full_name": f"{c.first_name} {c.last_name}".strip(),
+                "birth_date": _date_iso(birth) if isinstance(birth, date) else (str(birth) if birth else None),
+            }
+        )
+    return out
 
 
 def _employee_dict(e: WorkforceEmployee) -> Dict[str, Any]:
@@ -98,11 +106,44 @@ async def build_merge_context(
             "utc_date": now.date().isoformat(),
         },
         "bindings": dict(extra_bindings or {}),
+        "identity": {
+            "source": "none",
+            "blocked": True,
+            "block_code": "TRUSTED_IDENTITY_NO_WORKFORCE_EMPLOYEE",
+        },
+        "trusted_identity": {},
     }
 
     oc_id: Optional[str] = None
     if employee is not None:
         ctx["employee"] = _employee_dict(employee)
+        prep = await evaluate_contract_merge_identity(session, tenant_id, str(employee.id))
+        if prep.blocked:
+            ctx["identity"] = {
+                "source": "verified_fields",
+                "blocked": True,
+                "block_code": prep.block_code,
+                "projection_status": prep.projection_status,
+                "review_id": prep.review_id,
+                "message": prep.message,
+            }
+            ctx["trusted_identity"] = {}
+        else:
+            bindings = dict(prep.bindings)
+            ctx["trusted_identity"] = bindings
+            ctx["identity"] = {
+                "source": "verified_fields",
+                "blocked": False,
+                "projection_status": prep.projection_status,
+                "review_id": prep.review_id,
+            }
+            ctx["bindings"].update(bindings)
+            # Operational display name only — not legal SoT
+            if bindings.get("legal_name"):
+                ctx["employee"] = {
+                    **ctx["employee"],
+                    "display_name": bindings["legal_name"],
+                }
         oc_id = employee.own_company_id or oc_id
         stmt = (
             select(WorkforceEmployment)
@@ -117,7 +158,8 @@ async def build_merge_context(
         ctx["employment"] = _employment_dict(emp_row) if emp_row else {}
 
     if candidate is not None:
-        ctx["candidate"] = _candidate_dict(candidate)
+        # Never use candidate snapshot for legal identity when workforce employee exists.
+        ctx["candidate"] = _candidate_dict(candidate, include_identity=employee is None)
         oc_id = oc_id or candidate.own_company_id
 
     if oc_id:

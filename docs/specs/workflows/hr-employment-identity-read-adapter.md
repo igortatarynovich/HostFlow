@@ -48,6 +48,17 @@ Denied automation reads raise `TrustedIdentityAccessError` with `code` e.g. `TRU
 - UI beyond existing identity summary (panel uses `hr_review_display`)
 - Profile write-back
 
+## PR7 — Wired consumers
+
+| Module | Consumer | Behavior |
+|--------|----------|----------|
+| `document_merge/context.py` | `contract_generation` | `trusted_identity` bindings; no candidate legal fields when employee present |
+| `document_merge/generate.py` | — | Raises `ValueError(TRUSTED_IDENTITY_*)` when blocked |
+| `workforce_zus_task_autocreate.py` | `zus_preparation` | Blocks ZUS registration task with `identity_block_code` |
+| `workforce_hr_satellites.patch_payroll_profile` | `payroll_prep` | Blocks `ready_for_payroll` / `sent_to_accounting` |
+
+Service: `workforce_downstream_identity.py` — `evaluate_*_preparation`, `DownstreamIdentityPrepResult`.
+
 ## Next
 
-Wire merge context, ZUS prep, and payroll modules to call adapter with the appropriate consumer.
+Additional consumers (export, client_form, permit_application) and merge template variable migration.

@@ -18,6 +18,7 @@ from backend.app.services.workforce_work_eligibility import get_work_eligibility
 from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
 from backend.app.services.workforce_work_eligibility_rules import evaluate_zus_registration_gate
 from backend.app.services import workforce_zus_workspace as zus_svc
+from backend.app.services.workforce_downstream_identity import evaluate_zus_preparation
 
 TASK_KIND_REGISTRATION = "registration"
 TASK_KIND_DEREGISTRATION = "deregistration"
@@ -196,12 +197,70 @@ async def ensure_zus_registration_task(
     if not emp:
         return None
     tenant_id = str(emp.tenant_id).strip()
+    eid = str(employee_id).strip()
+
+    identity_prep = await evaluate_zus_preparation(db, tenant_id, eid)
+    if identity_prep.blocked:
+        fk_guess = "ZUA"
+        ins_early = await get_insurance_profile(db, tenant_id, employee_id)
+        if ins_early:
+            fk_guess = pick_registration_form_kind(ins_early)
+        existing_id = await _get_registration_task_row(db, tenant_id, eid, fk_guess)
+        blocked_by = [f"trusted_identity:{identity_prep.block_code}"]
+        if existing_id:
+            row = await db.get(WorkforceZusWorkspaceTask, existing_id)
+            if row:
+                row.status = "blocked"
+                ch = dict(row.checklist_json) if isinstance(row.checklist_json, dict) else {}
+                ch["auto"] = True
+                ch["source"] = source
+                ch["blocked_by"] = blocked_by
+                ch["identity_block_code"] = identity_prep.block_code
+                ch["identity_projection_status"] = identity_prep.projection_status
+                row.checklist_json = ch
+                await db.flush()
+                return row.id
+        row = await zus_svc.create_zus_workspace_task(
+            db,
+            tenant_id,
+            {
+                "employee_id": eid,
+                "workspace_lane": "task_queue",
+                "task_kind": TASK_KIND_REGISTRATION,
+                "title": "ZUS registration (blocked — trusted identity)",
+                "form_kind": fk_guess,
+                "form_status": "draft",
+                "status": "blocked",
+                "checklist_json": {
+                    "auto": True,
+                    "source": source,
+                    "blocked_by": blocked_by,
+                    "identity_block_code": identity_prep.block_code,
+                    "identity_projection_status": identity_prep.projection_status,
+                },
+            },
+        )
+        if row:
+            await _log_zus_task_auto_created(
+                db,
+                tenant_id=tenant_id,
+                task_id=row.id,
+                employee_id=eid,
+                form_kind=fk_guess,
+                task_kind=TASK_KIND_REGISTRATION,
+                period=None,
+                source=source,
+                actor_id=actor_id,
+            )
+            return row.id
+        return None
+
     ins = await get_insurance_profile(db, tenant_id, employee_id)
     if not ins or not should_offer_registration_task(ins):
         return None
     fk = pick_registration_form_kind(ins)
-    wel = await get_work_eligibility_profile(db, tenant_id, str(employee_id).strip())
-    payments = await list_payment_requirements(db, tenant_id, str(employee_id).strip())
+    wel = await get_work_eligibility_profile(db, tenant_id, eid)
+    payments = await list_payment_requirements(db, tenant_id, eid)
     mode, blocked_by = evaluate_zus_registration_gate(wel, emp, payments)
 
     existing = await _get_registration_task_row(db, tenant_id, str(employee_id).strip(), fk)
@@ -215,6 +274,8 @@ async def ensure_zus_registration_task(
             ch["source"] = source
             ch["blocked_by"] = blocked_by
             ch["eligibility_status"] = (wel.eligibility_status if wel else None) or "unknown"
+            if identity_prep.ready and identity_prep.bindings:
+                ch["trusted_identity_bindings"] = identity_prep.bindings
             existing.checklist_json = ch
             await db.flush()
             return existing.id
@@ -274,7 +335,15 @@ async def ensure_zus_registration_task(
             "form_kind": fk,
             "form_status": "draft",
             "status": "pending",
-            "checklist_json": {"auto": True, "source": source},
+            "checklist_json": {
+                "auto": True,
+                "source": source,
+                **(
+                    {"trusted_identity_bindings": identity_prep.bindings}
+                    if identity_prep.ready and identity_prep.bindings
+                    else {}
+                ),
+            },
         },
     )
     if not row:

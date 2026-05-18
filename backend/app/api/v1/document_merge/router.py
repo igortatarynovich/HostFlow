@@ -268,6 +268,8 @@ async def api_generate_merge_document(
             "candidate_required_for_document",
         ):
             raise HTTPException(status_code=422, detail=code) from ve
+        if code.startswith("TRUSTED_IDENTITY_"):
+            raise HTTPException(status_code=422, detail={"code": code}) from ve
         raise HTTPException(status_code=400, detail=code) from ve
     except HTTPException:
         await db.rollback()

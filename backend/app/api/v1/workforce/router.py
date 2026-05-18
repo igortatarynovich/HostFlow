@@ -893,7 +893,18 @@ async def patch_payroll_profile_endpoint(
     db, tid = db_tenant
     tenant_id = str(tid)
     data = payload.model_dump(exclude_unset=True)
-    row = await wh_sat.patch_payroll_profile(db, tenant_id, employee_id, data)
+    try:
+        row = await wh_sat.patch_payroll_profile(db, tenant_id, employee_id, data)
+    except wh_sat.DownstreamIdentityBlockedError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": exc.result.block_code,
+                "consumer": exc.result.consumer,
+                "projection_status": exc.result.projection_status,
+                "message": exc.result.message,
+            },
+        ) from exc
     if not row:
         raise HTTPException(status_code=404, detail="Employee or payroll profile not found")
     await log_activity(

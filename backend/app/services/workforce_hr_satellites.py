@@ -19,6 +19,10 @@ from backend.app.models.workforce_tax_profile import WorkforceTaxProfile
 from backend.app.models.workforce_zus_profile import WorkforceZusProfile
 from backend.app.services.workforce_employees import ensure_hr_profiles_bundle, get_employee
 from backend.app.services.workforce_hr_core_profiles import ensure_workforce_hr_core_profiles
+from backend.app.services.workforce_downstream_identity import (
+    DownstreamIdentityBlockedError,
+    evaluate_payroll_preparation,
+)
 
 PAYROLL_STATUSES = frozenset(
     {
@@ -71,6 +75,11 @@ async def patch_payroll_profile(
     if not row:
         return None
     data = dict(patch)
+    new_status = str(data.get("payroll_status") or "").strip()
+    if new_status in ("ready_for_payroll", "sent_to_accounting"):
+        prep = await evaluate_payroll_preparation(db, tenant_id, employee_id)
+        if prep.blocked:
+            raise DownstreamIdentityBlockedError(prep)
     if "base_rate" in data:
         row.base_rate = _parse_decimal_str(data.pop("base_rate"))  # type: ignore[assignment]
     for k, v in data.items():
