@@ -30,6 +30,11 @@ from backend.app.services.workforce_work_eligibility_payments import list_paymen
 from backend.app.modules.documents.document_open_service import (
     enrich_documents_for_approval_open_urls,
 )
+from backend.app.services.hr_document_verification import (
+    VERIFICATION_GATED_CHECKLIST,
+    enrich_approval_rows_with_verification,
+    sync_checklist_from_verifications,
+)
 from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_work_eligibility_rules import payment_row_satisfied
@@ -635,6 +640,36 @@ async def build_hr_review_panel(
         workforce_employee_id=employee_id,
         handoff_id=str(hid) if hid else None,
     )
+    wel = bundle.get("work_eligibility_profile")
+    eligibility_hint = (
+        {
+            "citizenship": getattr(wel, "citizenship", None),
+            "work_country": getattr(wel, "work_country", None),
+        }
+        if wel
+        else None
+    )
+    docs_for_approval = await enrich_approval_rows_with_verification(
+        db,
+        tenant_id,
+        review,
+        docs_for_approval,
+        employee=emp,
+        eligibility=eligibility_hint,
+    )
+    await sync_checklist_from_verifications(db, tenant_id, review, docs_for_approval)
+    items = []
+    cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    for it in cl.get("items") or []:
+        if isinstance(it, dict):
+            items.append(it)
+    blockers = list(review.blockers_json or [])
+    failed_required = [
+        str(it["item_code"])
+        for it in items
+        if it.get("required") and str(it.get("status") or "") != ITEM_SATISFIED
+    ]
+    can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
 
     panel = {
         "review_id": review.id,
@@ -693,6 +728,8 @@ async def update_hr_review_checklist_item(
     code = str(item_code or "").strip()
     if code not in CHECKLIST_LABELS:
         raise ValueError("INVALID_CHECKLIST_ITEM")
+    if satisfied and code in VERIFICATION_GATED_CHECKLIST:
+        raise ValueError("CHECKLIST_REQUIRES_DOCUMENT_VERIFICATION")
 
     cl = dict(review.checklist_json or {"items": []})
     items = list(cl.get("items") or [])
@@ -844,11 +881,27 @@ async def build_hr_review_panel_for_handoff(
             cand_name = " ".join(p for p in parts if p).strip() or None
 
     docs_for_approval = enrich_documents_for_approval_open_urls(
-        [],
+        _documents_for_approval({}, {}),
         tenant_id=tenant_id,
         workforce_employee_id=str(review.employee_id) if review.employee_id else None,
         handoff_id=hid,
     )
+    docs_for_approval = await enrich_approval_rows_with_verification(
+        db, tenant_id, review, docs_for_approval, employee=None, eligibility=None
+    )
+    await sync_checklist_from_verifications(db, tenant_id, review, docs_for_approval)
+    items = []
+    cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
+    for it in cl.get("items") or []:
+        if isinstance(it, dict):
+            items.append(it)
+    blockers = list(review.blockers_json or [])
+    failed_required = [
+        str(it["item_code"])
+        for it in items
+        if it.get("required") and str(it.get("status") or "") != ITEM_SATISFIED
+    ]
+    can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
 
     panel = {
         "review_id": review.id,
@@ -897,6 +950,8 @@ async def update_hr_review_checklist_item_for_handoff(
     code = str(item_code or "").strip()
     if code not in CHECKLIST_LABELS:
         raise ValueError("INVALID_CHECKLIST_ITEM")
+    if satisfied and code in VERIFICATION_GATED_CHECKLIST:
+        raise ValueError("CHECKLIST_REQUIRES_DOCUMENT_VERIFICATION")
 
     cl = dict(review.checklist_json or {"items": []})
     items = list(cl.get("items") or [])
@@ -945,6 +1000,18 @@ async def update_hr_review_checklist_item_for_handoff(
     _recompute_review_blockers_from_checklist(review)
     await db.flush()
     return review
+
+
+async def rebuild_hr_review_panel_for_review(
+    db: AsyncSession,
+    tenant_id: str,
+    review: WorkforceHrReview,
+) -> Optional[dict[str, Any]]:
+    if review.employee_id:
+        return await build_hr_review_panel(db, tenant_id, str(review.employee_id))
+    if review.handoff_id:
+        return await build_hr_review_panel_for_handoff(db, tenant_id, str(review.handoff_id))
+    return None
 
 
 async def return_hr_review_to_recruitment(

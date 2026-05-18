@@ -73,7 +73,7 @@ Full v1 priority spec: [hr-review-task-priority-v1.md](hr-review-task-priority-v
 | PR | Deliverable |
 |----|-------------|
 | PR 2 | Current task engine — `current_task` BFF + `HrCurrentTaskPanel` ✓ |
-| PR 3 | Document verification cards — open, review fields, confirm, link checklist |
+| PR 3 | Document verification cards — open, review fields, confirm, link checklist ✓ |
 | PR 4 | Verified fields model — SoT for contract / ZUS / payroll |
 
 ---

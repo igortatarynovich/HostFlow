@@ -411,6 +411,24 @@
         "priority_step": "Step {{step}} of {{total}}",
         "priority_ladder_toggle": "System priority order (v1)"
       },
+      "doc_verify": {
+        "section_hint": "Verify each document against profile data. Checklist items update when all required cards are verified.",
+        "checklist_item": "Checklist",
+        "col_field": "Field",
+        "col_profile": "Profile / snapshot",
+        "col_downstream": "Used for",
+        "col_confirm": "HR confirmation",
+        "needs_manual": "Needs manual confirmation",
+        "confirmed_value": "Confirmed value",
+        "comment": "Comment",
+        "confirmed": "Confirmed",
+        "save_review": "Save field review",
+        "verify": "Verify document",
+        "request_correction": "Request correction",
+        "reject": "Reject",
+        "correction_placeholder": "What must be corrected?",
+        "reject_placeholder": "Rejection reason"
+      },
       "employee_operational": {
         "summary_kicker": "Operational summary",
         "badge_compliance": "Compliance: {v}",

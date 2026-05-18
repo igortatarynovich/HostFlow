@@ -223,6 +223,24 @@ class HrReviewChecklistItemOut(BaseModel):
     verified_at: Optional[str] = None
 
 
+class HrDocumentFieldReviewOut(BaseModel):
+    field_code: str
+    label: str
+    downstream_use: list[str] = Field(default_factory=list)
+    current_profile_values: dict[str, Any] = Field(default_factory=dict)
+    needs_manual_confirmation: bool = False
+    reviewed_value: Optional[Any] = None
+    review_comment: Optional[str] = None
+    confirmed: bool = False
+
+
+class HrDocumentVerificationActionsOut(BaseModel):
+    can_open: bool = False
+    can_verify: bool = False
+    can_reject: bool = False
+    can_request_correction: bool = False
+
+
 class HrReviewDocumentRowOut(BaseModel):
     document_key: str
     label: str
@@ -235,6 +253,28 @@ class HrReviewDocumentRowOut(BaseModel):
     open_url: Optional[str] = None
     file_url: Optional[str] = None
     document_open_context: Optional[str] = None
+    document_type: Optional[str] = None
+    required: bool = True
+    verification_status: Optional[str] = None
+    verification_id: Optional[str] = None
+    linked_checklist_item: Optional[str] = None
+    fields_to_review: list[HrDocumentFieldReviewOut] = Field(default_factory=list)
+    reviewed_fields: dict[str, Any] = Field(default_factory=dict)
+    rejection_reason: Optional[str] = None
+    correction_note: Optional[str] = None
+    actions: Optional[HrDocumentVerificationActionsOut] = None
+
+
+class HrDocumentReviewedFieldsIn(BaseModel):
+    reviewed_fields: dict[str, Any] = Field(default_factory=dict)
+
+
+class HrDocumentRejectIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
+
+
+class HrDocumentCorrectionIn(BaseModel):
+    note: str = Field(..., min_length=1, max_length=2000)
 
 
 class HrReviewProcessStageOut(BaseModel):

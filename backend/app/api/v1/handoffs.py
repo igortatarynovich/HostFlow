@@ -17,7 +17,13 @@ from backend.app.services import billing_restrictions
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
 from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_readable
 from backend.app.auth.deps import Role, require_roles
-from backend.app.schemas.workforce_hr_core import HrReviewChecklistPatchIn, HrReviewPanelOut
+from backend.app.schemas.workforce_hr_core import (
+    HrDocumentCorrectionIn,
+    HrDocumentRejectIn,
+    HrDocumentReviewedFieldsIn,
+    HrReviewChecklistPatchIn,
+    HrReviewPanelOut,
+)
 from backend.app.services.handoff import (
     create_handoff,
     accept_handoff,
@@ -619,6 +625,189 @@ def _hr_review_http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, ValueError):
         return HTTPException(status_code=400, detail=str(exc))
     return HTTPException(status_code=400, detail=str(exc))
+
+
+async def _handoff_hr_review_row(db, tenant_id: str, handoff_id: str):
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    review = await hr_review_svc.get_hr_review_by_handoff(db, tenant_id, handoff_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    return review
+
+
+@router.post(
+    "/{handoff_id}/hr-review/document-verifications/{document_key}/opened",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_document_opened(
+    handoff_id: UUID,
+    document_key: str,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_document_verification as doc_verify_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await doc_verify_svc.mark_document_opened(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            document_key=document_key,
+            actor_user_id=current_user.sub,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/document-verifications/{document_key}/reviewed",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_document_reviewed(
+    handoff_id: UUID,
+    document_key: str,
+    body: HrDocumentReviewedFieldsIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_document_verification as doc_verify_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await doc_verify_svc.save_document_reviewed_fields(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            document_key=document_key,
+            actor_user_id=current_user.sub,
+            reviewed_fields=body.reviewed_fields,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/document-verifications/{document_key}/verify",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_document_verify(
+    handoff_id: UUID,
+    document_key: str,
+    body: HrDocumentReviewedFieldsIn | None = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_document_verification as doc_verify_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await doc_verify_svc.verify_document(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            document_key=document_key,
+            actor_user_id=current_user.sub,
+            reviewed_fields=body.reviewed_fields if body else None,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/document-verifications/{document_key}/reject",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_document_reject(
+    handoff_id: UUID,
+    document_key: str,
+    body: HrDocumentRejectIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_document_verification as doc_verify_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await doc_verify_svc.reject_document(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            document_key=document_key,
+            actor_user_id=current_user.sub,
+            reason=body.reason,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/document-verifications/{document_key}/request-correction",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_document_request_correction(
+    handoff_id: UUID,
+    document_key: str,
+    body: HrDocumentCorrectionIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_document_verification as doc_verify_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await doc_verify_svc.request_document_correction(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            document_key=document_key,
+            actor_user_id=current_user.sub,
+            note=body.note,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
 
 
 @router.get(

@@ -311,6 +311,24 @@ export type HrReviewChecklistItem = {
   verified_at?: string | null
 }
 
+export type HrDocumentFieldReview = {
+  field_code: string
+  label: string
+  downstream_use?: string[]
+  current_profile_values?: Record<string, unknown>
+  needs_manual_confirmation?: boolean
+  reviewed_value?: unknown
+  review_comment?: string | null
+  confirmed?: boolean
+}
+
+export type HrDocumentVerificationActions = {
+  can_open?: boolean
+  can_verify?: boolean
+  can_reject?: boolean
+  can_request_correction?: boolean
+}
+
 export type HrReviewDocumentRow = {
   document_key: string
   label: string
@@ -323,6 +341,16 @@ export type HrReviewDocumentRow = {
   open_url?: string | null
   file_url?: string | null
   document_open_context?: string | null
+  document_type?: string | null
+  required?: boolean
+  verification_status?: string | null
+  verification_id?: string | null
+  linked_checklist_item?: string | null
+  fields_to_review?: HrDocumentFieldReview[]
+  reviewed_fields?: Record<string, unknown>
+  rejection_reason?: string | null
+  correction_note?: string | null
+  actions?: HrDocumentVerificationActions | null
 }
 
 export type HrReviewProcessStage = {
@@ -788,6 +816,56 @@ export async function getWorkforceHrReview(employeeId: string): Promise<HrReview
   const { data } = await http.get<HrReviewPanel>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review`,
   )
+  return data
+}
+
+type DocVerifyScope = { employeeId?: string; handoffId?: string; documentKey: string }
+
+function docVerifyBase(scope: DocVerifyScope): string {
+  const key = encodeURIComponent(scope.documentKey)
+  if (scope.handoffId) {
+    return `/handoffs/${encodeURIComponent(scope.handoffId)}/hr-review/document-verifications/${key}`
+  }
+  if (scope.employeeId) {
+    return `/workforce/employees/${encodeURIComponent(scope.employeeId)}/hr-review/document-verifications/${key}`
+  }
+  throw new Error('employeeId or handoffId required')
+}
+
+export async function postHrDocumentOpened(scope: DocVerifyScope): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/opened`)
+  return data
+}
+
+export async function postHrDocumentReviewed(
+  scope: DocVerifyScope & { reviewed_fields: Record<string, unknown> },
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/reviewed`, {
+    reviewed_fields: scope.reviewed_fields,
+  })
+  return data
+}
+
+export async function postHrDocumentVerify(
+  scope: DocVerifyScope & { reviewed_fields?: Record<string, unknown> },
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/verify`, {
+    reviewed_fields: scope.reviewed_fields ?? {},
+  })
+  return data
+}
+
+export async function postHrDocumentReject(
+  scope: DocVerifyScope & { reason: string },
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/reject`, { reason: scope.reason })
+  return data
+}
+
+export async function postHrDocumentRequestCorrection(
+  scope: DocVerifyScope & { note: string },
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/request-correction`, { note: scope.note })
   return data
 }
 

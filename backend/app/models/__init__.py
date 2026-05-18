@@ -265,6 +265,9 @@ WorkforceWorkEligibilityPaymentRequirement = _load_model_module(
     "workforce_work_eligibility_payment_requirement"
 ).WorkforceWorkEligibilityPaymentRequirement  # type: ignore[attr-defined]
 WorkforceHrReview = _load_model_module("workforce_hr_review").WorkforceHrReview  # type: ignore[attr-defined]
+WorkforceHrDocumentVerification = _load_model_module(
+    "workforce_hr_document_verification"
+).WorkforceHrDocumentVerification  # type: ignore[attr-defined]
 
 # Merge-document templates and generation logs
 MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]

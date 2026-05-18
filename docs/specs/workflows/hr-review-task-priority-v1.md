@@ -44,7 +44,7 @@ This order is **not** eternal business truth. It is the **first product canon**:
 
 ---
 
-## PR 3 — Document verification cards (next)
+## PR 3 — Document verification cards ✓
 
 **Goal:** Replace “checkbox for checkbox’s sake” with a verification **action**:
 

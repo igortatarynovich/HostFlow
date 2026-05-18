@@ -38,7 +38,11 @@ from backend.app.schemas.workforce_hr import (
     ZusProfilePatch,
 )
 from backend.app.schemas.workforce_hr_core import (
+    HrDocumentCorrectionIn,
+    HrDocumentRejectIn,
+    HrDocumentReviewedFieldsIn,
     HrReviewChecklistPatchIn,
+    HrReviewDocumentRowOut,
     HrReviewNoteIn,
     HrReviewPanelOut,
     HrReviewReasonIn,
@@ -51,6 +55,7 @@ from backend.app.schemas.workforce_hr_core import (
     WorkforceWorkEligibilityProfileOut,
     WorkEligibilityJourneyOut,
 )
+from backend.app.services import hr_document_verification as doc_verify_svc
 from backend.app.services import workforce_hr_review as hr_review_svc
 from backend.app.services import workforce_hr_satellites as wh_sat
 from backend.app.services import workforce_employees as we_svc
@@ -1350,9 +1355,210 @@ def _hr_review_http_error(exc: Exception) -> HTTPException:
     msg = str(exc)
     if msg == "EMPLOYEE_NOT_FOUND":
         return HTTPException(status_code=404, detail=msg)
-    if msg in ("HR_REVIEW_TERMINAL", "INVALID_CHECKLIST_ITEM", "RETURN_REASON_REQUIRED", "REJECT_REASON_REQUIRED", "CORRECTIONS_NOTE_REQUIRED"):
+    if msg in (
+        "HR_REVIEW_TERMINAL",
+        "INVALID_CHECKLIST_ITEM",
+        "RETURN_REASON_REQUIRED",
+        "REJECT_REASON_REQUIRED",
+        "CORRECTIONS_NOTE_REQUIRED",
+        "CHECKLIST_REQUIRES_DOCUMENT_VERIFICATION",
+        "VERIFICATION_NOT_FOUND",
+        "DOCUMENT_MISSING",
+        "HR_REVIEW_NOT_FOUND",
+    ):
         return HTTPException(status_code=422, detail={"code": msg})
     return HTTPException(status_code=422, detail=msg)
+
+
+async def _employee_hr_review_for_verification(
+    db: AsyncSession, tenant_id: str, employee_id: str
+):
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise ValueError("EMPLOYEE_NOT_FOUND")
+    return await hr_review_svc.ensure_hr_review_for_employee(db, tenant_id, emp)
+
+
+@router.get(
+    "/employees/{employee_id}/hr-review/document-verifications",
+    response_model=list[HrReviewDocumentRowOut],
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def list_employee_document_verifications(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> list[HrReviewDocumentRowOut]:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    panel = await hr_review_svc.build_hr_review_panel(db, tenant_id, employee_id)
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return [HrReviewDocumentRowOut.model_validate(d) for d in panel.get("documents_for_approval") or []]
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/opened",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_document_opened(
+    employee_id: str,
+    document_key: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await doc_verify_svc.mark_document_opened(
+            db, tenant_id=tenant_id, review=review, document_key=document_key, actor_user_id=actor
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/reviewed",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_document_reviewed(
+    employee_id: str,
+    document_key: str,
+    body: HrDocumentReviewedFieldsIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await doc_verify_svc.save_document_reviewed_fields(
+            db,
+            tenant_id=tenant_id,
+            review=review,
+            document_key=document_key,
+            actor_user_id=actor,
+            reviewed_fields=body.reviewed_fields,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/verify",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_document_verify(
+    employee_id: str,
+    document_key: str,
+    body: HrDocumentReviewedFieldsIn | None = None,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await doc_verify_svc.verify_document(
+            db,
+            tenant_id=tenant_id,
+            review=review,
+            document_key=document_key,
+            actor_user_id=actor,
+            reviewed_fields=body.reviewed_fields if body else None,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/reject",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_document_reject(
+    employee_id: str,
+    document_key: str,
+    body: HrDocumentRejectIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await doc_verify_svc.reject_document(
+            db,
+            tenant_id=tenant_id,
+            review=review,
+            document_key=document_key,
+            actor_user_id=actor,
+            reason=body.reason,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/request-correction",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_document_request_correction(
+    employee_id: str,
+    document_key: str,
+    body: HrDocumentCorrectionIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await doc_verify_svc.request_document_correction(
+            db,
+            tenant_id=tenant_id,
+            review=review,
+            document_key=document_key,
+            actor_user_id=actor,
+            note=body.note,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
 
 
 @router.get(
