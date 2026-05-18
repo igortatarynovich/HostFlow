@@ -46,6 +46,8 @@ async def generate_merge_document(
     workforce_employee_id: Optional[str] = None,
     variable_bindings: Optional[Dict[str, Any]] = None,
     triggered_by_user_id: Optional[str] = None,
+    generation_kind: Optional[str] = None,
+    trusted_identity_bindings: Optional[Dict[str, Any]] = None,
 ) -> Tuple[MergeDocumentGenerationLog, Any]:
     employee: Optional[WorkforceEmployee] = None
     candidate: Optional[Candidate] = None
@@ -148,13 +150,25 @@ async def generate_merge_document(
     if not cand_id:
         raise ValueError("candidate_required_for_document")
 
+    is_draft_preview = generation_kind == "contract_draft_preview"
     meta = {
         "title": template.name,
-        "description": f"Generated from merge template {template.code} ({template.name}).",
+        "description": (
+            f"Draft preview from merge template {template.code} ({template.name})."
+            if is_draft_preview
+            else f"Generated from merge template {template.code} ({template.name})."
+        ),
         "merge_generated": True,
         "merge_template_id": template.id,
         "merge_template_code": template.code,
+        "generation_kind": generation_kind,
+        "contract_draft_preview": is_draft_preview,
+        "trusted_identity_only": bool(is_draft_preview),
     }
+    if is_draft_preview:
+        meta["automation"] = {"send": False, "sign": False, "epuap": False}
+    if trusted_identity_bindings:
+        meta["trusted_identity_bindings"] = trusted_identity_bindings
 
     own_co = None
     if employee is not None:
@@ -170,7 +184,11 @@ async def generate_merge_document(
             "own_company_id": own_co,
             "doc_type": doc_type,
             "custom_name": template.name,
-            "user_comment": f"merge:{template.code}",
+            "user_comment": (
+                f"contract_draft_preview:{template.code}"
+                if is_draft_preview
+                else f"merge:{template.code}"
+            ),
             "files": [entry],
             "meta": meta,
             "source": "merge_template",
@@ -184,7 +202,7 @@ async def generate_merge_document(
         workforce_employee_id=employee.id if employee else None,
         document_id=doc.id,
         triggered_by_user_id=triggered_by_user_id,
-        status="success",
+        status="draft_preview" if is_draft_preview else "success",
         error_message=None,
         context_snapshot=_snapshot_context(ctx),
     )

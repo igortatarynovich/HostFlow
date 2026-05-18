@@ -48,6 +48,8 @@ from backend.app.schemas.workforce_hr_core import (
     HrReviewReasonIn,
     HrVerifiedFieldOut,
     HrVerifiedFieldOverrideIn,
+    ContractDraftPreviewIn,
+    ContractDraftPreviewOut,
     TrustedIdentityPrepStatusOut,
     WorkforceComplianceStateOut,
     WorkforceHrDocumentContextOut,
@@ -1602,6 +1604,104 @@ async def get_employee_trusted_identity_prep_status(
     )
     await db.commit()
     return TrustedIdentityPrepStatusOut.model_validate(payload)
+
+
+def _contract_generation_http_error(exc: Exception) -> HTTPException:
+    from backend.app.services.employment_identity_read_adapter import TrustedIdentityAccessError
+
+    if isinstance(exc, TrustedIdentityAccessError):
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": exc.code,
+                "consumer": exc.consumer,
+                "projection_status": exc.projection_status,
+                "review_id": exc.review_id,
+                "message": str(exc),
+            },
+        )
+    msg = str(exc)
+    if msg.startswith("CONTRACT_TEMPLATE_UNTRUSTED_PLACEHOLDERS:"):
+        placeholders = msg.split(":", 1)[1].split(",") if ":" in msg else []
+        return HTTPException(
+            status_code=422,
+            detail={
+                "code": "CONTRACT_TEMPLATE_UNTRUSTED_PLACEHOLDERS",
+                "placeholders": [p for p in placeholders if p],
+            },
+        )
+    if msg in (
+        "EMPLOYEE_NOT_FOUND",
+        "EMPLOYEE_CANDIDATE_REQUIRED_FOR_DOCUMENT",
+        "template_not_found",
+        "CONTRACT_TEMPLATE_IDENTITY_OVERRIDE_FORBIDDEN",
+    ):
+        return HTTPException(status_code=422, detail={"code": msg})
+    if msg.startswith("TRUSTED_IDENTITY_"):
+        return HTTPException(status_code=422, detail={"code": msg})
+    return HTTPException(status_code=400, detail=msg)
+
+
+@router.post(
+    "/employees/{employee_id}/contract-generation/preview",
+    response_model=ContractDraftPreviewOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_contract_draft_preview(
+    employee_id: str,
+    body: ContractDraftPreviewIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> ContractDraftPreviewOut:
+    from backend.app.services.contract_generation import generate_contract_draft_preview
+
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    if not body.template_id and not (body.template_code and body.template_code.strip()):
+        raise HTTPException(status_code=422, detail={"code": "template_id_or_template_code_required"})
+    actor = str(current_user.sub or "").strip() or None
+    try:
+        log, doc, meta = await generate_contract_draft_preview(
+            db,
+            tenant_id,
+            employee_id=employee_id,
+            template_id=body.template_id,
+            template_code=body.template_code.strip() if body.template_code else None,
+            variable_bindings=body.variable_bindings,
+            triggered_by_user_id=actor,
+        )
+        await log_activity(
+            db,
+            tenant_id=tenant_id,
+            action="workforce.contract_draft_preview",
+            actor_id=actor,
+            target_type="workforce_employee",
+            target_id=employee_id,
+            payload={
+                "document_id": str(doc.id),
+                "template_id": log.template_id,
+                "log_id": log.id,
+            },
+        )
+    except Exception as exc:
+        raise _contract_generation_http_error(exc) from exc
+
+    preview_url: str | None = None
+    files = getattr(doc, "files", None) or []
+    if isinstance(files, list) and files:
+        first = files[0] if isinstance(files[0], dict) else None
+        if first:
+            preview_url = str(first.get("url") or "") or None
+
+    await db.commit()
+    return ContractDraftPreviewOut(
+        log_id=str(log.id),
+        document_id=str(doc.id),
+        template_id=str(log.template_id) if log.template_id else None,
+        status=str(log.status),
+        preview_url=preview_url,
+        trusted_identity_bindings=dict(meta.get("trusted_identity_bindings") or {}),
+    )
 
 
 @router.get(

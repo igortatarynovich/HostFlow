@@ -349,6 +349,25 @@ class TrustedIdentityConsumerPrepOut(BaseModel):
     binding_keys: list[str] = Field(default_factory=list)
 
 
+class ContractDraftPreviewIn(BaseModel):
+    template_id: Optional[str] = None
+    template_code: Optional[str] = None
+    variable_bindings: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContractDraftPreviewOut(BaseModel):
+    log_id: str
+    document_id: str
+    template_id: Optional[str] = None
+    status: str
+    generation_kind: str = "contract_draft_preview"
+    preview_url: Optional[str] = None
+    trusted_identity_bindings: dict[str, Any] = Field(default_factory=dict)
+    automation: dict[str, bool] = Field(
+        default_factory=lambda: {"send": False, "sign": False, "epuap": False}
+    )
+
+
 class TrustedIdentityPrepStatusOut(BaseModel):
     employee_id: str
     review_id: Optional[str] = None
