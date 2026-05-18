@@ -62,3 +62,55 @@ def test_trusted_identity_access_error_fields() -> None:
     )
     assert err.code == "TRUSTED_IDENTITY_STALE"
     assert err.review_id == "r1"
+
+
+@pytest.mark.asyncio
+async def test_get_trusted_for_employee_skips_review_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent ensure → journey → permit → ensure recursion during trusted identity reads."""
+    from backend.app.services import employment_identity_read_adapter as adapter
+
+    calls: list[bool] = []
+
+    async def _fake_ensure(db, tenant_id, employee, *, sync_from_sources: bool = True):
+        calls.append(sync_from_sources)
+        review = type("R", (), {"id": "review-1"})()
+        return review
+
+    async def _fake_get_trusted(db, **kwargs):
+        return type(
+            "T",
+            (),
+            {
+                "tenant_id": "t1",
+                "review_id": "review-1",
+                "employee_id": "e1",
+                "handoff_id": None,
+                "consumer": kwargs["consumer"],
+                "projection": {},
+                "attributes": {},
+                "projection_status": PROJECTION_STATUS_COMPLETE,
+                "access_allowed": True,
+                "denial_code": None,
+            },
+        )()
+
+    async def _fake_get_employee(db, tenant_id, employee_id):
+        return type("E", (), {"id": employee_id})()
+
+    monkeypatch.setattr(
+        "backend.app.services.workforce_hr_review.ensure_hr_review_for_employee",
+        _fake_ensure,
+    )
+    monkeypatch.setattr(adapter, "get_trusted_employment_identity", _fake_get_trusted)
+    monkeypatch.setattr(
+        "backend.app.services.workforce_employees.get_employee",
+        _fake_get_employee,
+    )
+
+    await adapter.get_trusted_employment_identity_for_employee(
+        None,
+        tenant_id="t1",
+        employee_id="e1",
+        consumer=CONSUMER_ZUS_PREPARATION,
+    )
+    assert calls == [False]

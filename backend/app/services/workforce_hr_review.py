@@ -135,6 +135,8 @@ async def ensure_hr_review_for_employee(
     db: AsyncSession,
     tenant_id: str,
     employee: WorkforceEmployee,
+    *,
+    sync_from_sources: bool = True,
 ) -> WorkforceHrReview:
     tid = str(tenant_id).strip()
     eid = str(employee.id).strip()
@@ -184,7 +186,8 @@ async def ensure_hr_review_for_employee(
         if hid:
             row.handoff_id = hid
             await db.flush()
-    await _sync_review_from_sources(db, tid, employee, row)
+    if sync_from_sources:
+        await _sync_review_from_sources(db, tid, employee, row)
     return row
 
 

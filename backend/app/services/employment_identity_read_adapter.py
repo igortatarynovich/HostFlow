@@ -245,7 +245,8 @@ async def get_trusted_employment_identity_for_employee(
     emp = await we_svc.get_employee(db, tenant_id, employee_id)
     if not emp:
         raise ValueError("EMPLOYEE_NOT_FOUND")
-    review = await ensure_hr_review_for_employee(db, tenant_id, emp)
+    # Avoid re-entering _sync_review_from_sources → journey → evaluate_permit → here (RecursionError).
+    review = await ensure_hr_review_for_employee(db, tenant_id, emp, sync_from_sources=False)
     return await get_trusted_employment_identity(
         db,
         tenant_id=tenant_id,
