@@ -298,11 +298,16 @@ def build_decision_readiness(
     failed_required: list[str],
     review_status: str,
     delayed_workforce: bool,
+    verified_fields_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     done, total = _checklist_progress(checklist)
     reason = None
+    vf_summary = verified_fields_summary or {}
+    vf_blockers = list(vf_summary.get("blockers") or [])
     if not can_approve:
-        if failed_required:
+        if vf_blockers and not vf_summary.get("ready"):
+            reason = vf_blockers[0]
+        elif failed_required:
             reason = f"Required checklist incomplete: {', '.join(failed_required[:5])}"
         elif blockers:
             reason = f"Blockers: {', '.join(blockers[:5])}"
@@ -407,6 +412,7 @@ def enrich_hr_review_panel(
         failed_required=failed,
         review_status=review_status,
         delayed_workforce=delayed_workforce,
+        verified_fields_summary=panel.get("verified_fields_summary"),
     )
     timeline = recent_timeline if recent_timeline is not None else build_recent_timeline(panel)
 

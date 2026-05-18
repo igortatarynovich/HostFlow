@@ -268,6 +268,7 @@ WorkforceHrReview = _load_model_module("workforce_hr_review").WorkforceHrReview 
 WorkforceHrDocumentVerification = _load_model_module(
     "workforce_hr_document_verification"
 ).WorkforceHrDocumentVerification  # type: ignore[attr-defined]
+WorkforceHrVerifiedField = _load_model_module("workforce_hr_verified_field").WorkforceHrVerifiedField  # type: ignore[attr-defined]
 
 # Merge-document templates and generation logs
 MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]

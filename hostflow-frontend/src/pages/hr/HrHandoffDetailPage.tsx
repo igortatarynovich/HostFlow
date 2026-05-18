@@ -11,6 +11,7 @@ import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
+import HrVerifiedFieldsPanel from '../../components/hr/HrVerifiedFieldsPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
@@ -120,6 +121,16 @@ export default function HrHandoffDetailPage() {
               />
               <HrDocumentsForApproval
                 documents={hrReview.documents_for_approval}
+                handoffId={id}
+                employeeId={empId}
+                manage
+                onPanelUpdated={(next) => {
+                  setHrReview(next)
+                  void load()
+                }}
+              />
+              <HrVerifiedFieldsPanel
+                panel={hrReview}
                 handoffId={id}
                 employeeId={empId}
                 manage

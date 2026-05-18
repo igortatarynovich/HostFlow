@@ -23,6 +23,8 @@ from backend.app.schemas.workforce_hr_core import (
     HrDocumentReviewedFieldsIn,
     HrReviewChecklistPatchIn,
     HrReviewPanelOut,
+    HrVerifiedFieldOut,
+    HrVerifiedFieldOverrideIn,
 )
 from backend.app.services.handoff import (
     create_handoff,
@@ -800,6 +802,63 @@ async def post_handoff_document_request_correction(
             document_key=document_key,
             actor_user_id=current_user.sub,
             note=body.note,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.get(
+    "/{handoff_id}/hr-review/verified-fields",
+    response_model=list[HrVerifiedFieldOut],
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def list_handoff_verified_fields(
+    handoff_id: UUID,
+    db_tenant=Depends(get_db_with_tenant),
+):
+    from backend.app.services import hr_verified_fields as vf_svc
+
+    db, tenant_id = db_tenant
+    review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+    await vf_svc.ensure_critical_field_placeholders(db, tenant_id=str(tenant_id), review=review)
+    fields = await vf_svc.list_for_review(db, str(tenant_id), review.id)
+    await db.commit()
+    return [HrVerifiedFieldOut.model_validate(f) for f in fields]
+
+
+@router.post(
+    "/{handoff_id}/hr-review/verified-fields/{field_code}/override",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_verified_field_override(
+    handoff_id: UUID,
+    field_code: str,
+    body: HrVerifiedFieldOverrideIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_verified_fields as vf_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await vf_svc.override_verified_field(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            field_code=field_code,
+            actor_user_id=current_user.sub,
+            verified_value=body.verified_value,
+            override_reason=body.override_reason,
         )
         panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
     except Exception as exc:

@@ -446,6 +446,33 @@ export type HrReviewCurrentTask = {
   completion_condition: string
 }
 
+export type HrVerifiedField = {
+  id: string
+  field_code: string
+  field_label: string
+  downstream_use?: string[]
+  status: string
+  verified_value?: string | null
+  source_document_id?: string | null
+  source_document_key?: string | null
+  document_verification_id?: string | null
+  profile_values?: Record<string, unknown>
+  verified_by_user_id?: string | null
+  verified_at?: string | null
+  override_reason?: string | null
+  conflict_reason?: string | null
+  is_critical?: boolean
+}
+
+export type HrVerifiedFieldsSummary = {
+  ready: boolean
+  critical_total: number
+  critical_verified: number
+  pending_codes?: string[]
+  conflict_codes?: string[]
+  blockers?: string[]
+}
+
 export type HrReviewPanel = {
   review_id: string
   employee_id?: string | null
@@ -472,6 +499,8 @@ export type HrReviewPanel = {
   work_eligibility_summary?: HrReviewEligibilitySummary | null
   current_task?: HrReviewCurrentTask | null
   task_priority_v1?: HrReviewTaskPriorityStep[]
+  verified_fields?: HrVerifiedField[]
+  verified_fields_summary?: HrVerifiedFieldsSummary | null
 }
 
 export type WorkforceHrBundle = {
@@ -866,6 +895,33 @@ export async function postHrDocumentRequestCorrection(
   scope: DocVerifyScope & { note: string },
 ): Promise<HrReviewPanel> {
   const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/request-correction`, { note: scope.note })
+  return data
+}
+
+type VerifiedFieldScope = {
+  employeeId?: string
+  handoffId?: string
+  fieldCode: string
+  verified_value: string
+  override_reason: string
+}
+
+function verifiedFieldOverrideBase(scope: { employeeId?: string; handoffId?: string; fieldCode: string }): string {
+  const code = encodeURIComponent(scope.fieldCode)
+  if (scope.handoffId) {
+    return `/handoffs/${encodeURIComponent(scope.handoffId)}/hr-review/verified-fields/${code}/override`
+  }
+  if (scope.employeeId) {
+    return `/workforce/employees/${encodeURIComponent(scope.employeeId)}/hr-review/verified-fields/${code}/override`
+  }
+  throw new Error('employeeId or handoffId required')
+}
+
+export async function postHrVerifiedFieldOverride(scope: VerifiedFieldScope): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(verifiedFieldOverrideBase(scope), {
+    verified_value: scope.verified_value,
+    override_reason: scope.override_reason,
+  })
   return data
 }
 

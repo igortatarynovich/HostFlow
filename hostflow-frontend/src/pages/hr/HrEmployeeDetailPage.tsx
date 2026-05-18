@@ -42,6 +42,7 @@ import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
+import HrVerifiedFieldsPanel from '../../components/hr/HrVerifiedFieldsPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
@@ -319,6 +320,15 @@ export default function HrEmployeeDetailPage() {
                 />
                 <HrDocumentsForApproval
                   documents={hrReview.documents_for_approval}
+                  employeeId={employeeId}
+                  manage={manage}
+                  onPanelUpdated={(next) => {
+                    setHrReview(next)
+                    void refreshProfile()
+                  }}
+                />
+                <HrVerifiedFieldsPanel
+                  panel={hrReview}
                   employeeId={employeeId}
                   manage={manage}
                   onPanelUpdated={(next) => {

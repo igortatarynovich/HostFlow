@@ -46,6 +46,8 @@ from backend.app.schemas.workforce_hr_core import (
     HrReviewNoteIn,
     HrReviewPanelOut,
     HrReviewReasonIn,
+    HrVerifiedFieldOut,
+    HrVerifiedFieldOverrideIn,
     WorkforceComplianceStateOut,
     WorkforceHrDocumentContextOut,
     WorkforceHrDocumentContextSummaryOut,
@@ -56,6 +58,7 @@ from backend.app.schemas.workforce_hr_core import (
     WorkEligibilityJourneyOut,
 )
 from backend.app.services import hr_document_verification as doc_verify_svc
+from backend.app.services import hr_verified_fields as vf_svc
 from backend.app.services import workforce_hr_review as hr_review_svc
 from backend.app.services import workforce_hr_satellites as wh_sat
 from backend.app.services import workforce_employees as we_svc
@@ -1365,6 +1368,11 @@ def _hr_review_http_error(exc: Exception) -> HTTPException:
         "VERIFICATION_NOT_FOUND",
         "DOCUMENT_MISSING",
         "HR_REVIEW_NOT_FOUND",
+        "INVALID_FIELD_CODE",
+        "VERIFIED_VALUE_REQUIRED",
+        "OVERRIDE_REASON_REQUIRED",
+        "CRITICAL_VERIFIED_FIELDS_INCOMPLETE",
+        "CRITICAL_VERIFIED_FIELDS_CONFLICT",
     ):
         return HTTPException(status_code=422, detail={"code": msg})
     return HTTPException(status_code=422, detail=msg)
@@ -1551,6 +1559,59 @@ async def post_employee_document_request_correction(
             document_key=document_key,
             actor_user_id=actor,
             note=body.note,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.get(
+    "/employees/{employee_id}/hr-review/verified-fields",
+    response_model=list[HrVerifiedFieldOut],
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def list_employee_verified_fields(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> list[HrVerifiedFieldOut]:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+    await vf_svc.ensure_critical_field_placeholders(db, tenant_id=tenant_id, review=review, employee_id=employee_id)
+    fields = await vf_svc.list_for_review(db, tenant_id, review.id)
+    await db.commit()
+    return [HrVerifiedFieldOut.model_validate(f) for f in fields]
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/verified-fields/{field_code}/override",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_verified_field_override(
+    employee_id: str,
+    field_code: str,
+    body: HrVerifiedFieldOverrideIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await vf_svc.override_verified_field(
+            db,
+            tenant_id=tenant_id,
+            review=review,
+            field_code=field_code,
+            actor_user_id=actor,
+            verified_value=body.verified_value,
+            override_reason=body.override_reason,
         )
         panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
     except Exception as exc:

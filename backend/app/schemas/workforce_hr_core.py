@@ -277,6 +277,38 @@ class HrDocumentCorrectionIn(BaseModel):
     note: str = Field(..., min_length=1, max_length=2000)
 
 
+class HrVerifiedFieldOut(BaseModel):
+    id: str
+    field_code: str
+    field_label: str
+    downstream_use: list[str] = Field(default_factory=list)
+    status: str
+    verified_value: Optional[str] = None
+    source_document_id: Optional[str] = None
+    source_document_key: Optional[str] = None
+    document_verification_id: Optional[str] = None
+    profile_values: dict[str, Any] = Field(default_factory=dict)
+    verified_by_user_id: Optional[str] = None
+    verified_at: Optional[str] = None
+    override_reason: Optional[str] = None
+    conflict_reason: Optional[str] = None
+    is_critical: bool = False
+
+
+class HrVerifiedFieldsSummaryOut(BaseModel):
+    ready: bool = False
+    critical_total: int = 0
+    critical_verified: int = 0
+    pending_codes: list[str] = Field(default_factory=list)
+    conflict_codes: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+
+
+class HrVerifiedFieldOverrideIn(BaseModel):
+    verified_value: str = Field(..., min_length=1, max_length=2000)
+    override_reason: str = Field(..., min_length=1, max_length=2000)
+
+
 class HrReviewProcessStageOut(BaseModel):
     code: str
     label: str
@@ -396,6 +428,8 @@ class HrReviewPanelOut(BaseModel):
     work_eligibility_summary: Optional[HrReviewEligibilitySummaryOut] = None
     current_task: Optional[HrReviewCurrentTaskOut] = None
     task_priority_v1: list[HrReviewTaskPriorityStepOut] = Field(default_factory=list)
+    verified_fields: list[HrVerifiedFieldOut] = Field(default_factory=list)
+    verified_fields_summary: Optional[HrVerifiedFieldsSummaryOut] = None
 
 
 class HrReviewChecklistPatchIn(BaseModel):

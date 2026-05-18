@@ -36,6 +36,7 @@ from backend.app.services.hr_document_verification import (
     sync_checklist_from_verifications,
 )
 from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
+from backend.app.services import hr_verified_fields as vf_svc
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_work_eligibility_rules import payment_row_satisfied
 
@@ -599,6 +600,30 @@ def _documents_for_approval(bundle: dict[str, Any], journey: dict[str, Any]) -> 
     return rows
 
 
+async def _attach_verified_fields_to_panel(
+    db: AsyncSession,
+    tenant_id: str,
+    review: WorkforceHrReview,
+    panel: dict[str, Any],
+    *,
+    employee_id: Optional[str] = None,
+) -> dict[str, Any]:
+    await vf_svc.ensure_critical_field_placeholders(
+        db, tenant_id=tenant_id, review=review, employee_id=employee_id or review.employee_id
+    )
+    fields = await vf_svc.list_for_review(db, tenant_id, review.id)
+    summary = vf_svc.summarize_critical(fields)
+    vf_blocked, vf_blockers = vf_svc.critical_fields_block_approval(fields)
+    if vf_blocked:
+        panel = dict(panel)
+        panel["can_approve"] = False
+        panel["blockers"] = list(dict.fromkeys(list(panel.get("blockers") or []) + vf_blockers))
+    panel = dict(panel)
+    panel["verified_fields"] = fields
+    panel["verified_fields_summary"] = summary
+    return panel
+
+
 async def build_hr_review_panel(
     db: AsyncSession,
     tenant_id: str,
@@ -671,7 +696,7 @@ async def build_hr_review_panel(
     ]
     can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
 
-    panel = {
+    panel: dict[str, Any] = {
         "review_id": review.id,
         "employee_id": employee_id,
         "candidate_id": emp.candidate_id,
@@ -690,6 +715,7 @@ async def build_hr_review_panel(
         "decided_by_user_id": review.decided_by_user_id,
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
+    panel = await _attach_verified_fields_to_panel(db, tenant_id, review, panel, employee_id=employee_id)
     handoff_status = None
     transferred_at = None
     if hid:
@@ -773,7 +799,9 @@ async def update_hr_review_checklist_item(
     return review
 
 
-async def _assert_can_approve(review: WorkforceHrReview) -> None:
+async def _assert_can_approve(
+    db: AsyncSession, tenant_id: str, review: WorkforceHrReview
+) -> None:
     if review.status in HR_REVIEW_TERMINAL_STATUSES:
         raise ValueError("HR_REVIEW_TERMINAL")
     cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
@@ -784,6 +812,12 @@ async def _assert_can_approve(review: WorkforceHrReview) -> None:
             continue
         if str(it.get("status") or "") != ITEM_SATISFIED:
             failed.append(str(it["item_code"]))
+    fields = await vf_svc.list_for_review(db, tenant_id, review.id)
+    vf_blocked, vf_blockers = vf_svc.critical_fields_block_approval(fields)
+    if vf_blocked:
+        failed.extend([f"verified_field:{c}" for c in (vf_svc.summarize_critical(fields).get("pending_codes") or [])])
+        failed.extend([f"verified_field_conflict:{c}" for c in (vf_svc.summarize_critical(fields).get("conflict_codes") or [])])
+        raise HrReviewBlockedError(blockers=blockers + vf_blockers, failed_items=failed)
     if failed:
         raise HrReviewBlockedError(blockers=blockers, failed_items=failed)
 
@@ -797,7 +831,7 @@ async def approve_hr_review_record(
     actor_user_id: str,
 ) -> WorkforceHrReview:
     await _sync_review_from_sources(db, tenant_id, employee, review)
-    await _assert_can_approve(review)
+    await _assert_can_approve(db, tenant_id, review)
     now = _now()
     review.status = HR_REVIEW_STATUS_APPROVED
     review.decided_by_user_id = actor_user_id
@@ -903,7 +937,7 @@ async def build_hr_review_panel_for_handoff(
     ]
     can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
 
-    panel = {
+    panel: dict[str, Any] = {
         "review_id": review.id,
         "employee_id": review.employee_id,
         "handoff_id": review.handoff_id,
@@ -922,6 +956,7 @@ async def build_hr_review_panel_for_handoff(
         "decided_by_user_id": review.decided_by_user_id,
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
+    panel = await _attach_verified_fields_to_panel(db, tenant_id, review, panel)
     delayed = await delayed_hr_workforce_creation_enabled(db, tenant_id)
     return enrich_hr_review_panel(
         panel,

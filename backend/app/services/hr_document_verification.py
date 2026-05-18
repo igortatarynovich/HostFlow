@@ -23,6 +23,7 @@ from backend.app.models.workforce_hr_document_verification import (
 from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
 from backend.app.models.workforce_hr_review import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
 from backend.app.services.audit import log_activity
+from backend.app.services.hr_verified_field_catalog import FIELD_SPECS
 
 # document_key -> checklist item that this card primarily supports
 DOC_KEY_CHECKLIST: dict[str, str] = {
@@ -41,92 +42,6 @@ VERIFICATION_GATED_CHECKLIST = frozenset(
         "red_paper_verified",
     }
 )
-
-# v1 fields to compare (no OCR)
-FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
-    "Legal stay": [
-        {
-            "field_code": "full_name",
-            "label": "Full name",
-            "downstream_use": ["contract", "zus"],
-            "profile_keys": ["employee.display_name", "snapshot.first_name", "snapshot.last_name"],
-        },
-        {
-            "field_code": "citizenship",
-            "label": "Citizenship",
-            "downstream_use": ["work_permit", "zus"],
-            "profile_keys": ["eligibility.citizenship", "snapshot.citizenship"],
-        },
-        {
-            "field_code": "document_expiry",
-            "label": "Stay document expiry",
-            "downstream_use": ["compliance"],
-            "profile_keys": ["document.expires_at", "context.expires_at"],
-        },
-    ],
-    "Work permit": [
-        {
-            "field_code": "full_name",
-            "label": "Full name",
-            "downstream_use": ["contract", "permit_application"],
-            "profile_keys": ["employee.display_name"],
-        },
-        {
-            "field_code": "work_country",
-            "label": "Work country",
-            "downstream_use": ["permit", "zus"],
-            "profile_keys": ["eligibility.work_country", "snapshot.work_country"],
-        },
-        {
-            "field_code": "permit_type",
-            "label": "Permit / document type",
-            "downstream_use": ["permit"],
-            "profile_keys": ["document.doc_type", "context.context_type"],
-        },
-    ],
-    "Red paper": [
-        {
-            "field_code": "full_name",
-            "label": "Full name",
-            "downstream_use": ["zus", "contract"],
-            "profile_keys": ["employee.display_name"],
-        },
-        {
-            "field_code": "pesel",
-            "label": "PESEL / national id",
-            "downstream_use": ["zus"],
-            "profile_keys": ["snapshot.pesel", "snapshot.national_id", "employee.meta.pesel"],
-        },
-    ],
-    "Medical": [
-        {
-            "field_code": "full_name",
-            "label": "Full name",
-            "downstream_use": ["contract"],
-            "profile_keys": ["employee.display_name"],
-        },
-        {
-            "field_code": "exam_valid_until",
-            "label": "Medical validity",
-            "downstream_use": ["compliance"],
-            "profile_keys": ["document.expires_at", "context.expires_at"],
-        },
-    ],
-    "Psychological": [
-        {
-            "field_code": "full_name",
-            "label": "Full name",
-            "downstream_use": ["contract"],
-            "profile_keys": ["employee.display_name"],
-        },
-        {
-            "field_code": "exam_valid_until",
-            "label": "Psychological validity",
-            "downstream_use": ["compliance"],
-            "profile_keys": ["document.expires_at", "context.expires_at"],
-        },
-    ],
-}
 
 
 def _now() -> datetime:
@@ -552,6 +467,15 @@ async def verify_document(
         document_key=document_key,
         action="verify",
         payload={"document_id": row.document_id},
+    )
+    from backend.app.services import hr_verified_fields as vf_svc
+
+    await vf_svc.sync_from_document_verification(
+        db,
+        tenant_id=tenant_id,
+        review=review,
+        doc_verification=row,
+        actor_user_id=actor_user_id,
     )
     return row
 
