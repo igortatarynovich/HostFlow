@@ -380,6 +380,33 @@ export type HrReviewEligibilitySummary = {
   decision_basis?: Record<string, unknown> | null
 }
 
+export type HrReviewTaskAction = {
+  label: string
+  anchor?: string | null
+}
+
+export type HrReviewRelatedDocument = {
+  document_key?: string | null
+  document_id?: string | null
+  label?: string | null
+  status?: string | null
+}
+
+export type HrReviewCurrentTask = {
+  task_type: string
+  title: string
+  description: string
+  why: string
+  priority: string
+  blocks_approval: boolean
+  primary_action: HrReviewTaskAction
+  secondary_actions?: HrReviewTaskAction[]
+  target_anchor?: string | null
+  related_documents?: HrReviewRelatedDocument[]
+  related_checklist_items?: string[]
+  completion_condition: string
+}
+
 export type HrReviewPanel = {
   review_id: string
   employee_id?: string | null
@@ -404,6 +431,7 @@ export type HrReviewPanel = {
   decision_readiness?: HrReviewDecisionReadiness | null
   recent_timeline?: HrReviewTimelineEvent[]
   work_eligibility_summary?: HrReviewEligibilitySummary | null
+  current_task?: HrReviewCurrentTask | null
 }
 
 export type WorkforceHrBundle = {

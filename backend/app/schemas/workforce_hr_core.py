@@ -292,6 +292,33 @@ class HrReviewEligibilitySummaryOut(BaseModel):
     decision_basis: Optional[Any] = None
 
 
+class HrReviewTaskActionOut(BaseModel):
+    label: str
+    anchor: Optional[str] = None
+
+
+class HrReviewRelatedDocumentOut(BaseModel):
+    document_key: Optional[str] = None
+    document_id: Optional[str] = None
+    label: Optional[str] = None
+    status: Optional[str] = None
+
+
+class HrReviewCurrentTaskOut(BaseModel):
+    task_type: str
+    title: str
+    description: str
+    why: str
+    priority: str = "normal"
+    blocks_approval: bool = True
+    primary_action: HrReviewTaskActionOut
+    secondary_actions: list[HrReviewTaskActionOut] = Field(default_factory=list)
+    target_anchor: Optional[str] = None
+    related_documents: list[HrReviewRelatedDocumentOut] = Field(default_factory=list)
+    related_checklist_items: list[str] = Field(default_factory=list)
+    completion_condition: str = ""
+
+
 class HrReviewPanelOut(BaseModel):
     review_id: str
     employee_id: Optional[str] = None
@@ -316,6 +343,7 @@ class HrReviewPanelOut(BaseModel):
     decision_readiness: Optional[HrReviewDecisionReadinessOut] = None
     recent_timeline: list[HrReviewTimelineEventOut] = Field(default_factory=list)
     work_eligibility_summary: Optional[HrReviewEligibilitySummaryOut] = None
+    current_task: Optional[HrReviewCurrentTaskOut] = None
 
 
 class HrReviewChecklistPatchIn(BaseModel):

@@ -13,6 +13,7 @@ import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
+import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
@@ -105,6 +106,7 @@ export default function HrHandoffDetailPage() {
           <HrReviewCaseHero panel={hrReview} displayName={displayName} />
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
             <div className="min-w-0 space-y-4">
+              <HrCurrentTaskPanelFromReview panel={hrReview} onScrollTo={scrollTo} />
               <HrReviewPanelCard
                 handoffId={id!}
                 employeeId={empId}
@@ -159,9 +161,34 @@ export default function HrHandoffDetailPage() {
             }}
             displayName={displayName}
           />
-          <button type="button" className="btn-primary" disabled={accepting} onClick={() => void handleAcceptPickup()}>
-            {t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' })}
-          </button>
+          <HrCurrentTaskPanel
+            task={{
+              task_type: 'take_into_review',
+              title: t('app.hr.review_case.task_take_title', { defaultValue: 'Take case into HR review' }),
+              description: t('app.hr.review_case.task_take_desc', {
+                defaultValue:
+                  'Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.',
+              }),
+              why: t('app.hr.review_case.task_take_why', {
+                defaultValue:
+                  'Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.',
+              }),
+              priority: 'critical',
+              blocks_approval: true,
+              primary_action: { label: t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' }), anchor: '#hr-handoff-accept' },
+              secondary_actions: [{ label: t('app.hr.review_case.view_handoff', { defaultValue: 'View handoff summary' }), anchor: '#hr-handoff-summary' }],
+              target_anchor: '#hr-handoff-accept',
+              completion_condition: t('app.hr.review_case.task_take_done', {
+                defaultValue: 'Handoff status becomes accepted and the HR review checklist is active.',
+              }),
+            }}
+            onScrollTo={scrollTo}
+          />
+          <div id="hr-handoff-accept" className="scroll-mt-24">
+            <button type="button" className="btn-primary" disabled={accepting} onClick={() => void handleAcceptPickup()}>
+              {t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' })}
+            </button>
+          </div>
         </>
       ) : null}
 

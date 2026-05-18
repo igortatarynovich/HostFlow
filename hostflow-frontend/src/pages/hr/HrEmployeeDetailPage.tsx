@@ -43,6 +43,7 @@ import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
+import { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
 import { isEmploymentCaseWorkspace } from '../../utils/hrEmploymentCaseMode'
 
@@ -300,6 +301,9 @@ export default function HrEmployeeDetailPage() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
           <div className="min-w-0 space-y-4">
+            {caseWorkspace && hrReview ? (
+              <HrCurrentTaskPanelFromReview panel={hrReview} onScrollTo={scrollToAnchor} />
+            ) : null}
             {hrReview ? (
               <>
                 <HrReviewPanelCard

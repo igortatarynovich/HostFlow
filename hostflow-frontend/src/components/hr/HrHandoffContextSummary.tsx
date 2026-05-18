@@ -31,7 +31,7 @@ export default function HrHandoffContextSummary({ row }: Props) {
   const requested = row.handoff.requested_at
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
+    <section id="hr-handoff-summary" className="scroll-mt-24 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
       <h2 className="font-semibold text-slate-900">
         {t('app.hr.employee_operational.section_source', { defaultValue: 'Recruitment handoff' })}
       </h2>

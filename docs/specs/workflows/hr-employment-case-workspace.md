@@ -1,6 +1,6 @@
 # HR Employment Case Workspace
 
-**Status:** Accepted (UX architecture, PR 1 shell).  
+**Status:** Accepted (UX architecture, PR 1 shell + PR 2 current task).  
 **Related:** [ADR-014 document hub access](../architecture/ADR-014-document-hub-access-model.md), [HR handoff separation](current-separation-status-recruitment-hr-doc-hub.md).
 
 ---
@@ -59,11 +59,28 @@ Handoff detail route (`/app/hr/inbox/:handoffId`) is **always** case-style (neve
 
 ---
 
+## PR 2 — current task (review case)
+
+BFF field `current_task` on HR review panel (priority v1):
+
+1. `take_into_review` — handoff `pending_review`
+2. `verify_documents` — missing / unverified approval docs
+3. `fill_missing_data` — identity or journey `needs_data`
+4. `verify_work_eligibility` — permit / legal stay blockers
+5. `confirm_payments` — unpaid statutory fees
+6. `prepare_zus` — ZUS readiness checklist
+7. `complete_employment_data` — contract row missing
+8. `ready_to_approve` — no blockers, `can_approve`
+
+UI: `HrCurrentTaskPanel` is the **first** block in the main column after hero (employee case URL and handoff detail).
+
+---
+
 ## Follow-up PRs (out of scope for PR 1)
 
 | PR | Deliverable |
 |----|-------------|
-| PR 2 | Current task engine — one dominant main task |
+| PR 2 | Current task engine — `current_task` BFF + `HrCurrentTaskPanel` (done) |
 | PR 3 | Document verification cards (preview + extracted fields) |
 | PR 4 | Verified fields model — SoT for contract / ZUS / payroll |
 

@@ -57,6 +57,11 @@ async def test_hr_review_panel_after_accept(
     )
     assert len(body.get("checklist") or []) >= 8
     assert body.get("decision_basis")
+    assert body.get("mode") == "hr_review_case"
+    task = body.get("current_task")
+    assert task and task.get("task_type")
+    assert task.get("title")
+    assert task.get("primary_action", {}).get("label")
 
 
 @pytest.mark.anyio
