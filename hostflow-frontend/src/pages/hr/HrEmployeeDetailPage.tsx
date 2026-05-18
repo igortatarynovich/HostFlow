@@ -43,6 +43,7 @@ import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
 import HrVerifiedFieldsPanel from '../../components/hr/HrVerifiedFieldsPanel'
+import HrEmploymentIdentitySummary from '../../components/hr/HrEmploymentIdentitySummary'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
@@ -336,6 +337,7 @@ export default function HrEmployeeDetailPage() {
                     void refreshProfile()
                   }}
                 />
+                <HrEmploymentIdentitySummary panel={hrReview} />
               </>
             ) : null}
             {caseWorkspace ? (

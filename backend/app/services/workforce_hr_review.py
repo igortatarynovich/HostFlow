@@ -37,6 +37,7 @@ from backend.app.services.hr_document_verification import (
 )
 from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
 from backend.app.services import hr_verified_fields as vf_svc
+from backend.app.services.employment_identity_projection import build_employment_identity_projection
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_work_eligibility_rules import payment_row_satisfied
 
@@ -621,6 +622,7 @@ async def _attach_verified_fields_to_panel(
     panel = dict(panel)
     panel["verified_fields"] = fields
     panel["verified_fields_summary"] = summary
+    panel["employment_identity"] = build_employment_identity_projection(fields)
     return panel
 
 

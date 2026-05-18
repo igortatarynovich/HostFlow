@@ -309,6 +309,32 @@ class HrVerifiedFieldOverrideIn(BaseModel):
     override_reason: str = Field(..., min_length=1, max_length=2000)
 
 
+class HrEmploymentIdentityAttributeMetaOut(BaseModel):
+    field_code: Optional[str] = None
+    source_document_id: Optional[str] = None
+    source_document_key: Optional[str] = None
+    document_verification_id: Optional[str] = None
+    field_status: Optional[str] = None
+    verified_by_user_id: Optional[str] = None
+    verified_at: Optional[str] = None
+    override_reason: Optional[str] = None
+    conflict_reason: Optional[str] = None
+
+
+class HrEmploymentIdentityProjectionOut(BaseModel):
+    status: str
+    derived_at: str
+    attributes: dict[str, Optional[str]] = Field(default_factory=dict)
+    attribute_labels: dict[str, str] = Field(default_factory=dict)
+    attribute_meta: dict[str, Optional[HrEmploymentIdentityAttributeMetaOut]] = Field(default_factory=dict)
+    missing_required: list[str] = Field(default_factory=list)
+    conflicts: list[str] = Field(default_factory=list)
+    pending_attributes: list[str] = Field(default_factory=list)
+    filled_count: int = 0
+    total_count: int = 0
+    ready_for_downstream: bool = False
+
+
 class HrReviewProcessStageOut(BaseModel):
     code: str
     label: str
@@ -430,6 +456,7 @@ class HrReviewPanelOut(BaseModel):
     task_priority_v1: list[HrReviewTaskPriorityStepOut] = Field(default_factory=list)
     verified_fields: list[HrVerifiedFieldOut] = Field(default_factory=list)
     verified_fields_summary: Optional[HrVerifiedFieldsSummaryOut] = None
+    employment_identity: Optional[HrEmploymentIdentityProjectionOut] = None
 
 
 class HrReviewChecklistPatchIn(BaseModel):

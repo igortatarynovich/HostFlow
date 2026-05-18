@@ -473,6 +473,32 @@ export type HrVerifiedFieldsSummary = {
   blockers?: string[]
 }
 
+export type HrEmploymentIdentityAttributeMeta = {
+  field_code?: string | null
+  source_document_id?: string | null
+  source_document_key?: string | null
+  document_verification_id?: string | null
+  field_status?: string | null
+  verified_by_user_id?: string | null
+  verified_at?: string | null
+  override_reason?: string | null
+  conflict_reason?: string | null
+}
+
+export type HrEmploymentIdentityProjection = {
+  status: string
+  derived_at: string
+  attributes: Record<string, string | null>
+  attribute_labels?: Record<string, string>
+  attribute_meta?: Record<string, HrEmploymentIdentityAttributeMeta | null>
+  missing_required?: string[]
+  conflicts?: string[]
+  pending_attributes?: string[]
+  filled_count?: number
+  total_count?: number
+  ready_for_downstream?: boolean
+}
+
 export type HrReviewPanel = {
   review_id: string
   employee_id?: string | null
@@ -501,6 +527,7 @@ export type HrReviewPanel = {
   task_priority_v1?: HrReviewTaskPriorityStep[]
   verified_fields?: HrVerifiedField[]
   verified_fields_summary?: HrVerifiedFieldsSummary | null
+  employment_identity?: HrEmploymentIdentityProjection | null
 }
 
 export type WorkforceHrBundle = {

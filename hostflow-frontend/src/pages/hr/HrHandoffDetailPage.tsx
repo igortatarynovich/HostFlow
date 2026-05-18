@@ -12,6 +12,7 @@ import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDocumentsForApproval from '../../components/hr/HrDocumentsForApproval'
 import HrVerifiedFieldsPanel from '../../components/hr/HrVerifiedFieldsPanel'
+import HrEmploymentIdentitySummary from '../../components/hr/HrEmploymentIdentitySummary'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
@@ -139,6 +140,7 @@ export default function HrHandoffDetailPage() {
                   void load()
                 }}
               />
+              <HrEmploymentIdentitySummary panel={hrReview} />
               {empId ? (
                 <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
               ) : null}
