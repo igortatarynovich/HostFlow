@@ -598,6 +598,9 @@ def _documents_for_approval(bundle: dict[str, Any], journey: dict[str, Any]) -> 
     rows.append(ctx_row("Red paper", ("red_paper", "red_paper_certificate")))
     rows.append(ctx_row("Medical", ("medical", "medical_certificate")))
     rows.append(ctx_row("Psychological", ("psychological", "psychological_certificate")))
+    rows.append(ctx_row("Driver license", ("driver_license", "driver_license_code95")))
+    rows.append(ctx_row("Code95", ("code95", "driver_license_code95")))
+    rows.append(ctx_row("Tacho card", ("tacho_card", "tachograph_card")))
 
     legal = _journey_step_by_code(journey, "legal_stay")
     if legal and str(legal.get("status") or "") == "needs_data":

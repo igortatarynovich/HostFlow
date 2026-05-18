@@ -45,22 +45,44 @@ FIELD_CATALOG: dict[str, dict[str, Any]] = {
         "label": "Exam / certificate validity",
         "downstream_use": ["compliance"],
     },
+    "driver_license_categories": {
+        "label": "Driver license categories",
+        "downstream_use": ["compliance", "contract"],
+    },
+    "code95_expiry": {
+        "label": "Code 95 expiry",
+        "downstream_use": ["compliance"],
+    },
+    "tacho_card_expiry": {
+        "label": "Tacho card expiry",
+        "downstream_use": ["compliance"],
+    },
 }
 
-# Per document-key field specs for verification cards (PR3).
+# Per document-key field specs for verification cards (PR3 + PR11).
+# Prefer handoff snapshot paths first — recruiter values at transfer time.
 FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
     "Legal stay": [
         {
             "field_code": "full_name",
             "label": "Full name",
             "downstream_use": ["contract", "zus"],
-            "profile_keys": ["employee.display_name", "snapshot.first_name", "snapshot.last_name"],
+            "profile_keys": [
+                "handoff.candidate.full_name",
+                "employee.display_name",
+                "snapshot.first_name",
+                "snapshot.last_name",
+            ],
         },
         {
             "field_code": "citizenship",
             "label": "Citizenship",
             "downstream_use": ["work_permit", "zus"],
-            "profile_keys": ["eligibility.citizenship", "snapshot.citizenship"],
+            "profile_keys": [
+                "handoff.candidate.citizenship",
+                "eligibility.citizenship",
+                "snapshot.citizenship",
+            ],
         },
         {
             "field_code": "document_expiry",
@@ -74,7 +96,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "field_code": "full_name",
             "label": "Full name",
             "downstream_use": ["contract", "permit_application"],
-            "profile_keys": ["employee.display_name"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
             "field_code": "work_country",
@@ -94,7 +116,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "field_code": "full_name",
             "label": "Full name",
             "downstream_use": ["zus", "contract"],
-            "profile_keys": ["employee.display_name"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
             "field_code": "pesel",
@@ -108,7 +130,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "field_code": "full_name",
             "label": "Full name",
             "downstream_use": ["contract"],
-            "profile_keys": ["employee.display_name"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
             "field_code": "exam_valid_until",
@@ -122,13 +144,76 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "field_code": "full_name",
             "label": "Full name",
             "downstream_use": ["contract"],
-            "profile_keys": ["employee.display_name"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
             "field_code": "exam_valid_until",
             "label": "Psychological validity",
             "downstream_use": ["compliance"],
             "profile_keys": ["document.expires_at", "context.expires_at"],
+        },
+    ],
+    "Driver license": [
+        {
+            "field_code": "full_name",
+            "label": "Full name",
+            "downstream_use": ["contract"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
+        },
+        {
+            "field_code": "driver_license_categories",
+            "label": "License categories",
+            "downstream_use": ["compliance", "contract"],
+            "profile_keys": [
+                "document.meta.categories",
+                "document.meta.license_categories",
+                "employee.meta.driver_license_categories",
+                "snapshot.driver_license_categories",
+            ],
+        },
+        {
+            "field_code": "document_expiry",
+            "label": "License expiry",
+            "downstream_use": ["compliance"],
+            "profile_keys": ["document.expires_at", "context.expires_at"],
+        },
+    ],
+    "Code95": [
+        {
+            "field_code": "full_name",
+            "label": "Full name",
+            "downstream_use": ["contract"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
+        },
+        {
+            "field_code": "code95_expiry",
+            "label": "Code 95 expiry",
+            "downstream_use": ["compliance"],
+            "profile_keys": [
+                "document.expires_at",
+                "context.expires_at",
+                "employee.meta.code95_expiry",
+                "snapshot.code95_expiry",
+            ],
+        },
+    ],
+    "Tacho card": [
+        {
+            "field_code": "full_name",
+            "label": "Full name",
+            "downstream_use": ["contract"],
+            "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
+        },
+        {
+            "field_code": "tacho_card_expiry",
+            "label": "Tacho card expiry",
+            "downstream_use": ["compliance"],
+            "profile_keys": [
+                "document.expires_at",
+                "context.expires_at",
+                "employee.meta.tacho_card_expiry",
+                "snapshot.tacho_card_expiry",
+            ],
         },
     ],
 }

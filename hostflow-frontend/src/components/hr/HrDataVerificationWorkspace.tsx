@@ -265,6 +265,16 @@ export default function HrDataVerificationWorkspace({
                           {t('app.hr.data_verify.empty', { defaultValue: 'empty' })}
                         </span>
                       )}
+                      {Object.entries(item.recruiter_profile_values || {}).length > 1 ? (
+                        <ul className="mt-1 space-y-0.5 text-[11px] text-slate-500">
+                          {Object.entries(item.recruiter_profile_values || {}).map(([k, v]) => (
+                            <li key={k}>
+                              <span className="text-slate-400">{k.replace(/^handoff\./, 'handoff · ')}: </span>
+                              {String(v)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                       {item.current_verified_value && item.current_verified_value !== item.recruiter_value ? (
                         <p className="mt-0.5 text-xs text-emerald-800">Verified: {item.current_verified_value}</p>
                       ) : null}

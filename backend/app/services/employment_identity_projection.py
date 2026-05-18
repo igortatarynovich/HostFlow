@@ -31,6 +31,7 @@ EXPIRY_ATTRS: frozenset[str] = frozenset(
         "medical_expiry",
         "psychotests_expiry",
         "code95_expiry",
+        "tacho_card_expiry",
     }
 )
 
@@ -56,8 +57,11 @@ _IDENTITY_SOURCES: dict[str, list[dict[str, Any]]] = {
     # Placeholders until verified-field catalog grows (PR6+).
     "birth_date": [{"field_code": "birth_date"}],
     "passport_number": [{"field_code": "passport_number"}],
-    "driver_license_categories": [{"field_code": "driver_license_categories"}],
-    "code95_expiry": [{"field_code": "code95_expiry"}],
+    "driver_license_categories": [
+        {"field_code": "driver_license_categories", "source_document_keys": ["Driver license"]},
+    ],
+    "code95_expiry": [{"field_code": "code95_expiry", "source_document_keys": ["Code95"]}],
+    "tacho_card_expiry": [{"field_code": "tacho_card_expiry", "source_document_keys": ["Tacho card"]}],
 }
 
 _IDENTITY_LABELS: dict[str, str] = {
@@ -71,6 +75,7 @@ _IDENTITY_LABELS: dict[str, str] = {
     "permit_expiry": "Permit / stay expiry",
     "driver_license_categories": "Driver license categories",
     "code95_expiry": "Code 95 expiry",
+    "tacho_card_expiry": "Tacho card expiry",
     "medical_expiry": "Medical exam expiry",
     "psychotests_expiry": "Psychological exam expiry",
 }

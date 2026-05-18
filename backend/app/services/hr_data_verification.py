@@ -21,7 +21,8 @@ ITEM_STATUS_MISSING = "missing"
 def _pick_recruiter_value(profile_values: dict[str, Any] | None) -> Optional[str]:
     if not isinstance(profile_values, dict):
         return None
-    for v in profile_values.values():
+    for key in sorted(profile_values.keys(), key=lambda k: (0 if str(k).startswith("handoff.") else 1, str(k))):
+        v = profile_values[key]
         if v is not None and str(v).strip():
             return str(v).strip()
     return None

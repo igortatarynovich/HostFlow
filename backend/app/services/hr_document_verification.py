@@ -23,6 +23,7 @@ from backend.app.models.workforce_hr_document_verification import (
 from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
 from backend.app.models.workforce_hr_review import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
 from backend.app.services.audit import log_activity
+from backend.app.services.hr_handoff_profile_context import load_handoff_profile_namespace
 from backend.app.services.hr_verified_field_catalog import FIELD_SPECS
 
 # document_key -> checklist item that this card primarily supports
@@ -32,6 +33,9 @@ DOC_KEY_CHECKLIST: dict[str, str] = {
     "Red paper": "red_paper_verified",
     "Medical": "documents_uploaded",
     "Psychological": "documents_uploaded",
+    "Driver license": "documents_uploaded",
+    "Code95": "documents_uploaded",
+    "Tacho card": "documents_uploaded",
 }
 
 VERIFICATION_GATED_CHECKLIST = frozenset(
@@ -62,11 +66,13 @@ def _build_profile_context(
     document: Optional[Document],
     context_row: Optional[WorkforceHrDocumentContext],
     eligibility: Optional[dict[str, Any]],
+    *,
+    handoff: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     snap = employee.candidate_snapshot if employee and isinstance(employee.candidate_snapshot, dict) else {}
     meta = employee.meta if employee and isinstance(employee.meta, dict) else {}
     doc_meta = document.meta if document and isinstance(document.meta, dict) else {}
-    return {
+    ctx: dict[str, Any] = {
         "employee": {
             "display_name": employee.display_name if employee else None,
             "hire_date": str(employee.hire_date) if employee and employee.hire_date else None,
@@ -88,6 +94,9 @@ def _build_profile_context(
         },
         "eligibility": eligibility or {},
     }
+    if handoff:
+        ctx["handoff"] = handoff
+    return ctx
 
 
 def build_fields_to_review(
@@ -285,6 +294,7 @@ async def enrich_approval_rows_with_verification(
     eligibility: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     by_key = await ensure_verification_rows(db, tenant_id, review, approval_rows)
+    handoff_ns = await load_handoff_profile_namespace(db, tenant_id, review.handoff_id)
     out: list[dict[str, Any]] = []
     for row in approval_rows:
         key = str(row.get("document_key") or "").strip()
@@ -297,7 +307,7 @@ async def enrich_approval_rows_with_verification(
         if v.document_id:
             doc = await db.get(Document, str(v.document_id))
         ctx_row = await _load_context_row(db, tenant_id, review.employee_id, v.document_id)
-        profile_ctx = _build_profile_context(employee, doc, ctx_row, eligibility)
+        profile_ctx = _build_profile_context(employee, doc, ctx_row, eligibility, handoff=handoff_ns)
         fields = build_fields_to_review(key, profile_ctx, v.reviewed_fields_json)
         r.update(
             {
