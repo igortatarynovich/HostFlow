@@ -42,6 +42,7 @@ import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
+import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
@@ -328,6 +329,20 @@ export default function HrEmployeeDetailPage() {
                   void refreshProfile()
                 }}
               />
+            ) : null}
+            {employeeId && hrReview && (caseWorkspace || isEmployeeOperationalProfile(hrReview)) ? (
+              <details className="rounded-lg border border-slate-200 bg-white">
+                <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-900">
+                  {t('app.hr.contract_preview.section', { defaultValue: 'Contract draft preview' })}
+                </summary>
+                <div className="border-t border-slate-100 px-2 pb-2">
+                  <HrContractPreviewPanel
+                    employeeId={employeeId}
+                    manage={manage}
+                    ownCompanyId={employee?.own_company_id ?? undefined}
+                  />
+                </div>
+              </details>
             ) : null}
             {caseWorkspace ? (
               <HrWorkEligibilityCompact

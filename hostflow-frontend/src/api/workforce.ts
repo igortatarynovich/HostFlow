@@ -1173,3 +1173,69 @@ export async function handoffFromCandidate(
   )
   return data
 }
+
+export type TrustedIdentityConsumerBlock = {
+  consumer: string
+  block_code?: string | null
+}
+
+export type TrustedIdentityConsumerPrep = {
+  consumer: string
+  allowed: boolean
+  block_code?: string | null
+  ready: boolean
+  projection_status?: string | null
+  binding_keys?: string[]
+}
+
+export type TrustedIdentityPrepStatus = {
+  employee_id: string
+  review_id?: string | null
+  projection_status: string
+  derived_at?: string | null
+  attributes: Record<string, string | null>
+  allowed_consumers: string[]
+  blocked_consumers: TrustedIdentityConsumerBlock[]
+  consumers: TrustedIdentityConsumerPrep[]
+  missing_fields: string[]
+  missing_field_codes: string[]
+  conflicted_fields: string[]
+  conflicted_field_codes: string[]
+  stale_fields: string[]
+  ready_for_downstream: boolean
+}
+
+export type ContractDraftPreviewIn = {
+  template_id?: string | null
+  template_code?: string | null
+  variable_bindings?: Record<string, unknown>
+}
+
+export type ContractDraftPreviewOut = {
+  log_id: string
+  document_id: string
+  template_id?: string | null
+  status: string
+  generation_kind: string
+  preview_url?: string | null
+  trusted_identity_bindings: Record<string, string | null>
+  automation: { send: boolean; sign: boolean; epuap: boolean }
+}
+
+export async function getTrustedIdentityPrepStatus(employeeId: string): Promise<TrustedIdentityPrepStatus> {
+  const { data } = await http.get<TrustedIdentityPrepStatus>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/trusted-identity/prep-status`,
+  )
+  return data
+}
+
+export async function postContractDraftPreview(
+  employeeId: string,
+  body: ContractDraftPreviewIn,
+): Promise<ContractDraftPreviewOut> {
+  const { data } = await http.post<ContractDraftPreviewOut>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/contract-generation/preview`,
+    body,
+  )
+  return data
+}

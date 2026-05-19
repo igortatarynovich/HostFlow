@@ -11,6 +11,7 @@ import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
+import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
@@ -128,6 +129,16 @@ export default function HrHandoffDetailPage() {
                   void load()
                 }}
               />
+              {empId ? (
+                <details className="rounded-lg border border-slate-200 bg-white">
+                  <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-900">
+                    {t('app.hr.contract_preview.section', { defaultValue: 'Contract draft preview' })}
+                  </summary>
+                  <div className="border-t border-slate-100 px-2 pb-2">
+                    <HrContractPreviewPanel employeeId={empId} manage />
+                  </div>
+                </details>
+              ) : null}
               {empId ? (
                 <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
               ) : null}

@@ -51,7 +51,7 @@ Handoff detail route (`/app/hr/inbox/:handoffId`) is **always** case-style.
 | PR6 | Trusted read adapter + consumer matrix | [read adapter](hr-employment-identity-read-adapter.md) |
 | PR7 | Wire merge / ZUS task / payroll prep to adapter | read adapter § PR7 |
 | PR8 | `trusted_identity.*` merge vars + prep-status API | read adapter § PR8 |
-| PR9 | Contract **draft preview** API (trusted only) | [contract generation](hr-contract-generation-mvp.md) |
+| PR9 | Contract **draft preview** API + UI panel (trusted only) | [contract generation](hr-contract-generation-mvp.md) |
 | PR10 | **Data Verification Workspace** (unified UI + BFF items) | [data verification](hr-data-verification-workspace.md) |
 | PR11 | Handoff snapshot recruiter values + driver/Code95/tacho docs | [data verification § sources](hr-data-verification-workspace.md#recruiter-value-sources-pr11) |
 | — | Recursion fix: `ensure_hr_review(sync_from_sources=False)` in trusted read during journey | read adapter § Operational notes |
@@ -68,7 +68,7 @@ Handoff detail route (`/app/hr/inbox/:handoffId`) is **always** case-style.
 2. **Current task** → “Verify candidate data and documents” → `#hr-data-verification`  
 3. **Data & Document Verification** (`HrDataVerificationWorkspace`)  
 4. HR review panel — checklist + decision only (`hideDocuments`)  
-5. Supporting: compact eligibility, recruitment handoff summary (read-only)  
+5. Supporting (collapsed): contract draft preview, compact eligibility, recruitment handoff summary  
 
 **Right rail:** next action, **one** blocker summary, readiness (checklist + data verification counts), timeline.
 

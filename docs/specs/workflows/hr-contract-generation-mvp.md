@@ -1,6 +1,6 @@
 # HR Contract Generation MVP (PR9)
 
-**Status:** Backend implemented; **frontend preview UI pending**.  
+**Status:** Implemented (backend PR9 + frontend preview panel).  
 **Related:** [Read adapter](hr-employment-identity-read-adapter.md), [Data verification](hr-data-verification-workspace.md).
 
 ## Goal
@@ -25,11 +25,12 @@ Response: `ContractDraftPreviewOut` — `log_id`, `document_id`, `status=draft_p
 4. Employee linked to `candidate_id` for document storage.  
 5. Log `draft_preview`; no send / sign / ePUAP.
 
-## UI (planned)
+## UI
 
-- `HrContractPreviewPanel` — template select, generate, open `preview_url`, show bindings  
-- Placement: supporting block on employee case / post-approve profile (after data verification)  
-- **Not** part of PR10 verification workspace  
+- `HrContractPreviewPanel` — prep-status gate, template select, generate, open `preview_url`, `trusted_identity_bindings`  
+- `hostflow-frontend/src/api/workforce.ts` — `getTrustedIdentityPrepStatus`, `postContractDraftPreview`  
+- Placement: collapsed **Contract draft preview** (`<details>`) on employee case + handoff review (after data verification / checklist)  
+- **Not** inside Data Verification workspace — preview only after trusted identity is ready  
 
 ## Out of scope
 
