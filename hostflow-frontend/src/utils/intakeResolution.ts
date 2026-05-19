@@ -67,6 +67,47 @@ export function leadRodoNoticeStatus(
   return 'manual_required'
 }
 
+export type LeadCommunicationRailLine = {
+  tone: 'ok' | 'warn' | 'neutral'
+  text: string
+}
+
+/** Read-only summary of ``normalized.lead_communication_v1`` for intake rail. */
+export function leadCommunicationRailLine(
+  lead: Pick<Lead, 'normalized' | 'candidate_id'> | null,
+  t: (key: string, opts?: { defaultValue?: string }) => string,
+): LeadCommunicationRailLine | null {
+  if (!lead || lead.candidate_id) return null
+  const n = normalizedRecord(lead as Lead)
+  const raw = n.lead_communication_v1
+  const block = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const parts: string[] = []
+  let hasFailed = false
+  const events = ['application_received', 'lead_rejected', 'moving_forward'] as const
+  for (const ev of events) {
+    const rec = block[ev]
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) continue
+    const st = String((rec as { status?: string }).status || '')
+      .trim()
+      .toLowerCase()
+    if (st === 'sent') {
+      parts.push(t(`app.leads.intake_workspace.decision_rail.comm_${ev}_sent`, { defaultValue: `${ev}: sent` }))
+    } else if (st === 'failed') {
+      hasFailed = true
+      parts.push(t(`app.leads.intake_workspace.decision_rail.comm_${ev}_failed`, { defaultValue: `${ev}: failed` }))
+    } else if (st === 'pending_channel') {
+      parts.push(
+        t(`app.leads.intake_workspace.decision_rail.comm_${ev}_pending`, { defaultValue: `${ev}: no email` }),
+      )
+    }
+  }
+  if (!parts.length) return null
+  return {
+    tone: hasFailed ? 'warn' : 'ok',
+    text: parts.join(' · '),
+  }
+}
+
 export function leadRodoSatisfied(lead: Pick<Lead, 'normalized' | 'candidate_id'> | null): boolean {
   if (!lead || lead.candidate_id) return true
   const n = normalizedRecord(lead as Lead)

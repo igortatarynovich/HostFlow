@@ -17,6 +17,7 @@ import { useI18n } from '../../i18n'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
+  leadCommunicationRailLine,
   leadRodoNoticeStatus,
   leadRodoSatisfied,
   leadRoutingTableAction,
@@ -78,6 +79,7 @@ export default function LeadIntakeDecisionRail({
 
   const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
   const rodoStatus = useMemo(() => leadRodoNoticeStatus(lead), [lead])
+  const commLine = useMemo(() => leadCommunicationRailLine(lead, t), [lead, t])
 
   const src = String(lead.source || '').toLowerCase()
   const blockHint = manualProcessBlockHint(lead)
@@ -376,6 +378,23 @@ export default function LeadIntakeDecisionRail({
           ) : (
             <p className="text-xs font-medium text-emerald-900">{t('app.leads.intake_workspace.decision_rail.rodo_ok_hint')}</p>
           )}
+        </div>
+      ) : null}
+
+      {commLine ? (
+        <div
+          className={clsx(
+            'rounded-lg px-3 py-2 text-xs ring-1',
+            commLine.tone === 'warn'
+              ? 'bg-rose-500/[0.08] text-rose-950 ring-rose-900/10'
+              : 'bg-slate-500/[0.06] text-slate-800 ring-slate-900/10',
+          )}
+          role="status"
+        >
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+            {t('app.leads.intake_workspace.decision_rail.communication_title', { defaultValue: 'Operational emails' })}
+          </p>
+          <p className="mt-1 leading-relaxed">{commLine.text}</p>
         </div>
       ) : null}
 

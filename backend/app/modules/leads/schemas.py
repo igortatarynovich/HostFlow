@@ -631,6 +631,10 @@ class MetaLeadSettingsOut(BaseModel):
     )
     lead_rodo_channels: List[str] = Field(default_factory=lambda: ["email"])
     lead_rodo_template_id: Optional[str] = None
+    lead_communication_enabled: bool = False
+    send_application_received: bool = False
+    send_rejection_notice: bool = False
+    send_moving_forward_notice: bool = False
     # §2.11 plan hints for UI (None = no cap on Team+).
     plan_field_mapping_rules_limit: Optional[int] = None
     plan_meta_credentials_limit: Optional[int] = None
@@ -670,6 +674,10 @@ class MetaLeadSettingsUpdate(BaseModel):
     )
     lead_rodo_channels: Optional[List[str]] = None
     lead_rodo_template_id: Optional[str] = None
+    lead_communication_enabled: Optional[bool] = None
+    send_application_received: Optional[bool] = None
+    send_rejection_notice: Optional[bool] = None
+    send_moving_forward_notice: Optional[bool] = None
 
 
 class MetaIncomingLeadPreviewItem(BaseModel):

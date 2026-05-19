@@ -174,4 +174,7 @@ async def create_candidate_from_lead_conversion(
         conversion_reason=conversion_reason,
         idempotent_replay=False,
     )
+    from backend.app.services.lead_communications import maybe_send_moving_forward_notice
+
+    await maybe_send_moving_forward_notice(db, tenant_id=tenant_id, lead=lead)
     return candidate

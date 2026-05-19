@@ -340,16 +340,22 @@ async def enrich_meta_leads_tenant_context(
 
 
 async def get_settings(db: AsyncSession, tenant_id: str) -> MetaLeadSettingsOut:
+    from backend.app.services.lead_communication_settings import (
+        get_lead_communication_settings,
+        lead_communication_settings_to_api_dict,
+    )
     from backend.app.services.lead_rodo_settings import get_lead_rodo_settings, lead_rodo_settings_to_api_dict
 
     entry = await _ensure_settings(db, tenant_id)
     base = _settings_to_schema(entry)
     ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
     rodo = await get_lead_rodo_settings(db, tenant_id)
+    comm = await get_lead_communication_settings(db, tenant_id)
     base = base.model_copy(
         update={
             "lead_fit_ordered_vacancy_ids": ordered,
             **lead_rodo_settings_to_api_dict(rodo),
+            **lead_communication_settings_to_api_dict(comm),
         }
     )
     return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
@@ -561,6 +567,19 @@ async def update_settings(
     rodo_settings_touched = any(
         k in fields_set for k in ("lead_rodo_send_mode", "lead_rodo_channels", "lead_rodo_template_id")
     )
+    comm_enabled = updates.pop("lead_communication_enabled", None)
+    comm_app_recv = updates.pop("send_application_received", None)
+    comm_reject = updates.pop("send_rejection_notice", None)
+    comm_moving = updates.pop("send_moving_forward_notice", None)
+    comm_settings_touched = any(
+        k in fields_set
+        for k in (
+            "lead_communication_enabled",
+            "send_application_received",
+            "send_rejection_notice",
+            "send_moving_forward_notice",
+        )
+    )
     if "webhook_verify_token" in updates:
         token = updates["webhook_verify_token"]
         updates["webhook_verify_token"] = token.strip() or None if token is not None else None
@@ -589,15 +608,32 @@ async def update_settings(
             template_id=rodo_template if "lead_rodo_template_id" in fields_set else None,
             clear_template_id="lead_rodo_template_id" in fields_set and rodo_template is None,
         )
+    if comm_settings_touched:
+        from backend.app.services.lead_communication_settings import persist_lead_communication_settings
+
+        await persist_lead_communication_settings(
+            db,
+            tenant_id,
+            enabled=comm_enabled if "lead_communication_enabled" in fields_set else None,
+            send_application_received=comm_app_recv if "send_application_received" in fields_set else None,
+            send_rejection_notice=comm_reject if "send_rejection_notice" in fields_set else None,
+            send_moving_forward_notice=comm_moving if "send_moving_forward_notice" in fields_set else None,
+        )
     base = _settings_to_schema(entry)
     ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
+    from backend.app.services.lead_communication_settings import (
+        get_lead_communication_settings,
+        lead_communication_settings_to_api_dict,
+    )
     from backend.app.services.lead_rodo_settings import get_lead_rodo_settings, lead_rodo_settings_to_api_dict
 
     rodo = await get_lead_rodo_settings(db, tenant_id)
+    comm = await get_lead_communication_settings(db, tenant_id)
     base = base.model_copy(
         update={
             "lead_fit_ordered_vacancy_ids": ordered,
             **lead_rodo_settings_to_api_dict(rodo),
+            **lead_communication_settings_to_api_dict(comm),
         }
     )
     return await _enrich_meta_settings_plan_limits(db, tenant_id, base)

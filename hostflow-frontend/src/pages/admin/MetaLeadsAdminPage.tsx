@@ -421,6 +421,7 @@ export default function MetaLeadsAdminPage() {
     'assisted') as LeadsProcessingModeV1
   const effectiveLeadRodoSendMode =
     settingsDraft.lead_rodo_send_mode ?? settings?.lead_rodo_send_mode ?? 'manual'
+  const commEnabled = settingsDraft.lead_communication_enabled ?? settings?.lead_communication_enabled ?? false
   const autoCreateAppliesToMode = effectiveProcessingMode === 'automatic'
 
   const mappingRulesLimit = settings?.plan_field_mapping_rules_limit ?? null
@@ -2104,6 +2105,65 @@ export default function MetaLeadsAdminPage() {
               </select>
               <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_rodo_send_mode_hint')}</p>
             </label>
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
+              <p className="text-sm font-semibold text-slate-900">
+                {t('admin.meta_leads.settings.lead_communication_title', { defaultValue: 'Lead operational emails' })}
+              </p>
+              <p className="text-xs text-slate-600">
+                {t('admin.meta_leads.settings.lead_communication_hint', {
+                  defaultValue: 'Separate from RODO / art. 14. Candidate-facing status messages only.',
+                })}
+              </p>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={commEnabled}
+                  onChange={(event) => handleSettingsChange('lead_communication_enabled', event.target.checked)}
+                />
+                {t('admin.meta_leads.settings.lead_communication_enabled', { defaultValue: 'Enable lead operational emails' })}
+              </label>
+              <label className={`flex items-center gap-2 text-sm ${commEnabled ? 'text-slate-700' : 'text-slate-500'}`}>
+                <input
+                  type="checkbox"
+                  disabled={!commEnabled}
+                  checked={
+                    commEnabled
+                      ? (settingsDraft.send_application_received ?? settings?.send_application_received ?? false)
+                      : false
+                  }
+                  onChange={(event) => handleSettingsChange('send_application_received', event.target.checked)}
+                />
+                {t('admin.meta_leads.settings.send_application_received', { defaultValue: 'Application received (on new lead ingest)' })}
+              </label>
+              <label className={`flex items-center gap-2 text-sm ${commEnabled ? 'text-slate-700' : 'text-slate-500'}`}>
+                <input
+                  type="checkbox"
+                  disabled={!commEnabled}
+                  checked={
+                    commEnabled
+                      ? (settingsDraft.send_rejection_notice ?? settings?.send_rejection_notice ?? false)
+                      : false
+                  }
+                  onChange={(event) => handleSettingsChange('send_rejection_notice', event.target.checked)}
+                />
+                {t('admin.meta_leads.settings.send_rejection_notice', { defaultValue: 'Rejection notice (on intake reject)' })}
+              </label>
+              <label className={`flex items-center gap-2 text-sm ${commEnabled ? 'text-slate-700' : 'text-slate-500'}`}>
+                <input
+                  type="checkbox"
+                  disabled={!commEnabled}
+                  checked={
+                    commEnabled
+                      ? (settingsDraft.send_moving_forward_notice ?? settings?.send_moving_forward_notice ?? false)
+                      : false
+                  }
+                  onChange={(event) => handleSettingsChange('send_moving_forward_notice', event.target.checked)}
+                />
+                {t('admin.meta_leads.settings.send_moving_forward_notice', {
+                  defaultValue: 'Moving forward (on Lead → Candidate conversion)',
+                })}
+              </label>
+            </div>
             <label
               className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
             >

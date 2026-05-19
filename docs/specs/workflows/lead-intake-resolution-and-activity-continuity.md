@@ -385,7 +385,34 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 **Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
 
-**Out of scope (separate communication slice):** application-received / moving-forward / rejected templates, tracking links, non-RODO operational email — do not extend this gate.
+**Out of scope (operational communication — see §8.0.2):** application-received / moving-forward / rejected templates, tracking links, non-RODO operational email — do not extend this gate.
+
+### 8.0.2 Lead operational communication (MVP PR1 — signed off, 2026-05)
+
+**Boundary:** Candidate-facing **operational** status email on the Lead lifecycle. **Not** RODO / art. 14 — separate settings, persistence, audit, and UI block.
+
+**Tenant policy** (`Tenant.settings.lead_communication_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
+
+| Flag | Behaviour |
+|------|-----------|
+| `lead_communication_enabled` | Master switch; when off, no operational sends. |
+| `send_application_received` | After **new** lead ingest (post contact check) when email exists. |
+| `send_rejection_notice` | After intake decision **reject**. |
+| `send_moving_forward_notice` | After successful Lead → Candidate conversion (production path: `create_candidate_full` in `process_normalized_lead`). |
+
+**Persistence** (`Lead.normalized.lead_communication_v1`): per event type (`application_received`, `lead_rejected`, `moving_forward`) — `sent` | `failed` | `pending_channel` (no email), with timestamps. Pipeline merges preserve `lead_communication_v1` alongside `rodo` (`normalized_merging_lead_persisted_blocks`).
+
+**Idempotency:** one send per event type per lead; webhook replay does not resend.
+
+**Audit:** `lead.communication.application_received_sent` | `rejection_sent` | `moving_forward_sent` | `failed`.
+
+**Hooks:** ingest (`maybe_send_application_received_on_ingest`), intake reject (`maybe_send_lead_rejected_notice`), conversion (`maybe_send_moving_forward_notice`).
+
+**UI:** Meta Leads settings — toggles next to RODO; **Intake Decision rail** — read-only “Operational emails” status (no retry in PR1).
+
+**Tests:** `backend/tests/api/test_lead_communications.py`.
+
+**Out of scope (later PRs):** in-app, Telegram, status portal, manual retry UI, HR branch work.
 
 **Manual staging smoke** (add to deploy checklist):
 

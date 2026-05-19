@@ -80,9 +80,9 @@ async def update_lead(
     if vacancy_id is not None:
         lead.vacancy_id = vacancy_id
     if normalized is not None:
-        from backend.app.services.lead_rodo import normalized_merging_lead_rodo
+        from backend.app.services.lead_communications import normalized_merging_lead_persisted_blocks
 
-        lead.normalized = normalized_merging_lead_rodo(lead, normalized)
+        lead.normalized = normalized_merging_lead_persisted_blocks(lead, normalized)
     lead.error = error
     if last_routed_at is not None:
         lead.last_routed_at = last_routed_at

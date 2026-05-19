@@ -213,6 +213,9 @@ async def apply_lead_intake_decision(
             lead.status = "needs_routing"
         lead.normalized = norm
         await db.flush()
+        from backend.app.services.lead_communications import maybe_send_lead_rejected_notice
+
+        await maybe_send_lead_rejected_notice(db, tenant_id=tenant_id, lead=lead)
 
     elif dec == INTAKE_DECISION_QUALIFY:
         _stamp_intake_resolution_v1(

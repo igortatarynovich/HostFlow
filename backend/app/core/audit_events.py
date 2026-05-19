@@ -25,6 +25,11 @@ class AuditEventType(str, Enum):
     # RODO
     rodo_sent = "rodo_sent"
     rodo_sent_failed = "rodo_sent_failed"
+    # Lead operational communication (non-RODO)
+    lead_communication_application_received_sent = "lead.communication.application_received_sent"
+    lead_communication_rejection_sent = "lead.communication.rejection_sent"
+    lead_communication_moving_forward_sent = "lead.communication.moving_forward_sent"
+    lead_communication_failed = "lead.communication.failed"
     # Contact attempts
     contact_attempt_logged = "contact_attempt_logged"
     # Auto-reject

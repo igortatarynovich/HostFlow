@@ -141,8 +141,10 @@ async def process_normalized_lead(
         )
     created_new = False
     if lead:
+        from backend.app.services.lead_communications import normalized_merging_lead_persisted_blocks
+
         lead.payload = payload
-        lead.normalized = normalized
+        lead.normalized = normalized_merging_lead_persisted_blocks(lead, normalized)
         lead.ad_id = normalized.get("ad_id")
         # If lead was already processed successfully we normally skip the whole pipeline.
         # However, when a lead is inconsistent (e.g. status=processed but candidate_id is missing)
@@ -412,9 +414,9 @@ async def process_normalized_lead(
             # Prefer active OwnCompany if provided; otherwise fall back to vacancy.
             lead.own_company_id = own_company_id or (getattr(vacancy, "own_company_id", None) if vacancy else None)
         lead.payload = payload
-        from backend.app.services.lead_rodo import normalized_merging_lead_rodo
+        from backend.app.services.lead_communications import normalized_merging_lead_persisted_blocks
 
-        lead.normalized = normalized_merging_lead_rodo(lead, normalized)
+        lead.normalized = normalized_merging_lead_persisted_blocks(lead, normalized)
         lead.ad_id = normalized.get("ad_id")
         await db.flush()
 
@@ -489,6 +491,18 @@ async def process_normalized_lead(
             error=diagnostic,
             is_new=created_new,
         )
+
+    if created_new:
+        from backend.app.services.lead_communications import maybe_send_application_received_on_ingest
+
+        await maybe_send_application_received_on_ingest(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            is_new_lead=True,
+            pipeline_normalized=normalized,
+        )
+        await db.flush()
 
     duplicate = await crud.find_duplicate_candidate(
         db,
@@ -884,6 +898,8 @@ async def process_normalized_lead(
     if extra_fields:
         candidate_payload["extra"] = extra_fields
 
+    had_candidate_before = bool(getattr(lead, "candidate_id", None))
+
     try:
         candidate = await create_candidate_full(
             db=db,
@@ -991,6 +1007,12 @@ async def process_normalized_lead(
         normalized=normalized,
     )
     await db.flush()
+
+    if not had_candidate_before:
+        from backend.app.services.lead_communications import maybe_send_moving_forward_notice
+
+        await maybe_send_moving_forward_notice(db, tenant_id=tenant_id, lead=lead)
+        await db.flush()
 
     await ensure_recruitment_application_for_converted_lead(
         db,

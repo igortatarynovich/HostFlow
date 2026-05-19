@@ -67,7 +67,7 @@
 
 ### 2.8 Operational communication (not RODO)
 
-- **Lead-stage RODO** covers **legal art. 14** only. Product emails such as “application received”, “moving forward”, “rejected”, status/tracking links are a **separate communication slice** — not implemented in `lead_rodo_v1`; do not fold into RODO gates.
+- **Lead-stage RODO** covers **legal art. 14** only. Product emails such as “application received”, “moving forward”, “rejected” are **`lead_communication_v1`** (see `lead-intake-resolution-and-activity-continuity.md` §8.0.2) — separate from RODO gates; status portal / in-app / Telegram remain later.
 
 ### 2.7 Processed lead early return
 
