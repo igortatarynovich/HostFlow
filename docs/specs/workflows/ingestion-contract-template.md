@@ -5,7 +5,7 @@
 
 **Mandatory checkpoint:** code review / product sign-off must confirm sections **1–10** are filled and **§9 Allowed divergence** is honest (no undocumented “temporary” behaviour).
 
-**Related:** [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md), [lead-intake-resolution-and-activity-continuity.md](lead-intake-resolution-and-activity-continuity.md) §8.
+**Related:** [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md), [lead-intake-resolution-and-activity-continuity.md](lead-intake-resolution-and-activity-continuity.md) §8 (incl. **§8.0.1 Lead-stage RODO**).
 
 ---
 
@@ -88,6 +88,16 @@ Application rules: must align with [applications-operating-model.md](../architec
 | **Where resolved** (UI / API / headless) | |
 | **Blocked states** (e.g. duplicate_review) | |
 
+### 7.1 Lead-stage RODO (art. 14) — if channel creates **Lead**
+
+| Topic | Specification |
+|--------|----------------|
+| **Notice at source** | e.g. `rodo_notice_at_source`, public form consents → `source_provided`, **no duplicate outbound** |
+| **Auto-send on ingest** | Per tenant `lead_rodo_send_mode`; eligible sources per [§8.0.1](lead-intake-resolution-and-activity-continuity.md) |
+| **Channel missing** | `pending_channel`; gated actions blocked until manual send or source-provided |
+| **Replay idempotency** | Same `external_id` must not trigger second outbound notice |
+| **Gated actions** | process · request_info · contacted (and auto-on-first-action mode) |
+
 ---
 
 ## 8. Activity continuity
@@ -127,5 +137,6 @@ Document **every** intentional difference from CRM Lead-first or global doctrine
 - [ ] No fake / duplicate operational activities for the same human intent
 - [ ] No undocumented divergence (§9 complete)
 - [ ] Automation and notifications **after** encoded semantics for this channel
+- [ ] If Lead is created: **RODO / art. 14** row in §7.1 complete (or explicit N/A with reason)
 
 **Reviewers:** _________________ **Date:** _________

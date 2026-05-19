@@ -348,6 +348,53 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Explicitly not Slice 2:** full Lead workspace mega-cleanup (table slice **6**); cross-product **Activities** spine; lifecycle / AI expansion.
 
+### 8.0.1 Lead-stage RODO (art. 14) — intake contract (signed off, 2026-05)
+
+**Boundary:** RODO / GDPR art. 14 notice is satisfied **on the Lead** before gated intake actions. After conversion, candidate-level compliance may apply separately; lead audit is copied read-only into `Candidate.extra['rodo_lead_audit']` — not re-sent by default.
+
+**Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
+
+| `lead_rodo_send_mode` | Behaviour |
+|-------------------------|-----------|
+| `manual` (default) | Recruiter sends from intake rail / API; no outbound on ingest. |
+| `auto_on_lead_created` | After **new** lead row + custom-field sync: auto-send for eligible ingest sources when email channel exists (MVP: Meta, generic webhook, `csv_import`, import, Telegram*, public form). |
+| `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`). |
+
+Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_id` (active `rodo_clause` version override).
+
+**Persistence** (`Lead.normalized.rodo`):
+
+| `status` / signal | Meaning |
+|-------------------|---------|
+| `sent` | Outbound art. 14 email sent (`sent_at`, `channel`, `recipient`, optional `auto_trigger`, `ingest_source`). |
+| `source_provided` | Notice already covered at source (e.g. `normalized.rodo_notice_at_source` or public intake consents) — **no duplicate outbound**. |
+| `pending_channel` | Auto/manual send could not run — no usable channel (MVP: email). |
+| `failed` | Send error; manual retry allowed. |
+| *(none / unsatisfied)* | UI: `manual_required`; gates apply. |
+
+**Idempotency:** webhook replay for the same `tenant_id + source + external_id` does not send a second notice (`lead_rodo_sent_from_normalized`). Pipeline merges preserve `normalized.rodo` when other keys are rewritten (`normalized_merging_lead_rodo` in `update_lead`).
+
+**Gates** (422 `LEAD_RODO_REQUIRED` unless satisfied): `POST .../process`, intake-decision **request_info**, CRM stage → **contacted**; bulk/retry/CSV reimport use the same `manual_process_block_code` / `ensure_lead_rodo_allows_action` layer as manual Process.
+
+**API (operator):**
+
+- `POST /api/v1/leads/{id}/compliance/rodo/send` — manual / retry (always available when auto is on).
+- `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
+
+**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry.
+
+**Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
+
+**Out of scope (separate communication slice):** application-received / moving-forward / rejected templates, tracking links, non-RODO operational email — do not extend this gate.
+
+**Manual staging smoke** (add to deploy checklist):
+
+8. Meta lead + email + `auto_on_lead_created` → RODO sent, rail `sent`, Process allowed after vacancy confirm.
+9. Lead without email → `pending_channel`, Process / request_info / contacted blocked; manual send or source-provided unblocks.
+10. Meta webhook replay → single send, no duplicate audit spam.
+11. Public form / ingest with `rodo_notice_at_source` → `source_provided`, no duplicate send.
+12. Failed send → rail `failed`, retry via manual send clears gate.
+
 ### 8.1 Product evolution order (doctrine)
 
 **Semantics → automation → intelligence/AI.**
@@ -364,6 +411,6 @@ Skipping (1) and jumping to (3) produces **noisy automation**, **broken scoring*
 
 1. [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) — **full narrative** Lead → Candidate → Application (no code).  
 2. [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md) — canonical entities, events, duplicate §8.  
-3. **This file** — intake workspace, resolution, vacancy confirm, activity continuity guardrails.  
+3. **This file** — intake workspace, resolution, vacancy confirm, **lead-stage RODO (§8.0.1)**, activity continuity guardrails.  
 4. Activity layer ADRs / migration plan — mechanical model for activities & notifications.  
 5. [application-creation-mvp.md](application-creation-mvp.md) — Application MVP DDL/API/tests.

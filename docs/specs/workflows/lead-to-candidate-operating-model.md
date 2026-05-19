@@ -46,7 +46,7 @@
 
 - source, campaign, external ids;
 - intake metadata;
-- consent / RODO;
+- consent / RODO (**lead-stage art. 14** — `normalized.rodo`, tenant `lead_rodo_v1`; gates before process / request_info / contacted; see [lead-intake-resolution-and-activity-continuity.md](lead-intake-resolution-and-activity-continuity.md) §8.0.1);
 - queue state;
 - assignment state (отдельно от stage);
 - duplicate state;

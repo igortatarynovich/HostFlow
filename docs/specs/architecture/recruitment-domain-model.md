@@ -79,7 +79,7 @@ If everything lives only in `candidate.vacancy_id`, the model flattens:
 
 Source can be anything: Meta, Telegram, public form, import, manual, WhatsApp, referral, website.
 
-System records: `source`; `external_id` if any; contact; raw payload; company / own-company context; possible vacancy context; consent / RODO where relevant; ingestion time.
+System records: `source`; `external_id` if any; contact; raw payload; company / own-company context; possible vacancy context; consent / RODO where relevant (`Lead.normalized.rodo`, tenant `lead_rodo_v1` — [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1); ingestion time.
 
 **Lead is always created** — even without recruiter, without vacancy, weekends, etc.
 

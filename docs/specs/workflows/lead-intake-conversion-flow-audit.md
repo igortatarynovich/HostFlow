@@ -23,6 +23,7 @@
 | **Services tenant path** | `business_type == "services"`: processed lead **without** Candidate — no fake Application row. |
 | **GET Applications + UI block** | Read-only candidate card; masked/new hidden. |
 | **Lead “lost” + reason codes** | CRM `stage=lost` + `lost_reason_code` / note (partial **reject** signal — funnel-level, not full intake taxonomy). |
+| **Lead-stage RODO (art. 14)** | `Tenant.settings.lead_rodo_v1`; `normalized.rodo`; ingest `apply_lead_rodo_on_ingest`; gates via `ensure_lead_rodo_allows_action` / `LEAD_RODO_REQUIRED`; manual + auto modes; idempotent Meta replay; merge-safe rodo block. Spec: [lead-intake-resolution-and-activity-continuity.md](lead-intake-resolution-and-activity-continuity.md) §8.0.1. |
 
 ---
 
@@ -63,6 +64,10 @@
 
 - **Lead detail** still mixes **ingest mode**, **process**, funnel **stage**, qualification/fit panels, next-action/playbook — consistent with user observation: **right rail tends toward candidate-style ops** before intake decision is visually primary.
 - **“Intake decision first”** is **not** yet the dominant layout (doctrine §3.1).
+
+### 2.8 Operational communication (not RODO)
+
+- **Lead-stage RODO** covers **legal art. 14** only. Product emails such as “application received”, “moving forward”, “rejected”, status/tracking links are a **separate communication slice** — not implemented in `lead_rodo_v1`; do not fold into RODO gates.
 
 ### 2.7 Processed lead early return
 
