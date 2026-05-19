@@ -3427,9 +3427,9 @@
           "badge": "Executive",
           "hint": "Najważniejsze wyniki dla bieżącego wycinka. „SLA proxy” to 100% minus obciążenie przeterminowanymi przypomnieniami; „brak odpowiedzi” to proxy z limitu prób kontaktu, gdy risk analytics jest wyłączone.",
           "leads": "Kandydaci w okresie",
-          "hired": "Zatrudnieni",
-          "employment_pending": "W trakcie zatrudnienia (formalności)",
-          "avg_days_employ": "Śr. dni (etapy zatrudnienia)",
+          "hired": "Gotowi do przekazania",
+          "employment_pending": "Kolejka „gotowy do przekazania”",
+          "avg_days_employ": "Śr. dni do przekazania",
           "no_reply_proxy": "% limit prób (proxy)",
           "no_next_queue": "Kolejka bez next / pipeline",
           "sla_proxy": "SLA (proxy)",
@@ -4331,7 +4331,7 @@
         "overdue": "Zaległy",
         "snooze": "Drzemka",
         "pipeline_completed_title": "Proces zakończony",
-        "pipeline_completed_body": "Kandydat na etapie końcowym (zatrudniony, odrzucony, rezygnacja lub zakończony okres próbny) — dalsze kroki w procesie nie dotyczą.",
+        "pipeline_completed_body": "Kandydat na etapie końcowym rekrutacji (gotowy do przekazania do HR, odrzucony, rezygnacja lub zwrot) — dalsze kroki lejka nie dotyczą.",
         "title": "Następne działanie"
       },
       "applications": {
@@ -5625,6 +5625,16 @@
         "ready_for_hr": "Gotowy do przekazania do HR",
         "processing_by_hr": "W trakcie obsługi przez HR",
         "hired": "Przyjęty przez HR"
+      },
+      "row_status": {
+        "rejected": "Odrzucony (status)",
+        "declined": "Rezygnacja (status)",
+        "returned_for_revision": "Zwrot do poprawy",
+        "handed_off": "Przekazany do HR",
+        "ready_for_handoff": "Gotowy do przekazania",
+        "ready_for_hr": "Gotowy do HR",
+        "active": "Aktywny",
+        "archived": "Zarchiwizowany"
       },
       "errors": {
         "retry": "Spróbować ponownie",

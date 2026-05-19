@@ -40,6 +40,7 @@ import {
   normalizeVacancyPipelinePayload,
   rebuildPipelineColumnsFromCandidates,
 } from '../modules/pipeline/normalizeVacancyPipelinePayload'
+import { filterRecruitmentVisibleStageCodes } from '../constants/recruitmentStageSurface'
 import { parseMetaStagesApiResponse } from '../modules/pipeline/parseMetaStagesApiResponse'
 import { parseVacancyPipelineProfileStagesPatch } from '../modules/pipeline/parseVacancyPipelineProfilePatch'
 import {
@@ -137,7 +138,9 @@ export default function Pipeline(){
   
   // Stage options for bulk modal
   const stageOptions = useMemo(() => {
-    return meta?.order || meta?.codes || orderedStageCodes || []
+    const raw = meta?.order || meta?.codes || orderedStageCodes || []
+    const list = Array.isArray(raw) ? raw.map((c) => String(c)) : []
+    return filterRecruitmentVisibleStageCodes(list)
   }, [meta, orderedStageCodes])
 
   // --- initialize from URL search params

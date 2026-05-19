@@ -2,14 +2,13 @@
  * Canonical stages where recruitment is finished (success or loss).
  * Align with backend `PIPELINE_COMPLETED_STAGE_CODES` (`constants/stages.py`).
  */
+/** Recruitment-terminal and outcome codes (stage or row_status). HR/post-employment codes excluded from recruitment hints. */
 const PIPELINE_COMPLETED = new Set([
   'rejected',
   'declined',
-  'employed',
-  'probation_ok',
+  'handoff_returned',
+  'ready_for_handoff',
   'ready_for_hr',
-  'hired',
-  'processing_by_hr',
 ])
 
 export function isPipelineCompletedCanonicalStage(code: string | null | undefined): boolean {

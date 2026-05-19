@@ -24,6 +24,7 @@ import {
 import { listTenantManagers } from '../api/users'
 import { listCandidateStages } from '../api/candidate_stages'
 import { usePermissions } from '../hooks/usePermissions'
+import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
 import { DAY_MS, QUICK_RANGE_OPTIONS, DIMENSION_OPTIONS, DEFAULT_STAGE_CODES } from '../modules/dashboard/constants'
 import type {
   ListResp,
@@ -538,13 +539,15 @@ export default function Dashboard() {
         const stages = await listCandidateStages({ active: true })
         if (stages.length > 0) {
           setStageOptions(
-            stages.map((s) => ({ code: s.code, label: s.label || s.code }))
+            stages
+              .filter((s) => !isPostRecruitmentStageCode(s.code))
+              .map((s) => ({ code: s.code, label: s.label || s.code })),
           )
         } else {
           setStageOptions(
             DEFAULT_STAGE_CODES.map((code) => ({
               code,
-              label: t(`app.dashboard.stage_labels.${code}`) || code,
+              label: t(`app.candidates.stage_labels.${code}`, { defaultValue: code }),
             }))
           )
         }

@@ -2,6 +2,7 @@
  * Maps `/meta/stages` payloads into state patches for column order, column→stages, and stage sequence.
  */
 
+import { filterRecruitmentVisibleStageCodes } from '../../constants/recruitmentStageSurface';
 import { DEFAULT_COLUMN_STAGES, KANBAN_ORDER } from './constants';
 
 export type MetaStagesStatePatch = {
@@ -11,13 +12,14 @@ export type MetaStagesStatePatch = {
 };
 
 function trimCodes(list: unknown[]): string[] {
-  return Array.from(
+  const raw = Array.from(
     new Set(
       list
         .map((code: unknown) => (code != null ? String(code).trim() : ''))
         .filter(Boolean),
     ),
   );
+  return filterRecruitmentVisibleStageCodes(raw);
 }
 
 /**

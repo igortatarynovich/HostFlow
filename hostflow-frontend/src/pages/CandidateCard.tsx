@@ -3291,10 +3291,8 @@ export default function CandidateCard(){
     const journeyOrder = [
       'processing_by_client',
       'docs_submitted_permit',
-      'permit_received',
-      'employment_pending',
-      'employed',
-      'on_trip',
+      'ready_for_handoff',
+      'ready_for_hr',
     ]
     const allowedJourneyStages = new Set(journeyOrder)
     const journeyOrderRank = new Map(journeyOrder.map((code, idx) => [code, idx] as const))

@@ -38,39 +38,6 @@ const COLORS: Record<string, string> = {
   closed: 'bg-slate-200 text-slate-800',
 }
 
-const FALLBACK_LABELS: Record<string, string> = {
-  new: 'New',
-  no_answer: 'No answer',
-  contacted: 'Contact established',
-  questionnaire_submitted: 'Questionnaire submitted',
-  docs_wait: 'Waiting for documents',
-  docs_got: 'Documents received',
-  permit_ordered: 'Work permit ordered',
-  permit_received: 'Work permit received',
-  visa: 'Visa',
-  red_paper: 'Red paper ordered',
-  red_paper_ordered: 'Red paper ordered',
-  trip_plan: 'Trip planned',
-  at_client: 'At client base',
-  employment_pending: 'On employment',
-  on_trip: 'On trip',
-  interview: 'Contact established',
-  hiring: 'Hiring',
-  employed: 'Employed',
-  probation: 'Probation',
-  probation_ok: 'Probation passed',
-  rejected: 'Rejected',
-  declined: 'Declined',
-  ready_for_handoff: 'Ready for handoff',
-  processing_by_client: 'Processed by client',
-  docs_submitted_permit: 'Documents submitted for permit',
-  handoff_returned: 'Returned',
-  // вакансии
-  open: 'Open',
-  paused: 'Paused',
-  closed: 'Closed',
-}
-
 export default function StageTag({
   code,
   size = 'md',
@@ -83,11 +50,7 @@ export default function StageTag({
   const raw = code || 'new'
   const canonical = canonicalStageKey(raw, raw)
   const c = canonical || String(raw).toLowerCase().trim()
-  const label =
-    translateStageLabel(t, raw, raw) ||
-    FALLBACK_LABELS[c] ||
-    String(raw) ||
-    '—'
+  const label = translateStageLabel(t, raw, raw) || String(raw) || '—'
   return (
     <span
       className={clsx(

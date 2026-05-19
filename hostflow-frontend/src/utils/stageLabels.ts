@@ -264,6 +264,9 @@ export const canonicalReasonKey = (code?: string | null, fallback?: string | nul
   return null
 }
 
+/** Canonical i18n namespace for funnel stage labels (recruitment + shared surfaces). */
+export const STAGE_LABEL_I18N_PREFIX = 'app.candidates.stage_labels'
+
 export function translateStageLabel(
   t: TranslateFn,
   code?: string | null,
@@ -273,11 +276,14 @@ export function translateStageLabel(
   const normalized = normalizeKey(code) || normalizeKey(fallback)
   const lookupKey = canonical ?? normalized
   if (lookupKey) {
-    const translated =
-      t(`app.dashboard.stage_labels.${lookupKey}`, { defaultValue: '' }) ||
-      t(`app.candidates.stage_labels.${lookupKey}`, { defaultValue: '' })
+    const translated = t(`${STAGE_LABEL_I18N_PREFIX}.${lookupKey}`, { defaultValue: '' })
     if (translated) {
       return translated
+    }
+    // Deprecated duplicate tree — dashboard should not add new keys here.
+    const legacyDashboard = t(`app.dashboard.stage_labels.${lookupKey}`, { defaultValue: '' })
+    if (legacyDashboard) {
+      return legacyDashboard
     }
     if (STAGE_FALLBACK_LABELS[lookupKey]) {
       return STAGE_FALLBACK_LABELS[lookupKey]

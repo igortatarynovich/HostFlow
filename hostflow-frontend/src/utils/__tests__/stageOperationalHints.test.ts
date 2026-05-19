@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { operationalHintForStage, operationalHintForStageResolved } from '../stageOperationalHints'
 
 describe('operationalHintForStage', () => {
-  it.each(['rejected', 'declined', 'employed', 'probation_ok'])(
+  it.each(['rejected', 'declined', 'ready_for_handoff', 'ready_for_hr'])(
     'returns null for pipeline-completed stage %s',
     (code) => {
       expect(operationalHintForStage(code)).toBeNull()

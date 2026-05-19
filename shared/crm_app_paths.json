@@ -150,11 +150,11 @@
     "leadsProcessedStuck": "/app/leads?status=processed&next_action=stuck",
     "candidatesDraftIntakeDebug": "/app/candidates?debug=1",
     "candidatesQueueNoNextAction": "/app/candidates?queue=no_next_action",
-    "candidatesStageEmploymentPending": "/app/candidates?qv=employment_pending"
+    "candidatesStageEmploymentPending": "/app/candidates?qv=ready_for_handoff"
   },
   "drilldown_comments": {
     "candidatesQueueNoNextAction": "Main candidates list with no-next-action queue (see CandidatesListGate).",
-    "candidatesStageEmploymentPending": "Candidates list filtered to stage «employment_pending» (HR paperwork in progress)."
+    "candidatesStageEmploymentPending": "Candidates list — ready for handoff quick view (recruitment queue before HR)."
   },
   "python_only_paths": {
     "settingsBillingCheckoutSuccess": "/app/settings/billing?checkout=success",

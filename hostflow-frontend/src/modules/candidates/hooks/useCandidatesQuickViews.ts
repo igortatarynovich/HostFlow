@@ -10,7 +10,6 @@ type QuickViewKey =
   | 'docs_incomplete'
   | 'ready_for_handoff'
   | 'new_this_week'
-  | 'employment_pending'
 
 type QuickDocFilter = {
   key: string
@@ -150,10 +149,6 @@ export function useCandidatesQuickViews({
           setDocsStatusFilter(['ready'])
           break
         }
-        case 'employment_pending': {
-          setStageFilter(['employment_pending'])
-          break
-        }
         default:
           break
       }
@@ -193,9 +188,7 @@ export function useCandidatesQuickViews({
       return
     }
     if (
-      ['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week', 'employment_pending'].includes(
-        key,
-      )
+      ['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week'].includes(key)
     ) {
       applyQuickViewFilters(key, { syncUrl: false })
     }

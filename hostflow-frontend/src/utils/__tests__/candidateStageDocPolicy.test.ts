@@ -9,7 +9,7 @@ describe('docsPipelineBlocksForwardResolved', () => {
   const gates = DEFAULT_HIRING_PIPELINE_GATES_RUNTIME
   const blockers = { missing: ['passport_scan'] as string[], problematic: [] as string[], inProgress: [] as string[] }
 
-  it.each(['rejected', 'declined', 'employed', 'probation_ok'] as const)(
+  it.each(['rejected', 'declined', 'ready_for_handoff', 'ready_for_hr'] as const)(
     'does not hard/soft block when stage is pipeline-completed (%s)',
     (stage) => {
       const r = docsPipelineBlocksForwardResolved(stage, blockers, false, gates)

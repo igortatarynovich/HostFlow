@@ -41,6 +41,7 @@ import {
   translateStageLabel,
 } from '../utils/stageLabels'
 import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
+import { filterRecruitmentVisibleStageCodes } from '../constants/recruitmentStageSurface'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -545,10 +546,12 @@ export default function Candidates(){
   const isClientRole = isClientTenant && role !== 'administrator'
 
   const stageOptions = useMemo(() => {
-    const base = meta?.order || meta?.codes || []
-    if (!meta?.meta) return base
-    if (!isClientRole) return base
-    return base.filter((code) => meta.meta?.[code]?.visible_for_client)
+    const base = (meta?.order || meta?.codes || []).map((c) => String(c))
+    let list = base
+    if (meta?.meta && isClientRole) {
+      list = base.filter((code) => meta.meta?.[code]?.visible_for_client)
+    }
+    return filterRecruitmentVisibleStageCodes(list)
   }, [meta, isClientRole])
 
   const recruitmentListStageFilterActive = Boolean(

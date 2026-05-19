@@ -13,7 +13,7 @@ export const DEFAULT_STAGE_LABELS: StageLabelConfig = {
   hired: [],
   rejected: [],
   declined: [],
-  employment_pending: ['employment_pending'],
+  employment_pending: ['ready_for_handoff'],
 }
 
 export const STAGE_CODE_ALIASES: Record<string, string> = {
@@ -99,11 +99,12 @@ export const STAGE_LABEL_ALIASES: Record<string, string> = {
   brak_kontaktu_: 'no_answer',
 }
 
+/** Recruitment dashboard KPI buckets (no HR employed / employment_pending). */
 export const STAGE_HIGHLIGHT_CODES: StageLabelConfig = {
-  hired: ['employed', 'probation_ok', 'probation_done', 'hired'],
+  hired: ['ready_for_hr', 'ready_for_handoff'],
   rejected: ['rejected'],
   declined: ['declined'],
-  employment_pending: ['employment_pending'],
+  employment_pending: ['ready_for_handoff'],
 }
 
 export const REASON_LABEL_ALIASES: Record<string, string> = {

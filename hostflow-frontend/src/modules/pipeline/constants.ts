@@ -3,22 +3,14 @@
  */
 
 // Canonical Kanban columns (backend constants/stages.py)
-export const KANBAN_ORDER = [
-  'new',
-  'interview',
-  'hiring',
-  'employed',
-  'probation',
-  'rejected',
-] as const;
+export const KANBAN_ORDER = ['new', 'interview', 'hiring', 'outcomes'] as const;
 
+/** Recruitment kanban fallback (no HR / post-employment columns). */
 export const DEFAULT_COLUMN_STAGES: Record<string, string[]> = {
-  new: ['new'],
-  interview: ['contacted', 'docs_wait', 'docs_got'],
-  hiring: ['permit_ordered', 'permit_received', 'visa', 'red_paper', 'trip_plan', 'at_client', 'on_trip'],
-  employed: ['employed'],
-  probation: ['probation_ok'],
-  rejected: ['rejected'],
+  new: ['new', 'no_answer'],
+  interview: ['contacted', 'questionnaire_submitted', 'docs_wait', 'docs_got'],
+  hiring: ['permit_ordered', 'ready_for_handoff', 'processing_by_client', 'docs_submitted_permit'],
+  outcomes: ['rejected', 'declined', 'handoff_returned'],
 };
 
 export const DEFAULT_COLUMN_ORDER = Object.keys(DEFAULT_COLUMN_STAGES);
@@ -29,5 +21,5 @@ export const DEFAULT_STAGE_BY_COLUMN: Record<string, string> = Object.fromEntrie
   DEFAULT_COLUMN_ORDER.map((column) => [column, (DEFAULT_COLUMN_STAGES[column] || [column])[0]]),
 );
 
-export const TERMINAL_STAGE_CODES = new Set(['probation_ok', 'rejected']);
+export const TERMINAL_STAGE_CODES = new Set(['rejected', 'declined', 'handoff_returned']);
 

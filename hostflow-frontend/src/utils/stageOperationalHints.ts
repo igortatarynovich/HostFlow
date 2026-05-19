@@ -34,20 +34,9 @@ export function operationalHintForStage(stageCode: string | null | undefined): S
   if (c === 'docs_got') return { kind: 'verify_documents' }
   if (c === 'ready_for_handoff') return { kind: 'handoff_prep' }
 
-  // Post-docs pipeline: nudge forward without over-specifying
-  const latePipeline = new Set([
-    'permit_ordered',
-    'permit_received',
-    'visa',
-    'red_paper',
-    'trip_plan',
-    'at_client',
-    'on_trip',
-    'processing_by_client',
-    'docs_submitted_permit',
-    'handoff_returned',
-  ])
-  if (latePipeline.has(c)) return { kind: 'advance_pipeline' }
+  // Late recruitment (pre-handoff): nudge forward without HR/employment wording
+  const lateRecruitment = new Set(['permit_ordered', 'processing_by_client', 'docs_submitted_permit'])
+  if (lateRecruitment.has(c)) return { kind: 'advance_pipeline' }
 
   return null
 }

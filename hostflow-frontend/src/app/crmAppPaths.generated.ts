@@ -153,6 +153,6 @@ export const CRM_APP_DRILLDOWN_HREFS = {
   candidatesDraftIntakeDebug: "/app/candidates?debug=1",
   /** Main candidates list with no-next-action queue (see CandidatesListGate). */
   candidatesQueueNoNextAction: "/app/candidates?queue=no_next_action",
-  /** Candidates list filtered to stage «employment_pending» (HR paperwork in progress). */
-  candidatesStageEmploymentPending: "/app/candidates?qv=employment_pending",
+  /** Candidates list — ready for handoff quick view (recruitment queue before HR). */
+  candidatesStageEmploymentPending: "/app/candidates?qv=ready_for_handoff",
 } as const

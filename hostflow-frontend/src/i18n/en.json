@@ -4062,9 +4062,9 @@
           "badge": "Executive",
           "hint": "Top-line outcomes for the current slice. “SLA proxy” is 100% minus overdue-reminder pressure on the pipeline; “no reply” uses contact-attempt limits as a proxy when risk analytics is off.",
           "leads": "Candidates in period",
-          "hired": "Employed",
-          "employment_pending": "On employment (paperwork)",
-          "avg_days_employ": "Avg days (employed stages)",
+          "hired": "Handoff-ready",
+          "employment_pending": "Ready for handoff (queue)",
+          "avg_days_employ": "Avg days to handoff-ready",
           "no_reply_proxy": "% attempt limit (proxy)",
           "no_next_queue": "No-next queue / pipeline",
           "sla_proxy": "SLA proxy",
@@ -4747,7 +4747,7 @@
         "overdue": "Overdue",
         "snooze": "Snooze",
         "pipeline_completed_title": "Process completed",
-        "pipeline_completed_body": "This candidate is in a final stage (hired, rejected, declined, or probation completed) — no further pipeline steps apply.",
+        "pipeline_completed_body": "This candidate is in a final recruitment stage (ready for HR, rejected, declined, or returned) — no further pipeline steps apply.",
         "title": "Next action"
       },
       "applications": {
@@ -5762,6 +5762,16 @@
         "ready_for_hr": "Ready for HR handoff",
         "processing_by_hr": "In HR processing",
         "hired": "Accepted by HR"
+      },
+      "row_status": {
+        "rejected": "Rejected (status)",
+        "declined": "Declined (status)",
+        "returned_for_revision": "Returned for revision",
+        "handed_off": "Handed off to HR",
+        "ready_for_handoff": "Ready for handoff",
+        "ready_for_hr": "Ready for HR",
+        "active": "Active",
+        "archived": "Archived"
       },
       "errors": {
         "retry": "Retry",
