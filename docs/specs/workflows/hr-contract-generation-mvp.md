@@ -1,5 +1,8 @@
 # HR Contract Generation MVP (PR9)
 
+**Status:** Backend implemented; **frontend preview UI pending**.  
+**Related:** [Read adapter](hr-employment-identity-read-adapter.md), [Data verification](hr-data-verification-workspace.md).
+
 ## Goal
 
 Generate **draft/preview** employment contract documents from merge templates using **only** `trusted_identity.*` placeholders.
@@ -10,27 +13,33 @@ Generate **draft/preview** employment contract documents from merge templates us
 
 Body: `template_id` or `template_code`, optional `variable_bindings` (non-identity keys only).
 
-Response: `ContractDraftPreviewOut` with `log_id`, `document_id`, `status=draft_preview`, `preview_url`, `trusted_identity_bindings`.
+Response: `ContractDraftPreviewOut` — `log_id`, `document_id`, `status=draft_preview`, `preview_url`, `trusted_identity_bindings`, `automation.send/sign/epuap=false`.
+
+`GET …/trusted-identity/prep-status` — use before preview to explain blocks.
 
 ## Rules
 
-1. `contract_generation` consumer must be allowed (else **422** `TRUSTED_IDENTITY_*`).
-2. Template body/filename must use `trusted_identity.*` for person/legal data — no `candidate.*`, no bare `legal_name`, no `employee.*`.
-3. Client cannot override `trusted_identity.*` via `variable_bindings`.
-4. Employee must be linked to `candidate_id` (document storage model).
-5. Log status `draft_preview`; document meta marks `contract_draft_preview`, `automation.send/sign/epuap=false`.
+1. `contract_generation` consumer allowed (else **422** `TRUSTED_IDENTITY_*`).  
+2. Template must use `trusted_identity.*` for person/legal data — no `candidate.*`, bare `legal_name`, `employee.*`.  
+3. Client cannot override `trusted_identity.*` in `variable_bindings`.  
+4. Employee linked to `candidate_id` for document storage.  
+5. Log `draft_preview`; no send / sign / ePUAP.
+
+## UI (planned)
+
+- `HrContractPreviewPanel` — template select, generate, open `preview_url`, show bindings  
+- Placement: supporting block on employee case / post-approve profile (after data verification)  
+- **Not** part of PR10 verification workspace  
 
 ## Out of scope
 
-- Sending, ePUAP, qualified signature
-- Payroll / ZUS
-- Final legally binding issuance workflow
+- Sending, ePUAP, qualified signature  
+- Payroll / ZUS from this endpoint  
+- Legally binding issuance / finalization workflow  
 
-## Templates
+## Example template
 
-Example:
-
-```
+```text
 Employment contract for {{ trusted_identity.legal_name }}
 PESEL: {{ trusted_identity.pesel }}
 Citizenship: {{ trusted_identity.citizenship }}

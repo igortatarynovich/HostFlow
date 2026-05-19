@@ -2,20 +2,18 @@
 
 **Status:** Accepted (default system priority).  
 **Implementation:** `backend/app/services/hr_review_current_task.py` (`TASK_PRIORITY_V1`, `build_current_task`).  
-**UI:** `HrCurrentTaskPanel` + BFF field `task_priority_v1`.
+**UI:** `HrCurrentTaskPanel` + BFF `task_priority_v1`, `next_action`.
 
 ---
 
 ## Nature of this document
 
-This order is **not** eternal business truth. It is the **first product canon**:
-
 | Property | Meaning |
 |----------|---------|
-| Default system priority | Used by BFF when selecting `current_task` |
-| Tenant-overridable later | Future: per-tenant reorder or disable steps |
-| Visible in UI | Step N/8 + collapsible v1 ladder on case workspace |
-| Test basis | Unit tests assert first-match rule and ordering |
+| Default system priority | BFF selects one `current_task` |
+| Tenant-overridable later | Future per-tenant reorder |
+| Visible in UI | Step N/8 + ladder on case workspace |
+| Test basis | `test_hr_review_current_task.py` |
 
 ---
 
@@ -23,42 +21,51 @@ This order is **not** eternal business truth. It is the **first product canon**:
 
 | Step | `task_type` | When it wins |
 |------|-------------|--------------|
-| 1 | `take_into_review` | Handoff not accepted into HR work (`pending_review`) |
-| 2 | `verify_documents` | Missing or unverified required hire documents |
-| 3 | `fill_missing_data` | Identity / citizenship / work country / journey `needs_data` |
-| 4 | `verify_work_eligibility` | Legal stay, work permit, red paper not confirmed |
-| 5 | `confirm_payments` | Mandatory fees block submission |
-| 6 | `prepare_zus` | ZUS readiness not closed while review is otherwise advanced |
-| 7 | `complete_employment_data` | Contract / employment row incomplete |
-| 8 | `ready_to_approve` | No blockers; `can_approve` |
+| 1 | `take_into_review` | Handoff `pending_review` |
+| 2 | `verify_documents` | Missing docs, unverified docs, **data verification incomplete**, or `identity_verified` / `documents_uploaded` open |
+| 3 | `fill_missing_data` | Journey / profile `needs_data` |
+| 4 | `verify_work_eligibility` | Legal stay / permit / red paper checklist |
+| 5 | `confirm_payments` | Mandatory fees |
+| 6 | `prepare_zus` | ZUS readiness |
+| 7 | `complete_employment_data` | Employment row incomplete |
+| 8 | `ready_to_approve` | `can_approve` |
 
-**Rule:** Evaluate top → bottom; emit **one** `current_task`. Do not merge competing tasks in v1.
+**Rule:** Top → bottom; one `current_task`.
+
+### Step 2 (PR10+ copy)
+
+- **Title:** “Verify candidate data and documents”  
+- **Primary action:** “Start data verification” → anchor **`#hr-data-verification`**  
+- **Why:** Values feed contract, ZUS, permit applications — only confirmed data becomes trusted.
+
+Inputs: `data_verification_summary` (pending/missing/critical counts), `documents_for_approval`, checklist `identity_verified` / `documents_uploaded`.
 
 ---
 
-## PR 2 outcomes (done)
+## PR status
 
-- One dominant `current_task` on HR review panel (BFF-owned, not frontend guesswork).
-- `HrCurrentTaskPanel` is primary; right rail is secondary orchestration.
-- HR sees why the task was chosen, what it blocks, primary action, and what happens after.
+| PR | Topic | Status |
+|----|-------|--------|
+| PR2 | Current task BFF + panel | ✓ |
+| PR3 | Document verification cards | ✓ |
+| PR4 | Verified fields SoT | ✓ |
+| PR5–PR8 | Identity projection, adapter, downstream, merge vars | ✓ |
+| PR9 | Contract draft preview API | ✓ |
+| PR10 | Unified data verification workspace | ✓ |
+| PR11 | Handoff snapshot + driver docs | ✓ |
 
 ---
 
 ## PR 3 — Document verification cards ✓
 
-**Goal:** Replace “checkbox for checkbox’s sake” with a verification **action**:
+Open → review fields on card → save reviewed → verify document → checklist sync (`hr_document_verification.sync_checklist_from_verifications`).
 
-1. Open document (resolver `open_url`).
-2. Review fields on card (extracted / displayed metadata).
-3. Confirm data against checklist expectations.
-4. Link satisfaction to checklist item (`documents_uploaded`, per-doc keys).
-5. Only then mark document **verified** in approval list.
-
-**Out of scope for PR 3:** verified-fields SoT (PR 4), OCR pipeline, new workflow engine, document mutation beyond existing HR APIs.
+Sign-off UI: collapsed under Data Verification workspace (PR10), not a third top-level list.
 
 ---
 
-## PR 4+ (later)
+## Later
 
-- Verified fields model — SoT for contract / ZUS / payroll.
-- Tenant-specific task priority overrides.
+- Tenant-specific task priority overrides  
+- Contract preview UI (frontend; PR9 backend done)  
+- Finalization workflow (send / sign / ePUAP)

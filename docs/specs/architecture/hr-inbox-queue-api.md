@@ -33,7 +33,7 @@ Correct composition:
 
 | Block | Source | Notes |
 |-------|--------|--------|
-| What was transferred | `candidate_handoff_snapshots.payload` | Immutable v1 JSON; written on `create_handoff`, not on accept. |
+| What was transferred | `candidate_handoff_snapshots.payload` | Immutable v1 JSON; written on `create_handoff`, not on accept. **HR verification (PR11):** mapped to `handoff.candidate.*` in document field review — see [hr-data-verification-workspace.md](../workflows/hr-data-verification-workspace.md). |
 | Handoff status | `candidate_handoffs` | e.g. `pending_review`, `accepted`, …; `destination = internal_hr` for this API. |
 | What to do now | `activities` | HR lane task types: `backend.app.constants.hr_task_types.HR_TASK_TYPES` (pending accept, post-accept checklist, …). |
 | HR / workforce row | `workforce_employees` | Linked after accept; `meta.internal_hr_handoff_id` ties back to handoff. |
