@@ -294,7 +294,12 @@ async def enrich_approval_rows_with_verification(
     eligibility: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     by_key = await ensure_verification_rows(db, tenant_id, review, approval_rows)
-    handoff_ns = await load_handoff_profile_namespace(db, tenant_id, review.handoff_id)
+    handoff_ns = await load_handoff_profile_namespace(
+        db,
+        tenant_id,
+        review.handoff_id,
+        candidate_id=str(employee.candidate_id) if employee and employee.candidate_id else None,
+    )
     out: list[dict[str, Any]] = []
     for row in approval_rows:
         key = str(row.get("document_key") or "").strip()

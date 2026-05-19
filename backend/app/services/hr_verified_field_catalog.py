@@ -45,12 +45,24 @@ FIELD_CATALOG: dict[str, dict[str, Any]] = {
         "label": "Exam / certificate validity",
         "downstream_use": ["compliance"],
     },
+    "driver_license_number": {
+        "label": "Driver license number",
+        "downstream_use": ["compliance", "contract"],
+    },
     "driver_license_categories": {
         "label": "Driver license categories",
         "downstream_use": ["compliance", "contract"],
     },
+    "code95_number": {
+        "label": "Code 95 certificate number",
+        "downstream_use": ["compliance"],
+    },
     "code95_expiry": {
         "label": "Code 95 expiry",
+        "downstream_use": ["compliance"],
+    },
+    "tacho_card_number": {
+        "label": "Tacho card number",
         "downstream_use": ["compliance"],
     },
     "tacho_card_expiry": {
@@ -161,21 +173,36 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
+            "field_code": "driver_license_number",
+            "label": "License number",
+            "downstream_use": ["compliance", "contract"],
+            "profile_keys": [
+                "handoff.transport.driver_license.number",
+                "document.meta.license_number",
+                "document.meta.number",
+                "employee.meta.license_number",
+            ],
+        },
+        {
             "field_code": "driver_license_categories",
             "label": "License categories",
             "downstream_use": ["compliance", "contract"],
             "profile_keys": [
+                "handoff.transport.driver_license.categories",
                 "document.meta.categories",
                 "document.meta.license_categories",
                 "employee.meta.driver_license_categories",
-                "snapshot.driver_license_categories",
             ],
         },
         {
             "field_code": "document_expiry",
             "label": "License expiry",
             "downstream_use": ["compliance"],
-            "profile_keys": ["document.expires_at", "context.expires_at"],
+            "profile_keys": [
+                "handoff.transport.driver_license.expires_at",
+                "document.expires_at",
+                "context.expires_at",
+            ],
         },
     ],
     "Code95": [
@@ -186,14 +213,24 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
+            "field_code": "code95_number",
+            "label": "Code 95 number",
+            "downstream_use": ["compliance"],
+            "profile_keys": [
+                "handoff.transport.code95.number",
+                "document.meta.number",
+                "document.meta.code95_number",
+            ],
+        },
+        {
             "field_code": "code95_expiry",
             "label": "Code 95 expiry",
             "downstream_use": ["compliance"],
             "profile_keys": [
+                "handoff.transport.code95.expires_at",
                 "document.expires_at",
                 "context.expires_at",
                 "employee.meta.code95_expiry",
-                "snapshot.code95_expiry",
             ],
         },
     ],
@@ -205,14 +242,25 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "profile_keys": ["handoff.candidate.full_name", "employee.display_name"],
         },
         {
+            "field_code": "tacho_card_number",
+            "label": "Tacho card number",
+            "downstream_use": ["compliance"],
+            "profile_keys": [
+                "handoff.transport.tacho_card.number",
+                "document.meta.number",
+                "document.meta.card_number",
+                "employee.meta.tacho_card_number",
+            ],
+        },
+        {
             "field_code": "tacho_card_expiry",
             "label": "Tacho card expiry",
             "downstream_use": ["compliance"],
             "profile_keys": [
+                "handoff.transport.tacho_card.expires_at",
                 "document.expires_at",
                 "context.expires_at",
                 "employee.meta.tacho_card_expiry",
-                "snapshot.tacho_card_expiry",
             ],
         },
     ],

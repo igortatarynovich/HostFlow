@@ -54,10 +54,20 @@ Priority order in `FIELD_SPECS.profile_keys`:
 3. `snapshot.*` — `workforce_employees.candidate_snapshot`
 4. `document.*`, `context.*` — file / HR context metadata
 
-Handoff namespace (v1 snapshot):
+Handoff namespace (v1 snapshot + live candidate at panel read):
 
-- `handoff.candidate.full_name`, `first_name`, `last_name`
-- `handoff.candidate.citizenship`, `email`, `phone`
+- `handoff.candidate.*` — name, citizenship, email, phone from immutable snapshot
+- `handoff.transport.*` — merged at `GET …/hr-review` from:
+  - snapshot `documents[]` (`expires_at` per type)
+  - live `Candidate.extra` / `personal_data` (`license_number`, `license_categories`, optional `code95_*` / `tacho_*`)
+
+Transport field codes (no OCR):
+
+| Field | Document key |
+|-------|----------------|
+| `driver_license_number`, `driver_license_categories`, `document_expiry` (license) | Driver license |
+| `code95_number`, `code95_expiry` | Code95 |
+| `tacho_card_number`, `tacho_card_expiry` | Tacho card |
 
 ---
 
@@ -70,9 +80,9 @@ Handoff namespace (v1 snapshot):
 | Red paper | red_paper, red_paper_certificate | full_name, pesel |
 | Medical | medical, medical_certificate | full_name, exam_valid_until |
 | Psychological | psychological, psychological_certificate | full_name, exam_valid_until |
-| **Driver license** | driver_license, driver_license_code95 | categories, expiry |
-| **Code95** | code95, driver_license_code95 | code95_expiry |
-| **Tacho card** | tacho_card, tachograph_card | tacho_card_expiry |
+| **Driver license** | driver_license, driver_license_code95 | number, categories, expiry |
+| **Code95** | code95, driver_license_code95 | number, expiry |
+| **Tacho card** | tacho_card, tachograph_card | number, expiry |
 
 Catalog: `hr_verified_field_catalog.py` (`FIELD_SPECS`, `FIELD_CATALOG`).
 
