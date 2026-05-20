@@ -88,12 +88,21 @@ ITEM_UNKNOWN = "unknown"
 _VERIFICATION_OK = frozenset({"verified", "not_required"})
 
 
+def _is_hybrid_verification_plan(plan: Any) -> bool:
+    return isinstance(plan, dict) and str(plan.get("plan_mode") or "") == "hybrid"
+
+
 def finalize_hr_review_can_approve(panel: dict[str, Any]) -> bool:
-    """Single gate for UI + API: required docs/data/checklist must be complete."""
+    """Single gate for UI + API.
+
+    Hybrid mode (PR15): ``verification_plan`` only. Legacy: checklist + verified-fields + doc loop.
+    """
     status = str(panel.get("status") or "")
     if status in HR_REVIEW_TERMINAL_STATUSES:
         return False
     plan = panel.get("verification_plan")
+    if _is_hybrid_verification_plan(plan):
+        return not plan_blocks_approve(plan)
     if isinstance(plan, dict) and plan_blocks_approve(plan):
         return False
     if panel.get("failed_required_items"):
@@ -106,9 +115,6 @@ def finalize_hr_review_can_approve(panel: dict[str, Any]) -> bool:
     dv = panel.get("data_verification_summary") or {}
     if isinstance(dv, dict) and dv.get("total", 0) > 0 and not dv.get("ready_for_approval"):
         return False
-    # Hybrid plan is the single document gate; avoid parallel legacy doc loop.
-    if isinstance(plan, dict) and str(plan.get("plan_mode") or "") == "hybrid":
-        return True
     for row in panel.get("documents_for_approval") or []:
         if not isinstance(row, dict):
             continue
@@ -906,10 +912,25 @@ async def update_hr_review_checklist_item(
 
 
 async def _assert_can_approve(
-    db: AsyncSession, tenant_id: str, review: WorkforceHrReview
+    db: AsyncSession,
+    tenant_id: str,
+    review: WorkforceHrReview,
+    *,
+    employee: Optional[WorkforceEmployee] = None,
 ) -> None:
     if review.status in HR_REVIEW_TERMINAL_STATUSES:
         raise ValueError("HR_REVIEW_TERMINAL")
+    emp = employee
+    if emp is None and review.employee_id:
+        emp = await we_svc.get_employee(db, tenant_id, str(review.employee_id))
+    if emp is not None:
+        panel = await build_hr_review_panel(db, tenant_id, str(emp.id))
+        plan = panel.get("verification_plan") if isinstance(panel, dict) else None
+        if _is_hybrid_verification_plan(plan):
+            if not finalize_hr_review_can_approve(panel):
+                reasons = [str(r) for r in (plan.get("blocking_reasons") or []) if str(r).strip()]
+                raise HrReviewBlockedError(blockers=reasons, failed_items=reasons or ["verification_plan"])
+            return
     cl = review.checklist_json if isinstance(review.checklist_json, dict) else {}
     failed: list[str] = []
     blockers: list[str] = list(review.blockers_json or [])
@@ -937,7 +958,7 @@ async def approve_hr_review_record(
     actor_user_id: str,
 ) -> WorkforceHrReview:
     await _sync_review_from_sources(db, tenant_id, employee, review)
-    await _assert_can_approve(db, tenant_id, review)
+    await _assert_can_approve(db, tenant_id, review, employee=employee)
     now = _now()
     review.status = HR_REVIEW_STATUS_APPROVED
     review.decided_by_user_id = actor_user_id
