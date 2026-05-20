@@ -457,6 +457,36 @@
         "technical_details": "Technical details (admin)",
         "technical_hint": "Checklist, blockers, and field-level status update automatically when you confirm documents."
       },
+      "verify_shell": {
+        "phase": "Document verification",
+        "step_verify": "Step {step}: Verify {document}",
+        "default_step": "Required documents",
+        "progress": "{verified} of {total} required documents confirmed",
+        "up_next": "Up next: {document}",
+        "all_required_done": "All required documents are confirmed.",
+        "open_hint": "Open the file and compare it with the data on the right.",
+        "open_file": "Open file",
+        "no_file": "No file uploaded yet. Return the case to recruitment if needed.",
+        "doc_nav": "Documents",
+        "check_data": "Check these details",
+        "missing_count": "{count} field(s) missing — enter from the document",
+        "from_recruitment": "From recruitment",
+        "missing_field": "Missing — enter from document",
+        "no_fields": "No extra fields — confirm the file is correct.",
+        "previous": "Previous document",
+        "confirm": "Confirm this document",
+        "confirm_next": "Confirm & next document",
+        "next": "Next document",
+        "saved": "Document saved",
+        "status": {
+          "confirmed": "Confirmed",
+          "needs_correction": "Correction requested",
+          "rejected": "Rejected",
+          "in_review": "In review",
+          "missing_file": "File missing",
+          "awaiting": "Awaiting confirmation"
+        }
+      },
       "identity": {
         "compact_title": "Downstream readiness",
         "contracts": "Contracts",

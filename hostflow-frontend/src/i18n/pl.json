@@ -399,6 +399,36 @@
         "technical_details": "Szczegóły techniczne (admin)",
         "technical_hint": "Checklista i blokery aktualizują się automatycznie po potwierdzeniu dokumentów."
       },
+      "verify_shell": {
+        "phase": "Weryfikacja dokumentów",
+        "step_verify": "Krok {step}: Zweryfikuj {document}",
+        "default_step": "Wymagane dokumenty",
+        "progress": "{verified} z {total} wymaganych dokumentów potwierdzonych",
+        "up_next": "Następny: {document}",
+        "all_required_done": "Wszystkie wymagane dokumenty są potwierdzone.",
+        "open_hint": "Otwórz plik i porównaj z danymi po prawej.",
+        "open_file": "Otwórz plik",
+        "no_file": "Brak pliku. Zwróć sprawę do rekrutacji, jeśli potrzeba.",
+        "doc_nav": "Dokumenty",
+        "check_data": "Sprawdź te dane",
+        "missing_count": "Brakuje {count} pól — wpisz z dokumentu",
+        "from_recruitment": "Z rekrutacji",
+        "missing_field": "Brak — wpisz z dokumentu",
+        "no_fields": "Brak dodatkowych pól — potwierdź poprawność pliku.",
+        "previous": "Poprzedni dokument",
+        "confirm": "Potwierdź ten dokument",
+        "confirm_next": "Potwierdź i następny",
+        "next": "Następny dokument",
+        "saved": "Dokument zapisany",
+        "status": {
+          "confirmed": "Potwierdzony",
+          "needs_correction": "Wymaga poprawki",
+          "rejected": "Odrzucony",
+          "in_review": "W trakcie",
+          "missing_file": "Brak pliku",
+          "awaiting": "Oczekuje potwierdzenia"
+        }
+      },
       "identity": {
         "compact_title": "Gotowość downstream",
         "contracts": "Umowy",

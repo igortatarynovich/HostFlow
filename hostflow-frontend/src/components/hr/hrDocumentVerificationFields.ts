@@ -118,8 +118,23 @@ export function countVerifiedDocuments(docs: HrReviewDocumentRow[]): { verified:
   return { verified, total }
 }
 
-export function firstPendingDocumentIndex(docs: HrReviewDocumentRow[]): number {
-  const queue = sequentialDocumentQueue(docs)
+export function firstPendingDocumentIndex(queue: HrReviewDocumentRow[]): number {
   const idx = queue.findIndex((d) => !isDocumentVerified(d))
   return idx >= 0 ? idx : Math.max(0, queue.length - 1)
+}
+
+export function countMissingFieldsOnDocument(doc: HrReviewDocumentRow): number {
+  const fields = doc.fields_to_review || []
+  let missing = 0
+  for (const f of fields) {
+    const vals = f.current_profile_values || {}
+    const hasRecruiter = Object.values(vals).some((v) => v != null && String(v).trim())
+    const reviewed = doc.reviewed_fields?.[f.field_code]
+    const rv =
+      reviewed && typeof reviewed === 'object'
+        ? String((reviewed as Record<string, unknown>).value ?? '').trim()
+        : ''
+    if (!hasRecruiter && !rv && !String(f.reviewed_value ?? '').trim()) missing += 1
+  }
+  return missing
 }

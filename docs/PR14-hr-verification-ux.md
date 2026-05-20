@@ -48,8 +48,26 @@ Full path (API or browser):
 
 ---
 
+## Implementation order
+
+1. **Verification step shell** (in progress on `feat/pr14-hr-verification-ux`)
+   - `HrVerificationStepShell` — step header, progress bar, focus, sticky footer
+   - Human status labels (`hrDocumentHumanLabels.ts`) — no raw `verification_status` in main UI
+   - Exception UI deferred (correction / reject / waive / recommended collapsed lists removed from main flow for now)
+2. Decision actions — wire footer actions with clear copy
+3. Exception UX — modals, waive, HR-requested
+4. Ready screen
+5. E2E (last)
+
+### PR14 risk guard
+
+Do **not** surface in HR main flow: `field_code`, blocker ids, raw checklist, `requirement_tier`, verification state machine enums, `technical_details` panel.
+
+HR sees: document name, field **labels**, missing hints, next step, human status, confirm CTA.
+
 ## Acceptance criteria
 
+- [x] Step shell: Step N + Verify {document} + progress + sticky footer
 - [ ] HR sees step number and document name without opening admin checklist.
 - [ ] Recommended docs visible but do not disable approve when incomplete.
 - [ ] Waive button hidden/disabled for `hard_blocker` tiers.
