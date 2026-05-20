@@ -429,6 +429,34 @@
           "awaiting": "Oczekuje potwierdzenia"
         }
       },
+      "decisions": {
+        "request_correction": "Poproś o poprawkę",
+        "reject_candidate": "Odrzuć kandydata",
+        "correction_title": "Poproś o poprawkę",
+        "correction_subtitle": "Rekrutacja poprawi {document} i prześle pakiet ponownie.",
+        "correction_prompt": "Co wymaga poprawy?",
+        "correction_placeholder": "Opisz, co rekrutacja ma poprawić…",
+        "correction_submit": "Wyślij do rekrutacji",
+        "correction_sent": "Odesłano do rekrutacji",
+        "correction_case_note": "{document}: {note}",
+        "reject_title": "Odrzuć kandydata",
+        "reject_subtitle": "Kandydat nie może zostać zatrudniony. To kończy weryfikację HR.",
+        "reject_prompt": "Powód odrzucenia",
+        "reject_placeholder": "Dlaczego kandydat nie nadaje się do zatrudnienia?",
+        "reject_submit": "Odrzuć kandydata",
+        "reject_done": "Kandydat odrzucony",
+        "frozen_returned": "Sprawa wróciła do rekrutacji. Weryfikacja tylko do odczytu do aktualizacji pakietu.",
+        "frozen_rejected": "Kandydat odrzucony. Ta weryfikacja jest zamknięta.",
+        "frozen_approved": "Kandydat zaakceptowany. Weryfikacja dokumentów zakończona.",
+        "suggest": {
+          "missing_document": "Brak dokumentu",
+          "unreadable_scan": "Nieczytelny skan",
+          "data_mismatch": "Niezgodność danych",
+          "expired_document": "Przeterminowany dokument",
+          "missing_field": "Brak wymaganego pola",
+          "clearer_file": "Wyraźniejszy plik"
+        }
+      },
       "identity": {
         "compact_title": "Gotowość downstream",
         "contracts": "Umowy",

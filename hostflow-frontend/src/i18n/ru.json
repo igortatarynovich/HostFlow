@@ -429,6 +429,34 @@
           "awaiting": "Ожидает подтверждения"
         }
       },
+      "decisions": {
+        "request_correction": "Запросить доработку",
+        "reject_candidate": "Отклонить кандидата",
+        "correction_title": "Запросить доработку",
+        "correction_subtitle": "Рекрутинг исправит {document} и отправит пакет снова.",
+        "correction_prompt": "Что нужно исправить?",
+        "correction_placeholder": "Опишите, что должен исправить рекрутер…",
+        "correction_submit": "Вернуть в рекрутинг",
+        "correction_sent": "Отправлено в рекрутинг",
+        "correction_case_note": "{document}: {note}",
+        "reject_title": "Отклонить кандидата",
+        "reject_subtitle": "Кандидат не может быть принят. HR-проверка по кейсу завершается.",
+        "reject_prompt": "Причина отклонения",
+        "reject_placeholder": "Почему кандидат не подходит для трудоустройства?",
+        "reject_submit": "Отклонить кандидата",
+        "reject_done": "Кандидат отклонён",
+        "frozen_returned": "Кейс возвращён в рекрутинг. Проверка только для чтения до обновления пакета.",
+        "frozen_rejected": "Кандидат отклонён. Проверка закрыта.",
+        "frozen_approved": "Кандидат принят. Проверка документов завершена.",
+        "suggest": {
+          "missing_document": "Нет документа",
+          "unreadable_scan": "Нечитаемый скан",
+          "data_mismatch": "Несовпадение данных",
+          "expired_document": "Просроченный документ",
+          "missing_field": "Нет обязательного поля",
+          "clearer_file": "Загрузить чёткую копию"
+        }
+      },
       "identity": {
         "compact_title": "Готовность downstream",
         "contracts": "Договоры",

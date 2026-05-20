@@ -50,11 +50,14 @@ Full path (API or browser):
 
 ## Implementation order
 
-1. **Verification step shell** (in progress on `feat/pr14-hr-verification-ux`)
+1. **Verification step shell** ✅
    - `HrVerificationStepShell` — step header, progress bar, focus, sticky footer
    - Human status labels (`hrDocumentHumanLabels.ts`) — no raw `verification_status` in main UI
-   - Exception UI deferred (correction / reject / waive / recommended collapsed lists removed from main flow for now)
-2. Decision actions — wire footer actions with clear copy
+2. **Decision actions** ✅ (on `feat/pr14-hr-verification-ux`)
+   - `HrDocumentDecisionFooter` — Confirm · Request correction · Reject candidate (+ nav)
+   - `HrDocumentCorrectionForm` — quick suggestions + textarea; sends doc correction + return to recruitment
+   - `HrDocumentRejectForm` — case-level reject (rose panel, separate copy)
+   - Frozen read-only when `returned_to_recruitment` / `rejected_by_hr` / `approved_for_employment`
 3. Exception UX — modals, waive, HR-requested
 4. Ready screen
 5. E2E (last)

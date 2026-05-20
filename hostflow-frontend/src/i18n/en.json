@@ -487,6 +487,34 @@
           "awaiting": "Awaiting confirmation"
         }
       },
+      "decisions": {
+        "request_correction": "Request correction",
+        "reject_candidate": "Reject candidate",
+        "correction_title": "Request correction",
+        "correction_subtitle": "Recruitment will fix {document} and resubmit the package.",
+        "correction_prompt": "What needs correction?",
+        "correction_placeholder": "Describe what recruitment should fix…",
+        "correction_submit": "Send back to recruitment",
+        "correction_sent": "Sent back to recruitment",
+        "correction_case_note": "{document}: {note}",
+        "reject_title": "Reject candidate",
+        "reject_subtitle": "The candidate cannot be hired. This ends HR review for this case.",
+        "reject_prompt": "Reason for rejection",
+        "reject_placeholder": "Why is this candidate not suitable for employment?",
+        "reject_submit": "Reject candidate",
+        "reject_done": "Candidate rejected",
+        "frozen_returned": "Case returned to recruitment. Verification is read-only until the package is updated.",
+        "frozen_rejected": "Candidate rejected. This review is closed.",
+        "frozen_approved": "Candidate approved. Document verification is complete.",
+        "suggest": {
+          "missing_document": "Missing document",
+          "unreadable_scan": "Unreadable scan",
+          "data_mismatch": "Data mismatch",
+          "expired_document": "Expired document",
+          "missing_field": "Missing required field",
+          "clearer_file": "Upload clearer file"
+        }
+      },
       "identity": {
         "compact_title": "Downstream readiness",
         "contracts": "Contracts",

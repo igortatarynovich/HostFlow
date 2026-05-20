@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import type { HrReviewDocumentRow, HrReviewPanel } from '../../api/workforce'
-import { postHrDocumentOpened, postHrDocumentVerify } from '../../api/workforce'
+import { returnHandoff } from '../../api/handoffs'
+import { fetchHandoffHrReview } from '../../api/hrWorkspace'
+import {
+  postHrDocumentOpened,
+  postHrDocumentRequestCorrection,
+  postHrDocumentVerify,
+  rejectWorkforceHrReview,
+  returnWorkforceHrReviewToRecruitment,
+} from '../../api/workforce'
+import HrDocumentDecisionFooter from './HrDocumentDecisionFooter'
 import HrEmploymentIdentityCompact from './HrEmploymentIdentityCompact'
 import HrVerificationStepShell from './HrVerificationStepShell'
 import { openHrDocumentInNewTab } from '../../utils/hrDocumentOpen'
@@ -25,6 +34,12 @@ import {
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
 
+const REVIEW_FROZEN_STATUSES = new Set([
+  'returned_to_recruitment',
+  'rejected_by_hr',
+  'approved_for_employment',
+])
+
 type Props = {
   panel: HrReviewPanel
   employeeId?: string
@@ -37,11 +52,14 @@ export default function HrSequentialDocumentVerification({
   panel,
   employeeId,
   handoffId,
-  manage = false,
+  manage: manageProp = false,
   onPanelUpdated,
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
+  const reviewFrozen = REVIEW_FROZEN_STATUSES.has(panel.status)
+  const manage = manageProp && !reviewFrozen
+  const effectiveEmployeeId = (employeeId || panel.employee_id || '').trim()
   const docs = useMemo(() => documentsFromPanel(panel), [panel])
   const requiredDocs = useMemo(() => requiredPlanDocuments(docs), [docs])
   const queue = useMemo(() => sequentialDocumentQueue(requiredDocs), [requiredDocs])
@@ -88,14 +106,14 @@ export default function HrSequentialDocumentVerification({
   )
 
   const runPanel = useCallback(
-    async (fn: () => Promise<HrReviewPanel>) => {
-      setBusy('confirm')
+    async (fn: () => Promise<HrReviewPanel>, successTitle?: string) => {
+      setBusy('action')
       try {
         const next = await fn()
         onPanelUpdated?.(next)
         notify({
           variant: 'success',
-          title: t('app.hr.verify_shell.saved', { defaultValue: 'Document saved' }),
+          title: successTitle ?? t('app.hr.verify_shell.saved', { defaultValue: 'Document saved' }),
         })
         return next
       } catch (e: unknown) {
@@ -137,6 +155,32 @@ export default function HrSequentialDocumentVerification({
     }
   }
 
+  const handleRequestCorrection = async (note: string) => {
+    if (!activeDoc?.document_key) return
+    const caseNote = t('app.hr.decisions.correction_case_note', {
+      defaultValue: '{document}: {note}',
+      values: { document: activeDoc.label, note },
+    })
+    await runPanel(async () => {
+      let next = await postHrDocumentRequestCorrection({ ...scope, note: caseNote })
+      if (effectiveEmployeeId) {
+        next = await returnWorkforceHrReviewToRecruitment(effectiveEmployeeId, caseNote)
+      } else if (handoffId) {
+        await returnHandoff(handoffId, caseNote)
+        next = await fetchHandoffHrReview(handoffId)
+      }
+      return next
+    }, t('app.hr.decisions.correction_sent', { defaultValue: 'Sent back to recruitment' }))
+  }
+
+  const handleRejectCandidate = async (reason: string) => {
+    if (!effectiveEmployeeId) return
+    await runPanel(
+      () => rejectWorkforceHrReview(effectiveEmployeeId, reason),
+      t('app.hr.decisions.reject_done', { defaultValue: 'Candidate rejected' }),
+    )
+  }
+
   const confirmDocument = async () => {
     if (!activeDoc?.document_key || !manage) return
     const payload = buildConfirmedReviewedPayload(fieldEdits)
@@ -156,7 +200,10 @@ export default function HrSequentialDocumentVerification({
 
   const fields = activeDoc.fields_to_review ?? []
   const missingFieldCount = countMissingFieldsOnDocument(activeDoc)
-  const canConfirm = manage && Boolean(activeDoc.document_id) && activeDoc.actions?.can_verify !== false
+  const docNeedsCorrection =
+    String(activeDoc.verification_status || activeDoc.status || '').toLowerCase() === 'needs_correction'
+  const canConfirm =
+    manage && Boolean(activeDoc.document_id) && activeDoc.actions?.can_verify !== false && !docNeedsCorrection
   const allFieldsHaveValues =
     fields.length === 0 || fields.every((f) => (fieldEdits[f.field_code]?.value ?? '').trim().length > 0)
 
@@ -285,39 +332,47 @@ export default function HrSequentialDocumentVerification({
     </>
   )
 
+  const confirmLabel = isDocumentVerified(activeDoc)
+    ? t('app.hr.verify_shell.confirm_next', { defaultValue: 'Confirm & next document' })
+    : t('app.hr.verify_shell.confirm', { defaultValue: 'Confirm this document' })
+
   const footer = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <button
-        type="button"
-        className="btn-secondary btn-sm"
-        disabled={activeIndex <= 0 || !!busy}
-        onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
-      >
-        {t('app.hr.verify_shell.previous', { defaultValue: 'Previous document' })}
-      </button>
-      {canConfirm ? (
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!!busy || !allFieldsHaveValues}
-          onClick={() => void confirmDocument()}
-        >
-          {isDocumentVerified(activeDoc)
-            ? t('app.hr.verify_shell.confirm_next', { defaultValue: 'Confirm & next document' })
-            : t('app.hr.verify_shell.confirm', { defaultValue: 'Confirm this document' })}
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="btn-secondary btn-sm"
-          disabled={activeIndex >= queue.length - 1 || !!busy}
-          onClick={() => setActiveIndex((i) => Math.min(queue.length - 1, i + 1))}
-        >
-          {t('app.hr.verify_shell.next', { defaultValue: 'Next document' })}
-        </button>
-      )}
-    </div>
+    <HrDocumentDecisionFooter
+      activeIndex={activeIndex}
+      queueLength={queue.length}
+      documentLabel={activeDoc.label}
+      busy={!!busy}
+      canConfirm={canConfirm}
+      confirmLabel={confirmLabel}
+      allFieldsHaveValues={allFieldsHaveValues}
+      canManage={manage}
+      canRejectCase={Boolean(effectiveEmployeeId)}
+      onPrevious={() => setActiveIndex((i) => Math.max(0, i - 1))}
+      onNext={() => setActiveIndex((i) => Math.min(queue.length - 1, i + 1))}
+      onConfirm={() => void confirmDocument()}
+      onRequestCorrection={handleRequestCorrection}
+      onRejectCandidate={handleRejectCandidate}
+    />
   )
+
+  const frozenBanner = reviewFrozen ? (
+    <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+      {panel.status === 'returned_to_recruitment'
+        ? t('app.hr.decisions.frozen_returned', {
+            defaultValue: 'Case returned to recruitment. Verification is read-only until the package is updated.',
+          })
+        : panel.status === 'rejected_by_hr'
+          ? t('app.hr.decisions.frozen_rejected', {
+              defaultValue: 'Candidate rejected. This review is closed.',
+            })
+          : t('app.hr.decisions.frozen_approved', {
+              defaultValue: 'Candidate approved. Document verification is complete.',
+            })}
+      {panel.return_reason ? (
+        <p className="mt-1 text-xs text-slate-600">{panel.return_reason}</p>
+      ) : null}
+    </div>
+  ) : null
 
   return (
     <HrVerificationStepShell
@@ -331,7 +386,12 @@ export default function HrSequentialDocumentVerification({
       nextDocumentLabel={nextPendingLabel}
       documentViewer={documentViewer}
       dataPanel={dataPanel}
-      footer={footer}
+      footer={
+        <>
+          {frozenBanner}
+          {footer}
+        </>
+      }
       identityStrip={<HrEmploymentIdentityCompact panel={panel} />}
     />
   )
