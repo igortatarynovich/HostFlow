@@ -79,7 +79,7 @@ async def _seed_company(
     return company
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_convert_creates_client_account_and_company(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]
@@ -104,7 +104,7 @@ async def test_convert_creates_client_account_and_company(db, tenant_id: str) ->
     assert account_count == 1
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_convert_replay_is_idempotent(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]
@@ -126,7 +126,7 @@ async def test_convert_replay_is_idempotent(db, tenant_id: str) -> None:
     assert account_count == 1
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_convert_without_company_name_creates_account_only(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]
@@ -152,7 +152,7 @@ async def test_convert_without_company_name_creates_account_only(db, tenant_id: 
     assert lead.converted_client_id is None
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_parallel_convert_creates_single_account(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]
@@ -183,7 +183,7 @@ async def test_parallel_convert_creates_single_account(db, tenant_id: str) -> No
     assert company_count >= 1
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_archived_company_does_not_delete_client_account(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]
@@ -202,7 +202,7 @@ async def test_archived_company_does_not_delete_client_account(db, tenant_id: st
     assert account.primary_company_id == str(company.id)
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_company_create_failure_does_not_orphan_client_account(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]
@@ -224,7 +224,7 @@ async def test_company_create_failure_does_not_orphan_client_account(db, tenant_
     assert account_count == 0
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_legacy_converted_client_backfills_client_account(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
     suffix = uuid.uuid4().hex[:8]

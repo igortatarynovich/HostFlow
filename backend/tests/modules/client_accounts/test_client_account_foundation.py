@@ -33,7 +33,7 @@ async def _seed_company(db, *, tenant_id: str, name: str) -> Company:
     return company
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_cross_tenant_company_link_forbidden(db, tenant_id: str) -> None:
     other_tenant = str(uuid.uuid4())
     suffix = uuid.uuid4().hex[:8]
@@ -51,7 +51,7 @@ async def test_cross_tenant_company_link_forbidden(db, tenant_id: str) -> None:
     assert exc_info.value.status_code == 422
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_client_account_crud_service(db, tenant_id: str) -> None:
     created = await create_client_account_service(
         db,
