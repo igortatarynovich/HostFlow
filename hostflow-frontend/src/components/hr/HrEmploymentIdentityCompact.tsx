@@ -1,41 +1,64 @@
 import type { HrReviewPanel } from '../../api/workforce'
+import { useI18n } from '../../i18n'
 
 type Props = {
   panel: HrReviewPanel
 }
 
-const STATUS_CLASS: Record<string, string> = {
-  complete: 'text-emerald-800 bg-emerald-50 ring-emerald-200',
-  incomplete: 'text-slate-700 bg-slate-50 ring-slate-200',
-  conflicted: 'text-amber-900 bg-amber-50 ring-amber-200',
-  stale: 'text-orange-900 bg-orange-50 ring-orange-200',
+function consumerReady(identity: NonNullable<HrReviewPanel['employment_identity']>, codes: string[]): boolean {
+  const missing = new Set(identity.missing_required ?? [])
+  const pending = new Set(identity.pending_attributes ?? [])
+  return codes.every((c) => !missing.has(c) && !pending.has(c))
 }
 
 export default function HrEmploymentIdentityCompact({ panel }: Props) {
+  const { t } = useI18n()
   const identity = panel.employment_identity
   const dv = panel.data_verification_summary
   if (!identity && !dv) return null
 
-  const status = identity?.status ?? dv?.identity_status ?? 'incomplete'
-  const badgeClass = STATUS_CLASS[status] ?? STATUS_CLASS.incomplete
+  const labels = identity?.attribute_labels ?? {}
+  const missing = (identity?.missing_required ?? []).map((c) => labels[c] ?? c.replace(/_/g, ' '))
+  const ready = identity?.ready_for_downstream ?? dv?.identity_status === 'complete'
+
+  const contractsOk = identity
+    ? consumerReady(identity, ['legal_name', 'citizenship', 'permit_type', 'passport_number'])
+    : ready
+  const zusOk = identity
+    ? consumerReady(identity, ['pesel', 'citizenship', 'legal_name'])
+    : ready
+  const payrollOk = identity ? consumerReady(identity, ['legal_name', 'pesel']) : ready
+
+  const pill = (ok: boolean, label: string) => (
+    <span
+      className={
+        ok
+          ? 'inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800 ring-1 ring-emerald-200'
+          : 'inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 ring-1 ring-slate-200'
+      }
+    >
+      <span aria-hidden>{ok ? '✓' : '○'}</span>
+      {label}
+    </span>
+  )
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs">
-      <span className="font-medium text-slate-600">Employment identity</span>
-      <span className={`inline-flex rounded-full px-2 py-0.5 font-semibold ring-1 ring-inset ${badgeClass}`}>
-        {status}
-        {identity?.filled_count != null && identity?.total_count != null
-          ? ` · ${identity.filled_count}/${identity.total_count}`
-          : null}
+    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+      <span className="font-medium text-slate-600">
+        {t('app.hr.identity.compact_title', { defaultValue: 'Downstream readiness' })}
       </span>
-      {identity?.missing_required?.length ? (
-        <span className="text-amber-800">Missing: {identity.missing_required.length}</span>
-      ) : null}
-      {identity?.conflicts?.length ? (
-        <span className="text-amber-800">Conflicts: {identity.conflicts.length}</span>
-      ) : null}
-      {identity?.ready_for_downstream ? (
-        <span className="text-emerald-700">Ready for contracts / ZUS</span>
+      {pill(contractsOk, t('app.hr.identity.contracts', { defaultValue: 'Contracts' }))}
+      {pill(zusOk, t('app.hr.identity.zus', { defaultValue: 'ZUS' }))}
+      {pill(payrollOk, t('app.hr.identity.payroll', { defaultValue: 'Payroll' }))}
+      {missing.length > 0 ? (
+        <span className="text-amber-800">
+          {t('app.hr.identity.missing', { defaultValue: 'Missing' })}: {missing.slice(0, 3).join(', ')}
+          {missing.length > 3 ? ` +${missing.length - 3}` : ''}
+        </span>
+      ) : ready ? (
+        <span className="font-medium text-emerald-700">
+          {t('app.hr.identity.ready', { defaultValue: 'Employment identity ready' })}
+        </span>
       ) : null}
     </div>
   )

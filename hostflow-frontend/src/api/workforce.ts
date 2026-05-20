@@ -343,6 +343,13 @@ export type HrReviewDocumentRow = {
   document_open_context?: string | null
   document_type?: string | null
   required?: boolean
+  requirement_tier?: 'hard_blocker' | 'required' | 'recommended' | 'hr_requested' | 'not_required' | string
+  requirement_level?: 'required' | 'optional' | 'not_required' | string
+  overridable?: boolean
+  step_code?: string | null
+  step_label?: string | null
+  step_order?: number
+  slot_order?: number
   verification_status?: string | null
   verification_id?: string | null
   linked_checklist_item?: string | null
@@ -539,6 +546,38 @@ export type HrDataVerificationSummary = {
   ready_for_approval?: boolean
 }
 
+export type HrVerificationPlanStep = {
+  step_code: string
+  step_order: number
+  label: string
+  document_keys: string[]
+}
+
+export type HrVerificationPlan = {
+  plan_mode?: 'hybrid' | string
+  candidate_context: Record<string, unknown>
+  vacancy_context: Record<string, unknown>
+  client_context?: Record<string, unknown>
+  ruleset_checklist: Record<string, unknown>
+  documents: HrReviewDocumentRow[]
+  hard_blocker_documents?: HrReviewDocumentRow[]
+  required_documents: HrReviewDocumentRow[]
+  recommended_documents?: HrReviewDocumentRow[]
+  optional_documents: HrReviewDocumentRow[]
+  hr_requested_documents?: HrReviewDocumentRow[]
+  not_required_document_keys: string[]
+  verification_order: HrVerificationPlanStep[]
+  blocking_reasons: string[]
+  can_complete_verification: boolean
+  can_approve?: boolean
+  missing_data?: Array<{
+    document_key?: string
+    field_code?: string
+    label?: string
+    hint?: string
+  }>
+}
+
 export type HrReviewPanel = {
   review_id: string
   employee_id?: string | null
@@ -570,6 +609,7 @@ export type HrReviewPanel = {
   employment_identity?: HrEmploymentIdentityProjection | null
   data_verification_items?: HrDataVerificationItem[]
   data_verification_summary?: HrDataVerificationSummary | null
+  verification_plan?: HrVerificationPlan | null
 }
 
 export type WorkforceHrBundle = {

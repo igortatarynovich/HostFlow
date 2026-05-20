@@ -44,7 +44,6 @@ import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
 import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
-import { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { formatShortDateIso } from '../../components/hr/hrEmployeeUiFormat'
 import { isEmploymentCaseWorkspace, isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
 
@@ -302,9 +301,6 @@ export default function HrEmployeeDetailPage() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
           <div className="min-w-0 space-y-4">
-            {caseWorkspace && hrReview ? (
-              <HrCurrentTaskPanelFromReview panel={hrReview} onScrollTo={scrollToAnchor} />
-            ) : null}
             {hrReview && (caseWorkspace || isEmployeeOperationalProfile(hrReview)) ? (
               <HrDataVerificationWorkspace
                 panel={hrReview}
@@ -323,6 +319,7 @@ export default function HrEmployeeDetailPage() {
                 handoffId={hrReview.handoff_id ?? undefined}
                 panel={hrReview}
                 hideDocuments
+                caseDecisionMode={caseWorkspace}
                 manage={manage}
                 onUpdated={(next) => {
                   setHrReview(next)

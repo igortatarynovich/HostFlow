@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-# Fields that must be verified (or overridden) before employment approval.
-CRITICAL_FIELD_CODES: frozenset[str] = frozenset(
+# Fields required for every employment case (non-transport-specific).
+BASE_CRITICAL_FIELD_CODES: frozenset[str] = frozenset(
     {
         "full_name",
         "citizenship",
@@ -15,6 +15,9 @@ CRITICAL_FIELD_CODES: frozenset[str] = frozenset(
         "permit_type",
     }
 )
+
+# Backward-compatible alias (base set only).
+CRITICAL_FIELD_CODES: frozenset[str] = BASE_CRITICAL_FIELD_CODES
 
 FIELD_CATALOG: dict[str, dict[str, Any]] = {
     "full_name": {
@@ -43,6 +46,10 @@ FIELD_CATALOG: dict[str, dict[str, Any]] = {
     },
     "exam_valid_until": {
         "label": "Exam / certificate validity",
+        "downstream_use": ["compliance"],
+    },
+    "driver_license_expiry": {
+        "label": "Driver license expiry",
         "downstream_use": ["compliance"],
     },
     "driver_license_number": {
@@ -74,6 +81,37 @@ FIELD_CATALOG: dict[str, dict[str, Any]] = {
 # Per document-key field specs for verification cards (PR3 + PR11).
 # Prefer handoff snapshot paths first — recruiter values at transfer time.
 FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
+    "Passport / ID": [
+        {
+            "field_code": "full_name",
+            "label": "Legal name",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "handoff.candidate.full_name",
+                "employee.display_name",
+                "snapshot.first_name",
+                "snapshot.last_name",
+            ],
+        },
+        {
+            "field_code": "citizenship",
+            "label": "Citizenship",
+            "downstream_use": ["work_permit", "zus"],
+            "profile_keys": [
+                "handoff.candidate.citizenship",
+                "candidate.citizenship",
+                "candidate.extra.citizenship",
+                "eligibility.citizenship",
+                "snapshot.citizenship",
+            ],
+        },
+        {
+            "field_code": "document_expiry",
+            "label": "Document expiry",
+            "downstream_use": ["compliance"],
+            "profile_keys": ["document.expires_at", "context.expires_at", "document.meta.expires_at"],
+        },
+    ],
     "Legal stay": [
         {
             "field_code": "full_name",
@@ -92,6 +130,8 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "downstream_use": ["work_permit", "zus"],
             "profile_keys": [
                 "handoff.candidate.citizenship",
+                "candidate.citizenship",
+                "candidate.extra.citizenship",
                 "eligibility.citizenship",
                 "snapshot.citizenship",
             ],
@@ -195,7 +235,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             ],
         },
         {
-            "field_code": "document_expiry",
+            "field_code": "driver_license_expiry",
             "label": "License expiry",
             "downstream_use": ["compliance"],
             "profile_keys": [

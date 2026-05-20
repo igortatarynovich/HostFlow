@@ -30,12 +30,23 @@ from backend.app.services.workforce_work_eligibility_payments import list_paymen
 from backend.app.modules.documents.document_open_service import (
     enrich_documents_for_approval_open_urls,
 )
+from backend.app.services.hr_review_document_resolution import merge_candidate_documents_into_approval_rows
+from backend.app.services.hr_verification_plan import (
+    build_hr_verification_plan,
+    documents_for_approval_from_plan,
+    plan_blocks_approve,
+    sync_verification_plan_with_enriched_docs,
+)
 from backend.app.services.hr_document_verification import (
     VERIFICATION_GATED_CHECKLIST,
     enrich_approval_rows_with_verification,
     sync_checklist_from_verifications,
 )
 from backend.app.services.hr_data_verification import rebuild_panel_checklists_after_data_verification
+from backend.app.services.hr_verification_requirements import (
+    resolve_critical_field_codes,
+    resolve_position_category_for_review,
+)
 from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
 from backend.app.services import hr_verified_fields as vf_svc
 from backend.app.services.employment_identity_read_adapter import (
@@ -73,6 +84,44 @@ ITEM_SATISFIED = "satisfied"
 ITEM_BLOCKED = "blocked"
 ITEM_NEEDS_ATTENTION = "needs_attention"
 ITEM_UNKNOWN = "unknown"
+
+_VERIFICATION_OK = frozenset({"verified", "not_required"})
+
+
+def finalize_hr_review_can_approve(panel: dict[str, Any]) -> bool:
+    """Single gate for UI + API: required docs/data/checklist must be complete."""
+    status = str(panel.get("status") or "")
+    if status in HR_REVIEW_TERMINAL_STATUSES:
+        return False
+    plan = panel.get("verification_plan")
+    if isinstance(plan, dict) and plan_blocks_approve(plan):
+        return False
+    if panel.get("failed_required_items"):
+        return False
+    if panel.get("blockers"):
+        return False
+    vfs = panel.get("verified_fields_summary") or {}
+    if isinstance(vfs, dict) and vfs.get("blockers"):
+        return False
+    dv = panel.get("data_verification_summary") or {}
+    if isinstance(dv, dict) and dv.get("total", 0) > 0 and not dv.get("ready_for_approval"):
+        return False
+    # Hybrid plan is the single document gate; avoid parallel legacy doc loop.
+    if isinstance(plan, dict) and str(plan.get("plan_mode") or "") == "hybrid":
+        return True
+    for row in panel.get("documents_for_approval") or []:
+        if not isinstance(row, dict):
+            continue
+        tier = str(row.get("requirement_tier") or "")
+        if tier in ("recommended", "not_required"):
+            continue
+        if row.get("required") is False:
+            continue
+        vs = str(row.get("verification_status") or row.get("status") or "").lower()
+        if vs in _VERIFICATION_OK:
+            continue
+        return False
+    return True
 
 
 class HrReviewBlockedError(Exception):
@@ -619,11 +668,28 @@ async def _attach_verified_fields_to_panel(
     *,
     employee_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    await vf_svc.ensure_critical_field_placeholders(
-        db, tenant_id=tenant_id, review=review, employee_id=employee_id or review.employee_id
+    position_category = await resolve_position_category_for_review(
+        db,
+        tenant_id,
+        employee_id=employee_id or review.employee_id,
+        candidate_id=review.candidate_id,
     )
-    fields = await vf_svc.list_for_review(db, tenant_id, review.id)
-    summary = vf_svc.summarize_critical(fields)
+    critical_field_codes = resolve_critical_field_codes(position_category)
+    panel = dict(panel)
+    panel["position_category"] = position_category
+    panel["verification_critical_field_codes"] = sorted(critical_field_codes)
+
+    await vf_svc.ensure_critical_field_placeholders(
+        db,
+        tenant_id=tenant_id,
+        review=review,
+        employee_id=employee_id or review.employee_id,
+        critical_field_codes=critical_field_codes,
+    )
+    fields = await vf_svc.list_for_review(
+        db, tenant_id, review.id, critical_field_codes=critical_field_codes
+    )
+    summary = vf_svc.summarize_critical(fields, critical_field_codes=critical_field_codes)
     vf_blocked, vf_blockers = vf_svc.critical_fields_block_approval(fields)
     if vf_blocked:
         panel = dict(panel)
@@ -678,8 +744,26 @@ async def build_hr_review_panel(
         next_action = journey.get("recommended_next_action")
 
     hid = review.handoff_id or _handoff_id_from_employee(emp)
+    legacy_rows = _documents_for_approval(bundle, journey)
+    legacy_rows = await merge_candidate_documents_into_approval_rows(
+        db, tenant_id, str(emp.candidate_id or ""), legacy_rows
+    )
+    verification_plan = await build_hr_verification_plan(
+        db,
+        tenant_id,
+        review,
+        employee=emp,
+        candidate=await db.get(Candidate, str(emp.candidate_id)) if emp.candidate_id else None,
+        legacy_approval_rows=legacy_rows,
+        bundle=bundle,
+        journey=journey,
+    )
+    docs_rows = documents_for_approval_from_plan(verification_plan)
+    docs_rows = await merge_candidate_documents_into_approval_rows(
+        db, tenant_id, str(emp.candidate_id or ""), docs_rows
+    )
     docs_for_approval = enrich_documents_for_approval_open_urls(
-        _documents_for_approval(bundle, journey),
+        docs_rows,
         tenant_id=tenant_id,
         workforce_employee_id=employee_id,
         handoff_id=str(hid) if hid else None,
@@ -689,6 +773,7 @@ async def build_hr_review_panel(
         {
             "citizenship": getattr(wel, "citizenship", None),
             "work_country": getattr(wel, "work_country", None),
+            "pesel": getattr(wel, "pesel", None),
         }
         if wel
         else None
@@ -713,8 +798,6 @@ async def build_hr_review_panel(
         for it in items
         if it.get("required") and str(it.get("status") or "") != ITEM_SATISFIED
     ]
-    can_approve = review.status not in HR_REVIEW_TERMINAL_STATUSES and not failed_required
-
     panel: dict[str, Any] = {
         "review_id": review.id,
         "employee_id": employee_id,
@@ -724,7 +807,7 @@ async def build_hr_review_panel(
         "checklist": items,
         "blockers": blockers,
         "failed_required_items": failed_required,
-        "can_approve": can_approve,
+        "can_approve": False,
         "next_required_action": next_action,
         "decision_basis": review.decision_basis_json,
         "documents_for_approval": docs_for_approval,
@@ -735,6 +818,10 @@ async def build_hr_review_panel(
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
     panel = await _attach_verified_fields_to_panel(db, tenant_id, review, panel, employee_id=employee_id)
+    panel["verification_plan"] = sync_verification_plan_with_enriched_docs(
+        verification_plan, docs_for_approval
+    )
+    panel["can_approve"] = finalize_hr_review_can_approve(panel)
     handoff_status = None
     transferred_at = None
     if hid:
@@ -933,14 +1020,50 @@ async def build_hr_review_panel_for_handoff(
             parts = [str(cand.first_name or "").strip(), str(cand.last_name or "").strip()]
             cand_name = " ".join(p for p in parts if p).strip() or None
 
+    emp_for_panel: Optional[WorkforceEmployee] = None
+    cand_row = await db.get(Candidate, str(review.candidate_id)) if review.candidate_id else None
+    if review.employee_id:
+        emp_for_panel = await we_svc.get_employee(db, tenant_id, str(review.employee_id))
+    legacy_rows = _documents_for_approval({}, {})
+    legacy_rows = await merge_candidate_documents_into_approval_rows(
+        db, tenant_id, str(review.candidate_id or ""), legacy_rows
+    )
+    verification_plan = await build_hr_verification_plan(
+        db,
+        tenant_id,
+        review,
+        employee=emp_for_panel,
+        candidate=cand_row,
+        legacy_approval_rows=legacy_rows,
+        bundle={},
+        journey={},
+    )
+    docs_rows = documents_for_approval_from_plan(verification_plan)
+    docs_rows = await merge_candidate_documents_into_approval_rows(
+        db, tenant_id, str(review.candidate_id or ""), docs_rows
+    )
     docs_for_approval = enrich_documents_for_approval_open_urls(
-        _documents_for_approval({}, {}),
+        docs_rows,
         tenant_id=tenant_id,
         workforce_employee_id=str(review.employee_id) if review.employee_id else None,
         handoff_id=hid,
     )
+    wel_hint = None
+    if emp_for_panel and review.employee_id:
+        wel = await we_svc.get_work_eligibility_profile(db, tenant_id, str(review.employee_id))
+        if wel:
+            wel_hint = {
+                "citizenship": getattr(wel, "citizenship", None),
+                "work_country": getattr(wel, "work_country", None),
+                "pesel": getattr(wel, "pesel", None),
+            }
     docs_for_approval = await enrich_approval_rows_with_verification(
-        db, tenant_id, review, docs_for_approval, employee=None, eligibility=None
+        db,
+        tenant_id,
+        review,
+        docs_for_approval,
+        employee=emp_for_panel,
+        eligibility=wel_hint,
     )
     await sync_checklist_from_verifications(db, tenant_id, review, docs_for_approval)
     items = []
@@ -976,6 +1099,10 @@ async def build_hr_review_panel_for_handoff(
         "decided_at": review.decided_at.isoformat() if review.decided_at else None,
     }
     panel = await _attach_verified_fields_to_panel(db, tenant_id, review, panel)
+    panel["verification_plan"] = sync_verification_plan_with_enriched_docs(
+        verification_plan, docs_for_approval
+    )
+    panel["can_approve"] = finalize_hr_review_can_approve(panel)
     delayed = await delayed_hr_workforce_creation_enabled(db, tenant_id)
     return enrich_hr_review_panel(
         panel,

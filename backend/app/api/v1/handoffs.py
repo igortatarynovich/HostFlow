@@ -19,6 +19,7 @@ from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_re
 from backend.app.auth.deps import Role, require_roles
 from backend.app.schemas.workforce_hr_core import (
     HrDocumentCorrectionIn,
+    HrDocumentRequirementWaiverIn,
     HrDocumentRejectIn,
     HrDocumentReviewedFieldsIn,
     HrReviewChecklistPatchIn,
@@ -802,6 +803,42 @@ async def post_handoff_document_request_correction(
             document_key=document_key,
             actor_user_id=current_user.sub,
             note=body.note,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/document-verifications/{document_key}/waive-requirement",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_document_waive_requirement(
+    handoff_id: UUID,
+    document_key: str,
+    body: HrDocumentRequirementWaiverIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import hr_document_verification as doc_verify_svc
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await doc_verify_svc.waive_document_requirement(
+            db,
+            tenant_id=str(tenant_id),
+            review=review,
+            document_key=document_key,
+            actor_user_id=current_user.sub,
+            reason=body.reason,
         )
         panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
     except Exception as exc:

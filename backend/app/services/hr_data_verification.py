@@ -7,7 +7,8 @@ from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.workforce_hr_review import HR_REVIEW_TERMINAL_STATUSES, WorkforceHrReview
-from backend.app.services.hr_verified_field_catalog import CRITICAL_FIELD_CODES, FIELD_CATALOG
+from backend.app.services.hr_verification_requirements import resolve_critical_field_codes
+from backend.app.services.hr_verified_field_catalog import FIELD_CATALOG
 _ITEM_SATISFIED = "satisfied"
 
 VERIFIED_STATUSES = frozenset({"verified", "overridden"})
@@ -81,8 +82,16 @@ def _derive_item_status(
     return ITEM_STATUS_PENDING
 
 
+def _critical_field_codes_for_panel(panel: dict[str, Any]) -> frozenset[str]:
+    raw = panel.get("verification_critical_field_codes")
+    if isinstance(raw, (list, tuple)) and raw:
+        return frozenset(str(x) for x in raw if str(x).strip())
+    return resolve_critical_field_codes(panel.get("position_category"))
+
+
 def build_data_verification_items(panel: dict[str, Any]) -> list[dict[str, Any]]:
     """Flatten document field reviews + verified SoT into one row per field_code."""
+    critical_codes = _critical_field_codes_for_panel(panel)
     docs = [d for d in (panel.get("documents_for_approval") or []) if isinstance(d, dict)]
     verified_by_code: dict[str, dict[str, Any]] = {}
     for v in panel.get("verified_fields") or []:
@@ -100,12 +109,12 @@ def build_data_verification_items(panel: dict[str, Any]) -> list[dict[str, Any]]
                 continue
             by_code.setdefault(code, []).append((doc, f))
 
-    for code in CRITICAL_FIELD_CODES:
+    for code in critical_codes:
         if code not in by_code and code in verified_by_code:
             by_code[code] = []
 
     def sort_key(code: str) -> tuple:
-        critical_rank = 0 if code in CRITICAL_FIELD_CODES else 1
+        critical_rank = 0 if code in critical_codes else 1
         return (critical_rank, code)
 
     items: list[dict[str, Any]] = []
@@ -150,7 +159,7 @@ def build_data_verification_items(panel: dict[str, Any]) -> list[dict[str, Any]]
             if doc and str(doc.get("status") or "").lower() == "missing":
                 missing_reason = "document_missing"
 
-        required = code in CRITICAL_FIELD_CODES
+        required = code in critical_codes
         has_doc = bool(doc_id and open_url)
         can_confirm = bool(
             recruiter_value
@@ -302,6 +311,7 @@ async def rebuild_panel_checklists_after_data_verification(
     ]
     panel["blockers"] = blockers
     panel["failed_required_items"] = failed
-    if failed and review.status not in HR_REVIEW_TERMINAL_STATUSES:
-        panel["can_approve"] = False
+    from backend.app.services.workforce_hr_review import finalize_hr_review_can_approve
+
+    panel["can_approve"] = finalize_hr_review_can_approve(panel)
     return panel

@@ -54,6 +54,8 @@ Handoff detail route (`/app/hr/inbox/:handoffId`) is **always** case-style.
 | PR9 | Contract **draft preview** API + UI panel (trusted only) | [contract generation](hr-contract-generation-mvp.md) |
 | PR10 | **Data Verification Workspace** (unified UI + BFF items) | [data verification](hr-data-verification-workspace.md) |
 | PR11 | Handoff snapshot recruiter values + driver/Code95/tacho docs | [data verification § sources](hr-data-verification-workspace.md#recruiter-value-sources-pr11) |
+| PR12 | Sequential document verification UX | [data verification § PR12](hr-data-verification-workspace.md#ui-review-case-layout-pr12) |
+| PR12b | Role-based required fields (`position_category=driver`) | [data verification § policy](hr-data-verification-workspace.md#required-for-approval-policy-position) |
 | — | Recursion fix: `ensure_hr_review(sync_from_sources=False)` in trusted read during journey | read adapter § Operational notes |
 
 **Migrations (deploy order):** `202605181400_hr_doc_verify` → `202605181500_hr_verified`.
@@ -65,10 +67,9 @@ Handoff detail route (`/app/hr/inbox/:handoffId`) is **always** case-style.
 **Main column:**
 
 1. Hero (stage, blockers, message)  
-2. **Current task** → “Verify candidate data and documents” → `#hr-data-verification`  
-3. **Data & Document Verification** (`HrDataVerificationWorkspace`)  
-4. HR review panel — checklist + decision only (`hideDocuments`)  
-5. Supporting (collapsed): contract draft preview, compact eligibility, recruitment handoff summary  
+2. **Sequential document verification** (`HrSequentialDocumentVerification`, `#hr-document-verification`)  
+3. HR review panel — **case decision mode** (readiness + approve; checklist admin-only)  
+4. Supporting (collapsed): contract draft preview, compact eligibility, recruitment handoff summary  
 
 **Right rail:** next action, **one** blocker summary, readiness (checklist + data verification counts), timeline.
 

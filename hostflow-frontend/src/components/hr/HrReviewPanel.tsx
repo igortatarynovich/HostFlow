@@ -14,6 +14,8 @@ import {
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
 import HrDocumentOpenButton from './HrDocumentOpenButton'
+import { countVerifiedDocuments, requiredDocumentQueue } from './hrDocumentVerificationFields'
+import { isHrApproveAllowed } from '../../utils/hrReviewApprove'
 
 const TERMINAL = new Set(['approved_for_employment', 'returned_to_recruitment', 'rejected_by_hr'])
 
@@ -30,6 +32,8 @@ type Props = {
   employeeId?: string
   handoffId?: string
   hideDocuments?: boolean
+  /** After document verification: compact decision only (no checklist UI). */
+  caseDecisionMode?: boolean
 }
 
 function docStatusLabel(t: ReturnType<typeof useI18n>['t'], d: HrReviewDocumentRow): string {
@@ -71,6 +75,7 @@ export default function HrReviewPanelCard({
   employeeId: employeeIdProp,
   handoffId,
   hideDocuments = false,
+  caseDecisionMode = false,
 }: Props) {
   const employeeId = (employeeIdProp || panel.employee_id || '').trim()
   const useHandoffApi = Boolean(handoffId) && !employeeId
@@ -86,6 +91,18 @@ export default function HrReviewPanelCard({
 
   const terminal = TERMINAL.has(panel.status)
   const canEmployeeActions = Boolean(employeeId)
+  const approveAllowed = isHrApproveAllowed(panel)
+  const readiness = panel.decision_readiness
+  const planDocs = panel.verification_plan?.documents?.length
+    ? panel.verification_plan.documents
+    : panel.documents_for_approval
+  const docProgress = countVerifiedDocuments(planDocs)
+  const docQueueLen = requiredDocumentQueue(planDocs).length
+  const docsVerified = docQueueLen > 0 && docProgress.verified >= docProgress.total
+  const identityReady =
+    panel.employment_identity?.ready_for_downstream ||
+    panel.employment_identity?.status === 'complete' ||
+    readiness?.identity_status === 'complete'
 
   const patchChecklist = useCallback(
     (itemCode: string, satisfied: boolean) => {
@@ -147,9 +164,13 @@ export default function HrReviewPanelCard({
             {t('app.hr.review.title', { defaultValue: 'HR decision required' })}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            {t('app.hr.review.subtitle', {
-              defaultValue: 'Complete the checklist before approving this person for employment.',
-            })}
+            {caseDecisionMode
+              ? t('app.hr.review.subtitle_case', {
+                  defaultValue: 'When all required documents are confirmed and identity is ready, approve employment.',
+                })
+              : t('app.hr.review.subtitle', {
+                  defaultValue: 'Complete the checklist before approving this person for employment.',
+                })}
           </p>
         </div>
         <span
@@ -171,7 +192,28 @@ export default function HrReviewPanelCard({
         </p>
       ) : null}
 
-      {panel.blockers.length > 0 && !terminal ? (
+      {caseDecisionMode && !terminal ? (
+        <ul className="mt-3 space-y-1.5 text-sm text-slate-800">
+          <li className="flex items-center gap-2">
+            <span className={docsVerified ? 'text-emerald-600' : 'text-slate-400'} aria-hidden>
+              {docsVerified ? '✓' : '○'}
+            </span>
+            {docsVerified
+              ? t('app.hr.review.docs_all_confirmed', { defaultValue: 'All required documents confirmed' })
+              : t('app.hr.review.docs_pending', { defaultValue: 'Documents still need confirmation' })}
+          </li>
+          <li className="flex items-center gap-2">
+            <span className={identityReady ? 'text-emerald-600' : 'text-slate-400'} aria-hidden>
+              {identityReady ? '✓' : '○'}
+            </span>
+            {identityReady
+              ? t('app.hr.review.identity_ready', { defaultValue: 'Employment identity ready' })
+              : t('app.hr.review.identity_pending', { defaultValue: 'Employment identity incomplete' })}
+          </li>
+        </ul>
+      ) : null}
+
+      {!caseDecisionMode && panel.blockers.length > 0 && !terminal ? (
         <ul className="mt-2 list-inside list-disc text-xs text-rose-800">
           {panel.blockers.map((b) => (
             <li key={b}>{b.replace(/_/g, ' ')}</li>
@@ -185,38 +227,55 @@ export default function HrReviewPanelCard({
         </p>
       ) : null}
 
-      <ul className="mt-4 space-y-2">
-        {panel.checklist.map((it) => {
-          const ok = it.status === 'satisfied'
-          return (
-            <li
-              key={it.item_code}
-              className={clsx(
-                'flex flex-wrap items-start gap-2 rounded-lg border px-3 py-2 text-sm',
-                ok ? 'border-emerald-100 bg-emerald-50/50' : 'border-slate-200 bg-white',
-              )}
-            >
-              <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
-                {manage && !terminal ? (
-                  <input
-                    type="checkbox"
-                    className="mt-1 rounded border-slate-300"
-                    checked={ok}
-                    disabled={busy}
-                    onChange={(e) => void run(() => patchChecklist(it.item_code, e.target.checked))}
-                  />
-                ) : (
-                  <span className="mt-0.5 text-xs">{ok ? '✓' : '○'}</span>
+      {!caseDecisionMode ? (
+        <ul className="mt-4 space-y-2">
+          {panel.checklist.map((it) => {
+            const ok = it.status === 'satisfied'
+            return (
+              <li
+                key={it.item_code}
+                className={clsx(
+                  'flex flex-wrap items-start gap-2 rounded-lg border px-3 py-2 text-sm',
+                  ok ? 'border-emerald-100 bg-emerald-50/50' : 'border-slate-200 bg-white',
                 )}
-                <span>
-                  <span className="font-medium text-slate-900">{it.label}</span>
-                  <span className="ml-2 text-[10px] uppercase text-slate-500">{it.source}</span>
-                </span>
-              </label>
-            </li>
-          )
-        })}
-      </ul>
+              >
+                <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+                  {manage && !terminal ? (
+                    <input
+                      type="checkbox"
+                      className="mt-1 rounded border-slate-300"
+                      checked={ok}
+                      disabled={busy}
+                      onChange={(e) => void run(() => patchChecklist(it.item_code, e.target.checked))}
+                    />
+                  ) : (
+                    <span className="mt-0.5 text-xs">{ok ? '✓' : '○'}</span>
+                  )}
+                  <span>
+                    <span className="font-medium text-slate-900">{it.label}</span>
+                    <span className="ml-2 text-[10px] uppercase text-slate-500">{it.source}</span>
+                  </span>
+                </label>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+
+      {caseDecisionMode && manage && !terminal ? (
+        <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50/50">
+          <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-slate-600">
+            {t('app.hr.review.checklist_admin', { defaultValue: 'Checklist (system)' })}
+          </summary>
+          <ul className="space-y-1 px-3 pb-3 text-xs text-slate-600">
+            {panel.checklist.map((it) => (
+              <li key={it.item_code}>
+                {it.status === 'satisfied' ? '✓' : '○'} {it.label}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       {!hideDocuments && panel.documents_for_approval.length > 0 ? (
         <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-3">
@@ -271,7 +330,12 @@ export default function HrReviewPanelCard({
           <button
             type="button"
             className="btn-primary btn-sm"
-            disabled={busy || !panel.can_approve}
+            disabled={busy || !approveAllowed}
+            title={
+              !approveAllowed && panel.decision_readiness?.approve_blocked_reason
+                ? panel.decision_readiness.approve_blocked_reason
+                : undefined
+            }
             onClick={() => void run(() => approveReview())}
           >
             {t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}

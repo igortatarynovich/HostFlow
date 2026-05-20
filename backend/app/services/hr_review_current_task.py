@@ -79,8 +79,8 @@ TASK_PRIORITY_V1: Sequence[tuple[HrCurrentTaskType, str, str]] = (
 TASK_PRIORITY_V1_TOTAL = len(TASK_PRIORITY_V1)
 
 ANCHOR_REVIEW = "#hr-employee-review"
-ANCHOR_DOCUMENTS = "#hr-data-verification"
-ANCHOR_DATA_VERIFICATION = "#hr-data-verification"
+ANCHOR_DOCUMENTS = "#hr-document-verification"
+ANCHOR_DATA_VERIFICATION = "#hr-document-verification"
 ANCHOR_ELIGIBILITY = "#hr-review-eligibility"
 ANCHOR_HANDOFF_ACCEPT = "#hr-handoff-accept"
 

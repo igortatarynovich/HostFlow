@@ -27,6 +27,20 @@ from backend.app.services.hr_handoff_profile_context import load_handoff_profile
 from backend.app.services.hr_verified_field_catalog import FIELD_SPECS
 
 # document_key -> checklist item that this card primarily supports
+# Transport document cards are optional when position is not driver (PR12 sequential flow).
+OPTIONAL_FOR_NON_DRIVER_DOC_KEYS: frozenset[str] = frozenset(
+    {"Driver license", "Code95", "Tacho card"},
+)
+
+
+def document_required_for_position(document_key: str, position_category: Optional[str]) -> bool:
+    if str(document_key or "").strip() in OPTIONAL_FOR_NON_DRIVER_DOC_KEYS:
+        from backend.app.services.hr_verification_requirements import is_driver_position
+
+        return is_driver_position(position_category)
+    return True
+
+
 DOC_KEY_CHECKLIST: dict[str, str] = {
     "Legal stay": "legal_stay_verified",
     "Work permit": "work_permit_verified",
@@ -68,10 +82,18 @@ def _build_profile_context(
     eligibility: Optional[dict[str, Any]],
     *,
     handoff: Optional[dict[str, Any]] = None,
+    candidate_live: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
-    snap = employee.candidate_snapshot if employee and isinstance(employee.candidate_snapshot, dict) else {}
+    snap = dict(employee.candidate_snapshot) if employee and isinstance(employee.candidate_snapshot, dict) else {}
+    if candidate_live:
+        for k, v in candidate_live.items():
+            if v is not None and str(v).strip() and k not in snap:
+                snap[k] = v
     meta = employee.meta if employee and isinstance(employee.meta, dict) else {}
     doc_meta = document.meta if document and isinstance(document.meta, dict) else {}
+    exp = None
+    if document:
+        exp = getattr(document, "expire_date", None) or getattr(document, "expires_at", None)
     ctx: dict[str, Any] = {
         "employee": {
             "display_name": employee.display_name if employee else None,
@@ -81,11 +103,7 @@ def _build_profile_context(
         "snapshot": snap,
         "document": {
             "doc_type": document.doc_type if document else None,
-            "expires_at": (
-                document.expires_at.isoformat()
-                if document and getattr(document, "expires_at", None)
-                else None
-            ),
+            "expires_at": exp.isoformat() if exp and hasattr(exp, "isoformat") else (str(exp) if exp else None),
             "meta": doc_meta,
         },
         "context": {
@@ -96,6 +114,8 @@ def _build_profile_context(
     }
     if handoff:
         ctx["handoff"] = handoff
+    if candidate_live:
+        ctx["candidate"] = {"extra": candidate_live, **{k: v for k, v in candidate_live.items() if k != "extra"}}
     return ctx
 
 
@@ -176,6 +196,14 @@ async def ensure_verification_rows(
     review: WorkforceHrReview,
     approval_rows: list[dict[str, Any]],
 ) -> dict[str, WorkforceHrDocumentVerification]:
+    from backend.app.services.hr_verification_requirements import resolve_position_category_for_review
+
+    position_category = await resolve_position_category_for_review(
+        db,
+        tenant_id,
+        employee_id=review.employee_id,
+        candidate_id=review.candidate_id,
+    )
     tid = str(tenant_id).strip()
     existing = {v.document_key: v for v in await list_verifications_for_review(db, tid, review)}
     by_key: dict[str, WorkforceHrDocumentVerification] = {}
@@ -183,6 +211,7 @@ async def ensure_verification_rows(
         key = str(row.get("document_key") or row.get("label") or "").strip()
         if not key:
             continue
+        req = document_required_for_position(key, position_category)
         v = existing.get(key)
         if v is None:
             v = WorkforceHrDocumentVerification(
@@ -194,8 +223,8 @@ async def ensure_verification_rows(
                 document_id=row.get("document_id"),
                 document_type=row.get("context_type"),
                 checklist_item_code=DOC_KEY_CHECKLIST.get(key, "documents_uploaded"),
-                required=True,
-                verification_status=VERIFICATION_PENDING,
+                required=req,
+                verification_status=VERIFICATION_NOT_REQUIRED if not req else VERIFICATION_PENDING,
             )
             db.add(v)
             existing[key] = v
@@ -204,8 +233,13 @@ async def ensure_verification_rows(
             v.document_type = row.get("context_type") or v.document_type
             v.employee_id = review.employee_id or v.employee_id
             v.handoff_id = review.handoff_id or v.handoff_id
+            v.required = req
+            if not req and v.verification_status not in VERIFICATION_TERMINAL_OK:
+                v.verification_status = VERIFICATION_NOT_REQUIRED
         if str(row.get("status") or "").lower() == "missing" and not row.get("document_id"):
-            if v.verification_status not in VERIFICATION_TERMINAL_OK:
+            if not req:
+                v.verification_status = VERIFICATION_NOT_REQUIRED
+            elif v.verification_status not in VERIFICATION_TERMINAL_OK:
                 v.verification_status = VERIFICATION_PENDING
         by_key[key] = v
     await db.flush()
@@ -218,9 +252,17 @@ def verification_blocks_approval(verifications: list[WorkforceHrDocumentVerifica
         key = str(row.get("document_key") or "").strip()
         if not key:
             continue
+        v = by_key.get(key)
+        if v is not None:
+            required = v.required is not False
+        elif row.get("required") is False:
+            required = False
+        else:
+            required = True
+        if not required:
+            continue
         if str(row.get("status") or "").lower() == "missing":
             return True
-        v = by_key.get(key)
         if not v or v.verification_status not in VERIFICATION_TERMINAL_OK:
             return True
     return False
@@ -294,12 +336,35 @@ async def enrich_approval_rows_with_verification(
     eligibility: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     by_key = await ensure_verification_rows(db, tenant_id, review, approval_rows)
-    handoff_ns = await load_handoff_profile_namespace(
+    from backend.app.services.hr_handoff_profile_context import (
+        _load_live_candidate_fields,
+        load_recruiter_profile_namespace,
+    )
+
+    cid = str(
+        (employee.candidate_id if employee and employee.candidate_id else None)
+        or review.candidate_id
+        or ""
+    ).strip()
+    handoff_ns = await load_recruiter_profile_namespace(
         db,
         tenant_id,
-        review.handoff_id,
-        candidate_id=str(employee.candidate_id) if employee and employee.candidate_id else None,
+        handoff_id=review.handoff_id,
+        candidate_id=cid or None,
     )
+    _, _, candidate_flat = await _load_live_candidate_fields(db, cid or None)
+    eligibility_full = dict(eligibility or {})
+    if employee and review.employee_id:
+        from backend.app.services.workforce_employees import get_work_eligibility_profile
+
+        wel = await get_work_eligibility_profile(db, tenant_id, str(review.employee_id))
+        if wel is not None:
+            eligibility_full = {
+                "citizenship": getattr(wel, "citizenship", None),
+                "work_country": getattr(wel, "work_country", None),
+                "pesel": getattr(wel, "pesel", None) or getattr(wel, "national_id", None),
+                "position_category": getattr(wel, "position_category", None),
+            }
     out: list[dict[str, Any]] = []
     for row in approval_rows:
         key = str(row.get("document_key") or "").strip()
@@ -309,10 +374,19 @@ async def enrich_approval_rows_with_verification(
             out.append(r)
             continue
         doc: Optional[Document] = None
-        if v.document_id:
-            doc = await db.get(Document, str(v.document_id))
-        ctx_row = await _load_context_row(db, tenant_id, review.employee_id, v.document_id)
-        profile_ctx = _build_profile_context(employee, doc, ctx_row, eligibility, handoff=handoff_ns)
+        doc_id = str(v.document_id or r.get("document_id") or "").strip()
+        if doc_id:
+            doc = await db.get(Document, str(doc_id))
+            v.document_id = doc_id
+        ctx_row = await _load_context_row(db, tenant_id, review.employee_id, doc_id or None)
+        profile_ctx = _build_profile_context(
+            employee,
+            doc,
+            ctx_row,
+            eligibility_full,
+            handoff=handoff_ns,
+            candidate_live=candidate_flat,
+        )
         fields = build_fields_to_review(key, profile_ctx, v.reviewed_fields_json)
         r.update(
             {
@@ -327,9 +401,9 @@ async def enrich_approval_rows_with_verification(
                 "verified": v.verification_status == VERIFICATION_VERIFIED,
                 "verification_id": v.id,
                 "actions": {
-                    "can_open": bool(r.get("open_url") or r.get("document_id")),
+                    "can_open": bool(r.get("open_url") or doc_id),
                     "can_verify": v.verification_status in (VERIFICATION_OPENED, VERIFICATION_PENDING, VERIFICATION_NEEDS_CORRECTION)
-                    and bool(r.get("document_id")),
+                    and bool(doc_id),
                     "can_reject": bool(r.get("document_id")),
                     "can_request_correction": bool(r.get("document_id")),
                 },
@@ -413,6 +487,86 @@ async def mark_document_opened(
         document_key=document_key,
         action="opened",
         payload={"verification_status": row.verification_status},
+    )
+    return row
+
+
+def _append_waiver_to_decision_basis(
+    review: WorkforceHrReview,
+    *,
+    document_key: str,
+    reason: str,
+    actor_user_id: str,
+) -> None:
+    basis = dict(review.decision_basis_json) if isinstance(review.decision_basis_json, dict) else {}
+    waivers = [w for w in (basis.get("requirement_waivers") or []) if isinstance(w, dict)]
+    waivers.append(
+        {
+            "document_key": document_key,
+            "reason": reason,
+            "by_user_id": actor_user_id,
+            "at": _now().isoformat(),
+        }
+    )
+    basis["requirement_waivers"] = waivers[-50:]
+    review.decision_basis_json = basis
+
+
+async def waive_document_requirement(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    review: WorkforceHrReview,
+    document_key: str,
+    actor_user_id: str,
+    reason: str,
+) -> WorkforceHrDocumentVerification:
+    """HR exception for recommended / vacancy-required docs (not hard legal blockers)."""
+    if review.status in HR_REVIEW_TERMINAL_STATUSES:
+        raise ValueError("HR_REVIEW_TERMINAL")
+    key = str(document_key or "").strip()
+    note = str(reason or "").strip()
+    if not note:
+        raise ValueError("WAIVER_REASON_REQUIRED")
+
+    from backend.app.services.hr_verification_plan import is_document_requirement_waivable
+    from backend.app.services.hr_verification_requirements import resolve_position_category_for_review
+    from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
+
+    journey: dict[str, Any] = {}
+    if review.employee_id:
+        journey = await build_work_eligibility_journey(db, tenant_id, str(review.employee_id))
+    position_category = await resolve_position_category_for_review(
+        db,
+        tenant_id,
+        employee_id=review.employee_id,
+        candidate_id=review.candidate_id,
+    )
+    if not is_document_requirement_waivable(
+        key, journey=journey, position_category=position_category
+    ):
+        raise ValueError("CANNOT_WAIVE_HARD_BLOCKER")
+
+    row = await _get_verification_row(db, tenant_id, review, key)
+    reviewed = dict(row.reviewed_fields_json) if isinstance(row.reviewed_fields_json, dict) else {}
+    reviewed["_requirement_waiver"] = {
+        "reason": note,
+        "by_user_id": actor_user_id,
+        "at": _now().isoformat(),
+    }
+    row.reviewed_fields_json = reviewed
+    _append_waiver_to_decision_basis(
+        review, document_key=key, reason=note, actor_user_id=actor_user_id
+    )
+    await db.flush()
+    await _audit_verification(
+        db,
+        tenant_id=tenant_id,
+        actor_user_id=actor_user_id,
+        review=review,
+        document_key=key,
+        action="requirement_waived",
+        payload={"reason": note[:500]},
     )
     return row
 

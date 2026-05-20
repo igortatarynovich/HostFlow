@@ -4,10 +4,13 @@ from backend.app.services.hr_data_verification import (
     build_data_verification_items,
     summarize_data_verification,
 )
+from backend.app.services.hr_verification_requirements import resolve_critical_field_codes
 
 
 def test_build_data_verification_items_dedupes_by_field_code() -> None:
+    base_critical = sorted(resolve_critical_field_codes(None))
     panel = {
+        "verification_critical_field_codes": base_critical,
         "documents_for_approval": [
             {
                 "document_key": "Legal stay",

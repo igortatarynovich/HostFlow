@@ -107,7 +107,6 @@ export default function HrHandoffDetailPage() {
           <HrReviewCaseHero panel={hrReview} displayName={displayName} />
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
             <div className="min-w-0 space-y-4">
-              <HrCurrentTaskPanelFromReview panel={hrReview} onScrollTo={scrollTo} />
               <HrDataVerificationWorkspace
                 panel={hrReview}
                 handoffId={id}
@@ -123,6 +122,7 @@ export default function HrHandoffDetailPage() {
                 employeeId={empId}
                 panel={hrReview}
                 hideDocuments
+                caseDecisionMode
                 manage
                 onUpdated={(next) => {
                   setHrReview(next)

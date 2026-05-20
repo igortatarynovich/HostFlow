@@ -246,7 +246,7 @@ def build_next_action(
             "reason": reason,
             "blockers": blockers[:3],
             "primary_label": "Start data verification",
-            "primary_anchor": "#hr-data-verification",
+            "primary_anchor": "#hr-document-verification",
             "secondary_label": "HR decision checklist",
             "secondary_anchor": "#hr-employee-review",
         }

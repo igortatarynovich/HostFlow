@@ -58,7 +58,11 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
         </p>
         {na?.reason ? <p className="mt-1 text-xs text-slate-600">{na.reason}</p> : null}
         <div className="mt-3 space-y-2">
-          <AnchorButton label={na?.primary_label || 'Open checklist'} anchor={na?.primary_anchor || '#hr-employee-review'} onScrollTo={onScrollTo} />
+          <AnchorButton
+            label={na?.primary_label || t('app.hr.doc_flow.continue_verify', { defaultValue: 'Continue verification' })}
+            anchor={na?.primary_anchor || '#hr-document-verification'}
+            onScrollTo={onScrollTo}
+          />
           {na?.secondary_label && na.secondary_anchor ? (
             <button
               type="button"
@@ -88,20 +92,20 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
           <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600">
             {t('app.hr.review_case.decision_readiness', { defaultValue: 'Decision readiness' })}
           </h3>
-          <p className="mt-2 text-sm font-medium text-slate-900">
-            {t('app.hr.review_case.checklist_progress', {
-              defaultValue: 'Checklist: {done}/{total}',
-              values: { done: readiness.checklist_done, total: readiness.checklist_total },
-            })}
-          </p>
           {readiness.data_verification_total != null && readiness.data_verification_total > 0 ? (
-            <p className="mt-1 text-xs text-slate-600">
-              Data verified: {readiness.data_verification_verified ?? 0}/{readiness.data_verification_total}
-              {readiness.data_verification_critical_total
-                ? ` · critical ${readiness.data_verification_critical_verified ?? 0}/${readiness.data_verification_critical_total}`
-                : ''}
+            <p className="mt-2 text-sm font-medium text-slate-900">
+              {t('app.hr.review_case.documents_progress', {
+                defaultValue: 'Documents: confirm each in the verification workspace',
+              })}
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-2 text-sm font-medium text-slate-900">
+              {t('app.hr.review_case.checklist_progress', {
+                defaultValue: 'Checklist: {done}/{total}',
+                values: { done: readiness.checklist_done, total: readiness.checklist_total },
+              })}
+            </p>
+          )}
           {readiness.identity_status ? (
             <p className="mt-1 text-xs text-slate-600">Identity: {readiness.identity_status}</p>
           ) : null}
@@ -134,7 +138,7 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
         </h3>
         <ul className="mt-2 space-y-1 text-sm">
           <li>
-            <button type="button" className="text-brand-700 hover:underline" onClick={() => onScrollTo?.('#hr-data-verification')}>
+            <button type="button" className="text-brand-700 hover:underline" onClick={() => onScrollTo?.('#hr-document-verification')}>
               {t('app.hr.review.open_docs', { defaultValue: 'Open documents' })}
             </button>
           </li>

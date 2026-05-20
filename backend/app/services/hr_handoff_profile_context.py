@@ -109,6 +109,40 @@ def merge_recruiter_transport_fields(
     return out
 
 
+async def _load_live_candidate_fields(
+    db: AsyncSession,
+    candidate_id: Optional[str],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any]]:
+    """Live recruitment candidate extra/personal + flat snapshot fields for HR verification."""
+    cid = str(candidate_id or "").strip()
+    if not cid:
+        return None, None, {}
+    from backend.app.models.candidate import Candidate
+
+    cand = await db.get(Candidate, cid)
+    if not cand:
+        return None, None, {}
+    extra = cand._get_extra()
+    personal = cand._get_personal_data()
+    flat: dict[str, Any] = {}
+    if extra.get("citizenship"):
+        flat["citizenship"] = extra.get("citizenship")
+    if personal.get("citizenship"):
+        flat["citizenship"] = flat.get("citizenship") or personal.get("citizenship")
+    for k in ("pesel", "national_id", "work_country", "passport_number"):
+        if extra.get(k):
+            flat[k] = extra.get(k)
+        if personal.get(k):
+            flat[k] = flat.get(k) or personal.get(k)
+    first = str(cand.first_name or "").strip()
+    last = str(cand.last_name or "").strip()
+    if first:
+        flat["first_name"] = first
+    if last:
+        flat["last_name"] = last
+    return extra, personal, flat
+
+
 async def load_handoff_profile_namespace(
     db: AsyncSession,
     tenant_id: str,
@@ -117,33 +151,56 @@ async def load_handoff_profile_namespace(
     candidate_id: Optional[str] = None,
 ) -> dict[str, Any]:
     hid = str(handoff_id or "").strip()
-    if not hid:
-        return {}
-    row = (
-        await db.execute(
-            select(CandidateHandoffSnapshot).where(
-                CandidateHandoffSnapshot.handoff_id == hid,
-                CandidateHandoffSnapshot.agency_tenant_id == str(tenant_id).strip(),
+    payload: dict[str, Any] | None = None
+    if hid:
+        row = (
+            await db.execute(
+                select(CandidateHandoffSnapshot).where(
+                    CandidateHandoffSnapshot.handoff_id == hid,
+                    CandidateHandoffSnapshot.agency_tenant_id == str(tenant_id).strip(),
+                )
             )
-        )
-    ).scalar_one_or_none()
-    payload = row.payload if row and isinstance(row.payload, dict) else None
+        ).scalar_one_or_none()
+        payload = row.payload if row and isinstance(row.payload, dict) else None
     ns = build_handoff_profile_namespace(payload)
 
-    extra: dict[str, Any] | None = None
-    personal: dict[str, Any] | None = None
-    cid = str(candidate_id or "").strip()
-    if cid:
-        from backend.app.models.candidate import Candidate
-
-        cand = await db.get(Candidate, cid)
-        if cand:
-            extra = cand._get_extra()
-            personal = cand._get_personal_data()
+    extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
+    if flat.get("citizenship") and isinstance(ns.get("candidate"), dict):
+        ns["candidate"] = {**ns["candidate"], "citizenship": ns["candidate"].get("citizenship") or flat["citizenship"]}
 
     return merge_recruiter_transport_fields(
         ns,
         snapshot_payload=payload,
+        candidate_extra=extra,
+        candidate_personal=personal,
+    )
+
+
+async def load_recruiter_profile_namespace(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    handoff_id: Optional[str] = None,
+    candidate_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Handoff snapshot + live candidate fields — primary recruiter SoT for HR verification."""
+    if str(handoff_id or "").strip():
+        return await load_handoff_profile_namespace(
+            db, tenant_id, handoff_id, candidate_id=candidate_id
+        )
+    extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
+    ns: dict[str, Any] = {"candidate": {}}
+    if flat.get("citizenship"):
+        ns["candidate"]["citizenship"] = flat["citizenship"]
+    if flat.get("first_name") or flat.get("last_name"):
+        ns["candidate"]["first_name"] = flat.get("first_name")
+        ns["candidate"]["last_name"] = flat.get("last_name")
+        fn = f"{flat.get('first_name') or ''} {flat.get('last_name') or ''}".strip()
+        if fn:
+            ns["candidate"]["full_name"] = fn
+    return merge_recruiter_transport_fields(
+        ns,
+        snapshot_payload=None,
         candidate_extra=extra,
         candidate_personal=personal,
     )

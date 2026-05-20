@@ -245,6 +245,8 @@ class HrReviewDocumentRowOut(BaseModel):
     document_key: str
     label: str
     status: str
+    requirement_tier: Optional[str] = None
+    overridable: Optional[bool] = None
     context_type: Optional[str] = None
     document_id: Optional[str] = None
     verified: bool = False
@@ -275,6 +277,10 @@ class HrDocumentRejectIn(BaseModel):
 
 class HrDocumentCorrectionIn(BaseModel):
     note: str = Field(..., min_length=1, max_length=2000)
+
+
+class HrDocumentRequirementWaiverIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
 
 
 class HrVerifiedFieldOut(BaseModel):
@@ -513,6 +519,33 @@ class HrReviewTaskPriorityStepOut(BaseModel):
     state: str = "idle"
 
 
+class HrVerificationPlanStepOut(BaseModel):
+    step_code: str
+    step_order: int = 0
+    label: str = ""
+    document_keys: list[str] = Field(default_factory=list)
+
+
+class HrVerificationPlanOut(BaseModel):
+    plan_mode: str = "hybrid"
+    candidate_context: dict[str, Any] = Field(default_factory=dict)
+    vacancy_context: dict[str, Any] = Field(default_factory=dict)
+    client_context: dict[str, Any] = Field(default_factory=dict)
+    ruleset_checklist: dict[str, Any] = Field(default_factory=dict)
+    documents: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    hard_blocker_documents: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    required_documents: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    recommended_documents: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    optional_documents: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    hr_requested_documents: list[HrReviewDocumentRowOut] = Field(default_factory=list)
+    not_required_document_keys: list[str] = Field(default_factory=list)
+    verification_order: list[HrVerificationPlanStepOut] = Field(default_factory=list)
+    blocking_reasons: list[str] = Field(default_factory=list)
+    can_complete_verification: bool = False
+    can_approve: bool = False
+    missing_data: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class HrReviewPanelOut(BaseModel):
     review_id: str
     employee_id: Optional[str] = None
@@ -544,6 +577,9 @@ class HrReviewPanelOut(BaseModel):
     employment_identity: Optional[HrEmploymentIdentityProjectionOut] = None
     data_verification_items: list[HrDataVerificationItemOut] = Field(default_factory=list)
     data_verification_summary: Optional[HrDataVerificationSummaryOut] = None
+    position_category: Optional[str] = None
+    verification_critical_field_codes: list[str] = Field(default_factory=list)
+    verification_plan: Optional[HrVerificationPlanOut] = None
 
 
 class HrReviewChecklistPatchIn(BaseModel):

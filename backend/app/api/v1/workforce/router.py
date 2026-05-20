@@ -39,6 +39,7 @@ from backend.app.schemas.workforce_hr import (
 )
 from backend.app.schemas.workforce_hr_core import (
     HrDocumentCorrectionIn,
+    HrDocumentRequirementWaiverIn,
     HrDocumentRejectIn,
     HrDocumentReviewedFieldsIn,
     HrReviewChecklistPatchIn,
@@ -1387,6 +1388,8 @@ def _hr_review_http_error(exc: Exception) -> HTTPException:
         "OVERRIDE_REASON_REQUIRED",
         "CRITICAL_VERIFIED_FIELDS_INCOMPLETE",
         "CRITICAL_VERIFIED_FIELDS_CONFLICT",
+        "CANNOT_WAIVE_HARD_BLOCKER",
+        "WAIVER_REASON_REQUIRED",
     ):
         return HTTPException(status_code=422, detail={"code": msg})
     return HTTPException(status_code=422, detail=msg)
@@ -1573,6 +1576,40 @@ async def post_employee_document_request_correction(
             document_key=document_key,
             actor_user_id=actor,
             note=body.note,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/waive-requirement",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_document_waive_requirement(
+    employee_id: str,
+    document_key: str,
+    body: HrDocumentRequirementWaiverIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await doc_verify_svc.waive_document_requirement(
+            db,
+            tenant_id=tenant_id,
+            review=review,
+            document_key=document_key,
+            actor_user_id=actor,
+            reason=body.reason,
         )
         panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
     except Exception as exc:

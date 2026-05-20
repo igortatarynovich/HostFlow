@@ -1,6 +1,6 @@
-# HR Data & Document Verification Workspace (PR10–PR11)
+# HR Data & Document Verification Workspace (PR10–PR12)
 
-**Status:** Accepted (implemented).  
+**Status:** Accepted (PR12 sequential flow implemented).  
 **Related:** [Employment Case Workspace](hr-employment-case-workspace.md), [Verified Fields](hr-verified-fields-model.md), [Document verification (PR3)](hr-review-task-priority-v1.md#pr-3--document-verification-cards-), [Handoff snapshot](../architecture/hr-inbox-queue-api.md).
 
 ---
@@ -9,9 +9,10 @@
 
 One **primary HR work surface** for pre-approve review:
 
-- HR **confirms or corrects** recruiter-provided values against documents.
+- HR walks **one document at a time** (sequential flow).
+- HR **confirms the document** (not individual `field_code` rows in the UI).
+- Recruiter values are shown inline for editing; verified fields / checklist / blockers update **server-side** on confirm.
 - HR does **not** re-enter data from scratch when values already exist at handoff.
-- Documents are linked **per field row**, not as three competing full-page lists.
 
 ---
 
@@ -65,9 +66,22 @@ Transport field codes (no OCR):
 
 | Field | Document key |
 |-------|----------------|
-| `driver_license_number`, `driver_license_categories`, `document_expiry` (license) | Driver license |
+| `driver_license_number`, `driver_license_categories`, `driver_license_expiry` | Driver license |
 | `code95_number`, `code95_expiry` | Code95 |
 | `tacho_card_number`, `tacho_card_expiry` | Tacho card |
+| `exam_valid_until` | Medical, Psychological |
+
+### Required-for-approval policy (position)
+
+Resolved by `hr_verification_requirements.py` from `WorkEligibilityProfile.position_category` (fallback: candidate `extra.role` / `position_category`).
+
+| Position | Required field codes |
+|----------|----------------------|
+| **All cases** | `full_name`, `citizenship`, `work_country`, `pesel`, `document_expiry` (legal stay), `permit_type` |
+| **`driver`** | Above + transport fields + `exam_valid_until` |
+| **Non-driver** | Base only — transport rows optional |
+
+Panel exposes `position_category` and `verification_critical_field_codes`; items use `required_for_approval`.
 
 ---
 
@@ -88,35 +102,47 @@ Catalog: `hr_verified_field_catalog.py` (`FIELD_SPECS`, `FIELD_CATALOG`).
 
 ---
 
-## UI (review case layout)
+## UI (review case layout, PR12)
 
 **Main column (order):**
 
 1. Hero  
-2. `HrCurrentTaskPanel` — primary task; anchor **`#hr-data-verification`**  
-3. **`HrDataVerificationWorkspace`** — unified table + compact identity strip  
-4. `HrReviewPanelCard` — checklist + approve / return / reject only (`hideDocuments`)  
-5. Supporting (collapsed): work eligibility, recruitment handoff summary  
+2. **`HrSequentialDocumentVerification`** (`#hr-document-verification`) — sticky workspace:
+   - Left: document viewer (open file)
+   - Right: recruiter values + inline edit
+   - Footer: Previous · **Confirm document & continue**
+   - Progress: `N of M documents confirmed` · next document label
+   - Compact downstream readiness (Contracts / ZUS / Payroll)
+3. `HrReviewPanelCard` — **case decision mode**: documents + identity readiness + approve only; checklist in collapsed admin `<details>`
+4. Supporting (collapsed): work eligibility, recruitment handoff summary  
 
 **Removed as primary surfaces (review mode):**
 
+- Field-by-field verification table (`data_verification_items` UI)
+- `HrCurrentTaskPanel` on case pages (task engine stays in BFF; not shown as a layer)
 - Separate `HrDocumentsForApproval` list  
 - Separate `HrVerifiedFieldsPanel` table  
-- Full `HrEmploymentIdentitySummary` grid (replaced by compact strip inside workspace)
+- Full `HrEmploymentIdentitySummary` grid  
 
-**Right rail:** summary only — one blocker, data verification progress, identity status (no full blocker list).
+**Right rail:** next action → `#hr-document-verification`; one blocker; approve readiness (no checklist dump).
 
 ---
 
-## Write path (unchanged)
+## Write path
 
-Row actions call existing APIs:
+HR-facing action:
 
-- Confirm / correct → `POST …/document-verifications/{key}/reviewed`
-- Document verify / reject → collapsed **Document sign-off** section (PR3 cards)
-- SoT override → `POST …/verified-fields/{field_code}/override`
+- **Confirm document** → `POST …/document-verifications/{key}/verify` with `reviewed_fields` (all fields `confirmed: true`)
 
-No second persistence layer for verification items.
+Backend (unchanged):
+
+- `sync_from_document_verification` → verified fields SoT  
+- Checklist / identity / blockers derived — not shown as primary UI  
+
+Admin / edge:
+
+- Reject / request correction on active document card  
+- SoT override API remains for post-verify corrections (not in sequential main path)
 
 ---
 
