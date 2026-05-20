@@ -11,6 +11,7 @@ import PublicApplyPage from './pages/public/PublicApplyPage'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import PublicStatusPage from './pages/public/PublicStatusPage'
 import PublicScanPage from './pages/public/PublicScanPage'
+import EntityListShellDemoPublicPage from './pages/dev/EntityListShellDemoPublicPage'
 import { useI18n } from './i18n'
 
 export default function App(){
@@ -41,6 +42,10 @@ export default function App(){
       <Route path="/public/scan" element={<PublicScanPage />} />
       <Route path="/public/scan-sessions" element={<Navigate to="/public/scan" replace />} />
       <Route path="/public/status/:token" element={<PublicStatusPage />} />
+
+      {import.meta.env.DEV ? (
+        <Route path="/dev/entity-list-shell" element={<EntityListShellDemoPublicPage />} />
+      ) : null}
 
       {!me && (
         <>

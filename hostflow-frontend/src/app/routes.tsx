@@ -21,6 +21,7 @@ import DocumentsRegistryPage from '../pages/DocumentsRegistryPage'
 import SettingsLandingPage from '../pages/admin/SettingsLandingPage'
 import DocumentTypesPage from '../pages/admin/DocumentTypesPage'
 import CompanyAccessPage from '../pages/admin/CompanyAccessPage'
+import EntityListShellDemoPage from '../pages/dev/EntityListShellDemoPage'
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
 
@@ -200,5 +201,14 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-audit', path: 'settings/audit', Component: DeletionRequestsPage, permission: 'admin.deletionQueue' },
   { key: 'settings-company-access', path: 'settings/company-access', Component: CompanyAccessPage, permission: 'admin.companyAcl' },
   { key: 'profile', path: 'profile', Component: ProfilePage },
+  ...(import.meta.env.DEV
+    ? [
+        {
+          key: 'dev-entity-list-shell',
+          path: 'dev/entity-list-shell',
+          Component: EntityListShellDemoPage,
+        },
+      ]
+    : []),
   { key: 'not-found', path: '*', Component: NotFoundRedirect },
 ]

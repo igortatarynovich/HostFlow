@@ -4,6 +4,10 @@ import { useAuth } from '../../store/useAuth'
 import { patchUserMe } from '../../api/users'
 import type { UserSavedView } from '../../api/types'
 import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT } from '../../api/client'
+import EntityListBulkBar from '../surfaces/EntityListBulkBar'
+import EntityListPagination from '../surfaces/EntityListPagination'
+import EntityListShell from '../surfaces/EntityListShell'
+import EntityListTableFrame from '../surfaces/EntityListTableFrame'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -462,9 +466,20 @@ export default function VacancyList() {
 
   const resetDisabled = !q && !company && !status
 
+  const tableStatus = loading ? 'loading' : error ? 'error' : items.length === 0 ? 'empty' : 'ready'
+
   return (
-    <>
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <EntityListShell
+      className="h-full w-full space-y-4"
+      resourceLabel="Vacancies"
+      selection={{
+        selectedCount: selected.length,
+        onClearSelection: () => setSelected([]),
+      }}
+      zones={{
+        toolbar: (
+          <>
+<div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <form onSubmit={onSearch} className="flex flex-1 flex-col gap-3">
             <div className="flex flex-wrap gap-2">
@@ -548,23 +563,7 @@ export default function VacancyList() {
           </div>
         </div>
       </div>
-
-      {selected.length > 0 && (
-        <div className="card p-2 mb-2 flex flex-wrap items-center gap-2 text-sm">
-          <div>Выбрано: <span className="font-medium">{selected.length}</span></div>
-          <div className="flex items-center gap-1">
-            <span className="text-gray-500">Перевести в статус:</span>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('open')}>Открыта</button>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('on_hold')}>На паузе</button>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('closed')}>Закрыта</button>
-          </div>
-          <div className="flex-1" />
-          <button className={secondaryBtn} onClick={bulkArchive}>В архив</button>
-          <button className="btn-ghost" onClick={()=>setSelected([])}>Снять выделение</button>
-        </div>
-      )}
-
-      {/* Saved views row */}
+{/* Saved views row */}
       {views.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-2">
           {views.map((v) => (
@@ -575,17 +574,22 @@ export default function VacancyList() {
           ))}
         </div>
       )}
-
-      {error && (
+          </>
+        ),
+        table: (
+          <>
+{error && (
         <div className="mb-3">
           <div className="alert alert-error"><span>{error}</span></div>
         </div>
       )}
-
-      {loading ? (
-        <div className="text-sm text-gray-500">Загружаем список вакансий…</div>
-      ) : (
-        <div className="card w-full overflow-auto">
+            <EntityListTableFrame
+              status={tableStatus}
+              loading={<div className="text-sm text-gray-500">Загружаем список вакансий…</div>}
+              empty={<p className="px-4 py-8 text-center text-gray-500">Вакансии не найдены</p>}
+              error={<div className="alert alert-error"><span>{error}</span></div>}
+              table={
+<div className="card w-full overflow-auto">
           <table className="min-w-full text-sm table-auto">
             <thead>
               <tr className="bg-gray-50 text-left">
@@ -642,16 +646,48 @@ export default function VacancyList() {
             </tbody>
           </table>
         </div>
-      )}
-
-      <div className="flex items-center justify-between mt-3">
-        <div className="text-gray-500">Всего: {data.total}</div>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => goPage(Math.max(1, page - 1))} disabled={page <= 1} className="btn btn-sm">←</button>
-          <span className="px-2 text-sm text-gray-600">Стр. {page} / {Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))}</span>
-          <button type="button" onClick={() => goPage(Math.min(Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))), page + 1))} disabled={page >= Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))} className="btn btn-sm">→</button>
-        </div>
-      </div>
-    </>
+              }
+            />
+          </>
+        ),
+        bulkBar: (
+          <EntityListBulkBar
+            selectedCount={selected.length}
+            onClearSelection={() => setSelected([])}
+            selectedLabel={(count) => (
+              <>
+                Выбрано: <span className="font-medium">{count}</span>
+              </>
+            )}
+            clearLabel="Снять выделение"
+            actions={
+              <>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-500">Перевести в статус:</span>
+                  <button className={secondaryBtn} onClick={() => bulkSetStatus('open')}>Открыта</button>
+                  <button className={secondaryBtn} onClick={() => bulkSetStatus('on_hold')}>На паузе</button>
+                  <button className={secondaryBtn} onClick={() => bulkSetStatus('closed')}>Закрыта</button>
+                </div>
+                <button className={secondaryBtn} onClick={bulkArchive}>В архив</button>
+              </>
+            }
+          />
+        ),
+        pagination: (
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-gray-500">Всего: {data.total}</div>
+            <EntityListPagination
+              page={page}
+              pageSize={limit}
+              total={data.total || 0}
+              onPageChange={goPage}
+              previousLabel="←"
+              nextLabel="→"
+              pageLabel={(p, tp) => `Стр. ${p} / ${tp}`}
+            />
+          </div>
+        ),
+      }}
+    />
   )
 }
