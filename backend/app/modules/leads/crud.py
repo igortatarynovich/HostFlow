@@ -13,7 +13,9 @@ from backend.app.models import (
     Company,
     Lead,
     MetaAdsMap,
+    MetaFormRoute,
     MetaLeadCredential,
+    MetaLeadFormMapping,
     MetaLeadSettings,
     MetaOAuthPending,
     Vacancy,
@@ -35,11 +37,15 @@ async def create_lead(
     last_routed_at: Optional[datetime] = None,
     external_id: Optional[str] = None,
     lead_type: str = "candidate",
+    lead_target_type: str = "candidate",
 ) -> Lead:
     lt = str(lead_type or "candidate").strip().lower()
     if lt not in {"candidate", "client"}:
         lt = "candidate"
-    if lt == "candidate" and not company_id:
+    ltt = str(lead_target_type or lt).strip().lower()
+    if ltt not in {"candidate", "client_lead", "service_order_lead", "partner_lead"}:
+        ltt = "candidate" if lt == "candidate" else "client_lead"
+    if lt == "candidate" and ltt == "candidate" and not company_id:
         raise ValueError("company_id is required for candidate leads")
     await ensure_monthly_lead_creation_allowed(db, tenant_id)
     lead = Lead(
@@ -47,6 +53,7 @@ async def create_lead(
         tenant_id=tenant_id,
         own_company_id=own_company_id,
         lead_type=lt,
+        lead_target_type=ltt,
         company_id=company_id,
         vacancy_id=vacancy_id,
         source=source,
@@ -793,3 +800,239 @@ async def get_meta_oauth_pending(
 async def delete_meta_oauth_pending(db: AsyncSession, entry: MetaOAuthPending) -> None:
     await db.delete(entry)
     await db.flush()
+
+
+def _normalize_form_page_id(page_id: Optional[str]) -> str:
+    return str(page_id or "").strip()
+
+
+def _normalize_form_source(source: Optional[str]) -> str:
+    s = (source or "meta").strip().lower()
+    return s or "meta"
+
+
+async def get_meta_form_mapping(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    page_id: Optional[str] = None,
+    source: str = "meta",
+) -> Optional[MetaLeadFormMapping]:
+    fid = str(form_id or "").strip()
+    if not fid:
+        return None
+    pid = _normalize_form_page_id(page_id)
+    src = _normalize_form_source(source)
+    stmt = select(MetaLeadFormMapping).where(
+        MetaLeadFormMapping.tenant_id == tenant_id,
+        MetaLeadFormMapping.source == src,
+        MetaLeadFormMapping.form_id == fid,
+        MetaLeadFormMapping.page_id == pid,
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def upsert_meta_form_mapping(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    page_id: Optional[str] = None,
+    source: str = "meta",
+    mapping_rules: Optional[Any] = None,
+    form_name: Optional[str] = None,
+    last_sample_lead_id: Optional[str] = None,
+    updated_by: Optional[str] = None,
+) -> MetaLeadFormMapping:
+    fid = str(form_id or "").strip()
+    if not fid:
+        raise ValueError("form_id is required")
+    pid = _normalize_form_page_id(page_id)
+    src = _normalize_form_source(source)
+    existing = await get_meta_form_mapping(
+        db, tenant_id=tenant_id, form_id=fid, page_id=pid, source=src
+    )
+    rules = mapping_rules if isinstance(mapping_rules, list) else []
+    if existing:
+        existing.mapping_rules = rules
+        if form_name is not None:
+            existing.form_name = form_name.strip() or None
+        if last_sample_lead_id is not None:
+            existing.last_sample_lead_id = last_sample_lead_id.strip() or None
+        if updated_by is not None:
+            existing.updated_by = updated_by.strip() or None
+        await db.flush()
+        return existing
+    entry = MetaLeadFormMapping(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        source=src,
+        page_id=pid,
+        form_id=fid,
+        form_name=form_name.strip() if form_name else None,
+        mapping_rules=rules,
+        last_sample_lead_id=last_sample_lead_id.strip() if last_sample_lead_id else None,
+        updated_by=updated_by.strip() if updated_by else None,
+    )
+    db.add(entry)
+    await db.flush()
+    return entry
+
+
+async def list_meta_form_mapping_rows(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source: Optional[str] = None,
+) -> list[MetaLeadFormMapping]:
+    src = _normalize_form_source(source) if source is not None else None
+    stmt = select(MetaLeadFormMapping).where(MetaLeadFormMapping.tenant_id == tenant_id)
+    if src is not None:
+        stmt = stmt.where(MetaLeadFormMapping.source == src)
+    stmt = stmt.order_by(MetaLeadFormMapping.updated_at.desc())
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def list_discovered_meta_forms_from_leads(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source: str = "meta",
+    limit: int = 50,
+) -> list[dict[str, Optional[str]]]:
+    """Distinct form_id / page_id pairs seen on recent leads (normalized JSON)."""
+    src = _normalize_form_source(source)
+    lim = min(max(1, limit), 200)
+    stmt = (
+        select(Lead.normalized, Lead.payload)
+        .where(Lead.tenant_id == tenant_id, Lead.source == src)
+        .order_by(Lead.created_at.desc())
+        .limit(lim * 4)
+    )
+    rows = (await db.execute(stmt)).all()
+    seen: set[tuple[str, str]] = set()
+    out: list[dict[str, Optional[str]]] = []
+    for normalized, payload in rows:
+        form_id: Optional[str] = None
+        page_id: Optional[str] = None
+        if isinstance(normalized, dict):
+            raw_fid = normalized.get("form_id")
+            if raw_fid is not None and str(raw_fid).strip():
+                form_id = str(raw_fid).strip()
+        if isinstance(payload, dict):
+            from backend.app.modules.leads import normalizer
+
+            ctx = normalizer.extract_meta_lead_form_context(payload, source=src)
+            form_id = form_id or ctx.get("form_id")
+            page_id = ctx.get("page_id")
+        if not form_id:
+            continue
+        pid = _normalize_form_page_id(page_id)
+        key = (form_id, pid)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"form_id": form_id, "page_id": pid or None, "source": src})
+        if len(out) >= lim:
+            break
+    return out
+
+
+async def get_meta_form_route(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    page_id: Optional[str] = None,
+    source: str = "meta",
+) -> Optional[MetaFormRoute]:
+    fid = str(form_id or "").strip()
+    if not fid:
+        return None
+    pid = _normalize_form_page_id(page_id)
+    src = _normalize_form_source(source)
+    stmt = select(MetaFormRoute).where(
+        MetaFormRoute.tenant_id == tenant_id,
+        MetaFormRoute.source == src,
+        MetaFormRoute.form_id == fid,
+        MetaFormRoute.page_id == pid,
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def upsert_meta_form_route(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    own_company_id: str,
+    lead_target_type: str,
+    page_id: Optional[str] = None,
+    source: str = "meta",
+    pipeline_preset: Optional[str] = None,
+    default_assignee_id: Optional[str] = None,
+    is_active: bool = True,
+    updated_by: Optional[str] = None,
+) -> MetaFormRoute:
+    from backend.app.modules.leads.intake_route import normalize_lead_target_type
+
+    fid = str(form_id or "").strip()
+    if not fid:
+        raise ValueError("form_id is required")
+    oc = str(own_company_id or "").strip()
+    if not oc:
+        raise ValueError("own_company_id is required")
+    pid = _normalize_form_page_id(page_id)
+    src = _normalize_form_source(source)
+    ltt = normalize_lead_target_type(lead_target_type)
+    existing = await get_meta_form_route(
+        db, tenant_id=tenant_id, form_id=fid, page_id=pid, source=src
+    )
+    if existing:
+        existing.own_company_id = oc
+        existing.lead_target_type = ltt
+        existing.pipeline_preset = str(pipeline_preset or "").strip() or None
+        existing.default_assignee_id = str(default_assignee_id or "").strip() or None
+        existing.is_active = bool(is_active)
+        if updated_by is not None:
+            existing.updated_by = updated_by.strip() or None
+        await db.flush()
+        from backend.app.modules.intake_routing.meta_bridge import sync_meta_form_route_to_intake_foundation
+
+        await sync_meta_form_route_to_intake_foundation(db, route=existing)
+        return existing
+    entry = MetaFormRoute(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        source=src,
+        page_id=pid,
+        form_id=fid,
+        own_company_id=oc,
+        lead_target_type=ltt,
+        pipeline_preset=str(pipeline_preset or "").strip() or None,
+        default_assignee_id=str(default_assignee_id or "").strip() or None,
+        is_active=bool(is_active),
+        updated_by=updated_by.strip() if updated_by else None,
+    )
+    db.add(entry)
+    await db.flush()
+    from backend.app.modules.intake_routing.meta_bridge import sync_meta_form_route_to_intake_foundation
+
+    await sync_meta_form_route_to_intake_foundation(db, route=entry)
+    return entry
+
+
+async def list_meta_form_routes(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source: str = "meta",
+) -> list[MetaFormRoute]:
+    src = _normalize_form_source(source)
+    stmt = (
+        select(MetaFormRoute)
+        .where(MetaFormRoute.tenant_id == tenant_id, MetaFormRoute.source == src)
+        .order_by(MetaFormRoute.updated_at.desc())
+    )
+    return list((await db.execute(stmt)).scalars().all())

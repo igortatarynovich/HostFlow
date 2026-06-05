@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Tuple
+from typing import List, Literal, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, status
@@ -28,6 +28,11 @@ from backend.app.modules.leads.schemas import (
     MetaGraphFieldDataPreviewRequest,
     MetaGraphFieldDataPreviewResponse,
     MetaIncomingLeadsPreviewResponse,
+    MetaLeadFormListResponse,
+    MetaLeadFormMappingOut,
+    MetaLeadFormMappingUpdate,
+    MetaFormRouteOut,
+    MetaFormRouteUpdate,
     MetaLeadResponse,
     MetaLeadRetryRequest,
     MetaLeadRetryResponse,
@@ -40,6 +45,8 @@ from backend.app.modules.leads.schemas import (
     MetaOAuthFinalizeIn,
     MetaOAuthFinalizeOut,
     MetaOAuthStartOut,
+    LeadMessageTemplateOut,
+    LeadMessageTemplateCreateUpdate,
     UnmappedLeadsResponse,
 )
 from backend.app.services.imports import leads as import_service
@@ -170,6 +177,76 @@ async def update_settings_endpoint(
     return await admin_service.enrich_meta_leads_tenant_context(db, header_tid, tenant_id, result)
 
 
+@router.get(
+    "/message-templates",
+    response_model=list[LeadMessageTemplateOut],
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def list_lead_message_templates_endpoint(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> list[LeadMessageTemplateOut]:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    return await admin_service.list_lead_message_templates(db, str(tenant_uuid))
+
+
+@router.post(
+    "/message-templates",
+    response_model=LeadMessageTemplateOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def create_lead_message_template_endpoint(
+    payload: LeadMessageTemplateCreateUpdate,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> LeadMessageTemplateOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    out = await admin_service.create_lead_message_template(db, str(tenant_uuid), payload)
+    await db.commit()
+    return out
+
+
+@router.patch(
+    "/message-templates/{template_id}",
+    response_model=LeadMessageTemplateOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def update_lead_message_template_endpoint(
+    template_id: str,
+    payload: LeadMessageTemplateCreateUpdate,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> LeadMessageTemplateOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    out = await admin_service.update_lead_message_template(db, str(tenant_uuid), template_id, payload)
+    await db.commit()
+    return out
+
+
+@router.delete(
+    "/message-templates/{template_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def delete_lead_message_template_endpoint(
+    template_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> Response:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    deleted = await admin_service.delete_lead_message_template(db, str(tenant_uuid), template_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Template not found")
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/inbound-webhook/rotate",
     response_model=GenericInboundWebhookRotateResponse,
@@ -205,6 +282,104 @@ async def meta_incoming_preview_endpoint(
     _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
     return await admin_service.list_meta_incoming_preview(db, tenant_id, limit=limit, source=source)
+
+
+@router.get(
+    "/meta/forms",
+    response_model=MetaLeadFormListResponse,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def meta_lead_forms_list_endpoint(
+    source: Literal["meta", "webhook"] = Query("meta"),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaLeadFormListResponse:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    return await admin_service.list_meta_lead_forms(db, tenant_id, source=source)
+
+
+@router.get(
+    "/meta/forms/{form_id}/mapping",
+    response_model=MetaLeadFormMappingOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def meta_lead_form_mapping_get_endpoint(
+    form_id: str,
+    page_id: Optional[str] = Query(default=None),
+    source: Literal["meta", "webhook"] = Query("meta"),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaLeadFormMappingOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    return await admin_service.get_meta_lead_form_mapping(
+        db, tenant_id, form_id, page_id=page_id, source=source
+    )
+
+
+@router.put(
+    "/meta/forms/{form_id}/mapping",
+    response_model=MetaLeadFormMappingOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def meta_lead_form_mapping_put_endpoint(
+    form_id: str,
+    payload: MetaLeadFormMappingUpdate,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaLeadFormMappingOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    result = await admin_service.upsert_meta_lead_form_mapping(
+        db, tenant_id, form_id, payload, user_sub=ctx.sub
+    )
+    await db.commit()
+    return result
+
+
+@router.get(
+    "/meta/forms/{form_id}/route",
+    response_model=MetaFormRouteOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def meta_form_route_get_endpoint(
+    form_id: str,
+    page_id: Optional[str] = Query(default=None),
+    source: Literal["meta", "webhook"] = Query("meta"),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaFormRouteOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    return await admin_service.get_meta_form_route(
+        db, tenant_id, form_id, page_id=page_id, source=source
+    )
+
+
+@router.put(
+    "/meta/forms/{form_id}/route",
+    response_model=MetaFormRouteOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def meta_form_route_put_endpoint(
+    form_id: str,
+    payload: MetaFormRouteUpdate,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaFormRouteOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    result = await admin_service.upsert_meta_form_route(
+        db, tenant_id, form_id, payload, user_sub=ctx.sub
+    )
+    await db.commit()
+    return result
 
 
 @router.post(

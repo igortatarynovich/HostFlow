@@ -64,6 +64,13 @@ from ._helpers import (
 )
 from backend.app.modules.leads.schemas import intake_vacancy_confirm_triage_bypass
 from backend.app.modules.leads.service.intake_decision import pool_intake_manual_convert_ready
+from backend.app.modules.leads.intake_route import (
+    is_sales_route_intent,
+    lead_type_for_route_intent,
+    lead_type_for_target,
+    resolve_intake_route_for_ingest,
+    route_intent_creates_candidate,
+)
 
 _ingest_guard_log = logging.getLogger(__name__)
 
@@ -101,6 +108,9 @@ async def process_normalized_lead(
 ) -> MetaLeadResult:
     normalized = dict(normalized or {})
     business_type: Optional[str] = None
+    lead_target_type: str = "candidate"
+    route_intent: str = "unknown"
+    route_default_assignee: Optional[str] = None
     settings_row = await _load_settings(db, tenant_id)
     tenant_entity_for_settings = await db.get(Tenant, tenant_id)
     tenant_settings_for_routing: Dict[str, Any] = {}
@@ -153,7 +163,7 @@ async def process_normalized_lead(
         # IMPORTANT:
         # - `status="new"` must NOT be treated as "already processed"; otherwise manual `POST /process`
         #   will never attach `candidate_id` nor update lead status.
-        if not force_existing and lead.status in {"processed", "duplicated"}:
+        if not force_existing and lead.status in {"processed", "duplicated", "rejected"}:
             effective_own_company_id = own_company_id or getattr(lead, "own_company_id", None)
             business_type = await _load_tenant_business_type(db, tenant_id, effective_own_company_id)
             recruiter_id: Optional[str] = None
@@ -275,6 +285,24 @@ async def process_normalized_lead(
                 is_new=False,
             )
 
+    intake_ctx = await resolve_intake_route_for_ingest(
+        db,
+        tenant_id=tenant_id,
+        source=source,
+        normalized=normalized,
+        payload=payload,
+        own_company_id_hint=str(own_company_id or "").strip() or None,
+    )
+    route_intent = intake_ctx.route_intent
+    lead_target_type = intake_ctx.lead_target_type
+    route_default_assignee = intake_ctx.default_assignee_id
+    normalized["intake_routing_v1"] = intake_ctx.to_intake_routing_v1()
+    normalized["intake_route_v1"] = intake_ctx.to_normalized_block()
+    if intake_ctx.pipeline_preset:
+        normalized["intake_pipeline_preset_v1"] = intake_ctx.pipeline_preset
+    if intake_ctx.own_company_id:
+        own_company_id = intake_ctx.own_company_id
+
     req_oc = str(own_company_id or "").strip() or None
     lead_oc = (
         str(getattr(lead, "own_company_id", None) or "").strip() or None
@@ -313,6 +341,7 @@ async def process_normalized_lead(
         and effective_processing_mode == "automatic"
         and _vacancy_allows_auto_convert_on_fit(vacancy)
         and (not fit_evaluation_effective or tenant_autoconv)
+        and route_intent_creates_candidate(route_intent, force=force_candidate_conversion)
     )
     normalized["leads_auto_convert_on_fit_effective_v1"] = bool(may_auto_convert)
 
@@ -377,6 +406,8 @@ async def process_normalized_lead(
         # - lead.own_company_id matches current scope
         # - candidates/clients remain visible in the UI after conversion
         own_company_id_for_lead = own_company_id
+        if intake_ctx.own_company_id:
+            own_company_id_for_lead = intake_ctx.own_company_id
         if not own_company_id_for_lead:
             own_company_id_for_lead = getattr(vacancy, "own_company_id", None) if vacancy else None
         if not own_company_id_for_lead:
@@ -400,6 +431,8 @@ async def process_normalized_lead(
             ad_id=normalized.get("ad_id"),
             source=source,
             external_id=normalized_external_id,
+            lead_type=lead_type_for_route_intent(route_intent),
+            lead_target_type=lead_target_type,
         )
         created_new = True
         if on_lead_created is not None:
@@ -411,8 +444,16 @@ async def process_normalized_lead(
         lead.company_id = resolved_company_id
         lead.vacancy_id = vacancy.id if vacancy else None
         if getattr(lead, "own_company_id", None) in (None, ""):
-            # Prefer active OwnCompany if provided; otherwise fall back to vacancy.
-            lead.own_company_id = own_company_id or (getattr(vacancy, "own_company_id", None) if vacancy else None)
+            # Prefer intake route / active OwnCompany; otherwise fall back to vacancy.
+            lead.own_company_id = (
+                intake_ctx.own_company_id
+                if intake_ctx.own_company_id
+                else (own_company_id or (getattr(vacancy, "own_company_id", None) if vacancy else None))
+            )
+        if getattr(lead, "lead_target_type", None) in (None, ""):
+            lead.lead_target_type = lead_target_type
+        if lead_type_for_target(lead_target_type) != str(getattr(lead, "lead_type", "") or "candidate"):
+            lead.lead_type = lead_type_for_target(lead_target_type)
         lead.payload = payload
         from backend.app.services.lead_communications import normalized_merging_lead_persisted_blocks
 
@@ -445,6 +486,57 @@ async def process_normalized_lead(
     # so we can determine the scenario using OwnCompany settings.
     effective_own_company_id = own_company_id or getattr(lead, "own_company_id", None)
     business_type = await _load_tenant_business_type(db, tenant_id, effective_own_company_id)
+
+    if intake_ctx.failed and not force_candidate_conversion:
+        failed_error = (
+            str(intake_ctx.warnings[0]).upper()
+            if intake_ctx.warnings
+            else "INTAKE_ROUTING_FAILED"
+        )
+        failed_lead_id = str(lead.id)
+        now_marker = datetime.now(timezone.utc)
+        await crud.update_lead(
+            db,
+            lead,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=failed_error,
+            last_routed_at=now_marker,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=failed_error,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=failed_lead_id,
+            normalized=normalized,
+        )
+        await db.flush()
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=failed_lead_id,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=failed_error,
+            is_new=created_new,
+        )
 
     email = normalized.get("email")
     phone = normalized.get("phone")
@@ -511,7 +603,7 @@ async def process_normalized_lead(
         email=email,
         phone=phone,
     )
-    if duplicate:
+    if duplicate and route_intent_creates_candidate(route_intent, force=force_candidate_conversion):
         await crud.update_lead(
             db,
             lead,
@@ -549,9 +641,9 @@ async def process_normalized_lead(
             candidate_id=str(duplicate.id),
             recruiter_id=getattr(duplicate, "recruiter_id", None),
             business_type=business_type,
-            outcome_entity_type="company" if business_type == "services" else "candidate",
-            outcome_entity_id=resolved_company_id if business_type == "services" else str(duplicate.id),
-            outcome_entity_name=resolved_company_name if business_type == "services" else None,
+            outcome_entity_type="company" if is_sales_route_intent(route_intent) else "candidate",
+            outcome_entity_id=resolved_company_id if is_sales_route_intent(route_intent) else str(duplicate.id),
+            outcome_entity_name=resolved_company_name if is_sales_route_intent(route_intent) else None,
             error=None,
             is_new=created_new,
         )
@@ -559,7 +651,7 @@ async def process_normalized_lead(
     if (
         not triage_gate_bypass
         and may_auto_convert
-        and business_type not in (None, "services")
+        and route_intent_creates_candidate(route_intent, force=force_candidate_conversion)
         and vacancy is not None
         and routing_fit_status in ("no_fit", "needs_info")
     ):
@@ -618,7 +710,7 @@ async def process_normalized_lead(
         )
 
     if not triage_gate_bypass and not may_auto_convert and not pool_manual_convert_ready:
-        if business_type not in (None, "services"):
+        if route_intent_creates_candidate(route_intent, force=force_candidate_conversion):
             if effective_processing_mode == "assisted":
                 _stamp_lead_qualification_preview_v1(
                     normalized,
@@ -681,10 +773,8 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    # --- Services mode semantics: lead = potential client (no candidate creation) ---
-    # For services tenants, vacancy/candidate is not the default conversion path.
-    # We still accept vacancy_id in payload for compatibility, but the outcome is company-centric.
-    if business_type == "services":
+    # --- Sales intake: lead stays in pipeline (no candidate creation) ---
+    if is_sales_route_intent(route_intent) and not force_candidate_conversion:
         # After commits SQLAlchemy may expire ORM instances, so avoid accessing `lead.*`
         # after `await db.commit()` by capturing values upfront.
         services_lead_id = str(lead.id)
@@ -741,7 +831,7 @@ async def process_normalized_lead(
             assignee_id = await _pick_lead_assignee_id(
                 db,
                 tenant_id=tenant_id,
-                preferred_user_id=fallback_recruiter_hint,
+                preferred_user_id=route_default_assignee or fallback_recruiter_hint,
                 normalized=normalized,
                 lead_id=str(services_lead_id),
             )
@@ -787,7 +877,9 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not vacancy and not pool_manual_convert_ready:
+    if not vacancy and not pool_manual_convert_ready and route_intent_creates_candidate(
+        route_intent, force=force_candidate_conversion
+    ):
         needs_routing_lead_id = str(lead.id)
         await crud.update_lead(
             db,
@@ -1097,9 +1189,9 @@ async def process_normalized_lead(
         recruiter_id=recruiter_id,
         user_ids=recipient_ids,
         business_type=business_type,
-        outcome_entity_type="company" if business_type == "services" else "candidate",
-        outcome_entity_id=resolved_company_id if business_type == "services" else str(candidate.id),
-        outcome_entity_name=resolved_company_name if business_type == "services" else None,
+        outcome_entity_type="candidate",
+        outcome_entity_id=str(candidate.id),
+        outcome_entity_name=None,
     )
     await db.commit()
 
@@ -1110,9 +1202,9 @@ async def process_normalized_lead(
         candidate_id=str(candidate.id),
         recruiter_id=recruiter_id,
         business_type=business_type,
-        outcome_entity_type="company" if business_type == "services" else "candidate",
-        outcome_entity_id=resolved_company_id if business_type == "services" else str(candidate.id),
-        outcome_entity_name=resolved_company_name if business_type == "services" else None,
+        outcome_entity_type="candidate",
+        outcome_entity_id=str(candidate.id),
+        outcome_entity_name=None,
         error=None,
         is_new=created_new,
     )

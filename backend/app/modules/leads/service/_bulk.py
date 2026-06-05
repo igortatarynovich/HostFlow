@@ -445,9 +445,18 @@ async def reprocess_stored_lead_payload(
         if _payload_needs_flat_field_data_coercion(payload_dict)
         else payload_dict
     )
+    from backend.app.modules.leads.field_mapping_resolve import resolve_field_mapping_for_ingest
+
+    field_mapping = await resolve_field_mapping_for_ingest(
+        db,
+        tenant_id=tenant_id,
+        payload=to_normalize,
+        source=source,
+        settings_row=settings_row,
+    )
     normalized = normalizer.normalize_meta_payload(
         to_normalize,
-        field_mapping=getattr(settings_row, "field_mapping", None),
+        field_mapping=field_mapping,
     )
     _merge_lead_normalized_fallback(normalized, prior_normalized)
     _apply_stored_lead_row_ids_to_normalized(
@@ -510,9 +519,18 @@ async def process_generic_inbound_webhook_lead(
     """
     settings_row = await _load_settings(db, tenant_id)
     coerced = normalizer.coerce_generic_json_to_meta_normalizer_payload(body)
+    from backend.app.modules.leads.field_mapping_resolve import resolve_field_mapping_for_ingest
+
+    field_mapping = await resolve_field_mapping_for_ingest(
+        db,
+        tenant_id=tenant_id,
+        payload=coerced,
+        source="webhook",
+        settings_row=settings_row,
+    )
     normalized = normalizer.normalize_meta_payload(
         coerced,
-        field_mapping=getattr(settings_row, "field_mapping", None),
+        field_mapping=field_mapping,
     )
     raw_lead_id = normalized.get("raw_lead_id")
     external_id = str(raw_lead_id).strip() if raw_lead_id else None

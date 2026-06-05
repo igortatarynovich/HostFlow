@@ -8,8 +8,8 @@ from uuid import uuid4
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.base import Base
-from backend.app.models.intake_routing_enums import (
+from ..db.base import Base
+from .intake_routing_enums import (
     IntakeChannel,
     IntakeProvider,
     RouteIntent,

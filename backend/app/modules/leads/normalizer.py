@@ -5,6 +5,10 @@ import re
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 from uuid import UUID
 
+from backend.app.services.integration_inbound_normalization import (
+    normalize_inbound_country_alpha2,
+)
+from backend.app.field_registry.intake_mapping import resolve_intake_mapping_target
 
 VACANCY_PATTERN = re.compile(r"vacancy[_-]([0-9a-fA-F-]{6,})")
 
@@ -237,9 +241,9 @@ def _convert_mapped_value(raw_values: List[str], format_name: str) -> Any:
         except (TypeError, ValueError):
             return None
     if fmt == "country":
-        return first.upper()
+        return normalize_inbound_country_alpha2(first)
     if fmt == "geo_country":
-        return first.upper()
+        return normalize_inbound_country_alpha2(first)
     if fmt == "contact_channel":
         return _normalize_preferred_contact(first)
     if fmt == "list":
@@ -263,7 +267,7 @@ def _apply_custom_field_mapping(
     if not rules:
         return
     for rule in rules:
-        target = str(rule.get("target") or "").strip()
+        target = resolve_intake_mapping_target(rule)
         if not target:
             continue
         overwrite = bool(rule.get("overwrite", True))
@@ -559,6 +563,29 @@ def _is_poland_value(value: Optional[str]) -> bool:
     return raw in aliases
 
 
+def extract_meta_lead_form_context(
+    payload: Dict[str, Any],
+    *,
+    source: str = "meta",
+) -> Dict[str, Optional[str]]:
+    """Read form_id / page_id from Meta webhook or coerced inbound shape (before normalization)."""
+    entry = (payload.get("entry") or [{}])[0] or {}
+    if not isinstance(entry, dict):
+        entry = {}
+    changes = (entry.get("changes") or [{}])[0] or {}
+    if not isinstance(changes, dict):
+        changes = {}
+    value = changes.get("value") if isinstance(changes.get("value"), dict) else payload
+    if not isinstance(value, dict):
+        value = payload if isinstance(payload, dict) else {}
+    form_raw = value.get("form_id")
+    page_raw = value.get("page_id") or value.get("page") or entry.get("id") or entry.get("page_id")
+    form_id = str(form_raw).strip() if form_raw is not None and str(form_raw).strip() else None
+    page_id = str(page_raw).strip() if page_raw is not None and str(page_raw).strip() else None
+    src = (source or "meta").strip().lower() or "meta"
+    return {"source": src, "form_id": form_id, "page_id": page_id}
+
+
 def coerce_generic_json_to_meta_normalizer_payload(body: Dict[str, Any]) -> Dict[str, Any]:
     """
     Wrap arbitrary JSON objects so normalize_meta_payload can read field_data (§2.11 webhook v1).
@@ -704,13 +731,13 @@ def normalize_meta_payload(
         normalized["company_hints"] = company_hints
     if country_hint:
         normalized["country_raw"] = country_hint
-        normalized["country"] = country_hint.upper()
+        normalized["country"] = normalize_inbound_country_alpha2(country_hint)
         if not normalized.get("in_poland") and _is_poland_value(country_hint):
             normalized["in_poland"] = True
     geo_hint = _first(mapping, *GEO_COUNTRY_ALIASES)
     if geo_hint:
         normalized["geo_country_raw"] = geo_hint
-        normalized["geo_country"] = str(geo_hint).strip().upper()
+        normalized["geo_country"] = normalize_inbound_country_alpha2(geo_hint)
     if preferred_contact:
         normalized["preferred_contact"] = preferred_contact
     in_poland_hint = _first(mapping, *IN_POLAND_ALIASES)

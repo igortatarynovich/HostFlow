@@ -91,6 +91,10 @@ PeHandoffRule = pe_module.PeHandoffRule  # type: ignore[attr-defined]
 PeFieldRequirement = pe_module.PeFieldRequirement  # type: ignore[attr-defined]
 PeDocumentRequirement = pe_module.PeDocumentRequirement  # type: ignore[attr-defined]
 PeOverrideRule = pe_module.PeOverrideRule  # type: ignore[attr-defined]
+fr_module = _load_model_module("field_registry")
+FrCanonicalField = fr_module.FrCanonicalField  # type: ignore[attr-defined]
+FrCardLayoutProfile = fr_module.FrCardLayoutProfile  # type: ignore[attr-defined]
+FrCardLayoutField = fr_module.FrCardLayoutField  # type: ignore[attr-defined]
 MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
 MergeDocumentGenerationLog = _load_model_module("merge_document_generation_log").MergeDocumentGenerationLog  # type: ignore[attr-defined]
 
@@ -276,6 +280,9 @@ __all__ = [
     "PeFieldRequirement",
     "PeDocumentRequirement",
     "PeOverrideRule",
+    "FrCanonicalField",
+    "FrCardLayoutProfile",
+    "FrCardLayoutField",
     "MergeDocumentTemplate",
     "MergeDocumentGenerationLog",
     "Reminder",

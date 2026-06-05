@@ -9,8 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from backend.app.constants.spa_paths import LEADS as SPA_LEADS
 
 
-LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing"]
+LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing", "rejected"]
 LeadType = Literal["candidate", "client"]
+LeadTargetType = Literal["candidate", "client_lead", "service_order_lead", "partner_lead"]
 LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
 LeadImportStatus = Literal["pending", "running", "completed", "failed"]
 LeadNextActionStatus = Literal["scheduled", "overdue", "no_next_action"]
@@ -114,6 +115,7 @@ class LeadOut(BaseModel):
     tenant_id: UUID
     business_type: Optional[str] = None
     lead_type: LeadType = "candidate"
+    lead_target_type: LeadTargetType = "candidate"
     company_id: Optional[UUID] = None
     company_name: Optional[str] = None
     vacancy_id: Optional[UUID] = None
@@ -525,17 +527,29 @@ MetaFieldMappingFormat = Literal[
 
 class MetaLeadFieldMappingRule(BaseModel):
     source: Union[str, List[str]]
-    target: str
+    target: str = ""
+    qualified_field_code: Optional[str] = None
     format: MetaFieldMappingFormat = "string"
     overwrite: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_qualified_and_target(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        from backend.app.field_registry.intake_mapping import enrich_mapping_rule_for_storage
+
+        enriched = enrich_mapping_rule_for_storage(data)
+        qualified = str(enriched.get("qualified_field_code") or "").strip()
+        target = str(enriched.get("target") or "").strip()
+        if not target and not qualified:
+            raise ValueError("target or qualified_field_code is required")
+        return enriched
 
     @field_validator("target")
     @classmethod
     def _validate_target(cls, value: str) -> str:
-        text = (value or "").strip()
-        if not text:
-            raise ValueError("target must not be empty")
-        return text
+        return str(value or "").strip()
 
     @field_validator("source")
     @classmethod
@@ -631,10 +645,20 @@ class MetaLeadSettingsOut(BaseModel):
     )
     lead_rodo_channels: List[str] = Field(default_factory=lambda: ["email"])
     lead_rodo_template_id: Optional[str] = None
+    lead_rodo_message_template_id: Optional[str] = None
     lead_communication_enabled: bool = False
     send_application_received: bool = False
     send_rejection_notice: bool = False
     send_moving_forward_notice: bool = False
+    application_received_template_id: Optional[str] = None
+    rejection_notice_template_id: Optional[str] = None
+    moving_forward_template_id: Optional[str] = None
+    application_received_subject: Optional[str] = None
+    application_received_body: Optional[str] = None
+    rejection_notice_subject: Optional[str] = None
+    rejection_notice_body: Optional[str] = None
+    moving_forward_subject: Optional[str] = None
+    moving_forward_body: Optional[str] = None
     # §2.11 plan hints for UI (None = no cap on Team+).
     plan_field_mapping_rules_limit: Optional[int] = None
     plan_meta_credentials_limit: Optional[int] = None
@@ -674,10 +698,20 @@ class MetaLeadSettingsUpdate(BaseModel):
     )
     lead_rodo_channels: Optional[List[str]] = None
     lead_rodo_template_id: Optional[str] = None
+    lead_rodo_message_template_id: Optional[str] = None
     lead_communication_enabled: Optional[bool] = None
     send_application_received: Optional[bool] = None
     send_rejection_notice: Optional[bool] = None
     send_moving_forward_notice: Optional[bool] = None
+    application_received_template_id: Optional[str] = None
+    rejection_notice_template_id: Optional[str] = None
+    moving_forward_template_id: Optional[str] = None
+    application_received_subject: Optional[str] = None
+    application_received_body: Optional[str] = None
+    rejection_notice_subject: Optional[str] = None
+    rejection_notice_body: Optional[str] = None
+    moving_forward_subject: Optional[str] = None
+    moving_forward_body: Optional[str] = None
 
 
 class MetaIncomingLeadPreviewItem(BaseModel):
@@ -695,8 +729,93 @@ class MetaIncomingLeadPreviewItem(BaseModel):
     normalized_truncated: bool = False
 
 
+class LeadMessageTemplateOut(BaseModel):
+    id: str
+    name: str
+    subject: str
+    body: str
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class LeadMessageTemplateCreateUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=180)
+    subject: str = Field(default="", max_length=500)
+    body: str = Field(default="", max_length=20000)
+    is_active: bool = True
+
+
 class MetaIncomingLeadsPreviewResponse(BaseModel):
     items: List[MetaIncomingLeadPreviewItem]
+
+
+class MetaLeadFormSummaryOut(BaseModel):
+    """One Meta lead form (discovered from leads and/or saved mapping row)."""
+
+    form_id: str
+    page_id: Optional[str] = None
+    source: str = "meta"
+    form_name: Optional[str] = None
+    has_form_mapping: bool = False
+    mapping_rules_count: int = 0
+    inherits_tenant_fallback: bool = True
+    last_sample_lead_id: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    has_intake_route: bool = False
+    intake_route_active: bool = False
+    intake_own_company_id: Optional[str] = None
+    intake_lead_target_type: Optional[LeadTargetType] = None
+
+
+class MetaLeadFormListResponse(BaseModel):
+    items: List[MetaLeadFormSummaryOut] = Field(default_factory=list)
+    tenant_fallback_rules_count: int = 0
+
+
+class MetaLeadFormMappingOut(BaseModel):
+    form_id: str
+    page_id: Optional[str] = None
+    source: str = "meta"
+    form_name: Optional[str] = None
+    mapping_rules: List[MetaLeadFieldMappingRule] = Field(default_factory=list)
+    inherits_tenant_fallback: bool = False
+    tenant_fallback_rules: List[MetaLeadFieldMappingRule] = Field(default_factory=list)
+    last_sample_lead_id: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+
+
+class MetaLeadFormMappingUpdate(BaseModel):
+    page_id: Optional[str] = None
+    source: Literal["meta", "webhook"] = "meta"
+    form_name: Optional[str] = None
+    mapping_rules: List[MetaLeadFieldMappingRule] = Field(default_factory=list)
+    last_sample_lead_id: Optional[str] = None
+
+
+class MetaFormRouteOut(BaseModel):
+    form_id: str
+    page_id: Optional[str] = None
+    source: str = "meta"
+    own_company_id: UUID
+    own_company_name: Optional[str] = None
+    lead_target_type: LeadTargetType = "candidate"
+    pipeline_preset: Optional[str] = None
+    default_assignee_id: Optional[UUID] = None
+    is_active: bool = True
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+
+
+class MetaFormRouteUpdate(BaseModel):
+    page_id: Optional[str] = None
+    source: Literal["meta", "webhook"] = "meta"
+    own_company_id: UUID
+    lead_target_type: LeadTargetType = "candidate"
+    pipeline_preset: Optional[str] = Field(default=None, max_length=64)
+    default_assignee_id: Optional[UUID] = None
+    is_active: bool = True
 
 
 class MetaLeadSelfServeOnboardingOut(BaseModel):

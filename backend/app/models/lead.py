@@ -45,6 +45,12 @@ class Lead(Base):
         default="candidate",
         server_default=text("'candidate'"),
     )
+    lead_target_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="candidate",
+        server_default=text("'candidate'"),
+    )
     company_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("companies.id", ondelete="RESTRICT"),
@@ -202,6 +208,95 @@ class MetaLeadSettings(TimestampMixin, Base):
     )
     # §2.11: path secret for POST /api/v1/public/leads/inbound/{secret} (Team+); unique when set.
     generic_inbound_webhook_secret: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+
+class MetaFormRoute(TimestampMixin, Base):
+    """Intake route: Meta form → OwnCompany profile → lead_target_type → pipeline."""
+
+    __tablename__ = "meta_form_routes"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="meta",
+        server_default=text("'meta'"),
+    )
+    page_id: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        default="",
+        server_default=text("''"),
+    )
+    form_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    own_company_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    lead_target_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="candidate",
+        server_default=text("'candidate'"),
+    )
+    pipeline_preset: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    default_assignee_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
+    updated_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+
+class MetaLeadFormMapping(TimestampMixin, Base):
+    """Per Meta lead form field-mapping rules (PR-2); falls back to MetaLeadSettings.field_mapping when absent."""
+
+    __tablename__ = "meta_lead_form_mappings"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="meta",
+        server_default=text("'meta'"),
+    )
+    page_id: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        default="",
+        server_default=text("''"),
+    )
+    form_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    form_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    mapping_rules: Mapped[list] = mapped_column(
+        JSONAnyType,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'"),
+    )
+    last_sample_lead_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("leads.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    updated_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
 
 class MetaOAuthPending(Base):

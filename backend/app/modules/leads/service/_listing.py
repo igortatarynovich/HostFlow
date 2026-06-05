@@ -624,6 +624,7 @@ async def list_leads(
                 tenant_id=_uuid_or_none(lead.tenant_id) or UUID(lead.tenant_id),
                 business_type=business_type,
                 lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
+                lead_target_type=(getattr(lead, "lead_target_type", None) or "candidate"),  # type: ignore[arg-type]
                 company_id=_uuid_or_none(lead.company_id),
                 company_name=company_name,
                 vacancy_id=_uuid_or_none(lead.vacancy_id),

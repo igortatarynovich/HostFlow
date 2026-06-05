@@ -431,17 +431,22 @@ async def send_lead_rodo_compliance_endpoint(
     """Send art.14 RODO notice to the lead contact email; audit lives on ``lead.normalized['rodo']``."""
     from backend.app.modules.leads import crud
     from backend.app.services.lead_rodo import send_lead_rodo_email
+    from backend.app.services.lead_rodo_settings import get_lead_rodo_settings
 
     db, tenant_uuid = db_tenant
     tenant_id_str = str(tenant_uuid)
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    rodo_cfg = await get_lead_rodo_settings(db, tenant_id_str)
     ok, msg = await send_lead_rodo_email(
         db,
         lead=lead,
         tenant_id=tenant_id_str,
         actor_id=str(current_user.sub or "").strip() or None,
+        channels=rodo_cfg.channels,
+        template_id=rodo_cfg.template_id,
+        message_template_id=rodo_cfg.message_template_id,
     )
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
@@ -671,6 +676,7 @@ async def update_lead_stage_endpoint(
         tenant_id=PyUUID(lead.tenant_id),
         business_type=business_type,
         lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
+        lead_target_type=(getattr(lead, "lead_target_type", None) or "candidate"),  # type: ignore[arg-type]
         company_id=PyUUID(lead.company_id) if lead.company_id else None,
         company_name=None,
         vacancy_id=PyUUID(lead.vacancy_id) if lead.vacancy_id else None,
@@ -1046,8 +1052,14 @@ async def create_service_order_from_lead(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
     business_type = await service._load_tenant_business_type(db, tenant_id_str)
-    if business_type != "services":
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Service order conversion is only available for services tenants")
+    from backend.app.modules.leads.intake_route import is_sales_intake_target, normalize_lead_target_type
+
+    lead_target = normalize_lead_target_type(getattr(lead, "lead_target_type", None))
+    if business_type != "services" and not is_sales_intake_target(lead_target):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Service order conversion is only available for sales intake leads",
+        )
 
     normalized = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     existing_order_id = str(normalized.get("service_order_id") or "").strip() or None

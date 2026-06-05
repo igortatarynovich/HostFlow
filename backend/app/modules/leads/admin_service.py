@@ -14,6 +14,7 @@ from backend.app.core.crypto import decrypt_secret, encrypt_secret, generate_sec
 from backend.app.core.settings import settings
 from backend.app.modules.leads import crud, service
 from backend.app.models.lead import Lead
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant
 from backend.app.modules.leads import meta_oauth_service as meta_oauth
 from backend.app.services.plan_feature_gates import (
@@ -48,6 +49,13 @@ from backend.app.modules.leads.schemas import (
     MetaLeadRerouteRequest,
     MetaLeadRetryItem,
     MetaLeadRetryRequest,
+    MetaLeadFieldMappingRule,
+    MetaLeadFormListResponse,
+    MetaLeadFormMappingOut,
+    MetaLeadFormMappingUpdate,
+    MetaLeadFormSummaryOut,
+    MetaFormRouteOut,
+    MetaFormRouteUpdate,
     MetaLeadRetryResponse,
     MetaLeadSelfServeOnboardingOut,
     MetaLeadSettingsOut,
@@ -60,6 +68,8 @@ from backend.app.modules.leads.schemas import (
     MetaOAuthStartOut,
     UnmappedAdGroup,
     UnmappedLeadsResponse,
+    LeadMessageTemplateOut,
+    LeadMessageTemplateCreateUpdate,
 )
 
 META_LEADS_GRAPH_PERMISSIONS = [
@@ -564,13 +574,24 @@ async def update_settings(
     rodo_mode = updates.pop("lead_rodo_send_mode", None)
     rodo_channels = updates.pop("lead_rodo_channels", None)
     rodo_template = updates.pop("lead_rodo_template_id", None)
+    rodo_message_template = updates.pop("lead_rodo_message_template_id", None)
     rodo_settings_touched = any(
-        k in fields_set for k in ("lead_rodo_send_mode", "lead_rodo_channels", "lead_rodo_template_id")
+        k in fields_set
+        for k in ("lead_rodo_send_mode", "lead_rodo_channels", "lead_rodo_template_id", "lead_rodo_message_template_id")
     )
     comm_enabled = updates.pop("lead_communication_enabled", None)
     comm_app_recv = updates.pop("send_application_received", None)
     comm_reject = updates.pop("send_rejection_notice", None)
     comm_moving = updates.pop("send_moving_forward_notice", None)
+    comm_app_recv_subject = updates.pop("application_received_subject", None)
+    comm_app_recv_body = updates.pop("application_received_body", None)
+    comm_reject_subject = updates.pop("rejection_notice_subject", None)
+    comm_reject_body = updates.pop("rejection_notice_body", None)
+    comm_moving_subject = updates.pop("moving_forward_subject", None)
+    comm_moving_body = updates.pop("moving_forward_body", None)
+    comm_app_recv_template = updates.pop("application_received_template_id", None)
+    comm_reject_template = updates.pop("rejection_notice_template_id", None)
+    comm_moving_template = updates.pop("moving_forward_template_id", None)
     comm_settings_touched = any(
         k in fields_set
         for k in (
@@ -578,6 +599,15 @@ async def update_settings(
             "send_application_received",
             "send_rejection_notice",
             "send_moving_forward_notice",
+            "application_received_subject",
+            "application_received_body",
+            "rejection_notice_subject",
+            "rejection_notice_body",
+            "moving_forward_subject",
+            "moving_forward_body",
+            "application_received_template_id",
+            "rejection_notice_template_id",
+            "moving_forward_template_id",
         )
     )
     if "webhook_verify_token" in updates:
@@ -607,6 +637,8 @@ async def update_settings(
             channels=rodo_channels,
             template_id=rodo_template if "lead_rodo_template_id" in fields_set else None,
             clear_template_id="lead_rodo_template_id" in fields_set and rodo_template is None,
+            message_template_id=rodo_message_template if "lead_rodo_message_template_id" in fields_set else None,
+            clear_message_template_id="lead_rodo_message_template_id" in fields_set and rodo_message_template is None,
         )
     if comm_settings_touched:
         from backend.app.services.lead_communication_settings import persist_lead_communication_settings
@@ -618,6 +650,15 @@ async def update_settings(
             send_application_received=comm_app_recv if "send_application_received" in fields_set else None,
             send_rejection_notice=comm_reject if "send_rejection_notice" in fields_set else None,
             send_moving_forward_notice=comm_moving if "send_moving_forward_notice" in fields_set else None,
+            application_received_subject=comm_app_recv_subject if "application_received_subject" in fields_set else None,
+            application_received_body=comm_app_recv_body if "application_received_body" in fields_set else None,
+            rejection_notice_subject=comm_reject_subject if "rejection_notice_subject" in fields_set else None,
+            rejection_notice_body=comm_reject_body if "rejection_notice_body" in fields_set else None,
+            moving_forward_subject=comm_moving_subject if "moving_forward_subject" in fields_set else None,
+            moving_forward_body=comm_moving_body if "moving_forward_body" in fields_set else None,
+            application_received_template_id=comm_app_recv_template if "application_received_template_id" in fields_set else None,
+            rejection_notice_template_id=comm_reject_template if "rejection_notice_template_id" in fields_set else None,
+            moving_forward_template_id=comm_moving_template if "moving_forward_template_id" in fields_set else None,
         )
     base = _settings_to_schema(entry)
     ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
@@ -657,6 +698,80 @@ async def rotate_generic_inbound_webhook_secret(
     path = f"/api/v1/public/leads/inbound/{secret}"
     ingest_url = f"{base}{path}" if base else path
     return GenericInboundWebhookRotateResponse(secret=secret, ingest_url=ingest_url)
+
+
+async def list_lead_message_templates(db: AsyncSession, tenant_id: str) -> list[LeadMessageTemplateOut]:
+    from backend.app.services.lead_message_templates import list_lead_message_templates as _list
+
+    rows = await _list(db, tenant_id)
+    return [
+        LeadMessageTemplateOut(
+            id=row.id,
+            name=row.name,
+            subject=row.subject,
+            body=row.body,
+            is_active=row.is_active,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row in rows
+    ]
+
+
+async def create_lead_message_template(
+    db: AsyncSession, tenant_id: str, payload: LeadMessageTemplateCreateUpdate
+) -> LeadMessageTemplateOut:
+    from backend.app.services.lead_message_templates import upsert_lead_message_template
+
+    row = await upsert_lead_message_template(
+        db,
+        tenant_id,
+        template_id=None,
+        name=payload.name,
+        subject=payload.subject,
+        body=payload.body,
+        is_active=payload.is_active,
+    )
+    return LeadMessageTemplateOut(
+        id=row.id,
+        name=row.name,
+        subject=row.subject,
+        body=row.body,
+        is_active=row.is_active,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+async def update_lead_message_template(
+    db: AsyncSession, tenant_id: str, template_id: str, payload: LeadMessageTemplateCreateUpdate
+) -> LeadMessageTemplateOut:
+    from backend.app.services.lead_message_templates import upsert_lead_message_template
+
+    row = await upsert_lead_message_template(
+        db,
+        tenant_id,
+        template_id=template_id,
+        name=payload.name,
+        subject=payload.subject,
+        body=payload.body,
+        is_active=payload.is_active,
+    )
+    return LeadMessageTemplateOut(
+        id=row.id,
+        name=row.name,
+        subject=row.subject,
+        body=row.body,
+        is_active=row.is_active,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+async def delete_lead_message_template(db: AsyncSession, tenant_id: str, template_id: str) -> bool:
+    from backend.app.services.lead_message_templates import delete_lead_message_template as _delete
+
+    return await _delete(db, tenant_id, template_id)
 
 
 def _credential_to_schema(entry) -> MetaCredentialOut:
@@ -1277,3 +1392,282 @@ async def list_meta_incoming_preview(
             )
         )
     return MetaIncomingLeadsPreviewResponse(items=items)
+
+
+def _coerce_mapping_rules_for_api(raw: Any) -> List[MetaLeadFieldMappingRule]:
+    if not raw:
+        return []
+    items: List[Any]
+    if isinstance(raw, dict) and isinstance(raw.get("rules"), list):
+        items = raw.get("rules") or []
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        return []
+    out: List[MetaLeadFieldMappingRule] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        try:
+            out.append(MetaLeadFieldMappingRule.model_validate(item))
+        except Exception:
+            continue
+    return out
+
+
+async def _tenant_mapping_rules(db: AsyncSession, tenant_id: str) -> List[MetaLeadFieldMappingRule]:
+    entry = await _ensure_settings(db, tenant_id)
+    return _coerce_mapping_rules_for_api(getattr(entry, "field_mapping", None))
+
+
+async def list_meta_lead_forms(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    source: str = "meta",
+) -> MetaLeadFormListResponse:
+    src = (source or "meta").strip().lower() or "meta"
+    tenant_rules = await _tenant_mapping_rules(db, tenant_id)
+    saved = await crud.list_meta_form_mapping_rows(db, tenant_id=tenant_id, source=src)
+    saved_routes = await crud.list_meta_form_routes(db, tenant_id=tenant_id, source=src)
+    discovered = await crud.list_discovered_meta_forms_from_leads(db, tenant_id=tenant_id, source=src)
+
+    routes_by_key: Dict[Tuple[str, str], Any] = {}
+
+    def route_key(form_id: str, page_id: Optional[str]) -> Tuple[str, str]:
+        return form_id, (page_id or "").strip()
+
+    for row in saved_routes:
+        fid = str(row.form_id).strip()
+        if not fid:
+            continue
+        pid = str(row.page_id or "").strip() or None
+        routes_by_key[route_key(fid, pid)] = row
+
+    by_key: Dict[Tuple[str, str], MetaLeadFormSummaryOut] = {}
+
+    def key(form_id: str, page_id: Optional[str]) -> Tuple[str, str]:
+        return form_id, (page_id or "").strip()
+
+    def apply_route_fields(summary: MetaLeadFormSummaryOut, form_id: str, page_id: Optional[str]) -> MetaLeadFormSummaryOut:
+        rk = route_key(form_id, page_id)
+        route = routes_by_key.get(rk)
+        if route is None and page_id:
+            route = routes_by_key.get(route_key(form_id, ""))
+        if route is None:
+            return summary
+        return summary.model_copy(
+            update={
+                "has_intake_route": True,
+                "intake_route_active": bool(getattr(route, "is_active", True)),
+                "intake_own_company_id": str(route.own_company_id),
+                "intake_lead_target_type": getattr(route, "lead_target_type", None),
+            }
+        )
+
+    for row in saved:
+        fid = str(row.form_id).strip()
+        if not fid:
+            continue
+        pid = str(row.page_id or "").strip() or None
+        rules = _coerce_mapping_rules_for_api(row.mapping_rules)
+        by_key[key(fid, pid)] = apply_route_fields(
+            MetaLeadFormSummaryOut(
+            form_id=fid,
+            page_id=pid,
+            source=src,
+            form_name=row.form_name,
+            has_form_mapping=bool(rules),
+            mapping_rules_count=len(rules),
+            inherits_tenant_fallback=not rules,
+            last_sample_lead_id=row.last_sample_lead_id,
+            updated_at=row.updated_at,
+            ),
+            fid,
+            pid,
+        )
+
+    for disc in discovered:
+        fid = str(disc.get("form_id") or "").strip()
+        if not fid:
+            continue
+        pid = str(disc.get("page_id") or "").strip() or None
+        k = key(fid, pid)
+        if k in by_key:
+            continue
+        by_key[k] = apply_route_fields(
+            MetaLeadFormSummaryOut(
+            form_id=fid,
+            page_id=pid,
+            source=src,
+            has_form_mapping=False,
+            mapping_rules_count=0,
+            inherits_tenant_fallback=True,
+            ),
+            fid,
+            pid,
+        )
+
+    items = sorted(by_key.values(), key=lambda x: (x.form_name or x.form_id, x.page_id or ""))
+    return MetaLeadFormListResponse(
+        items=items,
+        tenant_fallback_rules_count=len(tenant_rules),
+    )
+
+
+async def get_meta_lead_form_mapping(
+    db: AsyncSession,
+    tenant_id: str,
+    form_id: str,
+    *,
+    page_id: Optional[str] = None,
+    source: str = "meta",
+) -> MetaLeadFormMappingOut:
+    fid = str(form_id or "").strip()
+    if not fid:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="form_id is required")
+    pid = str(page_id or "").strip() or None
+    src = (source or "meta").strip().lower() or "meta"
+    tenant_rules = await _tenant_mapping_rules(db, tenant_id)
+    row = await crud.get_meta_form_mapping(db, tenant_id=tenant_id, form_id=fid, page_id=pid, source=src)
+    if row is None and pid:
+        row = await crud.get_meta_form_mapping(
+            db, tenant_id=tenant_id, form_id=fid, page_id="", source=src
+        )
+    if row is None:
+        return MetaLeadFormMappingOut(
+            form_id=fid,
+            page_id=pid,
+            source=src,
+            mapping_rules=list(tenant_rules),
+            inherits_tenant_fallback=True,
+            tenant_fallback_rules=list(tenant_rules),
+        )
+    rules = _coerce_mapping_rules_for_api(row.mapping_rules)
+    inherits = not rules
+    effective = list(tenant_rules) if inherits else rules
+    return MetaLeadFormMappingOut(
+        form_id=fid,
+        page_id=pid or (str(row.page_id).strip() or None),
+        source=src,
+        form_name=row.form_name,
+        mapping_rules=effective,
+        inherits_tenant_fallback=inherits,
+        tenant_fallback_rules=list(tenant_rules),
+        last_sample_lead_id=row.last_sample_lead_id,
+        updated_at=row.updated_at,
+        updated_by=row.updated_by,
+    )
+
+
+async def upsert_meta_lead_form_mapping(
+    db: AsyncSession,
+    tenant_id: str,
+    form_id: str,
+    payload: MetaLeadFormMappingUpdate,
+    *,
+    user_sub: Optional[str] = None,
+) -> MetaLeadFormMappingOut:
+    fid = str(form_id or "").strip()
+    if not fid:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="form_id is required")
+    rules = payload.mapping_rules or []
+    await ensure_meta_lead_field_mapping_rows_allowed(db, tenant_id, len(rules))
+    src = (payload.source or "meta").strip().lower() or "meta"
+    pid = str(payload.page_id or "").strip() or None
+    await crud.upsert_meta_form_mapping(
+        db,
+        tenant_id=tenant_id,
+        form_id=fid,
+        page_id=pid,
+        source=src,
+        mapping_rules=[r.model_dump() for r in rules],
+        form_name=payload.form_name,
+        last_sample_lead_id=str(payload.last_sample_lead_id).strip() if payload.last_sample_lead_id else None,
+        updated_by=user_sub,
+    )
+    return await get_meta_lead_form_mapping(db, tenant_id, fid, page_id=pid, source=src)
+
+
+async def _validate_own_company_for_tenant(
+    db: AsyncSession, tenant_id: str, own_company_id: str
+) -> OwnCompany:
+    oc = str(own_company_id or "").strip()
+    if not oc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="own_company_id is required")
+    row = (
+        await db.execute(
+            select(OwnCompany).where(
+                OwnCompany.id == oc,
+                OwnCompany.tenant_id == tenant_id,
+                OwnCompany.is_archived.is_(False),
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid own_company_id")
+    return row
+
+
+async def get_meta_form_route(
+    db: AsyncSession,
+    tenant_id: str,
+    form_id: str,
+    *,
+    page_id: Optional[str] = None,
+    source: str = "meta",
+) -> MetaFormRouteOut:
+    fid = str(form_id or "").strip()
+    if not fid:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="form_id is required")
+    pid = str(page_id or "").strip() or None
+    src = (source or "meta").strip().lower() or "meta"
+    row = await crud.get_meta_form_route(db, tenant_id=tenant_id, form_id=fid, page_id=pid, source=src)
+    if row is None and pid:
+        row = await crud.get_meta_form_route(db, tenant_id=tenant_id, form_id=fid, page_id="", source=src)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Intake route not configured for this form")
+    oc = await db.get(OwnCompany, row.own_company_id)
+    return MetaFormRouteOut(
+        form_id=fid,
+        page_id=pid or (str(row.page_id).strip() or None),
+        source=src,
+        own_company_id=UUID(row.own_company_id),
+        own_company_name=getattr(oc, "name", None) if oc else None,
+        lead_target_type=row.lead_target_type,  # type: ignore[arg-type]
+        pipeline_preset=row.pipeline_preset,
+        default_assignee_id=UUID(row.default_assignee_id) if row.default_assignee_id else None,
+        is_active=bool(row.is_active),
+        updated_at=row.updated_at,
+        updated_by=row.updated_by,
+    )
+
+
+async def upsert_meta_form_route(
+    db: AsyncSession,
+    tenant_id: str,
+    form_id: str,
+    payload: MetaFormRouteUpdate,
+    *,
+    user_sub: Optional[str] = None,
+) -> MetaFormRouteOut:
+    fid = str(form_id or "").strip()
+    if not fid:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="form_id is required")
+    src = (payload.source or "meta").strip().lower() or "meta"
+    pid = str(payload.page_id or "").strip() or None
+    await _validate_own_company_for_tenant(db, tenant_id, str(payload.own_company_id))
+    await crud.upsert_meta_form_route(
+        db,
+        tenant_id=tenant_id,
+        form_id=fid,
+        own_company_id=str(payload.own_company_id),
+        lead_target_type=payload.lead_target_type,
+        page_id=pid,
+        source=src,
+        pipeline_preset=payload.pipeline_preset,
+        default_assignee_id=str(payload.default_assignee_id) if payload.default_assignee_id else None,
+        is_active=payload.is_active,
+        updated_by=user_sub,
+    )
+    return await get_meta_form_route(db, tenant_id, fid, page_id=pid, source=src)
