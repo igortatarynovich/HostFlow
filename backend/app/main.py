@@ -45,6 +45,9 @@ _sys.modules.setdefault("backend.app", current_pkg)
 from . import models as _models  # noqa: F401
 from backend.app.db.base import Base
 _sys.modules.setdefault("backend.app.models", _sys.modules.get("app.models", _models))
+for _name, _module in list(_sys.modules.items()):
+    if _name.startswith("app.models.") and _module is not None:
+        _sys.modules.setdefault(f"backend.{_name}", _module)
 
 _DOCUMENTS_DISABLED = bool(int(os.environ.get("DOCUMENTS_DISABLED", "0")))
 
@@ -68,8 +71,8 @@ try:
     from backend.app.auth.ensure_multitenancy import ensure_auth_multitenancy
     from backend.app.auth.ensure_seed import ensure_auth_seed
     from backend.app.core.settings import settings
-    from app.modules.leads import inbound_public as leads_inbound_public
-    from app.modules.leads import webhook as meta_webhook
+    from backend.app.modules.leads import inbound_public as leads_inbound_public
+    from backend.app.modules.leads import webhook as meta_webhook
     from backend.app.modules.companies.router import router as companies_router
     from backend.app.modules.companies.ensure_schema import ensure_companies_schema
     from backend.app.modules.notifications.ensure_schema import ensure_notifications_schema
@@ -90,6 +93,7 @@ try:
     from backend.app.api.public import notifications as public_notifications_router
     from backend.app.api.public import client_portal as public_client_portal_router
     from backend.app.api.public import goals as public_goals_router
+    from backend.app.api.public import legal_pages as public_legal_pages_router
     if not _DOCUMENTS_DISABLED:
         from backend.app.modules.documents.router import router as documents_db_router  # type: ignore[assignment]
         from backend.app.modules.documents.ensure_schema import ensure_documents_schema  # type: ignore[no-redef]
@@ -188,6 +192,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.public import notifications as public_notifications_router  # type: ignore[no-redef]
     from .api.public import client_portal as public_client_portal_router  # type: ignore[no-redef]
     from .api.public import goals as public_goals_router  # type: ignore[no-redef]
+    from .api.public import legal_pages as public_legal_pages_router  # type: ignore[no-redef]
     if not _DOCUMENTS_DISABLED:
         from .modules.documents.router import router as documents_db_router  # type: ignore[no-redef]
         from .modules.documents.ensure_schema import ensure_documents_schema  # type: ignore[no-redef]
@@ -414,6 +419,13 @@ async def lifespan(app: FastAPI):
         ensure_leads_schema()
     except Exception as e:
         logger.warning("[startup:ensure_leads_schema] skipped (%s)", e)
+
+    try:
+        from .modules.intake_routing.ensure_schema import ensure_intake_routing_schema
+
+        ensure_intake_routing_schema()
+    except Exception as e:
+        logger.warning("[startup:ensure_intake_routing_schema] skipped (%s)", e)
 
     try:
         ensure_notifications_schema()
@@ -831,6 +843,7 @@ app.include_router(public_intake_router.router, prefix="/api/v1", tags=["public-
 app.include_router(public_notifications_router.router, prefix="/api/v1", tags=["public-notifications"])
 app.include_router(public_client_portal_router.router, prefix="/api/v1", tags=["public-client-portal"])
 app.include_router(public_goals_router.router, prefix="/api/v1", tags=["public-goals"])
+app.include_router(public_legal_pages_router.router)
 if scanner_router is not None:
     app.include_router(scanner_router.meta_router)
     app.include_router(scanner_router.router)

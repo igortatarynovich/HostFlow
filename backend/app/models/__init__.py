@@ -45,11 +45,8 @@ def _load_model_module(module_name: str) -> ModuleType:
 
 
 # Базовые модели (сначала Company и Vacancy, затем Candidate)
-_tenant_mod = _load_model_module("tenant")
-Tenant = _tenant_mod.Tenant  # type: ignore[attr-defined]
-TenantLink = _tenant_mod.TenantLink  # type: ignore[attr-defined]
-OwnCompany = _load_model_module("own_company").OwnCompany  # type: ignore[attr-defined]
-ClientCompany = _load_model_module("client_company").ClientCompany  # type: ignore[attr-defined]
+Tenant = _load_model_module("tenant").Tenant  # type: ignore[attr-defined]
+TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
 Company = _load_model_module("company").Company  # type: ignore[attr-defined]
 Vacancy = _load_model_module("vacancy").Vacancy  # type: ignore[attr-defined]
 VacancyRecruiter = _load_model_module("vacancy_recruiter").VacancyRecruiter  # type: ignore[attr-defined]
@@ -58,25 +55,48 @@ Lead = lead_module.Lead  # type: ignore[attr-defined]
 MetaAdsMap = lead_module.MetaAdsMap  # type: ignore[attr-defined]
 MetaLeadCredential = lead_module.MetaLeadCredential  # type: ignore[attr-defined]
 MetaLeadSettings = lead_module.MetaLeadSettings  # type: ignore[attr-defined]
+MetaLeadFormMapping = lead_module.MetaLeadFormMapping  # type: ignore[attr-defined]
+MetaFormRoute = lead_module.MetaFormRoute  # type: ignore[attr-defined]
 MetaOAuthPending = lead_module.MetaOAuthPending  # type: ignore[attr-defined]
+intake_routing_module = _load_model_module("intake_routing")
+IntakeSourceProfile = intake_routing_module.IntakeSourceProfile  # type: ignore[attr-defined]
+IntakeSourceBinding = intake_routing_module.IntakeSourceBinding  # type: ignore[attr-defined]
 lead_import_module = _load_model_module("lead_import_job")
 LeadImportJob = lead_import_module.LeadImportJob  # type: ignore[attr-defined]
 LeadImportJobStatus = lead_import_module.LeadImportJobStatus  # type: ignore[attr-defined]
 Candidate = _load_model_module("candidate").Candidate  # type: ignore[attr-defined]
+RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
+CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
+ContactAttempt = _load_model_module("contact_attempt").ContactAttempt  # type: ignore[attr-defined]
 Stage = _load_model_module("stage").Stage  # type: ignore[attr-defined]
 MagicLink = _load_model_module("magic_link").MagicLink  # type: ignore[attr-defined]
-
-# Universal Funnel model
+OwnCompany = _load_model_module("own_company").OwnCompany  # type: ignore[attr-defined]
+WorkforceEmployee = _load_model_module("workforce_employee").WorkforceEmployee  # type: ignore[attr-defined]
+WorkforceHrDocumentControlTask = _load_model_module("workforce_hr_document_control_task").WorkforceHrDocumentControlTask  # type: ignore[attr-defined]
+WorkforceLifecycleEvent = _load_model_module("workforce_lifecycle_event").WorkforceLifecycleEvent  # type: ignore[attr-defined]
+WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
+AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
 funnel_module = _load_model_module("funnel")
 Funnel = funnel_module.Funnel  # type: ignore[attr-defined]
 FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
+pe_module = _load_model_module("process_engine")
+PeSystemStage = pe_module.PeSystemStage  # type: ignore[attr-defined]
+PeStageTemplate = pe_module.PeStageTemplate  # type: ignore[attr-defined]
+PeProcessProfile = pe_module.PeProcessProfile  # type: ignore[attr-defined]
+PePipelineTemplate = pe_module.PePipelineTemplate  # type: ignore[attr-defined]
+PeTransitionRule = pe_module.PeTransitionRule  # type: ignore[attr-defined]
+PeHandoffRule = pe_module.PeHandoffRule  # type: ignore[attr-defined]
+PeFieldRequirement = pe_module.PeFieldRequirement  # type: ignore[attr-defined]
+PeDocumentRequirement = pe_module.PeDocumentRequirement  # type: ignore[attr-defined]
+PeOverrideRule = pe_module.PeOverrideRule  # type: ignore[attr-defined]
+MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
+MergeDocumentGenerationLog = _load_model_module("merge_document_generation_log").MergeDocumentGenerationLog  # type: ignore[attr-defined]
 
 # История стадий
 CandidateStageHistory = _load_model_module("candidate_stage_history").CandidateStageHistory  # type: ignore[attr-defined]
-
-RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
+CandidateAssigneeHistory = _load_model_module("candidate_assignee_history").CandidateAssigneeHistory  # type: ignore[attr-defined]
 
 
 
@@ -87,6 +107,17 @@ RecruitmentApplication = _load_model_module("recruitment_application").Recruitme
 # ядро таблиц документов
 Document              = _load_model_module("document").Document  # type: ignore[attr-defined]
 DocumentType          = _load_model_module("document_type").DocumentType  # type: ignore[attr-defined]
+ref_document_type_module = _load_model_module("ref_document_type")
+RefDocumentType = ref_document_type_module.RefDocumentType  # type: ignore[attr-defined]
+RefDocumentTypeI18n = ref_document_type_module.RefDocumentTypeI18n  # type: ignore[attr-defined]
+RefDocumentTypeVersion = ref_document_type_module.RefDocumentTypeVersion  # type: ignore[attr-defined]
+RefDocumentTypeCountryApplicability = ref_document_type_module.RefDocumentTypeCountryApplicability  # type: ignore[attr-defined]
+RefDocumentTypeRequest = ref_document_type_module.RefDocumentTypeRequest  # type: ignore[attr-defined]
+TenantDocumentTypeOverride = ref_document_type_module.TenantDocumentTypeOverride  # type: ignore[attr-defined]
+RefPack = ref_document_type_module.RefPack  # type: ignore[attr-defined]
+RefPackItem = ref_document_type_module.RefPackItem  # type: ignore[attr-defined]
+RefPackRule = ref_document_type_module.RefPackRule  # type: ignore[attr-defined]
+TenantDocumentPackEnablement = ref_document_type_module.TenantDocumentPackEnablement  # type: ignore[attr-defined]
 DocumentTemplate      = _load_model_module("document_template").DocumentTemplate  # type: ignore[attr-defined]
 DocumentCheck         = _load_model_module("document_check").DocumentCheck  # type: ignore[attr-defined]
 ScanSession          = _load_model_module("scan_session").ScanSession  # type: ignore[attr-defined]
@@ -111,6 +142,7 @@ ReportSummary         = _document_reporting_mod.ReportSummary          # type: i
 import sys as _sys
 _register_aliases("document", _sys.modules[Document.__module__])
 _register_aliases("document_type", _sys.modules[DocumentType.__module__])
+_register_aliases("ref_document_type", _sys.modules[RefDocumentType.__module__])
 _register_aliases("document_template", _sys.modules[DocumentTemplate.__module__])
 _register_aliases("document_check", _sys.modules[DocumentCheck.__module__])
 _register_aliases("scan_session", _sys.modules[ScanSession.__module__])
@@ -118,30 +150,11 @@ _register_aliases("scan_page", _sys.modules[ScanPage.__module__])
 _register_aliases("document_ruleset", _sys.modules[DocumentRulesetVersion.__module__])
 _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
 
-# Phase 1.3 / Phase 2.1 (ADR-012): canonical Activity / ActivityEvent /
-# Notification ORMs — these MUST be loaded through ``_load_model_module``
-# before any code can do ``from backend.app.models.activity import …``,
-# otherwise the legacy ``reminder.py`` / ``reminder_event.py`` /
-# ``user_notification.py`` re-export modules pull them in via a relative
-# ``from .activity import …`` that registers them under the
-# ``app.models.activity`` alias only, leaving ``backend.app.models.activity``
-# absent from ``sys.modules``. Any later import via the
-# ``backend.app.models.X`` path then re-executes the file under a second
-# module identity and SQLAlchemy raises "Table 'activities' is already
-# defined for this MetaData instance" (Docker reproduces this every
-# startup because the ``app/__init__.py`` aliasing layer wires
-# ``backend.app`` to ``app`` but does NOT wire each submodule).
-_activity_mod = _load_model_module("activity")
-Activity = _activity_mod.Activity  # type: ignore[attr-defined]
-ActivityStatus = _activity_mod.ActivityStatus  # type: ignore[attr-defined]
-ActivityEvent = _load_model_module("activity_event").ActivityEvent  # type: ignore[attr-defined]
-Notification = _load_model_module("notification").Notification  # type: ignore[attr-defined]
-
+# Ensure canonical activity module aliases are registered before any direct
+# imports like `backend.app.models.activity` occur in service modules.
+_load_model_module("activity")
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
-ReminderEvent = _load_model_module("reminder_event").ReminderEvent  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
-AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
-TenantLeadForm = _load_model_module("tenant_lead_form").TenantLeadForm  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
 CandidateService = _load_model_module("service").CandidateService  # type: ignore[attr-defined]
@@ -179,115 +192,25 @@ Invoice = _load_model_module("invoice").Invoice  # type: ignore[attr-defined]
 InvoiceItem = _load_model_module("invoice").InvoiceItem  # type: ignore[attr-defined]
 Payment = _load_model_module("invoice").Payment  # type: ignore[attr-defined]
 Refund = _load_model_module("invoice").Refund  # type: ignore[attr-defined]
-StripeWebhookEventLog = _load_model_module("stripe_webhook_event").StripeWebhookEventLog  # type: ignore[attr-defined]
-
-# Document policies & custom fields
-DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
-document_policy_module = _load_model_module("document_policy")
-DocumentPolicyScope = document_policy_module.DocumentPolicyScope  # type: ignore[attr-defined]
-RequirementLevel = document_policy_module.RequirementLevel  # type: ignore[attr-defined]
-RequirementTypeDefinition = _load_model_module("requirement_type").RequirementTypeDefinition  # type: ignore[attr-defined]
-Gate = _load_model_module("gate").Gate  # type: ignore[attr-defined]
-CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
-candidate_profile_history_module = _load_model_module("candidate_profile_history")
-CandidateProfileHistory = candidate_profile_history_module.CandidateProfileHistory  # type: ignore[attr-defined]
-ProcessTemplate = _load_model_module("process_template").ProcessTemplate  # type: ignore[attr-defined]
-
-custom_field_module = _load_model_module("custom_field")
-CustomFieldDefinition = custom_field_module.CustomFieldDefinition  # type: ignore[attr-defined]
-CustomFieldValue = custom_field_module.CustomFieldValue  # type: ignore[attr-defined]
-CustomFieldScope = custom_field_module.CustomFieldScope  # type: ignore[attr-defined]
-CustomFieldEntityType = custom_field_module.CustomFieldEntityType  # type: ignore[attr-defined]
-CustomFieldType = custom_field_module.CustomFieldType  # type: ignore[attr-defined]
-
-# RODO / Legal documents
-LegalDocument = _load_model_module("legal_document").LegalDocument  # type: ignore[attr-defined]
-RodoNotification = _load_model_module("rodo_notification").RodoNotification  # type: ignore[attr-defined]
-
-# Contact attempts
-ContactAttempt = _load_model_module("contact_attempt").ContactAttempt  # type: ignore[attr-defined]
-FinalNoContactNotification = _load_model_module("final_no_contact_notification").FinalNoContactNotification  # type: ignore[attr-defined]
-
-# Handoff
-CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
-CandidateHandoffSnapshot = _load_model_module(
-    "candidate_handoff_snapshot"
-).CandidateHandoffSnapshot  # type: ignore[attr-defined]
-
-# Pipeline document overrides (recruiter request / manager approval)
-CandidatePipelineOverride = _load_model_module(
-    "candidate_pipeline_override"
-).CandidatePipelineOverride  # type: ignore[attr-defined]
-
-# Tenant email (SMTP)
-TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
-
-# Communications hub (omnichannel threads/messages/accounts)
-communication_module = _load_model_module("communication")
-CommunicationThread = communication_module.CommunicationThread  # type: ignore[attr-defined]
-CommunicationMessage = communication_module.CommunicationMessage  # type: ignore[attr-defined]
-CommunicationChannelAccount = communication_module.CommunicationChannelAccount  # type: ignore[attr-defined]
-
-# Risk intelligence (hourly aggregates + shadow cohort rows)
-_risk_intel_mod = _load_model_module("risk_intel")
-RiskIntelTenantHourly = _risk_intel_mod.RiskIntelTenantHourly  # type: ignore[attr-defined]
-RiskIntelEntityShadow = _risk_intel_mod.RiskIntelEntityShadow  # type: ignore[attr-defined]
-
-# Password reset tokens (self-service)
-PasswordResetToken = _load_model_module("password_reset_token").PasswordResetToken  # type: ignore[attr-defined]
-
-# Countries (ISO2 reference)
-Country = _load_model_module("country").Country  # type: ignore[attr-defined]
-
-# Candidate recruiter assignee audit (Phase 2.6.G-5)
-CandidateAssigneeHistory = _load_model_module("candidate_assignee_history").CandidateAssigneeHistory  # type: ignore[attr-defined]
-
-# Workforce HR (employee root + satellite profiles)
-WorkforceEmployee = _load_model_module("workforce_employee").WorkforceEmployee  # type: ignore[attr-defined]
-WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
-WorkforcePayrollProfile = _load_model_module("workforce_payroll_profile").WorkforcePayrollProfile  # type: ignore[attr-defined]
-WorkforceZusProfile = _load_model_module("workforce_zus_profile").WorkforceZusProfile  # type: ignore[attr-defined]
-WorkforceAbsence = _load_model_module("workforce_absence").WorkforceAbsence  # type: ignore[attr-defined]
-WorkforceLeaveRequest = _load_model_module("workforce_leave_request").WorkforceLeaveRequest  # type: ignore[attr-defined]
-WorkforceOnboardingTask = _load_model_module("workforce_onboarding_task").WorkforceOnboardingTask  # type: ignore[attr-defined]
-WorkforceTaxProfile = _load_model_module("workforce_tax_profile").WorkforceTaxProfile  # type: ignore[attr-defined]
-WorkforceInsuranceProfile = _load_model_module("workforce_insurance_profile").WorkforceInsuranceProfile  # type: ignore[attr-defined]
-WorkforceHrDocumentContext = _load_model_module("workforce_hr_document_context").WorkforceHrDocumentContext  # type: ignore[attr-defined]
-WorkforceComplianceState = _load_model_module("workforce_compliance_state").WorkforceComplianceState  # type: ignore[attr-defined]
-WorkforceZusWorkspaceTask = _load_model_module("workforce_zus_workspace_task").WorkforceZusWorkspaceTask  # type: ignore[attr-defined]
-WorkforceWorkEligibilityProfile = _load_model_module(
-    "workforce_work_eligibility_profile"
-).WorkforceWorkEligibilityProfile  # type: ignore[attr-defined]
-WorkPermitSubmissionChannel = _load_model_module(
-    "workforce_work_eligibility_profile"
-).WorkPermitSubmissionChannel  # type: ignore[attr-defined]
-WorkforceWorkEligibilityPaymentRequirement = _load_model_module(
-    "workforce_work_eligibility_payment_requirement"
-).WorkforceWorkEligibilityPaymentRequirement  # type: ignore[attr-defined]
-WorkforceHrReview = _load_model_module("workforce_hr_review").WorkforceHrReview  # type: ignore[attr-defined]
-WorkforceHrDocumentVerification = _load_model_module(
-    "workforce_hr_document_verification"
-).WorkforceHrDocumentVerification  # type: ignore[attr-defined]
-WorkforceHrVerifiedField = _load_model_module("workforce_hr_verified_field").WorkforceHrVerifiedField  # type: ignore[attr-defined]
-
-# Merge-document templates and generation logs
-MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
-MergeDocumentGenerationLog = _load_model_module(
-    "merge_document_generation_log"
-).MergeDocumentGenerationLog  # type: ignore[attr-defined]
-
-# Fleet (transport operations)
-FleetOperatingLine = _load_model_module("fleet_operating_line").FleetOperatingLine  # type: ignore[attr-defined]
-FleetVehicle = _load_model_module("fleet_vehicle").FleetVehicle  # type: ignore[attr-defined]
-FleetTrailer = _load_model_module("fleet_trailer").FleetTrailer  # type: ignore[attr-defined]
-FleetDriver = _load_model_module("fleet_driver").FleetDriver  # type: ignore[attr-defined]
 
 __all__ = [
     "Base",
     "Candidate",
-    "CandidateAssigneeHistory",
+    "RecruitmentApplication",
+    "CandidateHandoff",
+    "ContactAttempt",
     "Document",
     "DocumentType",
+    "RefDocumentType",
+    "RefDocumentTypeI18n",
+    "RefDocumentTypeVersion",
+    "RefDocumentTypeCountryApplicability",
+    "RefDocumentTypeRequest",
+    "TenantDocumentTypeOverride",
+    "RefPack",
+    "RefPackItem",
+    "RefPackRule",
+    "TenantDocumentPackEnablement",
     "DocumentCheck",
     "DocumentRulesetVersion",
     "DocumentRulesetUsage",
@@ -302,7 +225,7 @@ __all__ = [
     "BulkOperation",
     "BulkOperationItem",
     "CandidateStageHistory",
-    "CandidateProfileHistory",
+    "CandidateAssigneeHistory",
     "CandidateService",
     "CandidateEmployment",
     "CandidateConsent",
@@ -315,16 +238,23 @@ __all__ = [
     "CandidateVisa",
     "CandidateTask",
     "User",
+    "OwnCompany",
+    "WorkforceEmployee",
+    "WorkforceHrDocumentControlTask",
+    "WorkforceLifecycleEvent",
+    "WorkforceEmployment",
+    "AutomationRule",
     "UserCompanyAccess",
     "VacancyRecruiter",
     "Lead",
+    "IntakeSourceProfile",
+    "IntakeSourceBinding",
     "MetaAdsMap",
     "MetaLeadCredential",
     "MetaLeadSettings",
     "MetaOAuthPending",
     "LeadImportJob",
     "LeadImportJobStatus",
-    "RecruitmentApplication",
     "CandidateDeleteRequest",
     "UserInvite",
     "UserAuditLog",
@@ -332,70 +262,28 @@ __all__ = [
     "AuthRefreshToken",
     "UserSession",
     "Tenant",
-    "TenantLink",
+    "TenantEmailConfig",
     "Company",
     "Vacancy",
-    "Activity",
-    "ActivityEvent",
-    "ActivityStatus",
-    "Notification",
+    "Funnel",
+    "FunnelStage",
+    "PeSystemStage",
+    "PeStageTemplate",
+    "PeProcessProfile",
+    "PePipelineTemplate",
+    "PeTransitionRule",
+    "PeHandoffRule",
+    "PeFieldRequirement",
+    "PeDocumentRequirement",
+    "PeOverrideRule",
+    "MergeDocumentTemplate",
+    "MergeDocumentGenerationLog",
     "Reminder",
-    "ReminderEvent",
     "UserNotification",
     "Stage",
     "MagicLink",
-    "MergeDocumentGenerationLog",
-    "MergeDocumentTemplate",
-    "FleetDriver",
-    "FleetOperatingLine",
-    "FleetTrailer",
-    "FleetVehicle",
-    "Funnel",
-    "FunnelStage",
     "Invoice",
     "InvoiceItem",
     "Payment",
     "Refund",
-    "StripeWebhookEventLog",
-    "DocumentPolicy",
-    "DocumentPolicyScope",
-    "RequirementLevel",
-    "RequirementTypeDefinition",
-    "Gate",
-    "CandidateProfile",
-    "ProcessTemplate",
-    "CustomFieldDefinition",
-    "CustomFieldValue",
-    "CustomFieldScope",
-    "CustomFieldEntityType",
-    "CustomFieldType",
-    "LegalDocument",
-    "RodoNotification",
-    "ContactAttempt",
-    "FinalNoContactNotification",
-    "CandidateHandoff",
-    "CandidateHandoffSnapshot",
-    "CandidatePipelineOverride",
-    "TenantEmailConfig",
-    "CommunicationThread",
-    "CommunicationMessage",
-    "CommunicationChannelAccount",
-    "RiskIntelTenantHourly",
-    "RiskIntelEntityShadow",
-    "Country",
-    "WorkforceAbsence",
-    "WorkforceEmployee",
-    "WorkforceEmployment",
-    "WorkforceLeaveRequest",
-    "WorkforceOnboardingTask",
-    "WorkforcePayrollProfile",
-    "WorkforceZusProfile",
-    "WorkforceTaxProfile",
-    "WorkforceInsuranceProfile",
-    "WorkforceHrDocumentContext",
-    "WorkforceComplianceState",
-    "WorkforceWorkEligibilityProfile",
-    "WorkPermitSubmissionChannel",
-    "WorkforceWorkEligibilityPaymentRequirement",
-    "WorkforceHrReview",
 ]
