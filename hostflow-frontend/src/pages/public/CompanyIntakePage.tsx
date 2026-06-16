@@ -172,7 +172,7 @@ function buildSourceContext(): Record<string, unknown> {
     referrer: document.referrer || undefined,
     device: window.innerWidth < 768 ? 'mobile' : 'desktop',
   }
-  ;['utm_source', 'utm_campaign', 'utm_adset', 'utm_ad', 'fbclid'].forEach((key) => {
+  ;['source', 'campaign', 'utm_source', 'utm_campaign', 'utm_adset', 'utm_ad', 'fbclid'].forEach((key) => {
     const value = params.get(key)?.trim()
     if (value) context[key] = value
   })
@@ -531,12 +531,10 @@ export default function CompanyIntakePage() {
             {t('public.company_intake.success.kicker', { defaultValue: 'Submitted' })}
           </p>
           <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-            {t('public.company_intake.success.title', { defaultValue: 'Thank you. We received your company questionnaire.' })}
+            Dziękujemy za przesłanie informacji.
           </h1>
           <p className="mt-3 text-sm text-slate-600">
-            {t('public.company_intake.success.body', {
-              defaultValue: 'A HostFlow manager will review the details and contact you about the next steps.',
-            })}
+            Nasz zespół przeanalizuje profil firmy i skontaktuje się z Państwem w celu omówienia możliwych rozwiązań rekrutacyjnych.
           </p>
           <p className="mt-5 rounded-md bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
             {t('public.company_intake.success.reference', { defaultValue: 'Request number' })}: {submittedLeadId}
