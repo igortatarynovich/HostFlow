@@ -1,6 +1,6 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
-import { submitCompanyIntake } from '../../api/companyIntake'
+import { getCompanyIntakeConfig, submitCompanyIntake } from '../../api/companyIntake'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { useSeoMeta } from '../../hooks/useSeoMeta'
 import { type LocaleCode, useI18n } from '../../i18n'
@@ -8,15 +8,14 @@ import { PublicPageShell } from './components/PublicPageShell'
 
 type StepId =
   | 'language'
+  | 'company'
   | 'need'
-  | 'count'
   | 'base'
   | 'transport'
   | 'fleet'
   | 'timing'
+  | 'conditions'
   | 'contact'
-  | 'company'
-  | 'additional'
   | 'review'
 
 type CompanyForm = {
@@ -49,16 +48,11 @@ type CompanyForm = {
   terms: {
     base_location: string
     schedule: string[]
+    night_driving: string
     route_directions: string[]
-    cargo_types: string[]
-    work_conditions: string[]
     truck_brands: string[]
     body_type: string
     rate_amount: string
-    rate_currency: string
-    rate_period: string
-    rate_tax_mode: string
-    bonus: string
     additional: string
   }
   consent: {
@@ -74,19 +68,18 @@ type Option = { value: string; label: string }
 
 const STEPS: StepId[] = [
   'language',
+  'company',
   'need',
-  'count',
   'base',
   'transport',
   'fleet',
   'timing',
+  'conditions',
   'contact',
-  'company',
-  'additional',
   'review',
 ]
 
-const LANGUAGE_OPTIONS: Array<{ value: LocaleCode; label: string }> = [
+const ALL_LANGUAGE_OPTIONS: Array<{ value: LocaleCode; label: string }> = [
   { value: 'pl', label: 'Polski' },
   { value: 'en', label: 'English' },
   { value: 'ru', label: 'Русский' },
@@ -122,16 +115,11 @@ const INITIAL_FORM: CompanyForm = {
   terms: {
     base_location: '',
     schedule: [],
+    night_driving: '',
     route_directions: [],
-    cargo_types: [],
-    work_conditions: [],
     truck_brands: [],
     body_type: '',
     rate_amount: '',
-    rate_currency: 'EUR',
-    rate_period: 'day',
-    rate_tax_mode: 'netto',
-    bonus: '',
     additional: '',
   },
   consent: {
@@ -181,6 +169,16 @@ function buildSourceContext(): Record<string, unknown> {
 
 function toggleList(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
+}
+
+function countryCodeFor(country: string): string {
+  const map: Record<string, string> = {
+    Poland: 'PL',
+    Germany: 'DE',
+    'Czech Republic': 'CZ',
+    Lithuania: 'LT',
+  }
+  return map[country] || ''
 }
 
 function Field({ label, children }: { label: string; children: JSX.Element }) {
@@ -264,10 +262,17 @@ export default function CompanyIntakePage() {
   const [form, setForm] = useState<CompanyForm>({ ...INITIAL_FORM, language: locale })
   const [stepIndex, setStepIndex] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [configLoading, setConfigLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [submittedLeadId, setSubmittedLeadId] = useState<string | null>(null)
+  const [supportedLanguages, setSupportedLanguages] = useState<LocaleCode[]>([])
+  const [configuredSource, setConfiguredSource] = useState<string | null>(null)
   const sourceContext = useMemo(() => buildSourceContext(), [])
   const leadSource = useMemo(() => companyIntakeSourceFromContext(sourceContext), [sourceContext])
+  const languageOptions = useMemo(
+    () => ALL_LANGUAGE_OPTIONS.filter((option) => supportedLanguages.includes(option.value)),
+    [supportedLanguages],
+  )
 
   const currentStep = STEPS[stepIndex]
   const progress = Math.round(((stepIndex + 1) / STEPS.length) * 100)
@@ -281,6 +286,39 @@ export default function CompanyIntakePage() {
     }),
     canonicalPath: publicToken ? `/forms/company-intake/${publicToken}` : '/forms/company-intake',
   })
+
+  const setLanguage = useCallback((next: LocaleCode) => {
+    setLocale(next)
+    setForm((prev) => ({ ...prev, language: next }))
+  }, [setLocale])
+
+  useEffect(() => {
+    if (!publicToken) return
+    let cancelled = false
+    setConfigLoading(true)
+    getCompanyIntakeConfig(publicToken)
+      .then((config) => {
+        if (cancelled) return
+        const allowed = (config.supported_languages || []).filter((code): code is LocaleCode => code === 'pl' || code === 'en' || code === 'ru')
+        const nextSupported = allowed.length ? allowed : ['pl', 'en', 'ru']
+        const nextDefault = nextSupported.includes(config.default_language) ? config.default_language : nextSupported[0]
+        setSupportedLanguages(nextSupported)
+        setConfiguredSource(config.source || null)
+        setLanguage(nextDefault)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setSupportedLanguages(['pl', 'en', 'ru'])
+        setConfiguredSource(null)
+        setError(t('public.company_intake.errors.config_failed', { defaultValue: 'Could not load intake link settings. Please refresh the page.' }))
+      })
+      .finally(() => {
+        if (!cancelled) setConfigLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [publicToken, setLanguage, t])
 
   if (!publicToken) return <Navigate to="/public" replace />
 
@@ -309,7 +347,6 @@ export default function CompanyIntakePage() {
     { value: 'hr_support', label: t('public.company_intake.quiz.cooperation.hr', { defaultValue: 'HR support' }) },
   ]
   const countryOptions: Option[] = ['Poland', 'Germany', 'Czech Republic', 'Lithuania'].map((value) => ({ value, label: value }))
-  const cityOptions: Option[] = ['Poznań', 'Warszawa', 'Wrocław', 'Łódź', 'Gdańsk', 'Katowice'].map((value) => ({ value, label: value }))
   const candidateCountryOptions: Option[] = [
     'ukraine',
     'belarus',
@@ -351,41 +388,20 @@ export default function CompanyIntakePage() {
     'domestic',
     'other',
   ].map((value) => ({ value, label: t(`public.company_intake.options.routes.${value}`, { defaultValue: value }) }))
-  const cargoOptions: Option[] = [
-    'FTL',
-    'LTL',
-    'frigo',
-    'curtain',
-    'jumbo',
-    'container',
-    'isotherm',
-    'tanker',
-    'ADR',
-    'food',
-    'electronics',
-    'building_materials',
-    'pallets',
-    'automotive',
-    'other',
-  ].map((value) => ({ value, label: t(`public.company_intake.options.cargo.${value}`, { defaultValue: value }) }))
-  const workConditionOptions: Option[] = [
-    'night_driving',
-    'no_night_driving',
-    'driver_loading',
-    'no_driver_loading',
-    'pallet_exchange',
-    'no_pallet_exchange',
-    'fixed_routes',
-    'variable_routes',
-    'double_crew',
-    'solo',
-  ].map((value) => ({ value, label: t(`public.company_intake.options.conditions.${value}`, { defaultValue: value }) }))
+  const nightDrivingOptions: Option[] = [
+    { value: 'yes', label: t('common.yes', { defaultValue: 'Yes' }) },
+    { value: 'no', label: t('common.no', { defaultValue: 'No' }) },
+    { value: 'occasional', label: t('public.company_intake.options.night_driving.occasional', { defaultValue: 'Occasionally' }) },
+  ]
   const truckOptions: Option[] = ['MAN', 'Mercedes', 'Volvo', 'Scania', 'DAF', 'Iveco'].map((value) => ({ value, label: value }))
   const bodyOptions: Option[] = [
     { value: 'curtain', label: t('public.company_intake.quiz.body.curtain', { defaultValue: 'Curtain' }) },
     { value: 'frigo', label: t('public.company_intake.quiz.body.frigo', { defaultValue: 'Refrigerated' }) },
     { value: 'jumbo', label: 'Jumbo' },
     { value: 'container', label: t('public.company_intake.quiz.body.container', { defaultValue: 'Container' }) },
+    { value: 'adr', label: 'ADR' },
+    { value: 'tanker', label: t('public.company_intake.options.cargo.tanker', { defaultValue: 'Tanker' }) },
+    { value: 'other', label: t('public.company_intake.options.cargo.other', { defaultValue: 'Other' }) },
   ]
 
   const canContinue = () => {
@@ -430,9 +446,15 @@ export default function CompanyIntakePage() {
     setForm((prev) => ({ ...prev, consent: { ...prev.consent, [field]: value } }))
   }
 
-  const setLanguage = (next: LocaleCode) => {
-    setLocale(next)
-    setForm((prev) => ({ ...prev, language: next }))
+  const updateBaseCountry = (country: string) => {
+    setForm((prev) => ({
+      ...prev,
+      company: {
+        ...prev.company,
+        country,
+        country_code: countryCodeFor(country),
+      },
+    }))
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -475,17 +497,14 @@ export default function CompanyIntakePage() {
           requirements: optionalText(form.need.requirements),
         },
         terms: {
-          rate: optionalText([form.terms.rate_amount, form.terms.rate_currency, form.terms.rate_period, form.terms.rate_tax_mode].filter(Boolean).join(' ')),
+          rate: optionalText(form.terms.rate_amount),
           rate_amount: optionalText(form.terms.rate_amount),
-          rate_currency: optionalText(form.terms.rate_currency),
-          rate_period: optionalText(form.terms.rate_period),
-          rate_tax_mode: optionalText(form.terms.rate_tax_mode),
-          bonus: optionalText(form.terms.bonus),
           schedule: optionalText(form.terms.schedule.join(', ')),
           work_systems: form.terms.schedule,
+          night_driving: optionalText(form.terms.night_driving),
           route_directions: form.terms.route_directions,
-          cargo_types: form.terms.cargo_types,
-          work_conditions: form.terms.work_conditions,
+          cargo_types: form.terms.body_type ? [form.terms.body_type] : [],
+          work_conditions: form.terms.night_driving ? [`night_driving:${form.terms.night_driving}`] : [],
           base_location: optionalText(form.terms.base_location),
           truck_brands: form.terms.truck_brands,
           body_type: optionalText(form.terms.body_type),
@@ -496,7 +515,7 @@ export default function CompanyIntakePage() {
           terms_version: '2026-06-16',
           privacy_version: '2026-06-16',
         },
-        source: leadSource,
+        source: configuredSource || leadSource,
         service_intent: optionalText(form.need.cooperation_type),
         language: form.language,
         source_context: { ...sourceContext, language: form.language, form_id: `company-intake:${publicToken}` },
@@ -523,9 +542,19 @@ export default function CompanyIntakePage() {
     { label: t('public.company_intake.summary.timing', { defaultValue: 'Timing' }), value: timingOptions.find((item) => item.value === form.need.needed_when)?.label || '-', step: 'timing' as StepId },
   ]
 
+  if (configLoading) {
+    return (
+      <PublicPageShell maxWidth="3xl" headerExtra={null}>
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <p className="text-sm font-medium text-slate-600">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+        </div>
+      </PublicPageShell>
+    )
+  }
+
   if (submittedLeadId) {
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher options={supportedLanguages.length ? supportedLanguages : [form.language]} />}>
         <div className="rounded-lg border border-emerald-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm font-semibold uppercase text-emerald-700">
             {t('public.company_intake.success.kicker', { defaultValue: 'Submitted' })}
@@ -550,28 +579,34 @@ export default function CompanyIntakePage() {
         return (
           <ChoiceGrid
             columns="sm:grid-cols-3"
-            options={LANGUAGE_OPTIONS}
+            options={languageOptions}
             value={form.language}
             onChange={(value) => setLanguage(value as LocaleCode)}
           />
         )
       case 'need':
-        return <ChoiceGrid options={needOptions} value={form.need.what_needed} onChange={(value) => update('need', 'what_needed', value)} />
-      case 'count':
-        return <ChoiceGrid options={countOptions} value={form.need.people_count} onChange={(value) => update('need', 'people_count', value)} />
+        return (
+          <div className="space-y-5">
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.need_type', { defaultValue: 'Who are you looking for?' })}</p>
+              <ChoiceGrid options={needOptions} value={form.need.what_needed} onChange={(value) => update('need', 'what_needed', value)} />
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.people_count', { defaultValue: 'How many people?' })}</p>
+              <ChoiceGrid options={countOptions} value={form.need.people_count} onChange={(value) => update('need', 'people_count', value)} />
+            </div>
+          </div>
+        )
       case 'base':
         return (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('public.company_intake.fields.country', { defaultValue: 'Country' })}>
-              <select className={inputClass} value={form.company.country} onChange={(e) => update('company', 'country', e.target.value)}>
+              <select className={inputClass} value={form.company.country} onChange={(e) => updateBaseCountry(e.target.value)}>
                 {countryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </Field>
             <Field label={t('public.company_intake.fields.city', { defaultValue: 'City' })}>
-              <select className={inputClass} value={form.company.city} onChange={(e) => update('company', 'city', e.target.value)}>
-                <option value="">{t('common.select', { defaultValue: 'Select' })}</option>
-                {cityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
+              <input className={inputClass} value={form.company.city} onChange={(e) => update('company', 'city', e.target.value)} />
             </Field>
           </div>
         )
@@ -624,61 +659,48 @@ export default function CompanyIntakePage() {
             </Field>
           </div>
         )
-      case 'additional':
+      case 'conditions':
         return (
-          <div className="space-y-5">
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.preferred_candidate_countries')}</p>
-              <MultiChoiceGrid options={candidateCountryOptions} value={form.need.candidate_countries} onChange={(next) => update('need', 'candidate_countries', next)} />
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_system')}</p>
-              <MultiChoiceGrid options={scheduleOptions} value={form.terms.schedule} onChange={(next) => update('terms', 'schedule', next)} />
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.route_directions')}</p>
-              <MultiChoiceGrid options={routeOptions} value={form.terms.route_directions} onChange={(next) => update('terms', 'route_directions', next)} />
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.cargo_type')}</p>
-              <MultiChoiceGrid options={cargoOptions} value={form.terms.cargo_types} onChange={(next) => update('terms', 'cargo_types', next)} />
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_conditions')}</p>
-              <MultiChoiceGrid options={workConditionOptions} value={form.terms.work_conditions} onChange={(next) => update('terms', 'work_conditions', next)} />
-            </div>
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.truck_brands', { defaultValue: 'Truck brands' })}</p>
-              <MultiChoiceGrid options={truckOptions} value={form.terms.truck_brands} onChange={(next) => update('terms', 'truck_brands', next)} />
-            </div>
-            <ChoiceGrid options={bodyOptions} value={form.terms.body_type} onChange={(value) => update('terms', 'body_type', value)} />
-            <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.rate_compensation')}</p>
-              <div className="grid gap-3 sm:grid-cols-4">
-                <input className={inputClass} value={form.terms.rate_amount} onChange={(e) => update('terms', 'rate_amount', e.target.value)} placeholder={t('public.company_intake.fields.amount')} />
-                <select className={inputClass} value={form.terms.rate_currency} onChange={(e) => update('terms', 'rate_currency', e.target.value)}>
-                  <option value="PLN">PLN</option>
-                  <option value="EUR">EUR</option>
-                </select>
-                <select className={inputClass} value={form.terms.rate_period} onChange={(e) => update('terms', 'rate_period', e.target.value)}>
-                  <option value="day">{t('public.company_intake.options.rate_period.day')}</option>
-                  <option value="month">{t('public.company_intake.options.rate_period.month')}</option>
-                  <option value="kilometer">{t('public.company_intake.options.rate_period.kilometer')}</option>
-                  <option value="hour">{t('public.company_intake.options.rate_period.hour')}</option>
-                </select>
-                <select className={inputClass} value={form.terms.rate_tax_mode} onChange={(e) => update('terms', 'rate_tax_mode', e.target.value)}>
-                  <option value="netto">netto</option>
-                  <option value="brutto">brutto</option>
-                  <option value="b2b">B2B</option>
-                </select>
+          <div className="space-y-6">
+            <section className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">{t('public.company_intake.sections.who')}</h3>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.preferred_candidate_countries')}</p>
+                <MultiChoiceGrid options={candidateCountryOptions} value={form.need.candidate_countries} onChange={(next) => update('need', 'candidate_countries', next)} />
               </div>
-            </div>
-            <Field label={t('public.company_intake.fields.bonus')}>
-              <textarea className={textareaClass} value={form.terms.bonus} onChange={(e) => update('terms', 'bonus', e.target.value)} />
-            </Field>
-            <Field label={t('public.company_intake.fields.additional', { defaultValue: 'Additional information' })}>
-              <textarea className={textareaClass} value={form.terms.additional} onChange={(e) => update('terms', 'additional', e.target.value)} />
-            </Field>
+            </section>
+            <section className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">{t('public.company_intake.sections.work')}</h3>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_system')}</p>
+                <MultiChoiceGrid options={scheduleOptions} value={form.terms.schedule} onChange={(next) => update('terms', 'schedule', next)} />
+              </div>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.route_directions')}</p>
+                <MultiChoiceGrid options={routeOptions} value={form.terms.route_directions} onChange={(next) => update('terms', 'route_directions', next)} />
+              </div>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.night_driving')}</p>
+                <ChoiceGrid columns="sm:grid-cols-3" options={nightDrivingOptions} value={form.terms.night_driving} onChange={(value) => update('terms', 'night_driving', value)} />
+              </div>
+            </section>
+            <section className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">{t('public.company_intake.sections.transport')}</h3>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.trailer_type')}</p>
+                <ChoiceGrid options={bodyOptions} value={form.terms.body_type} onChange={(value) => update('terms', 'body_type', value)} />
+              </div>
+              <div>
+                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.truck_brands', { defaultValue: 'Truck brands' })}</p>
+                <MultiChoiceGrid options={truckOptions} value={form.terms.truck_brands} onChange={(next) => update('terms', 'truck_brands', next)} />
+              </div>
+              <Field label={t('public.company_intake.fields.rate_compensation')}>
+                <input className={inputClass} value={form.terms.rate_amount} onChange={(e) => update('terms', 'rate_amount', e.target.value)} placeholder="100 EUR/day" />
+              </Field>
+              <Field label={t('public.company_intake.fields.additional', { defaultValue: 'Additional information' })}>
+                <textarea className={textareaClass} value={form.terms.additional} onChange={(e) => update('terms', 'additional', e.target.value)} />
+              </Field>
+            </section>
           </div>
         )
       case 'review':
@@ -730,7 +752,7 @@ export default function CompanyIntakePage() {
   }
 
   return (
-    <PublicPageShell maxWidth="3xl" headerExtra={<PublicLocaleSwitcher />}>
+    <PublicPageShell maxWidth="3xl" headerExtra={<PublicLocaleSwitcher options={supportedLanguages.length ? supportedLanguages : [form.language]} />}>
       <form className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-7" onSubmit={handleSubmit}>
         <div>
           <p className="text-sm font-semibold uppercase text-brand-700">

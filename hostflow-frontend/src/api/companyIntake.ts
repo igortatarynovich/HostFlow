@@ -1,5 +1,12 @@
 import http from './http'
 
+export type CompanyIntakePublicConfig = {
+  default_language: 'pl' | 'en' | 'ru'
+  supported_languages: Array<'pl' | 'en' | 'ru'>
+  source: string
+  source_profile?: Record<string, unknown> | null
+}
+
 export type CompanyIntakeCompany = {
   name: string
   legal_name?: string | null
@@ -39,6 +46,7 @@ export type CompanyIntakeTerms = {
   bonus?: string | null
   schedule?: string | null
   work_systems?: string[]
+  night_driving?: string | null
   route_directions?: string[]
   cargo_types?: string[]
   work_conditions?: string[]
@@ -88,6 +96,13 @@ export async function submitCompanyIntake(
   const { data } = await http.post<CompanyIntakeSubmitResponse>(
     `/public/company-intake/${encodeURIComponent(publicToken)}/submit`,
     payload,
+  )
+  return data
+}
+
+export async function getCompanyIntakeConfig(publicToken: string): Promise<CompanyIntakePublicConfig> {
+  const { data } = await http.get<CompanyIntakePublicConfig>(
+    `/public/company-intake/${encodeURIComponent(publicToken)}/config`,
   )
   return data
 }

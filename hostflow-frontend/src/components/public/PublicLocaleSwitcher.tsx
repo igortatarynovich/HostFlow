@@ -10,14 +10,19 @@ const OPTIONS: { value: LocaleCode; label: string }[] = [
 
 type Props = {
   className?: string
+  options?: LocaleCode[]
 }
 
-export function PublicLocaleSwitcher({ className }: Props) {
+export function PublicLocaleSwitcher({ className, options }: Props) {
   const { t, locale, setLocale } = useI18n()
+  const allowedOptions = useMemo(() => {
+    const allowed = new Set(options?.length ? options : OPTIONS.map((item) => item.value))
+    return OPTIONS.filter((option) => allowed.has(option.value))
+  }, [options])
   const value = useMemo<LocaleCode>(() => {
-    if (locale === 'ru' || locale === 'pl') return locale
-    return 'en'
-  }, [locale])
+    if (allowedOptions.some((option) => option.value === locale)) return locale
+    return allowedOptions[0]?.value ?? 'en'
+  }, [allowedOptions, locale])
 
   return (
     <label className={clsx('inline-flex items-center gap-2 text-xs font-medium text-slate-500', className)}>
@@ -27,7 +32,7 @@ export function PublicLocaleSwitcher({ className }: Props) {
         value={value}
         onChange={(event) => setLocale(event.target.value as LocaleCode)}
       >
-        {OPTIONS.map((option) => (
+        {allowedOptions.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

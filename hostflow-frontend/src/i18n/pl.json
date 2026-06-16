@@ -8508,6 +8508,8 @@
         "email": "Email",
         "phone": "Telefon",
         "whatsapp": "WhatsApp dostępny",
+        "need_type": "Kogo szukamy?",
+        "people_count": "Liczba osób",
         "cooperation_type": "Typ współpracy",
         "candidate_countries": "Kraje kandydatów",
         "preferred_candidate_countries": "Preferowane kraje pochodzenia kandydatów",
@@ -8515,6 +8517,8 @@
         "work_system": "System pracy",
         "route_directions": "Kierunki tras",
         "cargo_type": "Typ transportu / ładunku",
+        "trailer_type": "Rodzaj naczepy / transportu",
+        "night_driving": "Czy występuje jazda nocna?",
         "work_conditions": "Warunki dodatkowe",
         "truck_brands": "Marki pojazdów",
         "rate": "Stawka",
@@ -8604,7 +8608,15 @@
           "month": "miesiąc",
           "kilometer": "kilometr",
           "hour": "godzina"
+        },
+        "night_driving": {
+          "occasional": "Sporadycznie"
         }
+      },
+      "sections": {
+        "who": "Kogo szukamy?",
+        "work": "Jak wygląda praca?",
+        "transport": "Rodzaj transportu"
       },
       "consents": {
         "title": "Zgody i oświadczenia",
@@ -8623,6 +8635,7 @@
           "transport": "Jaki transport prowadzicie?",
           "fleet": "Jak duża jest flota?",
           "timing": "Kiedy potrzebujecie ludzi?",
+          "conditions": "Jak wygląda praca?",
           "contact": "Z kim mamy się skontaktować?",
           "company": "Dane firmy",
           "additional": "Warunki pracy",
@@ -8662,6 +8675,7 @@
       "errors": {
         "required": "Nazwa firmy, osoba kontaktowa oraz email lub telefon są wymagane.",
         "consents_required": "Przed wysłaniem formularza wymagane jest zaakceptowanie regulaminu, polityki prywatności, zgody na przetwarzanie danych oraz potwierdzenie poprawności informacji.",
+        "config_failed": "Nie udało się wczytać ustawień linku ankiety. Odśwież stronę.",
         "submit_failed": "Nie udało się wysłać ankiety. Spróbuj ponownie."
       },
       "success": {

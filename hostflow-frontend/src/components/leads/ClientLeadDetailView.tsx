@@ -176,6 +176,7 @@ export default function ClientLeadDetailView({
         <Field label="График" value={terms.schedule || normalized.schedule} />
         <Field label="System pracy" value={terms.work_systems || normalized.work_systems} />
         <Field label="Kierunki tras" value={terms.route_directions || normalized.route_directions} />
+        <Field label="Jazda nocna" value={terms.night_driving || normalized.night_driving} />
         <Field label="Typ transportu / ładunku" value={terms.cargo_types || normalized.cargo_types} />
         <Field label="Warunki dodatkowe" value={terms.work_conditions || normalized.work_conditions} />
         <Field label="База" value={terms.base || company.city || payloadCompany.city} />

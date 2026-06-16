@@ -8675,6 +8675,8 @@
         "email": "Email",
         "phone": "Phone",
         "whatsapp": "WhatsApp available",
+        "need_type": "Who are you looking for?",
+        "people_count": "Number of people",
         "cooperation_type": "Cooperation type",
         "candidate_countries": "Candidate countries",
         "preferred_candidate_countries": "Preferred countries of candidate origin",
@@ -8682,6 +8684,8 @@
         "work_system": "Work system",
         "route_directions": "Route directions",
         "cargo_type": "Transport / cargo type",
+        "trailer_type": "Trailer / transport type",
+        "night_driving": "Is there night driving?",
         "work_conditions": "Additional working conditions",
         "truck_brands": "Truck brands",
         "rate": "Rate",
@@ -8771,7 +8775,15 @@
           "month": "month",
           "kilometer": "kilometer",
           "hour": "hour"
+        },
+        "night_driving": {
+          "occasional": "Occasionally"
         }
+      },
+      "sections": {
+        "who": "Who are you looking for?",
+        "work": "What does the work look like?",
+        "transport": "Transport type"
       },
       "consents": {
         "title": "Consents and declarations",
@@ -8790,6 +8802,7 @@
           "transport": "What type of transport do you run?",
           "fleet": "How large is your fleet?",
           "timing": "When do you need people?",
+          "conditions": "What does the work look like?",
           "contact": "Who should we contact?",
           "company": "Company details",
           "additional": "Work terms",
@@ -8829,6 +8842,7 @@
       "errors": {
         "required": "Company name, contact name, and email or phone are required.",
         "consents_required": "Required consents must be accepted before submitting the form.",
+        "config_failed": "Could not load intake link settings. Please refresh the page.",
         "submit_failed": "Could not submit the intake form. Please try again."
       },
       "success": {

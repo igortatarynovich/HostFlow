@@ -761,6 +761,7 @@ class CompanyIntakeTerms(BaseModel):
     bonus: Optional[str] = Field(default=None, max_length=1000)
     schedule: Optional[str] = Field(default=None, max_length=128)
     work_systems: List[str] = Field(default_factory=list)
+    night_driving: Optional[str] = Field(default=None, max_length=32)
     route_directions: List[str] = Field(default_factory=list)
     cargo_types: List[str] = Field(default_factory=list)
     work_conditions: List[str] = Field(default_factory=list)
@@ -812,6 +813,13 @@ class CompanyIntakeSubmitResponse(BaseModel):
     company_id: Optional[str] = None
     duplicate: bool = False
     lead_url: str
+
+
+class CompanyIntakePublicConfigResponse(BaseModel):
+    default_language: str = "pl"
+    supported_languages: List[str] = Field(default_factory=lambda: ["pl", "en", "ru"])
+    source: str = "company_intake_form"
+    source_profile: Optional[Dict[str, Any]] = None
 
 
 def _now() -> datetime:
@@ -1251,18 +1259,46 @@ def _company_intake_source_profile_meta(profile: Optional[IntakeSourceProfile]) 
     }
 
 
+def _company_intake_supported_languages(source_profile: Optional[IntakeSourceProfile]) -> List[str]:
+    allowed = {"pl", "en", "ru"}
+    raw = getattr(source_profile, "supported_languages", None) if source_profile is not None else None
+    out: List[str] = []
+    if isinstance(raw, list):
+        for item in raw:
+            value = str(item or "").strip().lower()
+            if value in allowed and value not in out:
+                out.append(value)
+    elif isinstance(raw, str):
+        for item in raw.split(","):
+            value = str(item or "").strip().lower()
+            if value in allowed and value not in out:
+                out.append(value)
+    return out or ["pl", "en", "ru"]
+
+
+def _company_intake_default_language(source_profile: Optional[IntakeSourceProfile], supported: Sequence[str]) -> str:
+    raw = str(getattr(source_profile, "default_language", "") or "").strip().lower()
+    if raw in supported:
+        return raw
+    return str(supported[0] if supported else "pl")
+
+
 def _company_intake_source(
     payload: CompanyIntakeSubmitRequest,
     source_profile: Optional[IntakeSourceProfile] = None,
 ) -> str:
+    profile_source = str(getattr(source_profile, "source", "") or "").strip().lower()
+    if profile_source:
+        if profile_source in {"meta", "facebook", "instagram", "fb", "ig"}:
+            return "meta_ads"
+        if profile_source in {"company-intake-form"}:
+            return "company_intake_form"
+        return profile_source
     raw = (payload.source or "").strip().lower()
     if raw in {"meta", "facebook", "instagram"}:
         return "meta_ads"
     if raw in {"meta_ads", "website", "manual", "company_intake_form", "company-intake-form"}:
         return "company_intake_form" if raw == "company-intake-form" else raw
-    profile_source = str(getattr(source_profile, "source", "") or "").strip().lower()
-    if profile_source:
-        return "meta_ads" if profile_source in {"meta", "facebook", "instagram"} else profile_source
     ctx = payload.source_context if isinstance(payload.source_context, dict) else {}
     utm_source = str(ctx.get("utm_source") or "").strip().lower()
     if utm_source in {"meta", "facebook", "instagram", "fb", "ig"}:
@@ -1359,6 +1395,7 @@ def _company_intake_normalized(
             "bonus": terms.bonus,
             "schedule": terms.schedule,
             "work_systems": terms.work_systems,
+            "night_driving": terms.night_driving,
             "route_directions": terms.route_directions,
             "cargo_types": terms.cargo_types,
             "work_conditions": terms.work_conditions,
@@ -1450,6 +1487,7 @@ def _company_intake_normalized(
             "bonus": terms.bonus,
             "schedule": terms.schedule,
             "work_systems": terms.work_systems,
+            "night_driving": terms.night_driving,
             "route_directions": terms.route_directions,
             "cargo_types": terms.cargo_types,
             "work_conditions": terms.work_conditions,
@@ -1473,6 +1511,36 @@ def _company_intake_normalized(
         if v not in (None, "", [], {})
     }
     return {**structured, **flat_aliases}
+
+
+@router.get("/company-intake/{public_token}/config", response_model=CompanyIntakePublicConfigResponse)
+async def get_company_intake_config(
+    public_token: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> CompanyIntakePublicConfigResponse:
+    await enforce_rate_limit(request, rate_limits().public_intake, scope="public:company_intake_config")
+    _tenant_uuid, _form, source_profile, _legacy_lead_form_link = await _resolve_company_intake_source(db, public_token)
+    supported = _company_intake_supported_languages(source_profile)
+    default_language = _company_intake_default_language(source_profile, supported)
+    return CompanyIntakePublicConfigResponse(
+        default_language=default_language,
+        supported_languages=supported,
+        source=_company_intake_source(
+            CompanyIntakeSubmitRequest(
+                company=CompanyIntakeCompany(name="placeholder"),
+                contact=CompanyIntakeContact(full_name="placeholder", email="placeholder@example.com"),
+                consent=CompanyIntakeConsent(
+                    terms_accepted=True,
+                    privacy_accepted=True,
+                    data_processing_accepted=True,
+                    accuracy_confirmed=True,
+                ),
+            ),
+            source_profile,
+        ),
+        source_profile=_company_intake_source_profile_meta(source_profile),
+    )
 
 
 @router.post("/company-intake/{public_token}/submit", response_model=CompanyIntakeSubmitResponse)
@@ -1501,6 +1569,19 @@ async def submit_company_intake(
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     consent_received_at = _now().isoformat()
+    supported_languages = _company_intake_supported_languages(source_profile)
+    default_language = _company_intake_default_language(source_profile, supported_languages)
+    requested_language = str(payload.language or default_language).strip().lower()
+    if requested_language not in supported_languages:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "UNSUPPORTED_INTAKE_LANGUAGE",
+                "message": "Selected language is not enabled for this intake link.",
+                "supported_languages": supported_languages,
+            },
+        )
+    payload.language = requested_language
     normalized = _company_intake_normalized(
         payload,
         source_profile,
