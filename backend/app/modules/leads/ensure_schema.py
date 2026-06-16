@@ -69,6 +69,7 @@ def ensure_leads_schema() -> None:
                     normalized TEXT,
                     status TEXT NOT NULL DEFAULT 'new',
                     candidate_id TEXT,
+                    converted_client_id TEXT,
                     external_id TEXT,
                     error TEXT,
                     last_routed_at TEXT,
@@ -79,6 +80,7 @@ def ensure_leads_schema() -> None:
             cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_tenant ON leads(tenant_id)")
             cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_status ON leads(status)")
             cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_vacancy ON leads(vacancy_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_converted_client_id ON leads(converted_client_id)")
             cur.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_source_external_id
@@ -97,6 +99,9 @@ def ensure_leads_schema() -> None:
                 cur.execute("ALTER TABLE leads ADD COLUMN lead_type TEXT NOT NULL DEFAULT 'candidate'")
             if not _column_exists(cur, "leads", "lead_target_type"):
                 cur.execute("ALTER TABLE leads ADD COLUMN lead_target_type TEXT NOT NULL DEFAULT 'candidate'")
+            if not _column_exists(cur, "leads", "converted_client_id"):
+                cur.execute("ALTER TABLE leads ADD COLUMN converted_client_id TEXT")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_converted_client_id ON leads(converted_client_id)")
             cur.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_source_external_id

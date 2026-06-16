@@ -69,8 +69,9 @@ from backend.app.modules.leads.intake_route import (
     lead_type_for_route_intent,
     lead_type_for_target,
     resolve_intake_route_for_ingest,
-    route_intent_creates_candidate,
 )
+from backend.app.modules.outcome_rules.reference import OutcomeEvent, OutcomeRuleType
+from backend.app.services.outcome_resolver import resolve_outcomes
 
 _ingest_guard_log = logging.getLogger(__name__)
 
@@ -296,8 +297,15 @@ async def process_normalized_lead(
     route_intent = intake_ctx.route_intent
     lead_target_type = intake_ctx.lead_target_type
     route_default_assignee = intake_ctx.default_assignee_id
+    outcome_resolution = resolve_outcomes(route_intent, OutcomeEvent.ingest.value)
+    outcome_actions = tuple(action.code for action in outcome_resolution.actions)
+    creates_candidate = bool(
+        force_candidate_conversion or OutcomeRuleType.create_candidate.value in outcome_actions
+    )
+    sales_lead_without_candidate = is_sales_route_intent(route_intent) and not creates_candidate
     normalized["intake_routing_v1"] = intake_ctx.to_intake_routing_v1()
     normalized["intake_route_v1"] = intake_ctx.to_normalized_block()
+    normalized["outcome_resolution_v1"] = outcome_resolution.to_dict()
     if intake_ctx.pipeline_preset:
         normalized["intake_pipeline_preset_v1"] = intake_ctx.pipeline_preset
     if intake_ctx.own_company_id:
@@ -324,6 +332,9 @@ async def process_normalized_lead(
         pool_manual_convert_ready = pool_intake_manual_convert_ready(lead, normalized)
     if pool_manual_convert_ready:
         vacancy = None
+    if sales_lead_without_candidate:
+        vacancy = None
+        vacancy_for_confirm = None
 
     triage_gate_bypass = bool(
         force_candidate_conversion
@@ -341,7 +352,7 @@ async def process_normalized_lead(
         and effective_processing_mode == "automatic"
         and _vacancy_allows_auto_convert_on_fit(vacancy)
         and (not fit_evaluation_effective or tenant_autoconv)
-        and route_intent_creates_candidate(route_intent, force=force_candidate_conversion)
+        and creates_candidate
     )
     normalized["leads_auto_convert_on_fit_effective_v1"] = bool(may_auto_convert)
 
@@ -381,16 +392,17 @@ async def process_normalized_lead(
                 resolved_company_id = resolved
                 break
 
-    if not resolved_company_id:
+    if not resolved_company_id and not sales_lead_without_candidate:
         resolved_company_id = await _validate_company_id(db, tenant_id, fallback_company_hint)
 
-    if not resolved_company_id:
+    if not resolved_company_id and not sales_lead_without_candidate:
         resolved_company_id = await crud.get_default_company_id(db, tenant_id)
 
-    if not resolved_company_id:
+    if not resolved_company_id and not sales_lead_without_candidate:
         raise LeadProcessingError("needs_routing", "COMPANY_NOT_RESOLVED")
 
-    normalized["resolved_company_id"] = resolved_company_id
+    if resolved_company_id:
+        normalized["resolved_company_id"] = resolved_company_id
     resolved_company_name = next((hint for hint in company_hints if hint), None)
 
     if lead is None:
@@ -424,8 +436,8 @@ async def process_normalized_lead(
             db,
             tenant_id=tenant_id,
             own_company_id=str(own_company_id_for_lead),
-            company_id=resolved_company_id,
-            vacancy_id=vacancy.id if vacancy else None,
+            company_id=None if sales_lead_without_candidate else resolved_company_id,
+            vacancy_id=None if sales_lead_without_candidate else (vacancy.id if vacancy else None),
             payload=payload,
             normalized=normalized,
             ad_id=normalized.get("ad_id"),
@@ -441,8 +453,8 @@ async def process_normalized_lead(
             except Exception:  # pragma: no cover - best effort
                 pass
     else:
-        lead.company_id = resolved_company_id
-        lead.vacancy_id = vacancy.id if vacancy else None
+        lead.company_id = None if sales_lead_without_candidate else resolved_company_id
+        lead.vacancy_id = None if sales_lead_without_candidate else (vacancy.id if vacancy else None)
         if getattr(lead, "own_company_id", None) in (None, ""):
             # Prefer intake route / active OwnCompany; otherwise fall back to vacancy.
             lead.own_company_id = (
@@ -603,7 +615,7 @@ async def process_normalized_lead(
         email=email,
         phone=phone,
     )
-    if duplicate and route_intent_creates_candidate(route_intent, force=force_candidate_conversion):
+    if duplicate and creates_candidate:
         await crud.update_lead(
             db,
             lead,
@@ -651,7 +663,7 @@ async def process_normalized_lead(
     if (
         not triage_gate_bypass
         and may_auto_convert
-        and route_intent_creates_candidate(route_intent, force=force_candidate_conversion)
+        and creates_candidate
         and vacancy is not None
         and routing_fit_status in ("no_fit", "needs_info")
     ):
@@ -710,7 +722,7 @@ async def process_normalized_lead(
         )
 
     if not triage_gate_bypass and not may_auto_convert and not pool_manual_convert_ready:
-        if route_intent_creates_candidate(route_intent, force=force_candidate_conversion):
+        if creates_candidate:
             if effective_processing_mode == "assisted":
                 _stamp_lead_qualification_preview_v1(
                     normalized,
@@ -877,9 +889,7 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not vacancy and not pool_manual_convert_ready and route_intent_creates_candidate(
-        route_intent, force=force_candidate_conversion
-    ):
+    if not vacancy and not pool_manual_convert_ready and creates_candidate:
         needs_routing_lead_id = str(lead.id)
         await crud.update_lead(
             db,

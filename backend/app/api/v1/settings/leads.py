@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import List, Literal, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, status
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
@@ -14,6 +17,9 @@ from backend.app.db.meta_leads_tenant_dep import (
 )
 from backend.app.modules.leads import admin_service
 from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_session
+from backend.app.models.intake_routing import IntakeSourceProfile
+from backend.app.models.own_company import OwnCompany
+from backend.app.models.user import User
 from backend.app.modules.leads.schemas import (
     LeadImportJobListResponse,
     LeadImportJobOut,
@@ -54,6 +60,94 @@ from backend.app.services.imports import leads as import_service
 
 router = APIRouter(prefix="/leads", tags=["settings-leads"])
 
+SUPPORTED_COMPANY_INTAKE_LANGUAGES = {"pl", "en", "ru"}
+COMPANY_INTAKE_FORM_TYPE = "company_intake"
+
+
+class CompanyIntakeSourceProfileOut(BaseModel):
+    id: str
+    name: str
+    tenant_id: str
+    own_company_id: str
+    own_company_name: str | None = None
+    public_slug: str
+    public_url_path: str
+    lead_type: str
+    lead_target_type: str
+    form_type: str
+    source: str
+    default_language: str
+    supported_languages: list[str]
+    default_assignee_id: str | None = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+class CompanyIntakeSourceProfileCreateIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    own_company_id: str = Field(..., min_length=1, max_length=36)
+    public_slug: str = Field(..., min_length=2, max_length=64)
+    source: str = Field(default="website", max_length=64)
+    default_language: str = Field(default="pl", max_length=8)
+    supported_languages: list[str] = Field(default_factory=lambda: ["pl", "en", "ru"])
+    default_assignee_id: str | None = Field(default=None, max_length=36)
+    is_active: bool = True
+
+    @field_validator("public_slug")
+    @classmethod
+    def _normalize_slug(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        import re
+
+        cleaned = re.sub(r"[^a-z0-9-]+", "-", cleaned)
+        cleaned = re.sub(r"-{2,}", "-", cleaned).strip("-")
+        if len(cleaned) < 2:
+            raise ValueError("public_slug is too short")
+        return cleaned
+
+    @field_validator("source")
+    @classmethod
+    def _normalize_source(cls, value: str) -> str:
+        cleaned = value.strip().lower().replace("-", "_")
+        if cleaned in {"meta", "facebook", "instagram", "fb", "ig"}:
+            return "meta_ads"
+        return cleaned or "website"
+
+    @field_validator("default_language")
+    @classmethod
+    def _normalize_default_language(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        if cleaned not in SUPPORTED_COMPANY_INTAKE_LANGUAGES:
+            raise ValueError("default_language must be one of pl, en, ru")
+        return cleaned
+
+    @field_validator("supported_languages")
+    @classmethod
+    def _normalize_supported_languages(cls, value: list[str]) -> list[str]:
+        out: list[str] = []
+        for item in value or []:
+            cleaned = str(item or "").strip().lower()
+            if cleaned in SUPPORTED_COMPANY_INTAKE_LANGUAGES and cleaned not in out:
+                out.append(cleaned)
+        return out or ["pl", "en", "ru"]
+
+
+class CompanyIntakeSourceProfilePatchIn(BaseModel):
+    name: str | None = Field(default=None, max_length=255)
+    own_company_id: str | None = Field(default=None, max_length=36)
+    public_slug: str | None = Field(default=None, min_length=2, max_length=64)
+    source: str | None = Field(default=None, max_length=64)
+    default_language: str | None = Field(default=None, max_length=8)
+    supported_languages: list[str] | None = None
+    default_assignee_id: str | None = Field(default=None, max_length=36)
+    is_active: bool | None = None
+
+    _normalize_slug = field_validator("public_slug")(CompanyIntakeSourceProfileCreateIn._normalize_slug.__func__)  # type: ignore[attr-defined]
+    _normalize_source = field_validator("source")(CompanyIntakeSourceProfileCreateIn._normalize_source.__func__)  # type: ignore[attr-defined]
+    _normalize_default_language = field_validator("default_language")(CompanyIntakeSourceProfileCreateIn._normalize_default_language.__func__)  # type: ignore[attr-defined]
+    _normalize_supported_languages = field_validator("supported_languages")(CompanyIntakeSourceProfileCreateIn._normalize_supported_languages.__func__)  # type: ignore[attr-defined]
+
 
 def _serialize_job(job) -> LeadImportJobOut:
     return LeadImportJobOut(
@@ -70,6 +164,255 @@ def _serialize_job(job) -> LeadImportJobOut:
         finished_at=job.finished_at,
         error_report=list(job.error_report or []),
     )
+
+
+def _company_intake_public_path(public_slug: str) -> str:
+    return f"/forms/company-intake/{public_slug}"
+
+
+def _languages_to_storage(values: list[str]) -> str:
+    out: list[str] = []
+    for value in values:
+        cleaned = str(value or "").strip().lower()
+        if cleaned in SUPPORTED_COMPANY_INTAKE_LANGUAGES and cleaned not in out:
+            out.append(cleaned)
+    return ",".join(out or ["pl", "en", "ru"])
+
+
+def _languages_from_storage(raw: str | None) -> list[str]:
+    if not raw:
+        return ["pl", "en", "ru"]
+    out: list[str] = []
+    for item in str(raw).split(","):
+        cleaned = item.strip().lower()
+        if cleaned in SUPPORTED_COMPANY_INTAKE_LANGUAGES and cleaned not in out:
+            out.append(cleaned)
+    return out or ["pl", "en", "ru"]
+
+
+async def _ensure_own_company_for_tenant(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+) -> OwnCompany:
+    oc = str(own_company_id or "").strip()
+    row = await db.scalar(
+        select(OwnCompany).where(
+            OwnCompany.tenant_id == tenant_id,
+            OwnCompany.id == oc,
+            OwnCompany.is_archived.is_(False),
+        )
+    )
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "own_company_invalid", "message": "Owner company is invalid for this workspace."},
+        )
+    return row
+
+
+async def _ensure_assignee_for_tenant(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str | None,
+) -> str | None:
+    uid = str(user_id or "").strip() or None
+    if not uid:
+        return None
+    row = await db.scalar(
+        select(User.id).where(
+            User.tenant_id == tenant_id,
+            User.id == uid,
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+    )
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "default_manager_invalid", "message": "Default manager is invalid for this workspace."},
+        )
+    return str(row)
+
+
+async def _ensure_company_intake_slug_available(
+    db: AsyncSession,
+    *,
+    public_slug: str,
+    exclude_profile_id: str | None = None,
+) -> None:
+    stmt = select(IntakeSourceProfile.id).where(IntakeSourceProfile.public_slug == public_slug)
+    if exclude_profile_id:
+        stmt = stmt.where(IntakeSourceProfile.id != exclude_profile_id)
+    existing = await db.scalar(stmt.limit(1))
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "company_intake_slug_taken", "message": "This public slug is already used."},
+        )
+
+
+def _company_intake_source_out(
+    row: IntakeSourceProfile,
+    *,
+    own_company_name: str | None = None,
+) -> CompanyIntakeSourceProfileOut:
+    slug = str(row.public_slug or "").strip()
+    return CompanyIntakeSourceProfileOut(
+        id=str(row.id),
+        name=row.name,
+        tenant_id=str(row.tenant_id),
+        own_company_id=str(row.own_company_id),
+        own_company_name=own_company_name,
+        public_slug=slug,
+        public_url_path=_company_intake_public_path(slug),
+        lead_type=row.lead_type or "client",
+        lead_target_type=row.lead_target_type or "client_lead",
+        form_type=row.form_type or COMPANY_INTAKE_FORM_TYPE,
+        source=row.source or "website",
+        default_language=row.default_language or "pl",
+        supported_languages=_languages_from_storage(row.supported_languages),
+        default_assignee_id=row.default_assignee_id,
+        is_active=bool(row.is_active),
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+@router.get(
+    "/company-intake-source-profiles",
+    response_model=list[CompanyIntakeSourceProfileOut],
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def list_company_intake_source_profiles_endpoint(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> list[CompanyIntakeSourceProfileOut]:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    rows = (
+        await db.execute(
+            select(IntakeSourceProfile, OwnCompany.name)
+            .join(OwnCompany, OwnCompany.id == IntakeSourceProfile.own_company_id)
+            .where(
+                IntakeSourceProfile.tenant_id == tenant_id,
+                IntakeSourceProfile.form_type == COMPANY_INTAKE_FORM_TYPE,
+                IntakeSourceProfile.lead_type == "client",
+                IntakeSourceProfile.lead_target_type == "client_lead",
+            )
+            .order_by(IntakeSourceProfile.created_at.asc())
+        )
+    ).all()
+    return [_company_intake_source_out(row, own_company_name=own_name) for row, own_name in rows]
+
+
+@router.post(
+    "/company-intake-source-profiles",
+    response_model=CompanyIntakeSourceProfileOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def create_company_intake_source_profile_endpoint(
+    payload: CompanyIntakeSourceProfileCreateIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> CompanyIntakeSourceProfileOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    own_company = await _ensure_own_company_for_tenant(
+        db, tenant_id=tenant_id, own_company_id=payload.own_company_id
+    )
+    default_assignee_id = await _ensure_assignee_for_tenant(
+        db, tenant_id=tenant_id, user_id=payload.default_assignee_id
+    )
+    await _ensure_company_intake_slug_available(db, public_slug=payload.public_slug)
+    row = IntakeSourceProfile(
+        tenant_id=tenant_id,
+        code=f"company-intake-{payload.public_slug}",
+        name=payload.name.strip(),
+        provider="public_intake",
+        channel="public_form",
+        own_company_id=payload.own_company_id.strip(),
+        route_intent="sales_inquiry",
+        public_slug=payload.public_slug,
+        form_type=COMPANY_INTAKE_FORM_TYPE,
+        lead_type="client",
+        lead_target_type="client_lead",
+        source=payload.source,
+        default_language=payload.default_language,
+        supported_languages=_languages_to_storage(payload.supported_languages),
+        default_assignee_id=default_assignee_id,
+        is_active=payload.is_active,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return _company_intake_source_out(row, own_company_name=own_company.name)
+
+
+@router.patch(
+    "/company-intake-source-profiles/{profile_id}",
+    response_model=CompanyIntakeSourceProfileOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def patch_company_intake_source_profile_endpoint(
+    profile_id: str,
+    payload: CompanyIntakeSourceProfilePatchIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> CompanyIntakeSourceProfileOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    row = await db.scalar(
+        select(IntakeSourceProfile).where(
+            IntakeSourceProfile.tenant_id == tenant_id,
+            IntakeSourceProfile.id == profile_id,
+            IntakeSourceProfile.form_type == COMPANY_INTAKE_FORM_TYPE,
+            IntakeSourceProfile.lead_type == "client",
+            IntakeSourceProfile.lead_target_type == "client_lead",
+        )
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company intake source profile not found")
+
+    patch = payload.model_dump(exclude_unset=True)
+    if "name" in patch and patch["name"] is not None:
+        row.name = str(patch["name"]).strip() or row.name
+    if "own_company_id" in patch and patch["own_company_id"] is not None:
+        own_company = await _ensure_own_company_for_tenant(
+            db, tenant_id=tenant_id, own_company_id=str(patch["own_company_id"])
+        )
+        row.own_company_id = own_company.id
+    else:
+        own_company = await db.get(OwnCompany, row.own_company_id)
+    if "public_slug" in patch and patch["public_slug"] is not None:
+        next_slug = str(patch["public_slug"]).strip()
+        if next_slug != row.public_slug:
+            await _ensure_company_intake_slug_available(
+                db, public_slug=next_slug, exclude_profile_id=str(row.id)
+            )
+            row.public_slug = next_slug
+            row.code = f"company-intake-{next_slug}"
+    if "source" in patch and patch["source"] is not None:
+        row.source = str(patch["source"]).strip().lower() or "website"
+    if "default_language" in patch and patch["default_language"] is not None:
+        row.default_language = str(patch["default_language"]).strip().lower() or "pl"
+    if "supported_languages" in patch and patch["supported_languages"] is not None:
+        row.supported_languages = _languages_to_storage(patch["supported_languages"])
+    if "default_assignee_id" in patch:
+        row.default_assignee_id = await _ensure_assignee_for_tenant(
+            db, tenant_id=tenant_id, user_id=patch["default_assignee_id"]
+        )
+    if "is_active" in patch and patch["is_active"] is not None:
+        row.is_active = bool(patch["is_active"])
+    await db.commit()
+    await db.refresh(row)
+    return _company_intake_source_out(row, own_company_name=getattr(own_company, "name", None))
 
 
 @router.get(

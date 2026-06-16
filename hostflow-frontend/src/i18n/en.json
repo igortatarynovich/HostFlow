@@ -191,6 +191,24 @@
     }
   },
   "app": {
+    "surfaces": {
+      "blocker": {
+        "title": "What is blocking progress",
+        "hr_review_title": "HR review blockers"
+      },
+      "readiness": {
+        "title": "Readiness",
+        "decision_title": "Before approval"
+      },
+      "document_status": {
+        "missing": "Missing",
+        "pending": "Pending",
+        "verified": "Verified",
+        "expiring": "Expiring",
+        "rejected": "Rejected",
+        "in_review": "In review"
+      }
+    },
     "hr": {
       "employee_detail": {
         "documents_load_error": "Could not load documents",
@@ -205,6 +223,56 @@
         "doc_col_file": "File",
         "doc_open": "Open",
         "doc_open_error": "Could not open document file"
+      },
+      "document_packs": {
+        "section_title": "Document packs",
+        "hub_preview_title": "Document packs for filtered employee",
+        "empty": "No document packs for this profile yet.",
+        "no_candidate_link": "This employee has no linked candidate — document packs are unavailable.",
+        "skeleton_hint": "Client-specific requirements will appear here later.",
+        "blockers": "Blockers",
+        "warnings": "Warnings",
+        "gaps": "Gaps",
+        "count": {
+          "missing": "Missing",
+          "expired": "Expired",
+          "expiring": "Expiring",
+          "missing_expiry": "No expiry date"
+        },
+        "status": {
+          "valid": "Valid",
+          "warnings": "Warnings",
+          "gaps": "Gaps",
+          "skeleton": "Skeleton"
+        }
+      },
+      "document_actions": {
+        "section_title": "Document actions",
+        "empty": "No document actions",
+        "no_candidate_link": "This employee has no linked candidate — document actions are unavailable.",
+        "document": "Document",
+        "pack": "Pack",
+        "due": "Due",
+        "action": {
+          "upload_document": "Upload document",
+          "request_update": "Request update",
+          "renew_document": "Renew document",
+          "capture_expiry_date": "Capture expiry date"
+        }
+      },
+      "readiness": {
+        "status_label": "Readiness status",
+        "next_action": "Next action",
+        "reason": "Reason",
+        "blocks": "Blocks",
+        "owner": "Responsible",
+        "due": "Due",
+        "missing": "Missing / affected",
+        "open_documents": "Open documents",
+        "ready_hint": "No document blockers detected. Employment readiness looks clear from current packs.",
+        "ready_next": "Next step: {step}",
+        "remaining": "{count} documents remaining",
+        "verification_progress": "Verified {verified} of {total} uploaded documents"
       },
       "work_eligibility": {
         "section_title": "Work eligibility & statutory fees",
@@ -433,6 +501,9 @@
         "verify": "Verify document",
         "request_correction": "Request correction",
         "reject": "Reject",
+        "reject_verification": "Reject verification",
+        "upload_new": "Upload new",
+        "upload_new_note": "Please upload a new version of this document.",
         "correction_placeholder": "What must be corrected?",
         "reject_placeholder": "Rejection reason"
       },
@@ -458,6 +529,9 @@
         "technical_hint": "Checklist, blockers, and field-level status update automatically when you confirm documents."
       },
       "verify_shell": {
+        "section_title": "Documents verification workspace",
+        "dossier_hint": "One document at a time: compare file to fields, then confirm/correct/replace.",
+        "no_review_context": "HR review context is not available for this employee yet.",
         "phase": "Document verification",
         "step_verify": "Step {step}: Verify {document}",
         "default_step": "Required documents",
@@ -474,7 +548,7 @@
         "missing_field": "Missing — enter from document",
         "no_fields": "No extra fields — confirm the file is correct.",
         "previous": "Previous document",
-        "confirm": "Confirm this document",
+        "confirm": "Confirm",
         "confirm_next": "Confirm & next document",
         "next": "Next document",
         "saved": "Document saved",
@@ -514,6 +588,54 @@
           "missing_field": "Missing required field",
           "clearer_file": "Upload clearer file"
         }
+      },
+      "exceptions": {
+        "section_title": "Exceptions",
+        "waive_link": "Mark requirement as exception…",
+        "waive_title": "Mark requirement as exception",
+        "waive_warning": "This requirement will be marked as an exception. Approval can proceed without this document.",
+        "waive_document": "Document: {document}",
+        "waive_reason": "Reason (required)",
+        "waive_placeholder": "Why is this requirement waived?",
+        "waive_submit": "Mark as exception",
+        "waive_done": "Requirement marked as exception",
+        "additional_link": "Request additional document…",
+        "additional_title": "Request additional document",
+        "additional_subtitle": "Ask recruitment to provide more information. This blocks final approval until the document is received.",
+        "additional_name": "Document name",
+        "additional_name_placeholder": "e.g. Reference letter from previous employer",
+        "additional_note": "Note for recruitment (optional)",
+        "additional_urgency": "Urgency (optional)",
+        "urgency_none": "Not specified",
+        "urgency_normal": "Normal",
+        "urgency_high": "High",
+        "additional_submit": "Send request",
+        "additional_done": "Recruitment will be asked for the document",
+        "hr_requested_heading": "Requested from recruitment",
+        "hr_requested_pending": "Pending",
+        "hr_requested_received": "Received"
+      },
+      "ready": {
+        "phase": "Document verification",
+        "title": "Verification complete",
+        "headline_confirmed": "All required documents confirmed",
+        "headline_decision": "The candidate is ready for an employment decision.",
+        "progress": "{verified} of {total} required documents confirmed",
+        "summary_confirmed": "Confirmed",
+        "summary_waived": "Exceptions (waived)",
+        "waive_reason": "Reason: {reason}",
+        "summary_hr_requested": "HR-requested documents",
+        "summary_recommended": "Recommended (optional)",
+        "recommended_hint": "Still missing — does not block employment approval.",
+        "review_documents": "Review confirmed documents",
+        "back_to_decision": "Back to employment decision",
+        "all_done_hint": "All required documents are confirmed. You can approve employment.",
+        "still_needed": "Still needed before approval",
+        "identity_pending": "Employment identity must be complete before approval.",
+        "blocker_missing_file": "{document} — file not uploaded yet",
+        "blocker_not_confirmed": "{document} — awaiting your confirmation",
+        "blocker_missing_field": "{document} — enter {field} from the file",
+        "blocker_field_fallback": "a required field"
       },
       "identity": {
         "compact_title": "Downstream readiness",
@@ -1310,7 +1432,74 @@
           "disable_auto_convert_hint": "When Automatic mode is on, leads matched to this job will not auto-create a candidate even if fit passes; operators use Process. Stored as vacancy.extra.leads_auto_convert_on_fit_v1 = false.",
           "enable_fit_evaluation": "Enable lead fit vs these criteria",
           "enable_fit_evaluation_hint": "When off, you can still edit fields below as a draft — they do not affect routing or autoconversion. When on with empty rules, fit does not block (same as no criteria). Stored as vacancy.extra.lead_fit_evaluation_enabled_v1."
+        },
+        "work_schedule": {
+          "title": "Work schedule options",
+          "hint": "Schedules the client offers for this vacancy (candidate preference is separate)"
         }
+      }
+    },
+    "recruitment_preparation": {
+      "title": "Documents for this position",
+      "subtitle": "Check uploads and data — not HR compliance verification",
+      "badge": {
+        "ready_for_hr": "Ready for HR",
+        "missing_required": "Missing required",
+        "warnings": "Warnings"
+      },
+      "sections": {
+        "required": "Required",
+        "recommended": "Recommended",
+        "optional": "Optional",
+        "not_required": "Not required"
+      },
+      "status": {
+        "missing": "Not uploaded",
+        "uploaded": "Uploaded"
+      },
+      "file_version": "v{{version}}",
+      "expires": "expires {{date}}",
+      "missing_data": "Missing data: {{fields}}",
+      "warnings_before_handoff": "Warnings before handoff",
+      "warnings_non_blocking": "You can hand off with warnings — HR will see them in the snapshot.",
+      "handoff_note": "Note for HR before handoff",
+      "handoff_note_placeholder": "Context for HR: schedule, exceptions, client expectations…",
+      "empty": "No documents in package.",
+      "stage_blocked": {
+        "title": "Cannot move to Ready for handoff",
+        "description": "Upload required documents and complete missing data in “Documents for this position”."
+      },
+      "handoff_modal": {
+        "blocked": "Required documents or data are missing. Fix blockers in “Documents for this position” before handoff.",
+        "warnings": "There are warnings (e.g. recommended docs or schedule). HR will see them in the snapshot."
+      },
+      "warn": {
+        "schedule_mismatch": "Schedule mismatch with vacancy",
+        "schedule_individual_comment": "Individual schedule selected — add a comment for HR/client",
+        "missing_recommended": "Recommended document missing: {{key}}"
+      },
+      "actions": {
+        "upload": "Upload",
+        "replace": "Replace",
+        "preview": "Preview",
+        "complete_data": "Complete data"
+      }
+    },
+    "work_schedule": {
+      "options": {
+        "by_weeks": "By weeks",
+        "4/1": "4/1",
+        "8/2": "8/2",
+        "individual": "Individual"
+      },
+      "candidate": {
+        "title": "Preferred work schedule",
+        "hint": "What the candidate is willing to accept — may differ from the vacancy offer",
+        "vacancy_offers": "Vacancy offers",
+        "field": "Schedule",
+        "comment": "Individual schedule — comment for HR/client",
+        "comment_recommended": "Strongly recommended before handoff",
+        "mismatch": "Schedule mismatch with vacancy — recruitment warning, not a handoff blocker"
       }
     },
     "handoff": {
@@ -3148,6 +3337,28 @@
         "save_error": "Failed to save changes",
         "archive_error": "Failed to update archive status"
       },
+      "intake_links": {
+        "title": "Questionnaire link for a new client",
+        "subtitle": "Use this link in ads, email, website or manual outreach. Submitted forms create Client Leads, not active clients.",
+        "active_count": "{count} active",
+        "no_active": "No active link",
+        "manage": "Create / manage link",
+        "hide": "Hide links",
+        "copied": "Link copied",
+        "created": "Public questionnaire link created",
+        "create_title": "Create a public questionnaire link",
+        "create_hint": "The owner company is taken from your workspace, not from the public form payload.",
+        "languages_hint": "Form languages",
+        "empty": "No questionnaire links yet. Create the first one for website, ads or direct outreach.",
+        "fields": {
+          "name": "Link name",
+          "owner": "Owner company",
+          "source": "Source",
+          "manager": "Manager",
+          "slug": "Public slug",
+          "active": "Active"
+        }
+      },
       "invoices": {
         "title": "Invoices",
         "subtitle": "Issue and send invoices to client",
@@ -3204,6 +3415,7 @@
       },
       "list": {
         "title": "Companies",
+        "clients_title": "Clients",
         "wayfinding_title": "Other CRM areas",
         "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, clients list, candidates, leads, and settings",
         "search_label": "Search",
@@ -5262,6 +5474,62 @@
       "stage_blocked_by_contact_attempt": {
         "title": "Log a contact attempt first",
         "description": "Your client policy requires at least one registered contact attempt before leaving New."
+      },
+      "dossier_checklist": {
+        "badge": "Recruitment package",
+        "hint": "Same logical blocks as HR dossier — verify each block, then hand off.",
+        "ready": "Ready",
+        "missing": "Missing",
+        "issue": "Needs review",
+        "data": "Check fields",
+        "optional": "Optional",
+        "complete": "Ready for handoff",
+        "pending": "{count} open",
+        "missing_data": "Missing data: {list}",
+        "pending_confirm": "Confirm reviewed blocks: {list}",
+        "confirmed": "Confirmed",
+        "confirm_block": "Confirm reviewed",
+        "confirmed_toast": "Block confirmed",
+        "checking": "Checking recruitment package…",
+        "load_failed": "Could not load recruitment package status. Refresh the page and try again.",
+        "stage_blocked_title": "Cannot move to «Ready for handoff»",
+        "package_blocked_generic": "Recruitment package is incomplete. Review the checklist below.",
+        "blocked_confirm": "Confirm reviewed blocks: {list}",
+        "blocked_missing_data": "Complete package data: {list}",
+        "blocked_blocks": "Complete dossier blocks: {list}",
+        "blocked_documents": "Missing or pending documents: {list}",
+        "blocked_eligibility": "Workforce eligibility blocks handoff ({status}). Check documents and vacancy assignment.",
+        "blocked_eligibility_generic": "Workforce eligibility blocks handoff. Check documents and vacancy assignment."
+      },
+      "transfer_readiness": {
+        "badge": "Transfer readiness",
+        "hint": "Transfer Policy decision — no local checklist gate rules.",
+        "checking": "Checking transfer readiness…",
+        "load_failed": "Could not load transfer readiness report. Refresh the page.",
+        "stage_blocked_title": "Cannot move to «Ready for handoff»",
+        "blocked_generic": "Transfer is blocked. See the report below.",
+        "final_decision": "Final decision",
+        "transfer_allowed": "Stage → ready_for_handoff",
+        "handoff_create_allowed": "Create handoff",
+        "blocking_reasons": "Blocking reasons",
+        "warnings": "Warnings",
+        "required_documents": "Required documents",
+        "required_list": "Required",
+        "missing_list": "Missing",
+        "pending_verification_list": "Pending verification",
+        "required_data": "Required data",
+        "confirmations": "Confirmations",
+        "destinations": "Destinations",
+        "no_destinations": "None enabled",
+        "overrides": "Overrides",
+        "layer.document_packs": "Document packs",
+        "layer.recruitment_package": "Recruitment package",
+        "layer.recruiter_confirmation": "Recruiter confirmation",
+        "layer.tenant_link": "Tenant link",
+        "layer.hiring_pipeline_gates": "Pipeline gates",
+        "layer.transfer_policy": "Transfer policy",
+        "destination.internal_hr": "Internal HR",
+        "destination.client": "Client portal"
       },
       "stage_decision": {
         "blocked_title": "Blocked by required documents",
@@ -8385,6 +8653,93 @@
         }
       }
     },
+    "company_intake": {
+      "seo": {
+        "title": "Company intake — HostFlow",
+        "description": "Submit transport company details and hiring needs to HostFlow."
+      },
+      "kicker": "B2B intake",
+      "title": "Transport company questionnaire",
+      "submit": "Submit questionnaire",
+      "fields": {
+        "company_name": "Company name",
+        "tax_id": "NIP / VAT",
+        "country": "Country",
+        "city": "City",
+        "website": "Website",
+        "contact_name": "Name",
+        "role": "Role",
+        "email": "Email",
+        "phone": "Phone",
+        "whatsapp": "WhatsApp available",
+        "cooperation_type": "Cooperation type",
+        "candidate_countries": "Candidate countries",
+        "schedule": "Schedule",
+        "truck_brands": "Truck brands",
+        "rate": "Rate",
+        "additional": "Additional information"
+      },
+      "transport": {
+        "international": "International",
+        "domestic": "Domestic",
+        "mixed": "Mixed"
+      },
+      "quiz": {
+        "steps": {
+          "language": "Choose language",
+          "need": "What do you need?",
+          "count": "How many people do you need?",
+          "base": "Where is your base?",
+          "transport": "What type of transport do you run?",
+          "fleet": "How large is your fleet?",
+          "timing": "When do you need people?",
+          "contact": "Who should we contact?",
+          "company": "Company details",
+          "additional": "Work terms",
+          "review": "Check your answers"
+        },
+        "need": {
+          "drivers_ce": "C+E drivers",
+          "warehouse": "Warehouse workers",
+          "mechanics": "Mechanics",
+          "other": "Other"
+        },
+        "timing": {
+          "asap": "ASAP",
+          "week": "Within a week",
+          "month": "Within a month",
+          "research": "Researching the market"
+        },
+        "cooperation": {
+          "recruitment": "Recruitment",
+          "rental": "Staff rental",
+          "hr": "HR support"
+        },
+        "body": {
+          "curtain": "Curtain",
+          "frigo": "Refrigerated",
+          "container": "Container"
+        }
+      },
+      "summary": {
+        "company": "Company",
+        "contact": "Contact",
+        "need": "Need",
+        "base": "Base",
+        "transport": "Transport",
+        "timing": "Timing"
+      },
+      "errors": {
+        "required": "Company name, contact name, and email or phone are required.",
+        "submit_failed": "Could not submit the intake form. Please try again."
+      },
+      "success": {
+        "kicker": "Submitted",
+        "title": "Thank you. We received your company questionnaire.",
+        "body": "A HostFlow manager will review the details and contact you about the next steps.",
+        "reference": "Request number"
+      }
+    },
     "portal": {
       "errors": {
         "redeem_failed": "The link is invalid or has expired.",
@@ -10158,12 +10513,20 @@
         "lead_rodo_send_mode_auto_created": "Auto on lead created — send when Meta / webhook / import / Telegram ingest creates a lead (email channel)",
         "lead_rodo_send_mode_auto_first_action": "Auto on first action — send before call, email, request info, or process",
         "lead_rodo_send_mode_hint": "Manual send stays available on each lead for retry after failed or missing channel.",
+        "lead_rodo_message_template_label": "RODO email template",
         "lead_communication_title": "Lead operational emails",
         "lead_communication_hint": "Separate from RODO / art. 14. Candidate-facing status messages only (email).",
         "lead_communication_enabled": "Enable lead operational emails",
         "send_application_received": "Application received (on new lead ingest)",
         "send_rejection_notice": "Rejection notice (on intake reject)",
         "send_moving_forward_notice": "Moving forward (on Lead → Candidate conversion)",
+        "template_none": "Default built-in text",
+        "template_hub_title": "Lead Email Template Hub",
+        "template_hub_hint": "Create shared templates once and reuse them in RODO and operational lead emails.",
+        "template_name": "Template name",
+        "template_create": "Create template",
+        "email_template_subject": "Email subject",
+        "email_template_body": "Email body",
         "auto_create_automatic_only": "Only when mode is Automatic. Manual/Assisted: use Process. This toggle does not replace vacancy fit or automation rules — see Automations hub.",
         "leads_auto_convert_on_fit": "Auto-convert lead → candidate when fit passes (§2.4)",
         "leads_auto_convert_on_fit_hint": "Extra safeguard on top of Automatic + auto-create: when off, leads stay in the queue with a blocked preview until an operator runs Process. Vacancy card can opt out per job (extra.leads_auto_convert_on_fit_v1 = false).",
@@ -10191,6 +10554,22 @@
       "field_mapping": {
         "title": "Meta form → normalized fields",
         "subtitle": "Map Meta lead form field names to keys on the normalized payload before the lead is created. Multiple sources: comma-separated (e.g. phone_number, mobile_phone).",
+        "rules_title": "Mapping rules",
+        "rules_subtitle": "Link each Meta form question to where the answer is stored. Use comma-separated names when one question has several aliases.",
+        "rules_hint": "Source = question name from the form (see table above). Target = internal field id until candidate labels are added (PR-3).",
+        "form_fields": {
+          "title": "Form fields",
+          "subtitle": "Fields seen on your lead form with a sample answer. Check mapping status before saving rules below.",
+          "empty": "No fields yet. Pick a recent lead and click “Fetch from Meta”, or wait for an incoming webhook.",
+          "col_field": "Field from Meta",
+          "col_sample": "Sample value",
+          "col_status": "Status",
+          "col_target": "Save to",
+          "status_mapped": "Mapped",
+          "status_unmapped": "Unmapped",
+          "no_sample": "No sample",
+          "pick_target": "Choose field"
+        },
         "plan_limit_status": "Plan limit: {count} / {limit} mapping rows. Remove rows or upgrade to add more.",
         "source_hint": "Suggestions: real names from field_data in stored webhooks, payload keys like ad_id/form_id, raw_field_names from normalized, plus fields loaded via “Fetch from Meta”. Do not use normalized keys (e.g. first_name) as the source — Meta form questions use different names.",
         "unknown_fields_title": "Fields seen in recent data without a lead custom field",
@@ -10210,8 +10589,8 @@
         "add_row": "Add rule",
         "save": "Save mapping",
         "suggestions_ready": "{count} field name suggestion(s) (from recent leads and/or Graph).",
-        "graph_fetch_title": "Real fields from Meta (Graph API)",
-        "graph_fetch_body": "Choose a recent Meta lead (incoming preview plus leads from the Logs tab: needs routing / failed) or type leadgen_id and page_id. Uses your Page token — same Graph call as webhook enrichment — so Source suggestions match the live form.",
+        "graph_fetch_title": "Load fields from Meta",
+        "graph_fetch_body": "Pick a recent lead or enter lead ID and Facebook page ID, then fetch. Requires a saved page access token in credentials.",
         "graph_pick_lead": "Recent Meta lead",
         "graph_pick_lead_placeholder": "None — enter manually below",
         "graph_leadgen_id": "Lead ID (Meta / leadgen_id)",

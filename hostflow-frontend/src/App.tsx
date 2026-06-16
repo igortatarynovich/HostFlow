@@ -53,6 +53,7 @@ import { CRM_APP_PATHS } from './app/crmAppPaths'
 
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
+const CompanyIntakePage = lazy(() => import('./pages/public/CompanyIntakePage'))
 const PublicStatusPage = lazy(() => import('./pages/public/PublicStatusPage'))
 const PublicDocumentsUploadPage = lazy(() => import('./pages/public/PublicDocumentsUploadPage'))
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'))
@@ -106,6 +107,7 @@ export default function App(){
       <Route path="/public" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/portal" element={<PublicPortalLanding />} />
       <Route path="/public/intake" element={<PublicIntakeStart />} />
+      <Route path="/forms/company-intake/:publicToken" element={<LazyRoute loadingLabel={t('common.loading')}><CompanyIntakePage /></LazyRoute>} />
       <Route path="/public/apply/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicIntakeNew /></LazyRoute>} />
       <Route path="/public/documents/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicDocumentsUploadPage /></LazyRoute>} />
       <Route path="/public/apply-old/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicApplyPage /></LazyRoute>} />

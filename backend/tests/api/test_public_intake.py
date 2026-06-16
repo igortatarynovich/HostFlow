@@ -13,6 +13,10 @@ from backend.app.db.session import async_session_maker
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_consent import CandidateConsent
 from backend.app.models.candidate_employment import CandidateEmployment
+from backend.app.models.company import Company
+from backend.app.models.own_company import OwnCompany
+from backend.app.models.audit import ActivityLog
+from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.lead import Lead
 from backend.app.models.user_notification import UserNotification
 from backend.app.models.tenant import TenantLicense
@@ -54,6 +58,40 @@ async def _seed_active_lead_form(tenant_id: str, *, prefix: str = "intake") -> s
         )
         await session.commit()
     return slug
+
+
+async def _seed_company_intake_source_profile(tenant_id: str, *, prefix: str = "company-source") -> tuple[str, str]:
+    slug = f"{prefix}-{uuid4().hex[:10]}"
+    async with async_session_maker() as session:
+        own_company_id = await session.scalar(
+            select(OwnCompany.id)
+            .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+            .order_by(OwnCompany.created_at.asc())
+            .limit(1)
+        )
+        assert own_company_id is not None
+        session.add(
+            IntakeSourceProfile(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                code=f"b2b-{slug}",
+                name="Work Host Business — B2B Transport Companies",
+                provider="public_intake",
+                channel="paid_social",
+                own_company_id=str(own_company_id),
+                route_intent="sales_inquiry",
+                public_slug=slug,
+                form_type="company_intake",
+                lead_type="client",
+                lead_target_type="client_lead",
+                source="meta_ads",
+                default_language="pl",
+                supported_languages="pl,en,ru",
+                is_active=True,
+            )
+        )
+        await session.commit()
+    return slug, str(own_company_id)
 
 
 async def _fetch_candidate(candidate_id: str) -> Candidate | None:
@@ -624,8 +662,12 @@ async def test_public_intake_client_application_creates_lead_on_submit(client: A
         ).scalar_one_or_none()
         assert lead is not None
         assert lead.lead_type == "client"
+        assert lead.lead_target_type == "client_lead"
         assert str(lead.candidate_id or "") == candidate_id
-        assert lead.company_id is not None
+        assert lead.own_company_id is not None
+        assert lead.company_id is None
+        assert lead.vacancy_id is None
+        assert lead.converted_client_id is None
 
         notif_n = (
             await session.execute(
@@ -641,7 +683,7 @@ async def test_public_intake_client_application_creates_lead_on_submit(client: A
 
 
 @pytest.mark.asyncio
-async def test_public_intake_client_skipped_emits_notification_when_no_company(
+async def test_public_intake_client_creates_company_lead_without_company(
     client: AsyncClient, tenant_id: str
 ) -> None:
     slug = await _seed_active_lead_form(tenant_id, prefix="client-skip")
@@ -661,6 +703,12 @@ async def test_public_intake_client_skipped_emits_notification_when_no_company(
             "contacts": {"phone_country_code": "+48", "phone": f"558{suffix}"},
             "lead_form_slug": slug,
             "application_kind": "client",
+            "client_company": {
+                "name": f"Transport Client {suffix}",
+                "tax_id": f"VAT{suffix}",
+                "country_code": "PL",
+                "city": "Warsaw",
+            },
         },
     )
     assert create_resp.status_code == 200, create_resp.text
@@ -688,26 +736,261 @@ async def test_public_intake_client_skipped_emits_notification_when_no_company(
                 )
             )
         ).scalar_one_or_none()
-        assert lead is None
+        assert lead is not None
+        assert lead.lead_type == "client"
+        assert lead.lead_target_type == "client_lead"
+        assert lead.stage == "questionnaire_submitted"
+        assert lead.status == "new"
+        assert lead.own_company_id is not None
+        assert str(lead.candidate_id or "") == candidate_id
+        assert lead.company_id is None
+        assert lead.vacancy_id is None
+        assert lead.converted_client_id is None
+        assert (lead.normalized or {}).get("company_name") == f"Transport Client {suffix}"
 
-        skip_n = (
+        lead_n = (
             await session.execute(
                 select(func.count())
                 .select_from(UserNotification)
                 .where(
                     UserNotification.tenant_id == tenant_id,
-                    UserNotification.event_type == "intake_client_lead_skipped_no_company",
+                    UserNotification.event_type == "lead_public_intake_client",
                 )
             )
         ).scalar_one()
-        assert int(skip_n or 0) >= 1
+        assert int(lead_n or 0) >= 1
+
+
+@pytest.mark.asyncio
+async def test_public_company_intake_creates_b2b_lead(client: AsyncClient, tenant_id: str) -> None:
+    slug, expected_own_company_id = await _seed_company_intake_source_profile(
+        tenant_id,
+        prefix="company-intake",
+    )
+    suffix = uuid4().hex[:10]
+    payload = {
+        "company": {
+            "name": f"ABC Transport {suffix}",
+            "legal_name": f"ABC Transport {suffix} Sp. z o.o.",
+            "tax_id": f"PL{suffix}",
+            "country": "Poland",
+            "country_code": "PL",
+            "city": "Poznan",
+            "website": "abc-transport.pl",
+            "fleet_size": 25,
+            "transport_type": "mixed",
+        },
+        "contact": {
+            "full_name": "Tomasz Kowalski",
+            "role": "Fleet Manager",
+            "email": f"tomasz-{suffix}@abc.pl",
+            "phone": f"+48555{suffix[:6]}",
+            "whatsapp": True,
+        },
+        "need": {
+            "what_needed": "drivers C+E",
+            "people_count": 5,
+            "needed_when": "ASAP",
+            "cooperation_type": "recruitment",
+            "candidate_countries": ["Ukraine", "India", "Georgia"],
+            "requirements": "ADR, code 95, English",
+        },
+        "terms": {
+            "rate": "100 EUR/day",
+            "schedule": "4/1",
+            "base_location": "Poznan",
+            "truck_brands": ["MAN", "Mercedes"],
+            "body_type": "curtain",
+            "additional": "no pallets",
+        },
+        "service_intent": "driver_recruitment",
+        "language": "pl",
+        "source_context": {
+            "utm_source": "meta",
+            "utm_campaign": "b2b_transport_clients_pl",
+            "utm_adset": "poznan_transport_companies",
+            "utm_ad": "need_drivers_creative_01",
+            "fbclid": f"fb{suffix}",
+            "landing_page": f"https://example.test/forms/company-intake/{slug}",
+            "referrer": "https://facebook.com/",
+        },
+    }
+
+    resp = await client.post(f"/api/v1/public/company-intake/{slug}/submit", json=payload)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["stage"] == "questionnaire_submitted"
+    assert body["status"] == "new"
+    assert body["duplicate"] is False
+    assert body["own_company_id"] == str(expected_own_company_id)
+    assert body["company_id"] is None
 
     async with async_session_maker() as session:
+        lead = await session.get(Lead, body["lead_id"])
+        assert lead is not None
+        assert lead.tenant_id == tenant_id
+        assert lead.source == "meta_ads"
+        assert lead.lead_type == "client"
+        assert lead.lead_target_type == "client_lead"
+        assert lead.stage == "questionnaire_submitted"
+        assert lead.status == "new"
+        assert str(lead.own_company_id) == str(expected_own_company_id)
+        assert lead.company_id is None
+        assert lead.vacancy_id is None
+        assert lead.converted_client_id is None
+        assert (lead.normalized or {}).get("company_tax_id") == f"PL{suffix}"
+        assert (lead.normalized or {}).get("contact_email") == f"tomasz-{suffix}@abc.pl"
+        assert (lead.normalized or {}).get("need_summary") == "5 drivers C+E"
+        assert (lead.normalized or {}).get("lead_source") == "meta_ads"
+        assert (lead.normalized or {}).get("company_profile", {}).get("tax_id") == f"PL{suffix}"
+        assert (lead.normalized or {}).get("contact_person", {}).get("email") == f"tomasz-{suffix}@abc.pl"
+        assert (lead.normalized or {}).get("need", {}).get("summary") == "5 drivers C+E"
+        assert (lead.normalized or {}).get("marketing", {}).get("source") == "meta_ads"
+        assert (lead.normalized or {}).get("meta", {}).get("language") == "pl"
+        assert (lead.normalized or {}).get("meta", {}).get("source_profile", {}).get("public_slug") == slug
+        assert (lead.normalized or {}).get("utm_campaign") == "b2b_transport_clients_pl"
+        assert (lead.normalized or {}).get("fbclid") == f"fb{suffix}"
+        assert (lead.payload or {}).get("intake_flow") == "client_company"
+        assert (lead.payload or {}).get("source_profile", {}).get("public_slug") == slug
+
+        activity = (
+            await session.execute(
+                select(ActivityLog).where(
+                    ActivityLog.tenant_id == tenant_id,
+                    ActivityLog.action == "company_intake_form_submitted",
+                    ActivityLog.target_id == body["lead_id"],
+                )
+            )
+        ).scalar_one_or_none()
+        assert activity is not None
+
+
+@pytest.mark.asyncio
+async def test_client_lead_creation_contract_requires_owner_and_no_client_links(tenant_id: str) -> None:
+    suffix = uuid4().hex[:10]
+    async with async_session_maker() as session:
+        own_company_id = await session.scalar(
+            select(OwnCompany.id)
+            .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+            .order_by(OwnCompany.created_at.asc())
+            .limit(1)
+        )
+        assert own_company_id is not None
         company_id = await _ensure_company(session, tenant_id)
-        row2 = await leads_crud.get_meta_settings(session, tenant_id=tenant_id)
-        if row2 is not None:
-            await leads_crud.update_meta_settings(session, row2, default_company_id=company_id)
+
+        with pytest.raises(ValueError, match="own_company_id is required"):
+            await leads_crud.create_lead(
+                session,
+                tenant_id=tenant_id,
+                own_company_id=None,
+                company_id=None,
+                vacancy_id=None,
+                payload={"test": True},
+                normalized={"company_name": f"No Owner {suffix}"},
+                source="company_intake_form",
+                lead_type="client",
+                lead_target_type="client_lead",
+            )
+
+        with pytest.raises(ValueError, match="company_id must be empty"):
+            await leads_crud.create_lead(
+                session,
+                tenant_id=tenant_id,
+                own_company_id=str(own_company_id),
+                company_id=company_id,
+                vacancy_id=None,
+                payload={"test": True},
+                normalized={"company_name": f"Linked Client {suffix}"},
+                source="company_intake_form",
+                lead_type="client",
+                lead_target_type="client_lead",
+            )
+
+        lead = await leads_crud.create_lead(
+            session,
+            tenant_id=tenant_id,
+            own_company_id=str(own_company_id),
+            company_id=None,
+            vacancy_id=None,
+            payload={"test": True},
+            normalized={"company_name": f"Valid Client Lead {suffix}"},
+            source="company_intake_form",
+            lead_type="candidate",
+            lead_target_type="client_lead",
+        )
+        assert lead.lead_type == "client"
+        assert lead.lead_target_type == "client_lead"
+        assert str(lead.own_company_id) == str(own_company_id)
+        assert lead.company_id is None
+        assert lead.vacancy_id is None
+        await session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_public_company_intake_duplicate_scope_ignores_candidate_leads(
+    client: AsyncClient,
+    tenant_id: str,
+) -> None:
+    slug, own_company_id = await _seed_company_intake_source_profile(
+        tenant_id,
+        prefix="company-scope",
+    )
+    suffix = uuid4().hex[:10]
+    email = f"scope-{suffix}@abc.pl"
+    tax_id = f"PLSCOPE{suffix}"
+    async with async_session_maker() as session:
+        company_id = await _ensure_company(session, tenant_id)
+        await leads_crud.create_lead(
+            session,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            company_id=company_id,
+            vacancy_id=None,
+            payload={"test": "candidate lead with same probes"},
+            normalized={
+                "company_name": f"ABC Transport Scope {suffix}",
+                "company_tax_id": tax_id,
+                "contact_email": email,
+            },
+            source="meta",
+            lead_type="candidate",
+            lead_target_type="candidate",
+        )
         await session.commit()
+
+    payload = {
+        "company": {
+            "name": f"ABC Transport Scope {suffix}",
+            "tax_id": tax_id,
+            "country": "Poland",
+            "country_code": "PL",
+        },
+        "contact": {
+            "full_name": "Tomasz Kowalski",
+            "email": email,
+        },
+        "need": {
+            "what_needed": "drivers C+E",
+            "people_count": 5,
+        },
+        "language": "en",
+    }
+    resp = await client.post(f"/api/v1/public/company-intake/{slug}/submit", json=payload)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["duplicate"] is False
+
+    async with async_session_maker() as session:
+        leads = (
+            await session.execute(
+                select(Lead).where(
+                    Lead.tenant_id == tenant_id,
+                    Lead.own_company_id == own_company_id,
+                    Lead.normalized["contact_email"].as_string() == email,
+                )
+            )
+        ).scalars().all()
+        assert {lead.lead_target_type for lead in leads} >= {"candidate", "client_lead"}
 
 
 @pytest.mark.asyncio

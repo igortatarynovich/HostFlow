@@ -638,6 +638,7 @@ async def list_leads(
                 stage_contract=contract_by_lead.get(str(lead.id)),
                 candidate_id=_uuid_or_none(cand_id),
                 candidate_name=candidate_name,
+                converted_client_id=_uuid_or_none(getattr(lead, "converted_client_id", None)),
                 outcome_entity_type=outcome_entity_type,
                 outcome_entity_id=_uuid_or_none(outcome_entity_id),
                 outcome_entity_name=outcome_entity_name,

@@ -33,13 +33,24 @@ from backend.app.api.public.intake_tenant_bind import (
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.candidate import Candidate
+from backend.app.models.company import Company
+from backend.app.models.own_company import OwnCompany
+from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.candidate_consent import CandidateConsent
 from backend.app.models.candidate_employment import CandidateEmployment
 from backend.app.models.document import Document
 from backend.app.models.magic_link import MagicLink
-from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents, list_document_types
-from backend.app.modules.documents.owner_summary import compute_owner_summary, EQUIVALENT_SATISFACTION
-from backend.app.modules.documents.rules_engine import compute_candidate_checklist
+from backend.app.services.document_hub_delivery_contract import (
+    build_synthetic_documents_via_contract,
+    compute_candidate_checklist_via_contract,
+    compute_owner_summary_via_contract,
+    ensure_ruleset_seed_via_contract,
+    get_uploads_root_via_contract,
+    list_candidate_documents_via_contract,
+    list_document_types_via_contract,
+    list_equivalent_satisfaction_map_via_contract,
+    sanitize_filename_via_contract,
+)
 from backend.app.services.document_orders import has_ready_document
 from backend.app.services.document_ruleset import load_default_ruleset
 from backend.app.services.document_catalog import (
@@ -47,9 +58,7 @@ from backend.app.services.document_catalog import (
     get_doc_type_defaults,
 )
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
-from backend.app.modules.documents.router import _build_synthetic_documents  # type: ignore
 from backend.app.services.document_files import resolve_document_file
-from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
 from backend.app.security.document_events import emit_document_security_event_v1
 from backend.app.security.event_taxonomy import (
     EVENT_DOCUMENT_FILE_DOWNLOADED,
@@ -79,9 +88,13 @@ from backend.app.services.candidate_telegram_notifications import (
     send_candidate_documents_progress_telegram,
     sync_candidate_ready_for_handoff_gate,
 )
+from backend.app.services.integration_inbound_normalization import (
+    normalize_inbound_citizenship_alpha2,
+    normalize_inbound_country_alpha2,
+)
 
 
-_UPLOADS_ROOT = get_uploads_root()
+_UPLOADS_ROOT = get_uploads_root_via_contract()
 
 router = APIRouter(prefix="/public", tags=["public-intake"])
 
@@ -139,46 +152,9 @@ async def _maybe_create_client_lead_from_public_intake(
     if candidate.vacancy_id:
         vac = await db.get(Vacancy, str(candidate.vacancy_id))
 
-    company_id: Optional[str] = None
-    if candidate.company_id:
-        company_id = str(candidate.company_id).strip() or None
-    if not company_id and vac is not None and vac.company_id:
-        company_id = str(vac.company_id).strip() or None
-    if not company_id:
-        settings_row = await leads_crud.get_meta_settings(db, tenant_id=tenant_id)
-        if settings_row is not None and settings_row.default_company_id:
-            company_id = str(settings_row.default_company_id).strip() or None
-
-    if not company_id:
-        logger.info(
-            "[public-intake] skip client Lead: no company_id (tenant=%s candidate=%s)",
-            tenant_id,
-            candidate.id,
-        )
-        cname = _candidate_public_display_name(candidate)
-        await emit_event(
-            db,
-            tenant_id=tenant_id,
-            event_type="intake_client_lead_skipped_no_company",
-            payload={
-                "candidate_id": candidate.id,
-                "candidate_name": cname,
-                "href": spa_paths.spa_candidate(candidate.id),
-            },
-            audience=EventAudience(roles=(Role.manager, Role.recruiter)),
-            entity_type="candidate",
-            entity_id=candidate.id,
-        )
-        await log_public_event(
-            db,
-            tenant_id=tenant_id,
-            action="client_intake_no_company_for_lead",
-            target_id=candidate.id,
-            payload={"candidate_id": candidate.id},
-            ip=client_ip,
-            ua=user_agent,
-        )
-        return
+    contacts = dict(state.get("contacts") or {})
+    personal = dict(state.get("personal") or {})
+    client_company = dict(state.get("client_company") or {})
 
     own_company_id: Optional[str] = None
     oc = getattr(candidate, "own_company_id", None)
@@ -186,9 +162,25 @@ async def _maybe_create_client_lead_from_public_intake(
         own_company_id = str(oc).strip() or None
     if not own_company_id and vac is not None and getattr(vac, "own_company_id", None):
         own_company_id = str(vac.own_company_id).strip() or None
+    if not own_company_id:
+        own_company_id = await _resolve_public_intake_own_company_id(db, tenant_id, state.get("lead_form"))
+    if not own_company_id:
+        logger.warning(
+            "[public-intake] skip client Lead: no own_company_id (tenant=%s candidate=%s)",
+            tenant_id,
+            candidate.id,
+        )
+        await log_public_event(
+            db,
+            tenant_id=tenant_id,
+            action="client_intake_no_owner_company_for_lead",
+            target_id=candidate.id,
+            payload={"candidate_id": candidate.id},
+            ip=client_ip,
+            ua=user_agent,
+        )
+        return
 
-    contacts = dict(state.get("contacts") or {})
-    personal = dict(state.get("personal") or {})
     full_name = str(personal.get("full_name") or "").strip()
     email = (candidate.email or contacts.get("email") or None)
     if email is not None:
@@ -201,6 +193,7 @@ async def _maybe_create_client_lead_from_public_intake(
         "email": email,
         "phone": phone,
         "full_name": full_name or None,
+        "company_name": str(client_company.get("name") or "").strip() or None,
         "intake_application_kind": "client",
         "source_candidate_id": candidate.id,
     }
@@ -211,22 +204,22 @@ async def _maybe_create_client_lead_from_public_intake(
         "candidate_id": candidate.id,
         "contacts": contacts,
         "personal": personal,
+        "client_company": client_company,
     }
-    vacancy_id = str(candidate.vacancy_id) if candidate.vacancy_id else None
-
     try:
         lead = await leads_crud.create_lead(
             db,
             tenant_id=tenant_id,
             own_company_id=own_company_id,
-            company_id=company_id,
-            vacancy_id=vacancy_id,
+            company_id=None,
+            vacancy_id=None,
             payload=pl,
             normalized=normalized or None,
             source="public-intake",
             ad_id=None,
             external_id=external_id,
             lead_type="client",
+            lead_target_type="client_lead",
         )
     except Exception as exc:
         logger.warning(
@@ -238,6 +231,8 @@ async def _maybe_create_client_lead_from_public_intake(
         return
 
     lead.candidate_id = candidate.id
+    lead.stage = "questionnaire_submitted"
+    lead.status = "new"
     await db.flush()
 
     cname = _candidate_public_display_name(candidate)
@@ -305,13 +300,8 @@ def _coerce_optional_email(value: Any) -> Optional[str]:
 
 
 def _coerce_iso3166_alpha2(value: Any) -> Optional[str]:
-    """Intake models require exactly two letters; legacy rows may hold 3-letter codes or garbage."""
-    if value is None:
-        return None
-    s = str(value).strip().upper()
-    if len(s) == 2 and s.isalpha():
-        return s
-    return None
+    """Normalize inbound country-like values to canonical ISO alpha-2."""
+    return normalize_inbound_country_alpha2(value)
 
 
 EU_COUNTRIES = {
@@ -381,6 +371,27 @@ class IntakeExperience(BaseModel):
     route_types: List[str] = Field(default_factory=list)
 
 
+class IntakeClientCompany(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=255)
+    legal_name: Optional[str] = Field(default=None, max_length=255)
+    tax_id: Optional[str] = Field(default=None, max_length=64)
+    website: Optional[str] = Field(default=None, max_length=255)
+    country_code: Optional[str] = Field(default=None, max_length=2)
+    country: Optional[str] = Field(default=None, max_length=64)
+    city: Optional[str] = Field(default=None, max_length=128)
+    address: Optional[str] = Field(default=None, max_length=255)
+    fleet_size: Optional[int] = Field(default=None, ge=0)
+    transport_profile: Optional[str] = Field(default=None, max_length=128)
+
+    @field_validator("country_code")
+    @classmethod
+    def _normalize_country_code(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip().upper()
+        return cleaned or None
+
+
 class IntakeEmployment(BaseModel):
     id: Optional[str] = None
     employer_name: str
@@ -436,9 +447,10 @@ class IntakeData(BaseModel):
     employments: List[IntakeEmployment] = Field(default_factory=list)
     agreements: IntakeAgreements = Field(default_factory=IntakeAgreements)
     lead_form: Optional[Dict[str, Any]] = None
+    client_company: Optional[IntakeClientCompany] = None
     application_kind: Optional[Literal["candidate", "client"]] = Field(
         default=None,
-        description="candidate (default): hiring intake only. client: B2B client inquiry — may create CRM Lead on submit when company_id is known.",
+        description="candidate (default): hiring intake only. client: B2B client inquiry — may create CRM Lead on submit when owner company is known.",
     )
 
 
@@ -475,10 +487,14 @@ class PublicIntakeCreateRequest(BaseModel):
         default=None,
         description=(
             "Optional. **client** = B2B client application: same Candidate intake flow, but on successful **submit** "
-            "the API may create a CRM **Lead** (`lead_type=client`, `source=public-intake`) when **company_id** can be "
-            "resolved (candidate row, vacancy, or **Meta/lead settings** `default_company_id`). "
+            "the API may create a CRM **Lead** (`lead_type=client`, `source=public-intake`) when owner company can be "
+            "resolved from the public entry point or tenant owner-company scope. "
             "Omit or **candidate** = hiring-only (no CRM Lead row)."
         ),
+    )
+    client_company: Optional[IntakeClientCompany] = Field(
+        default=None,
+        description="Optional B2B company data for application_kind=client. Stored on the client lead; does not create a Client/Company card.",
     )
     turnstile_token: Optional[str] = Field(
         default=None,
@@ -676,6 +692,97 @@ class PublicPresignResponse(BaseModel):
     fields: Dict[str, str] = Field(default_factory=dict)
 
 
+class CompanyIntakeCompany(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    legal_name: Optional[str] = Field(default=None, max_length=255)
+    tax_id: Optional[str] = Field(default=None, max_length=64)
+    country: Optional[str] = Field(default=None, max_length=64)
+    country_code: Optional[str] = Field(default=None, max_length=2)
+    city: Optional[str] = Field(default=None, max_length=128)
+    address: Optional[str] = Field(default=None, max_length=255)
+    website: Optional[str] = Field(default=None, max_length=255)
+    fleet_size: Optional[int] = Field(default=None, ge=0)
+    transport_type: Optional[Literal["international", "domestic", "mixed"]] = None
+
+    @field_validator("name")
+    @classmethod
+    def _trim_required_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("company name is required")
+        return cleaned
+
+    @field_validator("country_code")
+    @classmethod
+    def _normalize_company_country_code(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip().upper()
+        return cleaned or None
+
+
+class CompanyIntakeContact(BaseModel):
+    full_name: str = Field(..., min_length=1, max_length=255)
+    role: Optional[str] = Field(default=None, max_length=128)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(default=None, max_length=64)
+    whatsapp: Optional[bool] = None
+
+    @field_validator("full_name")
+    @classmethod
+    def _trim_required_contact_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("contact full_name is required")
+        return cleaned
+
+    @model_validator(mode="after")
+    def _require_contact_channel(self) -> "CompanyIntakeContact":
+        if not (self.email or (self.phone or "").strip()):
+            raise ValueError("contact email or phone is required")
+        return self
+
+
+class CompanyIntakeNeed(BaseModel):
+    what_needed: Optional[str] = Field(default=None, max_length=255)
+    people_count: Optional[int] = Field(default=None, ge=0)
+    needed_when: Optional[str] = Field(default=None, max_length=64)
+    cooperation_type: Optional[str] = Field(default=None, max_length=128)
+    candidate_countries: List[str] = Field(default_factory=list)
+    requirements: Optional[str] = Field(default=None, max_length=2000)
+
+
+class CompanyIntakeTerms(BaseModel):
+    rate: Optional[str] = Field(default=None, max_length=128)
+    schedule: Optional[str] = Field(default=None, max_length=128)
+    base_location: Optional[str] = Field(default=None, max_length=255)
+    truck_brands: List[str] = Field(default_factory=list)
+    body_type: Optional[str] = Field(default=None, max_length=128)
+    additional: Optional[str] = Field(default=None, max_length=2000)
+
+
+class CompanyIntakeSubmitRequest(BaseModel):
+    company: CompanyIntakeCompany
+    contact: CompanyIntakeContact
+    need: CompanyIntakeNeed = Field(default_factory=CompanyIntakeNeed)
+    terms: CompanyIntakeTerms = Field(default_factory=CompanyIntakeTerms)
+    source: Optional[str] = Field(default=None, max_length=32)
+    service_intent: Optional[str] = Field(default=None, max_length=128)
+    language: Optional[str] = Field(default=None, max_length=8)
+    source_context: Optional[Dict[str, Any]] = None
+    turnstile_token: Optional[str] = Field(default=None, max_length=2048)
+
+
+class CompanyIntakeSubmitResponse(BaseModel):
+    lead_id: str
+    status: str = "new"
+    stage: str = "questionnaire_submitted"
+    own_company_id: str
+    company_id: Optional[str] = None
+    duplicate: bool = False
+    lead_url: str
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -845,6 +952,588 @@ def _json_text(column, key: str):
     if callable(as_string):
         return as_string()
     return expr
+
+
+def _normalize_intake_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _normalize_intake_phone(value: Any) -> Optional[str]:
+    text = _normalize_intake_text(value)
+    if not text:
+        return None
+    digits = "".join(ch for ch in text if ch.isdigit())
+    return digits or text
+
+
+async def _resolve_company_intake_form(
+    db: AsyncSession,
+    public_token: str,
+) -> tuple[UUID, Optional[TenantLeadForm]]:
+    token = public_token.strip()
+    if not token:
+        raise HTTPException(status_code=404, detail="Company intake form not found")
+    if _looks_like_uuid(token):
+        pair = await resolve_lead_form_tenant_and_id_by_form_id(db, token)
+        if not pair:
+            raise HTTPException(status_code=404, detail="Company intake form not found")
+        tenant_uuid = UUID(pair[0])
+        await bind_tenant_context_to_session(db, tenant_uuid)
+        form = await load_active_lead_form_for_public_intake(
+            db, pair[0], lead_form_id=pair[1], lead_form_slug=None
+        )
+        if form is None:
+            raise HTTPException(status_code=404, detail="Company intake form not found")
+        return tenant_uuid, form
+
+    pair = await resolve_lead_form_tenant_and_id_by_slug(db, token)
+    if not pair:
+        raise HTTPException(status_code=404, detail="Company intake form not found")
+    tenant_uuid = UUID(pair[0])
+    await bind_tenant_context_to_session(db, tenant_uuid)
+    form = await load_active_lead_form_for_public_intake(db, pair[0], lead_form_id=None, lead_form_slug=token)
+    if form is None:
+        raise HTTPException(status_code=404, detail="Company intake form not found")
+    return tenant_uuid, form
+
+
+async def _resolve_company_intake_source_profile(
+    db: AsyncSession,
+    public_token: str,
+) -> tuple[UUID, IntakeSourceProfile]:
+    token = public_token.strip()
+    if not token:
+        raise HTTPException(status_code=404, detail="Company intake source not found")
+
+    token_filters = [IntakeSourceProfile.public_slug == token]
+    if _looks_like_uuid(token):
+        token_filters.append(IntakeSourceProfile.id == token)
+
+    profile = await db.scalar(
+        select(IntakeSourceProfile)
+        .where(
+            IntakeSourceProfile.is_active.is_(True),
+            or_(*token_filters),
+            or_(
+                IntakeSourceProfile.form_type.is_(None),
+                IntakeSourceProfile.form_type == "",
+                IntakeSourceProfile.form_type == "company_intake",
+            ),
+        )
+        .order_by(IntakeSourceProfile.created_at.asc())
+        .limit(1)
+    )
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Company intake source not found")
+    tenant_uuid = UUID(str(profile.tenant_id))
+    await bind_tenant_context_to_session(db, tenant_uuid)
+    return tenant_uuid, profile
+
+
+async def _resolve_company_intake_source(
+    db: AsyncSession,
+    public_token: str,
+) -> tuple[UUID, Optional[TenantLeadForm], Optional[IntakeSourceProfile], bool]:
+    try:
+        tenant_uuid, profile = await _resolve_company_intake_source_profile(db, public_token)
+        return tenant_uuid, None, profile, False
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+
+    tenant_uuid, form = await _resolve_company_intake_form(db, public_token)
+    return tenant_uuid, form, None, True
+
+
+def _lead_form_reference_from_meta(raw: Any) -> tuple[Optional[str], Optional[str]]:
+    if not isinstance(raw, dict):
+        return None, None
+    form_id = str(raw.get("id") or raw.get("form_id") or "").strip() or None
+    slug = str(raw.get("public_slug") or raw.get("slug") or "").strip() or None
+    return form_id, slug
+
+
+async def _resolve_public_intake_own_company_id(
+    db: AsyncSession,
+    tenant_id: str,
+    lead_form: Any,
+) -> Optional[str]:
+    form_id: Optional[str] = None
+    public_slug: Optional[str] = None
+    if isinstance(lead_form, TenantLeadForm):
+        form_id = str(lead_form.id or "").strip() or None
+        public_slug = str(lead_form.public_slug or "").strip() or None
+    else:
+        form_id, public_slug = _lead_form_reference_from_meta(lead_form)
+
+    binding_probes = []
+    if form_id:
+        binding_probes.append(f"lead_form_id:{form_id}")
+        binding_probes.append(form_id)
+    if public_slug:
+        binding_probes.append(f"public_slug:{public_slug}")
+        binding_probes.append(public_slug)
+    if binding_probes:
+        row = await db.scalar(
+            select(IntakeSourceProfile.own_company_id)
+            .join(IntakeSourceBinding, IntakeSourceBinding.intake_source_profile_id == IntakeSourceProfile.id)
+            .where(
+                IntakeSourceProfile.tenant_id == tenant_id,
+                IntakeSourceProfile.is_active.is_(True),
+                IntakeSourceBinding.tenant_id == tenant_id,
+                IntakeSourceBinding.provider == "public_intake",
+                IntakeSourceBinding.is_active.is_(True),
+                IntakeSourceBinding.external_key.in_(binding_probes),
+            )
+            .order_by(IntakeSourceBinding.priority.desc(), IntakeSourceProfile.created_at.asc())
+            .limit(1)
+        )
+        if row:
+            return str(row)
+
+    profile_codes = []
+    if form_id:
+        profile_codes.append(f"public-form-{form_id}")
+    if public_slug:
+        profile_codes.append(f"public-form-{public_slug}")
+    if profile_codes:
+        row = await db.scalar(
+            select(IntakeSourceProfile.own_company_id)
+            .where(
+                IntakeSourceProfile.tenant_id == tenant_id,
+                IntakeSourceProfile.is_active.is_(True),
+                IntakeSourceProfile.provider == "public_intake",
+                IntakeSourceProfile.code.in_(profile_codes),
+            )
+            .order_by(IntakeSourceProfile.created_at.asc())
+            .limit(1)
+        )
+        if row:
+            return str(row)
+
+    row = await db.scalar(
+        select(OwnCompany.id)
+        .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+        .order_by(OwnCompany.created_at.asc())
+        .limit(1)
+    )
+    return str(row) if row else None
+
+
+async def _find_existing_company_for_company_intake(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    tax_id: Optional[str],
+    email: Optional[str],
+    phone: Optional[str],
+) -> Optional[Company]:
+    conditions = [Company.tenant_id == tenant_id, Company.is_archived.is_(False)]
+    probes = []
+    if tax_id:
+        probes.append(func.lower(Company.tax_id) == tax_id.lower())
+    if email:
+        contacts_email = _json_text(Company.contacts, "email")
+        probes.append(func.lower(Company.email) == email.lower())
+        if contacts_email is not None:
+            probes.append(func.lower(contacts_email) == email.lower())
+    phone_digits = _normalize_intake_phone(phone)
+    if phone_digits:
+        contacts_phone = _json_text(Company.contacts, "phone")
+        probes.append(Company.phone == phone)
+        if contacts_phone is not None:
+            probes.append(contacts_phone == phone)
+    if not probes:
+        return None
+    return await db.scalar(select(Company).where(*conditions, or_(*probes)).order_by(Company.created_at.asc()).limit(1))
+
+
+async def _find_existing_company_intake_lead(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+    tax_id: Optional[str],
+    email: Optional[str],
+    phone: Optional[str],
+    company_name: Optional[str],
+) -> Optional["Lead"]:
+    from backend.app.models.lead import Lead
+
+    probes = []
+    norm = Lead.normalized
+    if tax_id:
+        company_tax_expr = _json_text(norm, "company_tax_id")
+        if company_tax_expr is not None:
+            probes.append(func.lower(company_tax_expr) == tax_id.lower())
+    if email:
+        email_expr = _json_text(norm, "contact_email")
+        if email_expr is not None:
+            probes.append(func.lower(email_expr) == email.lower())
+    if phone:
+        phone_expr = _json_text(norm, "contact_phone")
+        if phone_expr is not None:
+            probes.append(phone_expr == phone)
+    if company_name and (tax_id or email or phone):
+        company_name_expr = _json_text(norm, "company_name")
+        if company_name_expr is not None:
+            probes.append(func.lower(company_name_expr) == company_name.lower())
+    if not probes:
+        return None
+    return await db.scalar(
+        select(Lead)
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.own_company_id == own_company_id,
+            Lead.lead_type == "client",
+            Lead.lead_target_type == "client_lead",
+            Lead.stage.notin_(["converted", "lost"]),
+            or_(*probes),
+        )
+        .order_by(Lead.created_at.desc())
+        .limit(1)
+    )
+
+
+def _company_intake_source_profile_meta(profile: Optional[IntakeSourceProfile]) -> Optional[Dict[str, Any]]:
+    if profile is None:
+        return None
+    return {
+        k: v
+        for k, v in {
+            "id": str(profile.id),
+            "code": profile.code,
+            "name": profile.name,
+            "public_slug": profile.public_slug,
+            "form_type": profile.form_type,
+            "lead_type": profile.lead_type,
+            "lead_target_type": profile.lead_target_type,
+            "source": profile.source,
+            "default_language": profile.default_language,
+            "supported_languages": profile.supported_languages,
+            "default_assignee_id": profile.default_assignee_id,
+        }.items()
+        if v not in (None, "", [], {})
+    }
+
+
+def _company_intake_source(
+    payload: CompanyIntakeSubmitRequest,
+    source_profile: Optional[IntakeSourceProfile] = None,
+) -> str:
+    raw = (payload.source or "").strip().lower()
+    if raw in {"meta", "facebook", "instagram"}:
+        return "meta_ads"
+    if raw in {"meta_ads", "website", "manual", "company_intake_form", "company-intake-form"}:
+        return "company_intake_form" if raw == "company-intake-form" else raw
+    profile_source = str(getattr(source_profile, "source", "") or "").strip().lower()
+    if profile_source:
+        return "meta_ads" if profile_source in {"meta", "facebook", "instagram"} else profile_source
+    ctx = payload.source_context if isinstance(payload.source_context, dict) else {}
+    utm_source = str(ctx.get("utm_source") or "").strip().lower()
+    if utm_source in {"meta", "facebook", "instagram", "fb", "ig"}:
+        return "meta_ads"
+    return "company_intake_form"
+
+
+def _company_intake_payload(
+    payload: CompanyIntakeSubmitRequest,
+    form: Optional[TenantLeadForm],
+    source_profile: Optional[IntakeSourceProfile] = None,
+) -> Dict[str, Any]:
+    return {
+        "intake": True,
+        "intake_flow": "client_company",
+        "source": _company_intake_source(payload, source_profile),
+        "source_profile": _company_intake_source_profile_meta(source_profile),
+        "lead_form": lead_form_meta_for_intake_state(form) if form is not None else None,
+        "company": payload.company.model_dump(mode="json", exclude_none=True),
+        "contact": payload.contact.model_dump(mode="json", exclude_none=True),
+        "need": payload.need.model_dump(mode="json", exclude_none=True),
+        "terms": payload.terms.model_dump(mode="json", exclude_none=True),
+        "service_intent": payload.service_intent,
+        "language": payload.language,
+        "source_context": payload.source_context or {},
+    }
+
+
+def _company_intake_normalized(
+    payload: CompanyIntakeSubmitRequest,
+    source_profile: Optional[IntakeSourceProfile] = None,
+) -> Dict[str, Any]:
+    company = payload.company
+    contact = payload.contact
+    need = payload.need
+    terms = payload.terms
+    source_context = payload.source_context if isinstance(payload.source_context, dict) else {}
+    source = _company_intake_source(payload, source_profile)
+    need_summary = " ".join(
+        part
+        for part in [
+            str(need.people_count) if need.people_count is not None else "",
+            need.what_needed or "",
+        ]
+        if str(part or "").strip()
+    ).strip()
+    company_profile = {
+        "name": company.name,
+        "legal_name": company.legal_name,
+        "tax_id": company.tax_id,
+        "country": company.country,
+        "country_code": company.country_code,
+        "city": company.city,
+        "address": company.address,
+        "website": company.website,
+        "fleet_size": company.fleet_size,
+        "transport_type": company.transport_type,
+    }
+    contact_person = {
+        "full_name": contact.full_name,
+        "role": contact.role,
+        "email": str(contact.email) if contact.email else None,
+        "phone": contact.phone,
+        "whatsapp": contact.whatsapp,
+    }
+    need_block = {
+        "summary": need_summary or None,
+        "what_needed": need.what_needed,
+        "people_count": need.people_count,
+        "needed_when": need.needed_when,
+        "cooperation_type": need.cooperation_type or payload.service_intent,
+        "candidate_countries": need.candidate_countries,
+        "requirements": need.requirements,
+        "terms": {
+            "rate": terms.rate,
+            "schedule": terms.schedule,
+            "base_location": terms.base_location,
+            "truck_brands": terms.truck_brands,
+            "body_type": terms.body_type,
+            "additional": terms.additional,
+        },
+    }
+    marketing = {
+        "source": source,
+        "utm_source": source_context.get("utm_source"),
+        "utm_campaign": source_context.get("utm_campaign"),
+        "utm_adset": source_context.get("utm_adset"),
+        "utm_ad": source_context.get("utm_ad"),
+        "fbclid": source_context.get("fbclid"),
+        "landing_page": source_context.get("landing_page"),
+        "referrer": source_context.get("referrer"),
+    }
+    meta = {
+        "language": payload.language or getattr(source_profile, "default_language", None),
+        "source_profile": _company_intake_source_profile_meta(source_profile),
+        "assigned_manager_id": getattr(source_profile, "default_assignee_id", None),
+        "submitted_flow": "company_intake",
+    }
+    structured = {
+        "company_profile": {k: v for k, v in company_profile.items() if v not in (None, "", [], {})},
+        "contact_person": {k: v for k, v in contact_person.items() if v not in (None, "", [], {})},
+        "need": {
+            k: ({tk: tv for tk, tv in v.items() if tv not in (None, "", [], {})} if k == "terms" and isinstance(v, dict) else v)
+            for k, v in need_block.items()
+            if v not in (None, "", [], {})
+        },
+        "marketing": {k: v for k, v in marketing.items() if v not in (None, "", [], {})},
+        "meta": {k: v for k, v in meta.items() if v not in (None, "", [], {})},
+    }
+    flat_aliases = {
+        k: v
+        for k, v in {
+            "intake_flow": "client_company",
+            "lead_type_label": "transport_company",
+            "lead_source": source,
+            "company_name": company.name,
+            "company_legal_name": company.legal_name,
+            "company_tax_id": company.tax_id,
+            "company_country": company.country,
+            "company_country_code": company.country_code,
+            "company_city": company.city,
+            "company_website": company.website,
+            "fleet_size": company.fleet_size,
+            "transport_type": company.transport_type,
+            "contact_full_name": contact.full_name,
+            "contact_role": contact.role,
+            "contact_email": str(contact.email) if contact.email else None,
+            "contact_phone": contact.phone,
+            "contact_whatsapp": contact.whatsapp,
+            "need_summary": need_summary or None,
+            "need_people_count": need.people_count,
+            "need_what": need.what_needed,
+            "need_when": need.needed_when,
+            "cooperation_type": need.cooperation_type or payload.service_intent,
+            "candidate_countries": need.candidate_countries,
+            "requirements": need.requirements,
+            "rate": terms.rate,
+            "schedule": terms.schedule,
+            "base_location": terms.base_location,
+            "truck_brands": terms.truck_brands,
+            "body_type": terms.body_type,
+            "additional_terms": terms.additional,
+            "utm_source": source_context.get("utm_source"),
+            "utm_campaign": source_context.get("utm_campaign"),
+            "utm_adset": source_context.get("utm_adset"),
+            "utm_ad": source_context.get("utm_ad"),
+            "fbclid": source_context.get("fbclid"),
+            "landing_page": source_context.get("landing_page"),
+            "referrer": source_context.get("referrer"),
+        }.items()
+        if v not in (None, "", [], {})
+    }
+    return {**structured, **flat_aliases}
+
+
+@router.post("/company-intake/{public_token}/submit", response_model=CompanyIntakeSubmitResponse)
+async def submit_company_intake(
+    public_token: str,
+    payload: CompanyIntakeSubmitRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> CompanyIntakeSubmitResponse:
+    await enforce_rate_limit(request, rate_limits().public_intake, scope="public:company_intake")
+    await require_turnstile(request, token=payload.turnstile_token)
+    tenant_uuid, form, source_profile, legacy_lead_form_link = await _resolve_company_intake_source(db, public_token)
+    tenant_id = str(tenant_uuid)
+    own_company_id = str(source_profile.own_company_id) if source_profile is not None else None
+    if not own_company_id:
+        own_company_id = await _resolve_public_intake_own_company_id(db, tenant_id, form)
+    if not own_company_id:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "OWN_COMPANY_REQUIRED",
+                "message": "Company intake form must be linked to an owner company before leads can be created.",
+            },
+        )
+
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    normalized = _company_intake_normalized(payload, source_profile)
+    if legacy_lead_form_link:
+        normalized.setdefault("meta", {})
+        if isinstance(normalized["meta"], dict):
+            normalized["meta"]["legacy_link_source"] = "tenant_lead_form"
+    company_name = _normalize_intake_text(normalized.get("company_name"))
+    tax_id = _normalize_intake_text(normalized.get("company_tax_id"))
+    contact_email = _normalize_intake_text(normalized.get("contact_email"))
+    contact_phone = _normalize_intake_text(normalized.get("contact_phone"))
+
+    existing_company = await _find_existing_company_for_company_intake(
+        db,
+        tenant_id=tenant_id,
+        tax_id=tax_id,
+        email=contact_email,
+        phone=contact_phone,
+    )
+    if existing_company is not None:
+        normalized["matched_existing_company_id"] = str(existing_company.id)
+    existing_lead = await _find_existing_company_intake_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        tax_id=tax_id,
+        email=contact_email,
+        phone=contact_phone,
+        company_name=company_name,
+    )
+    if existing_lead is not None:
+        await log_public_event(
+            db,
+            tenant_id=tenant_id,
+            action="company_intake_form_duplicate",
+            target_id=str(existing_lead.id),
+            payload={
+                "lead_id": str(existing_lead.id),
+                "own_company_id": own_company_id,
+                "source_profile_id": str(source_profile.id) if source_profile is not None else None,
+                "matched_existing_company_id": normalized.get("matched_existing_company_id"),
+                "company_name": company_name,
+                "contact_email": contact_email,
+                "contact_phone": contact_phone,
+            },
+            ip=client_ip,
+            ua=user_agent,
+        )
+        await db.commit()
+        return CompanyIntakeSubmitResponse(
+            lead_id=str(existing_lead.id),
+            status=existing_lead.status,
+            stage=existing_lead.stage or "questionnaire_submitted",
+            own_company_id=own_company_id,
+            company_id=None,
+            duplicate=True,
+            lead_url=spa_paths.spa_lead(str(existing_lead.id)),
+        )
+
+    from backend.app.modules.leads import crud as leads_crud
+
+    lead = await leads_crud.create_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=None,
+        vacancy_id=None,
+        payload=_company_intake_payload(payload, form, source_profile),
+        normalized=normalized,
+        source=_company_intake_source(payload, source_profile),
+        ad_id=None,
+        external_id=None,
+        lead_type="client",
+        lead_target_type="client_lead",
+    )
+    lead.status = "new"
+    lead.stage = "questionnaire_submitted"
+    await db.flush()
+
+    await emit_event(
+        db,
+        tenant_id=tenant_id,
+        event_type="company_intake_submitted",
+        payload={
+            "lead_id": str(lead.id),
+            "own_company_id": own_company_id,
+            "source_profile_id": str(source_profile.id) if source_profile is not None else None,
+            "matched_existing_company_id": normalized.get("matched_existing_company_id"),
+            "company_name": company_name,
+            "contact_name": normalized.get("contact_full_name"),
+            "need_summary": normalized.get("need_summary"),
+            "href": spa_paths.spa_lead(str(lead.id)),
+        },
+        audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+        entity_type="lead",
+        entity_id=str(lead.id),
+    )
+    await log_public_event(
+        db,
+        tenant_id=tenant_id,
+        action="company_intake_form_submitted",
+        target_id=str(lead.id),
+        payload={
+            "lead_id": str(lead.id),
+            "own_company_id": own_company_id,
+            "source_profile_id": str(source_profile.id) if source_profile is not None else None,
+            "matched_existing_company_id": normalized.get("matched_existing_company_id"),
+            "company_name": company_name,
+            "contact_email": contact_email,
+            "contact_phone": contact_phone,
+        },
+        ip=client_ip,
+        ua=user_agent,
+    )
+    await db.commit()
+    return CompanyIntakeSubmitResponse(
+        lead_id=str(lead.id),
+        status=lead.status,
+        stage=lead.stage or "questionnaire_submitted",
+        own_company_id=own_company_id,
+        company_id=None,
+        duplicate=False,
+        lead_url=spa_paths.spa_lead(str(lead.id)),
+    )
 
 
 def _normalize_phone_parts(
@@ -1239,7 +1928,7 @@ def _next_version(files: Sequence[Dict[str, Any]]) -> int:
 
 
 def _build_storage_key(candidate: Candidate, filename: str) -> str:
-    sanitized = sanitize_filename(filename) or "document.bin"
+    sanitized = sanitize_filename_via_contract(filename) or "document.bin"
     return str(
         Path(candidate.tenant_id)
         / "candidates"
@@ -1286,7 +1975,7 @@ def _owner_context_from_state(state: Dict[str, Any], candidate_id: str) -> Dict[
         has_adr = extra.get("has_adr")
     ctx = {
         "candidate_id": candidate_id,
-        "citizenship": (personal.get("citizenship") or "").upper() or None,
+        "citizenship": normalize_inbound_citizenship_alpha2(personal.get("citizenship")),
         "residency_status": extra.get("poland_stay_basis") or personal.get("residency_status") or None,
         "has_adr": has_adr if isinstance(has_adr, bool) else None,
         "documents": docs_ctx,
@@ -1316,7 +2005,7 @@ async def _save_public_document_upload(
         target_dir = uploads_root / rel_dir
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        safe_name = sanitize_filename(upload_file.filename if upload_file else "document")
+        safe_name = sanitize_filename_via_contract(upload_file.filename if upload_file else "document")
         stored_name = f"{uuid4().hex}_{safe_name}"
         target_path = target_dir / stored_name
 
@@ -1501,7 +2190,7 @@ def _serialize_personal(candidate: Candidate, state: Dict[str, Any]) -> IntakePe
     citizenship_raw = personal_data.get("citizenship") or extra.get("citizenship")
     return IntakePersonal(
         full_name=full_name.strip(),
-        citizenship=_coerce_iso3166_alpha2(citizenship_raw),
+        citizenship=normalize_inbound_citizenship_alpha2(citizenship_raw),
         residency_status=personal_data.get("residency_status"),
         in_poland=personal_data.get("in_poland") if personal_data.get("in_poland") is not None else extra.get("in_poland"),
         birth_date=personal_data.get("birth_date") or extra.get("birth_date"),
@@ -1519,6 +2208,13 @@ def _serialize_experience(state: Dict[str, Any]) -> IntakeExperience:
         trailer_types=list(experience.get("trailer_types") or []),
         route_types=list(experience.get("route_types") or []),
     )
+
+
+def _serialize_client_company(state: Dict[str, Any]) -> Optional[IntakeClientCompany]:
+    payload = state.get("client_company")
+    if not isinstance(payload, dict):
+        return None
+    return IntakeClientCompany(**payload)
 
 
 def _serialize_employments(rows: List[CandidateEmployment]) -> List[IntakeEmployment]:
@@ -1653,6 +2349,7 @@ def _state_to_data(candidate: Candidate, employments: List[CandidateEmployment])
         employments=_serialize_employments(employments),
         agreements=_serialize_agreements(state),
         lead_form=lf,
+        client_company=_serialize_client_company(state),
         application_kind=ak,
     )
 
@@ -1826,7 +2523,7 @@ def _collect_doc_type_codes(
             seen.add(doc_type)
             codes.append(doc_type)
     # добавляем эквивалентные типы (например, driver_license_code95), чтобы их можно было выбрать
-    for equivalent, parents in (EQUIVALENT_SATISFACTION or {}).items():
+    for equivalent, parents in (list_equivalent_satisfaction_map_via_contract() or {}).items():
         if not parents:
             continue
         normalized_parents = [str(parent).strip() for parent in parents if str(parent).strip()]
@@ -1851,22 +2548,22 @@ async def _build_checklist_and_docs(
     state = _ensure_intake_state(candidate)
     oc = getattr(candidate, "own_company_id", None)
     own_company_id = str(oc).strip() if oc else None
-    ruleset_version = await ensure_ruleset_seed(
+    ruleset_version = await ensure_ruleset_seed_via_contract(
         session,
-        str(tenant_id),
-        load_default_ruleset(),
+        tenant_id=str(tenant_id),
+        ruleset_payload=load_default_ruleset(),
         own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     owner_context = _owner_context_from_state(state, candidate.id)
-    checklist = compute_candidate_checklist(owner_context, ruleset_payload)
+    checklist = compute_candidate_checklist_via_contract(owner_context, ruleset_payload)
     checklist = _ensure_checklist_defaults(checklist, ruleset_payload)
     checklist = _ensure_checklist_defaults(checklist, ruleset_payload)
 
-    docs = await list_candidate_documents(
+    docs = await list_candidate_documents_via_contract(
         session,
-        str(tenant_id),
-        candidate.id,
+        tenant_id=str(tenant_id),
+        candidate_id=candidate.id,
         include_deleted=False,
         active_own_company_id=own_company_id,
     )
@@ -1907,15 +2604,17 @@ async def _build_checklist_and_docs(
                 "user_comment": getattr(doc, "user_comment", None),
             }
         )
-    summary = compute_owner_summary(owner_context, ruleset_payload, serialized_docs)
+    summary = compute_owner_summary_via_contract(owner_context, ruleset_payload, serialized_docs)
     synthetic = [
         entry.model_dump()
-        for entry in _build_synthetic_documents(str(tenant_id), UUID(candidate.id), checklist, serialized_docs)
+        for entry in build_synthetic_documents_via_contract(
+            str(tenant_id), UUID(candidate.id), checklist, serialized_docs
+        )
     ]
     doc_entries = serialized_docs + synthetic
     doc_type_codes = _collect_doc_type_codes(checklist, doc_entries)
     if not doc_type_codes:
-        catalog = await list_document_types(session, str(tenant_id))
+        catalog = await list_document_types_via_contract(session, tenant_id=str(tenant_id))
         doc_type_codes = [getattr(row, "code", None) or getattr(row, "key", None) or "" for row in catalog]
         doc_type_codes = [code for code in doc_type_codes if code]
     documents_payload = {
@@ -2044,7 +2743,7 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     # Обновляем personal_data (для совместимости, но основное хранилище - extra)
     personal_dict = candidate._get_personal_data()
     if personal.citizenship:
-        personal_dict["citizenship"] = personal.citizenship.upper()
+        personal_dict["citizenship"] = normalize_inbound_citizenship_alpha2(personal.citizenship)
     if personal.in_poland is not None:
         personal_dict["in_poland"] = personal.in_poland
     if personal.birth_date:
@@ -2105,6 +2804,13 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
         state["lead_form"] = payload.lead_form
     elif existing_state.get("lead_form") is not None:
         state["lead_form"] = existing_state.get("lead_form")
+    if payload.client_company is not None:
+        state["client_company"] = {
+            **dict(existing_state.get("client_company") or {}),
+            **{k: v for k, v in payload.client_company.model_dump().items() if v not in (None, "", [], {})},
+        }
+    elif existing_state.get("client_company") is not None:
+        state["client_company"] = existing_state.get("client_company")
 
     if payload.application_kind is not None:
         ak = str(payload.application_kind).strip().lower()
@@ -2138,7 +2844,7 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     
     # Personal data - сохраняем в extra (основное хранилище для карточки)
     if personal.citizenship:
-        extra["citizenship"] = personal.citizenship.upper()
+        extra["citizenship"] = normalize_inbound_citizenship_alpha2(personal.citizenship)
     if personal.in_poland is not None:
         extra["in_poland"] = personal.in_poland
     if personal.birth_date:
@@ -2350,6 +3056,11 @@ async def create_public_intake(
         for key, value in contacts.model_dump(exclude_none=True).items():
             stored_contacts[key] = value
         state["contacts"] = stored_contacts
+        if payload.client_company is not None:
+            state["client_company"] = {
+                **dict(state.get("client_company") or {}),
+                **{k: v for k, v in payload.client_company.model_dump().items() if v not in (None, "", [], {})},
+            }
         if lf is not None:
             state["lead_form"] = lead_form_meta_for_intake_state(lf)
         candidate.intake_state = state
@@ -2378,6 +3089,7 @@ async def create_public_intake(
                 "source": normalize_candidate_source(payload.source),
                 **({"lead_form_id": lf.id} if lf is not None else {}),
                 **({"vacancy_id": resolved_vacancy_id} if resolved_vacancy_id else {}),
+                **({"client_company": state.get("client_company")} if state.get("client_company") else {}),
             },
         )
         await db.commit()
@@ -2415,6 +3127,10 @@ async def create_public_intake(
         "agreements": {},
         "application_kind": ak,
     }
+    if payload.client_company is not None:
+        state["client_company"] = {
+            k: v for k, v in payload.client_company.model_dump().items() if v not in (None, "", [], {})
+        }
     if lf is not None:
         state["lead_form"] = lead_form_meta_for_intake_state(lf)
     candidate.intake_state = state
@@ -2652,10 +3368,10 @@ async def submit_public_intake(
     employments = await _list_employments(db, tenant_id, candidate.id)
     oc = getattr(candidate, "own_company_id", None)
     own_company_id = str(oc).strip() if oc else None
-    docs = await list_candidate_documents(
+    docs = await list_candidate_documents_via_contract(
         db,
-        str(tenant_id),
-        candidate.id,
+        tenant_id=str(tenant_id),
+        candidate_id=candidate.id,
         include_deleted=False,
         active_own_company_id=own_company_id,
     )
@@ -2675,6 +3391,9 @@ async def submit_public_intake(
         employments=intake_state.get("employments") or [],
         agreements=IntakeAgreements(**(intake_state.get("agreements") or {})),
         lead_form=_lf if isinstance(_lf, dict) else None,
+        client_company=IntakeClientCompany(**(intake_state.get("client_company") or {}))
+        if isinstance(intake_state.get("client_company"), dict)
+        else None,
         application_kind=_ak,
     )
     _update_candidate_from_data(candidate, intake_payload)

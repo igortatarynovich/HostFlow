@@ -690,6 +690,7 @@ async def update_lead_stage_endpoint(
         stage_contract=stage_contract_out,
         candidate_id=PyUUID(lead.candidate_id) if lead.candidate_id else None,
         candidate_name=None,
+        converted_client_id=PyUUID(lead.converted_client_id) if getattr(lead, "converted_client_id", None) else None,
         outcome_entity_type=outcome_entity_type,
         outcome_entity_id=PyUUID(outcome_entity_id) if outcome_entity_id else None,
         outcome_entity_name=outcome_entity_name,

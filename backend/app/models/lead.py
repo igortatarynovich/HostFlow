@@ -95,6 +95,12 @@ class Lead(Base):
         ForeignKey("candidates.id", ondelete="SET NULL"),
         nullable=True,
     )
+    converted_client_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     external_id: Mapped[Optional[str]] = mapped_column(
         String(128),
         nullable=True,

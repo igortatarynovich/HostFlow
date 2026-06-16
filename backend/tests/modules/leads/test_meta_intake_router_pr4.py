@@ -12,6 +12,7 @@ from sqlalchemy import func, select, text
 from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Lead
 from backend.app.models.intake_routing_enums import RouteIntent
+from backend.app.modules.outcome_rules.reference import OutcomeRuleType
 from backend.app.modules.intake_routing import crud as intake_crud
 from backend.tests.modules.leads.conftest import post_meta_lead
 
@@ -258,6 +259,10 @@ async def test_meta_driver_form_creates_lead_and_candidate(client, manager_heade
         routing = (lead.normalized or {}).get("intake_routing_v1") or {}
         assert routing.get("matched") is True
         assert routing.get("route_intent") == RouteIntent.candidate_application.value
+        outcome = (lead.normalized or {}).get("outcome_resolution_v1") or {}
+        assert [item.get("code") for item in outcome.get("actions", [])] == [
+            OutcomeRuleType.create_candidate.value
+        ]
 
 
 @pytest.mark.anyio
@@ -300,6 +305,10 @@ async def test_meta_b2b_form_lead_only_no_candidate(client, manager_headers, ten
         assert routing.get("matched") is True
         assert routing.get("route_intent") == RouteIntent.sales_inquiry.value
         assert routing.get("pipeline_preset") == "service_sales"
+        outcome = (lead.normalized or {}).get("outcome_resolution_v1") or {}
+        assert [item.get("code") for item in outcome.get("actions", [])] == [
+            OutcomeRuleType.none.value
+        ]
         assert services_oc is not None
         assert str(lead.own_company_id) == services_oc
 
@@ -444,6 +453,11 @@ async def test_b2b_on_agency_tenant_never_creates_candidate(client, manager_head
     async with async_session_maker() as session:
         after = await _candidate_count(session, tenant_id)
         assert after == before
+        lead = await session.get(Lead, body["lead_id"])
+        outcome = (lead.normalized or {}).get("outcome_resolution_v1") or {}
+        assert [item.get("code") for item in outcome.get("actions", [])] == [
+            OutcomeRuleType.none.value
+        ]
 
 
 @pytest.mark.anyio

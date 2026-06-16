@@ -61,6 +61,7 @@ import {
 import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock'
 import { CompanyReceivablesOverview } from '../components/companies/CompanyReceivablesOverview'
 import { CompanyServiceOrdersPanel } from '../components/companies/CompanyServiceOrdersPanel'
+import { CompanyIntakeLinksPanel } from '../components/companies/CompanyIntakeLinksPanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
@@ -3977,13 +3978,19 @@ export default function Companies(){
     <section className="rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-none">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <p className="text-2xl font-semibold">{t('app.companies.list.title')}</p>
+          <p className="text-2xl font-semibold">
+            {isOperatingProfileRoute
+              ? t('app.companies.list.title')
+              : t('app.companies.list.clients_title', { defaultValue: 'Clients' })}
+          </p>
           <p className="text-sm text-white/80">{t('app.companies.list.insights.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="btn-secondary border-white/60 bg-white/10 text-white hover:bg-white/20" onClick={handleCreateOperatingCompany}>
-            {t('app.companies.actions.new_operating_company', { defaultValue: 'Create my company' })}
-          </button>
+          {isOperatingProfileRoute ? (
+            <button className="btn-secondary border-white/60 bg-white/10 text-white hover:bg-white/20" onClick={handleCreateOperatingCompany}>
+              {t('app.companies.actions.new_operating_company', { defaultValue: 'Create my company' })}
+            </button>
+          ) : null}
           <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={handleCreateClientCompany}>
             {t('app.companies.actions.new_client_company', { defaultValue: 'Add client company' })}
           </button>
@@ -4009,6 +4016,8 @@ export default function Companies(){
       <div className="px-3 pt-2">
         <PageBreadcrumb />
       </div>
+
+      {!isOperatingProfileRoute ? <CompanyIntakeLinksPanel /> : null}
 
       <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
         <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_minmax(170px,200px)_auto]">

@@ -58,6 +58,11 @@ def _require_company_access(company_id: UUID, acl) -> None:
     response_model=List[schemas.CompanyOut],
 )
 @router.get(
+    "/directory",
+    response_model=List[schemas.CompanyOut],
+    include_in_schema=False,
+)
+@router.get(
     "",
     response_model=List[schemas.CompanyOut],
     include_in_schema=False,

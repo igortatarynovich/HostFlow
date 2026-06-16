@@ -6,6 +6,7 @@ import type { UUID } from './common';
 
 export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
 export type LeadType = 'candidate' | 'client';
+export type LeadTargetType = 'candidate' | 'client_lead' | 'service_order_lead' | 'partner_lead';
 export type LeadStage = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
 export type LeadNextActionStatus = 'scheduled' | 'overdue' | 'no_next_action';
 
@@ -22,6 +23,7 @@ export interface Lead {
   tenant_id: UUID;
   business_type?: 'agency' | 'employer' | 'services' | null;
   lead_type?: LeadType;
+  lead_target_type?: LeadTargetType;
   company_id?: UUID | null;
   company_name?: string | null;
   vacancy_id?: UUID | null;
@@ -36,6 +38,7 @@ export interface Lead {
   stage_contract?: LeadStageContractV1 | null;
   candidate_id?: UUID | null;
   candidate_name?: string | null;
+  converted_client_id?: UUID | null;
   outcome_entity_type?: 'candidate' | 'company' | null;
   outcome_entity_id?: UUID | null;
   outcome_entity_name?: string | null;
@@ -84,6 +87,74 @@ export interface MetaLeadFieldMappingRule {
   overwrite?: boolean;
 }
 
+export interface MetaLeadFormSummary {
+  form_id: string;
+  page_id?: string | null;
+  source: string;
+  form_name?: string | null;
+  has_form_mapping: boolean;
+  mapping_rules_count: number;
+  inherits_tenant_fallback: boolean;
+  last_sample_lead_id?: string | null;
+  updated_at?: string | null;
+  has_intake_route?: boolean;
+  intake_route_active?: boolean;
+  intake_own_company_id?: string | null;
+  intake_lead_target_type?: LeadTargetType | null;
+}
+
+export interface MetaLeadFormListResponse {
+  items: MetaLeadFormSummary[];
+  tenant_fallback_rules_count: number;
+}
+
+export interface MetaLeadFormMapping {
+  form_id: string;
+  page_id?: string | null;
+  source: string;
+  form_name?: string | null;
+  mapping_rules: MetaLeadFieldMappingRule[];
+  inherits_tenant_fallback: boolean;
+  tenant_fallback_rules: MetaLeadFieldMappingRule[];
+  last_sample_lead_id?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export interface MetaLeadFormMappingUpdate {
+  page_id?: string | null;
+  source?: 'meta' | 'webhook';
+  form_name?: string | null;
+  mapping_rules: MetaLeadFieldMappingRule[];
+  last_sample_lead_id?: string | null;
+}
+
+export interface MetaFormRoute {
+  form_id: string;
+  page_id?: string | null;
+  source: string;
+  own_company_id: string;
+  own_company_name?: string | null;
+  lead_target_type: LeadTargetType;
+  pipeline_preset?: string | null;
+  default_assignee_id?: string | null;
+  is_active: boolean;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export interface MetaFormRouteUpdate {
+  page_id?: string | null;
+  source?: 'meta' | 'webhook';
+  own_company_id: string;
+  lead_target_type: LeadTargetType;
+  pipeline_preset?: string | null;
+  default_assignee_id?: string | null;
+  is_active?: boolean;
+}
+
+export const META_FORM_TENANT_DEFAULT_KEY = '__tenant_default__';
+
 export type LeadsProcessingModeV1 = 'manual' | 'assisted' | 'automatic';
 
 export interface GenericInboundWebhookRotateResponse {
@@ -128,6 +199,17 @@ export interface MetaLeadSettings {
   reroute_after_hours?: number | null;
   mask_pii_in_logs: boolean;
   pull_field_data_from_graph?: boolean;
+  lead_rodo_send_mode?: 'manual' | 'auto_on_lead_created' | 'auto_on_first_action';
+  lead_rodo_channels?: string[];
+  lead_rodo_template_id?: string | null;
+  lead_rodo_message_template_id?: string | null;
+  lead_communication_enabled?: boolean;
+  send_application_received?: boolean;
+  send_rejection_notice?: boolean;
+  send_moving_forward_notice?: boolean;
+  application_received_template_id?: string | null;
+  rejection_notice_template_id?: string | null;
+  moving_forward_template_id?: string | null;
   field_mapping?: MetaLeadFieldMappingRule[];
   plan_field_mapping_rules_limit?: number | null;
   plan_meta_credentials_limit?: number | null;
@@ -148,6 +230,17 @@ export interface MetaLeadSettingsPatch {
   reroute_after_hours?: number | null;
   mask_pii_in_logs?: boolean;
   pull_field_data_from_graph?: boolean;
+  lead_rodo_send_mode?: 'manual' | 'auto_on_lead_created' | 'auto_on_first_action';
+  lead_rodo_channels?: string[];
+  lead_rodo_template_id?: string | null;
+  lead_rodo_message_template_id?: string | null;
+  lead_communication_enabled?: boolean;
+  send_application_received?: boolean;
+  send_rejection_notice?: boolean;
+  send_moving_forward_notice?: boolean;
+  application_received_template_id?: string | null;
+  rejection_notice_template_id?: string | null;
+  moving_forward_template_id?: string | null;
   field_mapping?: MetaLeadFieldMappingRule[];
   webhook_url?: string | null;
   webhook_verify_token?: string | null;

@@ -10,6 +10,7 @@ import sqlalchemy as sa
 
 from backend.app.db.session import async_session_maker
 from backend.app.models import Lead, OwnCompany
+from backend.app.modules.outcome_rules.reference import OutcomeRuleType
 from backend.app.modules.leads import crud
 from backend.tests.modules.leads.conftest import post_meta_lead
 
@@ -138,6 +139,10 @@ async def test_intake_route_client_lead_on_agency_profile_skips_candidate(client
         route_block = norm.get("intake_route_v1") or {}
         assert route_block.get("matched") is True
         assert route_block.get("lead_target_type") == "client_lead"
+        outcome = norm.get("outcome_resolution_v1") or {}
+        assert [item.get("code") for item in outcome.get("actions", [])] == [
+            OutcomeRuleType.none.value
+        ]
 
 
 @pytest.mark.anyio
@@ -204,6 +209,11 @@ async def test_intake_route_candidate_on_agency_profile_creates_candidate(
         lead = await session.get(Lead, body["lead_id"])
         assert lead is not None
         assert lead.lead_target_type == "candidate"
+        norm = lead.normalized if isinstance(lead.normalized, dict) else {}
+        outcome = norm.get("outcome_resolution_v1") or {}
+        assert [item.get("code") for item in outcome.get("actions", [])] == [
+            OutcomeRuleType.create_candidate.value
+        ]
 
 
 @pytest.mark.anyio

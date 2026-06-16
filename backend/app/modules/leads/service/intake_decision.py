@@ -209,13 +209,22 @@ async def apply_lead_intake_decision(
             lr_block["note"] = note_s
         norm["lead_lost_reason_v1"] = lr_block
         lead.error = "INTAKE_REJECTED"
-        if str(getattr(lead, "status", "") or "").strip().lower() == "duplicate_review":
-            lead.status = "needs_routing"
+        lead.status = "rejected"
         lead.normalized = norm
         await db.flush()
         from backend.app.services.lead_communications import maybe_send_lead_rejected_notice
+        from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup
 
         await maybe_send_lead_rejected_notice(db, tenant_id=tenant_id, lead=lead)
+        await apply_lead_terminal_cleanup(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            new_stage=getattr(lead, "stage", None),
+            new_status=getattr(lead, "status", None),
+            actor_id=str(actor_sub).strip() if actor_sub else None,
+            reason="lead_intake_rejected",
+        )
 
     elif dec == INTAKE_DECISION_QUALIFY:
         _stamp_intake_resolution_v1(

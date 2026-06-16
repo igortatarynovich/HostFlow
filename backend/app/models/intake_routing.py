@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db.base import Base
@@ -24,13 +24,14 @@ class IntakeSourceProfile(Base, TimestampMixin):
     __tablename__ = "intake_source_profiles"
     __table_args__ = (
         UniqueConstraint("tenant_id", "code", name="uq_intake_source_profiles_tenant_code"),
+        UniqueConstraint("public_slug", name="uq_intake_source_profiles_public_slug"),
         Index("ix_intake_source_profiles_tenant_active", "tenant_id", "is_active"),
+        Index("ix_intake_source_profiles_public_slug", "public_slug"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("tenants.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )
@@ -48,7 +49,6 @@ class IntakeSourceProfile(Base, TimestampMixin):
     )
     own_company_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("own_companies.id", ondelete="CASCADE"),
         nullable=False,
     )
     route_intent: Mapped[str] = mapped_column(
@@ -57,12 +57,17 @@ class IntakeSourceProfile(Base, TimestampMixin):
         default=RouteIntent.unknown.value,
     )
     pipeline_preset: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    public_slug: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    form_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    lead_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    lead_target_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     default_assignee_id: Mapped[Optional[str]] = mapped_column(
         String(36),
-        ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
     default_language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    supported_languages: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -86,13 +91,11 @@ class IntakeSourceBinding(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("tenants.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )
     intake_source_profile_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("intake_source_profiles.id", ondelete="CASCADE"),
         nullable=False,
     )
     provider: Mapped[str] = mapped_column(String(32), nullable=False)

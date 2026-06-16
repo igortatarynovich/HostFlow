@@ -457,6 +457,54 @@
           "clearer_file": "Загрузить чёткую копию"
         }
       },
+      "exceptions": {
+        "section_title": "Исключения",
+        "waive_link": "Отметить требование как исключение…",
+        "waive_title": "Исключение из требования",
+        "waive_warning": "Это требование будет отмечено как исключение. Одобрение возможно без этого документа.",
+        "waive_document": "Документ: {document}",
+        "waive_reason": "Причина (обязательно)",
+        "waive_placeholder": "Почему требование снимается?",
+        "waive_submit": "Отметить как исключение",
+        "waive_done": "Требование отмечено как исключение",
+        "additional_link": "Запросить дополнительный документ…",
+        "additional_title": "Запросить дополнительный документ",
+        "additional_subtitle": "Попросите рекрутинг предоставить информацию. Это блокирует финальное одобрение до получения документа.",
+        "additional_name": "Название документа",
+        "additional_name_placeholder": "напр. Рекомендация от предыдущего работодателя",
+        "additional_note": "Заметка для рекрутинга (необязательно)",
+        "additional_urgency": "Срочность (необязательно)",
+        "urgency_none": "Не указана",
+        "urgency_normal": "Обычная",
+        "urgency_high": "Высокая",
+        "additional_submit": "Отправить запрос",
+        "additional_done": "Рекрутинг получит запрос на документ",
+        "hr_requested_heading": "Запрошено у рекрутинга",
+        "hr_requested_pending": "Ожидается",
+        "hr_requested_received": "Получено"
+      },
+      "ready": {
+        "phase": "Проверка документов",
+        "title": "Проверка завершена",
+        "headline_confirmed": "Все обязательные документы подтверждены",
+        "headline_decision": "Кандидат готов к решению о трудоустройстве.",
+        "progress": "{verified} из {total} обязательных документов подтверждено",
+        "summary_confirmed": "Подтверждено",
+        "summary_waived": "Исключения (waive)",
+        "waive_reason": "Причина: {reason}",
+        "summary_hr_requested": "Документы, запрошенные HR",
+        "summary_recommended": "Рекомендуемые (необязательно)",
+        "recommended_hint": "Ещё нет — не блокирует одобрение трудоустройства.",
+        "review_documents": "Просмотреть подтверждённые документы",
+        "back_to_decision": "Вернуться к решению о трудоустройстве",
+        "all_done_hint": "Все обязательные документы подтверждены. Можно одобрить трудоустройство.",
+        "still_needed": "Нужно до одобрения",
+        "identity_pending": "Employment identity должна быть завершена до одобрения.",
+        "blocker_missing_file": "{document} — файл не загружен",
+        "blocker_not_confirmed": "{document} — ожидает подтверждения",
+        "blocker_missing_field": "{document} — введите {field} из файла",
+        "blocker_field_fallback": "обязательное поле"
+      },
       "identity": {
         "compact_title": "Готовность downstream",
         "contracts": "Договоры",
@@ -1217,7 +1265,74 @@
           "disable_auto_convert_hint": "При режиме Automatic лиды на эту вакансию не создадут кандидата автоматически даже при fit — нужен Process. В extra: leads_auto_convert_on_fit_v1 = false.",
           "enable_fit_evaluation": "Включить проверку соответствия лидов критериям",
           "enable_fit_evaluation_hint": "Пока выключено, поля ниже можно заполнять как черновик — на маршрутизацию и автоконверсию они не влияют. Если включено без заполненных правил, фит не блокирует (как «без критериев»). В extra: lead_fit_evaluation_enabled_v1."
+        },
+        "work_schedule": {
+          "title": "Варианты графика работы",
+          "hint": "Что предлагает клиент по вакансии (предпочтение кандидата задаётся отдельно)"
         }
+      }
+    },
+    "recruitment_preparation": {
+      "title": "Документы на эту позицию",
+      "subtitle": "Проверка загрузок и данных — не HR-верификация compliance",
+      "badge": {
+        "ready_for_hr": "Готов к передаче в HR",
+        "missing_required": "Не хватает обязательного",
+        "warnings": "Предупреждения"
+      },
+      "sections": {
+        "required": "Обязательные",
+        "recommended": "Рекомендуемые",
+        "optional": "Опциональные",
+        "not_required": "Не требуются"
+      },
+      "status": {
+        "missing": "Не загружен",
+        "uploaded": "Загружен"
+      },
+      "file_version": "v{{version}}",
+      "expires": "истекает {{date}}",
+      "missing_data": "Не заполнено: {{fields}}",
+      "warnings_before_handoff": "Предупреждения перед handoff",
+      "warnings_non_blocking": "Можно передать с предупреждениями — HR увидит их в снимке.",
+      "handoff_note": "Заметка для HR перед передачей",
+      "handoff_note_placeholder": "Контекст для HR: график, исключения, ожидания клиента…",
+      "empty": "Нет документов в пакете.",
+      "stage_blocked": {
+        "title": "Нельзя перевести в «Готов к передаче»",
+        "description": "Загрузите обязательные документы и заполните данные в блоке «Документы на эту позицию»."
+      },
+      "handoff_modal": {
+        "blocked": "Не хватает обязательных документов или данных. Исправьте блокеры в «Документы на эту позицию».",
+        "warnings": "Есть предупреждения (напр. рекомендуемые документы или график). HR увидит их в снимке."
+      },
+      "warn": {
+        "schedule_mismatch": "График не совпадает с вакансией",
+        "schedule_individual_comment": "Выбран индивидуальный график — добавьте комментарий для HR/клиента",
+        "missing_recommended": "Нет рекомендуемого документа: {{key}}"
+      },
+      "actions": {
+        "upload": "Загрузить",
+        "replace": "Заменить",
+        "preview": "Просмотр",
+        "complete_data": "Заполнить данные"
+      }
+    },
+    "work_schedule": {
+      "options": {
+        "by_weeks": "Понедельно",
+        "4/1": "4/1",
+        "8/2": "8/2",
+        "individual": "Индивидуальный"
+      },
+      "candidate": {
+        "title": "Предпочитаемый график работы",
+        "hint": "Что кандидат готов принять — может отличаться от предложения вакансии",
+        "vacancy_offers": "Вакансия предлагает",
+        "field": "График",
+        "comment": "Индивидуальный график — комментарий для HR/клиента",
+        "comment_recommended": "Настоятельно рекомендуется перед handoff",
+        "mismatch": "График не совпадает с вакансией — предупреждение рекрутинга, не блокер handoff"
       }
     },
     "handoff": {
@@ -3055,6 +3170,28 @@
         "save_error": "Не удалось сохранить изменения",
         "archive_error": "Не удалось изменить статус архива"
       },
+      "intake_links": {
+        "title": "Ссылка на анкету для нового клиента",
+        "subtitle": "Используйте эту ссылку в рекламе, email, на сайте или при ручной отправке. После отправки создаётся Client Lead, а не активный клиент.",
+        "active_count": "{count} активных",
+        "no_active": "Нет активной ссылки",
+        "manage": "Создать / управлять ссылкой",
+        "hide": "Скрыть ссылки",
+        "copied": "Ссылка скопирована",
+        "created": "Публичная ссылка анкеты создана",
+        "create_title": "Создать публичную ссылку анкеты",
+        "create_hint": "Компания-владелец берётся из вашего workspace, а не из данных публичной формы.",
+        "languages_hint": "Языки анкеты",
+        "empty": "Ссылок на анкету пока нет. Создайте первую для сайта, рекламы или прямой отправки.",
+        "fields": {
+          "name": "Название ссылки",
+          "owner": "Компания-владелец",
+          "source": "Источник",
+          "manager": "Менеджер",
+          "slug": "Публичный slug",
+          "active": "Активна"
+        }
+      },
       "invoices": {
         "title": "Счета",
         "subtitle": "Выставление и отправка счетов клиенту",
@@ -3111,6 +3248,7 @@
       },
       "list": {
         "title": "Компании",
+        "clients_title": "Клиенты",
         "wayfinding_title": "Другие разделы CRM",
         "wayfinding_nav_label": "Переход к дашборду, рабочему центру, inbox, списку клиентов, кандидатам, лидам и настройкам",
         "search_label": "Поиск",
@@ -5169,6 +5307,62 @@
       "stage_blocked_by_contact_attempt": {
         "title": "Сначала зафиксируйте попытку контакта",
         "description": "По политике клиента нужна хотя бы одна зарегистрированная попытка контакта, прежде чем уходить с этапа «Новый»."
+      },
+      "dossier_checklist": {
+        "badge": "Пакет для передачи",
+        "hint": "Те же блоки, что в HR-досье — проверьте каждый блок, затем передайте.",
+        "ready": "Готово",
+        "missing": "Отсутствует",
+        "issue": "Нужна проверка",
+        "data": "Проверьте поля",
+        "optional": "Необязательно",
+        "complete": "Готов к передаче",
+        "pending": "Открыто: {count}",
+        "missing_data": "Не заполнено: {list}",
+        "pending_confirm": "Подтвердите проверенные блоки: {list}",
+        "confirmed": "Подтверждено",
+        "confirm_block": "Подтвердить проверку",
+        "confirmed_toast": "Блок подтверждён",
+        "checking": "Проверяем пакет для передачи…",
+        "load_failed": "Не удалось загрузить статус пакета. Обновите страницу и попробуйте снова.",
+        "stage_blocked_title": "Нельзя перевести в «Готов к передаче»",
+        "package_blocked_generic": "Пакет для передачи неполный. Проверьте чеклист ниже.",
+        "blocked_confirm": "Подтвердите проверенные блоки: {list}",
+        "blocked_missing_data": "Заполните данные пакета: {list}",
+        "blocked_blocks": "Закройте блоки досье: {list}",
+        "blocked_documents": "Отсутствуют или не проверены документы: {list}",
+        "blocked_eligibility": "Правила workforce не допускают передачу ({status}). Проверьте документы и назначение вакансии.",
+        "blocked_eligibility_generic": "Правила workforce не допускают передачу. Проверьте документы и назначение вакансии."
+      },
+      "transfer_readiness": {
+        "badge": "Готовность к передаче",
+        "hint": "Решение Transfer Policy — без локальных правил чеклиста.",
+        "checking": "Проверяем готовность к передаче…",
+        "load_failed": "Не удалось загрузить отчёт. Обновите страницу.",
+        "stage_blocked_title": "Нельзя перевести в «Готов к передаче»",
+        "blocked_generic": "Передача заблокирована. Смотрите отчёт ниже.",
+        "final_decision": "Итоговое решение",
+        "transfer_allowed": "Этап → ready_for_handoff",
+        "handoff_create_allowed": "Создать handoff",
+        "blocking_reasons": "Причины блокировки",
+        "warnings": "Предупреждения",
+        "required_documents": "Обязательные документы",
+        "required_list": "Требуются",
+        "missing_list": "Отсутствуют",
+        "pending_verification_list": "Не проверены",
+        "required_data": "Обязательные данные",
+        "confirmations": "Подтверждения",
+        "destinations": "Маршруты передачи",
+        "no_destinations": "Не настроены",
+        "overrides": "Исключения",
+        "layer.document_packs": "Document packs",
+        "layer.recruitment_package": "Recruitment package",
+        "layer.recruiter_confirmation": "Подтверждение рекрутера",
+        "layer.tenant_link": "Tenant link",
+        "layer.hiring_pipeline_gates": "Pipeline gates",
+        "layer.transfer_policy": "Transfer policy",
+        "destination.internal_hr": "Internal HR",
+        "destination.client": "Client portal"
       },
       "stage_decision": {
         "blocked_title": "Переход заблокирован обязательными документами",
@@ -8292,6 +8486,93 @@
         }
       }
     },
+    "company_intake": {
+      "seo": {
+        "title": "Анкета компании — HostFlow",
+        "description": "Передайте данные транспортной компании и кадровую потребность в HostFlow."
+      },
+      "kicker": "B2B intake",
+      "title": "Анкета транспортной компании",
+      "submit": "Отправить анкету",
+      "fields": {
+        "company_name": "Название компании",
+        "tax_id": "NIP / VAT",
+        "country": "Страна",
+        "city": "Город",
+        "website": "Сайт",
+        "contact_name": "Имя",
+        "role": "Должность",
+        "email": "Email",
+        "phone": "Телефон",
+        "whatsapp": "WhatsApp доступен",
+        "cooperation_type": "Тип сотрудничества",
+        "candidate_countries": "Страны кандидатов",
+        "schedule": "График",
+        "truck_brands": "Марки машин",
+        "rate": "Ставка",
+        "additional": "Дополнительная информация"
+      },
+      "transport": {
+        "international": "Международные",
+        "domestic": "Локальные",
+        "mixed": "Смешанные"
+      },
+      "quiz": {
+        "steps": {
+          "language": "Выберите язык",
+          "need": "Что вам нужно?",
+          "count": "Сколько людей вам нужно?",
+          "base": "Где находится база?",
+          "transport": "Какой тип перевозок?",
+          "fleet": "Какой размер флота?",
+          "timing": "Когда нужны люди?",
+          "contact": "С кем связаться?",
+          "company": "Данные компании",
+          "additional": "Условия работы",
+          "review": "Проверьте ответы"
+        },
+        "need": {
+          "drivers_ce": "Водители C+E",
+          "warehouse": "Складские работники",
+          "mechanics": "Механики",
+          "other": "Другое"
+        },
+        "timing": {
+          "asap": "Срочно",
+          "week": "В течение недели",
+          "month": "В течение месяца",
+          "research": "Изучаем рынок"
+        },
+        "cooperation": {
+          "recruitment": "Рекрутинг",
+          "rental": "Аренда персонала",
+          "hr": "HR сопровождение"
+        },
+        "body": {
+          "curtain": "Штора",
+          "frigo": "Холодильник",
+          "container": "Контейнер"
+        }
+      },
+      "summary": {
+        "company": "Компания",
+        "contact": "Контакт",
+        "need": "Потребность",
+        "base": "База",
+        "transport": "Перевозки",
+        "timing": "Срок"
+      },
+      "errors": {
+        "required": "Название компании, контактное лицо и email или телефон обязательны.",
+        "submit_failed": "Не удалось отправить анкету. Попробуйте ещё раз."
+      },
+      "success": {
+        "kicker": "Отправлено",
+        "title": "Спасибо. Мы получили анкету компании.",
+        "body": "Менеджер HostFlow проверит данные и свяжется с вами по следующим шагам.",
+        "reference": "Номер заявки"
+      }
+    },
     "portal": {
       "errors": {
         "redeem_failed": "Ссылка недействительна или устарела.",
@@ -10065,12 +10346,20 @@
         "lead_rodo_send_mode_auto_created": "Авто при создании лида — Meta / webhook / импорт / Telegram (email)",
         "lead_rodo_send_mode_auto_first_action": "Авто перед первым действием — звонок, письмо, запрос инфо, process",
         "lead_rodo_send_mode_hint": "Ручная отправка остаётся на карточке лида для повтора после ошибки или отсутствия канала.",
+        "lead_rodo_message_template_label": "Шаблон письма RODO",
         "lead_communication_title": "Операционные письма лидам",
         "lead_communication_hint": "Отдельно от RODO / ст. 14. Только статусные сообщения кандидату (email).",
         "lead_communication_enabled": "Включить операционные письма лидам",
         "send_application_received": "Заявка получена (при ingest нового лида)",
         "send_rejection_notice": "Уведомление об отказе (при reject intake)",
         "send_moving_forward_notice": "Двигаемся дальше (при конверсии Lead → Candidate)",
+        "template_none": "Текст по умолчанию",
+        "template_hub_title": "Хаб шаблонов писем лидам",
+        "template_hub_hint": "Создайте шаблон один раз и переиспользуйте его в RODO и операционных письмах лидам.",
+        "template_name": "Название шаблона",
+        "template_create": "Создать шаблон",
+        "email_template_subject": "Тема письма",
+        "email_template_body": "Текст письма",
         "auto_create_automatic_only": "Только при режиме Automatic. В Manual/Assisted — Process. Этот переключатель не заменяет фит на вакансии и правила автоматизации — см. хаб Автоматизации.",
         "leads_auto_convert_on_fit": "Автоконверсия лида в кандидата при прохождении fit (§2.4)",
         "leads_auto_convert_on_fit_hint": "Доп. предохранитель при Automatic + авто-создании: если выключено, лиды в очереди с заблокированным превью до Process. На вакансии можно отключить точечно (extra.leads_auto_convert_on_fit_v1 = false).",
@@ -10098,6 +10387,22 @@
       "field_mapping": {
         "title": "Поля формы Meta → нормализованный payload",
         "subtitle": "Сопоставьте имена полей лид-формы Meta с ключами нормализованного payload до создания лида. Несколько источников — через запятую (например phone_number, mobile_phone).",
+        "rules_title": "Правила маппинга",
+        "rules_subtitle": "Свяжите вопрос формы Meta с тем, куда сохраняется ответ. Несколько имён источника — через запятую.",
+        "rules_hint": "Источник — имя поля из таблицы выше. Цель — внутренний идентификатор поля (позже будет подпись из карточки кандидата).",
+        "form_fields": {
+          "title": "Поля формы",
+          "subtitle": "Поля, которые приходят из рекламной формы, с примером значения. Проверьте статус перед сохранением правил ниже.",
+          "empty": "Пока нет полей. Выберите недавний лид и нажмите «Запросить у Meta» или дождитесь входящего webhook.",
+          "col_field": "Поле из Meta",
+          "col_sample": "Пример значения",
+          "col_status": "Статус",
+          "col_target": "Куда сохранить",
+          "status_mapped": "Замапплено",
+          "status_unmapped": "Не замапплено",
+          "no_sample": "Нет примера",
+          "pick_target": "Выбрать поле"
+        },
         "plan_limit_status": "Лимит тарифа: {count} / {limit} строк маппинга. Удалите строки или смените тариф, чтобы добавить.",
         "source_hint": "Подсказки: только реальные имена из field_data в сохранённом webhook, ключи вроде ad_id/form_id из того же payload, raw_field_names из normalized, плюс поля, загруженные кнопкой «Запросить у Meta». Не используйте ключи normalized (first_name и т.п.) как источник — в форме Meta они называются иначе.",
         "unknown_fields_title": "Поля из последних данных без кастомного поля лида",
@@ -10117,8 +10422,8 @@
         "add_row": "Добавить правило",
         "save": "Сохранить маппинг",
         "suggestions_ready": "Подсказок по именам полей: {count} (из последних лидов и/или ответа Graph).",
-        "graph_fetch_title": "Реальные поля из Meta (Graph API)",
-        "graph_fetch_body": "Выберите недавний Meta-лид (превью входящих плюс лиды из вкладки «Логи»: needs routing / failed) или введите leadgen_id и page_id. Запрос с вашим Page token — тот же вызов Graph, что при обогащении вебхука — подсказки «Источник» совпадут с живой формой.",
+        "graph_fetch_title": "Загрузить поля из Meta",
+        "graph_fetch_body": "Выберите недавний лид или укажите ID лида и ID страницы Facebook, затем запросите поля. Нужен сохранённый Page access token в подключениях.",
         "graph_pick_lead": "Недавний Meta-лид",
         "graph_pick_lead_placeholder": "Не выбран — ввести вручную ниже",
         "graph_leadgen_id": "Lead ID (Meta / leadgen_id)",

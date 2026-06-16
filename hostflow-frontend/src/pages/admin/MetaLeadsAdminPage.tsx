@@ -4,25 +4,34 @@ import {
   completeMetaOAuth,
   createMetaAdsMap,
   createMetaLeadCredential,
+  createLeadMessageTemplate,
   deleteMetaAdsMap,
   deleteMetaLeadCredential,
+  deleteLeadMessageTemplate,
   fetchMetaGraphFieldPreview,
   finalizeMetaOAuth,
   getMetaIncomingPreview,
+  getMetaLeadFormMapping,
+  getMetaFormRoute,
   getMetaLeadSelfServeOnboarding,
   getMetaLeadSettings,
   getUnmappedLeads,
+  listMetaLeadForms,
+  putMetaLeadFormMapping,
+  putMetaFormRoute,
   listMetaAdsMap,
   listMetaLeadCredentials,
+  listLeadMessageTemplates,
   rerouteMetaLead,
   retryLeads,
   rotateMetaLeadCredential,
   startMetaOAuth,
   updateMetaAdsMap,
+  updateLeadMessageTemplate,
   updateMetaLeadSettings,
 } from '../../api/metaLeads'
 import type { UnmappedAdGroup } from '../../api/metaLeads'
-import { listCompanies, listLeads, listVacancies } from '../../api/client'
+import { listCompanies, listLeads, listOwnCompanies, listVacancies } from '../../api/client'
 import { createCustomFieldDefinition, listCustomFieldDefinitions } from '../../api/custom_fields'
 import { listAdminUsers } from '../../api/users'
 import type {
@@ -31,13 +40,20 @@ import type {
   MetaAdsMapEntry,
   MetaCredentialCreatePayload,
   MetaFieldMappingFormat,
+  MetaGraphFieldDataPreviewField,
   MetaIncomingLeadPreviewItem,
   MetaLeadCredential,
   MetaLeadFieldMappingRule,
   MetaLeadSelfServeOnboarding,
+  LeadMessageTemplate,
   MetaLeadSettings,
   MetaLeadSettingsPatch,
 } from '../../api/types'
+import {
+  META_FORM_TENANT_DEFAULT_KEY,
+  type LeadTargetType,
+  type MetaLeadFormSummary,
+} from '../../api/types/lead'
 import { IconBrandMeta, IconCircleCheck } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -45,9 +61,18 @@ import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getLeadErrorSuggestion } from '../../utils/leadErrorSuggestion'
+import { buildMetaFormFieldRows, mappingRowCoversSource } from '../../utils/metaFormFieldRows'
+import {
+  LEAD_INTAKE_QUALIFIED_PRESETS,
+  legacyTargetFromQualified,
+  qualifiedCodeFromLegacyTarget,
+  resolveMappingLegacyTarget,
+  isQualifiedFieldCode,
+} from '../../utils/intakeMappingUtils'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useAuth } from '../../store/auth'
+import LeadOperationalEmailBindingsCard from '../../components/leads/messages/LeadOperationalEmailBindingsCard'
 import {
   listLeadImportJobs,
   pollLeadImportJob,
@@ -89,6 +114,7 @@ interface FieldMappingRowState {
   id: string
   sourceText: string
   target: string
+  qualifiedFieldCode: string
   format: MetaFieldMappingFormat
   overwrite: boolean
 }
@@ -160,6 +186,23 @@ function newMappingRowId(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function metaFormSelectionKey(item: Pick<MetaLeadFormSummary, 'source' | 'form_id' | 'page_id'>): string {
+  return `${item.source}:${item.form_id}:${item.page_id ?? ''}`
+}
+
+function parseMetaFormSelectionKey(
+  key: string,
+): { source: 'meta' | 'webhook'; form_id: string; page_id: string } | null {
+  if (key === META_FORM_TENANT_DEFAULT_KEY) return null
+  const idx = key.indexOf(':')
+  if (idx < 0) return null
+  const source = key.slice(0, idx) === 'webhook' ? 'webhook' : 'meta'
+  const rest = key.slice(idx + 1)
+  const idx2 = rest.indexOf(':')
+  if (idx2 < 0) return null
+  return { source, form_id: rest.slice(0, idx2), page_id: rest.slice(idx2 + 1) }
 }
 
 function collectFieldNamesFromMetaPayloadPreview(json: string): string[] {
@@ -258,22 +301,16 @@ function leadPayloadJsonPreview(lead: Lead): string {
   }
 }
 
-function mappingRowCoversSource(row: FieldMappingRowState, key: string): boolean {
-  const nk = key.trim().toLowerCase()
-  if (!nk) return false
-  const parts = row.sourceText
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-  return parts.includes(nk)
-}
-
 function ruleToRowState(rule: MetaLeadFieldMappingRule, id: string): FieldMappingRowState {
   const st = Array.isArray(rule.source) ? rule.source.join(', ') : String(rule.source ?? '')
+  const qualified =
+    String(rule.qualified_field_code || '').trim() || qualifiedCodeFromLegacyTarget(rule.target ?? '')
+  const legacyTarget = resolveMappingLegacyTarget(rule.target ?? '', rule.qualified_field_code)
   return {
     id,
     sourceText: st,
-    target: rule.target ?? '',
+    target: legacyTarget || String(rule.target ?? '').trim(),
+    qualifiedFieldCode: qualified,
     format: (rule.format ?? 'string') as MetaFieldMappingFormat,
     overwrite: rule.overwrite !== false,
   }
@@ -281,12 +318,17 @@ function ruleToRowState(rule: MetaLeadFieldMappingRule, id: string): FieldMappin
 
 function rowStateToRule(row: FieldMappingRowState): MetaLeadFieldMappingRule | null | 'incomplete' {
   const srcParts = row.sourceText.split(',').map((s) => s.trim()).filter(Boolean)
-  const tgt = row.target.trim()
+  const qualified =
+    row.qualifiedFieldCode.trim() ||
+    (isQualifiedFieldCode(row.target.trim()) ? row.target.trim() : qualifiedCodeFromLegacyTarget(row.target.trim()))
+  const legacyTarget = legacyTargetFromQualified(qualified) || row.target.trim()
+  const tgt = qualified || legacyTarget
   if (!srcParts.length && !tgt) return null
   if (!srcParts.length || !tgt) return 'incomplete'
   return {
     source: srcParts.length === 1 ? srcParts[0]! : srcParts,
-    target: tgt,
+    target: legacyTarget || row.target.trim(),
+    qualified_field_code: qualified || null,
     format: row.format,
     overwrite: row.overwrite,
   }
@@ -361,6 +403,10 @@ export default function MetaLeadsAdminPage() {
   const [vacancyOptions, setVacancyOptions] = useState<Array<{ id: string; title: string }>>([])
   const [companyOptions, setCompanyOptions] = useState<Array<{ id: string; name: string }>>([])
   const [recruiterOptions, setRecruiterOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [messageTemplates, setMessageTemplates] = useState<LeadMessageTemplate[]>([])
+  const [newTemplateName, setNewTemplateName] = useState('')
+  const [newTemplateSubject, setNewTemplateSubject] = useState('')
+  const [newTemplateBody, setNewTemplateBody] = useState('')
 
   const [settingsDraft, setSettingsDraft] = useState<MetaLeadSettingsPatch>({})
   const [fieldMappingRows, setFieldMappingRows] = useState<FieldMappingRowState[]>([])
@@ -374,7 +420,19 @@ export default function MetaLeadsAdminPage() {
   const [incomingError, setIncomingError] = useState<FriendlyErrorInfo | null>(null)
   const [leadCustomFieldKeys, setLeadCustomFieldKeys] = useState<string[]>([])
   const [creatingLeadFieldKey, setCreatingLeadFieldKey] = useState<string | null>(null)
-  const [graphFieldNames, setGraphFieldNames] = useState<string[]>([])
+  const [graphPreviewFields, setGraphPreviewFields] = useState<MetaGraphFieldDataPreviewField[]>([])
+  const [metaForms, setMetaForms] = useState<MetaLeadFormSummary[]>([])
+  const [selectedFormKey, setSelectedFormKey] = useState<string>(META_FORM_TENANT_DEFAULT_KEY)
+  const [mappingInheritsTenant, setMappingInheritsTenant] = useState(true)
+  const [tenantFallbackRulesCount, setTenantFallbackRulesCount] = useState(0)
+  const [formMappingLoading, setFormMappingLoading] = useState(false)
+  const [formNameDraft, setFormNameDraft] = useState('')
+  const [ownCompanyOptions, setOwnCompanyOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [intakeRouteOwnCompanyId, setIntakeRouteOwnCompanyId] = useState('')
+  const [intakeRouteTarget, setIntakeRouteTarget] = useState<LeadTargetType>('candidate')
+  const [intakeRouteActive, setIntakeRouteActive] = useState(true)
+  const [intakeRouteConfigured, setIntakeRouteConfigured] = useState(false)
+  const [intakeRouteSaving, setIntakeRouteSaving] = useState(false)
   const [graphLeadgenInput, setGraphLeadgenInput] = useState('')
   const [graphPageInput, setGraphPageInput] = useState('')
   const [graphHostflowLeadPick, setGraphHostflowLeadPick] = useState('')
@@ -421,7 +479,8 @@ export default function MetaLeadsAdminPage() {
     'assisted') as LeadsProcessingModeV1
   const effectiveLeadRodoSendMode =
     settingsDraft.lead_rodo_send_mode ?? settings?.lead_rodo_send_mode ?? 'manual'
-  const commEnabled = settingsDraft.lead_communication_enabled ?? settings?.lead_communication_enabled ?? false
+  const rodoMessageTemplateId =
+    settingsDraft.lead_rodo_message_template_id ?? settings?.lead_rodo_message_template_id ?? null
   const autoCreateAppliesToMode = effectiveProcessingMode === 'automatic'
 
   const mappingRulesLimit = settings?.plan_field_mapping_rules_limit ?? null
@@ -503,6 +562,7 @@ export default function MetaLeadsAdminPage() {
     try {
       const [
         settingsData,
+        leadTemplatesData,
         credsData,
         mapData,
         leadsNeedsRoutingResp,
@@ -513,6 +573,7 @@ export default function MetaLeadsAdminPage() {
         adminUsers,
       ] = await Promise.all([
         getMetaLeadSettings(),
+        listLeadMessageTemplates(),
         listMetaLeadCredentials(),
         listMetaAdsMap({ limit: 200 }),
         listLeads({ status: 'needs_routing', limit: 100, offset: 0 }),
@@ -523,10 +584,14 @@ export default function MetaLeadsAdminPage() {
         listAdminUsers(),
       ])
       setSettings(settingsData)
+      setMessageTemplates(Array.isArray(leadTemplatesData) ? leadTemplatesData : [])
       setSettingsDraft({})
-      setFieldMappingRows(
-        (settingsData?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())),
-      )
+      if (selectedFormKey === META_FORM_TENANT_DEFAULT_KEY) {
+        setFieldMappingRows(
+          (settingsData?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())),
+        )
+        setMappingInheritsTenant(true)
+      }
       setCredentials(credsData)
       setMapping(mapData)
       setLeads(mergeLeadsForLogs(leadsNeedsRoutingResp, leadsFailedResp))
@@ -710,6 +775,100 @@ export default function MetaLeadsAdminPage() {
     }
   }, [tab])
 
+  useEffect(() => {
+    if (tab !== 'field_mapping') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await listOwnCompanies()
+        const items = Array.isArray((res as any)?.items) ? (res as any).items : []
+        if (!cancelled) {
+          setOwnCompanyOptions(items.map((x: any) => ({ id: String(x.id), name: String(x.name || x.id) })))
+        }
+      } catch {
+        if (!cancelled) setOwnCompanyOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tab])
+
+  const loadMetaFormsList = useCallback(async () => {
+    try {
+      const res = await listMetaLeadForms({ source: 'meta' })
+      setMetaForms(Array.isArray(res?.items) ? res.items : [])
+      setTenantFallbackRulesCount(res?.tenant_fallback_rules_count ?? 0)
+    } catch (err: any) {
+      console.error('[MetaLeadsAdmin] list meta forms failed', err)
+      setMetaForms([])
+    }
+  }, [])
+
+  const loadMappingForSelection = useCallback(
+    async (formKey: string) => {
+      setFormMappingLoading(true)
+      try {
+        if (formKey === META_FORM_TENANT_DEFAULT_KEY) {
+          const s = settings ?? (await getMetaLeadSettings())
+          setFieldMappingRows((s?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
+          setMappingInheritsTenant(true)
+          setFormNameDraft('')
+          setIntakeRouteConfigured(false)
+          setIntakeRouteOwnCompanyId('')
+          setIntakeRouteTarget('candidate')
+          return
+        }
+        const parsed = parseMetaFormSelectionKey(formKey)
+        if (!parsed) return
+        const detail = await getMetaLeadFormMapping(parsed.form_id, {
+          page_id: parsed.page_id || undefined,
+          source: parsed.source,
+        })
+        setFieldMappingRows((detail.mapping_rules ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
+        setMappingInheritsTenant(Boolean(detail.inherits_tenant_fallback))
+        setFormNameDraft(detail.form_name?.trim() ?? '')
+        setTenantFallbackRulesCount(detail.tenant_fallback_rules?.length ?? tenantFallbackRulesCount)
+        try {
+          const route = await getMetaFormRoute(parsed.form_id, {
+            page_id: parsed.page_id || undefined,
+            source: parsed.source,
+          })
+          setIntakeRouteConfigured(true)
+          setIntakeRouteOwnCompanyId(route.own_company_id)
+          setIntakeRouteTarget(route.lead_target_type)
+          setIntakeRouteActive(route.is_active)
+        } catch (err: any) {
+          const status = err?.response?.status
+          if (status === 404) {
+            setIntakeRouteConfigured(false)
+            setIntakeRouteOwnCompanyId('')
+            setIntakeRouteTarget('candidate')
+            setIntakeRouteActive(true)
+          } else {
+            throw err
+          }
+        }
+      } catch (err: any) {
+        console.error('[MetaLeadsAdmin] load form mapping failed', err)
+        setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.load_form_mapping'), t))
+      } finally {
+        setFormMappingLoading(false)
+      }
+    },
+    [settings, t, tenantFallbackRulesCount],
+  )
+
+  useEffect(() => {
+    if (tab !== 'field_mapping') return
+    void loadMetaFormsList()
+  }, [tab, loadMetaFormsList])
+
+  useEffect(() => {
+    if (tab !== 'field_mapping') return
+    void loadMappingForSelection(selectedFormKey)
+  }, [tab, selectedFormKey, loadMappingForSelection])
+
   const handleSettingsChange = useCallback(<K extends keyof MetaLeadSettingsPatch>(key: K, value: MetaLeadSettingsPatch[K]) => {
     setSettingsDraft((prev) => ({ ...prev, [key]: value }))
   }, [])
@@ -872,19 +1031,9 @@ export default function MetaLeadsAdminPage() {
         payload.auto_create_enabled = false
         payload.leads_auto_convert_on_fit_v1 = false
       }
-      const built = rulesFromRowStates(fieldMappingRows)
-      if (built === 'incomplete') {
-        setError({
-          title: t('admin.meta_leads.errors.field_mapping_row_incomplete'),
-          hint: t('admin.meta_leads.errors.field_mapping_row_incomplete_hint'),
-        })
-        return
-      }
-      payload.field_mapping = built
       const result = await updateMetaLeadSettings(payload)
       setSettings(result)
       setSettingsDraft({})
-      setFieldMappingRows((result?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
       setNotice(t('admin.meta_leads.notices.settings_saved'))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] update settings failed', err)
@@ -893,7 +1042,158 @@ export default function MetaLeadsAdminPage() {
       }
       setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.settings_update'), t))
     }
-  }, [fieldMappingRows, mappingRulesLimit, planLimitModal, settings, settingsDraft, t])
+  }, [settings, settingsDraft, t])
+
+  const handleCreateLeadMessageTemplate = useCallback(async () => {
+    const name = newTemplateName.trim()
+    if (!name) return
+    try {
+      const created = await createLeadMessageTemplate({
+        name,
+        subject: newTemplateSubject,
+        body: newTemplateBody,
+        is_active: true,
+      })
+      setMessageTemplates((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+      setNewTemplateName('')
+      setNewTemplateSubject('')
+      setNewTemplateBody('')
+      setNotice(
+        t('admin.meta_leads.templates.saved_notice', {
+          defaultValue: 'Template saved.',
+        }),
+      )
+    } catch (err: any) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.save'))) {
+        setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.save'), t))
+      }
+    }
+  }, [newTemplateBody, newTemplateName, newTemplateSubject, planLimitModal, t])
+
+  const handleUpdateLeadMessageTemplate = useCallback(
+    async (templateId: string, patch: Partial<LeadMessageTemplate>) => {
+      const current = messageTemplates.find((tpl) => tpl.id === templateId)
+      if (!current) return
+      const payload = {
+        name: (patch.name ?? current.name) || current.name,
+        subject: patch.subject ?? current.subject ?? '',
+        body: patch.body ?? current.body ?? '',
+        is_active: patch.is_active ?? current.is_active ?? true,
+      }
+      try {
+        const updated = await updateLeadMessageTemplate(templateId, payload)
+        setMessageTemplates((prev) => prev.map((tpl) => (tpl.id === templateId ? updated : tpl)))
+      } catch (err: any) {
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.save'))) {
+          setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.save'), t))
+        }
+      }
+    },
+    [messageTemplates, planLimitModal, t],
+  )
+
+  const handleDeleteLeadMessageTemplate = useCallback(
+    async (templateId: string) => {
+      try {
+        await deleteLeadMessageTemplate(templateId)
+        setMessageTemplates((prev) => prev.filter((tpl) => tpl.id !== templateId))
+      } catch (err: any) {
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.save'))) {
+          setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.save'), t))
+        }
+      }
+    },
+    [planLimitModal, t],
+  )
+
+  const handleSaveFieldMapping = useCallback(async () => {
+    const built = rulesFromRowStates(fieldMappingRows)
+    if (built === 'incomplete') {
+      setError({
+        title: t('admin.meta_leads.errors.field_mapping_row_incomplete'),
+        hint: t('admin.meta_leads.errors.field_mapping_row_incomplete_hint'),
+      })
+      return
+    }
+    try {
+      if (selectedFormKey === META_FORM_TENANT_DEFAULT_KEY) {
+        const result = await updateMetaLeadSettings({ field_mapping: built })
+        setSettings(result)
+        setMappingInheritsTenant(true)
+        setFieldMappingRows((result?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
+        setNotice(t('admin.meta_leads.notices.tenant_mapping_saved'))
+      } else {
+        const parsed = parseMetaFormSelectionKey(selectedFormKey)
+        if (!parsed) return
+        const detail = await putMetaLeadFormMapping(parsed.form_id, {
+          source: parsed.source,
+          page_id: parsed.page_id || null,
+          form_name: formNameDraft.trim() || null,
+          mapping_rules: built,
+          last_sample_lead_id: graphHostflowLeadPick.trim() || null,
+        })
+        setFieldMappingRows((detail.mapping_rules ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
+        setMappingInheritsTenant(Boolean(detail.inherits_tenant_fallback))
+        setNotice(t('admin.meta_leads.notices.form_mapping_saved'))
+        await loadMetaFormsList()
+      }
+    } catch (err: any) {
+      console.error('[MetaLeadsAdmin] save field mapping failed', err)
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.settings_update'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.settings_update'), t))
+    }
+  }, [
+    fieldMappingRows,
+    formNameDraft,
+    graphHostflowLeadPick,
+    loadMetaFormsList,
+    mappingRulesLimit,
+    planLimitModal,
+    selectedFormKey,
+    t,
+  ])
+
+  const handleSaveIntakeRoute = useCallback(async () => {
+    const parsed = parseMetaFormSelectionKey(selectedFormKey)
+    if (!parsed) return
+    if (!intakeRouteOwnCompanyId.trim()) {
+      setError({
+        title: t('admin.meta_leads.errors.intake_route_own_company', { defaultValue: 'Select a company profile' }),
+      })
+      return
+    }
+    setIntakeRouteSaving(true)
+    try {
+      await putMetaFormRoute(parsed.form_id, {
+        source: parsed.source,
+        page_id: parsed.page_id || null,
+        own_company_id: intakeRouteOwnCompanyId.trim(),
+        lead_target_type: intakeRouteTarget,
+        is_active: intakeRouteActive,
+      })
+      setIntakeRouteConfigured(true)
+      setNotice(
+        t('admin.meta_leads.notices.intake_route_saved', { defaultValue: 'Intake route saved for this form.' }),
+      )
+      await loadMetaFormsList()
+    } catch (err: any) {
+      console.error('[MetaLeadsAdmin] save intake route failed', err)
+      setError(
+        getFriendlyErrorInfo(err, t('admin.meta_leads.errors.intake_route_save', { defaultValue: 'Could not save intake route' }), t),
+      )
+    } finally {
+      setIntakeRouteSaving(false)
+    }
+  }, [
+    intakeRouteActive,
+    intakeRouteOwnCompanyId,
+    intakeRouteTarget,
+    loadMetaFormsList,
+    selectedFormKey,
+    t,
+  ])
 
   const handleCredentialCreate = useCallback(async () => {
     const payload: MetaCredentialCreatePayload = {
@@ -1151,22 +1451,38 @@ export default function MetaLeadsAdminPage() {
         s.add(k)
       }
     }
-    for (const k of graphFieldNames) {
-      const nk = k.trim().toLowerCase()
+    for (const f of graphPreviewFields) {
+      const nk = f.name.trim().toLowerCase()
       if (nk) s.add(nk)
     }
     return [...s].sort()
-  }, [incomingRows, graphFieldNames])
+  }, [incomingRows, graphPreviewFields])
+
+  const metaFormFieldRows = useMemo(
+    () =>
+      buildMetaFormFieldRows({
+        graphFields: graphPreviewFields,
+        incomingPayloads: incomingRows.map((r) => r.payload_json_preview ?? ''),
+        incomingNormalized: incomingRows
+          .map((r) => r.normalized_json_preview ?? '')
+          .filter(Boolean),
+        mappingRows: fieldMappingRows,
+      }),
+    [graphPreviewFields, incomingRows, fieldMappingRows],
+  )
 
   const mappingTargetSuggestions = useMemo(() => {
     const s = new Set<string>([
+      ...LEAD_INTAKE_QUALIFIED_PRESETS,
       ...META_MAPPING_TARGET_PRESETS,
       ...META_MAPPING_TARGET_EXTENDED,
       ...leadCustomFieldKeys.map((k) => k.trim().toLowerCase()).filter(Boolean),
     ])
     for (const row of fieldMappingRows) {
-      const t = row.target.trim().toLowerCase()
-      if (t) s.add(t)
+      const qualified = row.qualifiedFieldCode.trim()
+      if (qualified) s.add(qualified)
+      const legacy = row.target.trim().toLowerCase()
+      if (legacy) s.add(legacy)
     }
     return [...s].sort((a, b) => a.localeCompare(b))
   }, [fieldMappingRows, leadCustomFieldKeys])
@@ -1258,9 +1574,29 @@ export default function MetaLeadsAdminPage() {
       const res = await fetchMetaGraphFieldPreview(
         pick ? { hostflow_lead_id: pick, ...(pg ? { page_id: pg } : {}) } : { leadgen_id: lg, page_id: pg },
       )
-      setGraphFieldNames(res.field_names)
+      setGraphPreviewFields(Array.isArray(res.fields) ? res.fields : [])
       setGraphLeadgenInput(res.leadgen_id)
       setGraphPageInput(res.page_id)
+      if (res.form_id?.trim()) {
+        const fid = res.form_id.trim()
+        const pid = res.page_id?.trim() ?? ''
+        const key = metaFormSelectionKey({ source: 'meta', form_id: fid, page_id: pid })
+        setMetaForms((prev) => {
+          if (prev.some((f) => metaFormSelectionKey(f) === key)) return prev
+          return [
+            ...prev,
+            {
+              form_id: fid,
+              page_id: pid || null,
+              source: 'meta',
+              has_form_mapping: false,
+              mapping_rules_count: 0,
+              inherits_tenant_fallback: true,
+            },
+          ]
+        })
+        setSelectedFormKey(key)
+      }
       setNotice(
         t('admin.meta_leads.field_mapping.graph_fetch_notice', {
           values: { count: res.field_names.length, form_id: res.form_id ?? '—' },
@@ -2104,65 +2440,108 @@ export default function MetaLeadsAdminPage() {
                 </option>
               </select>
               <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_rodo_send_mode_hint')}</p>
+              <label className="mt-2 block text-xs text-slate-600">
+                {t('admin.meta_leads.settings.lead_rodo_message_template_label', { defaultValue: 'RODO email template' })}
+                <select
+                  className="input mt-1 w-full max-w-md"
+                  value={rodoMessageTemplateId ?? ''}
+                  onChange={(event) =>
+                    handleSettingsChange('lead_rodo_message_template_id', event.target.value ? event.target.value : null)
+                  }
+                >
+                  <option value="">{t('admin.meta_leads.settings.template_none', { defaultValue: 'Default built-in text' })}</option>
+                  {messageTemplates.filter((tpl) => tpl.is_active).map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>
+                      {tpl.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </label>
             <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
-              <p className="text-sm font-semibold text-slate-900">
-                {t('admin.meta_leads.settings.lead_communication_title', { defaultValue: 'Lead operational emails' })}
-              </p>
-              <p className="text-xs text-slate-600">
-                {t('admin.meta_leads.settings.lead_communication_hint', {
-                  defaultValue: 'Separate from RODO / art. 14. Candidate-facing status messages only.',
-                })}
-              </p>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={commEnabled}
-                  onChange={(event) => handleSettingsChange('lead_communication_enabled', event.target.checked)}
-                />
-                {t('admin.meta_leads.settings.lead_communication_enabled', { defaultValue: 'Enable lead operational emails' })}
-              </label>
-              <label className={`flex items-center gap-2 text-sm ${commEnabled ? 'text-slate-700' : 'text-slate-500'}`}>
-                <input
-                  type="checkbox"
-                  disabled={!commEnabled}
-                  checked={
-                    commEnabled
-                      ? (settingsDraft.send_application_received ?? settings?.send_application_received ?? false)
-                      : false
-                  }
-                  onChange={(event) => handleSettingsChange('send_application_received', event.target.checked)}
-                />
-                {t('admin.meta_leads.settings.send_application_received', { defaultValue: 'Application received (on new lead ingest)' })}
-              </label>
-              <label className={`flex items-center gap-2 text-sm ${commEnabled ? 'text-slate-700' : 'text-slate-500'}`}>
-                <input
-                  type="checkbox"
-                  disabled={!commEnabled}
-                  checked={
-                    commEnabled
-                      ? (settingsDraft.send_rejection_notice ?? settings?.send_rejection_notice ?? false)
-                      : false
-                  }
-                  onChange={(event) => handleSettingsChange('send_rejection_notice', event.target.checked)}
-                />
-                {t('admin.meta_leads.settings.send_rejection_notice', { defaultValue: 'Rejection notice (on intake reject)' })}
-              </label>
-              <label className={`flex items-center gap-2 text-sm ${commEnabled ? 'text-slate-700' : 'text-slate-500'}`}>
-                <input
-                  type="checkbox"
-                  disabled={!commEnabled}
-                  checked={
-                    commEnabled
-                      ? (settingsDraft.send_moving_forward_notice ?? settings?.send_moving_forward_notice ?? false)
-                      : false
-                  }
-                  onChange={(event) => handleSettingsChange('send_moving_forward_notice', event.target.checked)}
-                />
-                {t('admin.meta_leads.settings.send_moving_forward_notice', {
-                  defaultValue: 'Moving forward (on Lead → Candidate conversion)',
-                })}
-              </label>
+              <LeadOperationalEmailBindingsCard
+                includeRodoTemplate={false}
+                templates={messageTemplates}
+                value={{
+                  lead_communication_enabled:
+                    settingsDraft.lead_communication_enabled ?? settings?.lead_communication_enabled ?? false,
+                  send_application_received:
+                    settingsDraft.send_application_received ?? settings?.send_application_received ?? false,
+                  send_rejection_notice:
+                    settingsDraft.send_rejection_notice ?? settings?.send_rejection_notice ?? false,
+                  send_moving_forward_notice:
+                    settingsDraft.send_moving_forward_notice ?? settings?.send_moving_forward_notice ?? false,
+                  application_received_template_id:
+                    settingsDraft.application_received_template_id ?? settings?.application_received_template_id ?? null,
+                  rejection_notice_template_id:
+                    settingsDraft.rejection_notice_template_id ?? settings?.rejection_notice_template_id ?? null,
+                  moving_forward_template_id:
+                    settingsDraft.moving_forward_template_id ?? settings?.moving_forward_template_id ?? null,
+                }}
+                onChange={(next) => {
+                  handleSettingsChange('lead_communication_enabled', Boolean(next.lead_communication_enabled))
+                  handleSettingsChange('send_application_received', Boolean(next.send_application_received))
+                  handleSettingsChange('send_rejection_notice', Boolean(next.send_rejection_notice))
+                  handleSettingsChange('send_moving_forward_notice', Boolean(next.send_moving_forward_notice))
+                  handleSettingsChange('application_received_template_id', next.application_received_template_id ?? null)
+                  handleSettingsChange('rejection_notice_template_id', next.rejection_notice_template_id ?? null)
+                  handleSettingsChange('moving_forward_template_id', next.moving_forward_template_id ?? null)
+                }}
+              />
+              <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+                <p className="text-sm font-semibold text-slate-900">
+                  {t('admin.meta_leads.settings.template_hub_title', { defaultValue: 'Lead Email Template Hub' })}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {t('admin.meta_leads.settings.template_hub_hint', { defaultValue: 'Create shared templates once and reuse them in RODO and operational lead emails.' })}
+                </p>
+                <Link className="mt-2 inline-flex text-xs font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsMessageTemplates}>
+                  {t('admin.meta_leads.settings.open_template_hub', { defaultValue: 'Open full template hub' })}
+                </Link>
+                <div className="mt-2 grid gap-2 md:grid-cols-3">
+                  <input
+                    className="input"
+                    value={newTemplateName}
+                    onChange={(event) => setNewTemplateName(event.target.value)}
+                    placeholder={t('admin.meta_leads.settings.template_name', { defaultValue: 'Template name' })}
+                  />
+                  <input
+                    className="input md:col-span-2"
+                    value={newTemplateSubject}
+                    onChange={(event) => setNewTemplateSubject(event.target.value)}
+                    placeholder={t('admin.meta_leads.settings.email_template_subject', { defaultValue: 'Email subject' })}
+                  />
+                  <textarea
+                    className="input md:col-span-3 min-h-[88px]"
+                    value={newTemplateBody}
+                    onChange={(event) => setNewTemplateBody(event.target.value)}
+                    placeholder={t('admin.meta_leads.settings.email_template_body', { defaultValue: 'Email body' })}
+                  />
+                </div>
+                <button type="button" className="btn-secondary mt-2" onClick={() => void handleCreateLeadMessageTemplate()}>
+                  {t('admin.meta_leads.settings.template_create', { defaultValue: 'Create template' })}
+                </button>
+                <div className="mt-3 space-y-2">
+                  {messageTemplates.map((tpl) => (
+                    <div key={tpl.id} className="rounded border border-slate-200 p-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          className="input w-full"
+                          value={tpl.name}
+                          onChange={(event) => {
+                            const value = event.target.value
+                            setMessageTemplates((prev) => prev.map((x) => (x.id === tpl.id ? { ...x, name: value } : x)))
+                          }}
+                          onBlur={() => void handleUpdateLeadMessageTemplate(tpl.id, { name: tpl.name })}
+                        />
+                        <button type="button" className="btn-danger btn-xs" onClick={() => void handleDeleteLeadMessageTemplate(tpl.id)}>
+                          {t('common.actions.delete', { defaultValue: 'Delete' })}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <label
               className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
@@ -2695,6 +3074,132 @@ export default function MetaLeadsAdminPage() {
 
       {tab === 'field_mapping' && metaConnected && (
         <section className="space-y-4">
+          <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-800">
+              {t('admin.meta_leads.field_mapping.form_select_label')}
+              <select
+                className="input max-w-xl text-sm"
+                value={selectedFormKey}
+                disabled={formMappingLoading}
+                onChange={(e) => setSelectedFormKey(e.target.value)}
+              >
+                <option value={META_FORM_TENANT_DEFAULT_KEY}>
+                  {t('admin.meta_leads.field_mapping.form_select_tenant_default', {
+                    values: { count: tenantFallbackRulesCount },
+                  })}
+                </option>
+                {metaForms.map((f) => (
+                  <option key={metaFormSelectionKey(f)} value={metaFormSelectionKey(f)}>
+                    {f.form_name?.trim() ||
+                      t('admin.meta_leads.field_mapping.form_select_option', {
+                        values: { form_id: f.form_id, page_id: f.page_id || '—' },
+                      })}
+                    {f.has_form_mapping
+                      ? ` · ${t('admin.meta_leads.field_mapping.form_fields.status_mapped')}`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
+              <label className="mt-3 flex max-w-md flex-col gap-1 text-xs font-medium text-slate-700">
+                {t('admin.meta_leads.detail.fields.form_name_label', { defaultValue: 'Form label (optional)' })}
+                <input
+                  type="text"
+                  className="input text-sm"
+                  value={formNameDraft}
+                  onChange={(e) => setFormNameDraft(e.target.value)}
+                  placeholder={t('admin.meta_leads.field_mapping.form_name_placeholder')}
+                />
+              </label>
+            )}
+            {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
+              <div className="mt-4 rounded-md border border-indigo-100 bg-indigo-50/60 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {t('admin.meta_leads.intake_route.title', { defaultValue: 'Intake route' })}
+                </h3>
+                <p className="mt-1 text-xs text-slate-600">
+                  {t('admin.meta_leads.intake_route.body', {
+                    defaultValue:
+                      'Bind this Meta form to a company profile and lead target. Ingest uses this before creating candidates or clients.',
+                  })}
+                </p>
+                {!intakeRouteConfigured && (
+                  <p className="mt-2 text-xs text-amber-800">
+                    {t('admin.meta_leads.intake_route.fallback_warning', {
+                      defaultValue:
+                        'No route configured — ingest falls back to tenant business type (may create wrong entity type).',
+                    })}
+                  </p>
+                )}
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+                    {t('admin.meta_leads.intake_route.own_company', { defaultValue: 'Company profile' })}
+                    <select
+                      className="input text-sm"
+                      value={intakeRouteOwnCompanyId}
+                      onChange={(e) => setIntakeRouteOwnCompanyId(e.target.value)}
+                    >
+                      <option value="">
+                        {t('admin.meta_leads.intake_route.own_company_placeholder', { defaultValue: 'Select profile…' })}
+                      </option>
+                      {ownCompanyOptions.map((oc) => (
+                        <option key={oc.id} value={oc.id}>
+                          {oc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+                    {t('admin.meta_leads.intake_route.lead_target', { defaultValue: 'Lead target type' })}
+                    <select
+                      className="input text-sm"
+                      value={intakeRouteTarget}
+                      onChange={(e) => setIntakeRouteTarget(e.target.value as LeadTargetType)}
+                    >
+                      <option value="candidate">
+                        {t('admin.meta_leads.intake_route.targets.candidate', { defaultValue: 'Candidate (driver)' })}
+                      </option>
+                      <option value="client_lead">
+                        {t('admin.meta_leads.intake_route.targets.client_lead', { defaultValue: 'Client lead (B2B)' })}
+                      </option>
+                      <option value="service_order_lead">
+                        {t('admin.meta_leads.intake_route.targets.service_order_lead', {
+                          defaultValue: 'Service order lead',
+                        })}
+                      </option>
+                      <option value="partner_lead">
+                        {t('admin.meta_leads.intake_route.targets.partner_lead', { defaultValue: 'Partner lead' })}
+                      </option>
+                    </select>
+                  </label>
+                </div>
+                <label className="mt-3 flex items-center gap-2 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={intakeRouteActive}
+                    onChange={(e) => setIntakeRouteActive(e.target.checked)}
+                  />
+                  {t('admin.meta_leads.intake_route.active', { defaultValue: 'Route active' })}
+                </label>
+                <button
+                  type="button"
+                  className="btn-primary btn-sm mt-3"
+                  disabled={intakeRouteSaving || formMappingLoading}
+                  onClick={() => void handleSaveIntakeRoute()}
+                >
+                  {intakeRouteSaving
+                    ? t('common.saving')
+                    : t('admin.meta_leads.intake_route.save', { defaultValue: 'Save intake route' })}
+                </button>
+              </div>
+            )}
+            {mappingInheritsTenant && selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
+              <p className="mt-2 rounded-md border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {t('admin.meta_leads.field_mapping.inherits_tenant_banner')}
+              </p>
+            )}
+          </div>
           <div className="rounded border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900">
               {t('admin.meta_leads.field_mapping.graph_fetch_title')}
@@ -2780,6 +3285,78 @@ export default function MetaLeadsAdminPage() {
             </div>
             <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.graph_fetch_footer')}</p>
           </div>
+
+          <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('admin.meta_leads.field_mapping.form_fields.title')}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {t('admin.meta_leads.field_mapping.form_fields.subtitle')}
+            </p>
+            {metaFormFieldRows.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">
+                {t('admin.meta_leads.field_mapping.form_fields.empty')}
+              </p>
+            ) : (
+              <div className="mt-4 overflow-x-auto rounded border border-slate-200">
+                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                        {t('admin.meta_leads.field_mapping.form_fields.col_field')}
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                        {t('admin.meta_leads.field_mapping.form_fields.col_sample')}
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                        {t('admin.meta_leads.field_mapping.form_fields.col_status')}
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                        {t('admin.meta_leads.field_mapping.form_fields.col_target')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {metaFormFieldRows.map((row) => (
+                      <tr key={row.name}>
+                        <td className="px-3 py-2 align-top font-medium text-slate-900">{row.displayName}</td>
+                        <td className="px-3 py-2 align-top text-slate-700">
+                          {row.sampleValue ? (
+                            <span className="break-words">{row.sampleValue}</span>
+                          ) : (
+                            <span className="text-slate-400 italic">
+                              {t('admin.meta_leads.field_mapping.form_fields.no_sample')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          {row.mapped ? (
+                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">
+                              {t('admin.meta_leads.field_mapping.form_fields.status_mapped')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-amber-200">
+                              {t('admin.meta_leads.field_mapping.form_fields.status_unmapped')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 align-top text-slate-700">
+                          {row.mapped && row.target ? (
+                            <span className="font-mono text-xs text-slate-800">{row.target}</span>
+                          ) : (
+                            <span className="text-slate-500">
+                              {t('admin.meta_leads.field_mapping.form_fields.pick_target')}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           <datalist id="meta-mapping-source-suggestions">
             {suggestedMetaFieldKeys.map((key) => (
               <option key={key} value={key} />
@@ -2828,8 +3405,10 @@ export default function MetaLeadsAdminPage() {
             </div>
           )}
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.field_mapping.title')}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.field_mapping.subtitle')}</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('admin.meta_leads.field_mapping.rules_title')}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.field_mapping.rules_subtitle')}</p>
             {mappingRulesLimit != null && (
               <p className="mt-2 text-xs text-slate-600">
                 {t('admin.meta_leads.field_mapping.plan_limit_status', {
@@ -2837,7 +3416,7 @@ export default function MetaLeadsAdminPage() {
                 })}
               </p>
             )}
-            <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.source_hint')}</p>
+            <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.rules_hint')}</p>
             <div className="mt-4 overflow-x-auto rounded border border-slate-200">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50">
@@ -2886,18 +3465,37 @@ export default function MetaLeadsAdminPage() {
                       <td className="px-3 py-2 align-top">
                         <input
                           type="text"
-                          className="input w-full min-w-[140px] text-xs"
+                          className="input w-full min-w-[180px] text-xs font-mono"
                           list="meta-mapping-target-presets"
-                          value={row.target}
+                          value={row.qualifiedFieldCode || row.target}
                           onChange={(event) => {
-                            const v = event.target.value
+                            const v = event.target.value.trim()
+                            const qualified = isQualifiedFieldCode(v)
+                              ? v
+                              : qualifiedCodeFromLegacyTarget(v)
+                            const legacy = qualified
+                              ? legacyTargetFromQualified(qualified)
+                              : v
                             setFieldMappingRows((prev) =>
-                              prev.map((r) => (r.id === row.id ? { ...r, target: v } : r)),
+                              prev.map((r) =>
+                                r.id === row.id
+                                  ? {
+                                      ...r,
+                                      qualifiedFieldCode: qualified,
+                                      target: legacy,
+                                    }
+                                  : r,
+                              ),
                             )
                           }}
-                          placeholder={t('admin.meta_leads.field_mapping.target_placeholder')}
+                          placeholder="recruitment.candidate.contacts.email"
                           aria-label={t('admin.meta_leads.field_mapping.col_target')}
                         />
+                        {row.qualifiedFieldCode && row.target && row.qualifiedFieldCode !== row.target ? (
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            legacy: <code>{row.target}</code>
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-3 py-2 align-top">
                         <select
@@ -2982,8 +3580,10 @@ export default function MetaLeadsAdminPage() {
                 </span>
               )}
             </div>
-            <button type="button" onClick={handleSettingsSubmit} className="btn-primary mt-4">
-              {t('admin.meta_leads.field_mapping.save')}
+            <button type="button" onClick={() => void handleSaveFieldMapping()} className="btn-primary mt-4">
+              {selectedFormKey === META_FORM_TENANT_DEFAULT_KEY
+                ? t('admin.meta_leads.field_mapping.save_tenant')
+                : t('admin.meta_leads.field_mapping.save_form')}
             </button>
           </div>
         </section>

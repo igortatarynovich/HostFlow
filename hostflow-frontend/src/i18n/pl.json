@@ -457,6 +457,54 @@
           "clearer_file": "Wyraźniejszy plik"
         }
       },
+      "exceptions": {
+        "section_title": "Wyjątki",
+        "waive_link": "Oznacz wymaganie jako wyjątek…",
+        "waive_title": "Wyjątek od wymagania",
+        "waive_warning": "To wymaganie zostanie oznaczone jako wyjątek. Zatwierdzenie może przejść bez tego dokumentu.",
+        "waive_document": "Dokument: {document}",
+        "waive_reason": "Powód (wymagany)",
+        "waive_placeholder": "Dlaczego to wymaganie jest zwolnione?",
+        "waive_submit": "Oznacz jako wyjątek",
+        "waive_done": "Wymaganie oznaczone jako wyjątek",
+        "additional_link": "Poproś o dodatkowy dokument…",
+        "additional_title": "Poproś o dodatkowy dokument",
+        "additional_subtitle": "Poproś rekrutację o więcej informacji. To blokuje finalne zatwierdzenie do otrzymania dokumentu.",
+        "additional_name": "Nazwa dokumentu",
+        "additional_name_placeholder": "np. Referencja od poprzedniego pracodawcy",
+        "additional_note": "Notatka dla rekrutacji (opcjonalnie)",
+        "additional_urgency": "Pilność (opcjonalnie)",
+        "urgency_none": "Bez określenia",
+        "urgency_normal": "Normalna",
+        "urgency_high": "Wysoka",
+        "additional_submit": "Wyślij prośbę",
+        "additional_done": "Rekrutacja otrzyma prośbę o dokument",
+        "hr_requested_heading": "Poproszone od rekrutacji",
+        "hr_requested_pending": "Oczekuje",
+        "hr_requested_received": "Otrzymano"
+      },
+      "ready": {
+        "phase": "Weryfikacja dokumentów",
+        "title": "Weryfikacja zakończona",
+        "headline_confirmed": "Wszystkie wymagane dokumenty potwierdzone",
+        "headline_decision": "Kandydat jest gotowy do decyzji o zatrudnieniu.",
+        "progress": "{verified} z {total} wymaganych dokumentów potwierdzonych",
+        "summary_confirmed": "Potwierdzone",
+        "summary_waived": "Wyjątki (zwolnione)",
+        "waive_reason": "Powód: {reason}",
+        "summary_hr_requested": "Dokumenty poproszone przez HR",
+        "summary_recommended": "Zalecane (opcjonalne)",
+        "recommended_hint": "Brakuje — nie blokuje zatwierdzenia zatrudnienia.",
+        "review_documents": "Przejrzyj potwierdzone dokumenty",
+        "back_to_decision": "Wróć do decyzji o zatrudnieniu",
+        "all_done_hint": "Wszystkie wymagane dokumenty potwierdzone. Możesz zatwierdzić zatrudnienie.",
+        "still_needed": "Wymagane przed zatwierdzeniem",
+        "identity_pending": "Tożsamość zatrudnieniowa musi być uzupełniona przed zatwierdzeniem.",
+        "blocker_missing_file": "{document} — brak pliku",
+        "blocker_not_confirmed": "{document} — oczekuje na potwierdzenie",
+        "blocker_missing_field": "{document} — wpisz {field} z pliku",
+        "blocker_field_fallback": "wymagane pole"
+      },
       "identity": {
         "compact_title": "Gotowość downstream",
         "contracts": "Umowy",
@@ -1217,7 +1265,74 @@
           "disable_auto_convert_hint": "Przy trybie Automatic leady na tę ofertę nie utworzą kandydata automatycznie nawet przy fit — wymagany Process. W extra: leads_auto_convert_on_fit_v1 = false.",
           "enable_fit_evaluation": "Włącz dopasowanie leadów do kryteriów",
           "enable_fit_evaluation_hint": "Wyłączone: pola poniżej możesz edytować jako szkic — nie wpływają na routing ani autokonwersję. Włączone bez reguł: fit nie blokuje (jak brak kryteriów). W extra: lead_fit_evaluation_enabled_v1."
+        },
+        "work_schedule": {
+          "title": "Opcje grafiku pracy",
+          "hint": "Co oferuje klient na tę wakaturę (preferencja kandydata jest osobno)"
         }
+      }
+    },
+    "recruitment_preparation": {
+      "title": "Dokumenty na to stanowisko",
+      "subtitle": "Sprawdź uploady i dane — to nie weryfikacja HR compliance",
+      "badge": {
+        "ready_for_hr": "Gotowy do HR",
+        "missing_required": "Brakuje wymaganych",
+        "warnings": "Ostrzeżenia"
+      },
+      "sections": {
+        "required": "Wymagane",
+        "recommended": "Zalecane",
+        "optional": "Opcjonalne",
+        "not_required": "Niewymagane"
+      },
+      "status": {
+        "missing": "Nie wgrano",
+        "uploaded": "Wgrano"
+      },
+      "file_version": "v{{version}}",
+      "expires": "ważny do {{date}}",
+      "missing_data": "Brakujące dane: {{fields}}",
+      "warnings_before_handoff": "Ostrzeżenia przed przekazaniem",
+      "warnings_non_blocking": "Możesz przekazać z ostrzeżeniami — HR zobaczy je w snapshot.",
+      "handoff_note": "Notatka dla HR przed przekazaniem",
+      "handoff_note_placeholder": "Kontekst dla HR: grafik, wyjątki, oczekiwania klienta…",
+      "empty": "Brak dokumentów w pakiecie.",
+      "stage_blocked": {
+        "title": "Nie można przejść do „Gotowy do przekazania”",
+        "description": "Wgraj wymagane dokumenty i uzupełnij dane w „Dokumenty na to stanowisko”."
+      },
+      "handoff_modal": {
+        "blocked": "Brakuje wymaganych dokumentów lub danych. Napraw blokery w „Dokumenty na to stanowisko”.",
+        "warnings": "Są ostrzeżenia (np. zalecane dokumenty lub grafik). HR zobaczy je w snapshot."
+      },
+      "warn": {
+        "schedule_mismatch": "Grafik nie pasuje do wakatu",
+        "schedule_individual_comment": "Wybrano grafik indywidualny — dodaj komentarz dla HR/klienta",
+        "missing_recommended": "Brak zalecanego dokumentu: {{key}}"
+      },
+      "actions": {
+        "upload": "Wgraj",
+        "replace": "Zamień",
+        "preview": "Podgląd",
+        "complete_data": "Uzupełnij dane"
+      }
+    },
+    "work_schedule": {
+      "options": {
+        "by_weeks": "Tygodniowo",
+        "4/1": "4/1",
+        "8/2": "8/2",
+        "individual": "Indywidualny"
+      },
+      "candidate": {
+        "title": "Preferowany grafik pracy",
+        "hint": "Co kandydat jest gotów przyjąć — może różnić się od oferty wakatu",
+        "vacancy_offers": "Wakat oferuje",
+        "field": "Grafik",
+        "comment": "Grafik indywidualny — komentarz dla HR/klienta",
+        "comment_recommended": "Zdecydowanie zalecane przed przekazaniem",
+        "mismatch": "Grafik nie pasuje do wakatu — ostrzeżenie rekrutacji, nie bloker handoff"
       }
     },
     "handoff": {
@@ -4672,6 +4787,62 @@
         "title": "Najpierw zarejestruj próbę kontaktu",
         "description": "Polityka klienta wymaga co najmniej jednej zarejestrowanej próby kontaktu przed opuszczeniem etapu „Nowy”."
       },
+      "dossier_checklist": {
+        "badge": "Pakiet rekrutacyjny",
+        "hint": "Te same bloki co w dossier HR — zweryfikuj każdy blok, potem przekaż.",
+        "ready": "Gotowe",
+        "missing": "Brakuje",
+        "issue": "Wymaga weryfikacji",
+        "data": "Sprawdź pola",
+        "optional": "Opcjonalne",
+        "complete": "Gotowy do przekazania",
+        "pending": "Otwarte: {count}",
+        "missing_data": "Brakujące dane: {list}",
+        "pending_confirm": "Potwierdź zweryfikowane bloki: {list}",
+        "confirmed": "Potwierdzone",
+        "confirm_block": "Potwierdź weryfikację",
+        "confirmed_toast": "Blok potwierdzony",
+        "checking": "Sprawdzanie pakietu rekrutacyjnego…",
+        "load_failed": "Nie udało się załadować statusu pakietu. Odśwież stronę i spróbuj ponownie.",
+        "stage_blocked_title": "Nie można przejść do etapu „Gotowy do przekazania”",
+        "package_blocked_generic": "Pakiet rekrutacyjny jest niekompletny. Sprawdź listę poniżej.",
+        "blocked_confirm": "Potwierdź zweryfikowane bloki: {list}",
+        "blocked_missing_data": "Uzupełnij dane pakietu: {list}",
+        "blocked_blocks": "Uzupełnij bloki dossier: {list}",
+        "blocked_documents": "Brakujące lub oczekujące dokumenty: {list}",
+        "blocked_eligibility": "Reguły workforce blokują przekazanie ({status}). Sprawdź dokumenty i przypisanie wakatu.",
+        "blocked_eligibility_generic": "Reguły workforce blokują przekazanie. Sprawdź dokumenty i przypisanie wakatu."
+      },
+      "transfer_readiness": {
+        "badge": "Gotowość do przekazania",
+        "hint": "Decyzja Transfer Policy — bez lokalnych reguł checklisty.",
+        "checking": "Sprawdzanie gotowości do przekazania…",
+        "load_failed": "Nie udało się załadować raportu. Odśwież stronę.",
+        "stage_blocked_title": "Nie można przejść do etapu „Gotowy do przekazania”",
+        "blocked_generic": "Przekazanie zablokowane. Zobacz raport poniżej.",
+        "final_decision": "Decyzja końcowa",
+        "transfer_allowed": "Etap → ready_for_handoff",
+        "handoff_create_allowed": "Utwórz handoff",
+        "blocking_reasons": "Powody blokady",
+        "warnings": "Ostrzeżenia",
+        "required_documents": "Wymagane dokumenty",
+        "required_list": "Wymagane",
+        "missing_list": "Brakujące",
+        "pending_verification_list": "Oczekują weryfikacji",
+        "required_data": "Wymagane dane",
+        "confirmations": "Potwierdzenia",
+        "destinations": "Kierunki przekazania",
+        "no_destinations": "Brak skonfigurowanych",
+        "overrides": "Wyjątki",
+        "layer.document_packs": "Document packs",
+        "layer.recruitment_package": "Recruitment package",
+        "layer.recruiter_confirmation": "Potwierdzenie rekrutera",
+        "layer.tenant_link": "Tenant link",
+        "layer.hiring_pipeline_gates": "Pipeline gates",
+        "layer.transfer_policy": "Transfer policy",
+        "destination.internal_hr": "Internal HR",
+        "destination.client": "Client portal"
+      },
       "stage_decision": {
         "blocked_title": "Przejście zablokowane przez wymagane dokumenty",
         "blocked_title_vacancy": "Przypisz wakatu, aby przejść dalej",
@@ -5120,6 +5291,28 @@
         "save_error": "Failed to save changes",
         "archive_error": "Failed to update archive status"
       },
+      "intake_links": {
+        "title": "Link do ankiety dla nowego klienta",
+        "subtitle": "Użyj tego linku w reklamach, emailu, na stronie lub w kontakcie bezpośrednim. Wysłana ankieta tworzy Client Lead, nie aktywnego klienta.",
+        "active_count": "{count} aktywne",
+        "no_active": "Brak aktywnego linku",
+        "manage": "Utwórz / zarządzaj linkiem",
+        "hide": "Ukryj linki",
+        "copied": "Link skopiowany",
+        "created": "Publiczny link ankiety utworzony",
+        "create_title": "Utwórz publiczny link ankiety",
+        "create_hint": "Firma-właściciel pochodzi z workspace, a nie z danych publicznej ankiety.",
+        "languages_hint": "Języki ankiety",
+        "empty": "Nie ma jeszcze linków do ankiety. Utwórz pierwszy dla strony, reklam lub wysyłki bezpośredniej.",
+        "fields": {
+          "name": "Nazwa linku",
+          "owner": "Firma-właściciel",
+          "source": "Źródło",
+          "manager": "Menedżer",
+          "slug": "Publiczny slug",
+          "active": "Aktywny"
+        }
+      },
       "invoices": {
         "title": "Faktury",
         "subtitle": "Wystawianie i wysyłanie faktur do klienta",
@@ -5176,6 +5369,7 @@
       },
       "list": {
         "title": "Firmy",
+        "clients_title": "Klienci",
         "wayfinding_title": "Inne obszary CRM",
         "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, listy klientów, kandydatów, leadów i ustawień",
         "search_label": "Szukaj",
@@ -8292,6 +8486,93 @@
         }
       }
     },
+    "company_intake": {
+      "seo": {
+        "title": "Ankieta firmy — HostFlow",
+        "description": "Przekaż dane firmy transportowej i potrzeby kadrowe do HostFlow."
+      },
+      "kicker": "B2B intake",
+      "title": "Ankieta firmy transportowej",
+      "submit": "Wyślij ankietę",
+      "fields": {
+        "company_name": "Nazwa firmy",
+        "tax_id": "NIP / VAT",
+        "country": "Kraj",
+        "city": "Miasto",
+        "website": "Strona www",
+        "contact_name": "Imię i nazwisko",
+        "role": "Stanowisko",
+        "email": "Email",
+        "phone": "Telefon",
+        "whatsapp": "WhatsApp dostępny",
+        "cooperation_type": "Typ współpracy",
+        "candidate_countries": "Kraje kandydatów",
+        "schedule": "System pracy",
+        "truck_brands": "Marki pojazdów",
+        "rate": "Stawka",
+        "additional": "Dodatkowe informacje"
+      },
+      "transport": {
+        "international": "Międzynarodowy",
+        "domestic": "Krajowy",
+        "mixed": "Mieszany"
+      },
+      "quiz": {
+        "steps": {
+          "language": "Wybierz język",
+          "need": "Czego potrzebujesz?",
+          "count": "Ile osób potrzebujesz?",
+          "base": "Gdzie znajduje się baza?",
+          "transport": "Jaki transport prowadzicie?",
+          "fleet": "Jak duża jest flota?",
+          "timing": "Kiedy potrzebujecie ludzi?",
+          "contact": "Z kim mamy się skontaktować?",
+          "company": "Dane firmy",
+          "additional": "Warunki pracy",
+          "review": "Sprawdź odpowiedzi"
+        },
+        "need": {
+          "drivers_ce": "Kierowcy C+E",
+          "warehouse": "Pracownicy magazynu",
+          "mechanics": "Mechanicy",
+          "other": "Inne"
+        },
+        "timing": {
+          "asap": "Jak najszybciej",
+          "week": "W ciągu tygodnia",
+          "month": "W ciągu miesiąca",
+          "research": "Sprawdzamy rynek"
+        },
+        "cooperation": {
+          "recruitment": "Rekrutacja",
+          "rental": "Wynajem pracowników",
+          "hr": "Wsparcie HR"
+        },
+        "body": {
+          "curtain": "Firanka",
+          "frigo": "Chłodnia",
+          "container": "Kontener"
+        }
+      },
+      "summary": {
+        "company": "Firma",
+        "contact": "Kontakt",
+        "need": "Potrzeba",
+        "base": "Baza",
+        "transport": "Transport",
+        "timing": "Termin"
+      },
+      "errors": {
+        "required": "Nazwa firmy, osoba kontaktowa oraz email lub telefon są wymagane.",
+        "submit_failed": "Nie udało się wysłać ankiety. Spróbuj ponownie."
+      },
+      "success": {
+        "kicker": "Wysłano",
+        "title": "Dziękujemy. Otrzymaliśmy ankietę firmy.",
+        "body": "Manager HostFlow sprawdzi dane i skontaktuje się z Tobą w sprawie kolejnych kroków.",
+        "reference": "Numer zgłoszenia"
+      }
+    },
     "portal": {
       "errors": {
         "redeem_failed": "Link jest nieprawidłowy lub wygasł.",
@@ -10065,12 +10346,20 @@
         "lead_rodo_send_mode_auto_created": "Auto przy utworzeniu leada — Meta / webhook / import / Telegram (e-mail)",
         "lead_rodo_send_mode_auto_first_action": "Auto przed pierwszą akcją — telefon, e-mail, prośba o info, process",
         "lead_rodo_send_mode_hint": "Wysyłka ręczna pozostaje na karcie leada do ponowienia po błędzie lub braku kanału.",
+        "lead_rodo_message_template_label": "Szablon e-mail RODO",
         "lead_communication_title": "E-maile operacyjne do leadów",
         "lead_communication_hint": "Osobno od RODO / art. 14. Tylko statusowe wiadomości do kandydata (e-mail).",
         "lead_communication_enabled": "Włącz e-maile operacyjne do leadów",
         "send_application_received": "Aplikacja otrzymana (przy ingest nowego leada)",
         "send_rejection_notice": "Powiadomienie o odmowie (przy reject intake)",
         "send_moving_forward_notice": "Kolejny krok (przy konwersji Lead → Candidate)",
+        "template_none": "Tekst domyślny",
+        "template_hub_title": "Hub szablonów e-mail leadów",
+        "template_hub_hint": "Utwórz wspólny szablon raz i używaj go ponownie w RODO oraz e-mailach operacyjnych leadów.",
+        "template_name": "Nazwa szablonu",
+        "template_create": "Utwórz szablon",
+        "email_template_subject": "Temat wiadomości",
+        "email_template_body": "Treść wiadomości",
         "auto_create_automatic_only": "Tylko przy trybie Automatic. W Manual/Assisted — Process. Ten przełącznik nie zastępuje fit na ofercie ani reguł automatyzacji — zob. hub Automatyzacje.",
         "leads_auto_convert_on_fit": "Autokonwersja lead → kandydat przy pozytywnym fit (§2.4)",
         "leads_auto_convert_on_fit_hint": "Dodatkowy bezpiecznik przy Automatic + auto-create: wyłączone = leady w kolejce ze zablokowanym podglądem do Process. Na ofercie można wyłączyć punktowo (extra.leads_auto_convert_on_fit_v1 = false).",
@@ -10098,6 +10387,22 @@
       "field_mapping": {
         "title": "Pola formularza Meta → znormalizowany payload",
         "subtitle": "Mapuj nazwy pól formularza leadów Meta na klucze znormalizowanego payloadu przed utworzeniem leada. Wiele źródeł — rozdziel przecinkiem (np. phone_number, mobile_phone).",
+        "rules_title": "Reguły mapowania",
+        "rules_subtitle": "Powiąż pytanie z formularza Meta z miejscem zapisu odpowiedzi. Wiele nazw źródła — po przecinku.",
+        "rules_hint": "Źródło = nazwa pola z tabeli powyżej. Cel = wewnętrzny identyfikator pola (później etykiety kandydata).",
+        "form_fields": {
+          "title": "Pola formularza",
+          "subtitle": "Pola z formularza leadów z przykładową wartością. Sprawdź status przed zapisaniem reguł poniżej.",
+          "empty": "Brak pól. Wybierz ostatni lead i kliknij „Pobierz z Meta” lub poczekaj na webhook.",
+          "col_field": "Pole z Meta",
+          "col_sample": "Przykładowa wartość",
+          "col_status": "Status",
+          "col_target": "Zapisz w",
+          "status_mapped": "Zmapowane",
+          "status_unmapped": "Niezmapowane",
+          "no_sample": "Brak przykładu",
+          "pick_target": "Wybierz pole"
+        },
         "plan_limit_status": "Limit planu: {count} / {limit} wierszy mapowania. Usuń wiersze lub ulepsz plan, aby dodać więcej.",
         "source_hint": "Podpowiedzi: rzeczywiste nazwy z field_data w zapisanym webhooku, klucze payload jak ad_id/form_id, raw_field_names z normalized oraz pola z przycisku „Pobierz z Meta”. Nie używaj kluczy normalized (np. first_name) jako źródła — w formularzu Meta mają inne nazwy.",
         "unknown_fields_title": "Pola z ostatnich danych bez niestandardowego pola leada",
@@ -10117,8 +10422,8 @@
         "add_row": "Dodaj regułę",
         "save": "Zapisz mapowanie",
         "suggestions_ready": "Podpowiedzi nazw pól: {count} (z ostatnich leadów i/lub Graph).",
-        "graph_fetch_title": "Rzeczywiste pola z Meta (Graph API)",
-        "graph_fetch_body": "Wybierz ostatni lead Meta (podgląd przychodzących plus leady z zakładki Logi: needs routing / failed) lub wpisz leadgen_id i page_id. Ten sam token Page i wywołanie Graph co przy webhooku — podpowiedzi Źródło zgodne z formularzem.",
+        "graph_fetch_title": "Załaduj pola z Meta",
+        "graph_fetch_body": "Wybierz ostatni lead lub podaj ID leada i ID strony Facebook, potem pobierz pola. Wymagany zapisany token Page w poświadczeniach.",
         "graph_pick_lead": "Ostatni lead Meta",
         "graph_pick_lead_placeholder": "Brak — wpisz ręcznie poniżej",
         "graph_leadgen_id": "Lead ID (Meta / leadgen_id)",

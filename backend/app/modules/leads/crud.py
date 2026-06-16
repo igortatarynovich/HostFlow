@@ -45,6 +45,14 @@ async def create_lead(
     ltt = str(lead_target_type or lt).strip().lower()
     if ltt not in {"candidate", "client_lead", "service_order_lead", "partner_lead"}:
         ltt = "candidate" if lt == "candidate" else "client_lead"
+    if ltt == "client_lead":
+        lt = "client"
+        if not str(own_company_id or "").strip():
+            raise ValueError("own_company_id is required for client leads")
+        if company_id:
+            raise ValueError("company_id must be empty for client leads")
+        if vacancy_id:
+            raise ValueError("vacancy_id must be empty for client leads")
     if lt == "candidate" and ltt == "candidate" and not company_id:
         raise ValueError("company_id is required for candidate leads")
     await ensure_monthly_lead_creation_allowed(db, tenant_id)

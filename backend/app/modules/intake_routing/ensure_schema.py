@@ -37,8 +37,14 @@ def ensure_intake_routing_schema() -> None:
                     own_company_id TEXT NOT NULL,
                     route_intent TEXT NOT NULL DEFAULT 'unknown',
                     pipeline_preset TEXT,
+                    public_slug TEXT,
+                    form_type TEXT,
+                    lead_type TEXT,
+                    lead_target_type TEXT,
+                    source TEXT,
                     default_assignee_id TEXT,
                     default_language TEXT,
+                    supported_languages TEXT,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     notes TEXT,
                     created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
@@ -50,6 +56,27 @@ def ensure_intake_routing_schema() -> None:
             cur.execute(
                 "CREATE INDEX IF NOT EXISTS ix_intake_source_profiles_tenant_id "
                 "ON intake_source_profiles(tenant_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_intake_source_profiles_public_slug "
+                "ON intake_source_profiles(public_slug)"
+            )
+        else:
+            cur.execute("PRAGMA table_info(intake_source_profiles)")
+            cols = {row[1] for row in cur.fetchall()}
+            for name in (
+                "public_slug",
+                "form_type",
+                "lead_type",
+                "lead_target_type",
+                "source",
+                "supported_languages",
+            ):
+                if name not in cols:
+                    cur.execute(f"ALTER TABLE intake_source_profiles ADD COLUMN {name} TEXT")
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_intake_source_profiles_public_slug "
+                "ON intake_source_profiles(public_slug)"
             )
 
         if not _table_exists(cur, "intake_source_bindings"):

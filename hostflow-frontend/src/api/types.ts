@@ -174,6 +174,12 @@ export interface PlatformTenant {
   updated_at: string;
   license?: TenantLicense | null;
   usage: TenantUsage;
+  public_domain?: string | null;
+  custom_domain?: string | null;
+  legal_domain?: string | null;
+  public_hosts?: string[];
+  domains?: string[];
+  legal_hosts?: string[];
 }
 
 export interface PlatformTenantListResponse {
@@ -441,6 +447,15 @@ export interface PlatformTenantUpdatePayload {
   logo_meta?: Record<string, any> | null;
   client_portal_enabled?: boolean;
   status_sharing_allowed?: boolean;
+}
+
+export interface TenantLegalHostSettings {
+  public_domain?: string | null;
+  custom_domain?: string | null;
+  legal_domain?: string | null;
+  public_hosts?: string[];
+  domains?: string[];
+  legal_hosts?: string[];
 }
 
 export interface TenantStatusChangePayload {
@@ -760,6 +775,7 @@ export interface Lead {
   stage?: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | null;
   candidate_id?: UUID | null;
   candidate_name?: string | null;
+  converted_client_id?: UUID | null;
   outcome_entity_type?: 'candidate' | 'company' | null;
   outcome_entity_id?: UUID | null;
   outcome_entity_name?: string | null;
@@ -809,6 +825,7 @@ export type MetaFieldMappingFormat =
 export interface MetaLeadFieldMappingRule {
   source: string | string[];
   target: string;
+  qualified_field_code?: string | null;
   format?: MetaFieldMappingFormat;
   overwrite?: boolean;
 }
@@ -863,10 +880,14 @@ export interface MetaLeadSettings {
   lead_rodo_send_mode?: 'manual' | 'auto_on_lead_created' | 'auto_on_first_action';
   lead_rodo_channels?: string[];
   lead_rodo_template_id?: string | null;
+  lead_rodo_message_template_id?: string | null;
   lead_communication_enabled?: boolean;
   send_application_received?: boolean;
   send_rejection_notice?: boolean;
   send_moving_forward_notice?: boolean;
+  application_received_template_id?: string | null;
+  rejection_notice_template_id?: string | null;
+  moving_forward_template_id?: string | null;
   field_mapping?: MetaLeadFieldMappingRule[];
   plan_field_mapping_rules_limit?: number | null;
   plan_meta_credentials_limit?: number | null;
@@ -892,13 +913,34 @@ export interface MetaLeadSettingsPatch {
   lead_rodo_send_mode?: 'manual' | 'auto_on_lead_created' | 'auto_on_first_action';
   lead_rodo_channels?: string[];
   lead_rodo_template_id?: string | null;
+  lead_rodo_message_template_id?: string | null;
   lead_communication_enabled?: boolean;
   send_application_received?: boolean;
   send_rejection_notice?: boolean;
   send_moving_forward_notice?: boolean;
+  application_received_template_id?: string | null;
+  rejection_notice_template_id?: string | null;
+  moving_forward_template_id?: string | null;
   field_mapping?: MetaLeadFieldMappingRule[];
   webhook_url?: string | null;
   webhook_verify_token?: string | null;
+}
+
+export interface LeadMessageTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadMessageTemplatePayload {
+  name: string;
+  subject: string;
+  body: string;
+  is_active?: boolean;
 }
 
 export interface MetaLeadCredential {
@@ -1429,11 +1471,70 @@ export interface DocumentSummaryRequired {
   in_progress_types?: string[];
 }
 
+export type DocumentPackStatus = 'valid' | 'warnings' | 'gaps' | 'skeleton';
+
+export interface OwnerExpiryAggregate {
+  all_documents_valid: boolean;
+  has_expiring_documents: boolean;
+  has_expired_documents: boolean;
+  has_missing_expiry: boolean;
+}
+
+export interface DocumentPackProjection {
+  code: string;
+  label: string;
+  status: DocumentPackStatus;
+  skeleton: boolean;
+  applies: boolean;
+  ref_pack_codes: string[];
+  required: string[];
+  present: string[];
+  missing: string[];
+  expired: string[];
+  expiring_soon: Array<{
+    document_code: string;
+    expires_on?: string | null;
+    days_left?: number | null;
+  }>;
+  missing_expiry: string[];
+  gaps: string[];
+  blockers: string[];
+  warnings: string[];
+  expiry: OwnerExpiryAggregate;
+}
+
+export type ReminderWorkQueueAction =
+  | 'upload_document'
+  | 'request_update'
+  | 'renew_document'
+  | 'capture_expiry_date';
+
+export type ReminderWorkQueueSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface ReminderWorkQueueItem {
+  task_key: string;
+  title: string;
+  severity: ReminderWorkQueueSeverity;
+  owner_type: 'candidate' | 'employee';
+  owner_id: string;
+  recipient_role: string;
+  due_date?: string | null;
+  source_pack: string;
+  action: ReminderWorkQueueAction;
+  document_code: string;
+  reason: string;
+}
+
 export interface DocumentSummary {
-  status: 'ok' | 'missing' | 'problems' | 'expiring_soon' | 'no_required' | 'in_progress' | (string & {});
+  status: 'ok' | 'missing' | 'problems' | 'expiring_soon' | 'no_required' | 'in_progress' | 'expired' | 'missing_expiry' | (string & {});
   percent_ready: number;
   required: DocumentSummaryRequired;
-  expiring_soon: Array<{ type: string; expires_at: string }>;
+  expiring_soon: Array<{ type: string; expires_at: string; days_left?: number | null }>;
+  expired?: Array<{ type: string; expires_at?: string | null; days_left?: number | null }>;
+  missing_expiry?: Array<{ type: string }>;
+  expiry?: OwnerExpiryAggregate;
+  packs?: DocumentPackProjection[];
+  reminder_work_queue?: ReminderWorkQueueItem[];
   checklist?: CandidateDocumentChecklist;
 }
 
