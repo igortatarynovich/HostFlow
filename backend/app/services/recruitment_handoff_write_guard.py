@@ -16,6 +16,8 @@ from fastapi import HTTPException
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_MUTATE_ROLES
+from backend.app.constants.stages import TERMINAL_STATUSES
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.recruitment_application import RecruitmentApplication
 
@@ -24,6 +26,30 @@ _LOCK_HANDOFF_STATUSES = ("pending_review", "accepted", "completed")
 
 # API bypass: same contract as candidate PATCH (privileged edit while handoff lock holds).
 RECRUITMENT_LOCK_OVERRIDE_ROLES = frozenset({"administrator", "supervisor", "superadmin"})
+
+RECRUITMENT_TERMINAL_CLOSE_OVERRIDE = "recruitment_terminal_close"
+
+_RECRUITMENT_MUTATE_ROLE_VALUES = frozenset(
+    str(getattr(role, "value", role) or "").strip().lower() for role in HIRING_CANDIDATE_MUTATE_ROLES
+) | {"superadmin"}
+
+
+def is_recruitment_terminal_close_stage(stage_code: str | None) -> bool:
+    code = str(stage_code or "").strip().lower()
+    return bool(code) and code in TERMINAL_STATUSES
+
+
+def is_recruitment_terminal_close_payload(payload: dict) -> bool:
+    """True when PATCH only closes recruitment (rejected / declined) — allowed under handoff lock."""
+    if not payload:
+        return False
+    stage_raw = payload.get("stage")
+    if stage_raw is None:
+        stage_raw = payload.get("status")
+    if not is_recruitment_terminal_close_stage(str(stage_raw or "")):
+        return False
+    allowed_keys = {"stage", "status", "status_reason"}
+    return set(payload.keys()).issubset(allowed_keys)
 
 
 async def agency_candidate_has_internal_hr_handoff_lane(
@@ -87,6 +113,8 @@ async def require_agency_recruitment_write_allowed(
     role_l = str(bypass.actor_role or "").strip().lower()
     reason = str(bypass.override_reason or "").strip()
     if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and reason:
+        return
+    if reason == RECRUITMENT_TERMINAL_CLOSE_OVERRIDE and role_l in _RECRUITMENT_MUTATE_ROLE_VALUES:
         return
     if role_l == "hr_officer" and reason == "internal_hr_handoff_lane":
         if await agency_candidate_has_internal_hr_handoff_lane(
@@ -162,9 +190,12 @@ async def is_recruitment_recruiter_write_locked_by_handoff(
 
 __all__ = [
     "RECRUITMENT_LOCK_OVERRIDE_ROLES",
+    "RECRUITMENT_TERMINAL_CLOSE_OVERRIDE",
     "AgencyRecruitmentWriteBypass",
     "agency_candidate_has_internal_hr_handoff_lane",
     "agency_recruitment_lock_bulk_error",
+    "is_recruitment_terminal_close_payload",
+    "is_recruitment_terminal_close_stage",
     "is_recruitment_recruiter_write_locked_by_handoff",
     "require_agency_recruitment_write_allowed",
 ]

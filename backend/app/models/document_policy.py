@@ -102,6 +102,12 @@ class DocumentPolicy(Base, TimestampMixin):
         nullable=True,
         index=True,
     )
+    ref_document_type_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_types.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     requirement_code: Mapped[Optional[RequirementType]] = mapped_column(
         SAEnum(RequirementType, name="requirement_type_enum", native_enum=False),

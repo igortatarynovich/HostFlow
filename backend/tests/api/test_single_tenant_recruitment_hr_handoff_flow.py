@@ -83,6 +83,29 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     )
     rec_json = {**recruiter_headers, "Content-Type": "application/json"}
     hr_json = {**hr_officer_headers, "Content-Type": "application/json"}
+    enrich = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=rec_json,
+        json={
+            "note": "handoff note from recruitment",
+            "personal_data": {
+                "citizenship": "UA",
+                "work_country": "PL",
+                "passport_number": "PP-123456",
+            },
+            "extra": {
+                "citizenship": "UA",
+                "work_country": "PL",
+                "position_category": "driver",
+                "legal_status": "temporary_residence",
+                "license_number": "DL-998877",
+                "code95_number": "C95-111",
+                "recruiter_notes": "priority candidate",
+                "handoff_notes": "docs complete",
+            },
+        },
+    )
+    assert enrich.status_code == 200, enrich.text
 
     doc_resp = await client.post(
         f"/api/v1/candidates/{candidate_id}/documents",
@@ -137,6 +160,20 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
         url = row.get("open_url") or row.get("file_url")
         assert url == f"/api/v1/workforce/employees/{emp_id}/documents/{fid}/file"
 
+    op = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}/operational-profile",
+        headers=hr_officer_headers,
+    )
+    assert op.status_code == 200, op.text
+    rs = (op.json().get("recruiter_summary") or {})
+    assert rs.get("citizenship") == "UA"
+    assert rs.get("work_country") == "PL"
+    assert rs.get("position_category") == "driver"
+    assert rs.get("legal_status") == "temporary_residence"
+    assert (rs.get("document_field_values") or {}).get("license_number") == "DL-998877"
+    assert (rs.get("notes") or {}).get("handoff_notes") == "docs complete"
+    assert (rs.get("personal_data") or {}).get("passport_number") == "PP-123456"
+
     patch_hired = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
         headers=hr_json,
@@ -152,6 +189,67 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     assert lst2.status_code == 200, lst2.text
     emp_id_2 = _employee_id_for_candidate(lst2.json(), candidate_id)
     assert emp_id_2 == emp_id
+
+
+@pytest.mark.asyncio
+async def test_hr_review_dossier_plan_includes_data_blocks_and_by_candidate_lookup(
+    client: AsyncClient,
+    recruiter_headers: Dict[str, str],
+    hr_officer_headers: Dict[str, str],
+    manager_headers: Dict[str, str],
+    candidate_id: str,
+    bootstrap: Dict[str, str],
+) -> None:
+    """P0: HR dossier plan exposes data blocks; residence_card maps to Legal stay; by-candidate API works."""
+    company_id = bootstrap["company_id"]
+    await _ensure_tenant_link_internal_hr(
+        client, manager_headers=manager_headers, tenant_id=bootstrap["tenant_id"], company_id=company_id
+    )
+    rec_json = {**recruiter_headers, "Content-Type": "application/json"}
+    hr_json = {**hr_officer_headers, "Content-Type": "application/json"}
+
+    await client.post(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=rec_json,
+        json={"doc_type": "residence_card", "status": "uploaded"},
+    )
+    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+
+    await internal_hr_handoff_create_and_accept(
+        client,
+        recruiter_headers=recruiter_headers,
+        hr_officer_headers=hr_officer_headers,
+        candidate_id=candidate_id,
+        company_id=company_id,
+    )
+
+    by_cand = await client.get(
+        f"/api/v1/workforce/employees/by-candidate/{candidate_id}",
+        headers=hr_json,
+    )
+    assert by_cand.status_code == 200, by_cand.text
+    emp_id = by_cand.json()["id"]
+
+    review = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}/hr-review",
+        headers=hr_json,
+    )
+    assert review.status_code == 200, review.text
+    panel = review.json()
+    plan = panel.get("verification_plan") or {}
+    slots = plan.get("slots") or panel.get("documents_for_approval") or []
+    keys = {str(s.get("document_key") or s.get("label") or "") for s in slots if isinstance(s, dict)}
+    if not keys:
+        keys = {str(d.get("document_key") or "") for d in panel.get("documents_for_approval") or []}
+    assert "Contacts & address" in keys or any("Contacts" in k for k in keys)
+    assert "Work experience" in keys or any("experience" in k.lower() for k in keys)
+
+    legal_rows = [
+        d for d in (panel.get("documents_for_approval") or [])
+        if str(d.get("document_key") or "") == "Legal stay"
+    ]
+    if legal_rows:
+        assert legal_rows[0].get("document_id"), "residence_card should resolve into Legal stay slot"
 
 
 @pytest.mark.asyncio

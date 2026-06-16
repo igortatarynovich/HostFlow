@@ -2,7 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import type { HrReviewPanel, WorkforceProfileAlert, WorkforceTimelineEvent } from '../../api/workforce'
+import type {
+  HrReviewPanel,
+  WorkforceEligibilityRuntime,
+  WorkforceProfileAlert,
+  WorkforceTimelineEvent,
+} from '../../api/workforce'
 import { useI18n } from '../../i18n'
 import HrReviewTimelineDrawer from './HrReviewTimelineDrawer'
 
@@ -11,6 +16,7 @@ type Props = {
   employeeId?: string
   profileAlerts?: WorkforceProfileAlert[]
   profileTimeline?: WorkforceTimelineEvent[]
+  workforceEligibility?: WorkforceEligibilityRuntime
   onScrollTo?: (anchor: string) => void
 }
 
@@ -39,7 +45,14 @@ function AnchorButton({
   )
 }
 
-export default function HrNextActionRail({ panel, employeeId, profileAlerts, profileTimeline, onScrollTo }: Props) {
+export default function HrNextActionRail({
+  panel,
+  employeeId,
+  profileAlerts,
+  profileTimeline,
+  workforceEligibility,
+  onScrollTo,
+}: Props) {
   const { t } = useI18n()
   const [historyOpen, setHistoryOpen] = useState(false)
   const na = panel.next_action
@@ -126,6 +139,24 @@ export default function HrNextActionRail({ panel, employeeId, profileAlerts, pro
             <ul className="mt-2 list-inside list-disc text-[11px] text-slate-600">
               {readiness.post_approve_effects.map((e) => (
                 <li key={e}>{e}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
+      {workforceEligibility ? (
+        <div className="card p-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600">
+            {t('app.hr.review_case.workforce_eligibility', { defaultValue: 'Workforce eligibility' })}
+          </h3>
+          <p className="mt-2 text-sm font-medium text-slate-900">
+            {String(workforceEligibility.eligibility_status || 'unknown').replace(/_/g, ' ')}
+          </p>
+          {(workforceEligibility.next_required_actions || []).length > 0 ? (
+            <ul className="mt-2 list-inside list-disc text-xs text-slate-700">
+              {(workforceEligibility.next_required_actions || []).slice(0, 3).map((a) => (
+                <li key={a}>{String(a).replace(/_/g, ' ')}</li>
               ))}
             </ul>
           ) : null}

@@ -1,4 +1,5 @@
 import type { UserSavedView } from '../../../api/types'
+import { Chip } from '../../../components/ui/Chip'
 
 export type QuickViewKey =
   | 'my_work_today'
@@ -66,21 +67,7 @@ export function CandidatesQuickViewsBar({
   const chipScrollRow =
     'flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto overflow-y-hidden py-0.5 [scrollbar-width:thin]'
 
-  const presetBtn = (active: boolean) =>
-    [
-      'shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors',
-      active
-        ? 'bg-brand-600 text-white shadow-sm hover:bg-brand-700'
-        : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50',
-    ].join(' ')
-
-  const shortcutBtn = (active: boolean) =>
-    [
-      'shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-[11px] font-medium shadow-sm transition-colors',
-      active
-        ? 'border-brand-400 bg-brand-50 text-brand-900 hover:bg-brand-100/80'
-        : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/90',
-    ].join(' ')
+  const shortcutChipClass = 'rounded-lg border-slate-200/90 shadow-sm'
 
   const sectionLabel =
     'shrink-0 whitespace-nowrap pr-1 text-[10px] font-semibold uppercase leading-none tracking-wide text-slate-500'
@@ -90,36 +77,42 @@ export function CandidatesQuickViewsBar({
       return (
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
           {operationalChips.map((chip) => (
-            <button
+            <Chip
               key={chip.key}
-              type="button"
+              behavior="selectable"
+              label={chip.label}
+              selected={chip.active}
+              selectedAppearance="soft"
+              size="md"
+              className={shortcutChipClass}
               onClick={chip.onClick}
-              className={shortcutBtn(chip.active)}
-            >
-              {chip.label}
-            </button>
+            />
           ))}
         </div>
       )
     }
     return (
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-end">
-        <button
-          type="button"
+        <Chip
+          behavior="selectable"
+          label={t('app.candidates.filters.only_favorites')}
+          selected={isFavoriteFilter === true}
+          selectedAppearance="soft"
+          size="md"
+          className={shortcutChipClass}
           onClick={onFavoriteFilterToggle}
-          className={shortcutBtn(isFavoriteFilter === true)}
-        >
-          {t('app.candidates.filters.only_favorites')}
-        </button>
+        />
         {(quickFiltersExpanded ? quickDocFilters : quickDocFilters.slice(0, 3)).map((filter) => (
-          <button
+          <Chip
             key={filter.key}
-            type="button"
+            behavior="selectable"
+            label={filter.label}
+            selected={filter.active}
+            selectedAppearance="soft"
+            size="md"
+            className={shortcutChipClass}
             onClick={() => onToggleQuickDocFilter(filter.statuses, filter.active)}
-            className={shortcutBtn(filter.active)}
-          >
-            {filter.label}
-          </button>
+          />
         ))}
         {quickDocFilters.length > 3 && (
           <button
@@ -141,19 +134,18 @@ export function CandidatesQuickViewsBar({
           <div className="flex min-w-0 min-h-7 flex-1 items-center gap-2 lg:pr-4">
             <div className={sectionLabel}>{t('app.candidates.views.quick_views_title', { defaultValue: 'Quick Views' })}</div>
             <div className={chipScrollRow}>
-              {presets.map(([key, label]) => {
-                const active = quickViewParam === key
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => onApplyQuickViewFilters(key)}
-                    className={presetBtn(active)}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
+              {presets.map(([key, label]) => (
+                <Chip
+                  key={key}
+                  behavior="selectable"
+                  label={label}
+                  selected={quickViewParam === key}
+                  selectedAppearance="solid"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => onApplyQuickViewFilters(key)}
+                />
+              ))}
             </div>
           </div>
 
@@ -167,18 +159,26 @@ export function CandidatesQuickViewsBar({
               {t('app.candidates.views.shortcut_filters_title', { defaultValue: 'Shortcuts' })}
             </div>
             <div className={chipScrollRow}>
-              <button type="button" onClick={onFavoriteFilterToggle} className={shortcutBtn(isFavoriteFilter === true)}>
-                {t('app.candidates.filters.only_favorites')}
-              </button>
+              <Chip
+                behavior="selectable"
+                label={t('app.candidates.filters.only_favorites')}
+                selected={isFavoriteFilter === true}
+                selectedAppearance="soft"
+                size="md"
+                className={shortcutChipClass}
+                onClick={onFavoriteFilterToggle}
+              />
               {(quickFiltersExpanded ? quickDocFilters : quickDocFilters.slice(0, 3)).map((filter) => (
-                <button
+                <Chip
                   key={filter.key}
-                  type="button"
+                  behavior="selectable"
+                  label={filter.label}
+                  selected={filter.active}
+                  selectedAppearance="soft"
+                  size="md"
+                  className={shortcutChipClass}
                   onClick={() => onToggleQuickDocFilter(filter.statuses, filter.active)}
-                  className={shortcutBtn(filter.active)}
-                >
-                  {filter.label}
-                </button>
+                />
               ))}
               {quickDocFilters.length > 3 && (
                 <button

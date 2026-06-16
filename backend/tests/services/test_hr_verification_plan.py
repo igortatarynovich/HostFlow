@@ -13,9 +13,26 @@ from backend.app.services.hr_verification_plan import (
     _is_eu_citizen,
     _is_requirement_waived,
     _recompute_plan_blocking,
+    _vacancy_extra_dict,
     sync_verification_plan_with_enriched_docs,
     VERIFICATION_SLOT_DEFS,
 )
+
+
+class _VacancyStub:
+    def __init__(self, *, extra: object | None = None, employment_type: str = "full_time") -> None:
+        self.extra = extra
+        self.employment_type = employment_type
+        self.id = "vac-1"
+        self.title = "Driver"
+
+
+def test_vacancy_extra_dict_parses_json_and_ignores_missing_meta() -> None:
+    assert _vacancy_extra_dict(_VacancyStub()) == {}
+    assert _vacancy_extra_dict(_VacancyStub(extra={"position_category": "driver"})) == {
+        "position_category": "driver"
+    }
+    assert _vacancy_extra_dict(_VacancyStub(extra='{"category": "warehouse"}')) == {"category": "warehouse"}
 
 
 def test_eu_vs_non_eu_citizenship_hint() -> None:

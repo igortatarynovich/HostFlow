@@ -52,6 +52,10 @@ _prepend_site_packages_for_alembic_library()
 
 import asyncio
 import os
+
+# Must run before any backend import or .env load — blocks RODO/invite SMTP during pytest.
+os.environ["EMAIL_DELIVERY_MODE"] = "mock"
+
 import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -72,8 +76,11 @@ os.environ["DOCUMENTS_DISABLED"] = "0"
 os.environ.setdefault("DEV_DB_PATH", "/tmp/hostflow-test.db")
 # Avoid communications_scheduler_loop during ASGI lifespan (slow/teardown TimeoutError on dev DB).
 os.environ.setdefault("COMM_SCHEDULER_ENABLED", "0")
+# Enforced above with assignment (not setdefault): overrides backend/.env SMTP settings.
 # One connection per checkout: avoids asyncpg pool vs pytest-asyncio loop mismatch (Connection._cancel warnings).
 os.environ.setdefault("HOSTFLOW_SQLALCHEMY_NULL_POOL", "1")
+# PR-4A: skip heavy FastAPI lifespan bootstrap during integration tests (pytest.ini `env` is ignored without pytest-env).
+os.environ.setdefault("HOSTFLOW_TEST_LIGHT_STARTUP", "1")
 
 
 def _pytest_localize_postgres_host() -> None:
@@ -179,6 +186,55 @@ from backend.app.models.user import Role as UserRole  # noqa: E402
 from backend.app.models.user import User  # noqa: E402
 from backend.app.models import Candidate  # noqa: E402
 from backend.app.models.tenant import TenantLicense  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _pytest_block_real_email_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Belt-and-suspenders: block SMTP even if EMAIL_DELIVERY_MODE was set in shell/.env."""
+    os.environ["EMAIL_DELIVERY_MODE"] = "mock"
+
+    class _NoopSMTP:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def starttls(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        def login(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        def sendmail(self, *args: object, **kwargs: object) -> dict:
+            return {}
+
+        def quit(self) -> None:
+            return None
+
+    import smtplib
+
+    monkeypatch.setattr(smtplib, "SMTP", _NoopSMTP)
+    monkeypatch.setattr(smtplib, "SMTP_SSL", _NoopSMTP)
+
+    async def _noop_send_email_for_tenant(*args: object, **kwargs: object) -> bool:
+        return True
+
+    async def _noop_send_system_email(*args: object, **kwargs: object) -> bool:
+        return True
+
+    monkeypatch.setattr(
+        "backend.app.services.tenant_email.send_email_for_tenant",
+        _noop_send_email_for_tenant,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo.send_email_for_tenant",
+        _noop_send_email_for_tenant,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.app.services.system_email.send_system_email",
+        _noop_send_system_email,
+        raising=False,
+    )
 
 
 @pytest.fixture

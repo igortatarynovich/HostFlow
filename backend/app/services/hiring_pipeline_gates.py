@@ -1,8 +1,10 @@
 """
 Tenant-configurable hiring pipeline gates (FINAL plan §3 / §12 / §13).
 
+DEPRECATED (P6): runtime resolution prefers Process Engine transition rules
+(`pe_transition_rules`, profile-scoped). This tenant settings blob remains as
+legacy fallback and for the Settings → Hiring Pipeline Gates editor until removed.
 Stored under Tenant.settings["hiring_stage_gates_v1"].
-Missing keys fall back to product defaults (matches legacy hardcoded behavior).
 """
 
 from __future__ import annotations
@@ -148,7 +150,25 @@ def hiring_gates_from_tenant_settings(settings: Optional[Dict[str, Any]]) -> Hir
     return merge_hiring_pipeline_gates(raw)
 
 
-async def resolve_hiring_pipeline_gates(db: AsyncSession, tenant_id: str) -> HiringPipelineGates:
+async def resolve_hiring_pipeline_gates(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    candidate_id: str | None = None,
+) -> HiringPipelineGates:
+    """Resolve hiring pipeline gates — PE transition rules first, tenant settings fallback."""
+    if candidate_id:
+        from backend.app.process_engine.transition_rules_adapter import (
+            resolve_hiring_pipeline_gates_for_candidate,
+        )
+
+        gates, _meta = await resolve_hiring_pipeline_gates_for_candidate(
+            db,
+            tenant_id=str(tenant_id),
+            candidate_id=str(candidate_id),
+        )
+        return gates
+
     from backend.app.api.v1.tenants import service as tenant_service
 
     tenant = await tenant_service.get_tenant(db, tenant_id)
@@ -214,6 +234,11 @@ def serialize_gates_public(gates: HiringPipelineGates) -> Dict[str, Any]:
         "stages_doc_block_soft_only": sorted(gates.stages_doc_block_soft_only),
         "non_overridable_doc_types_extra": sorted(gates.non_overridable_doc_types_extra),
         "effective_non_overridable_doc_types": eff,
+        "deprecated_tenant_settings_key": SETTINGS_KEY,
+        "deprecation_note": (
+            "Runtime gates resolve from pe_transition_rules (profile-scoped). "
+            "This settings blob is legacy fallback / editor storage only."
+        ),
     }
 
 

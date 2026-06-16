@@ -95,7 +95,7 @@ async def create_override_request(
     code = normalize_doc_type(doc_type_code)
     if not code:
         raise ValueError("invalid_doc_type")
-    gates = await resolve_hiring_pipeline_gates(db, tenant_id)
+    gates = await resolve_hiring_pipeline_gates(db, tenant_id, candidate_id=candidate_id)
     if code in gates.effective_non_overridable_doc_types():
         raise ValueError("doc_type_not_overridable")
     rs = str(requested_scope or "").strip().lower()

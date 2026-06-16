@@ -55,6 +55,7 @@ from backend.app.services.handoff import (
 )
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    agency_candidate_has_internal_hr_handoff_lane,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
 from backend.app.services.audit import log_audit_event
@@ -775,6 +776,10 @@ async def _check_document_edit_permission(
     or_s = str(override_reason or "").strip()
     if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and or_s:
         return {"lock_reason": lock_reason or "handoff", "override_reason": or_s}
+    if role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+        db, agency_tenant_id=tenant_id_str, candidate_id=candidate_id_str
+    ):
+        return {"lock_reason": lock_reason or "handoff", "override_reason": "internal_hr_handoff_lane"}
     raise HTTPException(
         status_code=403,
         detail=f"Recruitment locked ({lock_reason or 'handoff'}): cannot edit documents",

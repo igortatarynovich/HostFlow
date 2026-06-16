@@ -13,12 +13,28 @@ from backend.app.services.hr_review_document_resolution import (
 from backend.app.services.workforce_hr_review import finalize_hr_review_can_approve
 
 
-def test_legal_stay_maps_passport_doc_type() -> None:
-    assert "passport" in DOC_KEY_CANDIDATE_TYPES["Legal stay"]
-    assert "national_id" in DOC_KEY_CANDIDATE_TYPES["Legal stay"]
+def test_legal_stay_maps_residence_card_doc_types() -> None:
+    legal = DOC_KEY_CANDIDATE_TYPES["Legal stay"]
+    assert "residence_card" in legal
+    assert "karta_pobytu" in legal
+    assert "residence_permit" in legal
 
 
-def test_finalize_can_approve_false_when_required_doc_unverified() -> None:
+def test_pick_candidate_document_for_key_residence_card() -> None:
+    from backend.app.models.document import Document
+
+    doc = Document(
+        tenant_id="t1",
+        candidate_id="c1",
+        doc_type="residence_card",
+        status="uploaded",
+    )
+    picked = pick_candidate_document_for_key({"residence_card": [doc]}, "Legal stay")
+    assert picked is doc
+
+
+def test_legacy_finalize_blocks_on_unverified_required_doc_without_hybrid_plan() -> None:
+    """Non-hybrid: legacy documents_for_approval loop still gates approve (PR15)."""
     panel = {
         "status": "hr_review_in_progress",
         "failed_required_items": [],

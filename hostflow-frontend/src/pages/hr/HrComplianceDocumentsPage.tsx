@@ -4,8 +4,51 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { fetchHrDocumentsExpiring, fetchHrDocumentsMissing, type HrDocumentQueueItem } from '../../api/hrWorkspace'
 import { useI18n } from '../../i18n'
 import { humanizeToken } from '../../components/hr/hrEmployeeUiFormat'
+import {
+  IMPACT_LABEL,
+  NEXT_ACTION_LABEL,
+  SEVERITY_META,
+  type OperationalImpact,
+  type OperationalNextAction,
+  type OperationalSeverity,
+} from '../../constants/workforceOperationalTaxonomy'
 
 const empDocsHash = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-employee-linked-documents`
+
+function parseIso(value: string | null | undefined): number | null {
+  if (!value) return null
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : null
+}
+
+function daysLeft(value: string | null | undefined): number | null {
+  const ms = parseIso(value)
+  if (ms == null) return null
+  const diff = ms - Date.now()
+  return Math.floor(diff / (24 * 60 * 60 * 1000))
+}
+
+function impactForRow(row: HrDocumentQueueItem): OperationalImpact {
+  const d = String(row.document_type || '').toLowerCase()
+  if (d.includes('permit') || d.includes('visa') || d.includes('residence')) return 'legal_blocker'
+  if (d.includes('license') || d.includes('code_95') || d.includes('tachograph')) return 'dispatch_blocker'
+  return 'document_missing'
+}
+
+function nextActionForRow(row: HrDocumentQueueItem): OperationalNextAction {
+  const impact = impactForRow(row)
+  if (impact === 'legal_blocker') return 'upload_document'
+  if (impact === 'dispatch_blocker') return 'renew_document'
+  return 'verify_document'
+}
+
+function severityForRow(row: HrDocumentQueueItem): OperationalSeverity {
+  if (row.risk === 'high') return 'critical'
+  const d = daysLeft(row.expires_at)
+  if (d != null && d < 0) return 'high'
+  if (d != null && d <= 7) return 'medium'
+  return 'low'
+}
 
 export default function HrComplianceDocumentsPage() {
   const { t } = useI18n()
@@ -45,9 +88,48 @@ export default function HrComplianceDocumentsPage() {
       exp: expiring?.total ?? 0,
       missHigh: missItems.filter((r) => r.risk === 'high').length,
       expHigh: expItems.filter((r) => r.risk === 'high').length,
+      exp7: expItems.filter((r) => {
+        const d = daysLeft(r.expires_at)
+        return d != null && d >= 0 && d <= 7
+      }).length,
+      exp30: expItems.filter((r) => {
+        const d = daysLeft(r.expires_at)
+        return d != null && d >= 0 && d <= 30
+      }).length,
     }),
     [expItems, expiring?.total, missItems, missing?.total],
   )
+
+  const criticalBlockers = useMemo(
+    () => [
+      ...missItems.filter((r) => r.required && r.risk === 'high').map((r) => ({ ...r, source: 'missing' as const })),
+      ...expItems.filter((r) => {
+        const d = daysLeft(r.expires_at)
+        return r.risk === 'high' && d != null && d < 0
+      }).map((r) => ({ ...r, source: 'expiring' as const })),
+    ],
+    [expItems, missItems],
+  )
+
+  const highRiskSoon = useMemo(
+    () => expItems.filter((r) => {
+      const d = daysLeft(r.expires_at)
+      return r.risk === 'high' || (d != null && d >= 0 && d <= 7)
+    }),
+    [expItems],
+  )
+
+  const readyEmployees = useMemo(() => {
+    const touched = new Set<string>()
+    ;[...missItems, ...expItems].forEach((r) => {
+      if (r.workforce_employee_id) touched.add(r.workforce_employee_id)
+    })
+    const blocked = new Set<string>()
+    criticalBlockers.forEach((r) => {
+      if (r.workforce_employee_id) blocked.add(r.workforce_employee_id)
+    })
+    return Math.max(0, touched.size - blocked.size)
+  }, [criticalBlockers, expItems, missItems])
 
   return (
     <div className="space-y-4">
@@ -74,18 +156,21 @@ export default function HrComplianceDocumentsPage() {
 
       <div className="sticky top-0 z-20 -mx-1 space-y-3 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
         {!loading && !err ? (
-          <div className="flex flex-wrap gap-2 text-xs">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 text-xs">
+            <span className="badge border border-rose-100 bg-rose-50/90 font-medium tabular-nums text-rose-900">
+              Critical blockers: {criticalBlockers.length}
+            </span>
             <span className="badge border border-amber-100 bg-amber-50/90 font-medium tabular-nums text-amber-950">
-              {t('app.nav.hr.compliance.stat_missing', { defaultValue: 'Missing (API): {n}', values: { n: stats.miss } })}
+              Missing required docs: {stats.miss}
+            </span>
+            <span className="badge border border-amber-100 bg-amber-50/90 font-medium tabular-nums text-amber-950">
+              Expiring 7 days: {stats.exp7}
             </span>
             <span className="badge border border-brand-100 bg-brand-50/90 font-medium tabular-nums text-brand-900">
-              {t('app.nav.hr.compliance.stat_expiring', { defaultValue: 'Expiring 30d (API): {n}', values: { n: stats.exp } })}
+              Expiring 30 days: {stats.exp30}
             </span>
-            <span className="badge border border-rose-100 bg-rose-50/90 font-medium tabular-nums text-rose-900">
-              {t('app.nav.hr.compliance.stat_high', {
-                defaultValue: 'High risk rows (page): {m} missing / {e} expiring',
-                values: { m: stats.missHigh, e: stats.expHigh },
-              })}
+            <span className="badge border border-emerald-100 bg-emerald-50/90 font-medium tabular-nums text-emerald-900">
+              Ready employees: {readyEmployees}
             </span>
           </div>
         ) : null}
@@ -94,115 +179,78 @@ export default function HrComplianceDocumentsPage() {
       {loading ? <p className="text-sm text-slate-600">{t('common.loading')}</p> : null}
       {err ? <div className="alert-error">{err}</div> : null}
 
-      <section className="card overflow-hidden">
-        <div className="border-b border-slate-100 bg-brand-50/40 px-4 py-3">
-          <h3 className="text-sm font-semibold text-slate-900">
-            {t('app.nav.hr.compliance.missing', { defaultValue: 'Missing ({{n}})', values: { n: missing?.total ?? 0 } })}
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="table w-full min-w-[960px] text-left text-sm">
-            <thead>
-              <tr>
-                <th>{t('app.nav.hr.compliance.col_doc', { defaultValue: 'Document' })}</th>
-                <th>{t('app.nav.hr.compliance.col_status', { defaultValue: 'Status' })}</th>
-                <th>{t('app.nav.hr.compliance.col_risk', { defaultValue: 'Risk' })}</th>
-                <th>{t('app.nav.hr.compliance.col_handoff', { defaultValue: 'Handoff' })}</th>
-                <th>{t('app.nav.hr.compliance.col_employee', { defaultValue: 'Employee' })}</th>
-                <th className="w-40">{t('app.nav.hr.compliance.col_actions', { defaultValue: 'Actions' })}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {missItems.map((row) => (
-                <tr key={`${row.handoff_id}-${row.document_type}`}>
-                  <td className="font-medium text-slate-900">{humanizeToken(row.document_type)}</td>
-                  <td className="text-slate-700">{humanizeToken(row.current_status)}</td>
-                  <td className="text-slate-700">{row.risk}</td>
-                  <td className="font-mono text-xs text-slate-600">{row.handoff_id}</td>
-                  <td className="font-mono text-xs text-slate-600">{row.workforce_employee_id || '—'}</td>
-                  <td>
-                    <div className="flex flex-col gap-1">
-                      {row.handoff_id ? (
-                        <Link className="text-sm font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}>
-                          {t('app.nav.hr.compliance.open_handoff', { defaultValue: 'Handoff' })}
-                        </Link>
-                      ) : null}
-                      {row.workforce_employee_id ? (
-                        <Link className="text-xs font-medium text-brand-700 hover:underline" to={empDocsHash(row.workforce_employee_id)}>
-                          {t('app.nav.hr.compliance.open_employee', { defaultValue: 'Employee docs' })}
-                        </Link>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!missItems.length && !loading ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-600">
-                    {t('app.nav.hr.compliance.empty_missing', { defaultValue: 'No missing documents in queue.' })}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <ComplianceSection
+        title="Critical blockers"
+        rows={criticalBlockers}
+        emptyText="No critical compliance risks"
+      />
 
-      <section className="card overflow-hidden">
-        <div className="border-b border-slate-100 bg-brand-50/40 px-4 py-3">
-          <h3 className="text-sm font-semibold text-slate-900">
-            {t('app.nav.hr.compliance.expiring', { defaultValue: 'Expiring ({{n}})', values: { n: expiring?.total ?? 0 } })}
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="table w-full min-w-[960px] text-left text-sm">
-            <thead>
-              <tr>
-                <th>{t('app.nav.hr.compliance.col_doc', { defaultValue: 'Document' })}</th>
-                <th>{t('app.nav.hr.compliance.col_status', { defaultValue: 'Status' })}</th>
-                <th>{t('app.nav.hr.compliance.col_expires', { defaultValue: 'Expires' })}</th>
-                <th>{t('app.nav.hr.compliance.col_risk', { defaultValue: 'Risk' })}</th>
-                <th>{t('app.nav.hr.compliance.col_handoff', { defaultValue: 'Handoff' })}</th>
-                <th>{t('app.nav.hr.compliance.col_employee', { defaultValue: 'Employee' })}</th>
-                <th className="w-40">{t('app.nav.hr.compliance.col_actions', { defaultValue: 'Actions' })}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expItems.map((row) => (
-                <tr key={`${row.handoff_id}-${row.document_type}-${row.expires_at || ''}`}>
-                  <td className="font-medium text-slate-900">{humanizeToken(row.document_type)}</td>
-                  <td className="text-slate-700">{humanizeToken(row.current_status)}</td>
-                  <td className="whitespace-nowrap text-xs text-slate-600">{row.expires_at || '—'}</td>
-                  <td className="text-slate-700">{row.risk}</td>
-                  <td className="font-mono text-xs text-slate-600">{row.handoff_id}</td>
-                  <td className="font-mono text-xs text-slate-600">{row.workforce_employee_id || '—'}</td>
-                  <td>
-                    <div className="flex flex-col gap-1">
-                      {row.handoff_id ? (
-                        <Link className="text-sm font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}>
-                          {t('app.nav.hr.compliance.open_handoff', { defaultValue: 'Handoff' })}
-                        </Link>
-                      ) : null}
-                      {row.workforce_employee_id ? (
-                        <Link className="text-xs font-medium text-brand-700 hover:underline" to={empDocsHash(row.workforce_employee_id)}>
-                          {t('app.nav.hr.compliance.open_employee', { defaultValue: 'Employee docs' })}
-                        </Link>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!expItems.length && !loading ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-600">
-                    {t('app.nav.hr.compliance.empty_expiring', { defaultValue: 'No expiring documents in horizon.' })}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <ComplianceSection
+        title="High risk / expiring soon"
+        rows={highRiskSoon}
+        emptyText="No high-risk or near-expiry risks"
+      />
+
+      <ComplianceSection
+        title="All clear"
+        rows={[]}
+        emptyText="No critical compliance risks. Workforce is operationally clear."
+      />
     </div>
+  )
+}
+
+function ComplianceSection({
+  title,
+  rows,
+  emptyText,
+}: {
+  title: string
+  rows: Array<(HrDocumentQueueItem & { source?: string })>
+  emptyText: string
+}) {
+  return (
+    <section className="card p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">{rows.length}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-emerald-700">{emptyText}</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row) => (
+            <li key={`${row.handoff_id}-${row.document_type}-${row.expires_at || ''}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-slate-900">{humanizeToken(row.document_type)}</div>
+                  <div className="mt-0.5 text-xs text-slate-600">
+                    risk: {row.risk} · impact: {IMPACT_LABEL[impactForRow(row)]} · next: {NEXT_ACTION_LABEL[nextActionForRow(row)]}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    owner: team · status: {humanizeToken(row.current_status)} {row.expires_at ? `· expires ${row.expires_at}` : ''}
+                  </div>
+                  <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${SEVERITY_META[severityForRow(row)].tone}`}>
+                    {severityForRow(row)}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  {row.workforce_employee_id ? (
+                    <Link className="text-sm font-medium text-brand-700 hover:underline" to={empDocsHash(row.workforce_employee_id)}>
+                      Open employee
+                    </Link>
+                  ) : null}
+                  {row.handoff_id ? (
+                    <Link className="text-xs font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}>
+                      Open handoff
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }

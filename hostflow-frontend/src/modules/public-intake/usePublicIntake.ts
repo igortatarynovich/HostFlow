@@ -66,6 +66,7 @@ function cloneData(input?: IntakeData | null): IntakeData {
       terms_acceptance: Boolean(input.agreements?.terms_acceptance),
       cookies_accepted: Boolean(input.agreements?.cookies_accepted),
     },
+    client_company: input.client_company ? { ...input.client_company } : null,
     application_kind: input.application_kind ?? null,
     lead_form: lf && typeof lf === 'object' ? { ...(lf as Record<string, unknown>) } : lf ?? null,
   }

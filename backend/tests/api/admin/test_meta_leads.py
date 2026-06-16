@@ -694,3 +694,44 @@ async def test_superadmin_bootstrap_meta_uses_operational_tenant(client, monkeyp
     r2 = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=adm_headers)
     assert r2.status_code == 200, r2.text
     assert r2.json().get("meta_leads_context_redirected") is False
+
+
+@pytest.mark.anyio
+async def test_meta_lead_form_mapping_crud(client, manager_headers, tenant_id):
+    form_id = f"test-form-{uuid.uuid4().hex[:8]}"
+    page_id = "484113398123847"
+
+    list_resp = await client.get("/api/v1/settings/leads/meta/forms", headers=manager_headers)
+    assert list_resp.status_code == 200, list_resp.text
+    assert "tenant_fallback_rules_count" in list_resp.json()
+
+    get_empty = await client.get(
+        f"/api/v1/settings/leads/meta/forms/{form_id}/mapping",
+        headers=manager_headers,
+        params={"page_id": page_id, "source": "meta"},
+    )
+    assert get_empty.status_code == 200, get_empty.text
+    body = get_empty.json()
+    assert body["inherits_tenant_fallback"] is True
+
+    put_resp = await client.put(
+        f"/api/v1/settings/leads/meta/forms/{form_id}/mapping",
+        headers=manager_headers,
+        json={
+            "page_id": page_id,
+            "source": "meta",
+            "form_name": "Test Form",
+            "mapping_rules": [
+                {"source": "phone_number", "target": "phone", "format": "phone"},
+            ],
+        },
+    )
+    assert put_resp.status_code == 200, put_resp.text
+    saved = put_resp.json()
+    assert saved["inherits_tenant_fallback"] is False
+    assert any(r["target"] == "phone" for r in saved["mapping_rules"])
+
+    list_after = await client.get("/api/v1/settings/leads/meta/forms", headers=manager_headers)
+    assert list_after.status_code == 200
+    items = list_after.json().get("items") or []
+    assert any(i.get("form_id") == form_id and i.get("has_form_mapping") for i in items)

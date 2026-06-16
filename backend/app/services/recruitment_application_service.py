@@ -14,7 +14,9 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models import Candidate, Lead, RecruitmentApplication
+from backend.app.models.candidate import Candidate
+from backend.app.models.lead import Lead
+from backend.app.models.recruitment_application import RecruitmentApplication
 from backend.app.services.recruitment_application_lifecycle import (
     INITIAL_APPLICATION_STATUS,
     set_recruitment_application_status,

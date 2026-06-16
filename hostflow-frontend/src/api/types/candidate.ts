@@ -148,6 +148,12 @@ export interface Candidate {
   masked?: boolean;
   /** Handoff-based: false when agency cannot edit (accepted handoff) or client cannot edit (no accepted) */
   can_edit?: boolean;
+  /** Operational permissions from GET /candidates/{id} (handoff / HR ownership). */
+  permissions?: {
+    operational_owner?: 'recruitment' | 'hr' | string;
+    readonly_reason?: string | null;
+    can_close_recruitment?: boolean;
+  };
   intake_personal?: Record<string, any> | null;
   intake_contacts?: Record<string, any> | null;
   intake_experience?: Record<string, any> | null;

@@ -6,6 +6,7 @@ the initial package; the system classifies tiers; HR makes the final legal/contr
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -15,11 +16,7 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import WorkforceHrReview
-from backend.app.modules.documents import crud as documents_crud
-from backend.app.modules.documents.rules_engine import compute_candidate_checklist
-from backend.app.services.document_ruleset import load_default_ruleset
-from backend.app.services.ruleset_versioning import normalize_ruleset_payload
-from backend.app.services.candidate_document_checklist import profile_checklist_for_owner_summary
+from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
 from backend.app.services.hr_review_document_resolution import DOC_KEY_CANDIDATE_TYPES
 from backend.app.services.hr_verification_requirements import (
     is_driver_position,
@@ -39,6 +36,9 @@ STEP_LABELS = {
     STEP_EMPLOYMENT: "Employment setup",
 }
 
+# Always included in HR dossier (not driven by document catalog alone).
+_ALWAYS_INCLUDED_DATA_KEYS = frozenset({"Contacts & address", "Work experience"})
+
 # Catalog doc types (ruleset) → HR verification document_key
 CATALOG_TO_DOCUMENT_KEY: dict[str, str] = {}
 for _key, _types in DOC_KEY_CANDIDATE_TYPES.items():
@@ -55,6 +55,8 @@ CATALOG_TO_DOCUMENT_KEY.update(
         "karta_tachografu": "Tacho card",
         "visa_d": "Legal stay",
         "visa": "Legal stay",
+        "residence_card": "Legal stay",
+        "karta_pobytu": "Legal stay",
         "oswiadczenie": "Work permit",
         "zezwolenie_a": "Work permit",
     }
@@ -73,7 +75,14 @@ class _SlotDef:
 
 VERIFICATION_SLOT_DEFS: tuple[_SlotDef, ...] = (
     _SlotDef("Passport / ID", STEP_LEGAL_IDENTITY, 1, 1, frozenset({"passport", "national_id", "identity_document", "id_card", "identity_card", "passport_scan"})),
-    _SlotDef("Legal stay", STEP_LEGAL_STAY, 2, 1, frozenset({"legal_stay", "residence_permit", "visa", "visa_d"}), "legal_stay"),
+    _SlotDef(
+        "Legal stay",
+        STEP_LEGAL_STAY,
+        2,
+        1,
+        frozenset({"legal_stay", "residence_permit", "residence_card", "karta_pobytu", "visa", "visa_d"}),
+        "legal_stay",
+    ),
     _SlotDef("Work permit", STEP_LEGAL_STAY, 2, 2, frozenset({"work_permit", "work_permit_application", "oswiadczenie", "zezwolenie_a"}), "work_permit"),
     _SlotDef("Red paper", STEP_LEGAL_STAY, 2, 3, frozenset({"red_paper", "red_paper_certificate", "pesel"}), "red_paper"),
     _SlotDef("Driver license", STEP_PROFESSIONAL, 3, 1, frozenset({"driver_license", "prawo_jazdy", "eu_driver_license", "swiadectwo_kierowcy"})),
@@ -81,6 +90,20 @@ VERIFICATION_SLOT_DEFS: tuple[_SlotDef, ...] = (
     _SlotDef("Tacho card", STEP_PROFESSIONAL, 3, 3, frozenset({"tacho_card", "tachograph_card", "karta_tachografu"})),
     _SlotDef("Medical", STEP_EMPLOYMENT, 4, 1, frozenset({"medical", "medical_certificate", "badania_lekarskie"})),
     _SlotDef("Psychological", STEP_EMPLOYMENT, 4, 2, frozenset({"psychological", "psychological_certificate", "psychotest"})),
+    _SlotDef(
+        "Contacts & address",
+        STEP_LEGAL_IDENTITY,
+        1,
+        0,
+        frozenset(),
+    ),
+    _SlotDef(
+        "Work experience",
+        STEP_EMPLOYMENT,
+        4,
+        0,
+        frozenset({"employment_record", "swiadectwo_pracy", "work_certificate", "employment_history"}),
+    ),
 )
 
 # Requirement tiers (hybrid model)
@@ -150,12 +173,6 @@ def _is_eu_citizen(citizenship: Any) -> Optional[bool]:
     return code.lower() in _EU_CITIZENSHIP_CODES
 
 
-def _norm_set(values: Any) -> set[str]:
-    if not isinstance(values, (list, tuple, set, frozenset)):
-        return set()
-    return {str(x).strip().lower().replace("-", "_") for x in values if str(x).strip()}
-
-
 def _journey_step_by_code(journey: dict[str, Any], code: str) -> Optional[dict[str, Any]]:
     for s in journey.get("steps") or []:
         if isinstance(s, dict) and str(s.get("code") or "") == code:
@@ -172,6 +189,20 @@ def _journey_requires_document(journey: dict[str, Any], step_code: str) -> bool:
         return False
     req = step.get("required_documents") or []
     return bool(req) or st in ("pending", "blocked", "needs_data")
+
+
+def _vacancy_extra_dict(vacancy: Any) -> dict[str, Any]:
+    """Parse Vacancy.extra (JSON string or dict) for ruleset / verification context."""
+    raw = getattr(vacancy, "extra", None)
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        parsed = json.loads(str(raw))
+        return parsed if isinstance(parsed, dict) else {}
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
 
 
 async def _build_ruleset_context(
@@ -221,20 +252,22 @@ async def _build_ruleset_context(
     }
     if vacancy:
         cat = None
-        meta = vacancy.meta if isinstance(vacancy.meta, dict) else {}
-        if meta.get("position_category"):
-            cat = str(meta.get("position_category"))
-        elif meta.get("category"):
-            cat = str(meta.get("category"))
+        vac_extra = _vacancy_extra_dict(vacancy)
+        if vac_extra.get("position_category"):
+            cat = str(vac_extra.get("position_category"))
+        elif vac_extra.get("category"):
+            cat = str(vac_extra.get("category"))
         ctx["vacancy"] = {
             "id": str(vacancy.id),
             "title": getattr(vacancy, "title", None),
             "category": cat or ("driver" if is_driver_position(profession) else "non_driver"),
-            "profession": meta.get("profession") or meta.get("position"),
-            "contract_type": meta.get("contract_type") or meta.get("employment_type"),
-            "requires_driver_attestation": meta.get("requires_driver_attestation"),
-            "work_country": meta.get("work_country") or meta.get("country") or ctx.get("work_country"),
-            "required_documents": meta.get("required_documents"),
+            "profession": vac_extra.get("profession") or vac_extra.get("position"),
+            "contract_type": vac_extra.get("contract_type")
+            or vac_extra.get("employment_type")
+            or getattr(vacancy, "employment_type", None),
+            "requires_driver_attestation": vac_extra.get("requires_driver_attestation"),
+            "work_country": vac_extra.get("work_country") or vac_extra.get("country") or ctx.get("work_country"),
+            "required_documents": vac_extra.get("required_documents"),
         }
     elif is_driver_position(extra.get("role") or snap.get("role")):
         ctx["vacancy"] = {"category": "driver"}
@@ -243,26 +276,43 @@ async def _build_ruleset_context(
     return {k: v for k, v in ctx.items() if v is not None}
 
 
-async def _resolve_document_checklist(
+async def _resolve_expected_document_sets(
     db: AsyncSession,
     tenant_id: str,
     *,
     candidate: Optional[Candidate],
     owner_context: dict[str, Any],
     own_company_id: Optional[str],
-) -> dict[str, Any]:
-    if candidate:
-        prof_cl = await profile_checklist_for_owner_summary(db, tenant_id, candidate)
-        if prof_cl:
-            return prof_cl
-    ruleset_version = await documents_crud.ensure_ruleset_seed(
+) -> tuple[set[str], set[str], str]:
+    expected = await ReferenceServiceFacade.get_applicable_documents(
         db,
-        tenant_id,
-        load_default_ruleset(),
-        own_company_id=own_company_id,
+        context=ReferenceContext(
+            tenant_id=tenant_id,
+            module="hr",
+            entity_type="candidate",
+            entity_id=str(candidate.id) if candidate else None,
+            candidate_id=str(candidate.id) if candidate else None,
+            citizenship=owner_context.get("citizenship"),
+            work_country=owner_context.get("work_country"),
+            residence_status=owner_context.get("residency_status"),
+            position_category=(owner_context.get("vacancy") or {}).get("category") or owner_context.get("profession"),
+            employment_type=(owner_context.get("vacancy") or {}).get("contract_type"),
+            stage="hr",
+            client_id=own_company_id,
+            vacancy_id=str(getattr(candidate, "vacancy_id", "") or "").strip() or None,
+        ),
     )
-    ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
-    return compute_candidate_checklist(owner_context, ruleset_payload)
+    required_types = {
+        str(r.get("document_code") or "").strip().lower().replace("-", "_")
+        for r in expected
+        if bool(r.get("required")) and str(r.get("document_code") or "").strip()
+    }
+    optional_types = {
+        str(r.get("document_code") or "").strip().lower().replace("-", "_")
+        for r in expected
+        if (not bool(r.get("required"))) and str(r.get("document_code") or "").strip()
+    }
+    return required_types, optional_types, "reference_service_facade"
 
 
 def _is_requirement_waived(row: dict[str, Any]) -> bool:
@@ -352,6 +402,8 @@ def _classify_slot(
     position_category: Optional[str],
 ) -> str:
     """Catalog match: required | optional | not_required (feeds tier mapping)."""
+    if slot.document_key in _ALWAYS_INCLUDED_DATA_KEYS:
+        return "required"
     if slot.document_key in _ALWAYS_REQUIRED_KEYS:
         return "required"
     catalog_hit_required = bool(slot.catalog_types & required_types)
@@ -427,9 +479,13 @@ async def build_hr_verification_plan(
 
     owner_ctx = await _build_ruleset_context(db, tid, candidate=candidate, employee=employee, vacancy=vacancy)
     oc = str(getattr(candidate, "own_company_id", None) or getattr(employee, "own_company_id", None) or "").strip() or None
-    checklist = await _resolve_document_checklist(db, tid, candidate=candidate, owner_context=owner_ctx, own_company_id=oc)
-    required_types = _norm_set(checklist.get("requiredTypes"))
-    optional_types = _norm_set(checklist.get("optionalTypes"))
+    required_types, optional_types, required_source = await _resolve_expected_document_sets(
+        db,
+        tid,
+        candidate=candidate,
+        owner_context=owner_ctx,
+        own_company_id=oc,
+    )
 
     position_category = await resolve_position_category_for_review(
         db, tid, employee_id=review.employee_id, candidate_id=cid or None
@@ -542,7 +598,7 @@ async def build_hr_verification_plan(
         "ruleset_checklist": {
             "required_types": sorted(required_types),
             "optional_types": sorted(optional_types),
-            "source": (checklist.get("debug") or {}).get("schema"),
+            "source": required_source,
         },
         "documents": plan_documents,
         "hard_blocker_documents": [d for d in plan_documents if d.get("requirement_tier") == TIER_HARD_BLOCKER],

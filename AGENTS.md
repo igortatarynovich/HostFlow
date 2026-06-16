@@ -119,3 +119,198 @@ HostFlow использует живую спецификацию в `docs/specs
    - L3: обновить implementation-note и убедиться, что ссылка на L3 не используется как «источник истины».
 3. После обновления — сгенерировать/обновить код и тесты, прогнать `make docs-lint` и `make test`.
 4. При архивации устаревшего документа — `git mv` в `archive/legacy/YYYY-MM-DD/` + явный canon replacement в `archive/legacy/YYYY-MM-DD/README.md` (см. `documentation-rules.md` §6).
+
+---
+
+# HostFlow Architecture Enforcement Rules (Mandatory)
+
+## Core Principle
+
+System Layer stores shared language, contracts, canonical catalogs, schemas and cross-module boundaries.
+
+Module Layer stores business behavior, workflows, decisions, scoring, approvals, checklists and runtime logic.
+
+A module must never push its own business behavior into the system layer unless explicitly approved through architecture review.
+
+## Rule 1. No New Local Reference Dictionaries
+
+Creating new local dictionaries is prohibited unless explicitly approved.
+
+This includes, but is not limited to:
+
+- document type lists
+- document category lists
+- country lists
+- citizenship lists
+- permit lists
+- visa lists
+- status dictionaries
+- field definition registries
+- normalization tables
+
+All shared reference data must come from the Platform Reference Layer.
+
+Any new local reference dictionary is considered an architecture violation until proven otherwise.
+
+## Rule 2. No Cross-Module Internal Access
+
+Modules must not access internal implementation details of other modules.
+
+Allowed:
+
+- facade contracts
+- delivery contracts
+- API contracts
+- event contracts
+- typed DTO contracts
+
+Prohibited:
+
+- direct service imports from another module
+- direct CRUD access from another module
+- direct repository access from another module
+- direct internal helper usage from another module
+
+A module may communicate only through approved contracts.
+
+## Rule 3. Ownership Card Required Before New Domain Creation
+
+No new domain may be created without an ownership definition.
+
+Required ownership card:
+
+- Domain name
+- Owner
+- Source of truth
+- Consumers
+- Delivery contract
+- Versioning strategy
+- Override policy
+- Enforcement requirements
+
+Examples:
+
+- Billing
+- Fleet
+- Payroll
+- Housing
+- Training
+- Compliance
+
+Creation of a domain without an ownership card is prohibited.
+
+## Rule 4. Two-Module Promotion Rule
+
+Business rules must remain inside their owning module.
+
+A rule may be promoted to the System Layer only if:
+
+- it is required by at least two independent modules
+
+OR
+
+- it is a mandatory platform contract
+
+If neither condition is true, the rule remains module-owned.
+
+Default decision:
+
+KEEP INSIDE MODULE.
+
+## Rule 5. Runtime Is Always Downstream
+
+For every new capability the implementation order must be:
+
+1. Ownership
+2. Reference
+3. Contract
+4. Enforcement
+5. Runtime
+
+Never:
+
+1. Runtime
+2. Fix architecture later
+
+Architecture must exist before runtime adoption.
+
+## Rule 6. System Layer Cannot Contain Module Behavior
+
+System Layer may contain:
+
+- canonical catalogs
+- shared schemas
+- field definitions
+- normalization rules
+- compatibility contracts
+- version metadata
+- reference facades
+- delivery contracts
+- cross-module boundaries
+
+System Layer may not contain:
+
+- recruitment workflows
+- HR workflows
+- billing workflows
+- candidate scoring
+- approval decisions
+- business eligibility decisions
+- module checklists
+- operational automation logic
+
+These belong to modules.
+
+## Rule 7. Every Boundary Requires Enforcement
+
+Architecture is not considered implemented until enforcement exists.
+
+Required enforcement may include:
+
+- guard scans
+- boundary tests
+- import restrictions
+- contract validation
+- compatibility checks
+
+A rule without enforcement is considered documentation only.
+
+## Rule 8. Every STOP Condition Blocks Progress
+
+Any unresolved STOP condition immediately blocks promotion to the next gate.
+
+Work may continue only after:
+
+- remediation
+- documented exception
+- formal PASS_WITH_CONSTRAINTS decision
+
+Unresolved STOP conditions may never be silently bypassed.
+
+## Rule 9. Formal Evidence Required For Promotion
+
+A gate may only be promoted through a formal decision record.
+
+Allowed outcomes:
+
+- PASS
+- PASS_WITH_CONSTRAINTS
+- PASS_WITH_BASELINE_NOTE
+- STOP
+
+Every decision must include evidence.
+
+No verbal or implicit promotion is allowed.
+
+## Rule 10. Platform First, Modules Second
+
+HostFlow architecture is built in the following order:
+
+Platform Layer
+→ Contracts
+→ Enforcement
+→ Runtime Modules
+
+The platform exists to allow independent evolution of modules.
+
+A module must never become the source of truth for platform concepts.

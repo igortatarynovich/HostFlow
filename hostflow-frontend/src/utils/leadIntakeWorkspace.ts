@@ -157,6 +157,11 @@ export function leadIntakeResolutionRejected(lead: Lead): boolean {
 export function leadQueueIntakeShellOk(lead: Lead, isServicesTenant: boolean): boolean {
   if (isServicesTenant || lead.candidate_id) return false
   if (!leadSupportsManualProcess(lead)) return false
+  if (leadIntakeResolutionRejected(lead)) return false
+  const st = String(lead.status || '')
+    .trim()
+    .toLowerCase()
+  if (st === 'rejected') return false
   const src = String(lead.source || '').toLowerCase()
   const srcOk =
     src === 'meta' ||

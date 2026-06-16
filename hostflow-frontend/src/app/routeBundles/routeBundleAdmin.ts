@@ -16,6 +16,7 @@ export { default as CompanyAccessPage } from '../../pages/admin/CompanyAccessPag
 export { default as CandidateProfilesPage } from '../../pages/admin/CandidateProfilesPage'
 export { default as FunnelsPage } from '../../pages/admin/FunnelsPage'
 export { default as HiringPipelineGatesSettingsPage } from '../../pages/admin/HiringPipelineGatesSettingsPage'
+export { default as TransferPolicySettingsPage } from '../../pages/admin/TransferPolicySettingsPage'
 export { default as RiskIntelSettingsPage } from '../../pages/admin/RiskIntelSettingsPage'
 export { default as CustomFieldsPage } from '../../pages/admin/CustomFieldsPage'
 export { default as BillingWorkspacePage } from '../../pages/admin/BillingWorkspacePage'
@@ -24,3 +25,4 @@ export { default as EmailSettingsPage } from '../../pages/admin/EmailSettingsPag
 export { default as TenantLinksSettingsPage } from '../../pages/admin/TenantLinksSettingsPage'
 export { default as LeadFormsSettingsPage } from '../../pages/admin/LeadFormsSettingsPage'
 export { default as LegalDocumentsPage } from '../../pages/admin/LegalDocumentsPage'
+export { default as LeadMessageTemplatesPage } from '../../pages/admin/LeadMessageTemplatesPage'

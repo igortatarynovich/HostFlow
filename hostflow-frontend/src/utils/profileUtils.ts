@@ -1,4 +1,10 @@
 import type { CandidateProfile } from '../api/candidate_profiles'
+import type { EffectiveCardLayout } from '../api/fieldRegistry'
+import {
+  layoutFieldLabel,
+  layoutFieldRequired,
+  layoutFieldVisible,
+} from './fieldLayoutUtils'
 
 export interface FieldConfig {
   field_key: string
@@ -61,7 +67,15 @@ export function getDocumentConfigs(profile: CandidateProfile | null | undefined)
 /**
  * Проверить, должно ли поле быть видимым
  */
-export function isFieldVisible(profile: CandidateProfile | null | undefined, fieldKey: string): boolean {
+export function isFieldVisible(
+  profile: CandidateProfile | null | undefined,
+  fieldKey: string,
+  effectiveLayout?: EffectiveCardLayout | null,
+): boolean {
+  return layoutFieldVisible(profile, fieldKey, effectiveLayout, _isFieldVisibleFromProfile)
+}
+
+function _isFieldVisibleFromProfile(profile: CandidateProfile | null | undefined, fieldKey: string): boolean {
   if (!profile) {
     return true // Если профиля нет, показываем все поля
   }
@@ -77,7 +91,15 @@ export function isFieldVisible(profile: CandidateProfile | null | undefined, fie
 /**
  * Проверить, является ли поле обязательным
  */
-export function isFieldRequired(profile: CandidateProfile | null | undefined, fieldKey: string): boolean {
+export function isFieldRequired(
+  profile: CandidateProfile | null | undefined,
+  fieldKey: string,
+  effectiveLayout?: EffectiveCardLayout | null,
+): boolean {
+  return layoutFieldRequired(profile, fieldKey, effectiveLayout, _isFieldRequiredFromProfile)
+}
+
+function _isFieldRequiredFromProfile(profile: CandidateProfile | null | undefined, fieldKey: string): boolean {
   if (!profile) {
     return false
   }
@@ -92,7 +114,20 @@ export function isFieldRequired(profile: CandidateProfile | null | undefined, fi
 /**
  * Получить метку поля из профиля
  */
-export function getFieldLabel(profile: CandidateProfile | null | undefined, fieldKey: string, defaultLabel: string): string {
+export function getFieldLabel(
+  profile: CandidateProfile | null | undefined,
+  fieldKey: string,
+  defaultLabel: string,
+  effectiveLayout?: EffectiveCardLayout | null,
+): string {
+  return layoutFieldLabel(profile, fieldKey, defaultLabel, effectiveLayout, _getFieldLabelFromProfile)
+}
+
+function _getFieldLabelFromProfile(
+  profile: CandidateProfile | null | undefined,
+  fieldKey: string,
+  defaultLabel: string,
+): string {
   if (!profile) {
     return defaultLabel
   }

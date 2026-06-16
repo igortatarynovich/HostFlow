@@ -119,7 +119,16 @@ async def send_oauth_email_message(
     from_address: str | None = None,
     reply_to: str | None = None,
 ) -> Dict[str, Any]:
+    from backend.app.services.email_delivery import is_email_delivery_mock
+
     p = (provider or "").strip().lower()
+    if is_email_delivery_mock():
+        return {
+            "provider": p or "mock",
+            "message_ref": None,
+            "thread_ref": None,
+            "payload": {"delivery_status": "mock"},
+        }
     if p in {"gmail", "google"}:
         return await _send_gmail_message(
             access_token=access_token,

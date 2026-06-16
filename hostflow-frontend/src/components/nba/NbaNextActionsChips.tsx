@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom'
 import { IconLock } from '@tabler/icons-react'
 
 import { nbaGroupHref, type NextActionGroup } from '../../api/nextActions'
 import { useI18n } from '../../i18n'
 import { ACTIVATION_PATHS } from '../../app/activationRoutes'
+import { Chip } from '../ui/Chip'
 import { NBA_QUICK_PROCESS_NEW_GROUP_IDS, NBA_QUICK_REMINDER_GROUP_IDS } from './nbaQuickConstants'
 
 type NbaNextActionsChipsProps = {
@@ -34,6 +34,23 @@ function nbaChipTitle(t: (key: string, options?: { defaultValue?: string; values
   return translated && translated !== key ? translated : g.title
 }
 
+const ENTITY_CHIP_CLASS = {
+  candidate:
+    'rounded-lg border-brand-200 bg-brand-50/90 text-left text-brand-950 hover:bg-brand-100',
+  lead: 'rounded-lg border-amber-200 bg-amber-50/90 text-left text-amber-950 hover:bg-amber-100',
+} as const
+
+const ENTITY_COUNT_CLASS = {
+  candidate: 'tabular-nums text-brand-800',
+  lead: 'tabular-nums text-amber-800',
+} as const
+
+const ENTITY_ACTION_CLASS = {
+  candidate:
+    'rounded-md border-brand-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-900 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60',
+  lead: 'rounded-md border-amber-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60',
+} as const
+
 export function NbaNextActionsChips({
   groups,
   nbaQuickLoadingGroupId,
@@ -50,71 +67,85 @@ export function NbaNextActionsChips({
     <div className={className}>
       {visible.map((g) => {
         const chipTitle = nbaChipTitle(t, g)
-        return g.locked ? (
-          <Link
-            key={g.id}
-            to={`${ACTIVATION_PATHS.billing}?focus=plan`}
-            title={t('app.leads.nba.locked_hint')}
-            aria-label={`${chipTitle}: ${t('app.leads.nba.locked_hint')}`}
-            className="inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-300 bg-slate-100/90 px-2.5 py-1 text-left text-xs text-slate-600 hover:bg-slate-200"
-          >
-            <IconLock size={12} className="shrink-0 text-slate-500" aria-hidden />
-            <span className="font-medium">{chipTitle}</span>
-            <span className="tabular-nums text-slate-500">({g.count})</span>
-            <span className="text-[10px] font-medium uppercase text-slate-500">
-              {String(g.required_plan || '').toLowerCase() === 'pro' ? t('app.leads.nba.badge_pro') : t('app.leads.nba.badge_team')}
-            </span>
-          </Link>
-        ) : (
-          <div key={g.id} className="inline-flex max-w-full flex-wrap items-center gap-1">
-            <Link
-              to={nbaGroupHref(g)}
-              className={
-                g.entity === 'candidate'
-                  ? 'inline-flex max-w-full items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50/90 px-2.5 py-1 text-left text-xs text-indigo-950 hover:bg-indigo-100'
-                  : 'inline-flex max-w-full items-center gap-1 rounded-lg border border-amber-200 bg-amber-50/90 px-2.5 py-1 text-left text-xs text-amber-950 hover:bg-amber-100'
+        const entity = g.entity === 'candidate' ? 'candidate' : 'lead'
+
+        if (g.locked) {
+          const lockedHint = t('app.leads.nba.locked_hint')
+          return (
+            <Chip
+              key={g.id}
+              behavior="action"
+              href={`${ACTIVATION_PATHS.billing}?focus=plan`}
+              title={lockedHint}
+              ariaLabel={`${chipTitle}: ${lockedHint}`}
+              size="md"
+              className="rounded-lg border-slate-300 bg-slate-100/90 text-left text-slate-600 hover:bg-slate-200"
+              label={
+                <>
+                  <IconLock size={12} className="shrink-0 text-slate-500" aria-hidden />
+                  <span className="font-medium">{chipTitle}</span>
+                  <span className="tabular-nums text-slate-500">({g.count})</span>
+                  <span className="text-[10px] font-medium uppercase text-slate-500">
+                    {String(g.required_plan || '').toLowerCase() === 'pro'
+                      ? t('app.leads.nba.badge_pro')
+                      : t('app.leads.nba.badge_team')}
+                  </span>
+                </>
               }
-            >
-              <span className="font-medium">{chipTitle}</span>
-              <span
-                className={g.entity === 'candidate' ? 'tabular-nums text-indigo-800' : 'tabular-nums text-amber-800'}
-              >
-                ({g.count})
-              </span>
-            </Link>
+            />
+          )
+        }
+
+        const loading = nbaQuickLoadingGroupId === g.id
+
+        return (
+          <div key={g.id} className="inline-flex max-w-full flex-wrap items-center gap-1">
+            <Chip
+              behavior="action"
+              href={nbaGroupHref(g)}
+              size="md"
+              className={ENTITY_CHIP_CLASS[entity]}
+              label={
+                <>
+                  <span className="font-medium">{chipTitle}</span>
+                  <span className={ENTITY_COUNT_CLASS[entity]}>({g.count})</span>
+                </>
+              }
+            />
             {NBA_QUICK_REMINDER_GROUP_IDS.has(g.id) ? (
-              <button
-                type="button"
-                className={
-                  g.entity === 'candidate'
-                    ? 'rounded-md border border-indigo-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60'
-                    : 'rounded-md border border-amber-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60'
-                }
-                disabled={nbaQuickLoadingGroupId === g.id}
+              <Chip
+                behavior="action"
+                size="sm"
+                disabled={loading}
+                className={ENTITY_ACTION_CLASS[entity]}
                 onClick={() => void onQuickFollowUp(g)}
-              >
-                {nbaQuickLoadingGroupId === g.id ? t('common.loading') : t('app.leads.nba.do_now')}
-              </button>
+                label={loading ? t('common.loading') : t('app.leads.nba.do_now')}
+              />
             ) : null}
             {NBA_QUICK_PROCESS_NEW_GROUP_IDS.has(g.id) ? (
               teamTierFeatures ? (
-                <button
-                  type="button"
-                  className="rounded-md border border-emerald-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={nbaQuickLoadingGroupId === g.id}
+                <Chip
+                  behavior="action"
+                  size="sm"
+                  disabled={loading}
+                  className="rounded-md border-emerald-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={() => void onQuickProcessNew(g)}
-                >
-                  {nbaQuickLoadingGroupId === g.id ? t('common.loading') : t('app.leads.nba.process_new')}
-                </button>
+                  label={loading ? t('common.loading') : t('app.leads.nba.process_new')}
+                />
               ) : (
-                <Link
-                  to={`${ACTIVATION_PATHS.billing}?focus=plan`}
+                <Chip
+                  behavior="action"
+                  href={`${ACTIVATION_PATHS.billing}?focus=plan`}
                   title={t('app.leads.nba.process_new_upgrade_hint')}
+                  size="sm"
                   className="inline-flex items-center gap-0.5 rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:bg-slate-100"
-                >
-                  <IconLock size={11} className="shrink-0 text-slate-500" aria-hidden />
-                  {t('app.leads.nba.process_new')}
-                </Link>
+                  label={
+                    <>
+                      <IconLock size={11} className="shrink-0 text-slate-500" aria-hidden />
+                      {t('app.leads.nba.process_new')}
+                    </>
+                  }
+                />
               )
             ) : null}
           </div>

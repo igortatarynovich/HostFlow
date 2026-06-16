@@ -95,6 +95,11 @@ fr_module = _load_model_module("field_registry")
 FrCanonicalField = fr_module.FrCanonicalField  # type: ignore[attr-defined]
 FrCardLayoutProfile = fr_module.FrCardLayoutProfile  # type: ignore[attr-defined]
 FrCardLayoutField = fr_module.FrCardLayoutField  # type: ignore[attr-defined]
+module_registry_module = _load_model_module("module_registry")
+ModuleRegistry = module_registry_module.ModuleRegistry  # type: ignore[attr-defined]
+TenantModuleInstallation = module_registry_module.TenantModuleInstallation  # type: ignore[attr-defined]
+ModuleCapability = module_registry_module.ModuleCapability  # type: ignore[attr-defined]
+ModuleDependency = module_registry_module.ModuleDependency  # type: ignore[attr-defined]
 MergeDocumentTemplate = _load_model_module("merge_document_template").MergeDocumentTemplate  # type: ignore[attr-defined]
 MergeDocumentGenerationLog = _load_model_module("merge_document_generation_log").MergeDocumentGenerationLog  # type: ignore[attr-defined]
 

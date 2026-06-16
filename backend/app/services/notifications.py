@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
+from backend.app.services.email_delivery import is_email_delivery_mock
+
 WEBHOOK_URL = os.getenv("WEBHOOK_URL") or ""
 WEBHOOK_TIMEOUT = float(os.getenv("WEBHOOK_TIMEOUT") or "3")
 
@@ -71,4 +73,6 @@ async def notify(
         payload["template_context"] = template_context
     if channels:
         payload["channels"] = channels
+    if is_email_delivery_mock():
+        return
     await send_webhook("notify", payload)

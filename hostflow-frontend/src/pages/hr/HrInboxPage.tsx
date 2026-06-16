@@ -130,6 +130,32 @@ export default function HrInboxPage() {
   const empHref = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`
   const handoffHref = (id: string) => `${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(id)}`
 
+  const lanes = useMemo(
+    () => [
+      {
+        key: 'awaiting_documents',
+        title: t('app.hr.inbox.lane.awaiting_documents', { defaultValue: 'Awaiting documents' }),
+        match: (q: string) => q === 'awaiting_documents' || q === 'awaiting_work_permit' || q === 'awaiting_red_paper',
+      },
+      {
+        key: 'ready_for_review',
+        title: t('app.hr.inbox.lane.ready_for_review', { defaultValue: 'Ready for review' }),
+        match: (q: string) => q === 'hr_review_in_progress' || q === 'awaiting_hr_pickup',
+      },
+      {
+        key: 'blocked',
+        title: t('app.hr.inbox.lane.blocked', { defaultValue: 'Blocked' }),
+        match: (q: string) => q === 'returned_to_recruitment' || q === 'rejected_by_hr',
+      },
+      {
+        key: 'ready_for_activation',
+        title: t('app.hr.inbox.lane.ready_for_activation', { defaultValue: 'Ready for activation' }),
+        match: (q: string) => q === 'approved_for_employment',
+      },
+    ],
+    [t],
+  )
+
   const queueChips: Array<HrOperationalQueue | 'all'> = [
     'all',
     'awaiting_hr_pickup',
@@ -240,92 +266,80 @@ export default function HrInboxPage() {
       ) : null}
       {err ? <div className="alert-error">{err}</div> : null}
 
-      <div className="card overflow-hidden">
+      <div className="space-y-4">
         {loading ? (
-          <div className="p-6 text-sm text-slate-600">{t('common.loading')}</div>
+          <div className="card p-6 text-sm text-slate-600">{t('common.loading')}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table w-full min-w-[960px] text-left text-sm">
-              <thead>
-                <tr>
-                  <th>{t('app.nav.hr.inbox.col_queue', { defaultValue: 'Queue' })}</th>
-                  <th>{t('app.nav.hr.inbox.col_candidate', { defaultValue: 'Candidate' })}</th>
-                  <th>{t('app.nav.hr.inbox.col_handoff', { defaultValue: 'Handoff' })}</th>
-                  <th>{t('app.nav.hr.inbox.col_employee', { defaultValue: 'Workforce' })}</th>
-                  <th className="w-48">{t('app.nav.hr.inbox.col_actions', { defaultValue: 'Actions' })}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row) => {
-                  const h = row.handoff
-                  const id = h?.id
-                  const wf = row.workforce_employee_id
-                  const isPickup = row.operational_queue === 'awaiting_hr_pickup'
-                  return (
-                    <tr key={id || Math.random().toString(36)}>
-                      <td>
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-800">
-                          {queueLabel(String(row.operational_queue))}
-                        </span>
-                      </td>
-                      <td className="font-medium text-slate-900">
-                        {row.candidate_display_name || h?.candidate_id || '—'}
-                      </td>
-                      <td className="font-mono text-xs text-slate-600">{id || '—'}</td>
-                      <td className="font-mono text-xs text-slate-600">
-                        {wf ? (
-                          row.hr_review_status === 'approved_for_employment' ? (
-                            <Link className="text-brand-700 hover:underline" to={empHref(wf)}>
-                              {wf.slice(0, 8)}…
-                            </Link>
-                          ) : (
-                            <span title={wf}>{wf.slice(0, 8)}…</span>
-                          )
-                        ) : row.awaiting_employment_approval ? (
-                          <span className="text-amber-800">{t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}</span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>
-                        <div className="flex flex-col gap-1">
-                          {isPickup && id ? (
-                            <button
-                              type="button"
-                              className="btn-primary btn-sm text-left"
-                              disabled={acceptingId === id}
-                              onClick={() => void handleAcceptPickup(id)}
-                            >
-                              {t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' })}
-                            </button>
-                          ) : null}
-                          {id ? (
-                            <Link className="text-sm font-medium text-brand-700 hover:underline" to={handoffHref(id)}>
-                              {isPickup
-                                ? t('app.nav.hr.inbox.view_snapshot', { defaultValue: 'Open case' })
-                                : t('app.nav.hr.inbox.view_review', { defaultValue: 'HR review' })}
-                            </Link>
-                          ) : null}
-                          {wf && row.hr_review_status === 'approved_for_employment' ? (
-                            <Link className="text-xs font-medium text-brand-700 hover:underline" to={empHref(wf)}>
-                              {t('app.hr.review_case.open_employee_profile', { defaultValue: 'Open employee profile' })}
-                            </Link>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {!items.length && !loading ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-sm text-slate-600">
-                      {t('app.nav.hr.inbox.empty', { defaultValue: 'No handoffs in this queue.' })}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {lanes.map((lane) => {
+              const laneItems = items.filter((row) => lane.match(String(row.operational_queue)))
+              return (
+                <section key={lane.key} className="card p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900">{lane.title}</h3>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      {laneItems.length}
+                    </span>
+                  </div>
+                  {!laneItems.length ? (
+                    <p className="text-xs text-slate-500">{t('app.nav.hr.inbox.empty', { defaultValue: 'No handoffs in this queue.' })}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {laneItems.map((row) => {
+                        const h = row.handoff
+                        const id = h?.id
+                        const wf = row.workforce_employee_id
+                        const isPickup = row.operational_queue === 'awaiting_hr_pickup'
+                        return (
+                          <li key={id || `${row.candidate_display_name}-${lane.key}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-medium text-slate-900">{row.candidate_display_name || '—'}</div>
+                                <div className="mt-0.5 text-xs text-slate-600">
+                                  {queueLabel(String(row.operational_queue))}
+                                  {row.awaiting_employment_approval ? ` · ${t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}` : ''}
+                                </div>
+                                {id ? <div className="mt-0.5 font-mono text-[10px] text-slate-400">handoff:{id.slice(0, 8)}…</div> : null}
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                {isPickup && id ? (
+                                  <button
+                                    type="button"
+                                    className="btn-primary btn-sm text-left"
+                                    disabled={acceptingId === id}
+                                    onClick={() => void handleAcceptPickup(id)}
+                                  >
+                                    {t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' })}
+                                  </button>
+                                ) : null}
+                                {id ? (
+                                  <Link className="text-sm font-medium text-brand-700 hover:underline" to={handoffHref(id)}>
+                                    {isPickup
+                                      ? t('app.nav.hr.inbox.view_snapshot', { defaultValue: 'Open case' })
+                                      : t('app.nav.hr.inbox.view_review', { defaultValue: 'HR review' })}
+                                  </Link>
+                                ) : null}
+                                {wf && row.hr_review_status === 'approved_for_employment' ? (
+                                  <Link className="text-xs font-medium text-brand-700 hover:underline" to={empHref(wf)}>
+                                    {t('app.hr.review_case.open_employee_profile', { defaultValue: 'Open employee profile' })}
+                                  </Link>
+                                ) : null}
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </section>
+              )
+            })}
+            {!items.length && !loading ? (
+              <div className="card p-6 text-center text-sm text-slate-600">
+                {t('app.nav.hr.inbox.empty', { defaultValue: 'No handoffs in this queue.' })}
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </div>

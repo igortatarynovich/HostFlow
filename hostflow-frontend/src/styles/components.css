@@ -66,6 +66,11 @@
            hover:bg-rose-100 active:bg-rose-200
            focus:ring-4 focus:ring-rose-100;
   }
+  .btn-ghost {
+    @apply btn border-transparent bg-transparent text-slate-700
+           hover:bg-slate-100 active:bg-slate-200
+           focus:ring-4 focus:ring-brand-100;
+  }
   .btn-sm {
     @apply px-3 py-1.5 text-xs min-h-[40px] sm:min-h-0;
   }
@@ -74,7 +79,7 @@
   }
   .btn-icon {
     @apply inline-flex items-center justify-center rounded-lg
-           p-2 text-slate-600 hover:bg-gray-100 active:bg-gray-200
+           p-2 text-slate-600 hover:bg-slate-100 active:bg-slate-200
            focus:ring-4 focus:ring-brand-100;
   }
 

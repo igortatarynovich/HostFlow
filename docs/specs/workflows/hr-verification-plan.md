@@ -84,7 +84,7 @@ Service: `backend/app/services/hr_verification_plan.py` — `plan_mode: "hybrid"
 | `blocking_reasons` | `hard_blocker:…` / `required:…` prefixes |
 | `can_approve` | plan-level readiness (hard + non-waived required + hr_requested) |
 
-Panel `can_approve` also checks checklist / verified-fields SoT.
+Panel `can_approve` in **hybrid** mode follows `verification_plan` only (PR15). Legacy checklist / verified-fields apply outside hybrid.
 
 ---
 
@@ -112,9 +112,9 @@ Frontend: `isHrApproveAllowed(panel)` reads the same `verification_plan`.
 
 When `verification_plan.plan_mode === "hybrid"`, do **not** run the legacy loop over `documents_for_approval` inside `finalize_hr_review_can_approve`. Rows without `required: false` would still block approve and break **recommended** / **optional** behaviour.
 
-Document gates = `plan_blocks_approve` only; plus checklist, verified-fields, and data-verification slices.
+Document gates = `plan_blocks_approve` only. No parallel checklist, verified-fields, or data-verification gate in hybrid mode.
 
-See `workforce_hr_review.finalize_hr_review_can_approve` (early return when `plan_mode` is `hybrid`).
+See `workforce_hr_review.finalize_hr_review_can_approve` and `_assert_can_approve` (hybrid branch).
 
 ---
 

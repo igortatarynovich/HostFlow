@@ -21,13 +21,14 @@ from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.services import reminder_tasks
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
 from backend.app.services.hr_inbox import list_internal_hr_handoffs_for_hr_inbox
+from backend.app.services.reference_service_facade import ReferenceServiceFacade
 
 # v1 thresholds (tune later via tenant settings / env if needed).
 HANDOFF_UNACCEPTED_SLA_HOURS = 48
 HR_INACTIVITY_HOURS = 168  # 7 days without workforce touch after accept
 DOCUMENT_EXPIRING_SOON_DAYS = 7
 
-SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
 
 
 def resolve_dashboard_assignee_id(
@@ -105,14 +106,16 @@ def _risk_item(
     task_id: str | None = None,
     assignee_user_id: str | None = None,
 ) -> dict[str, Any]:
+    severity_code = ReferenceServiceFacade.normalize_reference_code(domain="risk_severities", value=severity)
+    action_code = ReferenceServiceFacade.normalize_reference_code(domain="next_actions", value=recommended_action)
     return {
         "risk_code": risk_code,
-        "severity": severity,
+        "severity": severity_code,
         "handoff_id": (str(handoff_id).strip() if handoff_id else None),
         "workforce_employee_id": workforce_employee_id,
         "candidate_snapshot": candidate_snapshot,
         "reason": reason,
-        "recommended_action": recommended_action,
+        "recommended_action": action_code,
         "due_at": due_at,
         "expires_at": expires_at,
         "document_type": document_type,
@@ -170,7 +173,7 @@ async def list_operational_risk_items(
                     f"Internal HR handoff pending review for {int((now - req_at).total_seconds() / 3600)}h "
                     f"(SLA {HANDOFF_UNACCEPTED_SLA_HOURS}h)."
                 ),
-                recommended_action="Accept or reject the handoff in HR inbox.",
+                recommended_action="assign_manager",
                 due_at=req_at.isoformat(),
                 assignee_user_id=str(h.assigned_to_user_id).strip() if h.assigned_to_user_id else None,
             )
@@ -201,7 +204,7 @@ async def list_operational_risk_items(
                 workforce_employee_id=row.get("workforce_employee_id"),
                 candidate_snapshot=_snapshot_from_queue_row(row),
                 reason=f"Required high-risk document missing or invalid: {row.get('document_type')}.",
-                recommended_action=str(row.get("recommended_action") or "urgent_collect_compliance_document"),
+                recommended_action="upload_document",
                 expires_at=None,
                 document_type=str(row.get("document_type") or ""),
                 assignee_user_id=row.get("assignee_user_id"),
@@ -233,7 +236,7 @@ async def list_operational_risk_items(
                 workforce_employee_id=row.get("workforce_employee_id"),
                 candidate_snapshot=_snapshot_from_queue_row(row),
                 reason=f"Live document expired or marked expired: {row.get('document_type')}.",
-                recommended_action=str(row.get("recommended_action") or "renew_or_replace_immediately"),
+                recommended_action="renew_document",
                 expires_at=row.get("expires_at"),
                 document_type=str(row.get("document_type") or ""),
                 assignee_user_id=row.get("assignee_user_id"),
@@ -275,7 +278,7 @@ async def list_operational_risk_items(
                 workforce_employee_id=row.get("workforce_employee_id"),
                 candidate_snapshot=_snapshot_from_queue_row(row),
                 reason=f"Document expires within {DOCUMENT_EXPIRING_SOON_DAYS} days ({row.get('document_type')}).",
-                recommended_action=str(row.get("recommended_action") or "schedule_renewal"),
+                recommended_action="renew_document",
                 expires_at=str(row.get("expires_at")) if exp else None,
                 document_type=str(row.get("document_type") or ""),
                 assignee_user_id=row.get("assignee_user_id"),
@@ -351,7 +354,7 @@ async def list_operational_risk_items(
                 workforce_employee_id=None,
                 candidate_snapshot=_snapshot_from_inbox_row({"snapshot": snap_pl}),
                 reason=f"HR task '{r.title or r.type}' is past due ({days_late}d).",
-                recommended_action="Complete or reschedule the task.",
+                recommended_action="contact_employee",
                 due_at=r.due_at.isoformat() if r.due_at else None,
                 task_id=str(r.id),
                 assignee_user_id=str(r.assignee_id).strip() if r.assignee_id else None,
@@ -400,7 +403,7 @@ async def list_operational_risk_items(
                     f"No workforce updates for {HR_INACTIVITY_HOURS}h after handoff acceptance "
                     f"(employee record stale)."
                 ),
-                recommended_action="Review onboarding progress and update workforce / tasks.",
+                recommended_action="assign_manager",
                 due_at=None,
                 assignee_user_id=str(ho.assigned_to_user_id).strip() if ho.assigned_to_user_id else None,
             )
@@ -456,11 +459,14 @@ async def build_risk_summary(
         candidate_id=None,
     )
     by_code: dict[str, int] = {}
-    by_severity: dict[str, int] = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    by_severity: dict[str, int] = {"info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
     for it in all_items:
         code = str(it.get("risk_code") or "")
         by_code[code] = by_code.get(code, 0) + 1
-        sev = str(it.get("severity") or "low")
+        sev = ReferenceServiceFacade.normalize_reference_code(
+            domain="risk_severities",
+            value=str(it.get("severity") or "info"),
+        )
         by_severity[sev] = by_severity.get(sev, 0) + 1
     return {
         "total": len(all_items),

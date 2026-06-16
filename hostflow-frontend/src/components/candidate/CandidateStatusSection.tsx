@@ -3,6 +3,7 @@ import { IconChevronDown, IconIdBadge2 } from '@tabler/icons-react'
 import type { CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 
@@ -18,6 +19,7 @@ interface CandidateStatusSectionProps {
   }
   onExtraChange: (patch: Partial<CandidateExtra>) => void
   candidateProfile?: CandidateProfile | null
+  effectiveLayout?: EffectiveCardLayout | null
   candidateDataReadOnly?: boolean
   embedded?: boolean
 }
@@ -29,10 +31,15 @@ function CandidateStatusSection({
   selectTexts,
   onExtraChange,
   candidateProfile,
+  effectiveLayout,
   candidateDataReadOnly = false,
   embedded = false,
 }: CandidateStatusSectionProps) {
   const { t } = useI18n()
+  const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
+  const layoutRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
+  const layoutLabel = (fieldKey: string, defaultLabel: string) =>
+    getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
   const addressCountry = String(extra.address?.country || '').trim().toUpperCase()
   const isInPoland = addressCountry === 'PL' || extra.current_location === 'in_poland'
   const [collapsed, setCollapsed] = useState(() => {
@@ -72,11 +79,11 @@ function CandidateStatusSection({
       )}
       {(embedded || !collapsed) ? (
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        {(!candidateProfile || isFieldVisible(candidateProfile, 'poland_stay_basis')) && (
+        {(!candidateProfile || layoutVisible('poland_stay_basis')) && (
           <label className="block">
             <div className="label">
-              {getFieldLabel(candidateProfile, 'poland_stay_basis', t('app.candidate_card.fields.poland_basis'))}
-              {(isFieldRequired(candidateProfile, 'poland_stay_basis') || isInPoland) && <span className="text-red-600">*</span>}
+              {layoutLabel('poland_stay_basis', t('app.candidate_card.fields.poland_basis'))}
+              {(layoutRequired('poland_stay_basis') || isInPoland) && <span className="text-red-600">*</span>}
             </div>
             <select
               className={`input ${isInPoland && !extra.poland_stay_basis ? 'border-amber-500 ring-1 ring-amber-500' : ''}`}
@@ -98,15 +105,15 @@ function CandidateStatusSection({
       </div>
       ) : null}
 
-      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'has_adr')) && (
+      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('has_adr')) && (
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.candidate_card.sections.status.qualifications')}</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {(!candidateProfile || isFieldVisible(candidateProfile, 'has_adr')) && (
+            {(!candidateProfile || layoutVisible('has_adr')) && (
               <label className="block">
                 <div className="label">
-                  {getFieldLabel(candidateProfile, 'has_adr', t('app.candidate_card.fields.has_adr'))}
-                  {isFieldRequired(candidateProfile, 'has_adr') && <span className="text-red-600">*</span>}
+                  {layoutLabel('has_adr', t('app.candidate_card.fields.has_adr'))}
+                  {layoutRequired('has_adr') && <span className="text-red-600">*</span>}
                 </div>
                 <select
                   className="input"

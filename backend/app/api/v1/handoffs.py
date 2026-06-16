@@ -19,6 +19,7 @@ from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_re
 from backend.app.auth.deps import Role, require_roles
 from backend.app.schemas.workforce_hr_core import (
     HrDocumentCorrectionIn,
+    HrAdditionalDocumentRequestIn,
     HrDocumentRequirementWaiverIn,
     HrDocumentRejectIn,
     HrDocumentReviewedFieldsIn,
@@ -640,7 +641,7 @@ async def _handoff_hr_review_row(db, tenant_id: str, handoff_id: str):
 
 
 @router.post(
-    "/{handoff_id}/hr-review/document-verifications/{document_key}/opened",
+    "/{handoff_id}/hr-review/document-verifications/{document_key:path}/opened",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
     tags=["handoffs", "workforce"],
@@ -673,7 +674,7 @@ async def post_handoff_document_opened(
 
 
 @router.post(
-    "/{handoff_id}/hr-review/document-verifications/{document_key}/reviewed",
+    "/{handoff_id}/hr-review/document-verifications/{document_key:path}/reviewed",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
     tags=["handoffs", "workforce"],
@@ -709,7 +710,7 @@ async def post_handoff_document_reviewed(
 
 
 @router.post(
-    "/{handoff_id}/hr-review/document-verifications/{document_key}/verify",
+    "/{handoff_id}/hr-review/document-verifications/{document_key:path}/verify",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
     tags=["handoffs", "workforce"],
@@ -744,7 +745,7 @@ async def post_handoff_document_verify(
 
 
 @router.post(
-    "/{handoff_id}/hr-review/document-verifications/{document_key}/reject",
+    "/{handoff_id}/hr-review/document-verifications/{document_key:path}/reject",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
     tags=["handoffs", "workforce"],
@@ -779,7 +780,7 @@ async def post_handoff_document_reject(
 
 
 @router.post(
-    "/{handoff_id}/hr-review/document-verifications/{document_key}/request-correction",
+    "/{handoff_id}/hr-review/document-verifications/{document_key:path}/request-correction",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
     tags=["handoffs", "workforce"],
@@ -814,7 +815,7 @@ async def post_handoff_document_request_correction(
 
 
 @router.post(
-    "/{handoff_id}/hr-review/document-verifications/{document_key}/waive-requirement",
+    "/{handoff_id}/hr-review/document-verifications/{document_key:path}/waive-requirement",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
     tags=["handoffs", "workforce"],
@@ -839,6 +840,41 @@ async def post_handoff_document_waive_requirement(
             document_key=document_key,
             actor_user_id=current_user.sub,
             reason=body.reason,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="HR review not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/{handoff_id}/hr-review/additional-document-request",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    tags=["handoffs", "workforce"],
+)
+async def post_handoff_hr_additional_document_request(
+    handoff_id: UUID,
+    body: HrAdditionalDocumentRequestIn,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    from backend.app.services import workforce_hr_review as hr_review_svc
+
+    db, tenant_id = db_tenant
+    try:
+        review = await _handoff_hr_review_row(db, str(tenant_id), str(handoff_id))
+        await hr_review_svc.add_hr_requested_document(
+            db,
+            str(tenant_id),
+            review,
+            document_name=body.document_name,
+            note=body.note,
+            urgency=body.urgency,
+            actor_user_id=current_user.sub,
         )
         panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, str(tenant_id), review)
     except Exception as exc:

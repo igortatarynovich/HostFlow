@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Enum, Integer, String, Text, text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict, MutableList
@@ -59,6 +59,18 @@ class Document(Base):
 
     # Type / naming
     doc_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    document_type_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_types.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    document_type_version_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_type_versions.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     custom_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Status flow

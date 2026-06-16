@@ -102,6 +102,55 @@ def _resolve_system_stage(value: Optional[str], code: str) -> str:
     return normalized
 
 
+async def _require_candidate_funnel_pe_mapping(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    funnel: Funnel,
+    stage: FunnelStage,
+) -> None:
+    """P4: candidate funnel stages must map to a registered Process Engine system stage."""
+    if str(getattr(funnel, "type", "") or "") != "candidate":
+        return
+
+    from backend.app.process_engine.pipeline_mapping import (
+        ensure_funnel_stage_pe_mapping,
+        infer_pe_mapping,
+        validate_pe_system_stage,
+    )
+
+    await ensure_funnel_stage_pe_mapping(db, stage, tenant_id=tenant_id)
+    pe_module = str(getattr(stage, "pe_maps_to_module", None) or "").strip()
+    pe_code = str(getattr(stage, "pe_maps_to_code", None) or "").strip()
+    if pe_module and pe_code:
+        if not await validate_pe_system_stage(
+            db, tenant_id=tenant_id, module=pe_module, code=pe_code
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Process Engine system stage '{pe_module}.{pe_code}' is not registered",
+            )
+        return
+
+    inferred = infer_pe_mapping(str(stage.code or ""))
+    if inferred is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Stage code '{stage.code}' has no valid Process Engine system stage mapping. "
+                "Choose a supported recruitment stage code or register the system stage first."
+            ),
+        )
+    mod, code = inferred
+    if not await validate_pe_system_stage(db, tenant_id=tenant_id, module=mod, code=code):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Process Engine system stage '{mod}.{code}' is not registered for this tenant",
+        )
+    stage.pe_maps_to_module = mod
+    stage.pe_maps_to_code = code
+
+
 class StageContractV1(BaseModel):
     """Per-stage pipeline contract (§2.3): optional until UI/engine consume it."""
 
@@ -430,6 +479,9 @@ async def add_funnel_stage(
         stage_kwargs["stage_contract_v1"] = _stage_contract_db_value(payload.stage_contract)
     stage = FunnelStage(**stage_kwargs)
     db.add(stage)
+    await _require_candidate_funnel_pe_mapping(
+        db, tenant_id=tenant_str, funnel=funnel, stage=stage
+    )
     await db.commit()
     await db.refresh(stage)
     return FunnelStageOut.from_model(stage)
@@ -494,6 +546,9 @@ async def update_funnel_stage(
         )
     if "stage_contract" in payload.model_fields_set:
         stage.stage_contract_v1 = _stage_contract_db_value(payload.stage_contract)
+    await _require_candidate_funnel_pe_mapping(
+        db, tenant_id=tenant_str, funnel=funnel_row, stage=stage
+    )
     await db.commit()
     await db.refresh(stage)
     return FunnelStageOut.from_model(stage)

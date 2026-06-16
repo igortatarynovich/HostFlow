@@ -280,6 +280,20 @@ async def test_internal_hr_handoff_locks_recruiter_edit_hr_can_edit_and_checklis
     )
     assert acc.status_code == 200, acc.text
 
+    rec_doc = await client.post(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=recruiter_headers,
+        json={"doc_type": "residence_card", "status": "pending"},
+    )
+    assert rec_doc.status_code == 403, rec_doc.text
+
+    hr_doc = await client.post(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=hr_officer_headers,
+        json={"doc_type": "residence_card", "status": "pending"},
+    )
+    assert hr_doc.status_code == 201, hr_doc.text
+
     due_to = (datetime.now(timezone.utc) + timedelta(days=8)).isoformat()
     act = await client.get(
         "/api/v1/activities",
@@ -323,6 +337,66 @@ async def test_internal_hr_handoff_locks_recruiter_edit_hr_can_edit_and_checklis
     )
     assert rec_get2.status_code == 200, rec_get2.text
     assert rec_get2.json().get("can_edit") is True
+
+
+@pytest.mark.anyio
+async def test_recruiter_can_reject_while_pending_internal_hr_handoff(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+) -> None:
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    company_id = data["company_id"]
+    await _ensure_tenant_link_internal_hr(
+        client, manager_headers=manager_headers, tenant_id=tenant_id, company_id=company_id
+    )
+
+    tag = uuid.uuid4().hex[:8]
+    create_resp = await client.post(
+        "/api/v1/candidates",
+        headers=manager_headers,
+        json={
+            "first_name": "Reject",
+            "last_name": f"T{tag}",
+            "company_id": company_id,
+        },
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    candidate_id = create_resp.json()["id"]
+
+    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+
+    patch_stage = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=manager_headers,
+        json={"stage": "ready_for_handoff"},
+    )
+    assert patch_stage.status_code == 200, patch_stage.text
+
+    ho = await client.post(
+        f"/api/v1/handoffs/candidates/{candidate_id}",
+        headers={**recruiter_headers, "Content-Type": "application/json"},
+        json={"client_company_id": company_id, "destination": "internal_hr"},
+    )
+    assert ho.status_code == 201, ho.text
+
+    rec_get = await client.get(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=recruiter_headers,
+    )
+    assert rec_get.status_code == 200, rec_get.text
+    assert rec_get.json().get("can_edit") is False
+    perms = rec_get.json().get("permissions") or {}
+    assert perms.get("can_close_recruitment") is True
+
+    rec_reject = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=recruiter_headers,
+        json={"stage": "rejected", "status_reason": ["language"]},
+    )
+    assert rec_reject.status_code == 200, rec_reject.text
+    assert rec_reject.json().get("stage") == "rejected"
 
 
 @pytest.mark.anyio

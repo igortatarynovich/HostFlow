@@ -118,4 +118,12 @@ async def patch_hiring_pipeline_gates_core(
     new_settings = patch_hiring_gates_settings_dict(settings_payload, sanitized)
     tenant = await tenant_service.update_tenant(db, tenant, {"settings": new_settings})
     gates = hiring_gates_from_tenant_settings(tenant.settings if isinstance(tenant.settings, dict) else None)
+    from backend.app.process_engine.transition_rules_adapter import (
+        sync_hiring_gates_to_default_profile_from_tenant_settings,
+    )
+
+    await sync_hiring_gates_to_default_profile_from_tenant_settings(
+        db, tenant_id=tenant_id, gates=gates
+    )
+    await db.commit()
     return HiringPipelineGatesPublicOut.model_validate(serialize_gates_public(gates))

@@ -7,7 +7,10 @@ on:
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
-      - "scripts/security/**"
+      - "hostflow-frontend/scripts/check-foundation-tokens.sh"
+      - "hostflow-frontend/scripts/foundation_tokens_lib.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
       - ".github/pull_request_template.md"
@@ -17,7 +20,10 @@ on:
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
-      - "scripts/security/**"
+      - "hostflow-frontend/scripts/check-foundation-tokens.sh"
+      - "hostflow-frontend/scripts/foundation_tokens_lib.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
       - ".github/pull_request_template.md"
@@ -30,6 +36,8 @@ jobs:
         working-directory: hostflow-frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - name: CRM app paths codegen drift check
@@ -45,6 +53,11 @@ jobs:
           cache-dependency-path: hostflow-frontend/package-lock.json
       - name: Install deps
         run: npm ci
+      - name: Foundation tokens (deprecated in diff)
+        run: npm run foundation:check
+        env:
+          # PR: compare vs target branch. Push: vs main. Override: FOUNDATION_DIFF_BASE.
+          FOUNDATION_DIFF_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
       - name: Unit tests with coverage
         run: npm run test:coverage
       - name: Coverage gate (Phase 0 #7 — ratchet)

@@ -113,6 +113,9 @@ export const FunnelsPage = lazy(() => loadAdmin().then((m) => ({ default: m.Funn
 export const HiringPipelineGatesSettingsPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.HiringPipelineGatesSettingsPage })),
 )
+export const TransferPolicySettingsPage = lazy(() =>
+  loadAdmin().then((m) => ({ default: m.TransferPolicySettingsPage })),
+)
 export const RiskIntelSettingsPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.RiskIntelSettingsPage })),
 )
@@ -135,3 +138,4 @@ export const HrEmployeeDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ 
 export const HrHandoffDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrHandoffDetailPage })))
 export const LeadFormsSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadFormsSettingsPage })))
 export const LegalDocumentsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LegalDocumentsPage })))
+export const LeadMessageTemplatesPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadMessageTemplatesPage })))

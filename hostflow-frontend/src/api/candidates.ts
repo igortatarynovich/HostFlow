@@ -118,3 +118,80 @@ export async function listCandidateRecruitmentApplications(
   )
   return Array.isArray(data) ? data : []
 }
+
+export type RecruitmentPackageBlock = {
+  document_key: string
+  label: string
+  status: string
+  block_kind?: string
+  missing_fields?: Array<{ field_code: string; label: string }>
+  missing_doc_types?: string[]
+}
+
+export type RecruitmentPackageReadiness = {
+  ready: boolean
+  handoff_allowed?: boolean
+  blocking_blocks?: string[]
+  blocks?: RecruitmentPackageBlock[]
+  missing_documents?: string[]
+  pending_verification_documents?: string[]
+  missing_data_fields?: Array<{ field_code: string; label: string }>
+  eligibility_status?: string
+  transfer_readiness?: TransferReadinessReport
+}
+
+export type TransferBlockingReason = {
+  code: string
+  message: string
+  source_layer: string
+  block_key?: string
+  field_code?: string
+  label?: string
+  document_code?: string
+  severity?: string
+}
+
+export type TransferRequiredConfirmation = {
+  block_key: string
+  confirmed_by_role: string
+}
+
+export type TransferReadinessReport = {
+  candidate_id: string
+  policy_version: string
+  transfer_allowed: boolean
+  handoff_create_allowed?: boolean
+  destinations_allowed: string[]
+  blocking_reasons: TransferBlockingReason[]
+  warnings?: TransferBlockingReason[]
+  required_documents: string[]
+  missing_documents: string[]
+  pending_verification_documents: string[]
+  missing_data_fields: Array<{ field_code: string; label: string }>
+  required_confirmations: TransferRequiredConfirmation[]
+  approved_overrides: string[]
+  source_layers: string[]
+  eligibility_status?: string
+  handoff_allowed?: boolean
+  package_ready?: boolean
+  package_blocks?: RecruitmentPackageBlock[]
+  blocking_blocks?: string[]
+  blocks?: RecruitmentPackageBlock[]
+  ready?: boolean
+  stage_gate?: Record<string, unknown>
+  tenant_link?: Record<string, boolean>
+}
+
+export async function getCandidateTransferReadiness(candidateId: string): Promise<TransferReadinessReport> {
+  const { data } = await api.get<TransferReadinessReport>(
+    `/candidates/${encodeURIComponent(candidateId)}/transfer-readiness`,
+  )
+  return data
+}
+
+export async function getCandidateRecruitmentPackage(candidateId: string): Promise<RecruitmentPackageReadiness> {
+  const { data } = await api.get<RecruitmentPackageReadiness>(
+    `/candidates/${encodeURIComponent(candidateId)}/recruitment-package`,
+  )
+  return data
+}

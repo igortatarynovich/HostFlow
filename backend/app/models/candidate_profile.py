@@ -108,6 +108,14 @@ class CandidateProfile(Base, TimestampMixin):
     # Метаданные
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    pe_process_profile_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("pe_process_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Process Engine profile (P1 compat mapping)",
+    )
+
 
 __all__ = ["CandidateProfile"]
 

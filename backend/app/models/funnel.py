@@ -69,6 +69,12 @@ class FunnelStage(Base):
     stage_contract_v1: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     # §2.12: maps this pipeline stage to a cross-tenant "root" funnel bucket (lead funnels only).
     conversion_root_v1: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    pe_maps_to_module: Mapped[Optional[str]] = mapped_column(
+        String(32), nullable=True, comment="Process Engine system stage module (P1)"
+    )
+    pe_maps_to_code: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, comment="Process Engine system stage code (P1)"
+    )
 
     __table_args__ = (
         UniqueConstraint("funnel_id", "code", name="uq_funnel_stage_code"),

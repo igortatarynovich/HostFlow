@@ -39,6 +39,7 @@ interface CandidateHeaderProps {
   /** When set, replaces the handoff button with a read-only status line (active handoff). */
   handoffReadonlyText?: string | null
   handoffDisabled?: boolean
+  handoffDisabledTitle?: string | null
   handoffLabel?: string
   onDeleteRequest: () => void
   onCancel: () => void
@@ -81,6 +82,7 @@ function CandidateHeader({
   onOpenHandoff,
   handoffReadonlyText = null,
   handoffDisabled = false,
+  handoffDisabledTitle = null,
   handoffLabel,
   onDeleteRequest,
   onCancel,
@@ -233,6 +235,7 @@ function CandidateHeader({
                     className="rounded-lg border border-white bg-white px-3 py-1.5 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
                     onClick={onOpenHandoff}
                     disabled={handoffDisabled}
+                    title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
                   >
                     {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
                   </button>

@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
+from .document_applicability_policy import derive_document_applicability_decision
 from .config_loader import load_config
+from .document_hub_delivery_contract import list_canonical_document_type_codes_via_contract
+from .reference_service_facade import ReferenceServiceFacade
 
 ISO = "%Y-%m-%d"
 
@@ -53,16 +56,7 @@ def auto_apply_rules(candidate_row: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
     """
     rules: Dict[str, Any] = load_config("citizenship_rules.json")
 
-    # Нормализуем doc_types к List[Dict[str, Any]]
-    doc_types_raw: Any = load_config("doc_types.json")
-    if isinstance(doc_types_raw, dict):
-        doc_types: List[Dict[str, Any]] = [
-            v for v in doc_types_raw.values() if isinstance(v, dict)
-        ]
-    elif isinstance(doc_types_raw, list):
-        doc_types = [d for d in doc_types_raw if isinstance(d, dict)]
-    else:
-        doc_types = []
+    canonical_doc_codes = list_canonical_document_type_codes_via_contract()
 
     # reminders config not used here; removed to satisfy linter
 
@@ -72,19 +66,22 @@ def auto_apply_rules(candidate_row: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
     extra = _get_extra(candidate_row)
     docs = _ensure_docs(extra)
 
-    citizenship = (
-        extra.get("citizenship") or candidate_row.get("citizenship") or ""
-    ).upper()
+    citizenship = ReferenceServiceFacade.normalize_citizenship_alpha2(
+        str(extra.get("citizenship") or candidate_row.get("citizenship") or "")
+    ) or ""
     role = (extra.get("role") or candidate_row.get("role") or "driver").lower()
-    work_country = (
-        extra.get("work_country") or candidate_row.get("work_country") or "PL"
-    ).upper()
+    work_country = ReferenceServiceFacade.normalize_country_alpha2(
+        str(extra.get("work_country") or candidate_row.get("work_country") or "")
+    ) or "PL"
 
-    # work_permit_type
-    if citizenship and citizenship not in eu:
-        wpt = "oswiadczenie" if citizenship in osw_list else "zezwolenie_A"
-    else:
-        wpt = None
+    applicability = derive_document_applicability_decision(
+        citizenship=citizenship,
+        work_country=work_country,
+        role=role,
+        eu_countries=eu,
+        oswiadczenie_countries=osw_list,
+    )
+    wpt = applicability.work_permit_type
 
     if not extra.get("manual_override"):
         extra["work_permit_type"] = wpt
@@ -92,7 +89,7 @@ def auto_apply_rules(candidate_row: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
         extra.setdefault("work_permit_type", wpt)
 
     # visa_required
-    visa_required = bool(citizenship and citizenship not in eu and work_country == "PL")
+    visa_required = applicability.visa_required
     if not extra.get("manual_override"):
         extra["visa_required"] = visa_required
     else:
@@ -101,12 +98,8 @@ def auto_apply_rules(candidate_row: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
     added: List[str] = []
 
     # обязательные блокирующие документы
-    by_code: Dict[str, Dict[str, Any]] = {
-        d["code"]: d for d in doc_types if isinstance(d, dict) and "code" in d
-    }
-
     def ensure_doc(code: str) -> None:
-        if code not in by_code:
+        if code not in canonical_doc_codes:
             return
         if not _get_doc(docs, code):
             docs.append(
@@ -130,7 +123,7 @@ def auto_apply_rules(candidate_row: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
             v["based_on"] = extra.get("work_permit_type")
 
     # водитель-не ЕС → świadectwo_kierowcy
-    if role == "driver" and citizenship and citizenship not in eu:
+    if applicability.driver_attestation_required:
         ensure_doc("swiadectwo_kierowcy")
 
     # Базовый набор блокирующих документов

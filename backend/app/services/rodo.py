@@ -17,6 +17,8 @@ from backend.app.models.legal_document import LegalDocument
 from backend.app.models.rodo_notification import RodoNotification
 from backend.app.services.audit import log_audit_event
 from backend.app.services.legal_documents import get_active_legal_document
+from backend.app.services.lead_rodo_settings import get_lead_rodo_settings
+from backend.app.services.message_hub import resolve_lead_email_message
 from backend.app.services.tenant_email import send_email_for_tenant
 
 
@@ -105,10 +107,7 @@ async def send_rodo_email(
         link = f"{base}/legal/rodo.html" if base else "/legal/rodo.html"
 
     first_name = (cand.first_name or "Candidate").strip()
-
-    # Simple plain-text body in three languages: English, Polish, Russian
-    # Без декоративных разделителей, чтобы почтовые клиенты не дублировали блоки.
-    body = f"""Dear {first_name},
+    fallback_body = f"""Dear {first_name},
 
 Please find below the information on the processing of your personal data (GDPR/RODO):
 
@@ -138,8 +137,18 @@ Zespół HostFlow
 
 С уважением,
 Команда HostFlow"""
-
-    subject = "RODO / GDPR — Personal data processing information | HostFlow"
+    rodo_cfg = await get_lead_rodo_settings(db, tenant_id)
+    resolved = await resolve_lead_email_message(
+        db,
+        tenant_id=tenant_id,
+        template_id=rodo_cfg.message_template_id,
+        fallback_subject="RODO / GDPR — Personal data processing information | HostFlow",
+        fallback_body=fallback_body,
+        first_name=first_name,
+        rodo_link=link,
+    )
+    subject = resolved.subject
+    body = resolved.body
 
     now = datetime.now(timezone.utc)
     notification = RodoNotification(

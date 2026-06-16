@@ -27,6 +27,13 @@ from backend.app.services import workforce_employees as we_svc
 from backend.app.services.handoff import return_handoff
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
+from backend.app.services.workforce_eligibility_delivery_contract import (
+    WorkforceEligibilityContext,
+    resolve_workforce_eligibility_via_contract,
+)
+from backend.app.services.document_hub_delivery_contract import (
+    list_candidate_documents_via_contract,
+)
 from backend.app.modules.documents.document_open_service import (
     enrich_documents_for_approval_open_urls,
 )
@@ -327,10 +334,11 @@ async def _sync_review_from_candidate_handoff(
     if not cand:
         return
 
-    from backend.app.modules.documents import crud as documents_crud
-
-    docs = await documents_crud.list_candidate_documents(
-        db, tenant_id, candidate_id, include_deleted=False
+    docs = await list_candidate_documents_via_contract(
+        db,
+        tenant_id=tenant_id,
+        candidate_id=candidate_id,
+        include_deleted=False,
     )
     n_docs = len(docs)
     identity_ok = bool((cand.first_name or "").strip() and (cand.last_name or "").strip())
@@ -924,6 +932,27 @@ async def _assert_can_approve(
     if emp is None and review.employee_id:
         emp = await we_svc.get_employee(db, tenant_id, str(review.employee_id))
     if emp is not None:
+        runtime = await resolve_workforce_eligibility_via_contract(
+            db,
+            context=WorkforceEligibilityContext(
+                tenant_id=str(tenant_id),
+                employee_id=str(emp.id),
+                candidate_id=str(emp.candidate_id) if emp.candidate_id else None,
+                stage="hr",
+            ),
+        )
+        allowed_ops = dict(runtime.get("allowed_operations") or {})
+        if not bool(allowed_ops.get("approve_hr_verification", True)):
+            decision_reasons = [
+                str(r.get("reason") or r.get("code") or "").strip()
+                for r in (runtime.get("blocking_reasons") or [])
+                if isinstance(r, dict) and str(r.get("reason") or r.get("code") or "").strip()
+            ]
+            raise HrReviewBlockedError(
+                blockers=decision_reasons,
+                failed_items=decision_reasons or ["decision.approve_hr_verification_blocked"],
+            )
+
         panel = await build_hr_review_panel(db, tenant_id, str(emp.id))
         plan = panel.get("verification_plan") if isinstance(panel, dict) else None
         if _is_hybrid_verification_plan(plan):

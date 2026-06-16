@@ -179,6 +179,12 @@ async def test_recruiter_handoff_from_candidate(
     data = resp.json()
     assert data.get("id")
     assert str(data.get("candidate_id") or "") == str(cid)
+    snap = data.get("candidate_snapshot") or {}
+    assert isinstance(snap.get("personal_data"), dict)
+    assert isinstance(snap.get("contacts"), dict)
+    assert isinstance(snap.get("extra"), dict)
+    assert isinstance(snap.get("vacancy_context"), dict)
+    assert isinstance(snap.get("document_field_values"), dict)
 
 
 @pytest.mark.asyncio

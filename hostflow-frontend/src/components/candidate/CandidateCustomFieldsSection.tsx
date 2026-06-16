@@ -2,6 +2,7 @@ import { memo, useMemo, useEffect, useState, useCallback } from 'react'
 import type { RefObject } from 'react'
 import { IconClipboardList } from '@tabler/icons-react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import type { CandidateExtra } from '../../api/types'
 import type { CustomFieldDefinition } from '../../api/custom_fields'
 import { listCustomFieldDefinitions } from '../../api/custom_fields'
@@ -13,6 +14,7 @@ interface CandidateCustomFieldsSectionProps {
   extra: CandidateExtra
   customFieldsRef: RefObject<HTMLDivElement>
   candidateProfile: CandidateProfile | null
+  effectiveLayout?: EffectiveCardLayout | null
   selectTexts: {
     empty: string
     search: string
@@ -27,10 +29,15 @@ function CandidateCustomFieldsSection({
   extra,
   customFieldsRef,
   candidateProfile,
+  effectiveLayout,
   selectTexts,
   onExtraChange,
 }: CandidateCustomFieldsSectionProps) {
   const { t } = useI18n()
+  const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
+  const layoutRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
+  const layoutLabel = (fieldKey: string, defaultLabel: string) =>
+    getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
   const [customFieldDefinitions, setCustomFieldDefinitions] = useState<CustomFieldDefinition[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -113,7 +120,7 @@ function CandidateCustomFieldsSection({
 
   // Фильтруем только видимые поля
   const visibleFields = profileCustomFields.filter((fieldConfig) =>
-    isFieldVisible(candidateProfile, fieldConfig.field_key)
+    layoutVisible(fieldConfig.field_key)
   )
 
   if (visibleFields.length === 0) {
@@ -155,8 +162,8 @@ function CandidateCustomFieldsSection({
           if (!definition) return null
 
           const fieldKey = fieldConfig.field_key
-          const label = getFieldLabel(candidateProfile, fieldKey, definition.label)
-          const required = isFieldRequired(candidateProfile, fieldKey)
+          const label = layoutLabel(fieldKey, definition.label)
+          const required = layoutRequired(fieldKey)
           const value = getFieldValue(fieldKey)
 
           switch (definition.field_type) {

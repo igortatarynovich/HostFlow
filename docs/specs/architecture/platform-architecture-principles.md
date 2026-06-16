@@ -17,7 +17,7 @@
 | **Tenant** | **Workspace**, граница **subscription** и **billing**; не владелец рабочих операционных данных. |
 | **Company** | **Владелец данных, процессов**, включённых модулей и политик для своего контура; главная **operational / data boundary**. |
 | **Module** | **Независимый продуктовый блок** (лицензируется отдельно или в bundle). |
-| **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Document Hub, …). |
+| **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Document Hub, Process Engine, …). |
 | **User** | Доступ через **role + company scope + module scope**; не через «уникальные роли под каждого клиента». |
 
 **Cross-company доступ** возможен **только** явно: **handoff**, **shared access**, **relationship** между компаниями — никакой неявной видимости «всех данных tenant».
@@ -133,8 +133,9 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 |---|------------|------------|
 | 1 | **Forms / Public Forms** | Input layer для платформы ([`ADR-007`](ADR-007-forms-platform-capability.md)); Basic core / Advanced addon. |
 | 2 | **Document Hub** | Единый слой документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md)). |
-| 3 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)). |
-| 4 | **Users / Roles / Permissions** | RBAC, матрица, scope по company и модулю. |
+| 3 | **Process Engine** | Единый движок процессов: system stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). |
+| 4 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)). |
+| 5 | **Users / Roles / Permissions** | RBAC, матрица, scope по company и модулю. |
 | 5 | **Companies** | Операционная граница, party, ACL. |
 | 6 | **Settings** | Три уровня: Tenant → Company → Company Module Settings ([`ADR-005`](ADR-005-three-level-settings-hierarchy.md)). |
 | 7 | **Automations** | Правила, триггеры, сценарии между сущностями. |
@@ -146,6 +147,8 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 **Forms** создают/обновляют через handlers: Lead, Candidate, Employee, Client, Service Order, Fleet report, Document, Billing Profile и др. (см. ADR-007).
 
 **Document Hub** — детальная модель Document / Link / Requirement / Review — ADR-009; модули **запрашивают** required sets из Hub, не дублируют канонические списки.
+
+**Process Engine** — system stages, process profiles, transition/handoff rules, runtime evaluator — [`process-engine.md`](../platform/process-engine.md); модули **регистрируют** свои stages и rules, не строят отдельные pipeline engines.
 
 ### 6.1 Trust & Reputation Layer, Driver App, порталы
 

@@ -10,12 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from backend.app.constants.stages import TERMINAL_STATUSES
-from backend.app.models import (
-    Candidate,
-    CandidateAssigneeHistory,
-    Vacancy,
-    VacancyRecruiter,
-)
+from backend.app.models.candidate import Candidate
+from backend.app.models.candidate_assignee_history import CandidateAssigneeHistory
+from backend.app.models.vacancy import Vacancy
+from backend.app.models.vacancy_recruiter import VacancyRecruiter
 from backend.app.models.access import UserCompanyAccess
 from backend.app.models.user import Role as UserRole, User
 from backend.app.services.handoff import is_client_tenant

@@ -16,9 +16,16 @@ ORDERED_BILLING_LEGAL_TYPES: tuple[str, ...] = (
 
 BILLING_LEGAL_DOC_TYPES: frozenset[str] = frozenset(ORDERED_BILLING_LEGAL_TYPES)
 
-CORE_LEGAL_DOC_TYPES: frozenset[str] = frozenset({"rodo_clause", "privacy_policy"})
+CORE_LEGAL_DOC_TYPES: frozenset[str] = frozenset(
+    {"rodo_clause", "privacy_policy", "terms_of_service", "cookie_policy"}
+)
 
-ORDERED_LEGAL_DOC_TYPES: tuple[str, ...] = ("rodo_clause", "privacy_policy") + ORDERED_BILLING_LEGAL_TYPES
+ORDERED_LEGAL_DOC_TYPES: tuple[str, ...] = (
+    "rodo_clause",
+    "privacy_policy",
+    "terms_of_service",
+    "cookie_policy",
+) + ORDERED_BILLING_LEGAL_TYPES
 
 ALL_LEGAL_DOC_TYPES: frozenset[str] = frozenset(ORDERED_LEGAL_DOC_TYPES)
 

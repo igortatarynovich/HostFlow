@@ -137,6 +137,81 @@ function AlertsPanel({ alerts }: { alerts: WorkforceProfileAlert[] }) {
 
 const HR_REVIEW_TERMINAL = new Set(['approved_for_employment', 'returned_to_recruitment', 'rejected_by_hr'])
 
+function WorkforceEligibilityPanel({
+  runtime,
+}: {
+  runtime: WorkforceEmployeeOperationalProfile['workforce_eligibility']
+}) {
+  const { t } = useI18n()
+  const eligibility = (runtime?.eligibility_status || 'unknown').replace(/_/g, ' ')
+  const operations = Object.entries(runtime?.allowed_operations || {})
+  const blockers = runtime?.blocking_reasons || []
+  const nextActions = runtime?.next_required_actions || []
+
+  const severityTone = (severity: string | undefined) => {
+    const s = String(severity || '').toLowerCase()
+    if (s === 'critical') return 'text-rose-800'
+    if (s === 'high') return 'text-amber-800'
+    return 'text-slate-700'
+  }
+
+  return (
+    <div className="card p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {t('app.hr.employee_rail.workforce_eligibility', { defaultValue: 'Workforce eligibility' })}
+      </div>
+      <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
+        {eligibility}
+      </div>
+
+      {operations.length > 0 ? (
+        <div className="mt-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.employee_rail.allowed_operations', { defaultValue: 'Allowed operations' })}
+          </div>
+          <ul className="mt-1.5 space-y-1 text-xs">
+            {operations.map(([op, allowed]) => (
+              <li key={op} className="flex items-center justify-between gap-2">
+                <span className="text-slate-700">{op.replace(/_/g, ' ')}</span>
+                <span className={allowed ? 'text-emerald-700' : 'text-rose-700'}>{allowed ? 'allowed' : 'blocked'}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {blockers.length > 0 ? (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.employee_rail.blocking_reasons', { defaultValue: 'Blocking reasons' })}
+          </div>
+          <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs">
+            {blockers.map((b, idx) => (
+              <li key={`${b.block_type || 'block'}-${idx}`} className={severityTone(b.severity)}>
+                {String(b.block_type || 'blocked').replace(/_/g, ' ')}
+                {b.document_code ? ` (${b.document_code})` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {nextActions.length > 0 ? (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.employee_rail.next_required_actions', { defaultValue: 'Next required actions' })}
+          </div>
+          <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-slate-700">
+            {nextActions.map((a) => (
+              <li key={a}>{a.replace(/_/g, ' ')}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function TimelineEventList({ events }: { events: WorkforceTimelineEvent[] }) {
   return (
     <ul className="space-y-2 text-xs">
@@ -469,15 +544,26 @@ export function HrEmployeeRightColumn({
   profile,
   bundle,
   hrReview,
+  compact = false,
 }: {
   employeeId: string
   profile: WorkforceEmployeeOperationalProfile
   bundle: WorkforceHrBundle
   hrReview?: HrReviewPanel | null
+  compact?: boolean
 }) {
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-4">
+        <QuickActionsPanel />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <NextHrActionPanel employeeId={employeeId} hrReview={hrReview} />
+      <WorkforceEligibilityPanel runtime={profile.workforce_eligibility} />
       <HrEmployeeOperationalRail
         summary={profile.operational_summary}
         zusRegistrationStatus={bundle.zus_profile?.registration_status}

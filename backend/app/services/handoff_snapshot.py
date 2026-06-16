@@ -17,7 +17,9 @@ from backend.app.models.recruitment_application import RecruitmentApplication
 from backend.app.models.user import User
 from backend.app.models.vacancy import Vacancy
 from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
 from backend.app.services.recruitment_application_service import get_application_for_handoff
+from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
 
 
 def _iso(dt: datetime | date | None) -> str | None:
@@ -55,6 +57,22 @@ def _citizenship(cand: Candidate) -> str | None:
         v = pd.get(key)
         if v is not None and str(v).strip():
             return str(v).strip()
+    return None
+
+
+def _work_country(cand: Candidate) -> str | None:
+    pd = getattr(cand, "personal_data", None) or {}
+    if isinstance(pd, dict):
+        for key in ("work_country", "country_of_work", "country"):
+            v = pd.get(key)
+            if v is not None and str(v).strip():
+                return str(v).strip()
+    extra = getattr(cand, "extra", None) or {}
+    if isinstance(extra, dict):
+        for key in ("work_country", "country_of_work"):
+            v = extra.get(key)
+            if v is not None and str(v).strip():
+                return str(v).strip()
     return None
 
 
@@ -109,14 +127,48 @@ async def build_handoff_snapshot_payload_v1(
     docs = await list_candidate_documents(db, agency_tid, str(candidate.id))
     documents_out: list[dict[str, Any]] = []
     for d in docs:
+        runtime_ref = await DocumentTypeRuntimeResolver.resolve_for_document(db, d)
         documents_out.append(
             {
                 "type": str(getattr(d, "doc_type", "") or ""),
                 "status": _doc_status_value(getattr(d, "status", "")),
                 "expires_at": _iso(getattr(d, "expire_date", None)),
                 "verified_at": _iso(getattr(d, "verified_at", None)),
+                "canonical": {
+                    "code": runtime_ref.canonical_code,
+                    "category": runtime_ref.category_code,
+                    "criticality": runtime_ref.compliance_criticality,
+                    "fallback_used": runtime_ref.fallback_used,
+                },
             }
         )
+
+    applicability = await ReferenceServiceFacade.get_applicable_documents(
+        db,
+        context=ReferenceContext(
+            tenant_id=agency_tid,
+            module="recruitment",
+            entity_type="candidate",
+            entity_id=str(candidate.id),
+            candidate_id=str(candidate.id),
+            citizenship=_citizenship(candidate),
+            work_country=_work_country(candidate),
+            stage=str(getattr(candidate, "stage", "") or "") or None,
+            vacancy_id=str(getattr(app, "vacancy_id", "") or "") or vac_id,
+        ),
+    )
+    applicability_out = [
+        {
+            "document_code": str(r.get("document_code") or ""),
+            "required": bool(r.get("required")),
+            "reason": str(r.get("reason") or ""),
+            "source_pack": str(r.get("source_pack") or ""),
+            "criticality": str(r.get("criticality") or ""),
+            "due_point": str(r.get("due_point") or ""),
+            "status": str(r.get("status") or "") or None,
+        }
+        for r in applicability
+    ]
 
     requested_by = await _user_label(db, str(handoff.requested_by_user_id))
 
@@ -158,6 +210,7 @@ async def build_handoff_snapshot_payload_v1(
         },
         "application": application_block,
         "documents": documents_out,
+        "expected_documents": applicability_out,
         "notes_summary": getattr(candidate, "note", None),
         "source": {
             "lead_id": lead_id,

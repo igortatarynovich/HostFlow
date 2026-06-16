@@ -1,11 +1,19 @@
 # owner_summary.py
-from datetime import date, datetime, timedelta
+from datetime import date
 from typing import Any, Dict, List, Set, Tuple
 
 from ...models.enums import DocumentStatus
 from ...services.document_catalog import normalize_doc_type
+from ...services.document_expiry_engine import (
+    aggregate_document_expiry_states,
+    evaluate_document_expiry,
+    owner_expiry_aggregate_to_dict,
+)
 from ...services.document_ruleset import load_default_ruleset
-from .rules_engine import compute_candidate_checklist, expiring_threshold_for
+from .pack_projection import project_document_packs
+from .reminder_candidate_projection import project_reminder_candidates_from_packs
+from .reminder_work_queue_projection import project_reminder_work_queue, resolve_owner_identity
+from .rules_engine import compute_candidate_checklist, expiring_threshold_for, expiry_required_for
 
 _DEFAULT_RULESET = load_default_ruleset()
 _DEFAULT_CANDIDATE_DEFAULTS = (
@@ -41,6 +49,10 @@ PROBLEM_STATUSES: Set[str] = {
 EQUIVALENT_SATISFACTION: Dict[str, List[str]] = {
     "driver_license_code95": ["driver_license", "code95"],
 }
+
+
+def _norm(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _normalize_type_code(value: Any) -> str:
@@ -179,21 +191,67 @@ def compute_owner_summary(
             missing_types.append(t)
 
     expiring_soon: List[Dict[str, Any]] = []
+    expired: List[Dict[str, Any]] = []
+    missing_expiry: List[Dict[str, Any]] = []
+    expiry_evaluations: List[Dict[str, Any]] = []
+    raw_expiry_evaluations = []
     today = date.today()
     for d in docs:
         doc_type = d.get("type") or d.get("doc_type")
+        if not doc_type:
+            continue
+        normalized_type = _normalize_type_code(doc_type)
         expires_at = d.get("expires_at") or d.get("expire_date")
-        if not doc_type or not expires_at:
-            continue
-        try:
-            exp_date = datetime.fromisoformat(str(expires_at)[:10]).date()
-        except Exception:
-            continue
-        threshold = expiring_threshold_for(doc_type, ruleset)
-        if threshold <= 0:
-            continue
-        if today <= exp_date <= (today + timedelta(days=threshold)):
-            expiring_soon.append({"type": doc_type, "expires_at": str(exp_date)})
+        threshold = expiring_threshold_for(normalized_type, ruleset)
+        expiry_required = expiry_required_for(normalized_type, ruleset)
+        evaluation = evaluate_document_expiry(
+            expires_on=expires_at,
+            expiry_required=expiry_required,
+            reference_date=today,
+            expiring_soon_days=threshold,
+        )
+        raw_expiry_evaluations.append(evaluation)
+        expiry_evaluations.append(
+            {
+                "type": doc_type,
+                "state": evaluation.state,
+                "expires_on": str(evaluation.expires_on) if evaluation.expires_on else None,
+                "days_left": evaluation.days_left,
+            }
+        )
+        if evaluation.state == "expiring_soon":
+            expiring_soon.append(
+                {
+                    "type": doc_type,
+                    "expires_at": str(evaluation.expires_on),
+                    "days_left": evaluation.days_left,
+                }
+            )
+        elif evaluation.state == "expired":
+            expired.append(
+                {
+                    "type": doc_type,
+                    "expires_at": str(evaluation.expires_on),
+                    "days_left": evaluation.days_left,
+                }
+            )
+        elif evaluation.state == "missing_expiry":
+            missing_expiry.append({"type": doc_type})
+
+    expiry_aggregate = aggregate_document_expiry_states(raw_expiry_evaluations)
+    packs = project_document_packs(ctx, ruleset, docs)
+    owner_type = "employee" if _norm(ctx.get("employee_id")) else "candidate"
+    reminder_candidates = project_reminder_candidates_from_packs(
+        packs,
+        owner_type=owner_type,
+        reference_date=today,
+    )
+    queue_owner_type, queue_owner_id = resolve_owner_identity(ctx)
+    reminder_work_queue = project_reminder_work_queue(
+        reminder_candidates,
+        owner_type=queue_owner_type,
+        owner_id=queue_owner_id,
+    )
 
     total_req = len(required)
     ready_count = len(ready_types)
@@ -204,6 +262,10 @@ def compute_owner_summary(
         status = "no_required"
     elif problematic_types:
         status = "problems"
+    elif expired:
+        status = "expired"
+    elif missing_expiry:
+        status = "missing_expiry"
     elif expiring_soon:
         status = "expiring_soon"
     elif missing_types:
@@ -227,5 +289,12 @@ def compute_owner_summary(
             "in_progress_types": in_progress_types,
         },
         "expiring_soon": expiring_soon,
+        "expired": expired,
+        "missing_expiry": missing_expiry,
+        "expiry_evaluations": expiry_evaluations,
+        "expiry": owner_expiry_aggregate_to_dict(expiry_aggregate),
+        "packs": packs,
+        "reminder_candidates": reminder_candidates,
+        "reminder_work_queue": reminder_work_queue,
         "checklist": checklist,
     }

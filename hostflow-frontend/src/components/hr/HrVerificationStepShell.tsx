@@ -6,8 +6,11 @@ type Props = {
   stepNumber: number
   stepLabel: string
   documentLabel: string
-  documentStatusLabel: string
-  documentStatusTone: 'success' | 'warning' | 'danger' | 'info' | 'neutral'
+  /** Legacy badge; ignored when `statusBadge` is set. */
+  documentStatusLabel?: string
+  documentStatusTone?: 'success' | 'warning' | 'danger' | 'info' | 'neutral'
+  /** Preferred: shared DocumentStatus from surfaces. */
+  statusBadge?: ReactNode
   verifiedCount: number
   totalCount: number
   nextDocumentLabel?: string | null
@@ -23,7 +26,8 @@ export default function HrVerificationStepShell({
   stepLabel,
   documentLabel,
   documentStatusLabel,
-  documentStatusTone,
+  documentStatusTone = 'neutral',
+  statusBadge,
   verifiedCount,
   totalCount,
   nextDocumentLabel,
@@ -79,14 +83,16 @@ export default function HrVerificationStepShell({
                 />
               </div>
             </div>
-            <span
-              className={clsx(
-                'inline-flex shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold',
-                toneClass,
-              )}
-            >
-              {documentStatusLabel}
-            </span>
+            {statusBadge ?? (
+              <span
+                className={clsx(
+                  'inline-flex shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold',
+                  toneClass,
+                )}
+              >
+                {documentStatusLabel ?? ''}
+              </span>
+            )}
           </div>
 
           {nextDocumentLabel ? (

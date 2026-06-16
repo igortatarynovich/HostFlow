@@ -5,6 +5,7 @@ import type {
   DocumentCheck,
   DocumentFile,
   DocumentKind,
+  DocumentPackProjection,
   DocumentProcessType,
   DocumentReadinessState,
   DocumentReminder,
@@ -14,6 +15,10 @@ import type {
   DocumentWorkflow,
   DocumentWorkflowStep,
   DocumentWorkflowStepStatus,
+  OwnerExpiryAggregate,
+  ReminderWorkQueueAction,
+  ReminderWorkQueueItem,
+  ReminderWorkQueueSeverity,
   RulesetVersion,
 } from "../types";
 import { isPlainObject } from "./helpers";
@@ -193,6 +198,111 @@ export function normalizeWorkflowStep(raw: any): DocumentWorkflowStep | null {
   };
 }
 
+function normalizeOwnerExpiryAggregate(raw: any): OwnerExpiryAggregate | undefined {
+  if (!isPlainObject(raw)) return undefined;
+  return {
+    all_documents_valid: Boolean(raw.all_documents_valid),
+    has_expiring_documents: Boolean(raw.has_expiring_documents),
+    has_expired_documents: Boolean(raw.has_expired_documents),
+    has_missing_expiry: Boolean(raw.has_missing_expiry),
+  };
+}
+
+export function normalizeDocumentPackProjection(raw: any): DocumentPackProjection | null {
+  if (!isPlainObject(raw) || !raw.code) return null;
+  const status = String(raw.status || "valid");
+  const packStatus =
+    status === "gaps" || status === "warnings" || status === "skeleton" || status === "valid"
+      ? status
+      : "valid";
+  return {
+    code: String(raw.code),
+    label: String(raw.label || raw.code),
+    status: packStatus,
+    skeleton: Boolean(raw.skeleton),
+    applies: Boolean(raw.applies),
+    ref_pack_codes: Array.isArray(raw.ref_pack_codes)
+      ? raw.ref_pack_codes.map((item: any) => String(item))
+      : [],
+    required: Array.isArray(raw.required) ? raw.required.map((item: any) => String(item)) : [],
+    present: Array.isArray(raw.present) ? raw.present.map((item: any) => String(item)) : [],
+    missing: Array.isArray(raw.missing) ? raw.missing.map((item: any) => String(item)) : [],
+    expired: Array.isArray(raw.expired) ? raw.expired.map((item: any) => String(item)) : [],
+    expiring_soon: Array.isArray(raw.expiring_soon)
+      ? raw.expiring_soon
+          .map((item: any) => {
+            if (!isPlainObject(item)) return null;
+            return {
+              document_code: String(item.document_code || ""),
+              expires_on: normalizeDateInput(item.expires_on),
+              days_left: typeof item.days_left === "number" ? item.days_left : null,
+            };
+          })
+          .filter((item): item is NonNullable<typeof item> => Boolean(item?.document_code))
+      : [],
+    missing_expiry: Array.isArray(raw.missing_expiry)
+      ? raw.missing_expiry.map((item: any) => String(item))
+      : [],
+    gaps: Array.isArray(raw.gaps) ? raw.gaps.map((item: any) => String(item)) : [],
+    blockers: Array.isArray(raw.blockers) ? raw.blockers.map((item: any) => String(item)) : [],
+    warnings: Array.isArray(raw.warnings) ? raw.warnings.map((item: any) => String(item)) : [],
+    expiry: normalizeOwnerExpiryAggregate(raw.expiry) || {
+      all_documents_valid: true,
+      has_expiring_documents: false,
+      has_expired_documents: false,
+      has_missing_expiry: false,
+    },
+  };
+}
+
+const REMINDER_WORK_QUEUE_ACTIONS = new Set<ReminderWorkQueueAction>([
+  "upload_document",
+  "request_update",
+  "renew_document",
+  "capture_expiry_date",
+]);
+
+const REMINDER_WORK_QUEUE_SEVERITIES = new Set<ReminderWorkQueueSeverity>([
+  "critical",
+  "high",
+  "medium",
+  "low",
+]);
+
+export function normalizeReminderWorkQueueItem(raw: any): ReminderWorkQueueItem | null {
+  if (!isPlainObject(raw)) return null;
+  const taskKey = String(raw.task_key || "").trim();
+  const documentCode = String(raw.document_code || "").trim();
+  if (!taskKey || !documentCode) return null;
+
+  const actionRaw = String(raw.action || "");
+  const action = REMINDER_WORK_QUEUE_ACTIONS.has(actionRaw as ReminderWorkQueueAction)
+    ? (actionRaw as ReminderWorkQueueAction)
+    : "upload_document";
+
+  const severityRaw = String(raw.severity || "low");
+  const severity = REMINDER_WORK_QUEUE_SEVERITIES.has(severityRaw as ReminderWorkQueueSeverity)
+    ? (severityRaw as ReminderWorkQueueSeverity)
+    : "low";
+
+  const ownerTypeRaw = String(raw.owner_type || "candidate");
+  const ownerType = ownerTypeRaw === "employee" ? "employee" : "candidate";
+
+  return {
+    task_key: taskKey,
+    title: String(raw.title || documentCode),
+    severity,
+    owner_type: ownerType,
+    owner_id: String(raw.owner_id || ""),
+    recipient_role: String(raw.recipient_role || ""),
+    due_date: normalizeDateInput(raw.due_date),
+    source_pack: String(raw.source_pack || ""),
+    action,
+    document_code: documentCode,
+    reason: String(raw.reason || ""),
+  };
+}
+
 export function normalizeDocumentSummary(raw: any): DocumentSummary {
   const source = isPlainObject(raw) ? raw : {};
   const requiredRaw = isPlainObject(source.required) ? source.required : {};
@@ -204,10 +314,51 @@ export function normalizeDocumentSummary(raw: any): DocumentSummary {
           const type = item.type != null ? String(item.type) : "";
           const expires_at = normalizeDateInput(item.expires_at) ?? "";
           if (!type) return null;
-          return { type, expires_at };
+          return {
+            type,
+            expires_at,
+            days_left: typeof item.days_left === "number" ? item.days_left : null,
+          };
         })
-        .filter((entry): entry is { type: string; expires_at: string } => !!entry)
+        .filter((entry): entry is { type: string; expires_at: string; days_left?: number | null } => !!entry)
     : [];
+
+  const expired = Array.isArray(source.expired)
+    ? source.expired
+        .map((item: any) => {
+          if (!item) return null;
+          const type = item.type != null ? String(item.type) : "";
+          if (!type) return null;
+          return {
+            type,
+            expires_at: normalizeDateInput(item.expires_at),
+            days_left: typeof item.days_left === "number" ? item.days_left : null,
+          };
+        })
+        .filter((entry): entry is { type: string; expires_at?: string | null; days_left?: number | null } => !!entry)
+    : undefined;
+
+  const missingExpiry = Array.isArray(source.missing_expiry)
+    ? source.missing_expiry
+        .map((item: any) => {
+          if (!item) return null;
+          const type = item.type != null ? String(item.type) : "";
+          return type ? { type } : null;
+        })
+        .filter((entry): entry is { type: string } => !!entry)
+    : undefined;
+
+  const packs = Array.isArray(source.packs)
+    ? source.packs
+        .map((item: any) => normalizeDocumentPackProjection(item))
+        .filter((item): item is DocumentPackProjection => item != null)
+    : undefined;
+
+  const reminderWorkQueue = Array.isArray(source.reminder_work_queue)
+    ? source.reminder_work_queue
+        .map((item: any) => normalizeReminderWorkQueueItem(item))
+        .filter((item): item is ReminderWorkQueueItem => item != null)
+    : undefined;
 
   const readyCount =
     typeof requiredRaw.ready === "number"
@@ -258,6 +409,11 @@ export function normalizeDocumentSummary(raw: any): DocumentSummary {
         : undefined,
     },
     expiring_soon: expiringSoon,
+    expired,
+    missing_expiry: missingExpiry,
+    expiry: normalizeOwnerExpiryAggregate(source.expiry),
+    packs,
+    reminder_work_queue: reminderWorkQueue,
     checklist: isPlainObject(source.checklist)
       ? normalizeChecklist(source.checklist)
       : undefined,

@@ -59,6 +59,8 @@ function translateCandidateFieldKey(t: TranslateFn, fieldKey: string, label: str
 type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
 import { getFunnel } from '../api/funnels'
 import { validateRequiredFields } from '../utils/profileUtils'
+import { getCardSectionOrder, isCardSectionVisible } from '../utils/fieldLayoutUtils'
+import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayout'
 import { buildInboxHubPath } from '../utils/inboxDeepLinks'
 import { isCandidateRecruiterIdCanonEnabled } from '../utils/featureFlags'
 import { usePermissions } from '../hooks/usePermissions'
@@ -107,11 +109,18 @@ import { Input, SearchableSelect } from '../components/candidate/shared/FormComp
 import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
+import TransferReadinessReport from '../components/candidate/TransferReadinessReport'
+import { useTransferReadiness } from '../components/candidate/useTransferReadiness'
+import {
+  RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY,
+  readConfirmedRecruitmentBlocks,
+} from '../components/hr/recruitmentDossierConfirm'
 import RailPrimaryStepFrame from '../components/candidate/RailPrimaryStepFrame'
 import { railHasUrgentReminder, resolveRailPrimaryFocus } from '../utils/railPrimaryFocus'
 import { createHandoff, getAvailableClients, getHandoffStatus, type AvailableClientOut, type HandoffStatusResponse } from '../api/handoffs'
 import { listTenantLinks, resolvePrimaryHandoffDestination, type TenantLink } from '../api/tenantLinks'
-import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
+import { isPostRecruitmentStageCode, isRecruitmentTerminalStageCode } from '../constants/recruitmentStageBoundary'
 import { deriveDocsMeta } from '../modules/candidates/utils'
 import {
   ADDRESS_KEYS,
@@ -663,6 +672,7 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     intake_experience: intakeExperience,
     masked: raw?.masked ?? previous?.masked ?? false,
     can_edit: raw?.can_edit ?? previous?.can_edit ?? true,
+    permissions: raw?.permissions ?? previous?.permissions,
     intake_agreements: intakeAgreements,
   } as Candidate
 
@@ -758,6 +768,34 @@ export default function CandidateCard(){
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
+  const { effectiveLayout, layoutFromApi } = useEffectiveCandidateLayout({
+    enabled: !isNew,
+    candidateId: model?.id ? String(model.id) : null,
+    candidateProfileId: candidateProfile?.id ?? null,
+  })
+  const registryMainSectionOrder = useMemo(
+    () => getCardSectionOrder(effectiveLayout) ?? (['basic', 'personal', 'experience'] as const),
+    [effectiveLayout],
+  )
+  const registrySectionsBeforeStatus = useMemo(() => {
+    const personalIdx = registryMainSectionOrder.indexOf('personal')
+    const prefix =
+      personalIdx >= 0
+        ? registryMainSectionOrder.slice(0, personalIdx + 1)
+        : registryMainSectionOrder
+    return prefix.filter((code): code is 'basic' | 'personal' => code === 'basic' || code === 'personal')
+  }, [registryMainSectionOrder])
+  const registrySectionsAfterStatus = useMemo(
+    () => registryMainSectionOrder.filter((code): code is 'experience' => code === 'experience'),
+    [registryMainSectionOrder],
+  )
+  const registrySectionVisible = useCallback(
+    (code: 'basic' | 'personal' | 'experience') => {
+      if (!layoutFromApi || !effectiveLayout) return true
+      return isCardSectionVisible(code, effectiveLayout)
+    },
+    [layoutFromApi, effectiveLayout],
+  )
   const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
 
   useEffect(() => {
@@ -1978,6 +2016,9 @@ export default function CandidateCard(){
   const onStageChangePersist = useCallback(
     async (stage: string, statusReason: string[]) => {
       if (isNew || !model?.id) return
+      const mayClose =
+        model.permissions?.can_close_recruitment !== false && isRecruitmentTerminalStageCode(stage)
+      if (model.can_edit === false && !mayClose) return
       const revertStageOptimistic = async () => {
         try {
           const refreshed = await fetchCandidate(String(model.id), model)
@@ -2037,6 +2078,24 @@ export default function CandidateCard(){
           })
           await revertStageOptimistic()
           return
+        }
+        if (Number(err?.response?.status || 0) === 403) {
+          const detailRaw = err?.response?.data?.detail
+          const detail = typeof detailRaw === 'string' ? detailRaw : ''
+          if (
+            detail === 'candidate_readonly' ||
+            detail.includes('Recruitment locked') ||
+            detail.includes('Cannot edit') ||
+            detail.includes('Stage change not allowed')
+          ) {
+            notify({
+              title: t('app.api_errors.access_denied_title'),
+              description: detail || t('app.api_errors.access_denied_hint'),
+              variant: 'error',
+            })
+            await revertStageOptimistic()
+            return
+          }
         }
         if (Number(err?.response?.status || 0) === 409) {
           const d = err?.response?.data?.detail
@@ -3357,11 +3416,14 @@ export default function CandidateCard(){
     }
 
     const outcomeStage = null
+    const outcomeStages = ['rejected', 'declined']
+      .filter((code) => uniqDisplay.includes(code) || profileStageCodes.includes(code))
+      .map((code) => ({ code, label: stageLabelIntl(code) }))
 
     return {
       stageJourneyStagesPipeline: orderedPipeline,
       stageJourneyStagesDisplay: orderedDisplay,
-      stageOutcomeStages: [],
+      stageOutcomeStages: outcomeStages,
       stageJourneyDisplayStage: displayStage,
       stageJourneyOutcomeStage: outcomeStage,
       stageJourneySignals: journeySignals,
@@ -3377,6 +3439,11 @@ export default function CandidateCard(){
     t,
     isClientTenant,
   ])
+
+  const canCloseRecruitment = useMemo(
+    () => model?.permissions?.can_close_recruitment !== false && can('candidates.pipeline'),
+    [model?.permissions?.can_close_recruitment, can],
+  )
 
   const operationallyTerminal = useMemo(
     () =>
@@ -3560,6 +3627,142 @@ export default function CandidateCard(){
     return canonicalStageKey(raw, null) || raw.toLowerCase()
   }, [stageJourneyDisplayStage, model?.stage, model?.row_status, model?.status])
 
+  const canViewHrEmployee = can('workforce.view')
+  const showTransferReadinessReport = useMemo(() => {
+    const stage = String(canonicalStageForOps || '').trim().toLowerCase()
+    return ['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage)
+  }, [canonicalStageForOps])
+  const showOpenInHrLink = useMemo(() => {
+    const stage = String(canonicalStageForOps || model?.stage || '').trim().toLowerCase()
+    return canViewHrEmployee && stage === 'processing_by_hr'
+  }, [canonicalStageForOps, canViewHrEmployee, model?.stage])
+  const dossierContactsReady = useMemo(() => {
+    const phone = String(model?.phone || extra?.phone || '').trim()
+    const email = String(model?.email || extra?.email || '').trim()
+    const address = String(extra?.address || '').trim()
+    return Boolean(phone && email && address)
+  }, [extra?.address, extra?.email, extra?.phone, model?.email, model?.phone])
+  const dossierExperienceReady = useMemo(() => {
+    const exp = extra?.experience
+    if (typeof exp === 'string' && exp.trim()) return true
+    if (Array.isArray(employmentHistory) && employmentHistory.length > 0) return true
+    return Boolean(extra?.experience_eu_years)
+  }, [employmentHistory, extra?.experience, extra?.experience_eu_years])
+
+  const recruitmentPackageRefreshKey = useMemo(
+    () =>
+      [
+        docsSummaryRefreshTrigger,
+        model?.phone,
+        model?.email,
+        extra?.address,
+        dossierContactsReady,
+        dossierExperienceReady,
+        effectiveDocsBlockersForPipeline.missing.join('|'),
+        effectiveDocsBlockersForPipeline.problematic.join('|'),
+      ].join('\0'),
+    [
+      docsSummaryRefreshTrigger,
+      model?.phone,
+      model?.email,
+      extra?.address,
+      dossierContactsReady,
+      dossierExperienceReady,
+      effectiveDocsBlockersForPipeline.missing,
+      effectiveDocsBlockersForPipeline.problematic,
+    ],
+  )
+  const { report: transferReport, loading: transferReportLoading, reload: reloadTransferReport } =
+    useTransferReadiness(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
+
+  const transferReadinessGateActive = showTransferReadinessReport && !handoffActiveBlock
+
+  const recruitmentHandoffReady = Boolean(transferReport?.transfer_allowed)
+  const recruitmentHandoffCreateReady = Boolean(transferReport?.handoff_create_allowed)
+
+  const recruitmentHandoffBlockedReason = useMemo(() => {
+    if (!transferReadinessGateActive || recruitmentHandoffReady) return null
+    if (transferReportLoading) {
+      return t('app.candidate_card.transfer_readiness.checking', {
+        defaultValue: 'Checking transfer readiness…',
+      })
+    }
+    const reasons = transferReport?.blocking_reasons || []
+    if (reasons.length > 0) {
+      return reasons.map((r) => r.message).filter(Boolean).join(' · ')
+    }
+    return t('app.candidate_card.transfer_readiness.blocked_generic', {
+      defaultValue: 'Transfer is blocked. See Transfer readiness report below.',
+    })
+  }, [transferReadinessGateActive, recruitmentHandoffReady, transferReport, transferReportLoading, t])
+
+  const notifyRecruitmentPackageBlocked = useCallback(() => {
+    notify({
+      title: t('app.candidate_card.transfer_readiness.stage_blocked_title', {
+        defaultValue: 'Cannot move to «Ready for handoff»',
+      }),
+      description:
+        recruitmentHandoffBlockedReason ||
+        t('app.candidate_card.transfer_readiness.blocked_generic', {
+          defaultValue: 'Transfer is blocked. See Transfer readiness report below.',
+        }),
+      variant: 'warning',
+    })
+    document.getElementById('section-transfer-readiness')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [notify, recruitmentHandoffBlockedReason, t])
+
+  const isReadyForHandoffStageCode = useCallback((stageCode: string) => {
+    const canonical = canonicalStageKey(stageCode, null) || String(stageCode || '').trim().toLowerCase()
+    return canonical === 'ready_for_handoff'
+  }, [])
+
+  const recruitmentPackageBlocksStage = useCallback(
+    (nextStage: string) => {
+      if (!transferReadinessGateActive) return false
+      if (!isReadyForHandoffStageCode(nextStage)) return false
+      if (transferReportLoading) return false
+      return !recruitmentHandoffReady
+    },
+    [isReadyForHandoffStageCode, recruitmentHandoffReady, transferReadinessGateActive, transferReportLoading],
+  )
+
+  const [recruitmentConfirmBusy, setRecruitmentConfirmBusy] = useState(false)
+
+  const handleConfirmRecruitmentBlock = useCallback(
+    async (blockKey: string) => {
+      if (!model?.id || model.can_edit === false) return
+      const key = String(blockKey || '').trim()
+      if (!key) return
+      const prev = readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined)
+      if (prev.includes(key)) return
+      const nextConfirmed = Array.from(new Set([...prev, key]))
+      const nextExtra = {
+        ...(extra || {}),
+        [RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]: nextConfirmed,
+      }
+      try {
+        setRecruitmentConfirmBusy(true)
+        await api.patch(`/candidates/${model.id}`, { extra: nextExtra })
+        setExtra(nextExtra)
+        await reloadTransferReport()
+        notify({
+          title: t('app.candidate_card.dossier_checklist.confirmed_toast', {
+            defaultValue: 'Block confirmed',
+          }),
+          variant: 'success',
+        })
+      } catch (err: unknown) {
+        notify({
+          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+          variant: 'error',
+        })
+      } finally {
+        setRecruitmentConfirmBusy(false)
+      }
+    },
+    [extra, model?.can_edit, model?.id, notify, reloadTransferReport, t],
+  )
+
   const employerDataMissingForHint = useMemo(() => {
     const stage = canonicalStageForOps || ''
     if (
@@ -3722,8 +3925,9 @@ export default function CandidateCard(){
   }, [stageHistory])
 
   const handleStageJourneyChange = useCallback(async (nextStage: string) => {
+    const terminalClose = isRecruitmentTerminalStageCode(nextStage)
     // Documents + data gates: blockers stop forward movement in the current journey order.
-    if (Array.isArray(stageJourneyStagesPipeline)) {
+    if (!terminalClose && Array.isArray(stageJourneyStagesPipeline)) {
       const steps = [...(stageJourneyStagesPipeline || []), ...(stageOutcomeStages || [])]
       const curCode = stageJourneyDisplayStage || model?.stage
       const curIdx = steps.findIndex((s) => s.code === curCode)
@@ -3763,6 +3967,11 @@ export default function CandidateCard(){
       }
     }
 
+    if (recruitmentPackageBlocksStage(nextStage)) {
+      notifyRecruitmentPackageBlocked()
+      return
+    }
+
     if (!model?.stage) {
       await onStageChangePersist(nextStage, model?.status_reason || [])
       setModel((m) => (m ? { ...m, stage: nextStage } : m))
@@ -3787,12 +3996,17 @@ export default function CandidateCard(){
     stageJourneyDisplayStage,
     notify,
     t,
+    recruitmentPackageBlocksStage,
+    notifyRecruitmentPackageBlocked,
   ])
 
   /** Same forward-move gates as the journey panel, applied to the stage dropdown in basic info. */
   const persistStageWithClientGates = useCallback(
     async (nextStage: string, statusReason: string[]) => {
       if (!model?.id) return
+      const terminalClose = isRecruitmentTerminalStageCode(nextStage)
+      const mayClose = model.permissions?.can_close_recruitment !== false && terminalClose
+      if (model.can_edit === false && !mayClose) return
       const revertBasicStageUi = async () => {
         try {
           const refreshed = await fetchCandidate(String(model.id), model)
@@ -3801,7 +4015,7 @@ export default function CandidateCard(){
           /* ignore */
         }
       }
-      if (Array.isArray(stageJourneyStagesPipeline) && stageJourneyStagesPipeline.length > 0) {
+      if (!terminalClose && Array.isArray(stageJourneyStagesPipeline) && stageJourneyStagesPipeline.length > 0) {
         const steps = [...(stageJourneyStagesPipeline || []), ...(stageOutcomeStages || [])]
         const curCode = model?.stage
         const curIdx = steps.findIndex((s) => s.code === curCode)
@@ -3843,10 +4057,16 @@ export default function CandidateCard(){
           }
         }
       }
+      if (recruitmentPackageBlocksStage(nextStage)) {
+        notifyRecruitmentPackageBlocked()
+        await revertBasicStageUi()
+        return
+      }
       await onStageChangePersist(nextStage, statusReason)
     },
     [
       model?.id,
+      model?.can_edit,
       model?.stage,
       model,
       stageJourneyStagesPipeline,
@@ -3861,6 +4081,8 @@ export default function CandidateCard(){
       fetchCandidate,
       notify,
       t,
+      recruitmentPackageBlocksStage,
+      notifyRecruitmentPackageBlocked,
     ],
   )
 
@@ -3889,10 +4111,21 @@ export default function CandidateCard(){
         onEditToggle={toggleCandidateEditMode}
         editMode={candidateEditPhase !== 'idle'}
         onOpenHandoff={
-          showAgencyHandoffHeader && !handoffActiveBlock ? () => setHandoffModalOpen(true) : undefined
+          showAgencyHandoffHeader && !handoffActiveBlock
+            ? () => {
+                if (transferReadinessGateActive && !recruitmentHandoffCreateReady) {
+                  notifyRecruitmentPackageBlocked()
+                  return
+                }
+                setHandoffModalOpen(true)
+              }
+            : undefined
         }
         handoffReadonlyText={showAgencyHandoffHeader ? handoffReadonlySummary : null}
-        handoffDisabled={handoffLoading}
+        handoffDisabled={
+          handoffLoading || (transferReadinessGateActive && !recruitmentHandoffCreateReady)
+        }
+        handoffDisabledTitle={recruitmentHandoffBlockedReason}
         handoffLabel={handoffPrimaryActionLabel}
         onDeleteRequest={handleDeleteRequest}
         onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
@@ -3934,6 +4167,7 @@ export default function CandidateCard(){
               vacancyPipelineBlocking={vacancyPipelineBlockingValue}
               contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
               canEdit={model.can_edit !== false}
+              canCloseRecruitment={canCloseRecruitment}
               onMoveStage={handleStageJourneyChange}
               onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
             />
@@ -3942,59 +4176,77 @@ export default function CandidateCard(){
       />
 
       <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
-        <PageBreadcrumb />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <PageBreadcrumb />
+          {!isNew && model?.id ? (
+            <CandidateOpenInHrLink candidateId={String(model.id)} enabled={showOpenInHrLink} />
+          ) : null}
+        </div>
       </div>
 
       <div className="card p-3">
         <div className="space-y-4">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
             <div className="space-y-4 lg:pr-6">
-                  {/* Основные данные */}
-                  {!isMasked && (
-                    <CandidateBasicSection
-                      candidate={model}
-                      extra={extra}
-                      isNew={isNew}
-                      locale={locale}
-                      basicRef={basicRef}
-                      stageOptions={stageOptions}
-                      profileStageCodes={profileStageCodes}
-                      meta={meta ?? undefined}
-                      dialCodes={dialCodes}
-                      managers={managers}
-                      preferredContactOptions={preferredContactOptions}
-                      selectTexts={selectTexts}
-                      createdAtDisplay={createdAtDisplay}
-                      isMetaLead={isMetaLead}
-                      onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
-                      onExtraChange={setExtra}
-                      onPhoneInputChange={handlePhoneInputChange}
-                      onGenerateShortId={handleGenerateShortId}
-                      candidateProfile={candidateProfile}
-                      stageLabelIntl={stageLabelIntl}
-                      candidateDataReadOnly={candidateDataReadOnly}
-                      onStageChangePersist={persistStageWithClientGates}
-                      embedded
-                    />
-                  )}
-
-                  {/* Персональные данные */}
-                  {!isMasked && (
-                    <CandidatePersonalSection
-                      candidate={model}
-                      extra={extra}
-                      personalRef={personalRef}
-                      countries={countries}
-                      languages={languages}
-                      selectTexts={selectTexts}
-                      onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
-                      onExtraChange={setExtra}
-                      onAddressFieldChange={setAddressField}
-                      candidateProfile={candidateProfile}
-                      candidateDataReadOnly={candidateDataReadOnly}
-                      embedded
-                    />
-                  )}
+                  {registrySectionsBeforeStatus.map((sectionCode) => {
+                    if (!registrySectionVisible(sectionCode)) return null
+                    if (sectionCode === 'basic') {
+                      if (isMasked) return null
+                      return (
+                        <CandidateBasicSection
+                          key="basic"
+                          candidate={model}
+                          extra={extra}
+                          isNew={isNew}
+                          locale={locale}
+                          basicRef={basicRef}
+                          stageOptions={stageOptions}
+                          profileStageCodes={profileStageCodes}
+                          meta={meta ?? undefined}
+                          dialCodes={dialCodes}
+                          managers={managers}
+                          preferredContactOptions={preferredContactOptions}
+                          selectTexts={selectTexts}
+                          createdAtDisplay={createdAtDisplay}
+                          isMetaLead={isMetaLead}
+                          onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                          onExtraChange={setExtra}
+                          onPhoneInputChange={handlePhoneInputChange}
+                          onGenerateShortId={handleGenerateShortId}
+                          candidateProfile={candidateProfile}
+                          effectiveLayout={effectiveLayout}
+                          stageLabelIntl={stageLabelIntl}
+                          candidateDataReadOnly={candidateDataReadOnly}
+                          canEdit={model.can_edit !== false}
+                          canCloseRecruitment={canCloseRecruitment}
+                          onStageChangePersist={persistStageWithClientGates}
+                          embedded
+                        />
+                      )
+                    }
+                    if (sectionCode === 'personal') {
+                      if (isMasked) return null
+                      return (
+                        <CandidatePersonalSection
+                          key="personal"
+                          candidate={model}
+                          extra={extra}
+                          personalRef={personalRef}
+                          countries={countries}
+                          languages={languages}
+                          selectTexts={selectTexts}
+                          onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                          onExtraChange={setExtra}
+                          onAddressFieldChange={setAddressField}
+                          candidateProfile={candidateProfile}
+                          effectiveLayout={effectiveLayout}
+                          candidateDataReadOnly={candidateDataReadOnly}
+                          embedded
+                        />
+                      )
+                    }
+                    return null
+                  })}
 
                   {/* Статус и соответствие требованиям (на всю ширину) */}
                   <div className="space-y-4">
@@ -4005,6 +4257,7 @@ export default function CandidateCard(){
                       selectTexts={selectTexts}
                       onExtraChange={setExtra}
                       candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
                       candidateDataReadOnly={candidateDataReadOnly}
                       embedded
                     />
@@ -4015,31 +4268,48 @@ export default function CandidateCard(){
                       extra={extra}
                       customFieldsRef={customFieldsRef}
                       candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
                       selectTexts={selectTexts}
                       onExtraChange={setExtra}
                     />
                   </div>
 
-                  {/* Опыт */}
-                  <CandidateExperienceSection
-                    extra={extra}
-                    experienceRef={experienceRef}
-                    experienceTotalDisplay={experienceTotalDisplay}
-                    trailerTypeOptions={trailerTypeOptions}
-                    routeTypeOptions={routeTypeOptions}
-                    employmentHistory={employmentHistory}
-                    employmentLoading={employmentLoading}
-                    employmentError={employmentError}
-                    selectTexts={selectTexts}
-                    onExtraChange={setExtra}
-                    onExperienceChange={handleExperienceChange}
-                    onAddEmploymentRow={addEmploymentRow}
-                    onUpdateEmploymentHistory={updateEmploymentHistory}
-                    onRemoveEmploymentRow={removeEmploymentRow}
-                    candidateProfile={candidateProfile}
-                    candidateDataReadOnly={candidateDataReadOnly}
-                    embedded
-                  />
+                  {registrySectionsAfterStatus.map((sectionCode) => {
+                    if (!registrySectionVisible(sectionCode)) return null
+                    return (
+                      <CandidateExperienceSection
+                        key="experience"
+                        extra={extra}
+                        experienceRef={experienceRef}
+                        experienceTotalDisplay={experienceTotalDisplay}
+                        trailerTypeOptions={trailerTypeOptions}
+                        routeTypeOptions={routeTypeOptions}
+                        employmentHistory={employmentHistory}
+                        employmentLoading={employmentLoading}
+                        employmentError={employmentError}
+                        selectTexts={selectTexts}
+                        onExtraChange={setExtra}
+                        onExperienceChange={handleExperienceChange}
+                        onAddEmploymentRow={addEmploymentRow}
+                        onUpdateEmploymentHistory={updateEmploymentHistory}
+                        onRemoveEmploymentRow={removeEmploymentRow}
+                        candidateProfile={candidateProfile}
+                        effectiveLayout={effectiveLayout}
+                        candidateDataReadOnly={candidateDataReadOnly}
+                        embedded
+                      />
+                    )
+                  })}
+
+                  {!isMasked && showTransferReadinessReport ? (
+                    <TransferReadinessReport
+                      report={transferReport}
+                      loading={transferReportLoading}
+                      onConfirmBlock={model.can_edit !== false ? handleConfirmRecruitmentBlock : undefined}
+                      confirmBusy={recruitmentConfirmBusy}
+                      canConfirm={model.can_edit !== false}
+                    />
+                  ) : null}
 
                   {/* Работодатель и вакансия */}
                   {!isMasked && (
@@ -4296,7 +4566,7 @@ export default function CandidateCard(){
                   <button
                     type="button"
                     className="btn-primary btn-sm"
-                    disabled={handoffSubmitting}
+                    disabled={handoffSubmitting || (transferReadinessGateActive && !recruitmentHandoffCreateReady)}
                     onClick={() => void handleHandoffCreate()}
                   >
                     {handoffSubmitting ? t('common.saving') : handoffPrimaryActionLabel}
@@ -4327,7 +4597,11 @@ export default function CandidateCard(){
                   <button
                     type="button"
                     className="btn-primary btn-sm"
-                    disabled={!handoffClientLinkId || handoffSubmitting}
+                    disabled={
+                      !handoffClientLinkId ||
+                      handoffSubmitting ||
+                      (transferReadinessGateActive && !recruitmentHandoffCreateReady)
+                    }
                     onClick={() => void handleHandoffCreate()}
                   >
                     {handoffSubmitting ? t('common.saving') : handoffPrimaryActionLabel}

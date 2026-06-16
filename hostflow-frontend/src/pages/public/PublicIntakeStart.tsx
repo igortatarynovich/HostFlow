@@ -8,6 +8,7 @@ import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import { useSeoMeta } from '../../hooks/useSeoMeta'
 
 const DEFAULT_FORM = {
+  company_name: '',
   phone_country_code: '+48',
   phone: '',
   email: '',
@@ -150,8 +151,9 @@ export default function PublicIntakeStart() {
   const canSubmit = useMemo(() => {
     const hasPhone = Boolean(form.phone_country_code && form.phone)
     const hasEmail = Boolean(form.email)
-    return hasPhone || hasEmail
-  }, [form.phone_country_code, form.phone, form.email])
+    const hasCompany = !isClientInquiry || Boolean(form.company_name.trim())
+    return hasCompany && (hasPhone || hasEmail)
+  }, [form.phone_country_code, form.phone, form.email, form.company_name, isClientInquiry])
 
   const handleChange = (field: keyof typeof DEFAULT_FORM, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -177,6 +179,7 @@ export default function PublicIntakeStart() {
         locale: locale || 'en',
         ...(vacancyIdFromQuery ? { vacancy_id: vacancyIdFromQuery } : {}),
         ...(applicationKindFromQuery ? { application_kind: applicationKindFromQuery } : {}),
+        ...(isClientInquiry ? { client_company: { name: form.company_name.trim() || undefined } } : {}),
         ...(leadFormForRequest.lead_form_id
           ? { lead_form_id: leadFormForRequest.lead_form_id }
           : leadFormForRequest.lead_form_slug
@@ -235,6 +238,22 @@ export default function PublicIntakeStart() {
         )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
+          {isClientInquiry && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                {t('public.start.form.company_name', { defaultValue: 'Company name' })}
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
+                placeholder={t('public.start.form.placeholders.company_name', { defaultValue: 'Transport company name' })}
+                value={form.company_name}
+                onChange={(e) => handleChange('company_name', e.target.value)}
+                required={isClientInquiry}
+              />
+            </div>
+          )}
+
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">{t('public.start.form.email')}</label>
             <input

@@ -47,6 +47,12 @@
 - [ ] Пройден [`docs/security/security-review-checklist.md`](docs/security/security-review-checklist.md), если PR в security perimeter
 - [ ] Документы/ADR: при смене контрактов — `docs/specs/**` и при необходимости `docs/devel/pr-checklist-adr014-document-access.md`
 - [ ] `make lint` / `make test` (или эквивалент CI) зелёные
+- [ ] **Foundation:** no new deprecated foundation tokens introduced (`npm run foundation:check` in `hostflow-frontend`). If using `foundation-allow:`, include a short reason (min 8 chars) on the same line or the line above.
+- [ ] **Primitives (Badge + Chip):** new status labels use `StatusBadge` (semantic API); new filter/toggle/action chips use `Chip` with allowed `behavior`. See `docs/specs/frontend/PRIMITIVES_V1.md`.
+- [ ] **Primitives (Select):** new selects follow `SELECT_V1` scenario tree — `Combobox` / `MultiCombobox` / native `<select className="input">`; no new combobox copies or `SelectAsync`. See `docs/specs/frontend/SELECT_V1.md`.
+- [ ] **Primitives (Button):** new buttons use `Button` or `.btn-*` canon; `variant="icon"` requires `aria-label` when no visible text. See `docs/specs/frontend/BUTTON_V1.md`.
+- [ ] **Primitives (Input):** new text fields use native `<input className="input">` / `<textarea className="textarea">`; no custom field chrome, no pass-through `Input.tsx`. See `docs/specs/frontend/INPUT_V1.md`.
+- [ ] **TABLE_V1:** new operational entity-list tables comply with `docs/specs/frontend/TABLE_V1.md` (sticky header, filter above table, pagination model declared, bulk zone if bulk-capable).
 
 ## Labels (рекомендуется)
 

@@ -10,21 +10,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.pipeline_overrides_service import approved_handoff_relaxed_types
-from backend.app.api.v1.candidates.service import _candidate_owner_context_for_docs
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
 from backend.app.models.enums import DocumentStatus
-from backend.app.modules.documents import crud as documents_crud
-from backend.app.modules.documents.crud import list_candidate_documents
-from backend.app.modules.documents.rules_engine import compute_candidate_checklist
 from backend.app.services.document_catalog import normalize_doc_type
-from backend.app.services.document_orders import (
-    SATISFYING_TYPES,
-    missing_base_requirements,
+from backend.app.services.document_hub_delivery_contract import (
+    list_candidate_documents_via_contract,
 )
-from backend.app.services.ruleset_versioning import normalize_ruleset_payload
-from backend.app.services.document_ruleset import load_default_ruleset
+from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
 
 HR_HIGH_RISK_DOC_TYPES: frozenset[str] = frozenset(
     {
@@ -85,8 +79,12 @@ def _snapshot_doc_status(payload: dict[str, Any] | None, doc_type: str) -> str |
     if not payload:
         return None
     canon = normalize_doc_type(doc_type)
+    for d in (payload.get("expected_documents") or []) or []:
+        t = normalize_doc_type(str(d.get("document_code") or ""))
+        if t == canon:
+            return str(d.get("status") or "").strip() or None
     for d in (payload.get("documents") or []) or []:
-        t = normalize_doc_type(str(d.get("type") or ""))
+        t = normalize_doc_type(str((d.get("canonical") or {}).get("code") or d.get("type") or ""))
         if t == canon:
             return str(d.get("status") or "").strip() or None
     return None
@@ -101,7 +99,7 @@ def _doc_status_str(doc: Any) -> str:
 
 def _live_best_status_for_type(docs: Sequence[Any], doc_type: str) -> str:
     canon = normalize_doc_type(doc_type)
-    acceptable = SATISFYING_TYPES.get(canon, {canon})
+    acceptable = {canon}
     matches = [
         d
         for d in docs
@@ -232,34 +230,51 @@ async def list_hr_documents_missing(
         pd = getattr(cand, "personal_data", None) or {}
         if not isinstance(pd, dict):
             pd = {}
-        owner_ctx = _candidate_owner_context_for_docs(
-            candidate_id=str(cand.id),
-            extra=extra,
-            personal=pd,
-        )
         oc = getattr(cand, "own_company_id", None)
         own_company_id = str(oc).strip() if oc else None
-        ruleset_version = await documents_crud.ensure_ruleset_seed(
+        expected_docs = await ReferenceServiceFacade.get_applicable_documents(
             db,
-            str(tenant_id),
-            load_default_ruleset(),
-            own_company_id=own_company_id,
+            context=ReferenceContext(
+                tenant_id=str(tenant_id),
+                module="hr",
+                entity_type="candidate",
+                entity_id=str(cand.id),
+                candidate_id=str(cand.id),
+                citizenship=(extra.get("citizenship") or pd.get("citizenship")),
+                work_country=(extra.get("work_country") or pd.get("work_country")),
+                residence_status=(extra.get("poland_stay_basis") or pd.get("residency_status")),
+                position_category=(extra.get("position_category") or pd.get("position_category") or extra.get("role")),
+                employment_type=(extra.get("employment_type") or pd.get("employment_type")),
+                stage="hr",
+                client_id=own_company_id or None,
+                vacancy_id=(str(getattr(cand, "vacancy_id", "") or "").strip() or None),
+            ),
         )
-        ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
-        checklist = compute_candidate_checklist(owner_ctx, ruleset_payload)
-        if not (checklist.get("requiredTypes") or []):
-            # Mis-seeded or legacy ruleset rows sometimes yield an empty matrix; queues need a baseline.
-            checklist = compute_candidate_checklist(
-                owner_ctx, normalize_ruleset_payload(load_default_ruleset())
-            )
-        live_docs = await list_candidate_documents(
+        live_docs = await list_candidate_documents_via_contract(
             db,
-            str(tenant_id),
-            str(cand.id),
+            tenant_id=str(tenant_id),
+            candidate_id=str(cand.id),
             active_own_company_id=own_company_id,
         )
         active = [d for d in live_docs if getattr(d, "deleted_at", None) is None]
-        missing_types = missing_base_requirements(checklist, active)
+        required_codes = {
+            normalize_doc_type(str(item.get("document_code") or ""))
+            for item in expected_docs
+            if bool(item.get("required")) and str(item.get("document_code") or "").strip()
+        }
+        if not required_codes:
+            # Safe compatibility fallback when packs are not enabled yet for a tenant.
+            required_codes = {
+                normalize_doc_type(str(getattr(d, "doc_type", "") or ""))
+                for d in active
+                if str(getattr(d, "doc_type", "") or "").strip()
+            }
+
+        missing_types = [
+            code
+            for code in sorted(required_codes)
+            if _live_best_status_for_type(active, code) not in READY_LIVE
+        ]
         relaxed = await approved_handoff_relaxed_types(
             db, tenant_id=str(tenant_id), candidate_id=str(cand.id)
         )
@@ -350,10 +365,10 @@ async def list_hr_documents_expiring(
             continue
         oc = getattr(cand, "own_company_id", None)
         own_company_id = str(oc).strip() if oc else None
-        live_docs = await list_candidate_documents(
+        live_docs = await list_candidate_documents_via_contract(
             db,
-            str(tenant_id),
-            str(cand.id),
+            tenant_id=str(tenant_id),
+            candidate_id=str(cand.id),
             active_own_company_id=own_company_id,
         )
         snap_row = snaps.get(str(h.id))
@@ -367,7 +382,26 @@ async def list_hr_documents_expiring(
                 continue
             if not isinstance(exp, date):
                 continue
-            canon = normalize_doc_type(str(getattr(d, "doc_type", "") or ""))
+            runtime_profile = await ReferenceServiceFacade.get_document_runtime_profile(
+                db,
+                document=d,
+                context=ReferenceContext(
+                    tenant_id=str(tenant_id),
+                    module="hr",
+                    entity_type="candidate",
+                    entity_id=str(cand.id),
+                    candidate_id=str(cand.id),
+                    stage="hr",
+                    client_id=own_company_id or None,
+                ),
+            )
+            canon = normalize_doc_type(
+                str(
+                    (runtime_profile.get("profile") or {}).get("canonical_code")
+                    or getattr(d, "doc_type", "")
+                    or ""
+                )
+            )
             if document_type and normalize_doc_type(document_type) != canon:
                 continue
             rsk = _risk_for_type(canon)

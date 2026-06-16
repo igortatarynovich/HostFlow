@@ -23,7 +23,8 @@
 | **Settings** | Три уровня: Tenant → Company → Company Module Settings ([`ADR-005`](ADR-005-three-level-settings-hierarchy.md)) |
 | **Forms** | **Input layer** ([`ADR-007`](ADR-007-forms-platform-capability.md), [`../../forms/module-scope.md`](../../forms/module-scope.md)) |
 | **Document Hub** | Единый registry документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)) |
-| **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)) |
+| **Process Engine** | Единый движок процессов: stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)) |
+| **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)); module installation audit/canon: [`module-registry-marketplace-installation.md`](../platform/module-registry-marketplace-installation.md) |
 | **Automations** | Правила, триггеры, сценарии между сущностями |
 | **Activity & Notification Operating Layer** | Единый слой задач, напоминаний, уведомлений, планировщика и календарных представлений; **не** разные модули, см. [`ADR-012`](ADR-012-activity-notification-operating-layer.md) и canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md) |
 | **Trust & Reputation Layer** | Проверенная операционная история и сигналы доверия (политика продукта); см. [`platform-architecture-principles.md`](platform-architecture-principles.md) §6.1 |

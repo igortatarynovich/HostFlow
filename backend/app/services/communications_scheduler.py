@@ -1351,10 +1351,17 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
         "calendar_renew_failed": 0,
         "calendar_reconcile_failed": 0,
         "calendar_sync_lag_max_seconds": 0,
+        "invalid_tenants_skipped": 0,
     }
 
     for tenant in tenants:
         tenant_id = str(tenant.id)
+        try:
+            tenant_uuid = UUID(tenant_id)
+        except ValueError:
+            tick_summary["invalid_tenants_skipped"] = int(tick_summary["invalid_tenants_skipped"]) + 1
+            continue
+
         if not _tenant_email_module_enabled(tenant):
             continue
 
@@ -1386,10 +1393,10 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
         from backend.app.db.deps import tenant_enforced_session
 
         async with tenant_enforced_session(
-            UUID(tenant_id),
+            tenant_uuid,
             actor_id="system:communications-scheduler",
         ) as db:
-            db_tenant = (db, UUID(tenant_id))
+            db_tenant = (db, tenant_uuid)
             if do_poll:
                 try:
                     result = await comm_api.run_email_poll_worker(

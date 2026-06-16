@@ -38,6 +38,7 @@ import {
   FleetModulePage,
   FunnelsPage,
   HiringPipelineGatesSettingsPage,
+  TransferPolicySettingsPage,
   HrComplianceDocumentsPage,
   HrDashboardPage,
   HrEmployeeDetailPage,
@@ -57,6 +58,7 @@ import {
   LeadsDistributionRulesPage,
   LegalDocumentsPage,
   LeadFormsSettingsPage,
+  LeadMessageTemplatesPage,
   IntegrationsHubPage,
   IntegrationsSourcePlaceholderPage,
   IntegrationsWebhookPage,
@@ -663,6 +665,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     permission: 'settings.view',
   },
   {
+    key: 'settings-transfer-policy',
+    path: seg(CRM.settingsTransferPolicy),
+    Component: TransferPolicySettingsPage,
+    permission: 'settings.view',
+  },
+  {
     key: 'settings-risk-intel',
     path: seg(CRM.settingsRiskIntel),
     Component: RiskIntelSettingsPage,
@@ -675,6 +683,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     path: seg(CRM.settingsLeadForms),
     Component: LeadFormsSettingsPage,
     permission: ['admin.users', 'leads.view'],
+  },
+  {
+    key: 'settings-message-templates',
+    path: seg(CRM.settingsMessageTemplates),
+    Component: LeadMessageTemplatesPage,
+    permission: 'admin.metaLeads',
   },
   {
     key: 'settings-leads-alias',

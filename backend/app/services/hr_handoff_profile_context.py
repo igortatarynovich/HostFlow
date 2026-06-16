@@ -34,14 +34,19 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
     citizenship = cand.get("citizenship")
     if citizenship is not None:
         citizenship = str(citizenship).strip() or None
+    birth_date = cand.get("birth_date")
+    if birth_date is not None:
+        birth_date = str(birth_date).strip()[:10] or None
     return {
         "candidate": {
             "full_name": full,
             "first_name": first or None,
             "last_name": last or None,
             "citizenship": citizenship,
+            "birth_date": birth_date,
             "email": contacts.get("email"),
             "phone": contacts.get("phone"),
+            "address": cand.get("address") if isinstance(cand.get("address"), str) else None,
         },
         "application": payload.get("application") if isinstance(payload.get("application"), dict) else None,
         "documents": list(payload.get("documents") or []) if isinstance(payload.get("documents"), list) else [],
@@ -125,15 +130,48 @@ async def _load_live_candidate_fields(
     extra = cand._get_extra()
     personal = cand._get_personal_data()
     flat: dict[str, Any] = {}
+    contacts_data = getattr(cand, "contacts", None)
+    if isinstance(contacts_data, dict):
+        if contacts_data.get("email"):
+            flat["email"] = contacts_data.get("email")
+        if contacts_data.get("phone"):
+            flat["phone"] = contacts_data.get("phone")
+    if getattr(cand, "email", None):
+        flat["email"] = flat.get("email") or cand.email
+    if getattr(cand, "phone", None):
+        flat["phone"] = flat.get("phone") or cand.phone
+    if personal.get("address"):
+        flat["address"] = personal.get("address")
+    elif extra.get("address"):
+        flat["address"] = extra.get("address")
+    profile = extra.get("profile") if isinstance(extra.get("profile"), dict) else {}
+    if profile.get("experience"):
+        flat["experience"] = profile.get("experience")
+    if extra.get("experience_eu_years") is not None:
+        flat["experience_eu_years"] = extra.get("experience_eu_years")
     if extra.get("citizenship"):
         flat["citizenship"] = extra.get("citizenship")
     if personal.get("citizenship"):
         flat["citizenship"] = flat.get("citizenship") or personal.get("citizenship")
-    for k in ("pesel", "national_id", "work_country", "passport_number"):
+    for k in (
+        "birth_date",
+        "pesel",
+        "national_id",
+        "work_country",
+        "passport_number",
+        "passport_series",
+        "passport_issue_date",
+        "passport_expiry",
+        "passport_valid_to",
+    ):
         if extra.get(k):
             flat[k] = extra.get(k)
         if personal.get(k):
             flat[k] = flat.get(k) or personal.get(k)
+    if getattr(cand, "birth_date", None):
+        flat["birth_date"] = str(cand.birth_date)[:10]
+    elif personal.get("birth_date"):
+        flat["birth_date"] = str(personal.get("birth_date"))[:10]
     first = str(cand.first_name or "").strip()
     last = str(cand.last_name or "").strip()
     if first:

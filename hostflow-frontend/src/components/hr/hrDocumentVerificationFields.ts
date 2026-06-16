@@ -1,4 +1,5 @@
-import type { HrDocumentFieldReview, HrReviewDocumentRow } from '../../api/workforce'
+import type { HrDocumentFieldReview, HrReviewDocumentRow, HrReviewPanel } from '../../api/workforce'
+import { reviewDocCoversPackCode } from '../../utils/documentReadinessLabels'
 
 export type DocumentFieldEdit = {
   value: string
@@ -37,6 +38,21 @@ export function isHardBlockerDocument(d: HrReviewDocumentRow): boolean {
   return documentRequirementTier(d) === 'hard_blocker'
 }
 
+export function isDocumentRequirementWaived(d: HrReviewDocumentRow): boolean {
+  const waiver = d.reviewed_fields?._requirement_waiver
+  if (!waiver || typeof waiver !== 'object') return false
+  const reason = (waiver as { reason?: string }).reason
+  return Boolean(String(reason || '').trim())
+}
+
+/** Waive only for plan rows marked overridable — never hard blockers or HR-requested. */
+export function isDocumentWaivable(d: HrReviewDocumentRow): boolean {
+  if (isHardBlockerDocument(d)) return false
+  if (documentRequirementTier(d) === 'hr_requested') return false
+  if (isDocumentRequirementWaived(d)) return false
+  return d.overridable === true
+}
+
 export function isPlanRecommendedDocument(d: HrReviewDocumentRow): boolean {
   return documentRequirementTier(d) === 'recommended'
 }
@@ -71,6 +87,18 @@ export function sequentialDocumentQueue(docs: HrReviewDocumentRow[]): HrReviewDo
 /** Required documents only — used for progress and approve readiness in the UI. */
 export function requiredDocumentQueue(docs: HrReviewDocumentRow[]): HrReviewDocumentRow[] {
   return sequentialDocumentQueue(docs).filter(isDocumentRequiredForReview)
+}
+
+/** All required documents for the dossier — including slots without a file yet. */
+export function dossierDocumentList(docs: HrReviewDocumentRow[]): HrReviewDocumentRow[] {
+  return requiredPlanDocuments(docs)
+    .slice()
+    .sort((a, b) => {
+      const stepA = a.step_order ?? 99
+      const stepB = b.step_order ?? 99
+      if (stepA !== stepB) return stepA - stepB
+      return (a.slot_order ?? 99) - (b.slot_order ?? 99)
+    })
 }
 
 export function buildInitialFieldEdits(doc: HrReviewDocumentRow): Record<string, DocumentFieldEdit> {
@@ -121,6 +149,61 @@ export function countVerifiedDocuments(docs: HrReviewDocumentRow[]): { verified:
 export function firstPendingDocumentIndex(queue: HrReviewDocumentRow[]): number {
   const idx = queue.findIndex((d) => !isDocumentVerified(d))
   return idx >= 0 ? idx : Math.max(0, queue.length - 1)
+}
+
+function normDocToken(value: unknown): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_')
+}
+
+/** Match a linked employee document row to an HR review verification card. */
+export function findReviewDocumentForEmployeeDoc(
+  panel: HrReviewPanel,
+  doc: { id?: string | null; doc_type?: string | null; title?: string | null },
+): HrReviewDocumentRow | null {
+  const docs = documentsFromPanel(panel)
+  const docId = String(doc.id || '').trim()
+  const docType = normDocToken(doc.doc_type)
+  const title = normDocToken(doc.title)
+
+  if (docId) {
+    const byId = docs.find((row) => String(row.document_id || '').trim() === docId)
+    if (byId) return byId
+  }
+
+  if (docType) {
+    const byType = docs.find((row) => {
+      const key = normDocToken(row.document_key)
+      const dtype = normDocToken(row.document_type)
+      const label = normDocToken(row.label)
+      return dtype === docType || key === docType || key.includes(docType) || docType.includes(key) || label === title
+    })
+    if (byType) return byType
+  }
+
+  if (title) {
+    const byTitle = docs.find((row) => normDocToken(row.label) === title)
+    if (byTitle) return byTitle
+  }
+
+  return null
+}
+
+export function findQueueIndexForDocumentFocus(
+  queue: HrReviewDocumentRow[],
+  focus: { documentKey?: string | null; packCode?: string | null },
+): number {
+  if (focus.documentKey) {
+    const byKey = queue.findIndex((doc) => doc.document_key === focus.documentKey)
+    if (byKey >= 0) return byKey
+  }
+  if (focus.packCode) {
+    const byPack = queue.findIndex((doc) => reviewDocCoversPackCode(doc, focus.packCode!))
+    if (byPack >= 0) return byPack
+  }
+  return -1
 }
 
 export function countMissingFieldsOnDocument(doc: HrReviewDocumentRow): number {

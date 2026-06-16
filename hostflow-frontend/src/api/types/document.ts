@@ -154,6 +154,44 @@ export interface Document {
   updated_at?: string | null;
 }
 
+export type DocumentExpiryState = "valid" | "expiring_soon" | "expired" | "missing_expiry";
+
+export interface DocumentExpiryEvaluation {
+  state: DocumentExpiryState;
+  expiresOn?: string | null;
+  daysLeft?: number | null;
+}
+
+export interface OwnerExpiryAggregate {
+  all_documents_valid: boolean;
+  has_expiring_documents: boolean;
+  has_expired_documents: boolean;
+  has_missing_expiry: boolean;
+}
+
+export interface DocumentPackProjection {
+  code: string;
+  label: string;
+  status: "valid" | "warnings" | "gaps" | "skeleton";
+  skeleton: boolean;
+  applies: boolean;
+  ref_pack_codes: string[];
+  required: string[];
+  present: string[];
+  missing: string[];
+  expired: string[];
+  expiring_soon: Array<{
+    document_code: string;
+    expires_on?: string | null;
+    days_left?: number | null;
+  }>;
+  missing_expiry: string[];
+  gaps: string[];
+  blockers: string[];
+  warnings: string[];
+  expiry: OwnerExpiryAggregate;
+}
+
 export interface DocumentSummaryRequired {
   doc_type: string;
   required: boolean;
@@ -170,6 +208,14 @@ export interface DocumentSummary {
   expired: number;
   required: DocumentSummaryRequired[];
   checklist?: CandidateDocumentChecklist | null;
+  expiry?: OwnerExpiryAggregate;
+  expiry_evaluations?: Array<{
+    type: string;
+    state: DocumentExpiryState;
+    expires_on?: string | null;
+    days_left?: number | null;
+  }>;
+  packs?: DocumentPackProjection[];
 }
 
 export interface CandidateDocumentsSummaryResponse {

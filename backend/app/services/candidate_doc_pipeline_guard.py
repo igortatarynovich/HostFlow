@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 from backend.app.models.candidate import Candidate
-from backend.app.constants.stages import LABELS, code_for_label
+from backend.app.constants.stages import LABELS, TERMINAL_STATUSES, code_for_label
 from backend.app.constants.stages_adapter import PIPELINE_SEQUENCE
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.modules.documents.crud import get_last_document_checks_map
@@ -201,7 +201,12 @@ async def enforce_pipeline_doc_forward_block(
     if not is_forward_pipeline_move(old_stage, new_stage):
         return
 
-    resolved_gates = gates or await resolve_hiring_pipeline_gates(db, tenant_id)
+    if _norm_stage_token(new_stage) in TERMINAL_STATUSES:
+        return
+
+    resolved_gates = gates or await resolve_hiring_pipeline_gates(
+        db, tenant_id, candidate_id=candidate_id
+    )
 
     canon_old = _norm_stage_token(old_stage)
     if not canon_old:
@@ -279,6 +284,8 @@ def enforce_pipeline_vacancy_forward_block(
     """
     if not is_forward_pipeline_move(old_stage, new_stage):
         return
+    if _norm_stage_token(new_stage) in TERMINAL_STATUSES:
+        return
     canon_old = _norm_stage_token(old_stage)
     g = gates or default_hiring_pipeline_gates()
     if not vacancy_gate_applies(canon_old, g):
@@ -310,8 +317,10 @@ async def enforce_pipeline_contact_attempt_forward_block(
     """
     if not is_forward_pipeline_move(old_stage, new_stage):
         return
+    if _norm_stage_token(new_stage) in TERMINAL_STATUSES:
+        return
     canon_old = _norm_stage_token(old_stage)
-    g = gates or await resolve_hiring_pipeline_gates(db, tenant_id)
+    g = gates or await resolve_hiring_pipeline_gates(db, tenant_id, candidate_id=str(candidate.id))
     if not contact_attempt_gate_applies(canon_old, g):
         return
 

@@ -22,6 +22,12 @@ from uuid import UUID
 from sqlalchemy import create_engine
 
 logger = logging.getLogger("backend.app.main")
+
+
+def _test_light_startup() -> bool:
+    return os.environ.get("HOSTFLOW_TEST_LIGHT_STARTUP", "").strip().lower() in ("1", "true", "yes")
+
+
 try:
     from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 except Exception:  # pragma: no cover - optional dependency
@@ -124,6 +130,8 @@ try:
     from backend.app.api.v1.stages import router as stages_router
     from backend.app.api.v1.tenants.router import router as tenants_router
     from backend.app.api.v1.platform import tenants as platform_tenants_router
+    from backend.app.api.v1.platform import field_registry as platform_field_registry_router
+    from backend.app.api.v1.platform import module_registry as platform_module_registry_router
     from backend.app.api.v1.settings import leads as settings_leads_router
     from backend.app.api.v1.settings import team as settings_team_router
     from backend.app.api.v1.settings import billing as settings_billing_router
@@ -211,6 +219,8 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.stages import router as stages_router  # type: ignore[no-redef]
     from .api.v1.tenants.router import router as tenants_router  # type: ignore[no-redef]
     from .api.v1.platform import tenants as platform_tenants_router  # type: ignore[no-redef]
+    from .api.v1.platform import field_registry as platform_field_registry_router  # type: ignore[no-redef]
+    from .api.v1.platform import module_registry as platform_module_registry_router  # type: ignore[no-redef]
     from .api.v1.settings import leads as settings_leads_router  # type: ignore[no-redef]
     from .api.v1.settings import team as settings_team_router  # type: ignore[no-redef]
     from .api.v1.settings import billing as settings_billing_router  # type: ignore[no-redef]
@@ -405,87 +415,93 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("[startup:ensure_companies_schema] skipped (%s)", e)
 
-    try:
-        ensure_documents_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_documents_schema] skipped (%s)", e)
+    if not _test_light_startup():
+        try:
+            ensure_documents_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_documents_schema] skipped (%s)", e)
 
-    try:
-        ensure_candidate_children_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_candidate_children_schema] skipped (%s)", e)
+        try:
+            ensure_candidate_children_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_candidate_children_schema] skipped (%s)", e)
 
-    try:
-        ensure_leads_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_leads_schema] skipped (%s)", e)
+        try:
+            ensure_leads_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_leads_schema] skipped (%s)", e)
 
-    try:
-        from .modules.intake_routing.ensure_schema import ensure_intake_routing_schema
+        try:
+            from .modules.intake_routing.ensure_schema import ensure_intake_routing_schema
 
-        ensure_intake_routing_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_intake_routing_schema] skipped (%s)", e)
+            ensure_intake_routing_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_intake_routing_schema] skipped (%s)", e)
 
-    try:
-        ensure_notifications_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_notifications_schema] skipped (%s)", e)
+        try:
+            ensure_notifications_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_notifications_schema] skipped (%s)", e)
 
-    try:
-        ensure_reminders_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_reminders_schema] skipped (%s)", e)
+        try:
+            ensure_reminders_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_reminders_schema] skipped (%s)", e)
 
-    try:
-        ensure_additional_services_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_additional_services_schema] skipped (%s)", e)
+        try:
+            ensure_additional_services_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_additional_services_schema] skipped (%s)", e)
 
-    try:
-        ensure_service_orders_own_company_id_column()
-    except Exception as e:
-        logger.warning("[startup:ensure_service_orders_own_company_id] skipped (%s)", e)
+        try:
+            ensure_service_orders_own_company_id_column()
+        except Exception as e:
+            logger.warning("[startup:ensure_service_orders_own_company_id] skipped (%s)", e)
 
-    try:
-        ensure_automation_rules_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_automation_rules_schema] skipped (%s)", e)
+        try:
+            ensure_automation_rules_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_automation_rules_schema] skipped (%s)", e)
 
-    try:
-        ensure_communications_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_communications_schema] skipped (%s)", e)
+        try:
+            ensure_communications_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_communications_schema] skipped (%s)", e)
 
-    try:
-        ensure_funnels_schema()
-    except Exception as e:
-        logger.warning("[startup:ensure_funnels_schema] skipped (%s)", e)
+        try:
+            ensure_funnels_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_funnels_schema] skipped (%s)", e)
 
-    try:
-        await ensure_global_search_fts_function_async()
-    except Exception as e:
-        logger.warning("[startup:ensure_global_search_fts_function_async] skipped (%s)", e)
+        try:
+            await ensure_global_search_fts_function_async()
+        except Exception as e:
+            logger.warning("[startup:ensure_global_search_fts_function_async] skipped (%s)", e)
 
-    try:
-        await ensure_auth_multitenancy()
-    except Exception as e:
-        logger.warning("[startup:ensure_auth_multitenancy] skipped (%s)", e)
+        try:
+            await ensure_auth_multitenancy()
+        except Exception as e:
+            logger.warning("[startup:ensure_auth_multitenancy] skipped (%s)", e)
 
-    try:
-        await ensure_auth_seed()
-    except Exception as e:
-        logger.warning("[startup:ensure_auth_seed] skipped (%s)", e)
+        try:
+            await ensure_auth_seed()
+        except Exception as e:
+            logger.warning("[startup:ensure_auth_seed] skipped (%s)", e)
 
-    # Seed process templates, requirements, and gates
-    try:
-        from backend.app.seed import run_seed
-        from backend.app.db.session import async_session_maker
-        async with async_session_maker() as db:
-            await run_seed(db)
-        logger.info("[startup:seed] process templates, requirements, and gates seeded")
-    except Exception as e:
-        logger.warning("[startup:seed] skipped (%s)", e)
+        # Seed process templates, requirements, and gates
+        try:
+            from backend.app.seed import run_seed
+            from backend.app.db.session import async_session_maker
+            seed_timeout = float(os.environ.get("HOSTFLOW_STARTUP_SEED_TIMEOUT_SECONDS", "30") or "30")
+            async with async_session_maker() as db:
+                await asyncio.wait_for(run_seed(db), timeout=seed_timeout)
+            logger.info("[startup:seed] process templates, requirements, and gates seeded")
+        except asyncio.TimeoutError:
+            logger.warning("[startup:seed] skipped after timeout")
+        except Exception as e:
+            logger.warning("[startup:seed] skipped (%s)", e)
+    else:
+        logger.info("[startup] HOSTFLOW_TEST_LIGHT_STARTUP=1 — skipped heavy schema/seed bootstrap")
 
     try:
         if communications_scheduler_enabled():
@@ -617,7 +633,12 @@ async def serve_upload_file(file_path: str):
 
 _metrics_route_registered = False
 
-if Instrumentator is not None:
+_enable_prometheus_instrumentator = os.environ.get(
+    "HOSTFLOW_ENABLE_PROMETHEUS_INSTRUMENTATOR",
+    "",
+).strip().lower() in {"1", "true", "yes"}
+
+if Instrumentator is not None and _enable_prometheus_instrumentator:
     try:
         # Configure instrumentator (without custom labels for now to avoid complexity)
         instrumentator = Instrumentator(
@@ -829,6 +850,8 @@ app.include_router(automation_rules_router.router, prefix="/api/v1", tags=["auto
 app.include_router(stages_router, prefix="/api/v1", tags=["stages"])
 app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])
 app.include_router(platform_tenants_router.router, prefix="/api/v1", tags=["platform-tenants"])
+app.include_router(platform_field_registry_router.router, prefix="/api/v1", tags=["field-registry"])
+app.include_router(platform_module_registry_router.router, prefix="/api/v1", tags=["module-registry"])
 app.include_router(admin_users_router.router, prefix="/api/v1")
 app.include_router(admin_companies_access_router.router, prefix="/api/v1")
 app.include_router(admin_audit_router.router, prefix="/api/v1")

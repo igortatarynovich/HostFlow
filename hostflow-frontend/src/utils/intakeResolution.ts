@@ -193,6 +193,7 @@ export function leadIntakeWorkspaceBlocking(lead: Lead | null, isServicesTenant:
   if (!lead || isServicesTenant || lead.candidate_id) return false
   if (!leadSupportsManualProcess(lead)) return false
   const hint = manualProcessBlockHint(lead)
+  if (hint === 'INTAKE_REJECTED') return false
   if (hint && hint !== 'LEAD_RODO_REQUIRED') return true
   const st = String(lead.status || '')
     .trim()

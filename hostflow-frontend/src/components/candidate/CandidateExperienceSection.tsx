@@ -3,6 +3,7 @@ import { IconBriefcase2, IconChevronDown } from '@tabler/icons-react'
 import type { CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { Input, CheckboxMultiSelect } from './shared/FormComponents'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
@@ -41,6 +42,7 @@ interface CandidateExperienceSectionProps {
   onUpdateEmploymentHistory: (localId: string, key: keyof Pick<EmploymentRow, 'employer_name' | 'country' | 'position' | 'start_date' | 'end_date'>, value: string) => void
   onRemoveEmploymentRow: (localId: string) => void
   candidateProfile?: CandidateProfile | null
+  effectiveLayout?: EffectiveCardLayout | null
   candidateDataReadOnly?: boolean
   embedded?: boolean
 }
@@ -61,10 +63,15 @@ function CandidateExperienceSection({
   onUpdateEmploymentHistory,
   onRemoveEmploymentRow,
   candidateProfile,
+  effectiveLayout,
   candidateDataReadOnly = false,
   embedded = false,
 }: CandidateExperienceSectionProps) {
   const { t } = useI18n()
+  const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
+  const layoutRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
+  const layoutLabel = (fieldKey: string, defaultLabel: string) =>
+    getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
   const [collapsed, setCollapsed] = useState(() => {
     if (embedded) return false
     try { const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}'); return !!s.experience } catch { return false }
@@ -101,11 +108,11 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'experience_eu_years') || isFieldVisible(candidateProfile, 'experience_non_eu_years')) && (
+      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('experience_eu_years') || layoutVisible('experience_non_eu_years')) && (
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'experience_eu_years')) && (
+          {(!candidateProfile || layoutVisible('experience_eu_years')) && (
             <Input
-              label={getFieldLabel(candidateProfile, 'experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
+              label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
               type="number"
               value={
                 typeof extra.experience_eu_years === 'number' && !Number.isNaN(extra.experience_eu_years)
@@ -114,12 +121,12 @@ function CandidateExperienceSection({
               }
               onChange={(e) => onExperienceChange('experience_eu_years', e.target.value)}
               readOnly={candidateDataReadOnly}
-              required={isFieldRequired(candidateProfile, 'experience_eu_years')}
+              required={layoutRequired('experience_eu_years')}
             />
           )}
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'experience_non_eu_years')) && (
+          {(!candidateProfile || layoutVisible('experience_non_eu_years')) && (
             <Input
-              label={getFieldLabel(candidateProfile, 'experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
+              label={layoutLabel('experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
               type="number"
               value={
                 typeof extra.experience_non_eu_years === 'number' && !Number.isNaN(extra.experience_non_eu_years)
@@ -128,7 +135,7 @@ function CandidateExperienceSection({
               }
               onChange={(e) => onExperienceChange('experience_non_eu_years', e.target.value)}
               readOnly={candidateDataReadOnly}
-              required={isFieldRequired(candidateProfile, 'experience_non_eu_years')}
+              required={layoutRequired('experience_non_eu_years')}
             />
           )}
           {experienceTotalDisplay !== '' && (
@@ -141,13 +148,13 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'trailer_types') || isFieldVisible(candidateProfile, 'route_types')) && (
+      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('trailer_types') || layoutVisible('route_types')) && (
         <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'trailer_types')) && (
+          {(!candidateProfile || layoutVisible('trailer_types')) && (
             <div>
               <div className="label">
-                {getFieldLabel(candidateProfile, 'trailer_types', t('app.candidate_card.intake.fields.trailer_types'))}
-                {isFieldRequired(candidateProfile, 'trailer_types') && <span className="text-red-600">*</span>}
+                {layoutLabel('trailer_types', t('app.candidate_card.intake.fields.trailer_types'))}
+                {layoutRequired('trailer_types') && <span className="text-red-600">*</span>}
               </div>
               <CheckboxMultiSelect
                 options={trailerTypeOptions}
@@ -161,11 +168,11 @@ function CandidateExperienceSection({
               />
             </div>
           )}
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'route_types')) && (
+          {(!candidateProfile || layoutVisible('route_types')) && (
             <div>
               <div className="label">
-                {getFieldLabel(candidateProfile, 'route_types', t('app.candidate_card.intake.fields.route_types'))}
-                {isFieldRequired(candidateProfile, 'route_types') && <span className="text-red-600">*</span>}
+                {layoutLabel('route_types', t('app.candidate_card.intake.fields.route_types'))}
+                {layoutRequired('route_types') && <span className="text-red-600">*</span>}
               </div>
               <CheckboxMultiSelect
                 options={routeTypeOptions}
@@ -182,12 +189,12 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'employment_history')) && (
+      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('employment_history')) && (
         <div className="mt-6 space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-slate-800">
-              {getFieldLabel(candidateProfile, 'employment_history', t('app.candidate_card.employment.title'))}
-              {isFieldRequired(candidateProfile, 'employment_history') && <span className="text-red-600">*</span>}
+              {layoutLabel('employment_history', t('app.candidate_card.employment.title'))}
+              {layoutRequired('employment_history') && <span className="text-red-600">*</span>}
             </div>
           <button
             type="button"

@@ -24,6 +24,36 @@ async def seed_documents_for_ready_for_handoff(
     doc_types: Sequence[str] | None = None,
 ) -> None:
     types = tuple(doc_types) if doc_types is not None else DEFAULT_HANDOFF_GATE_DOC_TYPES
+    detail = await client.get(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=manager_headers,
+    )
+    assert detail.status_code == 200, detail.text
+    cand = detail.json()
+    contacts = cand.get("contacts") if isinstance(cand.get("contacts"), dict) else {}
+    personal = cand.get("personal_data") if isinstance(cand.get("personal_data"), dict) else {}
+
+    patch_payload: dict[str, object] = {}
+    if not str(cand.get("phone") or contacts.get("phone") or "").strip():
+        patch_payload["phone"] = "+48123456789"
+    if not str(cand.get("email") or contacts.get("email") or "").strip():
+        patch_payload["email"] = "handoff-gate@example.com"
+    address_raw = personal.get("address") or cand.get("address")
+    has_address = False
+    if isinstance(address_raw, str):
+        has_address = bool(address_raw.strip())
+    elif isinstance(address_raw, dict):
+        has_address = bool(str(address_raw.get("line1") or address_raw.get("address") or "").strip())
+    if not has_address:
+        patch_payload["personal_data"] = {**personal, "address": "Handoff Gate Street 1, Warsaw"}
+
+    if patch_payload:
+        contact_patch = await client.patch(
+            f"/api/v1/candidates/{candidate_id}",
+            headers=manager_headers,
+            json=patch_payload,
+        )
+        assert contact_patch.status_code == 200, contact_patch.text
     for doc_type in types:
         payload = {
             "candidate_id": candidate_id,

@@ -4,6 +4,7 @@ import { IconUserCircle } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import StageTag from '../StageTag'
 import { useI18n } from '../../i18n'
 import { Input, SearchableSelect } from './shared/FormComponents'
@@ -12,6 +13,7 @@ import { formatDateTime } from '../../utils/dateFormat'
 import { validateEmail, validatePhone } from '../../utils/validation'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { hasCyrillic } from '../../utils/transliterate'
+import { isRecruitmentTerminalStageCode } from '../../constants/recruitmentStageBoundary'
 
 type Option = { value: string; label: string; extra?: any }
 type PreferredContact = 'viber' | 'whatsapp' | 'telegram' | 'phone' | ''
@@ -44,8 +46,13 @@ interface CandidateBasicSectionProps {
   onFirstContactToggle?: (checked: boolean) => void
   onGenerateShortId: () => Promise<void>
   candidateProfile?: CandidateProfile | null
+  effectiveLayout?: EffectiveCardLayout | null
   stageLabelIntl?: (code: string) => string
   candidateDataReadOnly?: boolean
+  /** When false, stage dropdown and status_reason cannot be changed (handoff / HR lock). */
+  canEdit?: boolean
+  /** Allows rejected/declined while general edit is locked (pending handoff). */
+  canCloseRecruitment?: boolean
   /** When set, stage and status_reason are persisted immediately (no Save required). */
   onStageChangePersist?: (stage: string, statusReason: string[]) => void | Promise<void>
   embedded?: boolean
@@ -71,8 +78,11 @@ function CandidateBasicSection({
   onPhoneInputChange,
   onGenerateShortId,
   candidateProfile,
+  effectiveLayout,
   stageLabelIntl: stageLabelIntlProp,
   candidateDataReadOnly = false,
+  canEdit = true,
+  canCloseRecruitment = true,
   onStageChangePersist,
   embedded = false,
 }: CandidateBasicSectionProps) {
@@ -87,6 +97,13 @@ function CandidateBasicSection({
     const fallback = meta?.labels?.[code] || code
     return translateStageLabel(t, code, fallback)
   })
+  const fieldVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
+  const fieldRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
+  const fieldLabel = (fieldKey: string, defaultLabel: string) =>
+    getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
+  const stageSelectEnabled = canEdit || canCloseRecruitment
+  const canPickStage = (code: string) =>
+    canEdit || (canCloseRecruitment && isRecruitmentTerminalStageCode(code))
   const translateValidationError = (error: string) => {
     if (error === 'Invalid email format') {
       return t('app.candidate_card.validation.email_invalid_format')
@@ -139,22 +156,22 @@ function CandidateBasicSection({
 
       <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-4">
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'first_name')) && (
+          {(!candidateProfile || fieldVisible('first_name')) && (
             <Input
-              label={getFieldLabel(candidateProfile, 'first_name', t('app.candidate_card.fields.first_name'))}
+              label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
               value={candidate.first_name}
               onChange={(e) => onModelChange((m) => ({ ...m, first_name: e.target.value }))}
               readOnly={candidateDataReadOnly}
-              required={isFieldRequired(candidateProfile, 'first_name')}
+              required={fieldRequired('first_name')}
             />
           )}
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'last_name')) && (
+          {(!candidateProfile || fieldVisible('last_name')) && (
             <Input
-              label={getFieldLabel(candidateProfile, 'last_name', t('app.candidate_card.fields.last_name'))}
+              label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
               value={candidate.last_name}
               onChange={(e) => onModelChange((m) => ({ ...m, last_name: e.target.value }))}
               readOnly={candidateDataReadOnly}
-              required={isFieldRequired(candidateProfile, 'last_name')}
+              required={fieldRequired('last_name')}
             />
           )}
           {(hasCyrillic(candidate.first_name) || hasCyrillic(candidate.last_name)) && (
@@ -162,10 +179,10 @@ function CandidateBasicSection({
               {t('app.candidate_card.hint.cyrillic_translit')}
             </p>
           )}
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'email')) && (
+          {(!candidateProfile || fieldVisible('email')) && (
             <div>
               <Input
-                label={getFieldLabel(candidateProfile, 'email', t('app.candidate_card.fields.email'))}
+                label={fieldLabel('email', t('app.candidate_card.fields.email'))}
                 type="email"
                 value={candidate.email || ''}
                 onChange={(e) => {
@@ -175,7 +192,7 @@ function CandidateBasicSection({
                 onBlur={() => setEmailTouched(true)}
                 className={emailError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                 readOnly={candidateDataReadOnly}
-                required={isFieldRequired(candidateProfile, 'email')}
+                required={fieldRequired('email')}
               />
               {emailError && emailTouched && (
                 <p className="mt-1 text-xs text-red-600">{translateValidationError(emailError)}</p>
@@ -183,9 +200,9 @@ function CandidateBasicSection({
             </div>
           )}
 
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'phone')) && (
+          {(!candidateProfile || fieldVisible('phone')) && (
             <div>
-              <div className="label">{getFieldLabel(candidateProfile, 'phone', t('app.candidate_card.fields.phone'))} {isFieldRequired(candidateProfile, 'phone') && <span className="text-red-600">*</span>}</div>
+              <div className="label">{fieldLabel('phone', t('app.candidate_card.fields.phone'))} {fieldRequired('phone') && <span className="text-red-600">*</span>}</div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                 <div className="sm:w-64">
                   <SearchableSelect
@@ -223,9 +240,9 @@ function CandidateBasicSection({
           </div>
           )}
 
-          {(!candidateProfile || isFieldVisible(candidateProfile, 'preferred_contact')) && (
+          {(!candidateProfile || fieldVisible('preferred_contact')) && (
             <label className="block">
-              <div className="label">{getFieldLabel(candidateProfile, 'preferred_contact', t('app.candidate_card.fields.preferred_contact'))} {isFieldRequired(candidateProfile, 'preferred_contact') && <span className="text-red-600">*</span>}</div>
+              <div className="label">{fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))} {fieldRequired('preferred_contact') && <span className="text-red-600">*</span>}</div>
             <select
               className="input"
               value={(extra.preferred_contact as PreferredContact) || ''}
@@ -266,8 +283,11 @@ function CandidateBasicSection({
               <select
                 className="input"
                 value={candidate.stage || ''}
+                disabled={!stageSelectEnabled}
                 onChange={(e) => {
+                  if (!stageSelectEnabled) return
                   const nextStage = e.target.value
+                  if (!canPickStage(nextStage)) return
                   const options = meta?.reason_choices?.[nextStage] ?? []
                   const sanitized = Array.isArray(candidate.status_reason)
                     ? candidate.status_reason.filter((code) => options.some((opt: { code: string }) => opt.code === code))
@@ -284,7 +304,7 @@ function CandidateBasicSection({
                 }}
               >
                 {stageOptions.map((code) => (
-                  <option key={code} value={code}>
+                  <option key={code} value={code} disabled={!canPickStage(code)}>
                     {stageLabelIntl(code)}
                   </option>
                 ))}
@@ -324,7 +344,9 @@ function CandidateBasicSection({
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={!canEdit}
                         onChange={(e) => {
+                          if (!canEdit) return
                           const nextChecked = e.target.checked
                           const current = Array.isArray(candidate.status_reason) ? candidate.status_reason : []
                           const updated = nextChecked

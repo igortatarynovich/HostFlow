@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { HrReviewEligibilitySummary, HrReviewPanel } from '../../api/workforce'
 import WorkEligibilityJourneyWorkspace from './WorkEligibilityJourneyWorkspace'
 import { useI18n } from '../../i18n'
@@ -8,11 +8,32 @@ type Props = {
   employeeId: string
   manage: boolean
   onRefresh?: () => void
+  journeyExpanded?: boolean
+  onJourneyExpandedChange?: (open: boolean) => void
 }
 
-export default function HrWorkEligibilityCompact({ panel, employeeId, manage, onRefresh }: Props) {
+export default function HrWorkEligibilityCompact({
+  panel,
+  employeeId,
+  manage,
+  onRefresh,
+  journeyExpanded,
+  onJourneyExpandedChange,
+}: Props) {
   const { t } = useI18n()
-  const [showFull, setShowFull] = useState(false)
+  const [showFullInternal, setShowFullInternal] = useState(false)
+  const controlled = journeyExpanded !== undefined
+  const showFull = controlled ? journeyExpanded : showFullInternal
+
+  useEffect(() => {
+    if (journeyExpanded) setShowFullInternal(true)
+  }, [journeyExpanded])
+
+  const setShowFull = (next: boolean | ((prev: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(showFull) : next
+    if (controlled) onJourneyExpandedChange?.(value)
+    else setShowFullInternal(value)
+  }
   const summary: HrReviewEligibilitySummary | null | undefined = panel.work_eligibility_summary
 
   return (

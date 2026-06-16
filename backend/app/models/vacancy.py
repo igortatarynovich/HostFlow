@@ -181,6 +181,13 @@ class Vacancy(Base, TimestampMixin):
         index=True,
         comment="Профиль кандидата для этой вакансии",
     )
+    pe_process_profile_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("pe_process_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Process Engine profile — canonical process source for this vacancy (P3)",
+    )
     funnel_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("funnels.id", ondelete="SET NULL"),

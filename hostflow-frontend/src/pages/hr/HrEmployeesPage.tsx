@@ -44,6 +44,28 @@ function isHighRisk(level: string | null | undefined): boolean {
   return k === 'high' || k === 'critical'
 }
 
+function eligibilityTone(status: string | null | undefined): string {
+  const s = String(status || '').toLowerCase()
+  if (s.includes('block') || s.includes('suspend')) return 'border-rose-200 bg-rose-50 text-rose-800'
+  if (s.includes('missing') || s.includes('expir')) return 'border-amber-200 bg-amber-50 text-amber-900'
+  return 'border-emerald-200 bg-emerald-50 text-emerald-800'
+}
+
+function statusTone(status: string | null | undefined): string {
+  const s = String(status || '').toLowerCase()
+  if (s === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-800'
+  if (s.includes('suspend') || s.includes('terminated')) return 'border-rose-200 bg-rose-50 text-rose-800'
+  return 'border-slate-200 bg-slate-50 text-slate-800'
+}
+
+function deriveNextAction(r: WorkforceEmployeeDirectoryRow): string {
+  if ((r.missing_documents_count || 0) > 0) return 'Upload missing documents'
+  if ((r.expiring_documents_count || 0) > 0) return 'Renew expiring documents'
+  if (String(r.compliance_status || '').toLowerCase().includes('block')) return 'Resolve compliance blockers'
+  if (String(r.status || '').toLowerCase() === 'onboarding') return 'Complete HR review'
+  return 'Ready for operational action'
+}
+
 export default function HrEmployeesPage() {
   const { t } = useI18n()
   const { can } = usePermissions()
@@ -327,46 +349,50 @@ export default function HrEmployeesPage() {
             <table className="table w-full min-w-[1280px] text-left text-sm">
               <thead>
                 <tr>
-                  <th>{t('app.nav.hr.employees.col_name', { defaultValue: 'Name' })}</th>
+                  <th>{t('app.nav.hr.employees.col_name', { defaultValue: 'Employee' })}</th>
+                  <th>{t('app.nav.hr.directory.col_client', { defaultValue: 'Company / Client' })}</th>
                   <th>{t('app.nav.hr.employees.col_status', { defaultValue: 'Status' })}</th>
-                  <th>{t('app.nav.hr.directory.col_employer', { defaultValue: 'Employer' })}</th>
-                  <th>{t('app.nav.hr.directory.col_client', { defaultValue: 'Client' })}</th>
-                  <th>{t('app.nav.hr.directory.col_position', { defaultValue: 'Position' })}</th>
-                  <th>{t('app.nav.hr.employees.col_start', { defaultValue: 'Start date' })}</th>
-                  <th>{t('app.nav.hr.directory.col_compliance', { defaultValue: 'Compliance' })}</th>
+                  <th>{t('app.nav.hr.directory.col_compliance', { defaultValue: 'Eligibility' })}</th>
                   <th>{t('app.nav.hr.directory.col_missing', { defaultValue: 'Missing' })}</th>
                   <th>{t('app.nav.hr.directory.col_expiring', { defaultValue: 'Expiring' })}</th>
+                  <th>{t('app.hr.review.next_action', { defaultValue: 'Next action' })}</th>
                   <th>{t('app.nav.hr.directory.col_assigned_hr', { defaultValue: 'Assigned HR' })}</th>
-                  <th>{t('app.nav.hr.directory.col_risk', { defaultValue: 'Risk' })}</th>
-                  <th>{t('app.nav.hr.directory.col_handoff', { defaultValue: 'Handoff' })}</th>
-                  <th>{t('app.nav.hr.directory.col_candidate_id', { defaultValue: 'Candidate ID' })}</th>
                   <th className="w-28">{t('app.nav.hr.employees.col_actions', { defaultValue: 'Actions' })}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((r) => (
                   <tr key={r.employee_id}>
-                    <td className="font-medium text-slate-900">{r.full_name}</td>
-                    <td className="text-slate-700">{r.status}</td>
-                    <td className="max-w-[140px] truncate text-slate-600" title={r.employer || ''}>
-                      {r.employer || dash}
+                    <td>
+                      <div className="font-medium text-slate-900">{r.full_name}</div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        {r.position || dash}
+                        {r.start_date ? ` · ${formatShortDate(r.start_date)}` : ''}
+                      </div>
+                      <div className="mt-0.5 font-mono text-[10px] text-slate-400">emp:{r.employee_id.slice(0, 8)}…</div>
                     </td>
-                    <td className="max-w-[140px] truncate text-slate-600" title={r.client || ''}>
-                      {r.client || dash}
+                    <td className="max-w-[200px]">
+                      <div className="truncate text-slate-800" title={r.employer || ''}>{r.employer || dash}</div>
+                      <div className="truncate text-xs text-slate-500" title={r.client || ''}>{r.client || dash}</div>
                     </td>
-                    <td className="max-w-[160px] truncate text-slate-600" title={r.position || ''}>
-                      {r.position || dash}
+                    <td>
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusTone(r.status)}`}>
+                        {r.status || dash}
+                      </span>
                     </td>
-                    <td className="whitespace-nowrap text-slate-600">{r.start_date ? formatShortDate(r.start_date) : dash}</td>
-                    <td className="text-slate-700">{r.compliance_status}</td>
+                    <td>
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${eligibilityTone(r.compliance_status)}`}>
+                        {r.compliance_status || dash}
+                      </span>
+                    </td>
                     <td className="tabular-nums text-slate-700">{r.missing_documents_count}</td>
                     <td className="tabular-nums text-slate-700">{r.expiring_documents_count}</td>
+                    <td className="max-w-[240px] truncate text-slate-700" title={deriveNextAction(r)}>
+                      {deriveNextAction(r)}
+                    </td>
                     <td className="max-w-[140px] truncate text-slate-600" title={r.assigned_hr || ''}>
                       {r.assigned_hr || dash}
                     </td>
-                    <td className="text-slate-700">{r.risk_level}</td>
-                    <td className="font-mono text-xs text-slate-600">{r.handoff_id ? `${r.handoff_id.slice(0, 8)}…` : dash}</td>
-                    <td className="font-mono text-xs text-slate-600">{r.candidate_id ? `${r.candidate_id.slice(0, 8)}…` : dash}</td>
                     <td>
                       <div className="flex flex-col gap-1">
                         <Link className="text-sm font-medium text-brand-700 hover:underline" to={hrEmployeePath(r.employee_id)}>

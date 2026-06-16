@@ -10,6 +10,17 @@ import {
 } from '../../api/hrWorkspace'
 import { useI18n } from '../../i18n'
 import { humanizeToken } from '../../components/hr/hrEmployeeUiFormat'
+import {
+  IMPACT_LABEL,
+  NEXT_ACTION_LABEL,
+  SEVERITY_META,
+  type OperationalImpact,
+  type OperationalNextAction,
+  type OperationalSeverity,
+} from '../../constants/workforceOperationalTaxonomy'
+import { HubEmployeeDocumentPacksPreview } from '../../components/hr/HubEmployeeDocumentPacksPreview'
+import { HubEmployeeDocumentActionsPanel } from '../../components/hr/HubEmployeeDocumentActionsPanel'
+import { resolveFocusedEmployeeId } from '../../utils/hrDocumentsHubFocus'
 
 type HubView = 'all' | 'missing' | 'expiring' | 'verification'
 
@@ -50,6 +61,32 @@ function formatShort(iso: string | null | undefined): string {
 }
 
 type UnifiedRow = HrDocumentQueueItem & { queue: 'missing' | 'expiring' }
+
+function severityForRow(row: UnifiedRow): OperationalSeverity {
+  if (row.risk === 'high') return 'critical'
+  if (row.queue === 'missing' && row.required) return 'high'
+  if (row.queue === 'expiring') return 'medium'
+  return 'low'
+}
+
+function impactForRow(row: UnifiedRow): OperationalImpact {
+  const d = String(row.document_type || '').toLowerCase()
+  if (d.includes('permit') || d.includes('visa') || d.includes('residence')) return 'legal_blocker'
+  if (d.includes('license') || d.includes('code_95') || d.includes('tachograph')) return 'dispatch_blocker'
+  return row.required ? 'document_missing' : 'compliance_risk'
+}
+
+function nextActionForRow(row: UnifiedRow): OperationalNextAction {
+  if (row.queue === 'missing') return 'upload_document'
+  if (row.queue === 'expiring') return 'renew_document'
+  return 'verify_document'
+}
+
+function reasonLabel(row: UnifiedRow): string {
+  if (row.queue === 'missing') return 'Required document missing'
+  if (row.expires_at) return `Expires ${formatShort(row.expires_at)}`
+  return humanizeToken(row.current_status)
+}
 
 const hubTabClass = ({ isActive }: { isActive: boolean }) => clsx('tab', isActive && 'tab-active')
 
@@ -174,6 +211,11 @@ export default function HrDocumentsHubPage() {
     const expiringN = unified.filter((r) => r.queue === 'expiring').length
     return { missingN, expiringN, shown: filtered.length }
   }, [filtered, unified])
+
+  const focusedEmployeeId = useMemo(
+    () => resolveFocusedEmployeeId(employeeFilter, unified),
+    [employeeFilter, unified],
+  )
 
   const p = CRM_APP_PATHS
 
@@ -345,29 +387,123 @@ export default function HrDocumentsHubPage() {
       </section>
       </div>
 
-      {!loading && !err && filtered.length === 0 ? (
-        <p className="text-sm text-slate-600">{t('app.hr.documents_hub.empty', { defaultValue: 'No rows match this view.' })}</p>
+      {focusedEmployeeId ? (
+        <section className="card p-4 sm:p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.document_packs.hub_preview_title', { defaultValue: 'Document packs for filtered employee' })}
+          </div>
+          <div className="mt-3">
+            <HubEmployeeDocumentPacksPreview employeeId={focusedEmployeeId} />
+          </div>
+        </section>
       ) : null}
 
-      {!loading && !err && filtered.length > 0
-        ? groupBy === 'none' || !grouped
-          ? <DocumentQueueTable rows={filtered} t={t} />
-          : (
-              <div className="space-y-4">
-                {[...grouped.entries()].map(([gkey, rows]) => (
-                  <section key={gkey} className="card overflow-hidden">
-                    <div className="border-b border-slate-200 bg-brand-50/50 px-4 py-3 sm:px-5">
-                      <h3 className="text-sm font-semibold text-slate-900">{humanizeToken(gkey)}</h3>
-                      <p className="text-xs text-slate-600">
-                        {t('app.hr.documents_hub.group_count', { defaultValue: '{n} row(s)', values: { n: rows.length } })}
-                      </p>
+      {focusedEmployeeId ? (
+        <section className="card p-4 sm:p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.hr.document_actions.section_title', { defaultValue: 'Document actions' })}
+          </div>
+          <div className="mt-3">
+            <HubEmployeeDocumentActionsPanel employeeId={focusedEmployeeId} />
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && !err ? (
+        <OperationalQueues
+          rows={filtered}
+          t={t}
+          view={view}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function OperationalQueues({
+  rows,
+  view,
+  t,
+}: {
+  rows: UnifiedRow[]
+  view: HubView
+  t: (key: string, opts?: { defaultValue?: string; values?: Record<string, string | number> }) => string
+}) {
+  const missingRequired = rows.filter((r) => r.queue === 'missing' && r.required)
+  const expiringSoon = rows.filter((r) => r.queue === 'expiring')
+  const verificationNeeded = rows.filter((r) => !VERIFIED_LIKE.has((r.current_status || '').toLowerCase()))
+
+  const sections =
+    view === 'missing'
+      ? [{ key: 'missing', title: 'Missing required', rows: missingRequired, empty: 'No missing required documents' }]
+      : view === 'expiring'
+        ? [{ key: 'expiring', title: 'Expiring soon', rows: expiringSoon, empty: 'No documents expiring soon' }]
+        : view === 'verification'
+          ? [{ key: 'verification', title: 'Verification needed', rows: verificationNeeded, empty: 'No documents waiting for review' }]
+          : [
+              { key: 'missing', title: 'Missing required', rows: missingRequired, empty: 'No missing required documents' },
+              { key: 'expiring', title: 'Expiring soon', rows: expiringSoon, empty: 'No documents expiring soon' },
+              { key: 'verification', title: 'Verification needed', rows: verificationNeeded, empty: 'No documents waiting for review' },
+            ]
+
+  return (
+    <div className="space-y-4">
+      {sections.map((s) => (
+        <section key={s.key} className="card p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-slate-900">{s.title}</h3>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">{s.rows.length}</span>
+          </div>
+          {s.rows.length === 0 ? (
+            <p className="text-sm text-emerald-700">{s.empty}</p>
+          ) : (
+            <ul className="space-y-2">
+              {s.rows.map((row) => (
+                <li key={`${s.key}-${row.handoff_id}-${row.document_type}-${row.expires_at || ''}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-slate-900">{candidateLabel(row)}</div>
+                      <div className="mt-0.5 text-xs text-slate-600">{humanizeToken(row.document_type)}</div>
+                      {(() => {
+                        const severity = severityForRow(row)
+                        const impact = impactForRow(row)
+                        const next = nextActionForRow(row)
+                        return (
+                          <div className={`mt-0.5 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${SEVERITY_META[severity].tone}`}>
+                            {severity}
+                          </div>
+                        )
+                      })()}
+                      <div className="mt-0.5 text-xs text-slate-500">
+                        {reasonLabel(row)} · {IMPACT_LABEL[impactForRow(row)]} · next: {NEXT_ACTION_LABEL[nextActionForRow(row)]}
+                      </div>
+                      {row.workforce_employee_id ? (
+                        <div className="mt-0.5 font-mono text-[10px] text-slate-400">emp:{row.workforce_employee_id.slice(0, 8)}…</div>
+                      ) : null}
                     </div>
-                    <DocumentQueueTable rows={rows} t={t} embedded />
-                  </section>
-                ))}
-              </div>
-            )
-        : null}
+                    <div className="flex flex-col items-end gap-1">
+                      {row.workforce_employee_id ? (
+                        <Link
+                          className="text-sm font-medium text-brand-700 hover:text-brand-900 hover:underline"
+                          to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(row.workforce_employee_id)}#hr-employee-linked-documents`}
+                        >
+                          {t('app.hr.documents_hub.open_employee', { defaultValue: 'Open employee' })}
+                        </Link>
+                      ) : null}
+                      <Link
+                        className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
+                        to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}
+                      >
+                        {t('app.hr.documents_hub.open_handoff', { defaultValue: 'Review' })}
+                      </Link>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
     </div>
   )
 }

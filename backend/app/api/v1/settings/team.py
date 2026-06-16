@@ -462,6 +462,22 @@ async def patch_hiring_pipeline_gates(
 
 
 @router.get(
+    "/transfer-policy",
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def get_transfer_policy_settings(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> dict:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    from backend.app.services.transfer_policy_resolver import resolve_tenant_transfer_policy_summary
+
+    return await resolve_tenant_transfer_policy_summary(db, tenant_id=tenant_id)
+
+
+@router.get(
     "/risk-model-v1",
     response_model=RiskModelV1SettingsOut,
     dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.client_manager))],

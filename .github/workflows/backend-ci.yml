@@ -6,7 +6,9 @@ on:
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
+      - "scripts/architecture/**"
       - "scripts/security/**"
+      - "docs/specs/gates/**"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/workflows/security-gates.yml"
@@ -18,7 +20,9 @@ on:
       - "shared/crm_app_paths.json"
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
+      - "scripts/architecture/**"
       - "scripts/security/**"
+      - "docs/specs/gates/**"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/workflows/security-gates.yml"
@@ -68,6 +72,8 @@ jobs:
           ruff check .
       - name: ADR-014 document access guardrails (documents-db module)
         run: python3 backend/scripts/check_adr014_document_access.py
+      - name: REF-3.1 facade boundary guard scan
+        run: python3 scripts/architecture/check_reference_facade_boundary.py
       - name: Tests with coverage
         working-directory: backend
         env:

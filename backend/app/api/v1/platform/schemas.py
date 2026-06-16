@@ -170,6 +170,12 @@ class PlatformTenantOut(BaseModel):
     updated_at: datetime
     license: TenantLicenseOut | None = None
     usage: TenantUsageOut
+    public_domain: str | None = None
+    custom_domain: str | None = None
+    legal_domain: str | None = None
+    public_hosts: list[str] = Field(default_factory=list)
+    domains: list[str] = Field(default_factory=list)
+    legal_hosts: list[str] = Field(default_factory=list)
 
 
 class PlatformTenantPatch(BaseModel):
@@ -180,6 +186,24 @@ class PlatformTenantPatch(BaseModel):
     logo_meta: Dict[str, Any] | None = None
     client_portal_enabled: bool | None = None
     status_sharing_allowed: bool | None = None
+
+
+class TenantLegalHostSettingsOut(BaseModel):
+    public_domain: str | None = None
+    custom_domain: str | None = None
+    legal_domain: str | None = None
+    public_hosts: list[str] = Field(default_factory=list)
+    domains: list[str] = Field(default_factory=list)
+    legal_hosts: list[str] = Field(default_factory=list)
+
+
+class TenantLegalHostSettingsPatch(BaseModel):
+    public_domain: str | None = None
+    custom_domain: str | None = None
+    legal_domain: str | None = None
+    public_hosts: list[str] | None = None
+    domains: list[str] | None = None
+    legal_hosts: list[str] | None = None
 
 
 class PlatformTenantList(BaseModel):

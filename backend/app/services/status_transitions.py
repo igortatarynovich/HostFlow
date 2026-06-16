@@ -13,6 +13,9 @@ from backend.app.models.document import Document
 from backend.app.models.document_type import DocumentType
 from backend.app.models.enums import DocumentStatus, DocumentStatusModel
 from backend.app.models.process_template import ProcessTemplate
+from backend.app.services.document_type_runtime_resolver import (
+    DocumentTypeRuntimeResolver,
+)
 
 
 @dataclass
@@ -160,6 +163,26 @@ class StatusTransitionService:
             return doc_type.status_model
         # Fallback: определяем по типу документа
         return cls._infer_status_model_from_doc_type(doc_type.code if doc_type else None)
+
+    @classmethod
+    async def get_status_model_for_document(
+        cls, db: AsyncSession, document: Document
+    ) -> DocumentStatusModel:
+        """
+        M3 runtime path:
+        Resolve status model from canonical reference layer first,
+        fallback to legacy doc_type inference.
+        """
+        try:
+            resolved = await DocumentTypeRuntimeResolver.resolve_for_document(db, document)
+            raw = str(resolved.status_model or "").strip()
+            if raw:
+                for candidate in DocumentStatusModel:
+                    if candidate.value == raw:
+                        return candidate
+        except Exception:
+            pass
+        return cls._infer_status_model_from_doc_type(document.doc_type)
 
     @classmethod
     def _infer_status_model_from_doc_type(cls, doc_type_code: Optional[str]) -> DocumentStatusModel:
@@ -356,4 +379,3 @@ __all__ = [
     "StatusTransition",
     "StatusValidationResult",
 ]
-

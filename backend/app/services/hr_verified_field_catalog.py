@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+# Verification blocks without a mandatory file (HR confirms data only).
+DATA_ONLY_VERIFICATION_KEYS: frozenset[str] = frozenset({"Contacts & address"})
+
+# Data blocks where an supporting document may be uploaded but is not required to confirm.
+OPTIONAL_FILE_VERIFICATION_KEYS: frozenset[str] = frozenset({"Work experience"})
+
+DOSSIER_DATA_VERIFICATION_KEYS: frozenset[str] = DATA_ONLY_VERIFICATION_KEYS | OPTIONAL_FILE_VERIFICATION_KEYS
+
 # Fields required for every employment case (non-transport-specific).
 BASE_CRITICAL_FIELD_CODES: frozenset[str] = frozenset(
     {
@@ -103,6 +111,57 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
                 "candidate.extra.citizenship",
                 "eligibility.citizenship",
                 "snapshot.citizenship",
+            ],
+        },
+        {
+            "field_code": "birth_date",
+            "label": "Date of birth",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "snapshot.birth_date",
+                "employee.meta.personal_data.birth_date",
+                "candidate.birth_date",
+                "candidate.extra.birth_date",
+                "handoff.candidate.birth_date",
+            ],
+        },
+        {
+            "field_code": "document_series",
+            "label": "Document series",
+            "downstream_use": ["contract", "compliance"],
+            "profile_keys": [
+                "document.meta.series",
+                "document.meta.passport_series",
+                "snapshot.passport_series",
+                "employee.meta.personal_data.passport_series",
+                "candidate.passport_series",
+                "candidate.extra.passport_series",
+            ],
+        },
+        {
+            "field_code": "document_number",
+            "label": "Document number",
+            "downstream_use": ["contract", "zus", "compliance"],
+            "profile_keys": [
+                "document.number",
+                "document.meta.document_number",
+                "document.meta.passport_number",
+                "snapshot.passport_number",
+                "employee.meta.personal_data.passport_number",
+                "candidate.passport_number",
+                "candidate.extra.passport_number",
+            ],
+        },
+        {
+            "field_code": "document_issue_date",
+            "label": "Issue date",
+            "downstream_use": ["compliance"],
+            "profile_keys": [
+                "document.issue_date",
+                "document.meta.issue_date",
+                "document.meta.issued_at",
+                "snapshot.passport_issue_date",
+                "employee.meta.personal_data.passport_issue_date",
             ],
         },
         {
@@ -301,6 +360,88 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
                 "document.expires_at",
                 "context.expires_at",
                 "employee.meta.tacho_card_expiry",
+            ],
+        },
+    ],
+    "Contacts & address": [
+        {
+            "field_code": "phone",
+            "label": "Phone",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "handoff.candidate.phone",
+                "contacts.phone",
+                "snapshot.phone",
+                "employee.meta.personal_data.phone",
+            ],
+        },
+        {
+            "field_code": "email",
+            "label": "Email",
+            "downstream_use": ["contract"],
+            "profile_keys": [
+                "handoff.candidate.email",
+                "contacts.email",
+                "snapshot.email",
+                "employee.meta.personal_data.email",
+            ],
+        },
+        {
+            "field_code": "address",
+            "label": "Address",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "handoff.candidate.address",
+                "snapshot.address",
+                "employee.meta.personal_data.address",
+            ],
+        },
+        {
+            "field_code": "city",
+            "label": "City",
+            "downstream_use": ["contract"],
+            "profile_keys": [
+                "snapshot.city",
+                "employee.meta.personal_data.city",
+            ],
+        },
+        {
+            "field_code": "postal_code",
+            "label": "Postal code",
+            "downstream_use": ["contract"],
+            "profile_keys": [
+                "snapshot.postal_code",
+                "employee.meta.personal_data.postal_code",
+            ],
+        },
+    ],
+    "Work experience": [
+        {
+            "field_code": "experience_summary",
+            "label": "Work experience",
+            "downstream_use": ["contract"],
+            "profile_keys": [
+                "snapshot.experience_summary",
+                "candidate.extra.experience",
+                "employee.meta.experience_summary",
+            ],
+        },
+        {
+            "field_code": "last_position",
+            "label": "Last position",
+            "downstream_use": ["contract"],
+            "profile_keys": [
+                "snapshot.last_position",
+                "employee.meta.last_position",
+            ],
+        },
+        {
+            "field_code": "experience_eu_years",
+            "label": "Experience in EU (years)",
+            "downstream_use": ["compliance"],
+            "profile_keys": [
+                "snapshot.experience_eu_years",
+                "candidate.extra.experience_eu_years",
             ],
         },
     ],

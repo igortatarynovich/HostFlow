@@ -13,6 +13,7 @@ import {
   DOC_TYPE_CODE_ALIASES,
 } from "./constants";
 import type { Document, DocumentStatus } from "../../api/types";
+import type { DocumentExpiryEvaluation, DocumentExpiryState, OwnerExpiryAggregate } from "../../api/types/document";
 import type { MetadataFieldConfig, MetadataState } from "./types";
 
 export const toArray = <T,>(value: any): T[] => {
@@ -208,8 +209,71 @@ export const resolveRequestedFromDate = (doc: Document): string | null => {
 
 export const isExpiringSoonDoc = (doc: Document): boolean => {
   const expiry = doc.expire_date || doc.expires_at;
-  const diff = daysUntil(expiry);
-  return diff !== null && diff >= 0 && diff <= EXPIRING_SOON_THRESHOLD_DAYS;
+  const evaluation = evaluateDocumentExpiry({
+    expiresOn: expiry,
+    expiryRequired: false,
+    expiringSoonDays: EXPIRING_SOON_THRESHOLD_DAYS,
+  });
+  return evaluation.state === "expiring_soon";
+};
+
+export const coerceExpiryDate = (value?: string | null): string | null => {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 10);
+};
+
+export const evaluateDocumentExpiry = ({
+  expiresOn,
+  expiryRequired = false,
+  referenceDate,
+  expiringSoonDays = EXPIRING_SOON_THRESHOLD_DAYS,
+}: {
+  expiresOn?: string | null;
+  expiryRequired?: boolean;
+  referenceDate?: string;
+  expiringSoonDays?: number;
+}): DocumentExpiryEvaluation => {
+  const expiryDate = coerceExpiryDate(expiresOn);
+  if (!expiryDate) {
+    return expiryRequired ? { state: "missing_expiry" } : { state: "valid" };
+  }
+
+  const ref = referenceDate ? Date.parse(referenceDate) : Date.now();
+  const target = Date.parse(expiryDate);
+  if (Number.isNaN(target)) {
+    return expiryRequired ? { state: "missing_expiry" } : { state: "valid" };
+  }
+
+  const refDate = new Date(ref);
+  const startOfRef = Date.UTC(refDate.getUTCFullYear(), refDate.getUTCMonth(), refDate.getUTCDate());
+  const daysLeft = Math.floor((target - startOfRef) / (24 * 60 * 60 * 1000));
+  const threshold = Math.max(0, expiringSoonDays);
+
+  let state: DocumentExpiryState = "valid";
+  if (daysLeft < 0) state = "expired";
+  else if (daysLeft <= threshold) state = "expiring_soon";
+
+  return {
+    state,
+    expiresOn: expiryDate,
+    daysLeft,
+  };
+};
+
+export const aggregateDocumentExpiryStates = (
+  evaluations: DocumentExpiryEvaluation[]
+): OwnerExpiryAggregate => {
+  const hasExpiring = evaluations.some((item) => item.state === "expiring_soon");
+  const hasExpired = evaluations.some((item) => item.state === "expired");
+  const hasMissingExpiry = evaluations.some((item) => item.state === "missing_expiry");
+  return {
+    all_documents_valid: !hasExpiring && !hasExpired && !hasMissingExpiry,
+    has_expiring_documents: hasExpiring,
+    has_expired_documents: hasExpired,
+    has_missing_expiry: hasMissingExpiry,
+  };
 };
 
 export const defaultMetadataValue = (field: MetadataFieldConfig) => {

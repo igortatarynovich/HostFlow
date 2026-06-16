@@ -78,6 +78,37 @@ def test_recommended_missing_does_not_block_plan_or_panel() -> None:
     assert finalize_hr_review_can_approve(panel) is True
 
 
+def test_hybrid_finalize_ignores_legacy_checklist_and_verified_fields() -> None:
+    """PR15: hybrid readiness = verification_plan only."""
+    plan = {
+        "plan_mode": "hybrid",
+        "can_approve": True,
+        "can_complete_verification": True,
+        "blocking_reasons": [],
+        "documents": [],
+    }
+    panel = {
+        "status": "hr_review_in_progress",
+        "verification_plan": plan,
+        "failed_required_items": ["documents_uploaded", "zus_readiness_confirmed"],
+        "blockers": ["legacy_blocker"],
+        "verified_fields_summary": {"blockers": ["pesel_missing"]},
+        "data_verification_summary": {"total": 3, "ready_for_approval": False},
+    }
+    assert finalize_hr_review_can_approve(panel) is True
+
+
+def test_hybrid_finalize_blocked_when_plan_not_ready() -> None:
+    plan = {
+        "plan_mode": "hybrid",
+        "can_approve": False,
+        "blocking_reasons": ["required:Medical"],
+        "documents": [],
+    }
+    panel = {"status": "hr_review_in_progress", "verification_plan": plan}
+    assert finalize_hr_review_can_approve(panel) is False
+
+
 def test_hr_requested_open_blocks_approve() -> None:
     docs = [
         {

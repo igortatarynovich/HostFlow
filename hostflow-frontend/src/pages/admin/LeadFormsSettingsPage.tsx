@@ -27,14 +27,6 @@ function publicIntakeUrlForSlug(slug: string): string {
   return `${window.location.origin}/public/intake?${q.toString()}`
 }
 
-function publicIntakeClientUrlForSlug(slug: string): string {
-  if (typeof window === 'undefined') {
-    return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}&application_kind=client`
-  }
-  const q = new URLSearchParams({ lead_form_slug: slug, application_kind: 'client' })
-  return `${window.location.origin}/public/intake?${q.toString()}`
-}
-
 export default function LeadFormsSettingsPage() {
   const { t } = useI18n()
   const { role } = usePermissions()
@@ -264,7 +256,6 @@ export default function LeadFormsSettingsPage() {
               if (!d) return null
               const slugOk = d.public_slug.trim().length >= 2
               const shareUrl = slugOk ? publicIntakeUrlForSlug(d.public_slug.trim()) : ''
-              const shareClientUrl = slugOk ? publicIntakeClientUrlForSlug(d.public_slug.trim()) : ''
               const dirty = isDirty(row)
               return (
                 <li key={row.id} className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
@@ -325,44 +316,20 @@ export default function LeadFormsSettingsPage() {
                     )}
                   </div>
                   {slugOk && (
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {t('admin.lead_forms.share_url', { defaultValue: 'Public intake URL (this host)' })}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
-                          <span className="flex-1">{shareUrl}</span>
-                          <button
-                            type="button"
-                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                            onClick={() => void copyText(shareUrl)}
-                          >
-                            <IconCopy size={14} />
-                            {t('admin.lead_forms.copy', { defaultValue: 'Copy' })}
-                          </button>
-                        </div>
+                    <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t('admin.lead_forms.share_url', { defaultValue: 'Public intake URL (this host)' })}
                       </div>
-                      <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-3">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                          {t('admin.lead_forms.share_url_client', { defaultValue: 'Client inquiry (B2B) URL' })}
-                        </div>
-                        <p className="mt-1 text-xs text-slate-600">
-                          {t('admin.lead_forms.share_url_client_hint', {
-                            defaultValue:
-                              'Same form; after submit your workspace may create a CRM client lead when a company can be resolved.',
-                          })}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
-                          <span className="flex-1">{shareClientUrl}</span>
-                          <button
-                            type="button"
-                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-sky-50"
-                            onClick={() => void copyText(shareClientUrl)}
-                          >
-                            <IconCopy size={14} />
-                            {t('admin.lead_forms.copy_client', { defaultValue: 'Copy client link' })}
-                          </button>
-                        </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
+                        <span className="flex-1">{shareUrl}</span>
+                        <button
+                          type="button"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          onClick={() => void copyText(shareUrl)}
+                        >
+                          <IconCopy size={14} />
+                          {t('admin.lead_forms.copy', { defaultValue: 'Copy' })}
+                        </button>
                       </div>
                     </div>
                   )}

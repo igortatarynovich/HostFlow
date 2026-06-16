@@ -283,6 +283,12 @@ class HrDocumentRequirementWaiverIn(BaseModel):
     reason: str = Field(..., min_length=1, max_length=2000)
 
 
+class HrAdditionalDocumentRequestIn(BaseModel):
+    document_name: str = Field(..., min_length=1, max_length=200)
+    note: Optional[str] = Field(default=None, max_length=2000)
+    urgency: Optional[str] = Field(default=None, max_length=32)
+
+
 class HrVerifiedFieldOut(BaseModel):
     id: str
     field_code: str

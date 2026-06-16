@@ -87,6 +87,45 @@ async def get_pending_handoff_for_agency(
     return result.scalar_one_or_none()
 
 
+async def unlock_pending_handoff_for_recruitment_close(
+    db: AsyncSession,
+    *,
+    agency_tenant_id: str,
+    candidate_id: str,
+    actor_user_id: str | None,
+    close_stage: str,
+) -> None:
+    """Return a *pending* handoff when recruiter closes dossier (rejected/declined).
+
+    Does not mutate ``Candidate.stage`` — caller sets the terminal stage in the same transaction.
+    """
+    pending = await get_pending_handoff_for_agency(db, candidate_id, agency_tenant_id)
+    if pending is None:
+        return
+
+    reason = f"Recruitment closed: {str(close_stage or '').strip() or 'terminal'}"
+    now = datetime.now(timezone.utc)
+    pending.status = "returned"
+    pending.return_reason = reason
+    pending.returned_reason = reason
+    pending.returned_by_user_id = actor_user_id
+    pending.reviewed_by_user_id = actor_user_id
+    pending.reviewed_at = now
+    pending.locked_at = None
+    await db.flush()
+
+    dest = (getattr(pending, "destination", None) or "client_portal").strip().lower()
+    if dest == "internal_hr":
+        await _terminalize_internal_hr_pending_handoff_activity(
+            db,
+            tenant_id=str(pending.agency_tenant_id),
+            candidate_id=str(pending.candidate_id),
+            handoff_id=pending.id,
+            terminal_status=ActivityStatus.cancelled,
+            completed_at=now,
+        )
+
+
 async def get_accepted_handoff_for_agency(
     db: AsyncSession,
     candidate_id: str,
@@ -561,6 +600,20 @@ async def create_handoff(
             return None, "Only candidates at ready_for_handoff or ready_for_hr can be transferred to internal HR"
     elif cand_stage != "ready_for_handoff":
         return None, "Only candidates at stage 'Gotowy do przekazania' (ready_for_handoff) can be transferred"
+
+    from backend.app.services.recruitment_package_readiness import assert_recruitment_package_ready_for_handoff
+
+    pkg_err = await assert_recruitment_package_ready_for_handoff(
+        db,
+        tenant_id=agency_tenant_id,
+        candidate_id=candidate_id,
+    )
+    if pkg_err:
+        msg = str(pkg_err.get("message") or "Recruitment package is incomplete for handoff")
+        blocks = pkg_err.get("blocking_blocks") or []
+        if blocks:
+            msg = f"{msg}: {', '.join(blocks)}"
+        return None, msg
 
     link = await get_tenant_link(
         db,

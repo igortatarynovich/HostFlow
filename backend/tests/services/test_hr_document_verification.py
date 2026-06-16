@@ -63,6 +63,69 @@ def test_verification_blocks_approval_skips_optional_missing() -> None:
     assert blocked is False
 
 
+def test_build_fields_to_review_passport_fields() -> None:
+    fields = build_fields_to_review(
+        "Passport / ID",
+        {
+            "employee": {
+                "display_name": "Jan Kowalski",
+                "meta": {"personal_data": {"birth_date": "1990-01-15", "passport_number": "AB123456"}},
+            },
+            "snapshot": {
+                "birth_date": "1990-01-15",
+                "passport_number": "AB123456",
+                "passport_series": "AAA",
+            },
+            "document": {
+                "number": "AB123456",
+                "issue_date": "2020-05-01",
+                "expires_at": "2030-05-01",
+                "meta": {"series": "AAA"},
+            },
+            "context": {},
+            "eligibility": {"citizenship": "UA"},
+        },
+        None,
+    )
+    codes = {f["field_code"] for f in fields}
+    assert "birth_date" in codes
+    assert "document_series" in codes
+    assert "document_number" in codes
+    assert "document_issue_date" in codes
+    birth = next(f for f in fields if f["field_code"] == "birth_date")
+    assert birth["needs_manual_confirmation"] is False
+    assert "1990-01-15" in str(birth["current_profile_values"])
+
+
+def test_build_fields_to_review_contacts_block() -> None:
+    fields = build_fields_to_review(
+        "Contacts & address",
+        {
+            "employee": {"display_name": "Jan Kowalski", "meta": {"personal_data": {"phone": "+48123456789"}}},
+            "snapshot": {"email": "jan@example.com"},
+            "contacts": {"phone": "+48123456789"},
+            "handoff": {"candidate": {"email": "jan@example.com", "phone": "+48123456789"}},
+            "document": {},
+            "context": {},
+            "eligibility": {},
+        },
+        None,
+    )
+    codes = {f["field_code"] for f in fields}
+    assert "phone" in codes
+    assert "email" in codes
+
+
+def test_data_only_keys_constant() -> None:
+    from backend.app.services.hr_verified_field_catalog import (
+        DATA_ONLY_VERIFICATION_KEYS,
+        OPTIONAL_FILE_VERIFICATION_KEYS,
+    )
+
+    assert "Contacts & address" in DATA_ONLY_VERIFICATION_KEYS
+    assert "Work experience" in OPTIONAL_FILE_VERIFICATION_KEYS
+
+
 def test_verification_blocks_approval_until_verified() -> None:
     v = WorkforceHrDocumentVerification(
         tenant_id="t1",

@@ -62,6 +62,7 @@ from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.vacancy_recruiter import VacancyRecruiter
 from backend.app.services.contact_attempts import count_contact_attempts
+from backend.app.services.document_expiry_engine import evaluate_expiry
 
 logger = logging.getLogger(__name__)
 
@@ -920,10 +921,14 @@ async def compute_document_next_action(
 
     # 7-9. Resolved bucket: still need to validate expiry before declaring DONE.
     if status in _DOCUMENT_RESOLVED_DONE_STATUSES:
-        expire_date = doc.expire_date
         ref_date = today or _date_today_utc()
-        if expire_date is not None:
-            if expire_date < ref_date:
+        evaluation = evaluate_expiry(
+            expires_on=doc.expire_date,
+            reference_date=ref_date,
+            expiring_soon_days=_DOCUMENT_EXPIRING_SOON_DAYS,
+        )
+        if evaluation is not None:
+            if evaluation.state == "expired":
                 # 7. Status says "verified" but the date says otherwise.
                 return NextActionDTO(
                     entity_type="document",
@@ -935,13 +940,12 @@ async def compute_document_next_action(
                     title_key="app.next_action.document.expired_by_date.title",
                     hint=(
                         f"Status is '{status.value}' but the validity date passed "
-                        f"on {expire_date.isoformat()}."
+                        f"on {evaluation.expires_on.isoformat()}."
                     ),
                     hint_key="app.next_action.document.expired_by_date.hint",
                     href=href_detail,
                 )
-            days_left = (expire_date - ref_date).days
-            if 0 <= days_left <= _DOCUMENT_EXPIRING_SOON_DAYS:
+            if evaluation.state == "expiring_soon":
                 # 8. Same threshold the UI uses for the amber "expiring" pill.
                 return NextActionDTO(
                     entity_type="document",
@@ -952,8 +956,8 @@ async def compute_document_next_action(
                     title="Document expiring soon",
                     title_key="app.next_action.document.expiring_soon.title",
                     hint=(
-                        f"Validity ends on {expire_date.isoformat()} "
-                        f"({days_left} day(s) left)."
+                        f"Validity ends on {evaluation.expires_on.isoformat()} "
+                        f"({evaluation.days_left} day(s) left)."
                     ),
                     hint_key="app.next_action.document.expiring_soon.hint",
                     href=href_detail,

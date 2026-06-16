@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.document import Document
+from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
 
 # document_key (HR verification card) -> candidate Document.doc_type aliases
 DOC_KEY_CANDIDATE_TYPES: dict[str, frozenset[str]] = {
@@ -25,6 +26,8 @@ DOC_KEY_CANDIDATE_TYPES: dict[str, frozenset[str]] = {
         {
             "legal_stay",
             "residence_permit",
+            "residence_card",
+            "karta_pobytu",
             "visa",
             "visa_d",
         }
@@ -36,6 +39,14 @@ DOC_KEY_CANDIDATE_TYPES: dict[str, frozenset[str]] = {
     "Driver license": frozenset({"driver_license", "driver_license_code95", "eu_driver_license"}),
     "Code95": frozenset({"code95", "qualification_code95", "driver_license_code95"}),
     "Tacho card": frozenset({"tacho_card", "tachograph_card", "tachograph"}),
+    "Work experience": frozenset(
+        {
+            "employment_record",
+            "swiadectwo_pracy",
+            "work_certificate",
+            "employment_history",
+        }
+    ),
 }
 
 _UPLOADED_STATUSES = frozenset(
@@ -99,7 +110,8 @@ async def load_candidate_documents_index(
     ).scalars().all()
     by_type: dict[str, list[Document]] = {}
     for doc in rows:
-        key = _norm_doc_type(str(doc.doc_type or ""))
+        resolved = await DocumentTypeRuntimeResolver.resolve_for_document(db, doc)
+        key = _norm_doc_type(str(resolved.canonical_code or ""))
         if not key:
             continue
         by_type.setdefault(key, []).append(doc)

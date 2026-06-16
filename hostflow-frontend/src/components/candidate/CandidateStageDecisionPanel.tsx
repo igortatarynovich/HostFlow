@@ -50,6 +50,8 @@ type Props = {
 
   onMoveStage: (stageCode: string) => void
   canEdit?: boolean
+  /** When false but this is true, only rejected/declined outcomes are allowed (handoff lock). */
+  canCloseRecruitment?: boolean
   /** Opens contact-attempt register modal (same as Communication section). Used for “Contact candidate” next step. */
   onOpenContactAttempts?: () => void
 }
@@ -75,9 +77,13 @@ export default function CandidateStageDecisionPanel({
   contactAttemptPipelineBlocking = false,
   onMoveStage,
   canEdit = true,
+  canCloseRecruitment = true,
   onOpenContactAttempts,
 }: Props) {
   const { t } = useI18n()
+
+  const canMutatePipeline = canEdit
+  const canUseOutcomes = canEdit || canCloseRecruitment
 
   const stripStages = journeyPanelStages ?? stageJourneyStages
 
@@ -366,7 +372,7 @@ export default function CandidateStageDecisionPanel({
           <button
             type="button"
             className="btn-secondary btn-sm"
-            disabled={!prevStage || !canEdit}
+            disabled={!prevStage || !canMutatePipeline}
             onClick={() => prevStage && onMoveStage(prevStage.code)}
           >
             {t('app.candidate_card.stage_decision.move_back', { defaultValue: 'Move back' })}
@@ -374,7 +380,7 @@ export default function CandidateStageDecisionPanel({
           <button
             type="button"
             className="btn-primary btn-sm"
-            disabled={!nextStage || !canEdit || pipelineForwardBlocked}
+            disabled={!nextStage || !canMutatePipeline || pipelineForwardBlocked}
             onClick={() => nextStage && onMoveStage(nextStage.code)}
             title={
               docsPipelineBlocking
@@ -398,6 +404,28 @@ export default function CandidateStageDecisionPanel({
           </button>
         </div>
       </div>
+
+      {stageOutcomeStages && stageOutcomeStages.length > 0 && !pipelineCompleted ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.candidate_card.stage_journey.outcomes', { defaultValue: 'Outcomes' })}
+          </span>
+          {stageOutcomeStages.map((s) => {
+            const isCurrent = String(currentStageCode || '') === s.code
+            return (
+              <button
+                key={s.code}
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={!canUseOutcomes || isCurrent}
+                onClick={() => onMoveStage(s.code)}
+              >
+                {s.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div className="mt-3">
         <CandidateStageJourneyPanel

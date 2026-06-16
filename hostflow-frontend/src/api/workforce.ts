@@ -43,10 +43,17 @@ export type WorkforceEmployment = {
   id: string
   employee_id: string
   contract_type: string
+  lifecycle_status: string
+  employer_name?: string | null
   rate_model?: Record<string, unknown> | null
   schedule?: Record<string, unknown> | null
   start_date?: string | null
   end_date?: string | null
+  probation_end?: string | null
+  signed_at?: string | null
+  latest_annex_ref?: string | null
+  expiry_date?: string | null
+  next_action?: string | null
   conditions_text?: string | null
   vacancy_id?: string | null
   meta?: Record<string, unknown> | null
@@ -358,6 +365,8 @@ export type HrReviewDocumentRow = {
   rejection_reason?: string | null
   correction_note?: string | null
   actions?: HrDocumentVerificationActions | null
+  block_kind?: 'document' | 'data_only' | 'optional_file' | string | null
+  file_required_for_confirm?: boolean | null
 }
 
 export type HrReviewProcessStage = {
@@ -686,6 +695,78 @@ export type WorkforceEmploymentOperational = {
   position?: string | null
 }
 
+export type WorkforceExpectedDocument = {
+  document_code: string
+  label: string
+  group: string
+  default_owner: string
+  requires_expiry: boolean
+  verification_required: boolean
+  applies_to_driver: boolean
+  applies_to_non_driver: boolean
+  blocks_employment: boolean
+  renewal_window_days: number
+  default_next_action: string
+  aliases: string[]
+}
+
+export type WorkforceDocumentControlTask = {
+  document_code: string
+  owner?: string | null
+  next_action?: string | null
+  next_due_date?: string | null
+  comment?: string | null
+  status?: string | null
+  updated_at?: string | null
+}
+
+export type WorkforceLifecycleEvent = {
+  id: string
+  employee_id: string
+  event_code: string
+  category: string
+  occurred_at: string
+  effective_date?: string | null
+  due_date?: string | null
+  owner?: string | null
+  created_by?: string | null
+  status: string
+  dedupe_key?: string | null
+  source_type?: string | null
+  source_ref?: string | null
+  title: string
+  description?: string | null
+  references: Record<string, unknown>
+  attachments: Record<string, unknown>
+  meta: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export type WorkforceEligibilityBlockingReason = {
+  block_type?: string
+  severity?: string
+  source?: string
+  affected_operation?: string[]
+  resolution_action?: string
+  document_code?: string
+}
+
+export type WorkforceEligibilityRuntime = {
+  eligibility_status?: string
+  compliance_status?: string
+  blocking_reasons?: WorkforceEligibilityBlockingReason[]
+  warnings?: string[]
+  missing_documents?: string[]
+  expired_documents?: string[]
+  soon_expiring_documents?: Array<Record<string, unknown>>
+  next_required_actions?: string[]
+  allowed_operations?: Record<string, boolean>
+  compliance_domains?: Record<string, string>
+  readiness_profiles?: Record<string, boolean>
+  expected_documents_count?: number
+}
+
 export type WorkforceEmployeeOperationalProfile = {
   employee: WorkforceEmployee
   operational_summary: WorkforceOperationalSummary
@@ -699,7 +780,10 @@ export type WorkforceEmployeeOperationalProfile = {
   onboarding_overdue_count: number
   timeline: WorkforceTimelineEvent[]
   employment_operational: WorkforceEmploymentOperational[]
+  expected_documents: WorkforceExpectedDocument[]
+  document_control_tasks: WorkforceDocumentControlTask[]
   hire_snapshot: Record<string, unknown> | null
+  workforce_eligibility: WorkforceEligibilityRuntime
   hr_bundle: WorkforceHrBundle
 }
 
@@ -768,6 +852,14 @@ export async function getWorkforceEmployeeOperationalProfile(
 
 export async function getWorkforceEmployee(id: string): Promise<WorkforceEmployee> {
   const { data } = await http.get<WorkforceEmployee>(`/workforce/employees/${encodeURIComponent(id)}`)
+  return data
+}
+
+/** GET `/workforce/employees/by-candidate/:candidateId` (PR17.4). */
+export async function getWorkforceEmployeeByCandidate(candidateId: string): Promise<WorkforceEmployee> {
+  const { data } = await http.get<WorkforceEmployee>(
+    `/workforce/employees/by-candidate/${encodeURIComponent(candidateId)}`,
+  )
   return data
 }
 
@@ -1007,6 +1099,33 @@ export async function postHrDocumentRequestCorrection(
   return data
 }
 
+export async function postHrDocumentWaiveRequirement(
+  scope: DocVerifyScope & { reason: string },
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${docVerifyBase(scope)}/waive-requirement`, {
+    reason: scope.reason,
+  })
+  return data
+}
+
+function hrReviewCaseBase(scope: { employeeId?: string; handoffId?: string }): string {
+  if (scope.handoffId) {
+    return `/handoffs/${encodeURIComponent(scope.handoffId)}/hr-review`
+  }
+  if (scope.employeeId) {
+    return `/workforce/employees/${encodeURIComponent(scope.employeeId)}/hr-review`
+  }
+  throw new Error('employeeId or handoffId required')
+}
+
+export async function postHrAdditionalDocumentRequest(
+  scope: { employeeId?: string; handoffId?: string },
+  body: { document_name: string; note?: string; urgency?: string },
+): Promise<HrReviewPanel> {
+  const { data } = await http.post<HrReviewPanel>(`${hrReviewCaseBase(scope)}/additional-document-request`, body)
+  return data
+}
+
 type VerifiedFieldScope = {
   employeeId?: string
   handoffId?: string
@@ -1091,6 +1210,53 @@ export async function patchWorkforceWorkEligibilityPaymentRequirement(
   const { data } = await http.patch<WorkforceWorkEligibilityPaymentRequirement>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/work-eligibility/payment-requirements/${encodeURIComponent(requirementId)}`,
     payload,
+  )
+  return data
+}
+
+export async function patchWorkforceDocumentControlTask(
+  employeeId: string,
+  documentCode: string,
+  payload: {
+    owner?: string | null
+    next_action?: string | null
+    next_due_date?: string | null
+    comment?: string | null
+    status?: string | null
+  },
+): Promise<WorkforceDocumentControlTask> {
+  const { data } = await http.patch<WorkforceDocumentControlTask>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/document-control-tasks/${encodeURIComponent(documentCode)}`,
+    payload,
+  )
+  return data
+}
+
+export async function listWorkforceLifecycleLedger(
+  employeeId: string,
+  params?: {
+    category?: string
+    status?: string
+    owner?: string
+    occurred_from?: string
+    occurred_to?: string
+    limit?: number
+    offset?: number
+  },
+): Promise<WorkforceLifecycleEvent[]> {
+  const { data } = await http.get<WorkforceLifecycleEvent[]>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/lifecycle-ledger`,
+    {
+      params: {
+        category: params?.category || undefined,
+        status: params?.status || undefined,
+        owner: params?.owner || undefined,
+        occurred_from: params?.occurred_from || undefined,
+        occurred_to: params?.occurred_to || undefined,
+        limit: params?.limit,
+        offset: params?.offset,
+      },
+    },
   )
   return data
 }

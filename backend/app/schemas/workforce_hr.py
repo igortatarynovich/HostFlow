@@ -106,10 +106,17 @@ class WorkEligibilityPaymentRequirementPatch(BaseModel):
 # --- Employment / contract ---
 class EmploymentCreate(BaseModel):
     contract_type: str = Field(default="unknown", max_length=64)
+    lifecycle_status: Optional[str] = Field(default="issued", max_length=32)
+    employer_name: Optional[str] = Field(default=None, max_length=160)
     rate_model: Optional[dict[str, Any]] = None
     schedule: Optional[dict[str, Any]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    probation_end: Optional[date] = None
+    signed_at: Optional[date] = None
+    latest_annex_ref: Optional[str] = Field(default=None, max_length=160)
+    expiry_date: Optional[date] = None
+    next_action: Optional[str] = Field(default=None, max_length=256)
     conditions_text: Optional[str] = None
     vacancy_id: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
@@ -117,10 +124,17 @@ class EmploymentCreate(BaseModel):
 
 class EmploymentPatch(BaseModel):
     contract_type: Optional[str] = Field(default=None, max_length=64)
+    lifecycle_status: Optional[str] = Field(default=None, max_length=32)
+    employer_name: Optional[str] = Field(default=None, max_length=160)
     rate_model: Optional[dict[str, Any]] = None
     schedule: Optional[dict[str, Any]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    probation_end: Optional[date] = None
+    signed_at: Optional[date] = None
+    latest_annex_ref: Optional[str] = Field(default=None, max_length=160)
+    expiry_date: Optional[date] = None
+    next_action: Optional[str] = Field(default=None, max_length=256)
     conditions_text: Optional[str] = None
     vacancy_id: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
@@ -184,3 +198,11 @@ class LeaveRequestPatch(BaseModel):
     decided_at: Optional[datetime] = None
     comment: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
+
+
+class HrDocumentControlTaskPatch(BaseModel):
+    owner: Optional[str] = Field(default=None, max_length=64)
+    next_action: Optional[str] = Field(default=None, max_length=256)
+    next_due_date: Optional[date] = None
+    comment: Optional[str] = Field(default=None, max_length=2000)
+    status: Optional[str] = Field(default=None, max_length=32)

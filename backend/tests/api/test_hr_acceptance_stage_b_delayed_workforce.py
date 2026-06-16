@@ -7,10 +7,12 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from backend.app.db.session import async_session_maker
+from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.models.tenant import Tenant
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import WorkforceHrReview
 from backend.app.models.workforce_onboarding_task import WorkforceOnboardingTask
+from backend.app.models.workforce_work_eligibility_profile import WorkforceWorkEligibilityProfile
 from backend.app.models.workforce_zus_profile import WorkforceZusProfile
 from backend.tests.api.test_handoff_internal_hr import (
     _ensure_tenant_link_internal_hr,
@@ -91,6 +93,41 @@ async def _has_zus_profile(tenant_id: str, employee_id: str) -> bool:
         ).scalar_one() > 0
 
 
+async def _count_doc_links(
+    tenant_id: str, *, linked_entity_type: str, linked_entity_id: str
+) -> int:
+    async with async_session_maker() as session:
+        return int(
+            (
+                await session.execute(
+                    select(func.count())
+                    .select_from(DocumentEntityLink)
+                    .where(
+                        DocumentEntityLink.tenant_id == tenant_id,
+                        DocumentEntityLink.linked_entity_type == linked_entity_type,
+                        DocumentEntityLink.linked_entity_id == linked_entity_id,
+                        DocumentEntityLink.relation_type == "reused_for_hr",
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+
+
+async def _work_eligibility_row(
+    tenant_id: str, employee_id: str
+) -> WorkforceWorkEligibilityProfile | None:
+    async with async_session_maker() as session:
+        return (
+            await session.execute(
+                select(WorkforceWorkEligibilityProfile).where(
+                    WorkforceWorkEligibilityProfile.tenant_id == tenant_id,
+                    WorkforceWorkEligibilityProfile.employee_id == employee_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+
 @pytest.mark.anyio
 async def test_delayed_workforce_accept_then_approve_creates_employee_and_hr_bundle(
     client: AsyncClient,
@@ -160,6 +197,11 @@ async def _run_delayed_workforce_flow(
         "waiting_work_permit",
         "waiting_red_paper",
     )
+    assert await _count_doc_links(
+        tenant_id,
+        linked_entity_type="workforce_hr_review",
+        linked_entity_id=str(review_row.id),
+    ) >= 1
 
     panel = await client.get(f"/api/v1/handoffs/{handoff_id}/hr-review", headers=hr_officer_headers)
     assert panel.status_code == 200, panel.text
@@ -191,8 +233,25 @@ async def _run_delayed_workforce_flow(
     assert await _count_employees_for_candidate(tenant_id, candidate_id) == 1
     assert await _onboarding_task_count(tenant_id, emp_id) > 0
     assert await _has_zus_profile(tenant_id, emp_id)
+    assert await _count_doc_links(
+        tenant_id,
+        linked_entity_type="workforce_employee",
+        linked_entity_id=emp_id,
+    ) >= 1
 
     review_after = await _review_for_handoff(tenant_id, handoff_id)
     assert review_after is not None
     assert review_after.status == "approved_for_employment"
     assert str(review_after.employee_id) == emp_id
+
+    emp_list = await client.get("/api/v1/workforce/employees", headers=hr_officer_headers)
+    assert emp_list.status_code == 200, emp_list.text
+    matched = [e for e in emp_list.json() if str(e.get("id")) == emp_id]
+    assert matched
+    snap = matched[0].get("candidate_snapshot") or {}
+    assert isinstance(snap.get("personal_data"), dict)
+    assert isinstance(snap.get("extra"), dict)
+    assert snap.get("document_field_values") is not None
+
+    wel = await _work_eligibility_row(tenant_id, emp_id)
+    assert wel is not None

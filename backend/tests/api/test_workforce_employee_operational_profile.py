@@ -52,6 +52,17 @@ async def test_operational_profile_hr_officer_shape(
     assert body["employee"]["id"] == emp_id
     osum = body["operational_summary"]
     assert "employee_status" in osum and "compliance_status" in osum
+    decision = body.get("workforce_eligibility") or {}
+    for key in (
+        "eligibility_status",
+        "compliance_status",
+        "readiness_profiles",
+        "allowed_operations",
+        "blocking_reasons",
+        "next_required_actions",
+    ):
+        assert key in decision
+    assert osum.get("compliance_status") == decision.get("compliance_status")
     assert isinstance(body["documents_linked"], list)
     assert isinstance(body["hr_bundle"]["onboarding_tasks"], list)
     hb = body["hr_bundle"]

@@ -258,6 +258,17 @@ export default function SettingsLandingPage() {
         requiresModules: ['candidates'],
       },
       {
+        key: 'transfer_policy',
+        label: t('admin.settings.cards.transfer_policy.label', { defaultValue: 'Transfer Policy' }),
+        description: t('admin.settings.cards.transfer_policy.description', {
+          defaultValue: 'Aggregated handoff rules, destinations, and governance in one place.',
+        }),
+        target: CRM_APP_PATHS.settingsTransferPolicy,
+        roles: ['administrator', 'supervisor'],
+        section: 'crm_setup',
+        requiresModules: ['candidates'],
+      },
+      {
         key: 'risk_intel',
         label: t('admin.settings.cards.risk_intel.label'),
         description: t('admin.settings.cards.risk_intel.description'),
@@ -283,6 +294,14 @@ export default function SettingsLandingPage() {
         roles: ['administrator'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
+      },
+      {
+        key: 'message_templates',
+        label: t('admin.settings.cards.message_templates.label', { defaultValue: 'Message templates' }),
+        description: t('admin.settings.cards.message_templates.description', { defaultValue: 'Shared templates for lead operational emails and RODO notices.' }),
+        target: CRM_APP_PATHS.settingsMessageTemplates,
+        roles: ['administrator', 'supervisor'],
+        section: 'crm_setup',
       },
       {
         key: 'lead_forms',

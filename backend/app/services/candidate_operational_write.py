@@ -19,7 +19,12 @@ from backend.app.services.recruitment_handoff_write_guard import (
     agency_candidate_has_internal_hr_handoff_lane,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
+from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_MUTATE_ROLES
+
 _RECRUITMENT_OPERATIONAL_RECRUITER_ROLES = frozenset({"recruiter", "supervisor", "viewer"})
+_RECRUITMENT_MUTATE_ROLE_VALUES = frozenset(
+    str(getattr(role, "value", role) or "").strip().lower() for role in HIRING_CANDIDATE_MUTATE_ROLES
+) | {"superadmin"}
 
 
 async def build_candidate_operational_permissions(
@@ -28,19 +33,28 @@ async def build_candidate_operational_permissions(
     tenant_id: str,
     candidate_id: str,
     client_tenant: bool,
+    user_role: str | None = None,
 ) -> dict[str, Any]:
-    """UI contract: ``operational_owner`` + ``readonly_reason`` on GET /candidates/{id}."""
+    """UI contract: ``operational_owner`` + ``readonly_reason`` + ``can_close_recruitment`` on GET /candidates/{id}."""
     if client_tenant:
         return {}
     tid = str(tenant_id or "").strip()
     cid = str(candidate_id or "").strip()
+    role_l = str(user_role or "").strip().lower()
+    can_mutate = role_l in _RECRUITMENT_MUTATE_ROLE_VALUES
+
     if not tid or not cid:
-        return {"operational_owner": "recruitment", "readonly_reason": None}
+        return {
+            "operational_owner": "recruitment",
+            "readonly_reason": None,
+            "can_close_recruitment": can_mutate,
+        }
 
     if await is_candidate_locked_by_workforce(db, tenant_id=tid, candidate_id=cid):
         return {
             "operational_owner": "hr",
             "readonly_reason": "workforce_hr_ownership",
+            "can_close_recruitment": False,
         }
 
     locked, lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
@@ -50,9 +64,15 @@ async def build_candidate_operational_permissions(
         return {
             "operational_owner": "hr",
             "readonly_reason": lock_reason or "active_handoff",
+            # Recruiter may still reject/decline while handoff is pending (unlocks row).
+            "can_close_recruitment": can_mutate,
         }
 
-    return {"operational_owner": "recruitment", "readonly_reason": None}
+    return {
+        "operational_owner": "recruitment",
+        "readonly_reason": None,
+        "can_close_recruitment": can_mutate,
+    }
 
 
 async def ensure_candidate_operational_write_allowed(

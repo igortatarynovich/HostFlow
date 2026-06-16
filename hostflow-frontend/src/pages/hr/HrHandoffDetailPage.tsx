@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { acceptHandoff } from '../../api/handoffs'
 import {
@@ -89,6 +89,10 @@ export default function HrHandoffDetailPage() {
   const scrollTo = (anchor: string) => {
     const sel = anchor.startsWith('#') ? anchor : `#${anchor}`
     document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  if (empId) {
+    return <Navigate to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}#hr-verification`} replace />
   }
 
   return (

@@ -19,6 +19,13 @@ export const RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: ReadonlySet<string> = new S
   'at_client',
 ])
 
+const RECRUITMENT_TERMINAL_STAGE_CODES = new Set(['rejected', 'declined'])
+
+export function isRecruitmentTerminalStageCode(code: string | null | undefined): boolean {
+  const c = String(code || '').trim().toLowerCase()
+  return Boolean(c) && RECRUITMENT_TERMINAL_STAGE_CODES.has(c)
+}
+
 export function isPostRecruitmentStageCode(code: string | null | undefined): boolean {
   const c = String(code || '').trim().toLowerCase()
   return Boolean(c) && RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES.has(c)

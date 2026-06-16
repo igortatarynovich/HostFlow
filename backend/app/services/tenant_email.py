@@ -1,9 +1,8 @@
-"""Per-tenant email sending: SMTP or webhook fallback."""
+"""Per-tenant email sending: SMTP only for business/compliance communications."""
 
 from __future__ import annotations
 
 import asyncio
-import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -14,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.crypto import decrypt_secret, encrypt_secret
 from backend.app.models import TenantEmailConfig
-from backend.app.services import notifications as outbound
+from backend.app.services.email_delivery import is_email_delivery_mock
 
 
 async def get_tenant_email_config(
@@ -45,6 +44,8 @@ def _send_smtp_sync(
     body: str,
 ) -> None:
     """Sync SMTP send. Run in thread to avoid blocking."""
+    if is_email_delivery_mock():
+        return
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"{from_name} <{from_email}>" if from_name else from_email
@@ -70,8 +71,7 @@ async def send_email_smtp(
     body: str,
 ) -> None:
     """Send email via tenant SMTP config."""
-    delivery_mode = (os.environ.get("EMAIL_DELIVERY_MODE") or "").strip().lower()
-    if delivery_mode == "mock":
+    if is_email_delivery_mock():
         return
     password = decrypt_secret(config.smtp_password_encrypted) if config.smtp_password_encrypted else None
     if not config.smtp_host or not config.from_email:
@@ -101,16 +101,13 @@ async def send_email_for_tenant(
     body: str,
 ) -> bool:
     """
-    Send email: use tenant SMTP if configured, else webhook.
-    Returns True if sent (SMTP or webhook), False if neither.
+    Send email via tenant SMTP configuration only.
+    Raises when tenant SMTP is missing or delivery fails.
     """
+    if is_email_delivery_mock():
+        return True
     config = await get_tenant_email_config(db, tenant_id)
-    if config and config.smtp_host:
-        try:
-            await send_email_smtp(config, to=to, subject=subject, body=body)
-            return True
-        except Exception:
-            # fallback to webhook on SMTP failure
-            pass
-    await outbound.notify(to=to, subject=subject, text=body)
+    if not config or not config.smtp_host or not config.from_email:
+        raise ValueError("TENANT_EMAIL_NOT_CONFIGURED")
+    await send_email_smtp(config, to=to, subject=subject, body=body)
     return True

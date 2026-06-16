@@ -13,6 +13,9 @@ else
   echo "⚠️  Не найден hostflow-frontend/dist/legal. Проверьте наличие legal HTML файлов."
 fi
 
+echo "📦 Публикация в /var/www/hostflow-frontend (Caddy root)..."
+rsync -a --delete hostflow-frontend/dist/ /var/www/hostflow-frontend/
+
 echo "🔄 Перезапуск Caddy..."
 docker-compose restart caddy
 

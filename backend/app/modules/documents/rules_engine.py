@@ -229,3 +229,30 @@ def expiring_threshold_for(doc_type: str, ruleset: Dict[str, Any]) -> int:
     if "expiring_soon_days" in per_type:
         return int(per_type["expiring_soon_days"])
     return int(ruleset.get("expiring_soon_default_days", 30))
+
+
+def expiry_required_for(doc_type: str, ruleset: Dict[str, Any]) -> bool:
+    """
+    Whether a document type requires an expiry date for validity evaluation.
+
+  Ruleset ``validity[doc_type]`` may set ``expiry_required`` / ``has_expiry``.
+  Presence in the validity block without an explicit false flag implies tracking.
+    """
+    if _is_simple_schema(ruleset):
+        per_type = ruleset.get(doc_type, {}) or {}
+        if isinstance(per_type, dict):
+            if "expiry_required" in per_type:
+                return _truthy(per_type["expiry_required"])
+            if "has_expiry" in per_type:
+                return _truthy(per_type["has_expiry"])
+        return False
+
+    validity = ruleset.get("validity") or {}
+    per_type = validity.get(doc_type, {}) or {}
+    if not isinstance(per_type, dict):
+        return False
+    if "expiry_required" in per_type:
+        return _truthy(per_type["expiry_required"])
+    if "has_expiry" in per_type:
+        return _truthy(per_type["has_expiry"])
+    return doc_type in validity

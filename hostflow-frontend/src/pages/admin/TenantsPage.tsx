@@ -10,6 +10,7 @@ import {
   createTenantAdmin,
   decidePlatformSeatRequest,
   getPlatformTenantModules,
+  getPlatformTenantLegalHostSettings,
   getPlatformTenantRoleModuleMatrix,
   getPlatformTenantUserModuleOverrides,
   impersonatePlatformTenant,
@@ -21,6 +22,7 @@ import {
   updatePlatformTenantLicense,
   updatePlatformTenantMetadata,
   updatePlatformTenantModules,
+  updatePlatformTenantLegalHostSettings,
   updatePlatformTenantRoleModuleMatrix,
   updatePlatformTenantUserModuleOverrides,
   updateTenantVacancyAccess,
@@ -42,6 +44,7 @@ import type {
   RoleModuleMatrixRole,
   TenantStatus,
   TenantType,
+  TenantLegalHostSettings,
   TenantVacancyAccessItem,
   TenantVacancyOption,
 } from '../../api/types'
@@ -146,6 +149,18 @@ export default function TenantsPage() {
   const [vacancyOptionsLoading, setVacancyOptionsLoading] = useState(false)
   const [vacancyOptionsError, setVacancyOptionsError] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<'overview' | 'billing' | 'access'>('overview')
+  const [legalHostSettings, setLegalHostSettings] = useState<TenantLegalHostSettings>({
+    public_domain: '',
+    custom_domain: '',
+    legal_domain: '',
+    public_hosts: [],
+    domains: [],
+    legal_hosts: [],
+  })
+  const [legalHostRaw, setLegalHostRaw] = useState({ public_hosts: '', domains: '', legal_hosts: '' })
+  const [legalHostLoading, setLegalHostLoading] = useState(false)
+  const [legalHostSaving, setLegalHostSaving] = useState(false)
+  const [legalHostError, setLegalHostError] = useState<string | null>(null)
 
   const selected = useMemo(() => tenants.find((t) => t.id === selectedId) ?? null, [selectedId, tenants])
   const selectedTenantId = selected?.id ?? null
@@ -368,6 +383,40 @@ export default function TenantsPage() {
   }, [selected?.id, selected?.workspace_label, selected?.name])
 
   useEffect(() => {
+    if (!selected?.id || !isSuperAdmin) return
+    let cancelled = false
+    const run = async () => {
+      setLegalHostLoading(true)
+      setLegalHostError(null)
+      try {
+        const data = await getPlatformTenantLegalHostSettings(selected.id)
+        if (cancelled) return
+        setLegalHostSettings({
+          public_domain: data.public_domain || '',
+          custom_domain: data.custom_domain || '',
+          legal_domain: data.legal_domain || '',
+          public_hosts: data.public_hosts || [],
+          domains: data.domains || [],
+          legal_hosts: data.legal_hosts || [],
+        })
+        setLegalHostRaw({
+          public_hosts: (data.public_hosts || []).join(', '),
+          domains: (data.domains || []).join(', '),
+          legal_hosts: (data.legal_hosts || []).join(', '),
+        })
+      } catch (err) {
+        if (!cancelled) setLegalHostError(formatErrorMessage(err, t('app.platform.tenants.errors.load_failed')))
+      } finally {
+        if (!cancelled) setLegalHostLoading(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [isSuperAdmin, selected?.id, t])
+
+  useEffect(() => {
     setAdminForm({ email: '', full_name: '', password: '' })
     setAdminErrorMsg(null)
     setAdminMessage(null)
@@ -483,6 +532,48 @@ export default function TenantsPage() {
       setBrandingSaving(false)
     }
   }
+
+  const parseHostList = useCallback((raw: string): string[] => {
+    return raw
+      .split(',')
+      .map((x) => x.trim().toLowerCase())
+      .map((x) => (x.includes(':') ? x.split(':', 1)[0].trim() : x))
+      .filter((x, idx, arr) => !!x && arr.indexOf(x) === idx)
+  }, [])
+
+  const handleSaveLegalHosts = useCallback(async () => {
+    if (!selected?.id) return
+    setLegalHostSaving(true)
+    setLegalHostError(null)
+    try {
+      const payload: TenantLegalHostSettings = {
+        public_domain: String(legalHostSettings.public_domain || '').trim() || null,
+        custom_domain: String(legalHostSettings.custom_domain || '').trim() || null,
+        legal_domain: String(legalHostSettings.legal_domain || '').trim() || null,
+        public_hosts: parseHostList(legalHostRaw.public_hosts),
+        domains: parseHostList(legalHostRaw.domains),
+        legal_hosts: parseHostList(legalHostRaw.legal_hosts),
+      }
+      const updated = await updatePlatformTenantLegalHostSettings(selected.id, payload)
+      setLegalHostSettings({
+        public_domain: updated.public_domain || '',
+        custom_domain: updated.custom_domain || '',
+        legal_domain: updated.legal_domain || '',
+        public_hosts: updated.public_hosts || [],
+        domains: updated.domains || [],
+        legal_hosts: updated.legal_hosts || [],
+      })
+      setLegalHostRaw({
+        public_hosts: (updated.public_hosts || []).join(', '),
+        domains: (updated.domains || []).join(', '),
+        legal_hosts: (updated.legal_hosts || []).join(', '),
+      })
+    } catch (err) {
+      setLegalHostError(formatErrorMessage(err, t('app.platform.tenants.errors.save_failed')))
+    } finally {
+      setLegalHostSaving(false)
+    }
+  }, [legalHostRaw.domains, legalHostRaw.legal_hosts, legalHostRaw.public_hosts, legalHostSettings.custom_domain, legalHostSettings.legal_domain, legalHostSettings.public_domain, parseHostList, selected?.id, t])
 
   const handleModuleToggle = async (key: keyof TenantModuleSettings) => {
     if (!selected || !moduleSettings) return
@@ -1160,6 +1251,81 @@ export default function TenantsPage() {
                         <p className="text-center text-[11px] text-slate-400">{t('app.platform.tenants.branding.logo_hint')}</p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="rounded border border-slate-100 p-3">
+                    <h4 className="text-sm font-semibold text-slate-900">Legal/Public Hosts</h4>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Host mapping for dynamic `/legal/*.html` tenant resolution.
+                    </p>
+                    {legalHostError && (
+                      <ErrorRecoveryBanner
+                        info={{
+                          title: legalHostError,
+                          hint: t('app.common.retry_hint'),
+                        }}
+                        compact
+                      />
+                    )}
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <label className="text-xs font-medium text-slate-500">
+                        public_domain
+                        <input
+                          className="input mt-1"
+                          value={String(legalHostSettings.public_domain || '')}
+                          onChange={(e) => setLegalHostSettings((prev) => ({ ...prev, public_domain: e.target.value }))}
+                          placeholder="example.com"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-slate-500">
+                        legal_domain
+                        <input
+                          className="input mt-1"
+                          value={String(legalHostSettings.legal_domain || '')}
+                          onChange={(e) => setLegalHostSettings((prev) => ({ ...prev, legal_domain: e.target.value }))}
+                          placeholder="legal.example.com"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-slate-500 md:col-span-2">
+                        custom_domain
+                        <input
+                          className="input mt-1"
+                          value={String(legalHostSettings.custom_domain || '')}
+                          onChange={(e) => setLegalHostSettings((prev) => ({ ...prev, custom_domain: e.target.value }))}
+                          placeholder="brand.example.com"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-slate-500 md:col-span-2">
+                        public_hosts (comma-separated)
+                        <input
+                          className="input mt-1"
+                          value={legalHostRaw.public_hosts}
+                          onChange={(e) => setLegalHostRaw((prev) => ({ ...prev, public_hosts: e.target.value }))}
+                          placeholder="example.com, www.example.com"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-slate-500 md:col-span-2">
+                        domains (comma-separated)
+                        <input
+                          className="input mt-1"
+                          value={legalHostRaw.domains}
+                          onChange={(e) => setLegalHostRaw((prev) => ({ ...prev, domains: e.target.value }))}
+                          placeholder="example.com, jobs.example.com"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-slate-500 md:col-span-2">
+                        legal_hosts (comma-separated)
+                        <input
+                          className="input mt-1"
+                          value={legalHostRaw.legal_hosts}
+                          onChange={(e) => setLegalHostRaw((prev) => ({ ...prev, legal_hosts: e.target.value }))}
+                          placeholder="legal.example.com"
+                        />
+                      </label>
+                    </div>
+                    <button type="button" className="btn-primary mt-3" onClick={() => void handleSaveLegalHosts()} disabled={legalHostSaving || legalHostLoading}>
+                      {legalHostSaving ? t('common.saving') : t('common.actions.save')}
+                    </button>
                   </div>
 
                   <div className="rounded border border-slate-100 p-3">

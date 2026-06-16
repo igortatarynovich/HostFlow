@@ -14,6 +14,8 @@ export type LegalDocumentOut = {
 export type LegalDocumentKind =
   | 'rodo_clause'
   | 'privacy_policy'
+  | 'terms_of_service'
+  | 'cookie_policy'
   | 'trial_terms'
   | 'downgrade_cancellation'
   | 'overage_autodebit'
@@ -54,6 +56,8 @@ export async function updateLegalDocument(id: string, payload: LegalDocumentUpda
 export type ActiveLegalDocsResponse = {
   rodo_clause: LegalDocumentOut | null
   privacy_policy: LegalDocumentOut | null
+  terms_of_service: LegalDocumentOut | null
+  cookie_policy: LegalDocumentOut | null
   trial_terms: LegalDocumentOut | null
   downgrade_cancellation: LegalDocumentOut | null
   overage_autodebit: LegalDocumentOut | null

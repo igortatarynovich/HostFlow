@@ -16,6 +16,7 @@ from backend.app.services.handoff import (
 )
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_hr_operational_context import ensure_hr_operational_context
+from backend.app.services.workforce_hr_operational_context import ensure_hr_document_links
 from backend.app.services.workforce_hr_review import (
     HR_REVIEW_STATUS_APPROVED,
     approve_hr_review_record,
@@ -37,11 +38,18 @@ async def accept_internal_hr_handoff(
     actor = str(reviewed_by_user_id or handoff.requested_by_user_id or "").strip() or "system"
 
     if await delayed_hr_workforce_creation_enabled(db, tid):
-        await ensure_hr_review_for_handoff(
+        review = await ensure_hr_review_for_handoff(
             db,
             tenant_id=tid,
             handoff_id=str(handoff.id),
             candidate_id=str(candidate.id),
+        )
+        await ensure_hr_document_links(
+            db,
+            tenant_id=tid,
+            candidate_id=str(candidate.id),
+            linked_entity_type="workforce_hr_review",
+            linked_entity_id=str(review.id),
         )
         return None
 

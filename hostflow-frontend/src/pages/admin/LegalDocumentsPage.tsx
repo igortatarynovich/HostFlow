@@ -21,6 +21,8 @@ type DocTypeRow = {
 const CANDIDATE_DOC_TYPES: DocTypeRow[] = [
   { value: 'rodo_clause', labelKey: 'admin.legal.rodo', emptyHintKey: 'admin.legal.no_rodo' },
   { value: 'privacy_policy', labelKey: 'admin.legal.privacy', emptyHintKey: 'admin.legal.no_privacy' },
+  { value: 'terms_of_service', labelKey: 'admin.legal.terms', emptyHintKey: 'admin.legal.no_terms' },
+  { value: 'cookie_policy', labelKey: 'admin.legal.cookies', emptyHintKey: 'admin.legal.no_cookies' },
 ]
 
 const BILLING_DOC_TYPES: DocTypeRow[] = [

@@ -56,7 +56,10 @@ from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.rodo import send_rodo_email as _send_rodo_email
 from backend.app.services.rodo import candidate_rodo_compliance_satisfied as _candidate_rodo_compliance_satisfied
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
-from backend.app.services.handoff import is_client_tenant as _is_client_tenant
+from backend.app.services.handoff import (
+    is_client_tenant as _is_client_tenant,
+    unlock_pending_handoff_for_recruitment_close,
+)
 from backend.app.services.recruitment_handoff_write_guard import (
     AgencyRecruitmentWriteBypass,
     agency_candidate_has_internal_hr_handoff_lane,
@@ -72,12 +75,6 @@ from backend.app.services.candidate_lifecycle import (
 )
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause
 from backend.app.services.tenant_visibility import TenantVisibility
-from backend.app.modules.documents import crud as documents_crud
-from backend.app.modules.documents.crud import get_last_document_checks_map
-from backend.app.modules.documents.rules_engine import compute_candidate_checklist
-from backend.app.services.document_orders import missing_base_requirements
-from backend.app.services.document_ruleset import load_default_ruleset
-from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 from backend.app.services.candidate_doc_pipeline_guard import (
     enforce_pipeline_contact_attempt_forward_block,
     enforce_pipeline_doc_forward_block,
@@ -103,6 +100,31 @@ async def _candidate_row_exists(db: AsyncSession, candidate_id: str) -> bool:
     """True if a candidate row is already persisted (not the pre-insert create path)."""
     row = await db.execute(select(Candidate.id).where(Candidate.id == candidate_id).limit(1))
     return row.scalar_one_or_none() is not None
+
+
+def _candidate_owner_context_for_docs(
+    *,
+    candidate_id: str,
+    extra: Dict[str, Any] | None,
+    personal: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """Compatibility helper for legacy consumers that still build owner doc context."""
+    extra_data = extra if isinstance(extra, dict) else {}
+    personal_data = personal if isinstance(personal, dict) else {}
+    docs_raw = extra_data.get("documents")
+    docs_ctx = {
+        key: bool(value)
+        for key, value in (docs_raw.items() if isinstance(docs_raw, dict) else [])
+        if isinstance(value, bool)
+    }
+    ctx: Dict[str, Any] = {
+        "candidate_id": str(candidate_id),
+        "citizenship": extra_data.get("citizenship") or personal_data.get("citizenship"),
+        "residency_status": extra_data.get("poland_stay_basis") or personal_data.get("residency_status"),
+        "has_adr": extra_data.get("has_adr"),
+        "documents": docs_ctx,
+    }
+    return {k: v for k, v in ctx.items() if v is not None}
 
 
 async def _enforce_rodo_before_contact_stage(
@@ -136,30 +158,6 @@ def _effective_vacancy_id_from_patch_payload(c: Candidate, payload: dict) -> Opt
     return getattr(c, "vacancy_id", None)
 
 
-def _candidate_owner_context_for_docs(
-    *,
-    candidate_id: str,
-    extra: Dict[str, Any] | None,
-    personal: Dict[str, Any] | None,
-) -> Dict[str, Any]:
-    extra_data = extra if isinstance(extra, dict) else {}
-    personal_data = personal if isinstance(personal, dict) else {}
-    docs_raw = extra_data.get("documents")
-    docs_ctx = {
-        key: bool(value)
-        for key, value in (docs_raw.items() if isinstance(docs_raw, dict) else [])
-        if isinstance(value, bool)
-    }
-    ctx: Dict[str, Any] = {
-        "candidate_id": str(candidate_id),
-        "citizenship": extra_data.get("citizenship") or personal_data.get("citizenship"),
-        "residency_status": extra_data.get("poland_stay_basis") or personal_data.get("residency_status"),
-        "has_adr": extra_data.get("has_adr"),
-        "documents": docs_ctx,
-    }
-    return {k: v for k, v in ctx.items() if v is not None}
-
-
 async def _enforce_docs_ready_for_handoff_stage(
     db: AsyncSession,
     *,
@@ -170,61 +168,69 @@ async def _enforce_docs_ready_for_handoff_stage(
     personal: Dict[str, Any] | None = None,
 ) -> None:
     stage_code = str(target_stage_code or "").strip().lower()
-    if stage_code != _READY_FOR_HANDOFF_STAGE:
+    if not stage_code:
         return
     # Same as RODO: on create we run before INSERT — checklist/docs are empty by definition.
     if not await _candidate_row_exists(db, candidate_id):
         return
 
-    owner_context = _candidate_owner_context_for_docs(
-        candidate_id=candidate_id,
-        extra=extra,
-        personal=personal,
-    )
-    oc_row = await db.execute(
-        select(Candidate.own_company_id).where(
-            Candidate.id == candidate_id,
-            Candidate.tenant_id == tenant_id,
-        ).limit(1)
-    )
-    oc = oc_row.scalar_one_or_none()
-    own_company_id = str(oc).strip() if oc else None
-    ruleset_version = await documents_crud.ensure_ruleset_seed(
-        db,
-        tenant_id,
-        load_default_ruleset(),
-        own_company_id=own_company_id,
-    )
-    ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
-    checklist = compute_candidate_checklist(owner_context, ruleset_payload)
-    existing_docs = await documents_crud.list_candidate_documents(
-        db,
-        tenant_id,
-        candidate_id,
-        active_own_company_id=own_company_id,
-    )
-    active_docs = [doc for doc in existing_docs if getattr(doc, "deleted_at", None) is None]
-    doc_ids = [str(d.id) for d in active_docs if getattr(d, "id", None)]
-    last_checks = await get_last_document_checks_map(db, tenant_id, doc_ids) if doc_ids else {}
-    missing = missing_base_requirements(checklist, active_docs, last_check_by_document_id=last_checks)
-    from backend.app.api.v1.candidates.pipeline_overrides_service import (
-        approved_handoff_relaxed_types,
+    from backend.app.process_engine.constants import RECRUITMENT_MODULE
+    from backend.app.process_engine.evaluator_adapter import TransitionEvaluatorAdapter
+    from backend.app.process_engine.pipeline_mapping import (
+        infer_pe_system_stage_code,
+        resolve_qualified_system_stage_for_candidate,
     )
 
-    relaxed = await approved_handoff_relaxed_types(
-        db, tenant_id=tenant_id, candidate_id=candidate_id
+    # P4: gate uses qualified PE system stage, not raw funnel slug.
+    qualified = await resolve_qualified_system_stage_for_candidate(
+        db,
+        tenant_id=tenant_id,
+        candidate_id=candidate_id,
+        legacy_stage_code=stage_code,
     )
-    if relaxed:
-        missing = [m for m in missing if m not in relaxed]
-    if missing:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "handoff_docs_incomplete",
-                "message": "Required documents checklist is incomplete for ready_for_handoff stage",
-                "missing_types": missing,
+    target_system_stage = (
+        qualified.code if qualified else infer_pe_system_stage_code(stage_code) or stage_code
+    )
+    if target_system_stage != _READY_FOR_HANDOFF_STAGE:
+        return
+
+    # P3: stage logic can resolve effective process profile (via vacancy); gate semantics unchanged.
+    await TransitionEvaluatorAdapter.resolve_effective_process_profile_for_candidate_id(
+        db,
+        tenant_id=tenant_id,
+        candidate_id=candidate_id,
+        module=RECRUITMENT_MODULE,
+    )
+
+    err = await TransitionEvaluatorAdapter.assert_transition_allowed(
+        db,
+        tenant_id=tenant_id,
+        module=RECRUITMENT_MODULE,
+        entity_type="candidate",
+        entity_id=candidate_id,
+        target_system_stage=stage_code,
+        require_destination=False,
+    )
+    if not err:
+        return
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "handoff_docs_incomplete",
+            "message": "Required documents checklist is incomplete for ready_for_handoff stage",
+            "missing_types": err.get("missing_types") or [],
+            "missing_data_fields": err.get("missing_data_fields") or [],
+            "blocking_blocks": err.get("blocking_blocks") or [],
+            "required_confirmations": err.get("required_confirmations") or [],
+            "package_blocks": err.get("package_blocks") or [],
+            "eligibility_status": err.get("eligibility_status"),
+            "blocking_reasons": err.get("blocking_reasons") or [],
+            "transfer_policy": {
+                "policy_version": err.get("policy_version"),
+                "source_layers": err.get("source_layers") or [],
             },
-        )
+        },
+    )
 
 
 async def _get_supervisor_id(db: AsyncSession, recruiter_id: Optional[str]) -> Optional[str]:
@@ -1095,7 +1101,9 @@ async def update_candidate_full(
                 if "personal_data" in changes
                 else _as_dict_safe(getattr(c, "personal_data", None))
             )
-            hiring_gates = await resolve_hiring_pipeline_gates(db, tenant_id)
+            hiring_gates = await resolve_hiring_pipeline_gates(
+                db, tenant_id, candidate_id=candidate_id
+            )
             await enforce_pipeline_doc_forward_block(
                 db,
                 tenant_id=tenant_id,
@@ -1138,6 +1146,20 @@ async def update_candidate_full(
             changes["stage"] = new_stage_code
             changes["status"] = new_stage_code
             stage_changed = True
+            if (
+                candidate_home_tenant
+                and not await _is_client_tenant(db, candidate_home_tenant)
+            ):
+                from backend.app.constants.stages import TERMINAL_STATUSES
+
+                if str(new_stage_code).strip().lower() in TERMINAL_STATUSES:
+                    await unlock_pending_handoff_for_recruitment_close(
+                        db,
+                        agency_tenant_id=candidate_home_tenant,
+                        candidate_id=str(candidate_id),
+                        actor_user_id=actor_id,
+                        close_stage=str(new_stage_code),
+                    )
 
     validated_status_reasons: list[str] = []
     target_stage_for_reason = new_stage_code if stage_changed else getattr(c, "stage", None)
@@ -1684,7 +1706,6 @@ async def bulk_update_stage(
 
     target_stage = _normalize_stage_to_code(stage) or stage
     client_tenant = await _is_client_tenant(db, tenant_id)
-    hiring_gates = await resolve_hiring_pipeline_gates(db, tenant_id)
 
     out: list[BulkStageResult] = []
     status_reason_explicit = status_reason is not _UNSET and status_reason is not None
@@ -1749,6 +1770,9 @@ async def bulk_update_stage(
                 db,
                 candidate_id=cid,
                 target_stage_code=normalized,
+            )
+            hiring_gates = await resolve_hiring_pipeline_gates(
+                db, tenant_id, candidate_id=cid
             )
             try:
                 await enforce_pipeline_doc_forward_block(

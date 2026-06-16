@@ -18,22 +18,20 @@ from uuid import UUID
 from backend.app.core.cache import cache_get, cache_set
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.auth.deps import UserCtx, get_current_user
-from backend.app.models import (
-    ActivityLog,
-    Candidate,
-    CandidateHandoff,
-    CandidateStageHistory,
-    Company,
-    ContactAttempt,
-    Document,
-    Lead,
-    Reminder,
-    RiskIntelEntityShadow,
-    ServiceOrder,
-    Tenant,
-    User,
-    Vacancy,
-)
+from backend.app.models.audit import ActivityLog
+from backend.app.models.candidate import Candidate
+from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.models.candidate_stage_history import CandidateStageHistory
+from backend.app.models.company import Company
+from backend.app.models.contact_attempt import ContactAttempt
+from backend.app.models.document import Document
+from backend.app.models.lead import Lead
+from backend.app.models.reminder import Reminder
+from backend.app.models.risk_intel import RiskIntelEntityShadow
+from backend.app.models.additional_service import ServiceOrder
+from backend.app.models.tenant import Tenant
+from backend.app.models.user import User
+from backend.app.models.vacancy import Vacancy
 from backend.app.models.additional_service import ServiceOrderStatus
 from backend.app.models.reminder import ReminderStatus
 from backend.app.models.additional_service import Service, ServiceItem

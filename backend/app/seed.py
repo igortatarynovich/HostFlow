@@ -75,3 +75,42 @@ async def run_seed(db: AsyncSession) -> None:
             except Exception:
                 pass
             logger.warning(f"[seed] Failed to reconcile default candidate profile for tenant {tenant_id}: {e}")
+
+        # Process Engine P1 — recruitment registry defaults
+        try:
+            from backend.app.process_engine.seed import ensure_recruitment_process_engine_defaults
+
+            await ensure_recruitment_process_engine_defaults(db, tenant_id)
+            await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(f"[seed] Failed to seed Process Engine defaults for tenant {tenant_id}: {e}")
+
+        # Field Registry P1 — canonical fields + default card layouts
+        try:
+            from backend.app.field_registry.seed import ensure_tenant_field_registry_defaults
+
+            await ensure_tenant_field_registry_defaults(db, tenant_id)
+            await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(f"[seed] Failed to seed Field Registry defaults for tenant {tenant_id}: {e}")
+
+        # Module Registry P1 — canonical module catalog + tenant installation rows
+        try:
+            from backend.app.module_registry.seed import ensure_tenant_module_installations
+
+            await ensure_tenant_module_installations(db, tenant_id)
+            await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(f"[seed] Failed to seed Module Registry defaults for tenant {tenant_id}: {e}")

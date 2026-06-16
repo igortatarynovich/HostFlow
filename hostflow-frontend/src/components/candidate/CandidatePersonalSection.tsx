@@ -4,6 +4,7 @@ import { IconChevronDown, IconUser } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { Input, SearchableSelect, CheckboxMultiSelect, Checkbox } from './shared/FormComponents'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
@@ -27,6 +28,7 @@ interface CandidatePersonalSectionProps {
   onExtraChange: (patch: Partial<CandidateExtra>) => void
   onAddressFieldChange: (which: 'address' | 'reg_address', key: keyof NonNullable<CandidateExtra['address']>, value: string) => void
   candidateProfile?: CandidateProfile | null
+  effectiveLayout?: EffectiveCardLayout | null
   candidateDataReadOnly?: boolean
   embedded?: boolean
 }
@@ -42,10 +44,15 @@ function CandidatePersonalSection({
   onExtraChange,
   onAddressFieldChange,
   candidateProfile,
+  effectiveLayout,
   candidateDataReadOnly = false,
   embedded = false,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
+  const fieldVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
+  const fieldRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
+  const fieldLabel = (fieldKey: string, defaultLabel: string) =>
+    getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
   const [collapsed, setCollapsed] = useState(() => {
     if (embedded) return false
     try {
@@ -121,24 +128,24 @@ function CandidatePersonalSection({
       </button>
 
       {!collapsed && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {(!candidateProfile || isFieldVisible(candidateProfile, 'birth_date')) && (
+        {(!candidateProfile || fieldVisible('birth_date')) && (
           <div>
             <Input
-              label={getFieldLabel(candidateProfile, 'birth_date', t('app.candidate_card.fields.birth_date'))}
+              label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
               type="date"
               value={(extra.birth_date as any) || ''}
               onChange={(e) => onExtraChange({ birth_date: e.target.value })}
               readOnly={candidateDataReadOnly}
-              required={isFieldRequired(candidateProfile, 'birth_date')}
+              required={fieldRequired('birth_date')}
             />
             {ageHint != null && (
               <p className="mt-1 text-xs text-slate-500">{t('app.candidate_card.fields.age_hint', { values: { age: ageHint } })}</p>
             )}
           </div>
         )}
-        {(!candidateProfile || isFieldVisible(candidateProfile, 'citizenship')) && (
+        {(!candidateProfile || fieldVisible('citizenship')) && (
           <label className="block">
-            <div className="label">{getFieldLabel(candidateProfile, 'citizenship', t('app.candidate_card.fields.citizenship'))} {isFieldRequired(candidateProfile, 'citizenship') && <span className="text-red-600">*</span>}</div>
+            <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))} {fieldRequired('citizenship') && <span className="text-red-600">*</span>}</div>
           <SearchableSelect
             options={countries}
             value={(extra.citizenship as any) || ''}
@@ -150,9 +157,9 @@ function CandidatePersonalSection({
           />
         </label>
         )}
-        {(!candidateProfile || isFieldVisible(candidateProfile, 'country_code')) && (
+        {(!candidateProfile || fieldVisible('country_code')) && (
           <label className="block">
-            <div className="label">{getFieldLabel(candidateProfile, 'country_code', t('app.candidate_card.fields.country_code'))} {isFieldRequired(candidateProfile, 'country_code') && <span className="text-red-600">*</span>}</div>
+            <div className="label">{fieldLabel('country_code', t('app.candidate_card.fields.country_code'))} {fieldRequired('country_code') && <span className="text-red-600">*</span>}</div>
           <SearchableSelect
             options={countries}
             value={(candidate.country_code as any) || ''}
@@ -178,9 +185,9 @@ function CandidatePersonalSection({
           )}
         </label>
         )}
-        {(!candidateProfile || isFieldVisible(candidateProfile, 'languages')) && (
+        {(!candidateProfile || fieldVisible('languages')) && (
           <div className="lg:col-span-2">
-            <div className="label">{getFieldLabel(candidateProfile, 'languages', t('app.candidate_card.fields.languages'))} {isFieldRequired(candidateProfile, 'languages') && <span className="text-red-600">*</span>}</div>
+            <div className="label">{fieldLabel('languages', t('app.candidate_card.fields.languages'))} {fieldRequired('languages') && <span className="text-red-600">*</span>}</div>
           <CheckboxMultiSelect
             options={languages}
             values={candidate.languages || []}

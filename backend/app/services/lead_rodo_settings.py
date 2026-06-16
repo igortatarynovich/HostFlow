@@ -19,7 +19,7 @@ _SETTINGS_KEY = "lead_rodo_v1"
 
 
 class LeadRodoSettings:
-    __slots__ = ("send_mode", "channels", "template_id")
+    __slots__ = ("send_mode", "channels", "template_id", "message_template_id")
 
     def __init__(
         self,
@@ -27,10 +27,12 @@ class LeadRodoSettings:
         send_mode: LeadRodoSendMode = "manual",
         channels: tuple[str, ...] = DEFAULT_LEAD_RODO_CHANNELS,
         template_id: Optional[str] = None,
+        message_template_id: Optional[str] = None,
     ) -> None:
         self.send_mode = send_mode
         self.channels = channels
         self.template_id = (str(template_id).strip() or None) if template_id else None
+        self.message_template_id = (str(message_template_id).strip() or None) if message_template_id else None
 
     def auto_on_lead_created(self) -> bool:
         return self.send_mode == "auto_on_lead_created"
@@ -71,6 +73,7 @@ def lead_rodo_settings_from_tenant_dict(settings: Optional[dict[str, Any]]) -> L
         send_mode=_normalize_send_mode(raw.get("send_mode")),
         channels=_normalize_channels(raw.get("channels")),
         template_id=raw.get("template_id"),
+        message_template_id=raw.get("message_template_id"),
     )
 
 
@@ -89,7 +92,9 @@ async def persist_lead_rodo_settings(
     send_mode: Optional[LeadRodoSendMode] = None,
     channels: Optional[list[str]] = None,
     template_id: Optional[str] = None,
+    message_template_id: Optional[str] = None,
     clear_template_id: bool = False,
+    clear_message_template_id: bool = False,
 ) -> LeadRodoSettings:
     tenant = await db.get(Tenant, str(tenant_id).strip())
     if tenant is None:
@@ -100,6 +105,7 @@ async def persist_lead_rodo_settings(
         "send_mode": cur.send_mode,
         "channels": list(cur.channels),
         "template_id": cur.template_id,
+        "message_template_id": cur.message_template_id,
     }
     if send_mode is not None:
         block["send_mode"] = _normalize_send_mode(send_mode)
@@ -109,6 +115,10 @@ async def persist_lead_rodo_settings(
         block["template_id"] = None
     elif template_id is not None:
         block["template_id"] = str(template_id).strip() or None
+    if clear_message_template_id:
+        block["message_template_id"] = None
+    elif message_template_id is not None:
+        block["message_template_id"] = str(message_template_id).strip() or None
     st[_SETTINGS_KEY] = block
     tenant.settings = st
     await db.flush()
@@ -120,6 +130,7 @@ def lead_rodo_settings_to_api_dict(cfg: LeadRodoSettings) -> dict[str, Any]:
         "lead_rodo_send_mode": cfg.send_mode,
         "lead_rodo_channels": list(cfg.channels),
         "lead_rodo_template_id": cfg.template_id,
+        "lead_rodo_message_template_id": cfg.message_template_id,
     }
 
 

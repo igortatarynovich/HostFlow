@@ -10,12 +10,15 @@ import {
   returnWorkforceHrReviewToRecruitment,
   type HrReviewDocumentRow,
   type HrReviewPanel,
+  type WorkforceEligibilityRuntime,
 } from '../../api/workforce'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
 import HrDocumentOpenButton from './HrDocumentOpenButton'
 import { countVerifiedDocuments, requiredDocumentQueue } from './hrDocumentVerificationFields'
 import { isHrApproveAllowed } from '../../utils/hrReviewApprove'
+import BlockerPanel from '../surfaces/BlockerPanel'
+import ReadinessPanel from '../surfaces/ReadinessPanel'
 
 const TERMINAL = new Set(['approved_for_employment', 'returned_to_recruitment', 'rejected_by_hr'])
 
@@ -27,6 +30,7 @@ function statusLabel(t: ReturnType<typeof useI18n>['t'], status: string): string
 
 type Props = {
   panel: HrReviewPanel
+  workforceEligibility?: WorkforceEligibilityRuntime | null
   manage: boolean
   onUpdated: (p: HrReviewPanel) => void
   employeeId?: string
@@ -70,6 +74,7 @@ function docPrimaryAction(
 
 export default function HrReviewPanelCard({
   panel,
+  workforceEligibility,
   manage,
   onUpdated,
   employeeId: employeeIdProp,
@@ -91,7 +96,11 @@ export default function HrReviewPanelCard({
 
   const terminal = TERMINAL.has(panel.status)
   const canEmployeeActions = Boolean(employeeId)
+  const planReady = panel.verification_plan?.can_approve === true
   const approveAllowed = isHrApproveAllowed(panel)
+  const runtimeApproveAllowed = workforceEligibility?.allowed_operations?.employee_activation !== false
+  const approveAllowedFinal = approveAllowed && runtimeApproveAllowed
+  const showApproveInPanel = approveAllowedFinal && !(caseDecisionMode && planReady)
   const readiness = panel.decision_readiness
   const planDocs = panel.verification_plan?.documents?.length
     ? panel.verification_plan.documents
@@ -103,6 +112,15 @@ export default function HrReviewPanelCard({
     panel.employment_identity?.ready_for_downstream ||
     panel.employment_identity?.status === 'complete' ||
     readiness?.identity_status === 'complete'
+  const approveBlockReason = (workforceEligibility?.blocking_reasons || []).find((b) =>
+    (b.affected_operation || []).includes('employee_activation'),
+  )
+  const approveBlockReasonText = approveBlockReason
+    ? [approveBlockReason.block_type, approveBlockReason.document_code && `(${approveBlockReason.document_code})`]
+        .filter(Boolean)
+        .join(' ')
+        .replace(/_/g, ' ')
+    : null
 
   const patchChecklist = useCallback(
     (itemCode: string, satisfied: boolean) => {
@@ -193,32 +211,38 @@ export default function HrReviewPanelCard({
       ) : null}
 
       {caseDecisionMode && !terminal ? (
-        <ul className="mt-3 space-y-1.5 text-sm text-slate-800">
-          <li className="flex items-center gap-2">
-            <span className={docsVerified ? 'text-emerald-600' : 'text-slate-400'} aria-hidden>
-              {docsVerified ? '✓' : '○'}
-            </span>
-            {docsVerified
-              ? t('app.hr.review.docs_all_confirmed', { defaultValue: 'All required documents confirmed' })
-              : t('app.hr.review.docs_pending', { defaultValue: 'Documents still need confirmation' })}
-          </li>
-          <li className="flex items-center gap-2">
-            <span className={identityReady ? 'text-emerald-600' : 'text-slate-400'} aria-hidden>
-              {identityReady ? '✓' : '○'}
-            </span>
-            {identityReady
-              ? t('app.hr.review.identity_ready', { defaultValue: 'Employment identity ready' })
-              : t('app.hr.review.identity_pending', { defaultValue: 'Employment identity incomplete' })}
-          </li>
-        </ul>
+        <ReadinessPanel
+          className="mt-3"
+          title={t('app.surfaces.readiness.decision_title', { defaultValue: 'Before approval' })}
+          items={[
+            {
+              id: 'docs',
+              label: docsVerified
+                ? t('app.hr.review.docs_all_confirmed', { defaultValue: 'All required documents confirmed' })
+                : t('app.hr.review.docs_pending', { defaultValue: 'Documents still need confirmation' }),
+              ready: docsVerified,
+            },
+            {
+              id: 'identity',
+              label: identityReady
+                ? t('app.hr.review.identity_ready', { defaultValue: 'Employment identity ready' })
+                : t('app.hr.review.identity_pending', { defaultValue: 'Employment identity incomplete' }),
+              ready: identityReady,
+            },
+          ]}
+        />
       ) : null}
 
       {!caseDecisionMode && panel.blockers.length > 0 && !terminal ? (
-        <ul className="mt-2 list-inside list-disc text-xs text-rose-800">
-          {panel.blockers.map((b) => (
-            <li key={b}>{b.replace(/_/g, ' ')}</li>
-          ))}
-        </ul>
+        <BlockerPanel
+          className="mt-3"
+          title={t('app.surfaces.blocker.hr_review_title', { defaultValue: 'HR review blockers' })}
+          items={panel.blockers.map((b) => ({
+            id: b,
+            label: b.replace(/_/g, ' '),
+            severity: 'blocker' as const,
+          }))}
+        />
       ) : null}
 
       {panel.corrections_note ? (
@@ -327,19 +351,26 @@ export default function HrReviewPanelCard({
 
       {manage && !terminal ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-primary btn-sm"
-            disabled={busy || !approveAllowed}
-            title={
-              !approveAllowed && panel.decision_readiness?.approve_blocked_reason
-                ? panel.decision_readiness.approve_blocked_reason
-                : undefined
-            }
-            onClick={() => void run(() => approveReview())}
-          >
-            {t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}
-          </button>
+          {showApproveInPanel ? (
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              disabled={busy || !approveAllowedFinal}
+              title={
+                !approveAllowedFinal && (approveBlockReasonText || panel.decision_readiness?.approve_blocked_reason)
+                  ? approveBlockReasonText || panel.decision_readiness?.approve_blocked_reason
+                  : undefined
+              }
+              onClick={() => void run(() => approveReview())}
+            >
+              {t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}
+            </button>
+          ) : null}
+          {!approveAllowedFinal && (approveBlockReasonText || panel.decision_readiness?.approve_blocked_reason) ? (
+            <p className="w-full text-xs text-slate-600">
+              {(approveBlockReasonText || panel.decision_readiness?.approve_blocked_reason || '').replace(/_/g, ' ')}
+            </p>
+          ) : null}
           {canEmployeeActions ? (
             <>
               <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => setShowCorrections((x) => !x)}>

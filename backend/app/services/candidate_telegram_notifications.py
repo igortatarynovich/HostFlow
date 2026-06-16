@@ -16,14 +16,17 @@ from backend.app.core.settings import settings
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.models.communication import CommunicationChannelAccount
-from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents
-from backend.app.modules.documents.owner_summary import compute_owner_summary
 from backend.app.services.candidate_notifications import get_document_display_name
 from backend.app.services.communications_telegram import TelegramBotConfig, send_telegram_text
 from backend.app.services.candidate_workforce_lock import (
     SKIP_SOURCE_READY_FOR_HANDOFF_GATE,
     is_candidate_locked_by_workforce,
     observe_skipped_system_candidate_mutation_due_to_workforce_lock,
+)
+from backend.app.services.document_hub_delivery_contract import (
+    compute_owner_summary_via_contract,
+    ensure_ruleset_seed_via_contract,
+    list_candidate_documents_via_contract,
 )
 from backend.app.services.document_ruleset import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
@@ -275,19 +278,18 @@ async def get_candidate_required_docs_snapshot(
 ) -> Dict[str, Any]:
     oc = getattr(candidate, "own_company_id", None)
     own_company_id = str(oc).strip() if oc else None
-    ruleset_version = await ensure_ruleset_seed(
+    ruleset_version = await ensure_ruleset_seed_via_contract(
         db,
-        str(tenant_id),
-        load_default_ruleset(),
+        tenant_id=str(tenant_id),
+        ruleset_payload=load_default_ruleset(),
         own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     owner_context = _candidate_owner_context_for_docs(candidate)
-    docs = await list_candidate_documents(
+    docs = await list_candidate_documents_via_contract(
         db,
-        str(tenant_id),
-        str(candidate.id),
-        include_deleted=False,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate.id),
         active_own_company_id=own_company_id,
     )
     docs_payload: list[dict[str, Any]] = []
@@ -303,7 +305,7 @@ async def get_candidate_required_docs_snapshot(
                 "expires_at": expire_date.isoformat() if expire_date is not None else None,
             }
         )
-    summary = compute_owner_summary(owner_context, ruleset_payload, docs_payload)
+    summary = compute_owner_summary_via_contract(owner_context, ruleset_payload, docs_payload)
     required = _as_dict(summary.get("required"))
     total = int(required.get("total") or 0)
     ready = int(required.get("ready") or 0)

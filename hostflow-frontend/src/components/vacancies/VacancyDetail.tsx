@@ -22,6 +22,14 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { servicesWorkspacePath } from '../../modules/services/utils'
 import { NextActionBadge } from '../candidate/NextActionBadge'
 import { useVacancyNextAction } from '../vacancy/useVacancyNextAction'
+import { useEffectiveVacancyLayout } from '../../hooks/useEffectiveVacancyLayout'
+import {
+  getVacancyFieldsRenderOrder,
+  vacancyFieldLabel,
+  vacancyFieldRequired,
+  vacancyFieldVisible,
+  type VacancyRegistryFieldKey,
+} from '../../utils/vacancyLayoutUtils'
 
 const primaryBtn = 'btn-primary'
 const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
@@ -588,6 +596,125 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     return Object.entries(companiesMap).map(([id, name]) => ({ id, name: name || id }))
   }, [companiesMap])
 
+  const { effectiveLayout } = useEffectiveVacancyLayout(Boolean(model || routeId))
+  const vacancyFieldOrder = useMemo(
+    () => getVacancyFieldsRenderOrder(effectiveLayout),
+    [effectiveLayout],
+  )
+
+  const renderVacancyRegistryField = useCallback(
+    (key: VacancyRegistryFieldKey) => {
+      if (!vacancyFieldVisible(key, effectiveLayout)) return null
+      const requiredMark = vacancyFieldRequired(key, effectiveLayout)
+      switch (key) {
+        case 'title':
+          return (
+            <label key="title" className="block">
+              <div className="label">
+                {vacancyFieldLabel('title', 'Название', effectiveLayout)}
+                {requiredMark ? <span className="text-red-600"> *</span> : null}
+              </div>
+              <input className="input" {...register('title')} />
+              {errors.title && <p className="text-sm text-rose-600 mt-1">{errors.title.message}</p>}
+            </label>
+          )
+        case 'employment_type':
+          return (
+            <label key="employment_type" className="block">
+              <div className="label">
+                {vacancyFieldLabel('employment_type', 'Тип занятости', effectiveLayout)}
+                {requiredMark ? <span className="text-red-600"> *</span> : null}
+              </div>
+              <select className="input" {...register('employment_type')}>
+                {EMPLOYMENT_TYPES.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              {errors.employment_type && (
+                <p className="text-sm text-rose-600 mt-1">{errors.employment_type.message}</p>
+              )}
+            </label>
+          )
+        case 'company_id':
+          return (
+            <label key="company_id" className="block">
+              <div className="label">
+                {vacancyFieldLabel('company_id', 'Компания', effectiveLayout)}
+                {requiredMark ? <span className="text-red-600"> *</span> : null}
+              </div>
+              <select className="input" {...register('company_id')}>
+                <option value="">— выберите компанию —</option>
+                {companyOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {errors.company_id && (
+                <p className="text-sm text-rose-600 mt-1">{errors.company_id.message}</p>
+              )}
+            </label>
+          )
+        case 'headcount_target':
+          return (
+            <label key="headcount_target" className="block">
+              <div className="label">
+                {vacancyFieldLabel('headcount_target', t('app.vacancies.detail.fields.headcount_target'), effectiveLayout)}
+                {requiredMark ? <span className="text-red-600"> *</span> : null}
+              </div>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={9999}
+                className="input"
+                {...register('headcount_target')}
+                placeholder="—"
+              />
+              <p className="mt-1 text-xs text-slate-500">{t('app.vacancies.detail.fields.headcount_hint')}</p>
+            </label>
+          )
+        case 'location':
+          return (
+            <label key="location" className="block">
+              <div className="label">
+                {vacancyFieldLabel('location', 'Локация', effectiveLayout)}
+                {requiredMark ? <span className="text-red-600"> *</span> : null}
+              </div>
+              <input className="input" {...register('location')} />
+            </label>
+          )
+        case 'description':
+          return (
+            <div key="description" className="md:col-span-2">
+              <label className="block">
+                <div className="label">
+                  {vacancyFieldLabel('description', 'Описание', effectiveLayout)}
+                  {requiredMark ? <span className="text-red-600"> *</span> : null}
+                </div>
+                <textarea
+                  className="input w-full bg-muted/60 resize-none overflow-hidden min-h-[140px] max-h-none"
+                  {...register('description')}
+                  rows={Math.max(6, ((watch('description') || '') as string).split('\n').length + 1)}
+                  onInput={(e) => {
+                    const el = e.currentTarget
+                    el.style.height = 'auto'
+                    el.style.height = `${el.scrollHeight}px`
+                  }}
+                  style={{ height: 'auto' }}
+                />
+              </label>
+            </div>
+          )
+        default:
+          return null
+      }
+    },
+    [effectiveLayout, register, errors, companyOptions, watch, t],
+  )
+
   if (loading) {
     return <div className="text-slate-500">Загрузка карточки вакансии…</div>
   }
@@ -836,11 +963,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           <SectionCard title={t('app.vacancies.detail.sections.info')}>
             <form className="space-y-4" onSubmit={handleSubmit(submitVacancy)}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="block">
-              <div className="label">Название</div>
-              <input className="input" {...register('title')} />
-              {errors.title && <p className="text-sm text-rose-600 mt-1">{errors.title.message}</p>}
-            </label>
+            {vacancyFieldOrder.map((key) => renderVacancyRegistryField(key))}
 
             <label className="block">
               <div className="label">Статус</div>
@@ -851,27 +974,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   </option>
                 ))}
               </select>
-            </label>
-
-            <label className="block">
-              <div className="label">Тип занятости</div>
-              <select className="input" {...register('employment_type')}>
-                {EMPLOYMENT_TYPES.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              {errors.employment_type && <p className="text-sm text-rose-600 mt-1">{errors.employment_type.message}</p>}
-            </label>
-
-            <label className="block">
-              <div className="label">Компания</div>
-              <select className="input" {...register('company_id')}>
-                <option value="">— выберите компанию —</option>
-                {companyOptions.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              {errors.company_id && <p className="text-sm text-rose-600 mt-1">{errors.company_id.message}</p>}
             </label>
 
             <label className="block">
@@ -901,29 +1003,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 {...register('currency')}
                 placeholder={t('app.vacancies.detail.placeholders.currency_codes')}
               />
-            </label>
-
-            <label className="block">
-              <div className="label">Локация</div>
-              <input className="input" {...register('location')} />
-            </label>
-
-            <label className="block">
-              <div className="label">
-                {t('app.vacancies.detail.fields.headcount_target')}
-              </div>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={9999}
-                className="input"
-                {...register('headcount_target')}
-                placeholder="—"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                {t('app.vacancies.detail.fields.headcount_hint')}
-              </p>
             </label>
 
             <div className="md:col-span-2 flex items-center gap-6">
@@ -963,22 +1042,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <Input label="Изменена" value={formatDate(model?.updated_at)} readOnly />
             <Input label={t('app.vacancies.detail.fields.id')} value={model?.id || '—'} mono readOnly />
 
-            <div className="md:col-span-2">
-              <label className="block">
-                <div className="label">Описание</div>
-                <textarea
-                  className="input w-full bg-muted/60 resize-none overflow-hidden min-h-[140px] max-h-none"
-                  {...register('description')}
-                  rows={Math.max(6, ((watch('description') || '') as string).split('\n').length + 1)}
-                  onInput={(e) => {
-                    const t = e.currentTarget
-                    t.style.height = 'auto'
-                    t.style.height = `${t.scrollHeight}px`
-                  }}
-                  style={{ height: 'auto' }}
-                />
-              </label>
-            </div>
             <div className="md:col-span-2">
               <div className="mb-2 text-sm font-semibold text-slate-800">
                 {t('app.vacancies.detail.criteria.title')}

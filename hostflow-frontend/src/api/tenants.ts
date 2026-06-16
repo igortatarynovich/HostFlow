@@ -29,6 +29,7 @@ import type {
   TenantStatus,
   TenantStatusChangePayload,
   TenantType,
+  TenantLegalHostSettings,
   TenantVacancyAccessListResponse,
   TenantVacancyAccessUpdatePayload,
   TenantVacancyOption,
@@ -170,6 +171,19 @@ export async function decidePlatformSeatRequest(
 
 export async function changePlatformTenantStatus(tenantId: string, payload: TenantStatusChangePayload) {
   const { data } = await http.post<PlatformTenant>(`/platform/tenants/${tenantId}/suspend`, payload)
+  return data
+}
+
+export async function getPlatformTenantLegalHostSettings(tenantId: string) {
+  const { data } = await http.get<TenantLegalHostSettings>(`/platform/tenants/${tenantId}/legal-host-settings`)
+  return data
+}
+
+export async function updatePlatformTenantLegalHostSettings(
+  tenantId: string,
+  payload: TenantLegalHostSettings,
+) {
+  const { data } = await http.patch<TenantLegalHostSettings>(`/platform/tenants/${tenantId}/legal-host-settings`, payload)
   return data
 }
 
@@ -348,6 +362,24 @@ export async function createSeatRequest(
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.post<SeatRequest>('/settings/team/seat-requests', payload)
   return data
+}
+
+export async function getTransferPolicySettings(): Promise<TransferPolicySettings> {
+  const { data } = await http.get<TransferPolicySettings>('/settings/team/transfer-policy')
+  return data
+}
+
+export type TransferPolicyLayer = {
+  storage?: string
+  note?: string
+  handoff_gate_source?: boolean
+  [key: string]: unknown
+}
+
+export type TransferPolicySettings = {
+  policy_version: string
+  layers: Record<string, TransferPolicyLayer>
+  governance: Record<string, string[]>
 }
 
 export async function createTenantAdmin(tenantId: string, payload: TenantAdminInput) {

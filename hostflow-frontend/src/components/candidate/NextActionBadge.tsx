@@ -14,10 +14,14 @@ import {
 import type {
   NextActionDTO,
   NextActionKind,
-  NextActionPriority,
 } from '../../api/nextAction'
 import { useI18n } from '../../i18n'
 import NextActionExplainabilityPopover from '../explainability/NextActionExplainabilityPopover'
+import {
+  STATUS_BADGE_SEMANTIC_CLASSES,
+  STATUS_BADGE_SEMANTIC_CLASSES_INVERSE,
+  nextActionPriorityToSemantic,
+} from '../ui/statusBadgeSemantics'
 
 /**
  * Single primary "what to do next" badge for any entity header.
@@ -50,24 +54,11 @@ interface NextActionBadgeProps {
   onClick?: () => void
 }
 
-// Visual tokens mapped from (kind, priority). These are deliberately small —
-// the badge is a single pill, not a card. Colour conveys urgency, icon
-// conveys the type of action.
-const PRIORITY_BG: Record<NextActionPriority, string> = {
-  critical: 'bg-rose-500 text-white border-rose-300',
-  high: 'bg-amber-400 text-amber-950 border-amber-200',
-  normal: 'bg-sky-500 text-white border-sky-300',
-  idle: 'bg-white/15 text-white border-white/30',
-}
+const BADGE_BASE =
+  'inline-flex max-w-[280px] items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold shadow-sm'
 
-// Same keys, light-background variant for non-inverse contexts (e.g. when
-// the badge is reused outside the dark candidate header). Kept here so all
-// the colour decisions live in one place.
-const PRIORITY_BG_LIGHT: Record<NextActionPriority, string> = {
-  critical: 'bg-rose-100 text-rose-800 border-rose-200',
-  high: 'bg-amber-100 text-amber-800 border-amber-200',
-  normal: 'bg-sky-100 text-sky-800 border-sky-200',
-  idle: 'bg-slate-100 text-slate-700 border-slate-200',
+function badgePalette(inverse: boolean, semantic: keyof typeof STATUS_BADGE_SEMANTIC_CLASSES) {
+  return inverse ? STATUS_BADGE_SEMANTIC_CLASSES_INVERSE[semantic] : STATUS_BADGE_SEMANTIC_CLASSES[semantic]
 }
 
 function iconForKind(kind: NextActionKind, size = 14) {
@@ -102,10 +93,7 @@ function NextActionBadgeInner({
   if (loading && !dto) {
     return (
       <span
-        className={clsx(
-          'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium',
-          inverse ? 'border-white/20 bg-white/10 text-white/70' : 'border-slate-200 bg-slate-50 text-slate-500',
-        )}
+        className={clsx(BADGE_BASE, badgePalette(inverse, 'neutral'), inverse && 'text-white/70')}
         aria-busy="true"
         aria-live="polite"
       >
@@ -121,10 +109,7 @@ function NextActionBadgeInner({
   if (error && !dto) {
     return (
       <span
-        className={clsx(
-          'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium',
-          inverse ? 'border-rose-200 bg-rose-500/30 text-white' : 'border-rose-200 bg-rose-100 text-rose-800',
-        )}
+        className={clsx(BADGE_BASE, badgePalette(inverse, 'danger'))}
         title={t('app.candidate_card.next_action.error_hint', {
           defaultValue: 'Could not load the recommended next action.',
         })}
@@ -139,11 +124,8 @@ function NextActionBadgeInner({
     return null
   }
 
-  const palette = inverse ? PRIORITY_BG : PRIORITY_BG_LIGHT
-  const pillClasses = clsx(
-    'inline-flex max-w-[280px] items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold shadow-sm',
-    palette[dto.priority] ?? palette.idle,
-  )
+  const semantic = nextActionPriorityToSemantic(dto.priority)
+  const pillClasses = clsx(BADGE_BASE, badgePalette(inverse, semantic))
 
   const titleText = dto.title_key
     ? t(dto.title_key, { defaultValue: dto.title })

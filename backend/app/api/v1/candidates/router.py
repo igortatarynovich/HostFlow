@@ -112,6 +112,11 @@ from backend.app.api.v1.candidates.acl import (
     resolve_candidate_acl,
     candidate_acl_sql_or_clause,
 )
+from backend.app.api.v1.candidates.scope_utils import (
+    bind_candidate_scope_rls,
+    candidate_scope_tenant_str,
+    resolve_optional_scope_tenant_uuid,
+)
 from backend.app.auth.hiring_workspace_roles import (
     HIRING_CANDIDATE_MUTATE_ROLES,
     HIRING_CANDIDATE_VIEW_ROLES,
@@ -132,9 +137,9 @@ from backend.app.api.public.intake import _ensure_intake_token, _ensure_status_s
 from backend.app.services import billing_restrictions, portal_candidate_usage
 from backend.app.core.settings import settings
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
-from backend.app.modules.documents import crud as documents_crud
 from backend.app.services import candidate_notifications
 from backend.app.services.audit import log_audit_event
+from backend.app.services.document_hub_delivery_contract import list_candidate_documents_via_contract
 from backend.app.services.risk_scoring import CandidateRisk, compute_candidate_risk_scores
 from backend.app.api.v1.candidates.schemas import (
     CandidateTimelineResponse,
@@ -148,8 +153,10 @@ from backend.app.services.recruitment_application_service import list_recruitmen
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    RECRUITMENT_TERMINAL_CLOSE_OVERRIDE,
     AgencyRecruitmentWriteBypass,
     is_recruitment_recruiter_write_locked_by_handoff,
+    is_recruitment_terminal_close_payload,
 )
 from backend.app.services.candidate_timeline import fetch_candidate_timeline_events
 from backend.app.services.candidate_work_panel import load_candidate_work_panel
@@ -1904,11 +1911,14 @@ async def create_candidate(
 async def get_candidate(
     candidate_id: UUID,
     response: Response,
+    scope_tenant_id: UUID | None = Depends(resolve_optional_scope_tenant_uuid),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
-    tenant_id_str = str(tenant_id)
+    scope_tenant = candidate_scope_tenant_str(tenant_id, scope_tenant_id, current_user)
+    await bind_candidate_scope_rls(db, scope_tenant)
+    tenant_id_str = str(scope_tenant)
     visibility = get_tenant_visibility(db, tenant_id_str)
     await ensure_candidate_access(
         db,
@@ -1973,6 +1983,7 @@ async def get_candidate(
         tenant_id=tenant_id_str,
         candidate_id=str(candidate_id),
         client_tenant=client_tenant,
+        user_role=user_role_lower,
     )
 
     # Contact-attempt readiness for stage UI (plan: New → at least one attempt when policy on).
@@ -2020,6 +2031,76 @@ async def get_candidate(
         logging.getLogger(__name__).exception("risk enrich failed for candidate %s", candidate_id)
 
     return out
+
+
+@router.get(
+    "/{candidate_id}/transfer-readiness",
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    summary="Transfer Policy readiness report (canonical handoff decision)",
+)
+async def get_candidate_transfer_readiness(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> dict:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    from backend.app.process_engine.constants import RECRUITMENT_MODULE
+    from backend.app.process_engine.evaluator_adapter import TransitionEvaluatorAdapter
+
+    return await TransitionEvaluatorAdapter.evaluate_transition(
+        db,
+        tenant_id=tenant_id_str,
+        module=RECRUITMENT_MODULE,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        include_engine_metadata=False,
+    )
+
+
+@router.get(
+    "/{candidate_id}/recruitment-package",
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    summary="PR16 dossier-aligned recruitment package readiness",
+)
+async def get_candidate_recruitment_package(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> dict:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+    from backend.app.process_engine.constants import RECRUITMENT_MODULE
+    from backend.app.process_engine.evaluator_adapter import TransitionEvaluatorAdapter
+
+    report = await TransitionEvaluatorAdapter.evaluate_transition(
+        db,
+        tenant_id=tenant_id_str,
+        module=RECRUITMENT_MODULE,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        include_engine_metadata=False,
+    )
+    return {
+        "ready": bool(report.get("ready")),
+        "handoff_allowed": bool(report.get("handoff_allowed")),
+        "blocking_blocks": report.get("blocking_blocks") or [],
+        "blocks": report.get("blocks") or [],
+        "missing_documents": report.get("missing_documents") or [],
+        "pending_verification_documents": report.get("pending_verification_documents") or [],
+        "missing_data_fields": report.get("missing_data_fields") or [],
+        "eligibility_status": report.get("eligibility_status"),
+        "transfer_readiness": {
+            "transfer_allowed": report.get("transfer_allowed"),
+            "handoff_create_allowed": report.get("handoff_create_allowed"),
+            "destinations_allowed": report.get("destinations_allowed") or [],
+            "blocking_reasons": report.get("blocking_reasons") or [],
+            "required_confirmations": report.get("required_confirmations") or [],
+            "policy_version": report.get("policy_version"),
+        },
+    }
 
 
 @router.get(
@@ -2357,8 +2438,11 @@ async def notify_candidate(
         )
     await db.commit()
 
-    docs = await documents_crud.list_candidate_documents(
-        db, tenant_id_str, str(candidate_id), status="requested"
+    docs = await list_candidate_documents_via_contract(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        status="requested",
     )
     requested_names = [
         candidate_notifications.get_document_display_name(getattr(d, "doc_type", None) or "")
@@ -2463,16 +2547,35 @@ async def patch_candidate(
     recruitment_lock_reason: Optional[str] = None
     workforce_locked = False
     recruitment_lock_override_used = False
+    terminal_close_request = False
+    terminal_close_allowed = False
 
     if client_tenant:
         if not await can_client_edit(db, str(candidate_id), tenant_id_str):
             raise HTTPException(status_code=403, detail="Cannot edit: no accepted handoff")
     else:
+        from backend.app.services.handoff import get_pending_handoff_for_agency
+
         recruitment_locked, recruitment_lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         )
         workforce_locked = await is_candidate_locked_by_workforce(
             db, tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+        )
+        terminal_close_request = is_recruitment_terminal_close_payload(
+            {
+                k: v
+                for k, v in (payload or {}).items()
+                if k in ("stage", "status", "status_reason")
+            }
+        )
+        pending_for_terminal_close = await get_pending_handoff_for_agency(
+            db, str(candidate_id), tenant_id_str
+        )
+        terminal_close_allowed = (
+            terminal_close_request
+            and not workforce_locked
+            and (not recruitment_locked or pending_for_terminal_close is not None)
         )
         operational_locked = recruitment_locked or workforce_locked
         if operational_locked:
@@ -2483,6 +2586,8 @@ async def patch_candidate(
             elif role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
                 db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
             ):
+                recruitment_lock_override_used = True
+            elif terminal_close_allowed:
                 recruitment_lock_override_used = True
             else:
                 lock_detail = (
@@ -2679,6 +2784,11 @@ async def patch_candidate(
         agency_bypass = AgencyRecruitmentWriteBypass(
             actor_role=str(getattr(current_user, "role", "") or ""),
             override_reason=override_reason,
+        )
+    elif not client_tenant and terminal_close_allowed:
+        agency_bypass = AgencyRecruitmentWriteBypass(
+            actor_role=str(getattr(current_user, "role", "") or ""),
+            override_reason=RECRUITMENT_TERMINAL_CLOSE_OVERRIDE,
         )
 
     updated = await cand_service.update_candidate_full(

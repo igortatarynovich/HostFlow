@@ -12,6 +12,7 @@ from backend.app.core.config import settings
 from backend.app.models.lead import Lead
 from backend.app.services.audit import log_audit_event
 from backend.app.services.legal_documents import get_active_legal_document
+from backend.app.services.message_hub import resolve_lead_email_message
 from backend.app.services.tenant_email import send_email_for_tenant
 
 
@@ -205,6 +206,7 @@ async def send_lead_rodo_email(
     actor_id: Optional[str] = None,
     channels: tuple[str, ...] = ("email",),
     template_id: Optional[str] = None,
+    message_template_id: Optional[str] = None,
     auto_trigger: Optional[str] = None,
     ingest_source: Optional[str] = None,
 ) -> Tuple[bool, str]:
@@ -273,7 +275,17 @@ async def send_lead_rodo_email(
 
     first_name = (str(norm.get("first_name") or norm.get("full_name") or "Lead")).strip() or "Lead"
     body = _rodo_email_body(first_name, link)
-    subject = "RODO / GDPR — Personal data processing information | HostFlow"
+    resolved = await resolve_lead_email_message(
+        db,
+        tenant_id=tenant_id,
+        template_id=message_template_id,
+        fallback_subject="RODO / GDPR — Personal data processing information | HostFlow",
+        fallback_body=body,
+        first_name=first_name,
+        rodo_link=link,
+    )
+    subject = resolved.subject
+    body = resolved.body
 
     try:
         await send_email_for_tenant(

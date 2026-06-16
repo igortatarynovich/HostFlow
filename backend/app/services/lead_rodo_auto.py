@@ -144,6 +144,7 @@ async def _auto_send_once(
         actor_id=None,
         channels=cfg.channels,
         template_id=cfg.template_id,
+        message_template_id=cfg.message_template_id,
         auto_trigger=trigger,
         ingest_source=ingest_source,
     )

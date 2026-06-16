@@ -25,6 +25,19 @@ export type IntakeExperience = {
   route_types?: string[]
 }
 
+export type IntakeClientCompany = {
+  name?: string | null
+  legal_name?: string | null
+  tax_id?: string | null
+  website?: string | null
+  country_code?: string | null
+  country?: string | null
+  city?: string | null
+  address?: string | null
+  fleet_size?: number | null
+  transport_profile?: string | null
+}
+
 export type IntakeEmployment = {
   id?: string | null
   employer_name: string
@@ -59,6 +72,7 @@ export type IntakeData = {
   employments: IntakeEmployment[]
   agreements: IntakeAgreements
   lead_form?: Record<string, unknown> | null
+  client_company?: IntakeClientCompany | null
   /** Mirrors public intake state; **client** may create a CRM Lead on submit when company is routable. */
   application_kind?: IntakeApplicationKind | null
 }
@@ -73,6 +87,8 @@ export type PublicIntakeCreateRequest = {
   lead_form_slug?: string | null
   /** **client** = B2B client inquiry (Lead on submit); omit or **candidate** = hiring-only. */
   application_kind?: IntakeApplicationKind
+  /** Optional B2B client company data; used to create/update a client company on submit. */
+  client_company?: IntakeClientCompany | null
 }
 
 export type PublicLeadFormListItem = {

@@ -16,6 +16,7 @@ from backend.app.services.lead_communication_settings import (
     LeadCommunicationSettings,
     get_lead_communication_settings,
 )
+from backend.app.services.message_hub import resolve_lead_email_message
 from backend.app.services.lead_rodo import normalized_merging_lead_rodo
 from backend.app.services.tenant_email import send_email_for_tenant
 
@@ -91,7 +92,7 @@ def _first_name(normalized: Dict[str, Any]) -> str:
     )
 
 
-def _email_bodies(event_type: str, first_name: str) -> tuple[str, str]:
+def _default_email_bodies(event_type: str, first_name: str) -> tuple[str, str]:
     if event_type == EVENT_APPLICATION_RECEIVED:
         subject = "We received your application | HostFlow"
         body = f"""Hello {first_name},
@@ -144,6 +145,25 @@ Przechodzimy do kolejnego etapu rekrutacji. Skontaktujemy się w sprawie dalszyc
 Pozdrawiamy,
 Zespół HostFlow"""
     return subject, body
+
+
+def _email_bodies(event_type: str, first_name: str, cfg: LeadCommunicationSettings) -> tuple[str, str]:
+    subject, body = _default_email_bodies(event_type, first_name)
+    if event_type == EVENT_APPLICATION_RECEIVED:
+        return cfg.application_received_subject or subject, cfg.application_received_body or body
+    if event_type == EVENT_LEAD_REJECTED:
+        return cfg.rejection_notice_subject or subject, cfg.rejection_notice_body or body
+    return cfg.moving_forward_subject or subject, cfg.moving_forward_body or body
+
+
+def _template_id_for_event(cfg: LeadCommunicationSettings, event_type: str) -> Optional[str]:
+    if event_type == EVENT_APPLICATION_RECEIVED:
+        return cfg.application_received_template_id
+    if event_type == EVENT_LEAD_REJECTED:
+        return cfg.rejection_notice_template_id
+    if event_type == EVENT_MOVING_FORWARD:
+        return cfg.moving_forward_template_id
+    return None
 
 
 def _audit_type_for_event(event_type: str, *, failed: bool) -> AuditEventType:
@@ -257,7 +277,18 @@ async def maybe_send_lead_communication(
         )
         return False
 
-    subject, body = _email_bodies(ev, _first_name(_lead_norm_for_communication(lead, pipeline_normalized)))
+    first_name = _first_name(_lead_norm_for_communication(lead, pipeline_normalized))
+    default_subject, default_body = _email_bodies(ev, first_name, cfg)
+    resolved = await resolve_lead_email_message(
+        db,
+        tenant_id=tenant_id,
+        template_id=_template_id_for_event(cfg, ev),
+        fallback_subject=default_subject,
+        fallback_body=default_body,
+        first_name=first_name,
+    )
+    subject = resolved.subject
+    body = resolved.body
     try:
         await send_email_for_tenant(
             db,
@@ -307,7 +338,12 @@ async def maybe_send_application_received_on_ingest(
     is_new_lead: bool,
     pipeline_normalized: Optional[Dict[str, Any]] = None,
 ) -> None:
-    if not is_new_lead or getattr(lead, "candidate_id", None):
+    if getattr(lead, "candidate_id", None):
+        return
+    # Compatibility guard: in some replay/import paths a lead may already exist
+    # but still miss the initial communication stamp. We allow one backfill run
+    # when the event is absent, while preserving strict idempotency.
+    if not is_new_lead and communication_event_record(lead.normalized, EVENT_APPLICATION_RECEIVED):
         return
     await maybe_send_lead_communication(
         db,

@@ -4,26 +4,33 @@ import type { HrReviewDocumentRow, HrReviewPanel } from '../../api/workforce'
 import { returnHandoff } from '../../api/handoffs'
 import { fetchHandoffHrReview } from '../../api/hrWorkspace'
 import {
+  postHrAdditionalDocumentRequest,
   postHrDocumentOpened,
   postHrDocumentRequestCorrection,
   postHrDocumentVerify,
+  postHrDocumentWaiveRequirement,
   rejectWorkforceHrReview,
   returnWorkforceHrReviewToRecruitment,
 } from '../../api/workforce'
 import HrDocumentDecisionFooter from './HrDocumentDecisionFooter'
+import HrVerificationExceptionsPanel from './HrVerificationExceptionsPanel'
 import HrEmploymentIdentityCompact from './HrEmploymentIdentityCompact'
 import HrVerificationStepShell from './HrVerificationStepShell'
+import HrVerificationDocumentFileActions from './HrVerificationDocumentFileActions'
+import { humanVerificationBlockingMessages } from './hrVerificationBlockingHuman'
+import BlockerPanel from '../surfaces/BlockerPanel'
+import DocumentRow from '../surfaces/DocumentRow'
+import DocumentStatus from '../surfaces/DocumentStatus'
+import { mapHrVerificationDocumentRow } from '../surfaces/mapHrVerificationDocument'
+import { isVerificationPlanReady } from './hrVerificationReadySummary'
 import { openHrDocumentInNewTab } from '../../utils/hrDocumentOpen'
-import {
-  humanDocumentStatusLabel,
-  humanDocumentStatusTone,
-} from './hrDocumentHumanLabels'
 import {
   buildConfirmedReviewedPayload,
   buildInitialFieldEdits,
   countMissingFieldsOnDocument,
   countVerifiedDocuments,
   documentsFromPanel,
+  findQueueIndexForDocumentFocus,
   firstPendingDocumentIndex,
   isDocumentVerified,
   recruiterDisplayForField,
@@ -44,16 +51,22 @@ type Props = {
   panel: HrReviewPanel
   employeeId?: string
   handoffId?: string
+  candidateId?: string | null
   manage?: boolean
   onPanelUpdated?: (panel: HrReviewPanel) => void
+  onDocumentConfirmed?: (documentLabel: string) => void
+  verificationFocus?: { documentKey?: string | null; packCode?: string | null } | null
 }
 
 export default function HrSequentialDocumentVerification({
   panel,
   employeeId,
   handoffId,
+  candidateId: candidateIdProp,
   manage: manageProp = false,
   onPanelUpdated,
+  onDocumentConfirmed,
+  verificationFocus,
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -66,6 +79,8 @@ export default function HrSequentialDocumentVerification({
   const planSteps = panel.verification_plan?.verification_order ?? []
   const progress = useMemo(() => countVerifiedDocuments(docs), [docs])
 
+  const planReady = isVerificationPlanReady(panel)
+  const candidateId = candidateIdProp ?? panel.candidate_id ?? null
   const [activeIndex, setActiveIndex] = useState(() => firstPendingDocumentIndex(queue))
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -89,6 +104,13 @@ export default function HrSequentialDocumentVerification({
       return next
     })
   }, [queue])
+
+  useEffect(() => {
+    if (!verificationFocus) return
+    const idx = findQueueIndexForDocumentFocus(queue, verificationFocus)
+    if (idx < 0) return
+    setActiveIndex(idx)
+  }, [verificationFocus, queue])
 
   const nextPendingLabel = useMemo(() => {
     const pending = queue.filter((d) => !isDocumentVerified(d))
@@ -181,8 +203,32 @@ export default function HrSequentialDocumentVerification({
     )
   }
 
+  const handleWaiveRequirement = async (reason: string) => {
+    if (!activeDoc?.document_key) return
+    await runPanel(
+      () => postHrDocumentWaiveRequirement({ ...scope, reason }),
+      t('app.hr.exceptions.waive_done', { defaultValue: 'Requirement marked as exception' }),
+    )
+  }
+
+  const handleAdditionalDocument = async (payload: {
+    document_name: string
+    note?: string
+    urgency?: string
+  }) => {
+    const caseScope = { employeeId, handoffId }
+    await runPanel(
+      () => postHrAdditionalDocumentRequest(caseScope, payload),
+      t('app.hr.exceptions.additional_done', {
+        defaultValue: 'Recruitment will be asked for the document',
+      }),
+    )
+  }
+
   const confirmDocument = async () => {
     if (!activeDoc?.document_key || !manage) return
+    const confirmedLabel = activeDoc.label || activeDoc.document_key
+    onDocumentConfirmed?.(confirmedLabel)
     const payload = buildConfirmedReviewedPayload(fieldEdits)
     const next = await runPanel(() =>
       postHrDocumentVerify({ ...scope, reviewed_fields: payload }),
@@ -194,6 +240,11 @@ export default function HrSequentialDocumentVerification({
     if (idx >= 0) setActiveIndex(idx)
     else if (activeIndex < refreshedQueue.length - 1) setActiveIndex(activeIndex + 1)
   }
+
+  const blockingMessages = useMemo(
+    () => humanVerificationBlockingMessages(panel, docs, t),
+    [panel, docs, t],
+  )
 
   if (queue.length === 0) return null
   if (!activeDoc) return null
@@ -209,62 +260,44 @@ export default function HrSequentialDocumentVerification({
 
   const stepNumber = activeStep?.step_order ?? activeIndex + 1
   const stepLabel = activeStep?.label ?? t('app.hr.verify_shell.default_step', { defaultValue: 'Required documents' })
+  const activeMapped = mapHrVerificationDocumentRow(activeDoc, t)
 
   const documentViewer = (
     <div className="flex flex-1 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm font-semibold text-slate-900">{activeDoc.label}</p>
-      {activeDoc.rejection_reason ? (
-        <p className="mt-2 rounded-md bg-rose-50 px-2 py-1.5 text-xs text-rose-900">
-          {activeDoc.rejection_reason}
-        </p>
-      ) : null}
-      {activeDoc.correction_note ? (
-        <p className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
-          {activeDoc.correction_note}
-        </p>
-      ) : null}
-      <div className="mt-5 flex flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center">
-        <p className="text-sm text-slate-600">
-          {t('app.hr.verify_shell.open_hint', {
-            defaultValue: 'Open the file and compare it with the data on the right.',
-          })}
-        </p>
-        {(activeDoc.open_url || activeDoc.file_url) && activeDoc.actions?.can_open !== false ? (
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={!!busy}
-            onClick={() => void handleOpenDocument()}
-          >
-            {t('app.hr.verify_shell.open_file', { defaultValue: 'Open file' })}
-          </button>
-        ) : (
-          <p className="text-sm font-medium text-amber-800">
-            {t('app.hr.verify_shell.no_file', {
-              defaultValue: 'No file uploaded yet. Return the case to recruitment if needed.',
-            })}
-          </p>
-        )}
+      <DocumentRow compact className="border-slate-200 shadow-none" {...activeMapped.row} />
+      <div className="mt-5 flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center">
+        <HrVerificationDocumentFileActions
+          activeDoc={activeDoc}
+          candidateId={candidateId}
+          employeeId={effectiveEmployeeId || employeeId}
+          manage={manage}
+          busy={!!busy}
+          onOpen={handleOpenDocument}
+          onPanelUpdated={onPanelUpdated}
+        />
       </div>
       {queue.length > 1 ? (
-        <nav className="mt-4 flex flex-wrap justify-center gap-1.5" aria-label={t('app.hr.verify_shell.doc_nav', { defaultValue: 'Documents' })}>
+        <nav
+          className="mt-4 space-y-1.5"
+          aria-label={t('app.hr.verify_shell.doc_nav', { defaultValue: 'Documents' })}
+        >
           {queue.map((d, i) => {
-            const done = isDocumentVerified(d)
+            const mapped = mapHrVerificationDocumentRow(d, t)
             const current = i === activeIndex
             return (
               <button
                 key={d.document_key}
                 type="button"
-                title={d.label}
                 aria-label={d.label}
                 aria-current={current ? 'step' : undefined}
                 className={clsx(
-                  'h-2.5 w-8 rounded-full transition-colors',
+                  'w-full rounded-lg text-left transition-shadow',
                   current && 'ring-2 ring-brand-400 ring-offset-1',
-                  done ? 'bg-emerald-500' : current ? 'bg-brand-500' : 'bg-slate-200',
                 )}
                 onClick={() => setActiveIndex(i)}
-              />
+              >
+                <DocumentRow compact className="pointer-events-none border-slate-200 shadow-none" {...mapped.row} />
+              </button>
             )
           })}
         </nav>
@@ -329,6 +362,14 @@ export default function HrSequentialDocumentVerification({
           })}
         </p>
       )}
+      <HrVerificationExceptionsPanel
+        panel={panel}
+        activeDoc={activeDoc}
+        canManage={manage}
+        busy={!!busy}
+        onWaive={handleWaiveRequirement}
+        onRequestAdditional={handleAdditionalDocument}
+      />
     </>
   )
 
@@ -355,6 +396,20 @@ export default function HrSequentialDocumentVerification({
     />
   )
 
+  const blockingBanner =
+    !planReady && blockingMessages.length > 0 && !reviewFrozen ? (
+      <BlockerPanel
+        className="mb-3"
+        title={t('app.hr.ready.still_needed', { defaultValue: 'Still needed before approval' })}
+        severity="blocker"
+        items={blockingMessages.map((msg, index) => ({
+          id: `${index}-${msg}`,
+          label: msg,
+          severity: 'blocker' as const,
+        }))}
+      />
+    ) : null
+
   const frozenBanner = reviewFrozen ? (
     <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
       {panel.status === 'returned_to_recruitment'
@@ -379,8 +434,13 @@ export default function HrSequentialDocumentVerification({
       stepNumber={stepNumber}
       stepLabel={stepLabel}
       documentLabel={activeDoc.label}
-      documentStatusLabel={humanDocumentStatusLabel(activeDoc, t)}
-      documentStatusTone={humanDocumentStatusTone(activeDoc)}
+      statusBadge={
+        <DocumentStatus
+          label={activeMapped.statusLabel}
+          displayStatus={activeMapped.displayStatus}
+          severity={activeMapped.severity}
+        />
+      }
       verifiedCount={progress.verified}
       totalCount={progress.total}
       nextDocumentLabel={nextPendingLabel}
@@ -388,6 +448,7 @@ export default function HrSequentialDocumentVerification({
       dataPanel={dataPanel}
       footer={
         <>
+          {blockingBanner}
           {frozenBanner}
           {footer}
         </>

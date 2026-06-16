@@ -15,6 +15,10 @@ vi.mock('../../../api/workforce', () => ({
   recordWorkforceDocumentHrReview: vi.fn(),
 }))
 
+vi.mock('../../../api/documents/summary', () => ({
+  getSummary: vi.fn().mockResolvedValue({ summary: { packs: [] }, candidate_id: 'cand-1', documents: [] }),
+}))
+
 vi.mock('../../../utils/hrDocumentOpen', () => ({
   openHrDocumentInNewTab: vi.fn(),
 }))

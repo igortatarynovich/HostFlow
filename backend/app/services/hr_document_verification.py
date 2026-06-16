@@ -24,7 +24,11 @@ from backend.app.models.workforce_hr_document_context import WorkforceHrDocument
 from backend.app.models.workforce_hr_review import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
 from backend.app.services.audit import log_activity
 from backend.app.services.hr_handoff_profile_context import load_handoff_profile_namespace
-from backend.app.services.hr_verified_field_catalog import FIELD_SPECS
+from backend.app.services.hr_verified_field_catalog import (
+    DATA_ONLY_VERIFICATION_KEYS,
+    FIELD_SPECS,
+    OPTIONAL_FILE_VERIFICATION_KEYS,
+)
 
 # document_key -> checklist item that this card primarily supports
 # Transport document cards are optional when position is not driver (PR12 sequential flow).
@@ -66,6 +70,27 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _format_profile_value(value: Any) -> Any:
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, dict):
+                chunks = [
+                    str(item.get(k) or "").strip()
+                    for k in ("position", "employer_name", "company", "country", "date_from", "date_to")
+                    if str(item.get(k) or "").strip()
+                ]
+                line = " · ".join(chunks)
+                if line:
+                    parts.append(line)
+            elif item is not None and str(item).strip():
+                parts.append(str(item).strip())
+        return "\n".join(parts) if parts else None
+    if isinstance(value, dict):
+        return str(value.get("line1") or value.get("address") or value).strip() or None
+    return value
+
+
 def _dig(data: dict[str, Any], path: str) -> Any:
     cur: Any = data
     for part in path.split("."):
@@ -90,19 +115,48 @@ def _build_profile_context(
             if v is not None and str(v).strip() and k not in snap:
                 snap[k] = v
     meta = employee.meta if employee and isinstance(employee.meta, dict) else {}
+    personal_meta = meta.get("personal_data") if isinstance(meta.get("personal_data"), dict) else {}
+    contacts = meta.get("contacts") if isinstance(meta.get("contacts"), dict) else {}
+    if not contacts and isinstance(snap.get("contacts"), dict):
+        contacts = snap.get("contacts")
+    exp_raw = snap.get("experience") or snap.get("employments")
+    if not exp_raw and isinstance(snap.get("profile"), dict):
+        exp_raw = snap["profile"].get("experience")
+    experience_summary = _format_profile_value(exp_raw)
     doc_meta = document.meta if document and isinstance(document.meta, dict) else {}
+    issue = None
+    if document:
+        issue = getattr(document, "issue_date", None)
     exp = None
     if document:
         exp = getattr(document, "expire_date", None) or getattr(document, "expires_at", None)
+    doc_number = None
+    if document:
+        doc_number = getattr(document, "number", None) or doc_meta.get("document_number") or doc_meta.get("passport_number")
     ctx: dict[str, Any] = {
         "employee": {
             "display_name": employee.display_name if employee else None,
             "hire_date": str(employee.hire_date) if employee and employee.hire_date else None,
             "meta": meta,
         },
-        "snapshot": snap,
+        "snapshot": {
+            **snap,
+            "birth_date": snap.get("birth_date") or personal_meta.get("birth_date"),
+            "passport_number": snap.get("passport_number") or personal_meta.get("passport_number"),
+            "passport_series": snap.get("passport_series") or personal_meta.get("passport_series"),
+            "passport_issue_date": snap.get("passport_issue_date") or personal_meta.get("passport_issue_date"),
+            "experience_summary": experience_summary or snap.get("experience_summary"),
+            "phone": snap.get("phone") or contacts.get("phone") or personal_meta.get("phone"),
+            "email": snap.get("email") or contacts.get("email") or personal_meta.get("email"),
+            "address": snap.get("address") or personal_meta.get("address") or contacts.get("address"),
+            "city": snap.get("city") or personal_meta.get("city"),
+            "postal_code": snap.get("postal_code") or personal_meta.get("postal_code"),
+        },
+        "contacts": contacts,
         "document": {
             "doc_type": document.doc_type if document else None,
+            "number": str(doc_number).strip() if doc_number else None,
+            "issue_date": issue.isoformat() if issue and hasattr(issue, "isoformat") else (str(issue) if issue else None),
             "expires_at": exp.isoformat() if exp and hasattr(exp, "isoformat") else (str(exp) if exp else None),
             "meta": doc_meta,
         },
@@ -131,7 +185,7 @@ def build_fields_to_review(
         code = str(spec["field_code"])
         values: dict[str, Any] = {}
         for pk in spec.get("profile_keys") or []:
-            v = _dig(profile_ctx, pk)
+            v = _format_profile_value(_dig(profile_ctx, pk))
             if v is not None and str(v).strip() != "":
                 values[pk] = v
         needs_manual = len(values) == 0
@@ -388,6 +442,17 @@ async def enrich_approval_rows_with_verification(
             candidate_live=candidate_flat,
         )
         fields = build_fields_to_review(key, profile_ctx, v.reviewed_fields_json)
+        is_data_only = key in DATA_ONLY_VERIFICATION_KEYS
+        is_optional_file = key in OPTIONAL_FILE_VERIFICATION_KEYS
+        has_file = bool(r.get("open_url") or doc_id)
+        can_verify_status = v.verification_status in (
+            VERIFICATION_OPENED,
+            VERIFICATION_PENDING,
+            VERIFICATION_NEEDS_CORRECTION,
+        )
+        can_verify = can_verify_status and (
+            bool(doc_id) or is_data_only or is_optional_file
+        )
         r.update(
             {
                 "document_type": v.document_type or r.get("context_type"),
@@ -400,12 +465,16 @@ async def enrich_approval_rows_with_verification(
                 "correction_note": v.correction_note,
                 "verified": v.verification_status == VERIFICATION_VERIFIED,
                 "verification_id": v.id,
+                "block_kind": "data_only"
+                if is_data_only
+                else ("optional_file" if is_optional_file else "document"),
+                "file_required_for_confirm": not is_data_only and not is_optional_file,
                 "actions": {
                     "can_open": bool(r.get("open_url") or doc_id),
-                    "can_verify": v.verification_status in (VERIFICATION_OPENED, VERIFICATION_PENDING, VERIFICATION_NEEDS_CORRECTION)
-                    and bool(doc_id),
-                    "can_reject": bool(r.get("document_id")),
-                    "can_request_correction": bool(r.get("document_id")),
+                    "can_verify": can_verify,
+                    "can_reject": bool(r.get("document_id")) and not is_data_only,
+                    "can_request_correction": bool(r.get("document_id")) and not is_data_only,
+                    "can_upload": is_optional_file or not is_data_only,
                 },
             }
         )
@@ -613,7 +682,9 @@ async def verify_document(
     if review.status in HR_REVIEW_TERMINAL_STATUSES:
         raise ValueError("HR_REVIEW_TERMINAL")
     row = await _get_verification_row(db, tenant_id, review, document_key)
-    if not row.document_id:
+    key = str(document_key or "").strip()
+    file_optional = key in DATA_ONLY_VERIFICATION_KEYS or key in OPTIONAL_FILE_VERIFICATION_KEYS
+    if not row.document_id and not file_optional:
         raise ValueError("DOCUMENT_MISSING")
     if reviewed_fields is not None:
         row.reviewed_fields_json = reviewed_fields

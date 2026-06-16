@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Optional
 
 from backend.app.core.settings import settings
-from backend.app.services.tenant_email import _send_smtp_sync
 from backend.app.services import notifications as outbound
-import asyncio
+from backend.app.services.email_delivery import is_email_delivery_mock
+from backend.app.services.tenant_email import _send_smtp_sync
 
 
 def _get_system_smtp_config() -> Optional[dict]:
@@ -38,6 +39,8 @@ async def send_system_email(
     to = (to or "").strip()
     if not to or "@" not in to:
         return False
+    if is_email_delivery_mock():
+        return True
 
     config = _get_system_smtp_config()
     if config:

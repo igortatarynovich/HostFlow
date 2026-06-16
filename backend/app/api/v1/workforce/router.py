@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
@@ -21,6 +22,8 @@ from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_o
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.documents import crud as documents_crud
+from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
+from backend.app.models.workforce_employment import WorkforceEmployment
 from backend.app.schemas.workforce_hr import (
     AbsenceCreate,
     AbsencePatch,
@@ -35,10 +38,12 @@ from backend.app.schemas.workforce_hr import (
     TaxProfilePatch,
     WorkEligibilityPaymentRequirementPatch,
     WorkEligibilityProfilePatch,
+    HrDocumentControlTaskPatch,
     ZusProfilePatch,
 )
 from backend.app.schemas.workforce_hr_core import (
     HrDocumentCorrectionIn,
+    HrAdditionalDocumentRequestIn,
     HrDocumentRequirementWaiverIn,
     HrDocumentRejectIn,
     HrDocumentReviewedFieldsIn,
@@ -68,10 +73,16 @@ from backend.app.services import workforce_hr_satellites as wh_sat
 from backend.app.services import workforce_employees as we_svc
 from backend.app.services import workforce_directory as wf_directory
 from backend.app.services import workforce_operational_profile as wf_op
+from backend.app.services import hr_document_control_tasks as doc_task_svc
 from backend.app.services import workforce_work_eligibility as wel_svc
 from backend.app.services import workforce_work_eligibility_payments as wel_pay_svc
+from backend.app.services import hr_lifecycle_ledger as ledger_svc
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_zus_task_autocreate import ensure_zus_registration_task
+from backend.app.services.workforce_action_policy import (
+    WorkforceActionBlockedError,
+    assert_operation_allowed,
+)
 from backend.app.services.audit import log_activity
 
 logger = logging.getLogger(__name__)
@@ -209,10 +220,17 @@ class EmploymentOut(BaseModel):
     id: str
     employee_id: str
     contract_type: str
+    lifecycle_status: str
+    employer_name: Optional[str] = None
     rate_model: Optional[dict[str, Any]] = None
     schedule: Optional[dict[str, Any]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    probation_end: Optional[date] = None
+    signed_at: Optional[date] = None
+    latest_annex_ref: Optional[str] = None
+    expiry_date: Optional[date] = None
+    next_action: Optional[str] = None
     conditions_text: Optional[str] = None
     vacancy_id: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
@@ -356,6 +374,15 @@ class RecruiterSummaryOut(BaseModel):
     phone: Optional[str] = None
     stage: Optional[str] = None
     status: Optional[str] = None
+    citizenship: Optional[str] = None
+    work_country: Optional[str] = None
+    legal_status: Optional[str] = None
+    position_category: Optional[str] = None
+    vacancy_context: Optional[dict[str, Any]] = None
+    notes: Optional[dict[str, Any]] = None
+    document_field_values: Optional[dict[str, Any]] = None
+    personal_data: Optional[dict[str, Any]] = None
+    contacts: Optional[dict[str, Any]] = None
 
 
 class ProfileAlertOut(BaseModel):
@@ -382,6 +409,131 @@ class EmploymentOperationalOut(BaseModel):
     position: Optional[str] = None
 
 
+class WorkforceExpectedDocumentOut(BaseModel):
+    document_code: str
+    label: str
+    group: str
+    default_owner: str
+    requires_expiry: bool = False
+    verification_required: bool = True
+    applies_to_driver: bool = True
+    applies_to_non_driver: bool = True
+    blocks_employment: bool = False
+    renewal_window_days: int = 30
+    default_next_action: str = ""
+    aliases: list[str] = Field(default_factory=list)
+
+
+class WorkforceDocumentControlTaskOut(BaseModel):
+    document_code: str
+    owner: Optional[str] = None
+    next_action: Optional[str] = None
+    next_due_date: Optional[str] = None
+    comment: Optional[str] = None
+    status: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class EmployeeDossierIdentityOut(BaseModel):
+    display_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    birth_date: Optional[str] = None
+    citizenship: Optional[str] = None
+
+
+class EmployeeDossierLegalOut(BaseModel):
+    work_country: Optional[str] = None
+    legal_status: Optional[str] = None
+    eligibility_status: Optional[str] = None
+    requires_work_permit: Optional[bool] = None
+    work_permit_valid_to: Optional[str] = None
+    legal_stay_valid_to: Optional[str] = None
+
+
+class EmployeeDossierDocumentsOut(BaseModel):
+    linked_total: int = 0
+    missing_total: int = 0
+    expiring_total: int = 0
+    expired_total: int = 0
+    expiring_30d_total: int = 0
+
+
+class EmployeeDossierQualificationsOut(BaseModel):
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class EmployeeDossierEmploymentOut(BaseModel):
+    status: Optional[str] = None
+    hire_date: Optional[str] = None
+    termination_date: Optional[str] = None
+    contracts_total: int = 0
+    absences_total: int = 0
+    leave_requests_total: int = 0
+    onboarding_open_total: int = 0
+
+
+class EmployeeDossierOut(BaseModel):
+    identity: EmployeeDossierIdentityOut = Field(default_factory=EmployeeDossierIdentityOut)
+    legal: EmployeeDossierLegalOut = Field(default_factory=EmployeeDossierLegalOut)
+    documents: EmployeeDossierDocumentsOut = Field(default_factory=EmployeeDossierDocumentsOut)
+    qualifications: EmployeeDossierQualificationsOut = Field(default_factory=EmployeeDossierQualificationsOut)
+    employment: EmployeeDossierEmploymentOut = Field(default_factory=EmployeeDossierEmploymentOut)
+    next_actions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class WorkforceLifecycleEventOut(BaseModel):
+    id: str
+    employee_id: str
+    event_code: str
+    category: str
+    occurred_at: str
+    effective_date: Optional[str] = None
+    due_date: Optional[str] = None
+    owner: Optional[str] = None
+    created_by: Optional[str] = None
+    status: str
+    dedupe_key: Optional[str] = None
+    source_type: Optional[str] = None
+    source_ref: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    references: dict[str, Any] = Field(default_factory=dict)
+    attachments: dict[str, Any] = Field(default_factory=dict)
+    meta: dict[str, Any] = Field(default_factory=dict)
+    created_at: str
+    updated_at: str
+
+
+class WorkforceLifecycleEventCreateIn(BaseModel):
+    event_code: str
+    category: str
+    title: str
+    occurred_at: Optional[datetime] = None
+    effective_date: Optional[date] = None
+    due_date: Optional[date] = None
+    owner: Optional[str] = None
+    created_by: Optional[str] = None
+    status: Optional[str] = None
+    dedupe_key: Optional[str] = None
+    source_type: Optional[str] = None
+    source_ref: Optional[str] = None
+    description: Optional[str] = None
+    references: Optional[dict[str, Any]] = None
+    attachments: Optional[dict[str, Any]] = None
+    meta: Optional[dict[str, Any]] = None
+
+
+class WorkforceLifecycleEventPatchIn(BaseModel):
+    owner: Optional[str] = None
+    status: Optional[str] = None
+    due_date: Optional[date] = None
+    description: Optional[str] = None
+    references: Optional[dict[str, Any]] = None
+
+
 class EmployeeOperationalProfileOut(BaseModel):
     """Single read-model for HR employee workspace (directory + bundle + queues + timeline)."""
 
@@ -398,7 +550,115 @@ class EmployeeOperationalProfileOut(BaseModel):
     onboarding_overdue_count: int = 0
     timeline: List[TimelineEventOut] = Field(default_factory=list)
     employment_operational: List[EmploymentOperationalOut] = Field(default_factory=list)
+    expected_documents: List[WorkforceExpectedDocumentOut] = Field(default_factory=list)
+    document_control_tasks: List[WorkforceDocumentControlTaskOut] = Field(default_factory=list)
+    employee_dossier: EmployeeDossierOut = Field(default_factory=EmployeeDossierOut)
+    workforce_eligibility: dict[str, Any] = Field(default_factory=dict)
     hr_bundle: HrBundleOut
+
+
+def _action_blocked_http_error(exc: WorkforceActionBlockedError) -> HTTPException:
+    return HTTPException(
+        status_code=422,
+        detail={
+            "code": "WORKFORCE_ACTION_BLOCKED",
+            "operation": exc.operation,
+            "eligibility_status": exc.eligibility_status,
+            "blocking_reasons": exc.reasons,
+        },
+    )
+
+
+def _lifecycle_out(row: Any) -> WorkforceLifecycleEventOut:
+    return WorkforceLifecycleEventOut(
+        id=str(row.id),
+        employee_id=str(row.employee_id),
+        event_code=str(row.event_code),
+        category=str(row.category),
+        occurred_at=row.occurred_at.isoformat() if row.occurred_at else "",
+        effective_date=row.effective_date.isoformat() if row.effective_date else None,
+        due_date=row.due_date.isoformat() if row.due_date else None,
+        owner=row.owner,
+        created_by=row.created_by,
+        status=str(row.status or "open"),
+        dedupe_key=row.dedupe_key,
+        source_type=row.source_type,
+        source_ref=row.source_ref,
+        title=str(row.title or ""),
+        description=row.description,
+        references=row.references_json if isinstance(row.references_json, dict) else {},
+        attachments=row.attachments_json if isinstance(row.attachments_json, dict) else {},
+        meta=row.meta if isinstance(row.meta, dict) else {},
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        updated_at=row.updated_at.isoformat() if row.updated_at else "",
+    )
+
+
+async def _sync_contract_control_tasks(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employment_row: WorkforceEmployment,
+) -> None:
+    emp_id = str(employment_row.employee_id)
+    eid = str(employment_row.id)
+    status = str(getattr(employment_row, "lifecycle_status", "") or "").strip().lower()
+    start = getattr(employment_row, "start_date", None)
+    signed = getattr(employment_row, "signed_at", None)
+    expiry = getattr(employment_row, "expiry_date", None) or getattr(employment_row, "end_date", None)
+    annex = str(getattr(employment_row, "latest_annex_ref", "") or "").strip()
+
+    unsigned_due = start or date.today()
+    unsigned_open = signed is None and status not in ("terminated",)
+    await doc_task_svc.upsert_document_control_task(
+        db,
+        tenant_id=tenant_id,
+        employee_id=emp_id,
+        document_code=f"contract:{eid}:unsigned",
+        patch={
+            "owner": "HR",
+            "next_action": "Obtain signature",
+            "next_due_date": unsigned_due,
+            "status": "open" if unsigned_open else "done",
+            "comment": "Blocking: yes",
+        },
+    )
+
+    exp_open = False
+    exp_due = None
+    if expiry and status in ("issued", "signed", "active", "expiring", "renewed"):
+        days_left = (expiry - date.today()).days
+        if days_left <= 30:
+            exp_open = True
+            exp_due = expiry - timedelta(days=14)
+    await doc_task_svc.upsert_document_control_task(
+        db,
+        tenant_id=tenant_id,
+        employee_id=emp_id,
+        document_code=f"contract:{eid}:expiring",
+        patch={
+            "owner": "HR",
+            "next_action": "Renew contract",
+            "next_due_date": exp_due,
+            "status": "open" if exp_open else "done",
+            "comment": "Blocking: yes" if exp_open else None,
+        },
+    )
+
+    annex_open = status in ("renewed",) and not annex
+    await doc_task_svc.upsert_document_control_task(
+        db,
+        tenant_id=tenant_id,
+        employee_id=emp_id,
+        document_code=f"contract:{eid}:missing_annex",
+        patch={
+            "owner": "HR/legal",
+            "next_action": "Upload annex",
+            "next_due_date": None,
+            "status": "open" if annex_open else "done",
+            "comment": "Optional",
+        },
+    )
 
 
 def _employment_out(row: Any) -> EmploymentOut:
@@ -406,10 +666,17 @@ def _employment_out(row: Any) -> EmploymentOut:
         id=row.id,
         employee_id=row.employee_id,
         contract_type=row.contract_type,
+        lifecycle_status=str(row.lifecycle_status or "issued"),
+        employer_name=row.employer_name,
         rate_model=row.rate_model,
         schedule=row.schedule,
         start_date=row.start_date,
         end_date=row.end_date,
+        probation_end=row.probation_end,
+        signed_at=row.signed_at,
+        latest_annex_ref=row.latest_annex_ref,
+        expiry_date=row.expiry_date,
+        next_action=row.next_action,
         conditions_text=row.conditions_text,
         vacancy_id=row.vacancy_id,
         meta=row.meta,
@@ -599,6 +866,29 @@ async def list_employees_directory_endpoint(
 
 
 @router.get(
+    "/employees/by-candidate/{candidate_id}",
+    response_model=EmployeeOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def get_employee_by_candidate(
+    candidate_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> EmployeeOut:
+    """Resolve workforce employee linked to a recruitment candidate (PR17.4)."""
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    await ensure_candidate_access(db, tenant_id, candidate_id, current_user)
+    row = await we_svc.find_employee_by_candidate(db, tenant_id, candidate_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="workforce_employee_not_found")
+    status_l = str(getattr(row, "status", "") or "").strip().lower()
+    if status_l in ("returned_to_recruitment", "returned", "terminated"):
+        raise HTTPException(status_code=404, detail="workforce_employee_not_active")
+    return EmployeeOut.from_orm_row(row)
+
+
+@router.get(
     "/employees/{employee_id}",
     response_model=EmployeeOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
@@ -687,7 +977,156 @@ async def get_employee_operational_profile(
         employment_operational=[
             EmploymentOperationalOut.model_validate(e) for e in raw.get("employment_operational") or []
         ],
+        expected_documents=[
+            WorkforceExpectedDocumentOut.model_validate(x) for x in raw.get("expected_documents") or []
+        ],
+        document_control_tasks=[
+            WorkforceDocumentControlTaskOut.model_validate(x)
+            for x in raw.get("document_control_tasks") or []
+        ],
+        employee_dossier=EmployeeDossierOut.model_validate(raw.get("employee_dossier") or {}),
+        workforce_eligibility=dict(raw.get("workforce_eligibility") or {}),
         hr_bundle=hb,
+    )
+
+
+@router.get(
+    "/employees/{employee_id}/lifecycle-ledger",
+    response_model=List[WorkforceLifecycleEventOut],
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def list_employee_lifecycle_ledger(
+    employee_id: str,
+    category: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    owner: Optional[str] = Query(None),
+    occurred_from: Optional[date] = Query(None),
+    occurred_to: Optional[date] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> List[WorkforceLifecycleEventOut]:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    rows = await ledger_svc.list_events(
+        db,
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        category=category,
+        status=status,
+        owner=owner,
+        occurred_from=occurred_from,
+        occurred_to=occurred_to,
+        limit=limit,
+        offset=offset,
+    )
+    return [_lifecycle_out(x) for x in rows]
+
+
+@router.post(
+    "/employees/{employee_id}/lifecycle-ledger",
+    response_model=WorkforceLifecycleEventOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def create_employee_lifecycle_event(
+    employee_id: str,
+    payload: WorkforceLifecycleEventCreateIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> WorkforceLifecycleEventOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    try:
+        row = await ledger_svc.create_event(
+            db,
+            tenant_id=tenant_id,
+            employee_id=employee_id,
+            event_code=payload.event_code,
+            category=payload.category,
+            title=payload.title,
+            occurred_at=payload.occurred_at,
+            effective_date=payload.effective_date,
+            due_date=payload.due_date,
+            owner=payload.owner,
+            created_by=payload.created_by,
+            status=payload.status,
+            dedupe_key=payload.dedupe_key,
+            source_type=payload.source_type,
+            source_ref=payload.source_ref,
+            description=payload.description,
+            references=payload.references,
+            attachments=payload.attachments,
+            meta=payload.meta,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return _lifecycle_out(row)
+
+
+@router.patch(
+    "/employees/{employee_id}/lifecycle-ledger/{event_id}",
+    response_model=WorkforceLifecycleEventOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_employee_lifecycle_event(
+    employee_id: str,
+    event_id: str,
+    payload: WorkforceLifecycleEventPatchIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> WorkforceLifecycleEventOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    row = await ledger_svc.patch_event(
+        db,
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        event_id=event_id,
+        patch=payload.model_dump(exclude_unset=True),
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Lifecycle event not found")
+    return _lifecycle_out(row)
+
+
+@router.patch(
+    "/employees/{employee_id}/document-control-tasks/{document_code}",
+    response_model=WorkforceDocumentControlTaskOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def patch_document_control_task(
+    employee_id: str,
+    document_code: str,
+    payload: HrDocumentControlTaskPatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> WorkforceDocumentControlTaskOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    row = await doc_task_svc.upsert_document_control_task(
+        db,
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        document_code=document_code,
+        patch=payload.model_dump(exclude_unset=True),
+    )
+    return WorkforceDocumentControlTaskOut(
+        document_code=str(row.document_code or ""),
+        owner=row.owner,
+        next_action=row.next_action,
+        next_due_date=row.next_due_date.isoformat() if row.next_due_date else None,
+        comment=row.comment,
+        status=row.status,
+        updated_at=row.updated_at.isoformat() if row.updated_at else None,
     )
 
 
@@ -760,11 +1199,13 @@ async def get_employee_document_file(
 async def create_employee_endpoint(
     payload: EmployeeCreate,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
 ) -> EmployeeOut:
     db, tid = db_tenant
+    tenant_id = str(tid)
     row = await we_svc.create_employee(
         db,
-        str(tid),
+        tenant_id,
         display_name=payload.display_name,
         status=payload.status,
         own_company_id=payload.own_company_id,
@@ -781,6 +1222,27 @@ async def create_employee_endpoint(
         initial_insurance_status=payload.initial_insurance_status,
         initial_eligibility_status=payload.initial_eligibility_status,
     )
+    try:
+        hired_on = payload.hire_date or date.today()
+        await ledger_svc.create_event(
+            db,
+            tenant_id=tenant_id,
+            employee_id=str(row.id),
+            event_code="employee_hired",
+            category="employment",
+            title="Employee hired",
+            effective_date=hired_on,
+            occurred_at=datetime.now(timezone.utc),
+            owner="HR",
+            created_by=str(current_user.sub),
+            status="done",
+            dedupe_key=f"employee_hired:{row.id}:{hired_on.isoformat()}",
+            source_type="workforce_employee_create",
+            source_ref=str(row.id),
+            references={"employee_id": str(row.id)},
+        )
+    except Exception:
+        logger.exception("ledger employee_hired emit failed employee=%s", getattr(row, "id", None))
     await db.commit()
     await db.refresh(row)
     return EmployeeOut.from_orm_row(row)
@@ -839,6 +1301,33 @@ async def patch_employee(
                 await db.rollback()
             except Exception:
                 pass
+    if became_terminated or term_date_changed:
+        try:
+            term_day = row.termination_date or date.today()
+            await ledger_svc.create_event(
+                db,
+                tenant_id=str(tid),
+                employee_id=str(row.id),
+                event_code="employee_terminated",
+                category="employment",
+                title="Employee terminated",
+                effective_date=term_day,
+                occurred_at=datetime.now(timezone.utc),
+                owner="HR",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"employee_terminated:{row.id}:{term_day.isoformat()}",
+                source_type="workforce_employee_patch",
+                source_ref=str(row.id),
+                references={"employee_id": str(row.id)},
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("ledger employee_terminated emit failed employee=%s", employee_id)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
 
     return EmployeeOut.from_orm_row(row)
 
@@ -862,6 +1351,17 @@ async def handoff_employee_from_candidate(
     tenant_id = str(tid)
     await ensure_candidate_access(db, tenant_id, candidate_id, current_user)
     c = await get_candidate(db, tenant_id, candidate_id)
+    try:
+        await assert_operation_allowed(
+            db,
+            tenant_id=tenant_id,
+            operation="hr_handoff",
+            actor_id=str(current_user.sub or "").strip() or None,
+            candidate=c,
+            stage="recruitment",
+        )
+    except WorkforceActionBlockedError as exc:
+        raise _action_blocked_http_error(exc) from exc
     row = await we_svc.handoff_from_candidate(
         db,
         tenant_id,
@@ -1015,6 +1515,25 @@ async def patch_insurance_profile_endpoint(
         target_id=row.id,
         payload={"employee_id": employee_id},
     )
+    try:
+        await ledger_svc.create_event(
+            db,
+            tenant_id=tenant_id,
+            employee_id=employee_id,
+            event_code="insurance_changed",
+            category="payroll",
+            title="Insurance changed",
+            occurred_at=datetime.now(timezone.utc),
+            owner="Payroll",
+            created_by=str(current_user.sub),
+            status="done",
+            dedupe_key=f"insurance_changed:{employee_id}:{row.updated_at.isoformat() if row.updated_at else ''}",
+            source_type="insurance_profile_patch",
+            source_ref=str(row.id),
+            references={"insurance_profile_id": str(row.id), "employee_id": employee_id},
+        )
+    except Exception:
+        logger.exception("ledger insurance_changed emit failed employee=%s", employee_id)
     await db.commit()
     await db.refresh(row)
     return WorkforceInsuranceProfileOut.model_validate(row)
@@ -1052,6 +1571,50 @@ async def patch_work_eligibility_profile_endpoint(
         target_id=row.id,
         payload={"employee_id": employee_id},
     )
+    try:
+        app_status = str(getattr(row, "work_permit_application_status", "") or "").strip().lower()
+        submitted = bool(getattr(row, "work_permit_submitted_at", None)) or app_status in ("submitted", "in_progress")
+        approved = bool(getattr(row, "work_permit_received_at", None)) or app_status in ("approved", "granted")
+        if submitted:
+            eff = getattr(row, "work_permit_submitted_at", None) or date.today()
+            await ledger_svc.create_event(
+                db,
+                tenant_id=tenant_id,
+                employee_id=employee_id,
+                event_code="permit_requested",
+                category="legal",
+                title="Work permit requested",
+                occurred_at=datetime.now(timezone.utc),
+                effective_date=eff,
+                owner="External legal",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"permit_requested:{employee_id}:{eff.isoformat()}",
+                source_type="work_eligibility_patch",
+                source_ref=str(row.id),
+                references={"work_eligibility_profile_id": str(row.id), "employee_id": employee_id},
+            )
+        if approved:
+            eff2 = getattr(row, "work_permit_received_at", None) or date.today()
+            await ledger_svc.create_event(
+                db,
+                tenant_id=tenant_id,
+                employee_id=employee_id,
+                event_code="permit_approved",
+                category="legal",
+                title="Work permit approved",
+                occurred_at=datetime.now(timezone.utc),
+                effective_date=eff2,
+                owner="External legal",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"permit_approved:{employee_id}:{eff2.isoformat()}",
+                source_type="work_eligibility_patch",
+                source_ref=str(row.id),
+                references={"work_eligibility_profile_id": str(row.id), "employee_id": employee_id},
+            )
+    except Exception:
+        logger.exception("ledger permit events emit failed employee=%s", employee_id)
     await db.commit()
     await db.refresh(row)
     return WorkforceWorkEligibilityProfileOut.model_validate(row)
@@ -1167,6 +1730,32 @@ async def create_employment_endpoint(
         target_id=row.id,
         payload={"employee_id": employee_id},
     )
+    try:
+        effective = row.start_date or date.today()
+        await ledger_svc.create_event(
+            db,
+            tenant_id=tenant_id,
+            employee_id=employee_id,
+            event_code="contract_issued",
+            category="employment",
+            title="Contract issued",
+            occurred_at=datetime.now(timezone.utc),
+            effective_date=effective,
+            due_date=row.expiry_date or row.end_date,
+            owner="HR",
+            created_by=str(current_user.sub),
+            status="done",
+            dedupe_key=f"contract_issued:{row.id}",
+            source_type="workforce_employment_create",
+            source_ref=str(row.id),
+            references={"employment_id": str(row.id), "employee_id": employee_id},
+        )
+    except Exception:
+        logger.exception("ledger contract_issued emit failed employment=%s", getattr(row, "id", ""))
+    try:
+        await _sync_contract_control_tasks(db, tenant_id=tenant_id, employment_row=row)
+    except Exception:
+        logger.exception("contract control tasks sync failed employment=%s", getattr(row, "id", ""))
     await db.commit()
     await db.refresh(row)
     return _employment_out(row)
@@ -1185,10 +1774,20 @@ async def patch_employment_endpoint(
 ) -> EmploymentOut:
     db, tid = db_tenant
     tenant_id = str(tid)
+    prev = (
+        await db.execute(
+            select(WorkforceEmployment).where(
+                WorkforceEmployment.id == employment_id,
+                WorkforceEmployment.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
     data = payload.model_dump(exclude_unset=True)
     row = await wh_sat.patch_employment(db, tenant_id, employment_id, data)
     if not row:
         raise HTTPException(status_code=404, detail="Employment not found")
+    if "end_date" in data and "expiry_date" not in data and row.end_date:
+        row.expiry_date = row.end_date
     await log_activity(
         db,
         tenant_id=tenant_id,
@@ -1198,6 +1797,104 @@ async def patch_employment_endpoint(
         target_id=row.id,
         payload={},
     )
+    try:
+        prev_status = str(getattr(prev, "lifecycle_status", "") or "").strip().lower()
+        new_status = str(getattr(row, "lifecycle_status", "") or "").strip().lower()
+        prev_signed = getattr(prev, "signed_at", None)
+        new_signed = getattr(row, "signed_at", None)
+        expiry = row.expiry_date or row.end_date
+
+        if prev_signed is None and new_signed is not None:
+            await ledger_svc.create_event(
+                db,
+                tenant_id=tenant_id,
+                employee_id=str(row.employee_id),
+                event_code="contract_signed",
+                category="employment",
+                title="Contract signed",
+                occurred_at=datetime.now(timezone.utc),
+                effective_date=new_signed,
+                due_date=expiry,
+                owner="HR",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"contract_signed:{row.id}:{new_signed.isoformat()}",
+                source_type="workforce_employment_patch",
+                source_ref=str(row.id),
+                references={"employment_id": str(row.id), "employee_id": str(row.employee_id)},
+            )
+
+        if prev_status != "renewed" and new_status == "renewed":
+            await ledger_svc.create_event(
+                db,
+                tenant_id=tenant_id,
+                employee_id=str(row.employee_id),
+                event_code="contract_renewed",
+                category="employment",
+                title="Contract renewed",
+                occurred_at=datetime.now(timezone.utc),
+                effective_date=(row.start_date or date.today()),
+                due_date=expiry,
+                owner="HR",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"contract_renewed:{row.id}:{(expiry.isoformat() if expiry else 'na')}",
+                source_type="workforce_employment_patch",
+                source_ref=str(row.id),
+                references={"employment_id": str(row.id), "employee_id": str(row.employee_id)},
+            )
+
+        if prev_status != "terminated" and new_status == "terminated":
+            await ledger_svc.create_event(
+                db,
+                tenant_id=tenant_id,
+                employee_id=str(row.employee_id),
+                event_code="contract_terminated",
+                category="employment",
+                title="Contract terminated",
+                occurred_at=datetime.now(timezone.utc),
+                effective_date=(row.end_date or date.today()),
+                owner="HR",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"contract_terminated:{row.id}:{(row.end_date.isoformat() if row.end_date else 'na')}",
+                source_type="workforce_employment_patch",
+                source_ref=str(row.id),
+                references={"employment_id": str(row.id), "employee_id": str(row.employee_id)},
+            )
+
+        if expiry and new_status in ("active", "signed", "issued", "expiring", "renewed"):
+            days_left = (expiry - date.today()).days
+            if days_left <= 30:
+                await ledger_svc.create_event(
+                    db,
+                    tenant_id=tenant_id,
+                    employee_id=str(row.employee_id),
+                    event_code="contract_expiring",
+                    category="employment",
+                    title="Contract expiring soon",
+                    occurred_at=datetime.now(timezone.utc),
+                    effective_date=expiry,
+                    due_date=expiry,
+                    owner="HR",
+                    created_by=str(current_user.sub),
+                    status="open",
+                    dedupe_key=f"contract_expiring:{row.id}:{expiry.isoformat()}",
+                    source_type="workforce_employment_patch",
+                    source_ref=str(row.id),
+                    references={"employment_id": str(row.id), "employee_id": str(row.employee_id)},
+                    description=f"Contract expires in {max(days_left, 0)} day(s).",
+                )
+                if not (row.next_action or "").strip():
+                    row.next_action = "renew contract"
+                if new_status not in ("terminated", "renewed"):
+                    row.lifecycle_status = "expiring"
+    except Exception:
+        logger.exception("ledger contract events emit failed employment=%s", employment_id)
+    try:
+        await _sync_contract_control_tasks(db, tenant_id=tenant_id, employment_row=row)
+    except Exception:
+        logger.exception("contract control tasks sync failed employment=%s", employment_id)
     await db.commit()
     await db.refresh(row)
     return _employment_out(row)
@@ -1340,6 +2037,15 @@ async def patch_leave_request_endpoint(
 ) -> LeaveRequestOut:
     db, tid = db_tenant
     tenant_id = str(tid)
+    prev = (
+        await db.execute(
+            select(WorkforceLeaveRequest).where(
+                WorkforceLeaveRequest.id == leave_id,
+                WorkforceLeaveRequest.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    prev_status = str(prev.status or "").strip().lower() if prev else ""
     data = payload.model_dump(exclude_unset=True)
     row = await wh_sat.patch_leave_request(
         db, tenant_id, leave_id, data, actor_user_id=current_user.sub
@@ -1355,6 +2061,30 @@ async def patch_leave_request_endpoint(
         target_id=row.id,
         payload={},
     )
+    try:
+        new_status = str(row.status or "").strip().lower()
+        leave_type = str(row.leave_type or "").strip().lower()
+        if prev_status != "approved" and new_status == "approved" and leave_type in ("vacation", "annual_leave"):
+            eff = row.start_date or date.today()
+            await ledger_svc.create_event(
+                db,
+                tenant_id=tenant_id,
+                employee_id=str(row.employee_id),
+                event_code="vacation_approved",
+                category="leave",
+                title="Vacation approved",
+                occurred_at=datetime.now(timezone.utc),
+                effective_date=eff,
+                owner="HR",
+                created_by=str(current_user.sub),
+                status="done",
+                dedupe_key=f"vacation_approved:{row.id}",
+                source_type="leave_request_patch",
+                source_ref=str(row.id),
+                references={"leave_request_id": str(row.id), "employee_id": str(row.employee_id)},
+            )
+    except Exception:
+        logger.exception("ledger vacation_approved emit failed leave=%s", leave_id)
     await db.commit()
     await db.refresh(row)
     return _leave_out(row)
@@ -1390,6 +2120,7 @@ def _hr_review_http_error(exc: Exception) -> HTTPException:
         "CRITICAL_VERIFIED_FIELDS_CONFLICT",
         "CANNOT_WAIVE_HARD_BLOCKER",
         "WAIVER_REASON_REQUIRED",
+        "DOCUMENT_NAME_REQUIRED",
     ):
         return HTTPException(status_code=422, detail={"code": msg})
     return HTTPException(status_code=422, detail=msg)
@@ -1423,7 +2154,7 @@ async def list_employee_document_verifications(
 
 
 @router.post(
-    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/opened",
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/opened",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
 )
@@ -1451,7 +2182,7 @@ async def post_employee_document_opened(
 
 
 @router.post(
-    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/reviewed",
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/reviewed",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
 )
@@ -1485,7 +2216,7 @@ async def post_employee_document_reviewed(
 
 
 @router.post(
-    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/verify",
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/verify",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
 )
@@ -1519,7 +2250,7 @@ async def post_employee_document_verify(
 
 
 @router.post(
-    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/reject",
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/reject",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
 )
@@ -1553,7 +2284,7 @@ async def post_employee_document_reject(
 
 
 @router.post(
-    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/request-correction",
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/request-correction",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
 )
@@ -1587,7 +2318,7 @@ async def post_employee_document_request_correction(
 
 
 @router.post(
-    "/employees/{employee_id}/hr-review/document-verifications/{document_key}/waive-requirement",
+    "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/waive-requirement",
     response_model=HrReviewPanelOut,
     dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
 )
@@ -1610,6 +2341,40 @@ async def post_employee_document_waive_requirement(
             document_key=document_key,
             actor_user_id=actor,
             reason=body.reason,
+        )
+        panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
+    except Exception as exc:
+        raise _hr_review_http_error(exc) from exc
+    if not panel:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await db.commit()
+    return HrReviewPanelOut.model_validate(panel)
+
+
+@router.post(
+    "/employees/{employee_id}/hr-review/additional-document-request",
+    response_model=HrReviewPanelOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def post_employee_hr_additional_document_request(
+    employee_id: str,
+    body: HrAdditionalDocumentRequestIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrReviewPanelOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip()
+    try:
+        review = await _employee_hr_review_for_verification(db, tenant_id, employee_id)
+        await hr_review_svc.add_hr_requested_document(
+            db,
+            tenant_id,
+            review,
+            document_name=body.document_name,
+            note=body.note,
+            urgency=body.urgency,
+            actor_user_id=actor,
         )
         panel = await hr_review_svc.rebuild_hr_review_panel_for_review(db, tenant_id, review)
     except Exception as exc:
@@ -1698,6 +2463,17 @@ async def post_contract_draft_preview(
         raise HTTPException(status_code=422, detail={"code": "template_id_or_template_code_required"})
     actor = str(current_user.sub or "").strip() or None
     try:
+        emp = await we_svc.get_employee(db, tenant_id, employee_id)
+        if not emp:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        await assert_operation_allowed(
+            db,
+            tenant_id=tenant_id,
+            operation="contract_signing",
+            actor_id=actor,
+            employee=emp,
+            stage="hr",
+        )
         log, doc, meta = await generate_contract_draft_preview(
             db,
             tenant_id,
@@ -1720,6 +2496,8 @@ async def post_contract_draft_preview(
                 "log_id": log.id,
             },
         )
+    except WorkforceActionBlockedError as exc:
+        raise _action_blocked_http_error(exc) from exc
     except Exception as exc:
         raise _contract_generation_http_error(exc) from exc
 
@@ -1871,10 +2649,23 @@ async def post_employee_hr_review_approve(
     tenant_id = str(tid)
     actor = str(current_user.sub or "").strip()
     try:
+        emp = await we_svc.get_employee(db, tenant_id, employee_id)
+        if not emp:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        await assert_operation_allowed(
+            db,
+            tenant_id=tenant_id,
+            operation="employee_activation",
+            actor_id=actor,
+            employee=emp,
+            stage="hr",
+        )
         await hr_review_svc.approve_hr_review(
             db, tenant_id=tenant_id, employee_id=employee_id, actor_user_id=actor
         )
         panel = await hr_review_svc.build_hr_review_panel(db, tenant_id, employee_id)
+    except WorkforceActionBlockedError as exc:
+        raise _action_blocked_http_error(exc) from exc
     except Exception as exc:
         raise _hr_review_http_error(exc) from exc
     if not panel:

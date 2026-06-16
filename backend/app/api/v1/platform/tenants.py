@@ -42,6 +42,19 @@ def _serialize_tenant(
     license_entry: TenantLicense | None,
     usage: dict[str, float],
 ) -> platform_schemas.PlatformTenantOut:
+    settings_obj = tenant.settings if isinstance(tenant.settings, dict) else {}
+
+    def _hosts(key: str) -> list[str]:
+        raw = settings_obj.get(key)
+        if not isinstance(raw, list):
+            return []
+        out: list[str] = []
+        for item in raw:
+            host = str(item or "").strip()
+            if host:
+                out.append(host)
+        return out
+
     license_model = (
         platform_schemas.TenantLicenseOut.model_validate(license_entry)
         if license_entry
@@ -67,7 +80,28 @@ def _serialize_tenant(
         updated_at=tenant.updated_at,
         license=license_model,
         usage=usage_model,
+        public_domain=str(settings_obj.get("public_domain") or "").strip() or None,
+        custom_domain=str(settings_obj.get("custom_domain") or "").strip() or None,
+        legal_domain=str(settings_obj.get("legal_domain") or "").strip() or None,
+        public_hosts=_hosts("public_hosts"),
+        domains=_hosts("domains"),
+        legal_hosts=_hosts("legal_hosts"),
     )
+
+
+def _normalize_host_list(raw: list[str] | None) -> list[str]:
+    if raw is None:
+        return []
+    out: list[str] = []
+    for item in raw:
+        v = str(item or "").strip().lower()
+        if not v:
+            continue
+        if ":" in v:
+            v = v.split(":", 1)[0].strip()
+        if v and v not in out:
+            out.append(v)
+    return out
 
 
 def _convert_uuid(value: UUID | None) -> str | None:
@@ -443,6 +477,67 @@ async def patch_platform_tenant(
     if updates:
         tenant = await tenant_service.update_tenant(db, tenant, updates)
     return _serialize_tenant(tenant, license_entry, usage)
+
+
+@router.get(
+    "/{tenant_id}/legal-host-settings",
+    response_model=platform_schemas.TenantLegalHostSettingsOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def get_tenant_legal_host_settings(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantLegalHostSettingsOut:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    st = tenant.settings if isinstance(tenant.settings, dict) else {}
+    return platform_schemas.TenantLegalHostSettingsOut(
+        public_domain=str(st.get("public_domain") or "").strip() or None,
+        custom_domain=str(st.get("custom_domain") or "").strip() or None,
+        legal_domain=str(st.get("legal_domain") or "").strip() or None,
+        public_hosts=_normalize_host_list(st.get("public_hosts") if isinstance(st.get("public_hosts"), list) else []),
+        domains=_normalize_host_list(st.get("domains") if isinstance(st.get("domains"), list) else []),
+        legal_hosts=_normalize_host_list(st.get("legal_hosts") if isinstance(st.get("legal_hosts"), list) else []),
+    )
+
+
+@router.patch(
+    "/{tenant_id}/legal-host-settings",
+    response_model=platform_schemas.TenantLegalHostSettingsOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def patch_tenant_legal_host_settings(
+    tenant_id: UUID,
+    payload: platform_schemas.TenantLegalHostSettingsPatch,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantLegalHostSettingsOut:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    st = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
+    updates = payload.model_dump(exclude_unset=True)
+    if "public_domain" in updates:
+        st["public_domain"] = (str(updates["public_domain"] or "").strip().lower() or None)
+    if "custom_domain" in updates:
+        st["custom_domain"] = (str(updates["custom_domain"] or "").strip().lower() or None)
+    if "legal_domain" in updates:
+        st["legal_domain"] = (str(updates["legal_domain"] or "").strip().lower() or None)
+    if "public_hosts" in updates:
+        st["public_hosts"] = _normalize_host_list(updates["public_hosts"])
+    if "domains" in updates:
+        st["domains"] = _normalize_host_list(updates["domains"])
+    if "legal_hosts" in updates:
+        st["legal_hosts"] = _normalize_host_list(updates["legal_hosts"])
+    tenant = await tenant_service.update_tenant(db, tenant, {"settings": st})
+    return platform_schemas.TenantLegalHostSettingsOut(
+        public_domain=str(st.get("public_domain") or "").strip() or None,
+        custom_domain=str(st.get("custom_domain") or "").strip() or None,
+        legal_domain=str(st.get("legal_domain") or "").strip() or None,
+        public_hosts=_normalize_host_list(st.get("public_hosts") if isinstance(st.get("public_hosts"), list) else []),
+        domains=_normalize_host_list(st.get("domains") if isinstance(st.get("domains"), list) else []),
+        legal_hosts=_normalize_host_list(st.get("legal_hosts") if isinstance(st.get("legal_hosts"), list) else []),
+    )
 
 
 @router.post(

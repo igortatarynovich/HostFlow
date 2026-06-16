@@ -14,6 +14,9 @@ from backend.app.services.audit import log_activity
 from backend.app.services.candidate_telegram_notifications import (
     sync_candidate_ready_for_handoff_gate,
 )
+from backend.app.services.integration_inbound_normalization import (
+    normalize_inbound_citizenship_alpha2,
+)
 
 from ..utils import (
     _as_dict,
@@ -423,8 +426,8 @@ def _tg_parse_step_answer(step: str, text: str) -> tuple[bool, Any, str | None]:
         except Exception:
             return False, None, "Неверный формат даты. Используйте YYYY-MM-DD."
     if step == "citizenship":
-        code = re.sub(r"[^A-Za-z]", "", raw).upper()
-        if len(code) != 2:
+        code = normalize_inbound_citizenship_alpha2(re.sub(r"[^A-Za-z]", "", raw))
+        if not code:
             return False, None, "Укажите код из 2 букв (например PL)."
         return True, code, None
     if step == "years_ce":
@@ -469,12 +472,12 @@ def _tg_apply_step_answer(candidate: Candidate, step: str, value: Any) -> None:
         extra["birth_date"] = str(value or "").strip()
         candidate._set_extra(extra)
     elif step == "citizenship":
-        state["personal"]["citizenship"] = str(value or "").upper()
+        state["personal"]["citizenship"] = normalize_inbound_citizenship_alpha2(value)
         pd = _as_dict(getattr(candidate, "personal_data", None))
-        pd["citizenship"] = str(value or "").upper()
+        pd["citizenship"] = normalize_inbound_citizenship_alpha2(value)
         candidate.personal_data = pd
         extra = _json_dict(getattr(candidate, "extra", None))
-        extra["citizenship"] = str(value or "").upper()
+        extra["citizenship"] = normalize_inbound_citizenship_alpha2(value)
         candidate._set_extra(extra)
     elif step == "years_ce":
         state["experience"]["years_ce"] = int(value)

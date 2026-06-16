@@ -41,7 +41,7 @@ from backend.app.models.user_notification import UserNotification
 logger = logging.getLogger(__name__)
 
 LEAD_TERMINAL_STAGE_CODES: frozenset[str] = frozenset({"converted", "lost"})
-LEAD_TERMINAL_STATUS_CODES: frozenset[str] = frozenset({"failed", "duplicated"})
+LEAD_TERMINAL_STATUS_CODES: frozenset[str] = frozenset({"failed", "duplicated", "rejected"})
 
 # "Active" = anything not in {done, cancelled}. Closed Activity enum
 # (planned / in_progress / done / cancelled / overdue) plus the legacy

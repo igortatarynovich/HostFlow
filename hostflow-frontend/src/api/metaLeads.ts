@@ -13,8 +13,16 @@ import type {
   MetaLeadCredential,
   MetaLeadReroutePayload,
   MetaLeadSelfServeOnboarding,
+  MetaLeadFormListResponse,
+  MetaLeadFormMapping,
+  MetaLeadFormMappingUpdate,
+  MetaFormRoute,
+  MetaFormRouteUpdate,
+  LeadTargetType,
   MetaLeadSettings,
   MetaLeadSettingsPatch,
+  LeadMessageTemplate,
+  LeadMessageTemplatePayload,
 } from './types'
 
 const BASE = '/settings/leads'
@@ -67,6 +75,28 @@ export async function finalizeMetaOAuth(payload: {
 export async function updateMetaLeadSettings(payload: MetaLeadSettingsPatch): Promise<MetaLeadSettings> {
   const { data } = await api.patch(`${BASE}/settings`, payload)
   return data
+}
+
+export async function listLeadMessageTemplates(): Promise<LeadMessageTemplate[]> {
+  const { data } = await api.get<LeadMessageTemplate[]>(`${BASE}/message-templates`)
+  return data
+}
+
+export async function createLeadMessageTemplate(payload: LeadMessageTemplatePayload): Promise<LeadMessageTemplate> {
+  const { data } = await api.post<LeadMessageTemplate>(`${BASE}/message-templates`, payload)
+  return data
+}
+
+export async function updateLeadMessageTemplate(
+  templateId: string,
+  payload: LeadMessageTemplatePayload,
+): Promise<LeadMessageTemplate> {
+  const { data } = await api.patch<LeadMessageTemplate>(`${BASE}/message-templates/${encodeURIComponent(templateId)}`, payload)
+  return data
+}
+
+export async function deleteLeadMessageTemplate(templateId: string): Promise<void> {
+  await api.delete(`${BASE}/message-templates/${encodeURIComponent(templateId)}`)
 }
 
 export async function rotateGenericInboundWebhook(): Promise<GenericInboundWebhookRotateResponse> {
@@ -199,6 +229,62 @@ export async function getMetaIncomingPreview(opts?: {
   const { data } = await api.get<MetaIncomingLeadsPreviewResponse>(`${BASE}/meta/incoming-preview`, {
     params: Object.keys(params).length ? params : undefined,
   })
+  return data
+}
+
+export async function listMetaLeadForms(opts?: {
+  source?: 'meta' | 'webhook'
+}): Promise<MetaLeadFormListResponse> {
+  const params: Record<string, string> = {}
+  if (opts?.source) params.source = opts.source
+  const { data } = await api.get<MetaLeadFormListResponse>(`${BASE}/meta/forms`, {
+    params: Object.keys(params).length ? params : undefined,
+  })
+  return data
+}
+
+export async function getMetaLeadFormMapping(
+  formId: string,
+  opts?: { page_id?: string | null; source?: 'meta' | 'webhook' },
+): Promise<MetaLeadFormMapping> {
+  const params: Record<string, string> = {}
+  if (opts?.page_id) params.page_id = opts.page_id
+  if (opts?.source) params.source = opts.source
+  const { data } = await api.get<MetaLeadFormMapping>(`${BASE}/meta/forms/${encodeURIComponent(formId)}/mapping`, {
+    params: Object.keys(params).length ? params : undefined,
+  })
+  return data
+}
+
+export async function putMetaLeadFormMapping(
+  formId: string,
+  payload: MetaLeadFormMappingUpdate,
+): Promise<MetaLeadFormMapping> {
+  const { data } = await api.put<MetaLeadFormMapping>(
+    `${BASE}/meta/forms/${encodeURIComponent(formId)}/mapping`,
+    payload,
+  )
+  return data
+}
+
+export async function getMetaFormRoute(
+  formId: string,
+  opts?: { page_id?: string; source?: 'meta' | 'webhook' },
+): Promise<MetaFormRoute> {
+  const params: Record<string, string> = {}
+  if (opts?.page_id) params.page_id = opts.page_id
+  if (opts?.source) params.source = opts.source
+  const { data } = await api.get<MetaFormRoute>(`${BASE}/meta/forms/${encodeURIComponent(formId)}/route`, {
+    params: Object.keys(params).length ? params : undefined,
+  })
+  return data
+}
+
+export async function putMetaFormRoute(formId: string, payload: MetaFormRouteUpdate): Promise<MetaFormRoute> {
+  const { data } = await api.put<MetaFormRoute>(
+    `${BASE}/meta/forms/${encodeURIComponent(formId)}/route`,
+    payload,
+  )
   return data
 }
 

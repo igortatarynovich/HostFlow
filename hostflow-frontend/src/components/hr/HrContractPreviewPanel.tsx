@@ -5,6 +5,7 @@ import {
   postContractDraftPreview,
   type ContractDraftPreviewOut,
   type TrustedIdentityPrepStatus,
+  type WorkforceEligibilityRuntime,
 } from '../../api/workforce'
 import { useI18n } from '../../i18n'
 
@@ -14,6 +15,7 @@ type Props = {
   employeeId: string
   manage?: boolean
   ownCompanyId?: string | null
+  workforceEligibility?: WorkforceEligibilityRuntime | null
 }
 
 function formatApiError(err: unknown): string {
@@ -29,7 +31,12 @@ function formatApiError(err: unknown): string {
   return (err as Error)?.message || 'Request failed'
 }
 
-export default function HrContractPreviewPanel({ employeeId, manage = false, ownCompanyId }: Props) {
+export default function HrContractPreviewPanel({
+  employeeId,
+  manage = false,
+  ownCompanyId,
+  workforceEligibility,
+}: Props) {
   const { t } = useI18n()
   const [prep, setPrep] = useState<TrustedIdentityPrepStatus | null>(null)
   const [templates, setTemplates] = useState<MergeDocumentTemplate[]>([])
@@ -64,6 +71,17 @@ export default function HrContractPreviewPanel({ employeeId, manage = false, own
   }, [load])
 
   const contractAllowed = useMemo(() => prep?.allowed_consumers.includes(CONTRACT_CONSUMER) ?? false, [prep])
+  const runtimeContractAllowed = workforceEligibility?.allowed_operations?.contract_signing !== false
+  const contractAllowedFinal = contractAllowed && runtimeContractAllowed
+  const runtimeContractBlockReason = (workforceEligibility?.blocking_reasons || []).find((b) =>
+    (b.affected_operation || []).includes('contract_signing'),
+  )
+  const runtimeContractBlockReasonText = runtimeContractBlockReason
+    ? [runtimeContractBlockReason.block_type, runtimeContractBlockReason.document_code && `(${runtimeContractBlockReason.document_code})`]
+        .filter(Boolean)
+        .join(' ')
+        .replace(/_/g, ' ')
+    : null
 
   const contractBlock = useMemo(
     () => prep?.blocked_consumers.find((b) => b.consumer === CONTRACT_CONSUMER),
@@ -119,7 +137,7 @@ export default function HrContractPreviewPanel({ employeeId, manage = false, own
             <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-800">
               {prep.projection_status}
             </span>
-            {contractAllowed ? (
+            {contractAllowedFinal ? (
               <span className="text-emerald-700">contract_generation allowed</span>
             ) : (
               <span className="text-amber-800">
@@ -130,12 +148,13 @@ export default function HrContractPreviewPanel({ employeeId, manage = false, own
           </div>
         ) : null}
 
-        {!contractAllowed && prep ? (
+        {!contractAllowedFinal && prep ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <p className="font-medium">
               {t('app.hr.contract_preview.blocked_title', { defaultValue: 'Cannot generate preview yet' })}
             </p>
             <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
+              {runtimeContractBlockReasonText ? <li>{runtimeContractBlockReasonText}</li> : null}
               {contractBlock?.block_code ? <li>{contractBlock.block_code}</li> : null}
               {prep.missing_fields.length > 0 ? (
                 <li>
@@ -180,7 +199,7 @@ export default function HrContractPreviewPanel({ employeeId, manage = false, own
           </label>
           <button
             type="button"
-            disabled={!manage || !contractAllowed || !templateCode || busy}
+            disabled={!manage || !contractAllowedFinal || !templateCode || busy}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             onClick={() => void generate()}
           >

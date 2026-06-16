@@ -22,7 +22,7 @@ from backend.app.models.workforce_hr_verified_field import (
     WorkforceHrVerifiedField,
 )
 from backend.app.services.audit import log_activity
-from backend.app.services.hr_verified_field_catalog import CRITICAL_FIELD_CODES, FIELD_CATALOG, FIELD_SPECS
+from backend.app.services.hr_verified_field_catalog import BASE_CRITICAL_FIELD_CODES, FIELD_CATALOG, FIELD_SPECS
 
 
 def _now() -> datetime:
@@ -40,7 +40,12 @@ def _field_meta(field_code: str, spec: Optional[dict[str, Any]] = None) -> tuple
     return str(cat.get("label") or field_code), list(cat.get("downstream_use") or [])
 
 
-def _serialize_row(row: WorkforceHrVerifiedField) -> dict[str, Any]:
+def _serialize_row(
+    row: WorkforceHrVerifiedField,
+    *,
+    critical_field_codes: Optional[frozenset[str]] = None,
+) -> dict[str, Any]:
+    codes = critical_field_codes or BASE_CRITICAL_FIELD_CODES
     return {
         "id": row.id,
         "field_code": row.field_code,
@@ -56,7 +61,7 @@ def _serialize_row(row: WorkforceHrVerifiedField) -> dict[str, Any]:
         "verified_at": row.verified_at.isoformat() if row.verified_at else None,
         "override_reason": row.override_reason,
         "conflict_reason": row.conflict_reason,
-        "is_critical": row.field_code in CRITICAL_FIELD_CODES,
+        "is_critical": row.field_code in codes,
     }
 
 
@@ -79,11 +84,13 @@ async def ensure_critical_field_placeholders(
     tenant_id: str,
     review: WorkforceHrReview,
     employee_id: Optional[str] = None,
+    critical_field_codes: Optional[frozenset[str]] = None,
 ) -> None:
     if review.status in HR_REVIEW_TERMINAL_STATUSES:
         return
     emp_id = employee_id or review.employee_id
-    for code in sorted(CRITICAL_FIELD_CODES):
+    codes = critical_field_codes or BASE_CRITICAL_FIELD_CODES
+    for code in sorted(codes):
         existing = await _get_row(db, tenant_id, review.id, code)
         if existing:
             continue
@@ -102,7 +109,11 @@ async def ensure_critical_field_placeholders(
 
 
 async def list_for_review(
-    db: AsyncSession, tenant_id: str, hr_review_id: str
+    db: AsyncSession,
+    tenant_id: str,
+    hr_review_id: str,
+    *,
+    critical_field_codes: Optional[frozenset[str]] = None,
 ) -> list[dict[str, Any]]:
     res = await db.execute(
         select(WorkforceHrVerifiedField)
@@ -112,11 +123,16 @@ async def list_for_review(
         )
         .order_by(WorkforceHrVerifiedField.field_code.asc())
     )
-    return [_serialize_row(r) for r in res.scalars().all()]
+    return [_serialize_row(r, critical_field_codes=critical_field_codes) for r in res.scalars().all()]
 
 
-def summarize_critical(fields: list[dict[str, Any]]) -> dict[str, Any]:
-    critical = [f for f in fields if f.get("is_critical")]
+def summarize_critical(
+    fields: list[dict[str, Any]],
+    *,
+    critical_field_codes: Optional[frozenset[str]] = None,
+) -> dict[str, Any]:
+    codes = critical_field_codes or BASE_CRITICAL_FIELD_CODES
+    critical = [f for f in fields if str(f.get("field_code") or "") in codes]
     pending = [f for f in critical if str(f.get("status") or "") == FIELD_STATUS_PENDING]
     conflicts = [f for f in critical if str(f.get("status") or "") == FIELD_STATUS_CONFLICT]
     not_ready = [
@@ -141,7 +157,7 @@ def summarize_critical(fields: list[dict[str, Any]]) -> dict[str, Any]:
         blockers.append(
             f"Critical field not ready: {f.get('field_label') or f.get('field_code')} ({st})"
         )
-    ready = len(critical) >= len(CRITICAL_FIELD_CODES) and len(not_ready) == 0
+    ready = len(critical) >= len(codes) and len(not_ready) == 0
     if not critical:
         blockers.append("Critical verified fields not initialized")
     return {

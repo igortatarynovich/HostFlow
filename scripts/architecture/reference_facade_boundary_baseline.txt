@@ -1,0 +1,8 @@
+# REF-3.1 baseline violations snapshot (2026-05-27)
+# Format: <RULE>|<path>
+DIRECT_APPLICABILITY_RESOLVER|backend/app/services/hr_expected_documents_resolver.py
+DIRECT_APPLICABILITY_RESOLVER|backend/app/api/v1/candidates/service.py
+DIRECT_TYPE_RUNTIME_RESOLVER|backend/app/services/hr_review_document_resolution.py
+DIRECT_TYPE_RUNTIME_RESOLVER|backend/app/services/handoff_snapshot.py
+DIRECT_TYPE_RUNTIME_RESOLVER|backend/app/services/status_transitions.py
+DIRECT_REFERENCE_MODEL_IMPORT|backend/app/services/hr_expected_documents_resolver.py
