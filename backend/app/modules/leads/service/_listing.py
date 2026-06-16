@@ -591,17 +591,47 @@ async def list_leads(
         except Exception:
             return {}
 
+    def _client_lead_company_name(lead: Lead, joined_company_name: Any) -> Optional[str]:
+        if str(getattr(lead, "lead_type", "") or "").lower() != "client":
+            return joined_company_name
+        if str(getattr(lead, "lead_target_type", "") or "").lower() != "client_lead":
+            return joined_company_name
+        norm = lead.normalized if isinstance(lead.normalized, dict) else {}
+        payload = lead.payload if isinstance(lead.payload, dict) else {}
+        profile = norm.get("company_profile") if isinstance(norm.get("company_profile"), dict) else {}
+        payload_company = payload.get("company") if isinstance(payload.get("company"), dict) else {}
+        for value in (
+            profile.get("name"),
+            norm.get("company_name"),
+            payload_company.get("name"),
+            joined_company_name,
+        ):
+            if value is None:
+                continue
+            s = str(value).strip()
+            if s:
+                return s
+        return None
+
     items: List[LeadOut] = []
     for lead, company_name, vacancy_title, vacancy_extra, cand_first, cand_last, cand_id, cand_recruiter in raw_rows:
+        company_name_out = _client_lead_company_name(lead, company_name)
         candidate_name = None
         if cand_first or cand_last:
             candidate_name = f"{cand_first or ''} {cand_last or ''}".strip()
         elif cand_id:
             candidate_name = str(cand_id)
+        outcome_company_id = lead.company_id
+        if (
+            str(getattr(lead, "lead_type", "") or "").lower() == "client"
+            and str(getattr(lead, "lead_target_type", "") or "").lower() == "client_lead"
+            and getattr(lead, "converted_client_id", None)
+        ):
+            outcome_company_id = getattr(lead, "converted_client_id", None)
         outcome_entity_type, outcome_entity_id, outcome_entity_name = _build_lead_outcome(
             business_type=business_type,
-            company_id=lead.company_id,
-            company_name=company_name,
+            company_id=outcome_company_id,
+            company_name=company_name_out,
             candidate_id=cand_id,
             candidate_name=candidate_name,
         )
@@ -626,7 +656,7 @@ async def list_leads(
                 lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
                 lead_target_type=(getattr(lead, "lead_target_type", None) or "candidate"),  # type: ignore[arg-type]
                 company_id=_uuid_or_none(lead.company_id),
-                company_name=company_name,
+                company_name=company_name_out,
                 vacancy_id=_uuid_or_none(lead.vacancy_id),
                 vacancy_title=vacancy_title,
                 source=lead.source,

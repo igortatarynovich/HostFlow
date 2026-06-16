@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   completeActivity,
   confirmLeadVacancy,
+  convertClientLeadToClient,
   createActivity,
   deleteLead,
   getLead,
@@ -23,6 +24,7 @@ import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
 import { NextActionBadge } from '../components/candidate/NextActionBadge'
 import { useLeadNextAction } from '../components/lead/useLeadNextAction'
 import LeadIntakeWorkspaceStickyHeader from '../components/leads/LeadIntakeWorkspaceStickyHeader'
+import ClientLeadDetailView from '../components/leads/ClientLeadDetailView'
 import {
   RecruitmentAgencyAuditDetailView,
   RecruitmentAgencyIntakeDetailView,
@@ -184,6 +186,7 @@ export default function LeadDetailPage() {
   const [patching, setPatching] = useState(false)
   const [lostStagePrompt, setLostStagePrompt] = useState<{ previousStage: string | null } | null>(null)
   const [deletingLead, setDeletingLead] = useState(false)
+  const [convertingClientLead, setConvertingClientLead] = useState(false)
   const [quickRemindBusy, setQuickRemindBusy] = useState(false)
   const [routingConfirming, setRoutingConfirming] = useState(false)
   const [poolBusyDetail, setPoolBusyDetail] = useState(false)
@@ -443,6 +446,7 @@ export default function LeadDetailPage() {
   const vacancyLabel = isServicesTenant ? t('app.leads.table.service_order') : t('app.leads.table.vacancy')
 
   const normalized = lead?.normalized && typeof lead.normalized === 'object' && !Array.isArray(lead.normalized) ? lead.normalized : {}
+  const isClientLead = Boolean(lead && lead.lead_type === 'client' && lead.lead_target_type === 'client_lead')
   const contactName =
     (normalized as Record<string, unknown>).full_name ||
     `${(normalized as Record<string, unknown>).first_name || ''} ${(normalized as Record<string, unknown>).last_name || ''}`.trim()
@@ -451,6 +455,15 @@ export default function LeadDetailPage() {
   const contactLine = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ') || '—'
 
   const leadDisplayName = useMemo(() => {
+    if (lead?.lead_type === 'client' && lead.lead_target_type === 'client_lead') {
+      const profile = (normalized as Record<string, unknown>).company_profile
+      const companyProfile = profile && typeof profile === 'object' && !Array.isArray(profile) ? (profile as Record<string, unknown>) : {}
+      const fromProfile = typeof companyProfile.name === 'string' ? companyProfile.name.trim() : ''
+      if (fromProfile) return fromProfile
+      const cn = typeof (normalized as Record<string, unknown>).company_name === 'string' ? (normalized as Record<string, unknown>).company_name.trim() : ''
+      if (cn) return cn
+      if (lead.company_name) return lead.company_name
+    }
     const fn = (normalized as Record<string, unknown>).full_name
     if (typeof fn === 'string' && fn.trim()) return fn.trim()
     const first = typeof (normalized as Record<string, unknown>).first_name === 'string' ? (normalized as Record<string, unknown>).first_name : ''
@@ -462,7 +475,7 @@ export default function LeadDetailPage() {
     const ph = typeof (normalized as Record<string, unknown>).phone === 'string' ? (normalized as Record<string, unknown>).phone.trim() : ''
     if (ph) return ph
     return t('app.leads.detail.title')
-  }, [normalized, t])
+  }, [lead?.company_name, lead?.lead_target_type, lead?.lead_type, normalized, t])
 
   const canManualProcessLead = leadSupportsManualProcess(lead)
   const processBlockCode = lead ? manualProcessBlockHint(lead) : null
@@ -691,6 +704,29 @@ export default function LeadDetailPage() {
     [lead?.id, loadTimeline, notify, planLimitModal, t, bumpNextActionTick],
   )
 
+  const handleConvertClientLead = useCallback(async () => {
+    if (!lead?.id) return
+    setConvertingClientLead(true)
+    try {
+      const updated = await convertClientLeadToClient(lead.id)
+      setLead(updated)
+      bumpNextActionTick()
+      notify({ title: 'Клиент создан из анкеты', variant: 'success' })
+      void loadTimeline()
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, 'Не удалось создать клиента')) {
+        return
+      }
+      const detail =
+        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        'Не удалось создать клиента'
+      notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
+    } finally {
+      setConvertingClientLead(false)
+    }
+  }, [bumpNextActionTick, lead?.id, loadTimeline, notify, planLimitModal])
+
   const handleDeleteLead = useCallback(async () => {
     if (!leadId) return
     if (!window.confirm(t('app.leads.detail.delete_confirm'))) return
@@ -793,7 +829,142 @@ export default function LeadDetailPage() {
 
       {!loading && !notFound && lead && (
         <>
-          {isServicesTenant ? (
+          {isClientLead ? (
+            <ClientLeadDetailView
+              lead={lead}
+              formatDate={(iso) => formatDateValue(iso, locale)}
+              converting={convertingClientLead}
+              patching={patching}
+              onConvert={() => void handleConvertClientLead()}
+              onStage={(stage) => void handleDetailStageSelect(stage)}
+              moreSection={
+                <div className="space-y-6">
+                  <LeadMetaProblemPanel lead={lead} onRefreshed={refreshLeadAndTimeline} />
+                  <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
+                  <LeadNextActionPlaybook lead={lead} formatDueAt={(iso) => formatDateValue(iso, locale)} />
+                  <section>
+                    <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.followup_title')}</h2>
+                    <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+                      <input
+                        className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                        value={reminderTitle}
+                        onChange={(e) => setReminderTitle(e.target.value)}
+                        placeholder={t('app.reminders.fields.title')}
+                      />
+                      <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="text-xs font-medium text-slate-600">
+                          <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
+                          <input
+                            type="datetime-local"
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            value={reminderDueAt}
+                            onChange={(e) => setReminderDueAt(e.target.value)}
+                          />
+                        </label>
+                        <label className="text-xs font-medium text-slate-600">
+                          <div className="mb-1">{t('app.reminders.fields.remind_before')}</div>
+                          <input
+                            type="number"
+                            min={0}
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            value={reminderOffset}
+                            onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-primary h-9 rounded-lg px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!reminderTitle.trim() || !reminderDueAt}
+                        onClick={() => void handleCreateLeadReminder()}
+                      >
+                        {t('app.reminders.actions.create')}
+                      </button>
+                      {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                    </div>
+                  </section>
+                  <section>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h2 className="text-sm font-semibold text-slate-900">{t('app.reminders.title')}</h2>
+                      <button type="button" className="btn-secondary h-8 rounded-lg px-2 text-xs" onClick={() => void loadLeadReminders()}>
+                        {t('common.actions.refresh')}
+                      </button>
+                    </div>
+                    {remindersLoading ? (
+                      <p className="text-sm text-slate-500">{t('common.loading')}</p>
+                    ) : reminders.length === 0 ? (
+                      <p className="text-sm text-slate-500">{t('app.reminders.states.empty')}</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {reminders.slice(0, 30).map((r) => (
+                          <li key={r.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-slate-900">{r.title || t('app.reminders.item.untitled')}</div>
+                              <div className="mt-0.5 text-xs text-slate-600">
+                                {t('app.reminders.fields.due_at')}: {formatDateValue(r.due_at, locale)}
+                              </div>
+                            </div>
+                            <button type="button" className="btn-secondary h-8 shrink-0 rounded-lg px-2 text-xs" onClick={() => void handleCompleteReminder(r.id)}>
+                              {t('app.reminders.actions.complete')}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                  <section>
+                    <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.timeline')}</h2>
+                    {timelineLoading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
+                    {timelineError && <p className="text-sm text-red-600">{timelineError}</p>}
+                    {!timelineLoading && !timelineError && timelineItems.length === 0 && (
+                      <p className="text-sm text-slate-500">{t('app.leads.detail.timeline_empty')}</p>
+                    )}
+                    {!timelineLoading && timelineItems.length > 0 && (
+                      <ul className="space-y-3 border-l-2 border-slate-200 pl-4">
+                        {timelineItems.map((item, idx) => (
+                          <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
+                            <span className="absolute -left-[calc(0.5rem+2px)] top-1.5 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
+                            <div className="text-xs text-slate-500">{formatDateValue(item.at, locale)}</div>
+                            <div className="text-sm font-medium text-slate-900">{item.title || item.kind || '—'}</div>
+                            {item.description ? <div className="text-sm text-slate-600">{item.description}</div> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                  <section>
+                    <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
+                    <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                        {t('app.leads.detail.normalized_json')}
+                      </summary>
+                      <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                        {jsonPreview(normalized)}
+                      </pre>
+                    </details>
+                    <details className="group mt-2 rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
+                        {t('app.leads.detail.raw_payload')}
+                      </summary>
+                      <pre className="max-h-72 overflow-auto border-t border-slate-200 bg-slate-900/95 p-3 text-xs text-slate-100">
+                        {jsonPreview(lead.payload)}
+                      </pre>
+                    </details>
+                  </section>
+                  {canDeleteLead ? (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
+                      disabled={deletingLead || patching || processing}
+                      onClick={() => void handleDeleteLead()}
+                    >
+                      {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
+                    </button>
+                  ) : null}
+                </div>
+              }
+            />
+          ) : isServicesTenant ? (
           <>
           <header className="card relative overflow-hidden p-5 shadow-md shadow-slate-900/[0.04] sm:p-6">
             <div
