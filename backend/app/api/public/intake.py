@@ -764,6 +764,7 @@ class CompanyIntakeTerms(BaseModel):
     night_driving: Optional[str] = Field(default=None, max_length=32)
     route_directions: List[str] = Field(default_factory=list)
     cargo_types: List[str] = Field(default_factory=list)
+    body_types: List[str] = Field(default_factory=list)
     work_conditions: List[str] = Field(default_factory=list)
     base_location: Optional[str] = Field(default=None, max_length=255)
     truck_brands: List[str] = Field(default_factory=list)
@@ -1398,6 +1399,7 @@ def _company_intake_normalized(
             "night_driving": terms.night_driving,
             "route_directions": terms.route_directions,
             "cargo_types": terms.cargo_types,
+            "body_types": terms.body_types,
             "work_conditions": terms.work_conditions,
             "base_location": terms.base_location,
             "truck_brands": terms.truck_brands,
@@ -1490,6 +1492,7 @@ def _company_intake_normalized(
             "night_driving": terms.night_driving,
             "route_directions": terms.route_directions,
             "cargo_types": terms.cargo_types,
+            "body_types": terms.body_types,
             "work_conditions": terms.work_conditions,
             "base_location": terms.base_location,
             "truck_brands": terms.truck_brands,

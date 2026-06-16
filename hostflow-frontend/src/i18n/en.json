@@ -8691,6 +8691,9 @@
         "rate": "Rate",
         "rate_compensation": "Rate / compensation",
         "amount": "Amount",
+        "rate_currency": "Currency",
+        "rate_period": "Period",
+        "rate_tax_mode": "Net / gross / B2B",
         "bonus": "Additional bonuses",
         "additional": "Additional information"
       },
@@ -8791,7 +8794,15 @@
         "privacy": "I have read the Privacy Policy.",
         "data_processing": "I consent to the processing of personal data to handle the inquiry and prepare a cooperation offer.",
         "accuracy": "I declare that the information provided is correct to the best of my knowledge.",
-        "marketing": "I consent to marketing contact by electronic means and by phone."
+        "marketing": "I consent to marketing contact by electronic means and by phone.",
+        "terms_prefix": "I accept the",
+        "terms_link": "Terms of use of the form",
+        "privacy_prefix": "I have read the",
+        "privacy_link": "Privacy Policy",
+        "data_processing_prefix": "I consent to personal data processing to handle the inquiry and prepare a cooperation offer. Information:",
+        "rodo_link": "RODO information",
+        "accuracy_prefix": "I declare that the information provided is correct to the best of my knowledge. Document:",
+        "marketing_prefix": "I consent to marketing contact by electronic means and by phone. Document:"
       },
       "quiz": {
         "steps": {
@@ -8803,6 +8814,9 @@
           "fleet": "How large is your fleet?",
           "timing": "When do you need people?",
           "conditions": "What does the work look like?",
+          "work": "What does the work look like?",
+          "trailer": "Trailer / transport type",
+          "compensation": "Rate / compensation and additional information",
           "contact": "Who should we contact?",
           "company": "Company details",
           "additional": "Work terms",

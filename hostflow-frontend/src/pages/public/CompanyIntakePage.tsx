@@ -14,7 +14,9 @@ type StepId =
   | 'transport'
   | 'fleet'
   | 'timing'
-  | 'conditions'
+  | 'work'
+  | 'trailer'
+  | 'compensation'
   | 'contact'
   | 'review'
 
@@ -51,8 +53,11 @@ type CompanyForm = {
     night_driving: string
     route_directions: string[]
     truck_brands: string[]
-    body_type: string
+    body_types: string[]
     rate_amount: string
+    rate_currency: string
+    rate_period: string
+    rate_tax_mode: string
     additional: string
   }
   consent: {
@@ -74,7 +79,9 @@ const STEPS: StepId[] = [
   'transport',
   'fleet',
   'timing',
-  'conditions',
+  'work',
+  'trailer',
+  'compensation',
   'contact',
   'review',
 ]
@@ -118,8 +125,11 @@ const INITIAL_FORM: CompanyForm = {
     night_driving: '',
     route_directions: [],
     truck_brands: [],
-    body_type: '',
+    body_types: [],
     rate_amount: '',
+    rate_currency: 'EUR',
+    rate_period: 'day',
+    rate_tax_mode: 'netto',
     additional: '',
   },
   consent: {
@@ -347,26 +357,6 @@ export default function CompanyIntakePage() {
     { value: 'hr_support', label: t('public.company_intake.quiz.cooperation.hr', { defaultValue: 'HR support' }) },
   ]
   const countryOptions: Option[] = ['Poland', 'Germany', 'Czech Republic', 'Lithuania'].map((value) => ({ value, label: value }))
-  const candidateCountryOptions: Option[] = [
-    'ukraine',
-    'belarus',
-    'moldova',
-    'georgia',
-    'armenia',
-    'azerbaijan',
-    'kazakhstan',
-    'uzbekistan',
-    'kyrgyzstan',
-    'tajikistan',
-    'india',
-    'nepal',
-    'philippines',
-    'sri_lanka',
-    'turkey',
-    'eu',
-    'any',
-    'other',
-  ].map((value) => ({ value, label: t(`public.company_intake.options.candidate_countries.${value}`, { defaultValue: value }) }))
   const scheduleOptions: Option[] = ['2/1', '3/1', '4/1', '6/2', '8/2'].map((value) => ({ value, label: value })).concat([
     { value: 'monday_friday', label: t('public.company_intake.options.work_system.monday_friday', { defaultValue: 'Monday-Friday' }) },
     { value: 'weekends_home', label: t('public.company_intake.options.work_system.weekends_home', { defaultValue: 'Weekends at home' }) },
@@ -402,6 +392,15 @@ export default function CompanyIntakePage() {
     { value: 'adr', label: 'ADR' },
     { value: 'tanker', label: t('public.company_intake.options.cargo.tanker', { defaultValue: 'Tanker' }) },
     { value: 'other', label: t('public.company_intake.options.cargo.other', { defaultValue: 'Other' }) },
+  ]
+  const ratePeriodOptions: Option[] = ['day', 'month', 'kilometer', 'hour'].map((value) => ({
+    value,
+    label: t(`public.company_intake.options.rate_period.${value}`, { defaultValue: value }),
+  }))
+  const rateTaxOptions: Option[] = [
+    { value: 'netto', label: 'Netto' },
+    { value: 'brutto', label: 'Brutto' },
+    { value: 'b2b', label: 'B2B' },
   ]
 
   const canContinue = () => {
@@ -493,21 +492,27 @@ export default function CompanyIntakePage() {
           people_count: numberFromChoice(form.need.people_count),
           needed_when: optionalText(form.need.needed_when),
           cooperation_type: optionalText(form.need.cooperation_type),
-          candidate_countries: form.need.candidate_countries,
+          candidate_countries: [],
           requirements: optionalText(form.need.requirements),
         },
         terms: {
-          rate: optionalText(form.terms.rate_amount),
+          rate: optionalText(form.terms.rate_amount)
+            ? optionalText([form.terms.rate_amount, form.terms.rate_currency, form.terms.rate_period, form.terms.rate_tax_mode].filter(Boolean).join(' '))
+            : undefined,
           rate_amount: optionalText(form.terms.rate_amount),
+          rate_currency: optionalText(form.terms.rate_currency),
+          rate_period: optionalText(form.terms.rate_period),
+          rate_tax_mode: optionalText(form.terms.rate_tax_mode),
           schedule: optionalText(form.terms.schedule.join(', ')),
           work_systems: form.terms.schedule,
           night_driving: optionalText(form.terms.night_driving),
           route_directions: form.terms.route_directions,
-          cargo_types: form.terms.body_type ? [form.terms.body_type] : [],
+          cargo_types: form.terms.body_types,
+          body_types: form.terms.body_types,
           work_conditions: form.terms.night_driving ? [`night_driving:${form.terms.night_driving}`] : [],
           base_location: optionalText(form.terms.base_location),
           truck_brands: form.terms.truck_brands,
-          body_type: optionalText(form.terms.body_type),
+          body_type: optionalText(form.terms.body_types.join(', ')),
           additional: optionalText(form.terms.additional),
         },
         consent: {
@@ -540,6 +545,8 @@ export default function CompanyIntakePage() {
     { label: t('public.company_intake.summary.base', { defaultValue: 'Base' }), value: [form.company.country, form.company.city].filter(Boolean).join(', ') || '-', step: 'base' as StepId },
     { label: t('public.company_intake.summary.transport', { defaultValue: 'Transport' }), value: transportOptions.find((item) => item.value === form.company.transport_type)?.label || '-', step: 'transport' as StepId },
     { label: t('public.company_intake.summary.timing', { defaultValue: 'Timing' }), value: timingOptions.find((item) => item.value === form.need.needed_when)?.label || '-', step: 'timing' as StepId },
+    { label: t('public.company_intake.quiz.steps.work', { defaultValue: 'Work' }), value: form.terms.schedule.join(', ') || '-', step: 'work' as StepId },
+    { label: t('public.company_intake.quiz.steps.trailer', { defaultValue: 'Trailer / transport' }), value: form.terms.body_types.join(', ') || '-', step: 'trailer' as StepId },
   ]
 
   if (configLoading) {
@@ -659,48 +666,63 @@ export default function CompanyIntakePage() {
             </Field>
           </div>
         )
-      case 'conditions':
+      case 'work':
         return (
-          <div className="space-y-6">
-            <section className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">{t('public.company_intake.sections.who')}</h3>
-              <div>
-                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.preferred_candidate_countries')}</p>
-                <MultiChoiceGrid options={candidateCountryOptions} value={form.need.candidate_countries} onChange={(next) => update('need', 'candidate_countries', next)} />
-              </div>
-            </section>
-            <section className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">{t('public.company_intake.sections.work')}</h3>
-              <div>
-                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_system')}</p>
-                <MultiChoiceGrid options={scheduleOptions} value={form.terms.schedule} onChange={(next) => update('terms', 'schedule', next)} />
-              </div>
-              <div>
-                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.route_directions')}</p>
-                <MultiChoiceGrid options={routeOptions} value={form.terms.route_directions} onChange={(next) => update('terms', 'route_directions', next)} />
-              </div>
-              <div>
-                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.night_driving')}</p>
-                <ChoiceGrid columns="sm:grid-cols-3" options={nightDrivingOptions} value={form.terms.night_driving} onChange={(value) => update('terms', 'night_driving', value)} />
-              </div>
-            </section>
-            <section className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">{t('public.company_intake.sections.transport')}</h3>
-              <div>
-                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.trailer_type')}</p>
-                <ChoiceGrid options={bodyOptions} value={form.terms.body_type} onChange={(value) => update('terms', 'body_type', value)} />
-              </div>
-              <div>
-                <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.truck_brands', { defaultValue: 'Truck brands' })}</p>
-                <MultiChoiceGrid options={truckOptions} value={form.terms.truck_brands} onChange={(next) => update('terms', 'truck_brands', next)} />
-              </div>
-              <Field label={t('public.company_intake.fields.rate_compensation')}>
-                <input className={inputClass} value={form.terms.rate_amount} onChange={(e) => update('terms', 'rate_amount', e.target.value)} placeholder="100 EUR/day" />
+          <div className="space-y-5">
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_system')}</p>
+              <MultiChoiceGrid options={scheduleOptions} value={form.terms.schedule} onChange={(next) => update('terms', 'schedule', next)} />
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.route_directions')}</p>
+              <MultiChoiceGrid options={routeOptions} value={form.terms.route_directions} onChange={(next) => update('terms', 'route_directions', next)} />
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.night_driving')}</p>
+              <ChoiceGrid columns="sm:grid-cols-3" options={nightDrivingOptions} value={form.terms.night_driving} onChange={(value) => update('terms', 'night_driving', value)} />
+            </div>
+          </div>
+        )
+      case 'trailer':
+        return (
+          <div className="space-y-5">
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.trailer_type')}</p>
+              <MultiChoiceGrid options={bodyOptions} value={form.terms.body_types} onChange={(next) => update('terms', 'body_types', next)} />
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.truck_brands', { defaultValue: 'Truck brands' })}</p>
+              <MultiChoiceGrid options={truckOptions} value={form.terms.truck_brands} onChange={(next) => update('terms', 'truck_brands', next)} />
+            </div>
+          </div>
+        )
+      case 'compensation':
+        return (
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-4">
+              <Field label={t('public.company_intake.fields.amount')}>
+                <input className={inputClass} value={form.terms.rate_amount} onChange={(e) => update('terms', 'rate_amount', e.target.value)} placeholder="100" />
               </Field>
-              <Field label={t('public.company_intake.fields.additional', { defaultValue: 'Additional information' })}>
-                <textarea className={textareaClass} value={form.terms.additional} onChange={(e) => update('terms', 'additional', e.target.value)} />
+              <Field label={t('public.company_intake.fields.rate_currency', { defaultValue: 'Currency' })}>
+                <select className={inputClass} value={form.terms.rate_currency} onChange={(e) => update('terms', 'rate_currency', e.target.value)}>
+                  <option value="PLN">PLN</option>
+                  <option value="EUR">EUR</option>
+                </select>
               </Field>
-            </section>
+              <Field label={t('public.company_intake.fields.rate_period', { defaultValue: 'Period' })}>
+                <select className={inputClass} value={form.terms.rate_period} onChange={(e) => update('terms', 'rate_period', e.target.value)}>
+                  {ratePeriodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </Field>
+              <Field label={t('public.company_intake.fields.rate_tax_mode', { defaultValue: 'Type' })}>
+                <select className={inputClass} value={form.terms.rate_tax_mode} onChange={(e) => update('terms', 'rate_tax_mode', e.target.value)}>
+                  {rateTaxOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </Field>
+            </div>
+            <Field label={t('public.company_intake.fields.additional', { defaultValue: 'Additional information' })}>
+              <textarea className={textareaClass} value={form.terms.additional} onChange={(e) => update('terms', 'additional', e.target.value)} />
+            </Field>
           </div>
         )
       case 'review':
@@ -724,23 +746,48 @@ export default function CompanyIntakePage() {
               <div className="mt-3 space-y-3">
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.terms_accepted} onChange={(e) => updateConsent('terms_accepted', e.target.checked)} />
-                  <span>{t('public.company_intake.consents.terms')}</span>
+                  <span>
+                    {t('public.company_intake.consents.terms_prefix', { defaultValue: 'I accept the' })}{' '}
+                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/terms.html" target="_blank" rel="noreferrer">
+                      {t('public.company_intake.consents.terms_link', { defaultValue: 'Terms of use' })}
+                    </a>.
+                  </span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.privacy_accepted} onChange={(e) => updateConsent('privacy_accepted', e.target.checked)} />
-                  <span>{t('public.company_intake.consents.privacy')}</span>
+                  <span>
+                    {t('public.company_intake.consents.privacy_prefix', { defaultValue: 'I have read the' })}{' '}
+                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/privacy.html" target="_blank" rel="noreferrer">
+                      {t('public.company_intake.consents.privacy_link', { defaultValue: 'Privacy Policy' })}
+                    </a>.
+                  </span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.data_processing_accepted} onChange={(e) => updateConsent('data_processing_accepted', e.target.checked)} />
-                  <span>{t('public.company_intake.consents.data_processing')}</span>
+                  <span>
+                    {t('public.company_intake.consents.data_processing_prefix', { defaultValue: 'I consent to personal data processing according to' })}{' '}
+                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/rodo.html" target="_blank" rel="noreferrer">
+                      {t('public.company_intake.consents.rodo_link', { defaultValue: 'RODO information' })}
+                    </a>.
+                  </span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.accuracy_confirmed} onChange={(e) => updateConsent('accuracy_confirmed', e.target.checked)} />
-                  <span>{t('public.company_intake.consents.accuracy')}</span>
+                  <span>
+                    {t('public.company_intake.consents.accuracy_prefix', { defaultValue: 'I declare that the information is correct under the' })}{' '}
+                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/terms.html" target="_blank" rel="noreferrer">
+                      {t('public.company_intake.consents.terms_link', { defaultValue: 'Terms of use' })}
+                    </a>.
+                  </span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.marketing_contact_accepted} onChange={(e) => updateConsent('marketing_contact_accepted', e.target.checked)} />
-                  <span>{t('public.company_intake.consents.marketing')}</span>
+                  <span>
+                    {t('public.company_intake.consents.marketing_prefix', { defaultValue: 'I consent to marketing contact as described in the' })}{' '}
+                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/privacy.html" target="_blank" rel="noreferrer">
+                      {t('public.company_intake.consents.privacy_link', { defaultValue: 'Privacy Policy' })}
+                    </a>.
+                  </span>
                 </label>
               </div>
             </div>

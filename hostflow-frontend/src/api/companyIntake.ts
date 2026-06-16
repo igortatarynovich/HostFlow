@@ -49,6 +49,7 @@ export type CompanyIntakeTerms = {
   night_driving?: string | null
   route_directions?: string[]
   cargo_types?: string[]
+  body_types?: string[]
   work_conditions?: string[]
   base_location?: string | null
   truck_brands?: string[]

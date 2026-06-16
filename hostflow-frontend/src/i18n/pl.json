@@ -8524,6 +8524,9 @@
         "rate": "Stawka",
         "rate_compensation": "Stawka / wynagrodzenie",
         "amount": "Kwota",
+        "rate_currency": "Waluta",
+        "rate_period": "Okres",
+        "rate_tax_mode": "Netto / brutto / B2B",
         "bonus": "Dodatkowe premie / bonusy",
         "additional": "Dodatkowe informacje"
       },
@@ -8624,7 +8627,15 @@
         "privacy": "Zapoznałem/am się z Polityką prywatności.",
         "data_processing": "Wyrażam zgodę na przetwarzanie danych osobowych w celu obsługi zapytania i przygotowania oferty współpracy.",
         "accuracy": "Oświadczam, że podane informacje są zgodne z moją wiedzą.",
-        "marketing": "Wyrażam zgodę na kontakt marketingowy drogą elektroniczną i telefoniczną."
+        "marketing": "Wyrażam zgodę na kontakt marketingowy drogą elektroniczną i telefoniczną.",
+        "terms_prefix": "Akceptuję",
+        "terms_link": "Regulamin korzystania z formularza",
+        "privacy_prefix": "Zapoznałem/am się z",
+        "privacy_link": "Polityką prywatności",
+        "data_processing_prefix": "Wyrażam zgodę na przetwarzanie danych osobowych w celu obsługi zapytania i przygotowania oferty współpracy. Informacja:",
+        "rodo_link": "informacją RODO",
+        "accuracy_prefix": "Oświadczam, że podane informacje są zgodne z moją wiedzą. Dokument:",
+        "marketing_prefix": "Wyrażam zgodę na kontakt marketingowy drogą elektroniczną i telefoniczną. Dokument:"
       },
       "quiz": {
         "steps": {
@@ -8636,6 +8647,9 @@
           "fleet": "Jak duża jest flota?",
           "timing": "Kiedy potrzebujecie ludzi?",
           "conditions": "Jak wygląda praca?",
+          "work": "Jak wygląda praca?",
+          "trailer": "Rodzaj naczepy / transportu",
+          "compensation": "Stawka / wynagrodzenie i dodatkowe informacje",
           "contact": "Z kim mamy się skontaktować?",
           "company": "Dane firmy",
           "additional": "Warunki pracy",
