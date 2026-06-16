@@ -81,6 +81,7 @@ export default function ClientLeadDetailView({
   const terms = Object.keys(normalizedTerms).length > 0 ? normalizedTerms : payloadTerms
   const marketing = record(normalized.marketing)
   const meta = record(normalized.meta)
+  const consent = record(normalized.consent)
   const sourceProfile = record(meta.source_profile)
   const companyName = text(company.name) || text(normalized.company_name) || text(payloadCompany.name) || lead.company_name || 'Client Lead'
   const convertedId = text(lead.converted_client_id)
@@ -167,7 +168,16 @@ export default function ClientLeadDetailView({
 
       <Section title="Условия работы">
         <Field label="Ставка" value={terms.rate || normalized.rate} />
+        <Field label="Kwota" value={terms.rate_amount || normalized.rate_amount} />
+        <Field label="Waluta" value={terms.rate_currency || normalized.rate_currency} />
+        <Field label="Okres" value={terms.rate_period || normalized.rate_period} />
+        <Field label="Netto / brutto / B2B" value={terms.rate_tax_mode || normalized.rate_tax_mode} />
+        <Field label="Premie / bonusy" value={terms.bonus || normalized.bonus} />
         <Field label="График" value={terms.schedule || normalized.schedule} />
+        <Field label="System pracy" value={terms.work_systems || normalized.work_systems} />
+        <Field label="Kierunki tras" value={terms.route_directions || normalized.route_directions} />
+        <Field label="Typ transportu / ładunku" value={terms.cargo_types || normalized.cargo_types} />
+        <Field label="Warunki dodatkowe" value={terms.work_conditions || normalized.work_conditions} />
         <Field label="База" value={terms.base || company.city || payloadCompany.city} />
         <Field label="Машины" value={terms.truck_brands || normalized.truck_brands} />
         <Field label="Тип кузова" value={terms.body_type || normalized.body_type} />
@@ -180,6 +190,16 @@ export default function ClientLeadDetailView({
         <Field label="Язык" value={meta.language || payload.language} />
         <Field label="Создано" value={formatDate(lead.created_at)} />
         <Field label="Converted client" value={convertedId} />
+      </Section>
+
+      <Section title="Zgody / RODO">
+        <Field label="RODO consent" value={consent.rodo_consent || normalized.rodo_consent} />
+        <Field label="Privacy policy" value={consent.privacy_policy || normalized.privacy_policy} />
+        <Field label="Regulamin" value={consent.regulamin || normalized.regulamin} />
+        <Field label="Consent timestamp" value={consent.consent_timestamp || normalized.consent_timestamp} />
+        <Field label="Marketing contact" value={consent.marketing_contact_accepted} />
+        <Field label="Terms version" value={consent.terms_version} />
+        <Field label="Privacy version" value={consent.privacy_version} />
       </Section>
 
       {moreSection ? (

@@ -754,11 +754,41 @@ class CompanyIntakeNeed(BaseModel):
 
 class CompanyIntakeTerms(BaseModel):
     rate: Optional[str] = Field(default=None, max_length=128)
+    rate_amount: Optional[str] = Field(default=None, max_length=64)
+    rate_currency: Optional[str] = Field(default=None, max_length=8)
+    rate_period: Optional[str] = Field(default=None, max_length=32)
+    rate_tax_mode: Optional[str] = Field(default=None, max_length=32)
+    bonus: Optional[str] = Field(default=None, max_length=1000)
     schedule: Optional[str] = Field(default=None, max_length=128)
+    work_systems: List[str] = Field(default_factory=list)
+    route_directions: List[str] = Field(default_factory=list)
+    cargo_types: List[str] = Field(default_factory=list)
+    work_conditions: List[str] = Field(default_factory=list)
     base_location: Optional[str] = Field(default=None, max_length=255)
     truck_brands: List[str] = Field(default_factory=list)
     body_type: Optional[str] = Field(default=None, max_length=128)
     additional: Optional[str] = Field(default=None, max_length=2000)
+
+
+class CompanyIntakeConsent(BaseModel):
+    terms_accepted: bool
+    privacy_accepted: bool
+    data_processing_accepted: bool
+    accuracy_confirmed: bool
+    marketing_contact_accepted: bool = False
+    terms_version: Optional[str] = Field(default=None, max_length=64)
+    privacy_version: Optional[str] = Field(default=None, max_length=64)
+
+    @model_validator(mode="after")
+    def _mandatory_consents(self) -> "CompanyIntakeConsent":
+        if not (
+            self.terms_accepted
+            and self.privacy_accepted
+            and self.data_processing_accepted
+            and self.accuracy_confirmed
+        ):
+            raise ValueError("mandatory consents are required")
+        return self
 
 
 class CompanyIntakeSubmitRequest(BaseModel):
@@ -766,6 +796,7 @@ class CompanyIntakeSubmitRequest(BaseModel):
     contact: CompanyIntakeContact
     need: CompanyIntakeNeed = Field(default_factory=CompanyIntakeNeed)
     terms: CompanyIntakeTerms = Field(default_factory=CompanyIntakeTerms)
+    consent: CompanyIntakeConsent
     source: Optional[str] = Field(default=None, max_length=32)
     service_intent: Optional[str] = Field(default=None, max_length=128)
     language: Optional[str] = Field(default=None, max_length=8)
@@ -1243,6 +1274,10 @@ def _company_intake_payload(
     payload: CompanyIntakeSubmitRequest,
     form: Optional[TenantLeadForm],
     source_profile: Optional[IntakeSourceProfile] = None,
+    *,
+    consent_received_at: Optional[str] = None,
+    client_ip: Optional[str] = None,
+    user_agent: Optional[str] = None,
 ) -> Dict[str, Any]:
     return {
         "intake": True,
@@ -1254,6 +1289,12 @@ def _company_intake_payload(
         "contact": payload.contact.model_dump(mode="json", exclude_none=True),
         "need": payload.need.model_dump(mode="json", exclude_none=True),
         "terms": payload.terms.model_dump(mode="json", exclude_none=True),
+        "consent": {
+            **payload.consent.model_dump(mode="json", exclude_none=True),
+            "received_at": consent_received_at,
+            "ip": client_ip,
+            "user_agent": user_agent,
+        },
         "service_intent": payload.service_intent,
         "language": payload.language,
         "source_context": payload.source_context or {},
@@ -1263,6 +1304,10 @@ def _company_intake_payload(
 def _company_intake_normalized(
     payload: CompanyIntakeSubmitRequest,
     source_profile: Optional[IntakeSourceProfile] = None,
+    *,
+    consent_received_at: Optional[str] = None,
+    client_ip: Optional[str] = None,
+    user_agent: Optional[str] = None,
 ) -> Dict[str, Any]:
     company = payload.company
     contact = payload.contact
@@ -1307,7 +1352,16 @@ def _company_intake_normalized(
         "requirements": need.requirements,
         "terms": {
             "rate": terms.rate,
+            "rate_amount": terms.rate_amount,
+            "rate_currency": terms.rate_currency,
+            "rate_period": terms.rate_period,
+            "rate_tax_mode": terms.rate_tax_mode,
+            "bonus": terms.bonus,
             "schedule": terms.schedule,
+            "work_systems": terms.work_systems,
+            "route_directions": terms.route_directions,
+            "cargo_types": terms.cargo_types,
+            "work_conditions": terms.work_conditions,
             "base_location": terms.base_location,
             "truck_brands": terms.truck_brands,
             "body_type": terms.body_type,
@@ -1329,6 +1383,24 @@ def _company_intake_normalized(
         "source_profile": _company_intake_source_profile_meta(source_profile),
         "assigned_manager_id": getattr(source_profile, "default_assignee_id", None),
         "submitted_flow": "company_intake",
+        "form_id": source_context.get("form_id") or (str(source_profile.id) if source_profile is not None else None),
+        "device": source_context.get("device"),
+        "ip": client_ip,
+        "user_agent": user_agent,
+    }
+    consent = {
+        "rodo_consent": "received" if payload.consent.data_processing_accepted else None,
+        "privacy_policy": "accepted" if payload.consent.privacy_accepted else None,
+        "regulamin": "accepted" if payload.consent.terms_accepted else None,
+        "accuracy_confirmed": bool(payload.consent.accuracy_confirmed),
+        "marketing_contact_accepted": bool(payload.consent.marketing_contact_accepted),
+        "consent_timestamp": consent_received_at,
+        "terms_version": payload.consent.terms_version,
+        "privacy_version": payload.consent.privacy_version,
+        "language": payload.language or getattr(source_profile, "default_language", None),
+        "source": source,
+        "form_id": source_context.get("form_id") or (str(source_profile.id) if source_profile is not None else None),
+        "ip": client_ip,
     }
     structured = {
         "company_profile": {k: v for k, v in company_profile.items() if v not in (None, "", [], {})},
@@ -1340,6 +1412,7 @@ def _company_intake_normalized(
         },
         "marketing": {k: v for k, v in marketing.items() if v not in (None, "", [], {})},
         "meta": {k: v for k, v in meta.items() if v not in (None, "", [], {})},
+        "consent": {k: v for k, v in consent.items() if v not in (None, "", [], {})},
     }
     flat_aliases = {
         k: v
@@ -1369,11 +1442,24 @@ def _company_intake_normalized(
             "candidate_countries": need.candidate_countries,
             "requirements": need.requirements,
             "rate": terms.rate,
+            "rate_amount": terms.rate_amount,
+            "rate_currency": terms.rate_currency,
+            "rate_period": terms.rate_period,
+            "rate_tax_mode": terms.rate_tax_mode,
+            "bonus": terms.bonus,
             "schedule": terms.schedule,
+            "work_systems": terms.work_systems,
+            "route_directions": terms.route_directions,
+            "cargo_types": terms.cargo_types,
+            "work_conditions": terms.work_conditions,
             "base_location": terms.base_location,
             "truck_brands": terms.truck_brands,
             "body_type": terms.body_type,
             "additional_terms": terms.additional,
+            "rodo_consent": consent["rodo_consent"],
+            "privacy_policy": consent["privacy_policy"],
+            "regulamin": consent["regulamin"],
+            "consent_timestamp": consent_received_at,
             "utm_source": source_context.get("utm_source"),
             "utm_campaign": source_context.get("utm_campaign"),
             "utm_adset": source_context.get("utm_adset"),
@@ -1412,7 +1498,14 @@ async def submit_company_intake(
 
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
-    normalized = _company_intake_normalized(payload, source_profile)
+    consent_received_at = _now().isoformat()
+    normalized = _company_intake_normalized(
+        payload,
+        source_profile,
+        consent_received_at=consent_received_at,
+        client_ip=client_ip,
+        user_agent=user_agent,
+    )
     if legacy_lead_form_link:
         normalized.setdefault("meta", {})
         if isinstance(normalized["meta"], dict):
@@ -1477,7 +1570,14 @@ async def submit_company_intake(
         own_company_id=own_company_id,
         company_id=None,
         vacancy_id=None,
-        payload=_company_intake_payload(payload, form, source_profile),
+        payload=_company_intake_payload(
+            payload,
+            form,
+            source_profile,
+            consent_received_at=consent_received_at,
+            client_ip=client_ip,
+            user_agent=user_agent,
+        ),
         normalized=normalized,
         source=_company_intake_source(payload, source_profile),
         ad_id=None,

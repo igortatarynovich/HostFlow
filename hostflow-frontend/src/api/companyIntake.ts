@@ -32,11 +32,30 @@ export type CompanyIntakeNeed = {
 
 export type CompanyIntakeTerms = {
   rate?: string | null
+  rate_amount?: string | null
+  rate_currency?: string | null
+  rate_period?: string | null
+  rate_tax_mode?: string | null
+  bonus?: string | null
   schedule?: string | null
+  work_systems?: string[]
+  route_directions?: string[]
+  cargo_types?: string[]
+  work_conditions?: string[]
   base_location?: string | null
   truck_brands?: string[]
   body_type?: string | null
   additional?: string | null
+}
+
+export type CompanyIntakeConsent = {
+  terms_accepted: boolean
+  privacy_accepted: boolean
+  data_processing_accepted: boolean
+  accuracy_confirmed: boolean
+  marketing_contact_accepted?: boolean
+  terms_version?: string | null
+  privacy_version?: string | null
 }
 
 export type CompanyIntakeSubmitPayload = {
@@ -44,6 +63,7 @@ export type CompanyIntakeSubmitPayload = {
   contact: CompanyIntakeContact
   need?: CompanyIntakeNeed
   terms?: CompanyIntakeTerms
+  consent?: CompanyIntakeConsent
   source?: string | null
   service_intent?: string | null
   language?: string | null
