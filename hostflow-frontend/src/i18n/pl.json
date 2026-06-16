@@ -8493,6 +8493,9 @@
       },
       "kicker": "B2B intake",
       "title": "Ankieta firmy transportowej",
+      "profile_title": "Company Recruitment Profile",
+      "intro": "Informacje w tej ankiecie pomogą nam przygotować profil Państwa firmy oraz dopasować kandydatów do realnych warunków pracy. Dane są wykorzystywane wyłącznie w celu analizy zapotrzebowania rekrutacyjnego i przygotowania odpowiedniej oferty współpracy.",
+      "intro_hint": "Im dokładniej poznamy warunki pracy, tym lepiej dopasujemy kandydatów i unikniemy nietrafionych zgłoszeń.",
       "submit": "Wyślij ankietę",
       "fields": {
         "company_name": "Nazwa firmy",
@@ -8507,15 +8510,109 @@
         "whatsapp": "WhatsApp dostępny",
         "cooperation_type": "Typ współpracy",
         "candidate_countries": "Kraje kandydatów",
+        "preferred_candidate_countries": "Preferowane kraje pochodzenia kandydatów",
         "schedule": "System pracy",
+        "work_system": "System pracy",
+        "route_directions": "Kierunki tras",
+        "cargo_type": "Typ transportu / ładunku",
+        "work_conditions": "Warunki dodatkowe",
         "truck_brands": "Marki pojazdów",
         "rate": "Stawka",
+        "rate_compensation": "Stawka / wynagrodzenie",
+        "amount": "Kwota",
+        "bonus": "Dodatkowe premie / bonusy",
         "additional": "Dodatkowe informacje"
       },
       "transport": {
         "international": "Międzynarodowy",
         "domestic": "Krajowy",
         "mixed": "Mieszany"
+      },
+      "options": {
+        "candidate_countries": {
+          "ukraine": "Ukraina",
+          "belarus": "Białoruś",
+          "moldova": "Mołdawia",
+          "georgia": "Gruzja",
+          "armenia": "Armenia",
+          "azerbaijan": "Azerbejdżan",
+          "kazakhstan": "Kazachstan",
+          "uzbekistan": "Uzbekistan",
+          "kyrgyzstan": "Kirgistan",
+          "tajikistan": "Tadżykistan",
+          "india": "Indie",
+          "nepal": "Nepal",
+          "philippines": "Filipiny",
+          "sri_lanka": "Sri Lanka",
+          "turkey": "Turcja",
+          "eu": "Kraje UE",
+          "any": "Bez znaczenia",
+          "other": "Inne"
+        },
+        "work_system": {
+          "monday_friday": "Poniedziałek-piątek",
+          "weekends_home": "Weekendy w domu",
+          "to_agree": "Do uzgodnienia",
+          "other": "Inny system"
+        },
+        "routes": {
+          "poland": "Polska",
+          "germany": "Niemcy",
+          "france": "Francja",
+          "benelux": "Benelux",
+          "scandinavia": "Skandynawia",
+          "spain_portugal": "Hiszpania / Portugalia",
+          "italy": "Włochy",
+          "czech_slovakia": "Czechy / Słowacja",
+          "baltics": "Kraje bałtyckie",
+          "uk": "Wielka Brytania",
+          "eu_international": "Trasy międzynarodowe UE",
+          "domestic": "Trasy krajowe",
+          "other": "Inne"
+        },
+        "cargo": {
+          "FTL": "FTL",
+          "LTL": "LTL",
+          "frigo": "Chłodnia",
+          "curtain": "Firanka",
+          "jumbo": "Jumbo",
+          "container": "Kontener",
+          "isotherm": "Izoterma",
+          "tanker": "Cysterna",
+          "ADR": "ADR",
+          "food": "Żywność",
+          "electronics": "AGD / elektronika",
+          "building_materials": "Materiały budowlane",
+          "pallets": "Palety",
+          "automotive": "Automotive",
+          "other": "Inne"
+        },
+        "conditions": {
+          "night_driving": "Jazda nocna",
+          "no_night_driving": "Brak jazdy nocnej",
+          "driver_loading": "Załadunek / rozładunek po stronie kierowcy",
+          "no_driver_loading": "Brak załadunku / rozładunku",
+          "pallet_exchange": "Wymiana palet",
+          "no_pallet_exchange": "Brak wymiany palet",
+          "fixed_routes": "Stałe trasy",
+          "variable_routes": "Zmienne trasy",
+          "double_crew": "Praca w podwójnej obsadzie",
+          "solo": "Praca solo"
+        },
+        "rate_period": {
+          "day": "dzień",
+          "month": "miesiąc",
+          "kilometer": "kilometr",
+          "hour": "godzina"
+        }
+      },
+      "consents": {
+        "title": "Zgody i oświadczenia",
+        "terms": "Akceptuję Regulamin korzystania z formularza.",
+        "privacy": "Zapoznałem/am się z Polityką prywatności.",
+        "data_processing": "Wyrażam zgodę na przetwarzanie danych osobowych w celu obsługi zapytania i przygotowania oferty współpracy.",
+        "accuracy": "Oświadczam, że podane informacje są zgodne z moją wiedzą.",
+        "marketing": "Wyrażam zgodę na kontakt marketingowy drogą elektroniczną i telefoniczną."
       },
       "quiz": {
         "steps": {
@@ -8564,12 +8661,13 @@
       },
       "errors": {
         "required": "Nazwa firmy, osoba kontaktowa oraz email lub telefon są wymagane.",
+        "consents_required": "Przed wysłaniem formularza wymagane jest zaakceptowanie regulaminu, polityki prywatności, zgody na przetwarzanie danych oraz potwierdzenie poprawności informacji.",
         "submit_failed": "Nie udało się wysłać ankiety. Spróbuj ponownie."
       },
       "success": {
         "kicker": "Wysłano",
-        "title": "Dziękujemy. Otrzymaliśmy ankietę firmy.",
-        "body": "Manager HostFlow sprawdzi dane i skontaktuje się z Tobą w sprawie kolejnych kroków.",
+        "title": "Dziękujemy za przesłanie informacji.",
+        "body": "Nasz zespół przeanalizuje profil firmy i skontaktuje się z Państwem w celu omówienia możliwych rozwiązań rekrutacyjnych.",
         "reference": "Numer zgłoszenia"
       }
     },

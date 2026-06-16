@@ -8660,6 +8660,9 @@
       },
       "kicker": "B2B intake",
       "title": "Transport company questionnaire",
+      "profile_title": "Company Recruitment Profile",
+      "intro": "The information in this questionnaire helps us prepare your company profile and match candidates to real working conditions. The data is used only to analyze recruitment needs and prepare an appropriate cooperation offer.",
+      "intro_hint": "The more accurately we understand the working conditions, the better we can match candidates and avoid irrelevant applications.",
       "submit": "Submit questionnaire",
       "fields": {
         "company_name": "Company name",
@@ -8674,15 +8677,109 @@
         "whatsapp": "WhatsApp available",
         "cooperation_type": "Cooperation type",
         "candidate_countries": "Candidate countries",
+        "preferred_candidate_countries": "Preferred countries of candidate origin",
         "schedule": "Schedule",
+        "work_system": "Work system",
+        "route_directions": "Route directions",
+        "cargo_type": "Transport / cargo type",
+        "work_conditions": "Additional working conditions",
         "truck_brands": "Truck brands",
         "rate": "Rate",
+        "rate_compensation": "Rate / compensation",
+        "amount": "Amount",
+        "bonus": "Additional bonuses",
         "additional": "Additional information"
       },
       "transport": {
         "international": "International",
         "domestic": "Domestic",
         "mixed": "Mixed"
+      },
+      "options": {
+        "candidate_countries": {
+          "ukraine": "Ukraine",
+          "belarus": "Belarus",
+          "moldova": "Moldova",
+          "georgia": "Georgia",
+          "armenia": "Armenia",
+          "azerbaijan": "Azerbaijan",
+          "kazakhstan": "Kazakhstan",
+          "uzbekistan": "Uzbekistan",
+          "kyrgyzstan": "Kyrgyzstan",
+          "tajikistan": "Tajikistan",
+          "india": "India",
+          "nepal": "Nepal",
+          "philippines": "Philippines",
+          "sri_lanka": "Sri Lanka",
+          "turkey": "Turkey",
+          "eu": "EU countries",
+          "any": "No preference",
+          "other": "Other"
+        },
+        "work_system": {
+          "monday_friday": "Monday-Friday",
+          "weekends_home": "Weekends at home",
+          "to_agree": "To be agreed",
+          "other": "Other system"
+        },
+        "routes": {
+          "poland": "Poland",
+          "germany": "Germany",
+          "france": "France",
+          "benelux": "Benelux",
+          "scandinavia": "Scandinavia",
+          "spain_portugal": "Spain / Portugal",
+          "italy": "Italy",
+          "czech_slovakia": "Czech Republic / Slovakia",
+          "baltics": "Baltic countries",
+          "uk": "United Kingdom",
+          "eu_international": "International EU routes",
+          "domestic": "Domestic routes",
+          "other": "Other"
+        },
+        "cargo": {
+          "FTL": "FTL",
+          "LTL": "LTL",
+          "frigo": "Refrigerated",
+          "curtain": "Curtain",
+          "jumbo": "Jumbo",
+          "container": "Container",
+          "isotherm": "Isotherm",
+          "tanker": "Tanker",
+          "ADR": "ADR",
+          "food": "Food",
+          "electronics": "Home appliances / electronics",
+          "building_materials": "Building materials",
+          "pallets": "Pallets",
+          "automotive": "Automotive",
+          "other": "Other"
+        },
+        "conditions": {
+          "night_driving": "Night driving",
+          "no_night_driving": "No night driving",
+          "driver_loading": "Loading / unloading by driver",
+          "no_driver_loading": "No loading / unloading",
+          "pallet_exchange": "Pallet exchange",
+          "no_pallet_exchange": "No pallet exchange",
+          "fixed_routes": "Fixed routes",
+          "variable_routes": "Variable routes",
+          "double_crew": "Double crew",
+          "solo": "Solo work"
+        },
+        "rate_period": {
+          "day": "day",
+          "month": "month",
+          "kilometer": "kilometer",
+          "hour": "hour"
+        }
+      },
+      "consents": {
+        "title": "Consents and declarations",
+        "terms": "I accept the Terms of use of the form.",
+        "privacy": "I have read the Privacy Policy.",
+        "data_processing": "I consent to the processing of personal data to handle the inquiry and prepare a cooperation offer.",
+        "accuracy": "I declare that the information provided is correct to the best of my knowledge.",
+        "marketing": "I consent to marketing contact by electronic means and by phone."
       },
       "quiz": {
         "steps": {
@@ -8731,12 +8828,13 @@
       },
       "errors": {
         "required": "Company name, contact name, and email or phone are required.",
+        "consents_required": "Required consents must be accepted before submitting the form.",
         "submit_failed": "Could not submit the intake form. Please try again."
       },
       "success": {
         "kicker": "Submitted",
-        "title": "Thank you. We received your company questionnaire.",
-        "body": "A HostFlow manager will review the details and contact you about the next steps.",
+        "title": "Thank you for submitting the information.",
+        "body": "Our team will analyze the company profile and contact you to discuss possible recruitment solutions.",
         "reference": "Request number"
       }
     },

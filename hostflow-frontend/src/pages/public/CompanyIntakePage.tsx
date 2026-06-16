@@ -311,75 +311,75 @@ export default function CompanyIntakePage() {
   const countryOptions: Option[] = ['Poland', 'Germany', 'Czech Republic', 'Lithuania'].map((value) => ({ value, label: value }))
   const cityOptions: Option[] = ['Poznań', 'Warszawa', 'Wrocław', 'Łódź', 'Gdańsk', 'Katowice'].map((value) => ({ value, label: value }))
   const candidateCountryOptions: Option[] = [
-    'Ukraina',
-    'Białoruś',
-    'Mołdawia',
-    'Gruzja',
-    'Armenia',
-    'Azerbejdżan',
-    'Kazachstan',
-    'Uzbekistan',
-    'Kirgistan',
-    'Tadżykistan',
-    'Indie',
-    'Nepal',
-    'Filipiny',
-    'Sri Lanka',
-    'Turcja',
-    'Kraje UE',
-    'Bez znaczenia',
-    'Inne',
-  ].map((value) => ({ value, label: value }))
+    'ukraine',
+    'belarus',
+    'moldova',
+    'georgia',
+    'armenia',
+    'azerbaijan',
+    'kazakhstan',
+    'uzbekistan',
+    'kyrgyzstan',
+    'tajikistan',
+    'india',
+    'nepal',
+    'philippines',
+    'sri_lanka',
+    'turkey',
+    'eu',
+    'any',
+    'other',
+  ].map((value) => ({ value, label: t(`public.company_intake.options.candidate_countries.${value}`, { defaultValue: value }) }))
   const scheduleOptions: Option[] = ['2/1', '3/1', '4/1', '6/2', '8/2'].map((value) => ({ value, label: value })).concat([
-    { value: 'monday_friday', label: 'Poniedziałek-piątek' },
-    { value: 'weekends_home', label: 'Weekendy w domu' },
-    { value: 'to_agree', label: 'Do uzgodnienia' },
-    { value: 'other', label: 'Inny system' },
+    { value: 'monday_friday', label: t('public.company_intake.options.work_system.monday_friday', { defaultValue: 'Monday-Friday' }) },
+    { value: 'weekends_home', label: t('public.company_intake.options.work_system.weekends_home', { defaultValue: 'Weekends at home' }) },
+    { value: 'to_agree', label: t('public.company_intake.options.work_system.to_agree', { defaultValue: 'To be agreed' }) },
+    { value: 'other', label: t('public.company_intake.options.work_system.other', { defaultValue: 'Other system' }) },
   ])
   const routeOptions: Option[] = [
-    'Polska',
-    'Niemcy',
-    'Francja',
-    'Benelux',
-    'Skandynawia',
-    'Hiszpania / Portugalia',
-    'Włochy',
-    'Czechy / Słowacja',
-    'Kraje bałtyckie',
-    'Wielka Brytania',
-    'Trasy międzynarodowe UE',
-    'Trasy krajowe',
-    'Inne',
-  ].map((value) => ({ value, label: value }))
+    'poland',
+    'germany',
+    'france',
+    'benelux',
+    'scandinavia',
+    'spain_portugal',
+    'italy',
+    'czech_slovakia',
+    'baltics',
+    'uk',
+    'eu_international',
+    'domestic',
+    'other',
+  ].map((value) => ({ value, label: t(`public.company_intake.options.routes.${value}`, { defaultValue: value }) }))
   const cargoOptions: Option[] = [
     'FTL',
     'LTL',
-    'Chłodnia',
-    'Firanka',
-    'Jumbo',
-    'Kontener',
-    'Izoterma',
-    'Cysterna',
+    'frigo',
+    'curtain',
+    'jumbo',
+    'container',
+    'isotherm',
+    'tanker',
     'ADR',
-    'Żywność',
-    'AGD / elektronika',
-    'Materiały budowlane',
-    'Palety',
-    'Automotive',
-    'Inne',
-  ].map((value) => ({ value, label: value }))
+    'food',
+    'electronics',
+    'building_materials',
+    'pallets',
+    'automotive',
+    'other',
+  ].map((value) => ({ value, label: t(`public.company_intake.options.cargo.${value}`, { defaultValue: value }) }))
   const workConditionOptions: Option[] = [
-    'Jazda nocna',
-    'Brak jazdy nocnej',
-    'Załadunek / rozładunek po stronie kierowcy',
-    'Brak załadunku / rozładunku',
-    'Wymiana palet',
-    'Brak wymiany palet',
-    'Stałe trasy',
-    'Zmienne trasy',
-    'Praca w podwójnej obsadzie',
-    'Praca solo',
-  ].map((value) => ({ value, label: value }))
+    'night_driving',
+    'no_night_driving',
+    'driver_loading',
+    'no_driver_loading',
+    'pallet_exchange',
+    'no_pallet_exchange',
+    'fixed_routes',
+    'variable_routes',
+    'double_crew',
+    'solo',
+  ].map((value) => ({ value, label: t(`public.company_intake.options.conditions.${value}`, { defaultValue: value }) }))
   const truckOptions: Option[] = ['MAN', 'Mercedes', 'Volvo', 'Scania', 'DAF', 'Iveco'].map((value) => ({ value, label: value }))
   const bodyOptions: Option[] = [
     { value: 'curtain', label: t('public.company_intake.quiz.body.curtain', { defaultValue: 'Curtain' }) },
@@ -442,7 +442,7 @@ export default function CompanyIntakePage() {
       return
     }
     if (!canSubmit) {
-      setError('Przed wysłaniem formularza wymagane jest zaakceptowanie regulaminu, polityki prywatności, zgody na przetwarzanie danych oraz potwierdzenie poprawności informacji.')
+      setError(t('public.company_intake.errors.consents_required', { defaultValue: 'Required consents must be accepted before submitting the form.' }))
       return
     }
     setLoading(true)
@@ -531,10 +531,10 @@ export default function CompanyIntakePage() {
             {t('public.company_intake.success.kicker', { defaultValue: 'Submitted' })}
           </p>
           <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-            Dziękujemy za przesłanie informacji.
+            {t('public.company_intake.success.title')}
           </h1>
           <p className="mt-3 text-sm text-slate-600">
-            Nasz zespół przeanalizuje profil firmy i skontaktuje się z Państwem w celu omówienia możliwych rozwiązań rekrutacyjnych.
+            {t('public.company_intake.success.body')}
           </p>
           <p className="mt-5 rounded-md bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
             {t('public.company_intake.success.reference', { defaultValue: 'Request number' })}: {submittedLeadId}
@@ -628,23 +628,23 @@ export default function CompanyIntakePage() {
         return (
           <div className="space-y-5">
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">Preferowane kraje pochodzenia kandydatów</p>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.preferred_candidate_countries')}</p>
               <MultiChoiceGrid options={candidateCountryOptions} value={form.need.candidate_countries} onChange={(next) => update('need', 'candidate_countries', next)} />
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">System pracy</p>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_system')}</p>
               <MultiChoiceGrid options={scheduleOptions} value={form.terms.schedule} onChange={(next) => update('terms', 'schedule', next)} />
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">Kierunki tras</p>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.route_directions')}</p>
               <MultiChoiceGrid options={routeOptions} value={form.terms.route_directions} onChange={(next) => update('terms', 'route_directions', next)} />
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">Typ transportu / ładunku</p>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.cargo_type')}</p>
               <MultiChoiceGrid options={cargoOptions} value={form.terms.cargo_types} onChange={(next) => update('terms', 'cargo_types', next)} />
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">Warunki dodatkowe</p>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.work_conditions')}</p>
               <MultiChoiceGrid options={workConditionOptions} value={form.terms.work_conditions} onChange={(next) => update('terms', 'work_conditions', next)} />
             </div>
             <div>
@@ -653,18 +653,18 @@ export default function CompanyIntakePage() {
             </div>
             <ChoiceGrid options={bodyOptions} value={form.terms.body_type} onChange={(value) => update('terms', 'body_type', value)} />
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-700">Stawka / wynagrodzenie</p>
+              <p className="mb-3 text-sm font-medium text-slate-700">{t('public.company_intake.fields.rate_compensation')}</p>
               <div className="grid gap-3 sm:grid-cols-4">
-                <input className={inputClass} value={form.terms.rate_amount} onChange={(e) => update('terms', 'rate_amount', e.target.value)} placeholder="Kwota" />
+                <input className={inputClass} value={form.terms.rate_amount} onChange={(e) => update('terms', 'rate_amount', e.target.value)} placeholder={t('public.company_intake.fields.amount')} />
                 <select className={inputClass} value={form.terms.rate_currency} onChange={(e) => update('terms', 'rate_currency', e.target.value)}>
                   <option value="PLN">PLN</option>
                   <option value="EUR">EUR</option>
                 </select>
                 <select className={inputClass} value={form.terms.rate_period} onChange={(e) => update('terms', 'rate_period', e.target.value)}>
-                  <option value="day">dzień</option>
-                  <option value="month">miesiąc</option>
-                  <option value="kilometer">kilometr</option>
-                  <option value="hour">godzina</option>
+                  <option value="day">{t('public.company_intake.options.rate_period.day')}</option>
+                  <option value="month">{t('public.company_intake.options.rate_period.month')}</option>
+                  <option value="kilometer">{t('public.company_intake.options.rate_period.kilometer')}</option>
+                  <option value="hour">{t('public.company_intake.options.rate_period.hour')}</option>
                 </select>
                 <select className={inputClass} value={form.terms.rate_tax_mode} onChange={(e) => update('terms', 'rate_tax_mode', e.target.value)}>
                   <option value="netto">netto</option>
@@ -673,7 +673,7 @@ export default function CompanyIntakePage() {
                 </select>
               </div>
             </div>
-            <Field label="Dodatkowe premie / bonusy">
+            <Field label={t('public.company_intake.fields.bonus')}>
               <textarea className={textareaClass} value={form.terms.bonus} onChange={(e) => update('terms', 'bonus', e.target.value)} />
             </Field>
             <Field label={t('public.company_intake.fields.additional', { defaultValue: 'Additional information' })}>
@@ -698,27 +698,27 @@ export default function CompanyIntakePage() {
               ))}
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">Zgody i oświadczenia</p>
+              <p className="text-sm font-semibold text-slate-900">{t('public.company_intake.consents.title')}</p>
               <div className="mt-3 space-y-3">
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.terms_accepted} onChange={(e) => updateConsent('terms_accepted', e.target.checked)} />
-                  <span>Akceptuję Regulamin korzystania z formularza.</span>
+                  <span>{t('public.company_intake.consents.terms')}</span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.privacy_accepted} onChange={(e) => updateConsent('privacy_accepted', e.target.checked)} />
-                  <span>Zapoznałem/am się z Polityką prywatności.</span>
+                  <span>{t('public.company_intake.consents.privacy')}</span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.data_processing_accepted} onChange={(e) => updateConsent('data_processing_accepted', e.target.checked)} />
-                  <span>Wyrażam zgodę na przetwarzanie danych osobowych w celu obsługi zapytania i przygotowania oferty współpracy.</span>
+                  <span>{t('public.company_intake.consents.data_processing')}</span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.accuracy_confirmed} onChange={(e) => updateConsent('accuracy_confirmed', e.target.checked)} />
-                  <span>Oświadczam, że podane informacje są zgodne z moją wiedzą.</span>
+                  <span>{t('public.company_intake.consents.accuracy')}</span>
                 </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.marketing_contact_accepted} onChange={(e) => updateConsent('marketing_contact_accepted', e.target.checked)} />
-                  <span>Wyrażam zgodę na kontakt marketingowy drogą elektroniczną i telefoniczną.</span>
+                  <span>{t('public.company_intake.consents.marketing')}</span>
                 </label>
               </div>
             </div>
@@ -737,13 +737,13 @@ export default function CompanyIntakePage() {
             {t('public.company_intake.kicker', { defaultValue: 'B2B intake' })}
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-            Company Recruitment Profile
+            {t('public.company_intake.profile_title')}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Informacje w tej ankiecie pomogą nam przygotować profil Państwa firmy oraz dopasować kandydatów do realnych warunków pracy. Dane są wykorzystywane wyłącznie w celu analizy zapotrzebowania rekrutacyjnego i przygotowania odpowiedniej oferty współpracy.
+            {t('public.company_intake.intro')}
           </p>
           <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-700">
-            Im dokładniej poznamy warunki pracy, tym lepiej dopasujemy kandydatów i unikniemy nietrafionych zgłoszeń.
+            {t('public.company_intake.intro_hint')}
           </p>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
             <div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} />
