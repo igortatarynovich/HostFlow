@@ -34,7 +34,6 @@ from backend.app.modules.companies.service import (
 )
 from pydantic import BaseModel
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
 router = APIRouter(
@@ -179,8 +178,9 @@ async def create_company(
     company_in: schemas.CompanyCreate,
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
     current_user: UserCtx = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     return await create_company_service(
         db=db,
         data=company_in,
@@ -253,8 +253,9 @@ async def update_company(
     company_in: schemas.CompanyUpdate,
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
     current_user: UserCtx = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     return await update_company_service(
         db=db,
         company_id=company_id,
@@ -272,8 +273,9 @@ async def patch_company(
     company_in: schemas.CompanyUpdate,
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
     current_user: UserCtx = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     return await update_company_service(
         db=db,
         company_id=company_id,
@@ -289,8 +291,9 @@ async def patch_company(
 async def archive_company(
     company_id: UUID,
     _role: str = Depends(require_roles(Role.admin)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     await archive_company_service(db=db, company_id=company_id)
 
 
@@ -318,8 +321,9 @@ async def update_company_legal(
     company_id: UUID = Path(..., description="Company identifier"),
     payload: schemas.LegalProfile = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await update_company_legal_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.LegalProfile.model_validate(data)
 
@@ -332,8 +336,9 @@ async def replace_company_billing(
     company_id: UUID,
     payload: schemas.BillingProfile = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await replace_company_billing_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.BillingProfile.model_validate(data)
 
@@ -346,8 +351,9 @@ async def add_bank_account(
     company_id: UUID,
     payload: schemas.BankAccount = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await add_company_bank_account_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.BankAccount.model_validate(data)
 
@@ -361,8 +367,9 @@ async def update_bank_account(
     account_id: UUID,
     payload: schemas.BankAccount = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await update_company_bank_account_service(
         db=db,
         company_id=company_id,
@@ -380,8 +387,9 @@ async def delete_bank_account(
     company_id: UUID,
     account_id: UUID,
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     await delete_company_bank_account_service(db=db, company_id=company_id, account_id=account_id)
 
 
@@ -393,8 +401,9 @@ async def add_contact(
     company_id: UUID,
     payload: schemas.Contact = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await add_company_contact_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.Contact.model_validate(data)
 
@@ -408,8 +417,9 @@ async def update_contact(
     contact_id: UUID,
     payload: schemas.Contact = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await update_company_contact_service(
         db=db,
         company_id=company_id,
@@ -427,8 +437,9 @@ async def delete_contact(
     company_id: UUID,
     contact_id: UUID,
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     await delete_company_contact_service(db=db, company_id=company_id, contact_id=contact_id)
 
 
@@ -440,8 +451,9 @@ async def replace_operations(
     company_id: UUID,
     payload: schemas.OperationsProfile = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await replace_company_operations_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.OperationsProfile.model_validate(data)
 
@@ -454,8 +466,9 @@ async def update_compliance(
     company_id: UUID,
     payload: schemas.ComplianceProfile = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await update_company_compliance_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.ComplianceProfile.model_validate(data)
 
@@ -468,8 +481,9 @@ async def update_portal(
     company_id: UUID,
     payload: schemas.PortalProfile = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await update_company_portal_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.PortalProfile.model_validate(data)
 
@@ -487,8 +501,9 @@ async def enable_portal(
     company_id: UUID,
     payload: EnablePortalRequest = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await enable_company_portal_service(
         db=db,
         company_id=company_id,
@@ -506,8 +521,9 @@ async def update_integrations(
     company_id: UUID,
     payload: schemas.IntegrationsProfile = Body(...),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     data = await update_company_integrations_service(db=db, company_id=company_id, payload=payload.model_dump(exclude_none=True))
     return schemas.IntegrationsProfile.model_validate(data)
 
@@ -519,6 +535,7 @@ async def update_integrations(
 async def company_readiness(
     company_id: UUID,
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
-    db: AsyncSession = Depends(get_db_with_tenant),
+    db_tenant=Depends(get_db_with_tenant),
 ):
+    db, _tenant_id = db_tenant
     return await get_company_readiness_service(db=db, company_id=company_id)
