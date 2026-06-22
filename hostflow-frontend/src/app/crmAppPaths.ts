@@ -23,6 +23,10 @@ export function communicationsThreadPath(threadId: string): string {
   return `${P.communicationsThreadsBase}/${encodeURIComponent(threadId)}`
 }
 
+export function settingsLeadFormDetailPath(formId: string): string {
+  return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
+}
+
 /**
  * React Router `path` when routes are mounted under **`CRM_APP_PATHS.appShellPrefix`** (no leading slash).
  * Only path-only URLs — rejects `?` and `#`.

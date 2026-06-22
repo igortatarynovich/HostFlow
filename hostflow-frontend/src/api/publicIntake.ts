@@ -73,6 +73,7 @@ export type IntakeData = {
   agreements: IntakeAgreements
   lead_form?: Record<string, unknown> | null
   client_company?: IntakeClientCompany | null
+  presentation_values?: Record<string, unknown> | null
   /** Mirrors public intake state; **client** may create a CRM Lead on submit when company is routable. */
   application_kind?: IntakeApplicationKind | null
 }
@@ -100,8 +101,27 @@ export type PublicLeadFormListItem = {
 export type PublicIntakeCreateResponse = {
   apply_url: string
   token: string
-  candidate_id: string
+  candidate_id?: string | null
+  lead_id?: string | null
   expires_at: string
+}
+
+export type FormPresentationRuntimeField = {
+  qualified_code: string
+  sort_order: number
+  intake_level: string
+  label: string
+  field_type?: string | null
+  widget_hint?: string | null
+}
+
+export type FormPresentationRuntime = {
+  contract_version: string
+  entity_profile_code: string
+  presentation_code: string
+  profile_name?: string | null
+  fields: FormPresentationRuntimeField[]
+  warnings?: string[]
 }
 
 export type PublicChecklist = {
@@ -175,7 +195,8 @@ export type PublicIntakeDocuments = {
 
 export type PublicIntakeState = {
   token: string
-  candidate_id: string
+  candidate_id?: string | null
+  lead_id?: string | null
   status: string
   stage?: string | null
   created_at?: string | null
@@ -186,6 +207,7 @@ export type PublicIntakeState = {
   documents: PublicIntakeDocuments
   timeline?: PublicTimelineEntry[]
   status_share_token?: string | null
+  form_presentation?: FormPresentationRuntime | null
 }
 
 export type PublicStatusState = {

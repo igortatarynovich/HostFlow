@@ -95,6 +95,10 @@ fr_module = _load_model_module("field_registry")
 FrCanonicalField = fr_module.FrCanonicalField  # type: ignore[attr-defined]
 FrCardLayoutProfile = fr_module.FrCardLayoutProfile  # type: ignore[attr-defined]
 FrCardLayoutField = fr_module.FrCardLayoutField  # type: ignore[attr-defined]
+ep_module = _load_model_module("entity_profile")
+EpEntityProfile = ep_module.EpEntityProfile  # type: ignore[attr-defined]
+EpEntityProfileField = ep_module.EpEntityProfileField  # type: ignore[attr-defined]
+EpIntakePresentation = ep_module.EpIntakePresentation  # type: ignore[attr-defined]
 module_registry_module = _load_model_module("module_registry")
 ModuleRegistry = module_registry_module.ModuleRegistry  # type: ignore[attr-defined]
 TenantModuleInstallation = module_registry_module.TenantModuleInstallation  # type: ignore[attr-defined]
@@ -288,6 +292,9 @@ __all__ = [
     "FrCanonicalField",
     "FrCardLayoutProfile",
     "FrCardLayoutField",
+    "EpEntityProfile",
+    "EpEntityProfileField",
+    "EpIntakePresentation",
     "MergeDocumentTemplate",
     "MergeDocumentGenerationLog",
     "Reminder",

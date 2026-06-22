@@ -134,6 +134,8 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 | 1 | **Forms / Public Forms** | Input layer для платформы ([`ADR-007`](ADR-007-forms-platform-capability.md)); Basic core / Advanced addon. |
 | 2 | **Document Hub** | Единый слой документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md)). |
 | 3 | **Process Engine** | Единый движок процессов: system stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). |
+| 3a | **Field Registry & Card Configuration** | Канон полей, layouts, requirements ([`field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md)). |
+| 3b | **Entity Profile Definition Registry** | Композиция canonical fields в типы бизнес-объектов; слой между Field Registry и Intake/Process ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)). |
 | 4 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)). |
 | 5 | **Users / Roles / Permissions** | RBAC, матрица, scope по company и модулю. |
 | 5 | **Companies** | Операционная граница, party, ACL. |
@@ -144,7 +146,7 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 | 10 | **Resource List Shell (SPA)** | Единая оболочка всех рабочих списков: таблица, поиск, фильтры, сортировка, колонки, rail/modal ([`ADR-010`](ADR-010-unified-resource-list-shell.md)). |
 | 11 | **UI Platform Standard** | Единые токены и компоненты для всего SPA: сетка, типографика, кнопки, формы, таблицы, модалки, даты, i18n ([`ADR-011`](ADR-011-hostflow-ui-platform-standard.md)); **ревью:** чеклист и политика против дрейфа — ADR-011 §12; визуальное направление — [`pipedesign.md`](../../pipedesign.md). |
 
-**Forms** создают/обновляют через handlers: Lead, Candidate, Employee, Client, Service Order, Fleet report, Document, Billing Profile и др. (см. ADR-007).
+**Forms** создают/обновляют через handlers: Lead, Candidate, Employee, Client, Service Order, Fleet report, Document, Billing Profile и др. (см. ADR-007). Forms **не создают семантику полей** — только presentation/intake subset над Entity Profile ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)).
 
 **Document Hub** — детальная модель Document / Link / Requirement / Review — ADR-009; модули **запрашивают** required sets из Hub, не дублируют канонические списки.
 

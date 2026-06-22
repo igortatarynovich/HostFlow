@@ -23,14 +23,23 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.candidates.service import create_candidate_full
+from backend.app.entity_profile.decision_layer import (
+    DecisionInput,
+    IngestDecisionContext,
+    IngestDisposition,
+    evaluate_ingest_decision,
+    stamp_decision_blocks,
+)
+from backend.app.entity_profile.outcome_executor import (
+    apply_blocked_duplicate_outcome,
+    execute_create_candidate_outcome,
+)
 from backend.app.models import Candidate, Lead, OwnCompany, Tenant
 from backend.app.models.tenant import TenantLicense
 from backend.app.models.user import Role
 from backend.app.modules.leads import crud, lead_custom_fields
 from backend.app.modules.leads.lead_candidate_conversion import ensure_recruitment_application_for_converted_lead
 from backend.app.modules.leads.lead_criteria_eval import lead_fit_evaluation_effective
-from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
 from backend.app.services import billing_restrictions
 from backend.app.services.automation_rules import run_rules as run_automation_rules
 from backend.app.services.handoff import is_client_tenant
@@ -38,10 +47,7 @@ from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup
 from backend.app.services.recruitment_handoff_write_guard import (
     is_recruitment_recruiter_write_locked_by_handoff,
 )
-from backend.app.services.recruiter_assignment import (
-    record_candidate_reassignment,
-    resolve_vacancy_primary_recruiter,
-)
+from backend.app.services.recruiter_assignment import resolve_vacancy_primary_recruiter
 
 from ._helpers import (
     LeadProcessingError,
@@ -209,10 +215,18 @@ async def process_normalized_lead(
                         updated = False
 
                         # Обновляем preferred_contact
-                        preferred_contact = normalized.get("preferred_contact")
+                        preferred_contact = normalized.get("preferred_contact") or normalized.get("preferred_contact_raw")
                         if isinstance(preferred_contact, str) and preferred_contact.strip():
-                            if extra.get("preferred_contact") != preferred_contact.strip():
-                                extra["preferred_contact"] = preferred_contact.strip()
+                            contact_val = preferred_contact.strip()
+                            if extra.get("preferred_contact") != contact_val:
+                                extra["preferred_contact"] = contact_val
+                                updated = True
+                            contacts_bucket = extra.get("contacts")
+                            if not isinstance(contacts_bucket, dict):
+                                contacts_bucket = {}
+                                extra["contacts"] = contacts_bucket
+                            if contacts_bucket.get("preferred_messenger") != contact_val:
+                                contacts_bucket["preferred_messenger"] = contact_val
                                 updated = True
 
                         # Обновляем in_poland
@@ -233,10 +247,18 @@ async def process_normalized_lead(
                                     updated = True
 
                         # Обновляем poland_stay_basis
-                        poland_basis = normalized.get("poland_stay_basis")
+                        poland_basis = normalized.get("poland_stay_basis") or normalized.get("poland_stay_basis_raw")
                         if isinstance(poland_basis, str) and poland_basis.strip():
-                            if extra.get("poland_stay_basis") != poland_basis.strip():
-                                extra["poland_stay_basis"] = poland_basis.strip()
+                            basis_val = poland_basis.strip()
+                            if extra.get("poland_stay_basis") != basis_val:
+                                extra["poland_stay_basis"] = basis_val
+                                updated = True
+                            personal_bucket = extra.get("personal_data")
+                            if not isinstance(personal_bucket, dict):
+                                personal_bucket = {}
+                                extra["personal_data"] = personal_bucket
+                            if personal_bucket.get("residency_status") != basis_val:
+                                personal_bucket["residency_status"] = basis_val
                                 updated = True
 
                         # Обновляем driving_experience_in_europe
@@ -462,9 +484,16 @@ async def process_normalized_lead(
                 if intake_ctx.own_company_id
                 else (own_company_id or (getattr(vacancy, "own_company_id", None) if vacancy else None))
             )
-        if getattr(lead, "lead_target_type", None) in (None, ""):
+        if intake_ctx.matched:
             lead.lead_target_type = lead_target_type
-        if lead_type_for_target(lead_target_type) != str(getattr(lead, "lead_type", "") or "candidate"):
+            lead.lead_type = lead_type_for_target(lead_target_type)
+            if intake_ctx.own_company_id:
+                lead.own_company_id = intake_ctx.own_company_id
+        elif getattr(lead, "lead_target_type", None) in (None, ""):
+            lead.lead_target_type = lead_target_type
+            if lead_type_for_target(lead_target_type) != str(getattr(lead, "lead_type", "") or "candidate"):
+                lead.lead_type = lead_type_for_target(lead_target_type)
+        elif lead_type_for_target(lead_target_type) != str(getattr(lead, "lead_type", "") or "candidate"):
             lead.lead_type = lead_type_for_target(lead_target_type)
         lead.payload = payload
         from backend.app.services.lead_communications import normalized_merging_lead_persisted_blocks
@@ -608,22 +637,87 @@ async def process_normalized_lead(
         )
         await db.flush()
 
-    duplicate = await crud.find_duplicate_candidate(
-        db,
+    decision_input = DecisionInput.from_normalized(
         tenant_id=tenant_id,
+        source=source,
+        normalized=normalized,
+        force_candidate_conversion=force_candidate_conversion,
+        vacancy_id=str(vacancy.id) if vacancy else None,
         company_id=resolved_company_id,
+    )
+    decision_ctx = IngestDecisionContext(
+        effective_processing_mode=effective_processing_mode,
+        auto_create_enabled=bool(auto_create_enabled),
+        may_auto_convert=bool(may_auto_convert),
+        triage_gate_bypass=bool(triage_gate_bypass),
+        pool_manual_convert_ready=bool(pool_manual_convert_ready),
+        routing_fit_status=str(routing_fit_status or "unknown"),
+        sales_lead_without_candidate=bool(sales_lead_without_candidate),
+        vacancy_resolved=vacancy is not None,
+    )
+    ingest_decision = await evaluate_ingest_decision(
+        db,
+        decision_input,
+        ctx=decision_ctx,
         email=email,
         phone=phone,
     )
-    if duplicate and creates_candidate:
+    stamp_decision_blocks(normalized, decision_input, ingest_decision)
+    creates_candidate = bool(ingest_decision.may_create_candidate)
+
+    if ingest_decision.disposition == IngestDisposition.blocked_duplicate.value:
+        duplicate = ingest_decision.duplicate_match.candidate
+        dup_id = await apply_blocked_duplicate_outcome(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            normalized=normalized,
+            decision=ingest_decision,
+            resolved_company_id=resolved_company_id,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="duplicated",
+            vacancy_id=lead.vacancy_id or (getattr(duplicate, "vacancy_id", None) if duplicate else None),
+            candidate_id=dup_id,
+            recruiter_id=getattr(duplicate, "recruiter_id", None) if duplicate else None,
+            business_type=business_type,
+            outcome_entity_type="company" if is_sales_route_intent(route_intent) else "candidate",
+            outcome_entity_id=resolved_company_id if is_sales_route_intent(route_intent) else dup_id,
+            outcome_entity_name=resolved_company_name if is_sales_route_intent(route_intent) else None,
+            error=None,
+            is_new=created_new,
+        )
+
+    if ingest_decision.disposition == IngestDisposition.review_queue.value:
+        review_error = "DUPLICATE_REVIEW_PENDING"
+        now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
             lead,
-            status="duplicated",
-            candidate_id=str(duplicate.id),
-            vacancy_id=lead.vacancy_id or duplicate.vacancy_id,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
             normalized=normalized,
-            error=None,
+            error=review_error,
+            last_routed_at=now_marker,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=review_error,
         )
         await lead_custom_fields.sync_lead_custom_fields_from_normalized(
             db,
@@ -633,30 +727,17 @@ async def process_normalized_lead(
         )
         await db.flush()
         await db.commit()
-        try:
-            await apply_lead_terminal_cleanup(
-                db,
-                tenant_id=tenant_id,
-                lead_id=str(lead.id),
-                new_stage=getattr(lead, "stage", None),
-                new_status=getattr(lead, "status", None),
-                actor_id=None,
-                reason="lead_converted_to_candidate",
-            )
-            await db.commit()
-        except Exception:
-            await db.rollback()
         return MetaLeadResult(
             lead_id=lead.id,
-            status="duplicated",
-            vacancy_id=lead.vacancy_id or duplicate.vacancy_id,
-            candidate_id=str(duplicate.id),
-            recruiter_id=getattr(duplicate, "recruiter_id", None),
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
             business_type=business_type,
-            outcome_entity_type="company" if is_sales_route_intent(route_intent) else "candidate",
-            outcome_entity_id=resolved_company_id if is_sales_route_intent(route_intent) else str(duplicate.id),
-            outcome_entity_name=resolved_company_name if is_sales_route_intent(route_intent) else None,
-            error=None,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=review_error,
             is_new=created_new,
         )
 
@@ -937,27 +1018,76 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
+    if ingest_decision.disposition != IngestDisposition.create_candidate.value:
+        now_marker = datetime.now(timezone.utc)
+        await crud.update_lead(
+            db,
+            lead,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=None,
+            last_routed_at=now_marker,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=None,
+            is_new=created_new,
+        )
+
     first_name = normalized.get("first_name") or "Meta"
     last_name = normalized.get("last_name") or normalized.get("full_name") or "Lead"
     if not last_name.strip():
         last_name = "Lead"
 
     extra_fields: Dict[str, Any] = {}
-    preferred_contact = normalized.get("preferred_contact")
+    personal_fields: Dict[str, Any] = {}
+    preferred_contact = normalized.get("preferred_contact") or normalized.get("preferred_contact_raw")
     if isinstance(preferred_contact, str) and preferred_contact.strip():
         extra_fields["preferred_contact"] = preferred_contact.strip()
     in_poland_value = normalized.get("in_poland")
     if isinstance(in_poland_value, bool):
         extra_fields["in_poland"] = in_poland_value
+        personal_fields["in_poland"] = in_poland_value
     elif isinstance(in_poland_value, str):
         lowered = in_poland_value.strip().lower()
         if lowered in {"true", "yes", "1"}:
             extra_fields["in_poland"] = True
+            personal_fields["in_poland"] = True
         elif lowered in {"false", "no", "0"}:
             extra_fields["in_poland"] = False
-    poland_basis = normalized.get("poland_stay_basis")
+            personal_fields["in_poland"] = False
+    poland_basis = normalized.get("poland_stay_basis") or normalized.get("poland_stay_basis_raw")
     if isinstance(poland_basis, str) and poland_basis.strip():
         extra_fields["poland_stay_basis"] = poland_basis.strip()
+        personal_fields["residency_status"] = poland_basis.strip()
     # Handle driving experience - save both raw string and normalized number
     driving_experience = normalized.get("driving_experience_in_europe")
     if isinstance(driving_experience, str) and driving_experience.strip():
@@ -991,25 +1121,39 @@ async def process_normalized_lead(
                 "email": email,
                 "phone": phone,
                 "phone_country_code": normalized.get("phone_country_code"),
+                "preferred_messenger": extra_fields.get("preferred_contact"),
             }.items()
             if value
         },
         "source": source,
         "origin": {source: normalized},
     }
+    if personal_fields:
+        candidate_payload["personal_data"] = personal_fields
     if extra_fields:
         candidate_payload["extra"] = extra_fields
 
     had_candidate_before = bool(getattr(lead, "candidate_id", None))
+    stamp_rid = _rule_recruiter_id_from_normalized(normalized)
+    vacancy_recruiter_id = (
+        await resolve_vacancy_primary_recruiter(db, tenant_id, vacancy)
+        if vacancy
+        else None
+    )
+    fallback_recruiter = await _validate_recruiter_id(db, tenant_id, fallback_recruiter_hint)
 
     try:
-        candidate = await create_candidate_full(
-            db=db,
+        candidate = await execute_create_candidate_outcome(
+            db,
             tenant_id=tenant_id,
-            payload=candidate_payload,
-            actor_id=None,
-            acl=None,
-            source_lead=lead,
+            lead=lead,
+            normalized=normalized,
+            source=source,
+            candidate_payload=candidate_payload,
+            decision=ingest_decision,
+            rule_recruiter_id=stamp_rid,
+            vacancy_recruiter_id=vacancy_recruiter_id,
+            fallback_recruiter_id=fallback_recruiter,
         )
     except HTTPException as exc:
         await crud.update_lead(
@@ -1036,63 +1180,8 @@ async def process_normalized_lead(
         await db.commit()
         raise
 
-    stamp_rid = _rule_recruiter_id_from_normalized(normalized)
-    rule_rid = await validate_tenant_recruiter_id(db, tenant_id, stamp_rid) if stamp_rid else None
     recruiter_id = getattr(candidate, "recruiter_id", None)
-    # Phase 2.6.G-5 Stage A — replaces silent dead-read ``vacancy.recruiter_id``
-    # (attribute never existed on ``Vacancy``; old code always yielded ``None``).
-    # Resolver cascades: VacancyRecruiter m2m least-load → vacancy.manager → None.
-    vacancy_recruiter_id = (
-        await resolve_vacancy_primary_recruiter(db, tenant_id, vacancy)
-        if vacancy
-        else None
-    )
-    # Phase 2.6.G-5 Stage C — every ``Candidate.recruiter_id`` mutation goes
-    # through ``record_candidate_reassignment`` so the audit trail captures
-    # the full routing cascade (rule → vacancy-resolved → tenant fallback).
-    # Actor is None + actor_kind="system" because a meta-lead conversion is
-    # not driven by a human user (there is no ``actor_id`` in scope here).
-    if rule_rid:
-        await record_candidate_reassignment(
-            db,
-            candidate,
-            new_recruiter_id=rule_rid,
-            reason="lead_rule",
-            actor=None,
-            actor_kind="system",
-            note=f"lead_id={lead.id}",
-        )
-        recruiter_id = rule_rid
-    elif not recruiter_id and vacancy_recruiter_id:
-        await record_candidate_reassignment(
-            db,
-            candidate,
-            new_recruiter_id=vacancy_recruiter_id,
-            reason="lead_vacancy",
-            actor=None,
-            actor_kind="system",
-            note=f"lead_id={lead.id};vacancy_id={getattr(vacancy, 'id', None)}",
-        )
-        recruiter_id = vacancy_recruiter_id
-    if not recruiter_id:
-        fallback_recruiter = await _validate_recruiter_id(db, tenant_id, fallback_recruiter_hint)
-        if fallback_recruiter:
-            await record_candidate_reassignment(
-                db,
-                candidate,
-                new_recruiter_id=fallback_recruiter,
-                reason="lead_fallback",
-                actor=None,
-                actor_kind="system",
-                note=f"lead_id={lead.id}",
-            )
-            recruiter_id = fallback_recruiter
 
-    # Phase 2.6.G-5 Stage D — legacy shadow-write of
-    # ``candidate.manager = recruiter_id`` removed; the canonical writer
-    # ``record_candidate_reassignment`` (invoked above in the rule / vacancy
-    # / fallback branches) now keeps ``manager`` in lock-step with
-    # ``recruiter_id``.
     await crud.update_lead(
         db,
         lead,

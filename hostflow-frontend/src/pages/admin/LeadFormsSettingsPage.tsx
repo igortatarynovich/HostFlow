@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IconClipboardList, IconCopy } from '@tabler/icons-react'
+import { IconClipboardList, IconCopy, IconSettings } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
 import {
   createLeadForm,
   listLeadForms,
@@ -195,7 +195,7 @@ export default function LeadFormsSettingsPage() {
             }
             subtitle={t('admin.lead_forms.subtitle', {
               defaultValue:
-                'Intake entry points for the public portal. Set a public slug to address a form from /public/intake.',
+                'Intake entry points for the public portal. Configure Entity Profile binding, preview fields, and smoke-test submit.',
             })}
             actions={
               <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
@@ -314,6 +314,13 @@ export default function LeadFormsSettingsPage() {
                         {savingId === row.id ? t('common.saving') : t('common.actions.save')}
                       </button>
                     )}
+                    <Link
+                      to={settingsLeadFormDetailPath(row.id)}
+                      className="btn-secondary btn-sm inline-flex items-center gap-1"
+                    >
+                      <IconSettings size={14} />
+                      {t('admin.lead_forms.configure', { defaultValue: 'Configure' })}
+                    </Link>
                   </div>
                   {slugOk && (
                     <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">

@@ -81,6 +81,7 @@ os.environ.setdefault("COMM_SCHEDULER_ENABLED", "0")
 os.environ.setdefault("HOSTFLOW_SQLALCHEMY_NULL_POOL", "1")
 # PR-4A: skip heavy FastAPI lifespan bootstrap during integration tests (pytest.ini `env` is ignored without pytest-env).
 os.environ.setdefault("HOSTFLOW_TEST_LIGHT_STARTUP", "1")
+os.environ["RATE_LIMIT_ENABLED"] = "0"
 
 
 def _pytest_localize_postgres_host() -> None:

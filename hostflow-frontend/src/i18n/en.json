@@ -876,7 +876,7 @@
         "work": "Work",
         "my_company": "My Company",
         "candidates": "Candidates",
-        "clients": "Companies",
+        "clients": "Clients",
         "do_procesowania": "Processed",
         "vacancies": "Vacancies",
         "documents": "Documents",
@@ -1287,19 +1287,37 @@
       "handoff": "Handoff",
       "see_vacancies": "Vacancies",
       "see_reduced": "Reduced profiles",
-      "portal_access": "Access by link",
+      "portal_access": "Portal access",
       "revoke_link": "Revoke",
-      "create_portal_link": "Create link",
+      "create_portal_link": "Create portal link",
       "handoff_label": "Candidate handoff",
       "see_vacancies_label": "See vacancies",
+      "see_reduced_profiles_label": "Reduced profiles",
       "see_reduced_label": "Reduced profiles",
-      "search_placeholder": "Search by name or domain...",
+      "search_placeholder": "Search by name or domain…",
       "display_name_placeholder": "e.g. Northwind Logistics",
-      "link_existing": "Or link to an existing company",
+      "link_existing": "Or link to an existing employer tenant",
       "linked_to": "Link to",
       "settings": "Access settings",
+      "settings_desc": "Handoff, client portal, and contact attempt rules.",
       "back_to_list": "← Back to clients",
-      "crm_directory_link": "Open client CRM directory",
+      "crm_directory_link": "Open client directory",
+      "add_modal_hint": "Creates the client profile and access settings in one step.",
+      "access_column": "Access",
+      "access_needs_setup": "Needs setup",
+      "access_ready": "Configured",
+      "access_contact_on": "Contact tracking",
+      "access_not_configured": "Access settings are not linked yet. Configure them to enable handoff, portal, and contact attempts.",
+      "configure_access": "Configure access",
+      "access_link_created": "Client access configured.",
+      "contact_policy_active": "Enabled · max {count} attempts",
+      "contact_policy_inactive": "Disabled for this client",
+      "created_from_lead": "Client created from questionnaire",
+      "from_lead_badge": "Created from lead questionnaire",
+      "from_lead_hint": "Data was migrated from the submitted form. Review the profile, configure access, then continue working with this client.",
+      "from_lead_contact": "Contact",
+      "from_lead_reach": "Reach",
+      "open_source_lead": "Open lead",
       "errors": {
         "name_or_link": "Enter a name or link to a company.",
         "link_load_failed": "Failed to load client link",
@@ -1307,16 +1325,17 @@
         "portal_create_failed": "Could not create portal link",
         "portal_revoke_failed": "Could not revoke portal link"
       },
-      "add_entity_dynamic": "Add entity dynamic",
-      "created_dynamic": "Created dynamic",
-      "display_name_dynamic": "Display name dynamic",
-      "empty_cta_companies": "Empty CTA companies",
-      "empty_desc": "Empty desc",
-      "empty_title_dynamic": "Empty title dynamic",
-      "not_found_dynamic": "Not found dynamic",
-      "quick_defaults": "Quick defaults",
-      "subtitle_dynamic": "Subtitle dynamic",
-      "title_dynamic": "Title dynamic"
+      "add_entity_dynamic": "Add {entity}",
+      "created_dynamic": "{entity} added",
+      "display_name_dynamic": "{entity} name",
+      "empty_cta_companies": "Open directory",
+      "empty_desc": "Add the first client to enable handoff, shared dashboards, and access rules.",
+      "empty_title_dynamic": "No {entityPlural} yet",
+      "empty_why": "Clients are companies you place candidates with. Once linked they unlock handoff, portal access, and contact attempts.",
+      "not_found_dynamic": "{entity} not found",
+      "quick_defaults": "Default settings are applied automatically. Open advanced options only if needed.",
+      "subtitle_dynamic": "Manage {entityPlural} and access settings.",
+      "title_dynamic": "{entityPlural}"
     },
     "vacancies": {
       "list": {
@@ -6398,7 +6417,8 @@
         "duplicated": "Duplicate",
         "needs_routing": "Needs routing",
         "failed": "Error",
-        "duplicate_review": "Duplicate review (intake)"
+        "duplicate_review": "Duplicate review (intake)",
+        "rejected": "Rejected"
       },
       "stages": {
         "new": "New",
@@ -6502,6 +6522,7 @@
           "contact_missing": "Missing email and phone",
           "email": "Email",
           "phone": "Phone",
+          "preferred_contact": "Preferred contact channel",
           "driving_eu": "Driving experience (EU)",
           "documents": "Documents (declared)",
           "nationality": "Nationality / citizenship",
@@ -6607,7 +6628,8 @@
           "INTAKE_ROUTING_INCOMPLETE": "Complete intake routing (vacancy or pool path) before processing.",
           "INTAKE_INFO_REQUESTED": "Information was requested at intake. Update the lead or clear the request before processing.",
           "INTAKE_IDENTITY_UNCLEAR": "Lead identity is unclear at intake. Resolve identity before processing.",
-          "LEAD_RODO_REQUIRED": "Send the art.14 GDPR/RODO notice or mark it as covered at source before contacting or converting this lead."
+          "LEAD_RODO_REQUIRED": "Send the art.14 GDPR/RODO notice or mark it as covered at source before contacting or converting this lead.",
+          "CLIENT_LEAD_NOT_CANDIDATE": "This is a B2B client questionnaire. Use “Create client”, not candidate processing."
         }
       },
       "pipeline_errors": {
@@ -6742,6 +6764,8 @@
           "phone_ok": "Phone on file",
           "phone_missing": "No phone",
           "email": "{email}",
+          "preferred_contact": "Preferred channel: {value}",
+          "poland_stay": "Stay basis: {value}",
           "route_label": "Route",
           "route_confirmed": "Route confirmed",
           "route_unconfirmed": "Vacancy on lead · confirm route in Decision panel",
@@ -6857,6 +6881,8 @@
           "needs_routing": "Choose vacancy",
           "new": "New",
           "awaiting_convert": "Awaiting convert",
+          "client_lead": "Client questionnaire",
+          "client_converted": "Client created",
           "duplicated": "Duplicate",
           "other": "—"
         },
@@ -8790,6 +8816,7 @@
       },
       "consents": {
         "title": "Consents and declarations",
+        "select_all_required": "Select all required",
         "terms": "I accept the Terms of use of the form.",
         "privacy": "I have read the Privacy Policy.",
         "data_processing": "I consent to the processing of personal data to handle the inquiry and prepare a cooperation offer.",
@@ -11075,8 +11102,8 @@
           "description": "Manage additional fields for candidates and documents."
         },
         "lead_forms": {
-          "label": "Lead forms",
-          "description": "Named public intake entry points with optional slugs for attribution."
+          "label": "Intake forms",
+          "description": "Public intake sources: Entity Profile binding, field preview, public link, smoke test."
         },
         "email": {
           "label": "Outbound email (SMTP)",
@@ -11485,6 +11512,7 @@
       "subtitle": "Intake entry points for the public portal. Set a public slug so candidates open a tracked form from /public/intake.",
       "new_title": "New form title",
       "create": "Create form",
+      "configure": "Configure",
       "empty": "No lead forms yet. Create one to start tracking intake sources.",
       "read_only_hint": "Only workspace administrators can create or edit lead forms.",
       "link_billing": "Billing & limits",
@@ -11515,6 +11543,62 @@
         "copy": "Could not copy"
       }
     },
+    "intake_forms": {
+      "header_kicker": "Intake sources",
+      "detail_title": "Intake form",
+      "detail_subtitle": "Read-only view of Entity Profile, presentation fields, public link, and submit pipeline. UI does not create canon.",
+      "back_list": "All intake forms",
+      "copy": "Copy",
+      "open_public": "Open",
+      "open_lead": "Open lead",
+      "preview_empty": "No fields",
+      "preview_hint": "Display-only fields returned by Form Presentation Runtime — not editable in P6.",
+      "inactive_hint": "Activate the form in list settings before sharing or smoke testing.",
+      "smoke_hint": "Creates a test Lead draft using the same pipeline as public intake. Verifies no direct Candidate INSERT.",
+      "smoke_run": "Send test lead draft",
+      "sections": {
+        "form": "Lead form slot",
+        "entity_profile": "Entity Profile",
+        "intake_source": "Intake Source profile",
+        "preview": "Field preview (P5A runtime)",
+        "submit": "Submit destination",
+        "public_link": "Public link",
+        "smoke": "Smoke test submit"
+      },
+      "fields": {
+        "status": "Status",
+        "slug": "Public slug",
+        "profile_code": "Profile code",
+        "profile_name": "Name",
+        "presentation": "Presentation",
+        "route_intent": "Route intent",
+        "provider": "Provider",
+        "assignee": "Default assignee"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "label": "Label",
+        "field": "Field code",
+        "level": "Intake level",
+        "widget": "Widget"
+      },
+      "submit": {
+        "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
+        "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"
+      },
+      "toast": {
+        "copied": "Copied",
+        "smoke_ok": "Smoke test lead draft created"
+      },
+      "errors": {
+        "load_detail": "Failed to load intake form",
+        "copy": "Could not copy",
+        "smoke": "Smoke test failed"
+      }
+    },
     "tenant_links": {
       "header_kicker": "Links your workspace to client organizations and handoff rules.",
       "title": "Handoff & contact attempts",
@@ -11532,6 +11616,7 @@
       "hide_policy": "Hide contact attempts",
       "policy_updated": "Saved",
       "policy_enabled": "Track contact attempts",
+      "contact_policy_title": "Contact attempts",
       "max_attempts": "Max attempts",
       "post_action": "After limit reached",
       "auto_reject": "Reject candidate",

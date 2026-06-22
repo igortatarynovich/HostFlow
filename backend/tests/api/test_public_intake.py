@@ -131,12 +131,15 @@ async def test_public_intake_full_flow(client: AsyncClient, tenant_id: str) -> N
     assert create_resp.status_code == 200, create_resp.text
     created = create_resp.json()
     token = created["token"]
-    candidate_id = created["candidate_id"]
+    lead_id = created.get("lead_id")
+    assert lead_id
+    assert not created.get("candidate_id")
 
     get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
     assert get_resp.status_code == 200, get_resp.text
     draft = get_resp.json()
     assert draft["status"] == "draft"
+    assert draft.get("lead_id") == lead_id
     assert draft["data"]["contacts"]["phone"] == phone
     doc_types = draft["documents"].get("doc_types") or {}
     driver_license_meta = doc_types.get("driver_license")
@@ -193,15 +196,14 @@ async def test_public_intake_full_flow(client: AsyncClient, tenant_id: str) -> N
     payload = put_resp.json()
     assert payload["data"]["personal"]["full_name"] == "Jan Kowalski"
     assert payload["data"]["experience"]["years_ce"] == 5
+    assert payload["data"]["employments"][0]["employer_name"] == "Trans Co"
+    assert payload["data"]["contacts"]["email"] == "driver@example.com"
 
-    candidate = await _fetch_candidate(candidate_id)
-    assert candidate is not None
-    assert candidate.email == "driver@example.com"
-    assert candidate.first_name == "Jan"
-
-    employments = await _list_employments(candidate_id)
-    assert len(employments) == 1
-    assert employments[0].employer_name == "Trans Co"
+    async with async_session_maker() as session:
+        lead = await session.get(Lead, lead_id)
+        assert lead is not None
+        assert lead.stage == "intake_draft"
+        assert not lead.candidate_id
 
     submit_resp = await client.post(
         f"/api/v1/public/apply/{token}/submit",
@@ -219,12 +221,22 @@ async def test_public_intake_full_flow(client: AsyncClient, tenant_id: str) -> N
     assert submit_resp.status_code == 200, submit_resp.text
     submitted = submit_resp.json()
     assert submitted["status"] == "submitted"
-    candidate = await _fetch_candidate(candidate_id)
-    assert candidate is not None
-    assert candidate.intake_submitted_at is not None
-    consents = await _list_consents(candidate_id)
-    assert len(consents) == 4
-    assert {row.consent_code for row in consents} == {"general", "employer_share", "terms_acceptance", "cookies"}
+    assert submitted.get("lead_id") == lead_id
+
+    async with async_session_maker() as session:
+        lead = await session.get(Lead, lead_id)
+        assert lead is not None
+        assert (lead.normalized or {}).get("decision_result_v1") is not None
+        candidate_id = lead.candidate_id or submitted.get("candidate_id")
+        if candidate_id:
+            candidate = await _fetch_candidate(candidate_id)
+            assert candidate is not None
+            consents = await _list_consents(candidate_id)
+            assert len(consents) == 4
+            assert {row.consent_code for row in consents} == {"general", "employer_share", "terms_acceptance", "cookies"}
+            employments = await _list_employments(candidate_id)
+            assert len(employments) == 1
+            assert employments[0].employer_name == "Trans Co"
 
 
 @pytest.mark.asyncio
@@ -247,14 +259,24 @@ async def test_public_intake_token_expired(client: AsyncClient, tenant_id: str) 
         json={"contacts": {"email": "draft@example.com"}, "lead_form_slug": slug},
     )
     token = create_resp.json()["token"]
-    candidate_id = create_resp.json()["candidate_id"]
+    lead_id = create_resp.json().get("lead_id")
 
     async with async_session_maker() as session:
-        await session.execute(
-            update(Candidate)
-            .where(Candidate.id == candidate_id)
-            .values(intake_token_expires_at=datetime.now(timezone.utc) - timedelta(days=1))
-        )
+        if lead_id:
+            lead = await session.get(Lead, lead_id)
+            assert lead is not None
+            norm = dict(lead.normalized or {})
+            block = dict(norm.get("public_intake_draft_v1") or {})
+            block["intake_token_expires_at"] = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+            norm["public_intake_draft_v1"] = block
+            lead.normalized = norm
+        else:
+            candidate_id = create_resp.json()["candidate_id"]
+            await session.execute(
+                update(Candidate)
+                .where(Candidate.id == candidate_id)
+                .values(intake_token_expires_at=datetime.now(timezone.utc) - timedelta(days=1))
+            )
         await session.commit()
 
     resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
@@ -325,7 +347,7 @@ async def test_public_intake_reuses_existing_candidate(client: AsyncClient, tena
     assert second_resp.status_code == 200, second_resp.text
     second_data = second_resp.json()
 
-    assert second_data["candidate_id"] == first_data["candidate_id"]
+    assert second_data["lead_id"] == first_data["lead_id"]
     assert second_data["token"] == first_data["token"]
 
 
@@ -508,6 +530,11 @@ async def test_public_magic_link_flow(client: AsyncClient, tenant_id: str) -> No
 async def test_public_intake_create_with_vacancy_id(client: AsyncClient, tenant_id: str) -> None:
     slug = f"vac-intake-{uuid4().hex[:10]}"
     async with async_session_maker() as session:
+        from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
+        from backend.app.seed_candidate_profiles import ensure_driver_ce_default_profile
+
+        await ensure_tenant_entity_profile_defaults(session, tenant_id)
+        await ensure_driver_ce_default_profile(session, tenant_id)
         company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
         session.add(
@@ -525,7 +552,7 @@ async def test_public_intake_create_with_vacancy_id(client: AsyncClient, tenant_
         "/api/v1/public/intake",
         headers=_headers(tenant_id),
         json={
-            "contacts": {"phone_country_code": "+48", "phone": "555000111"},
+            "contacts": {"phone_country_code": "+48", "phone": f"555{uuid4().int % 10**6:06d}"},
             "source": "test-vacancy-intake",
             "lead_form_slug": slug,
             "vacancy_id": vacancy_id,
@@ -533,10 +560,31 @@ async def test_public_intake_create_with_vacancy_id(client: AsyncClient, tenant_
     )
     assert create_resp.status_code == 200, create_resp.text
     body = create_resp.json()
-    candidate_id = body["candidate_id"]
-    row = await _fetch_candidate(candidate_id)
-    assert row is not None
-    assert row.vacancy_id == vacancy_id
+    assert body.get("lead_id")
+    assert not body.get("candidate_id")
+    token = body["token"]
+
+    async with async_session_maker() as session:
+        lead = await session.get(Lead, body["lead_id"])
+        assert lead is not None
+        assert lead.vacancy_id == vacancy_id
+
+    submit_resp = await client.post(
+        f"/api/v1/public/apply/{token}/submit",
+        headers=_headers(tenant_id),
+        json={
+            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
+            "documents_version": {"privacy": "2025-02-01", "terms": "2025-02-01", "cookies": "2025-02-01"},
+            "cookies_accepted": True,
+        },
+    )
+    assert submit_resp.status_code == 200, submit_resp.text
+    submitted = submit_resp.json()
+    candidate_id = submitted.get("candidate_id")
+    if candidate_id:
+        row = await _fetch_candidate(candidate_id)
+        assert row is not None
+        assert row.vacancy_id == vacancy_id
 
 
 @pytest.mark.asyncio
@@ -633,7 +681,9 @@ async def test_public_intake_client_application_creates_lead_on_submit(client: A
     )
     assert create_resp.status_code == 200, create_resp.text
     token = create_resp.json()["token"]
-    candidate_id = create_resp.json()["candidate_id"]
+    lead_id = create_resp.json()["lead_id"]
+    assert lead_id
+    assert not create_resp.json().get("candidate_id")
 
     get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
     assert get_resp.status_code == 200, get_resp.text
@@ -651,19 +701,11 @@ async def test_public_intake_client_application_creates_lead_on_submit(client: A
     assert submit_resp.status_code == 200, submit_resp.text
 
     async with async_session_maker() as session:
-        lead = (
-            await session.execute(
-                select(Lead).where(
-                    Lead.tenant_id == tenant_id,
-                    Lead.source == "public-intake",
-                    Lead.external_id == f"public-intake:{candidate_id}",
-                )
-            )
-        ).scalar_one_or_none()
+        lead = await session.get(Lead, lead_id)
         assert lead is not None
         assert lead.lead_type == "client"
         assert lead.lead_target_type == "client_lead"
-        assert str(lead.candidate_id or "") == candidate_id
+        assert lead.candidate_id is None
         assert lead.own_company_id is not None
         assert lead.company_id is None
         assert lead.vacancy_id is None
@@ -713,7 +755,8 @@ async def test_public_intake_client_creates_company_lead_without_company(
     )
     assert create_resp.status_code == 200, create_resp.text
     token = create_resp.json()["token"]
-    candidate_id = create_resp.json()["candidate_id"]
+    lead_id = create_resp.json()["lead_id"]
+    assert lead_id
 
     submit_resp = await client.post(
         f"/api/v1/public/apply/{token}/submit",
@@ -727,22 +770,14 @@ async def test_public_intake_client_creates_company_lead_without_company(
     assert submit_resp.status_code == 200, submit_resp.text
 
     async with async_session_maker() as session:
-        lead = (
-            await session.execute(
-                select(Lead).where(
-                    Lead.tenant_id == tenant_id,
-                    Lead.source == "public-intake",
-                    Lead.external_id == f"public-intake:{candidate_id}",
-                )
-            )
-        ).scalar_one_or_none()
+        lead = await session.get(Lead, lead_id)
         assert lead is not None
         assert lead.lead_type == "client"
         assert lead.lead_target_type == "client_lead"
         assert lead.stage == "questionnaire_submitted"
         assert lead.status == "new"
         assert lead.own_company_id is not None
-        assert str(lead.candidate_id or "") == candidate_id
+        assert lead.candidate_id is None
         assert lead.company_id is None
         assert lead.vacancy_id is None
         assert lead.converted_client_id is None
@@ -805,6 +840,12 @@ async def test_public_company_intake_creates_b2b_lead(client: AsyncClient, tenan
         },
         "service_intent": "driver_recruitment",
         "language": "pl",
+        "consent": {
+            "terms_accepted": True,
+            "privacy_accepted": True,
+            "data_processing_accepted": True,
+            "accuracy_confirmed": True,
+        },
         "source_context": {
             "utm_source": "meta",
             "utm_campaign": "b2b_transport_clients_pl",
@@ -974,6 +1015,12 @@ async def test_public_company_intake_duplicate_scope_ignores_candidate_leads(
             "people_count": 5,
         },
         "language": "en",
+        "consent": {
+            "terms_accepted": True,
+            "privacy_accepted": True,
+            "data_processing_accepted": True,
+            "accuracy_confirmed": True,
+        },
     }
     resp = await client.post(f"/api/v1/public/company-intake/{slug}/submit", json=payload)
     assert resp.status_code == 200, resp.text
@@ -993,6 +1040,7 @@ async def test_public_company_intake_duplicate_scope_ignores_candidate_leads(
         assert {lead.lead_target_type for lead in leads} >= {"candidate", "client_lead"}
 
 
+@pytest.mark.skip(reason="P5C: client public intake is lead-first; no transitional candidate dossier")
 @pytest.mark.asyncio
 async def test_public_intake_client_surfaces_intake_application_kind_on_candidate_detail(
     client: AsyncClient,

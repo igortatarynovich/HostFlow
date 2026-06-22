@@ -27,6 +27,11 @@ def _dialect_name(db: AsyncSession) -> str:
 
 
 async def _orm_intake_token_tenant_id(db: AsyncSession, token: str) -> Optional[str]:
+    from backend.app.entity_profile.public_intake_draft_session import resolve_public_intake_lead_draft_tenant_id
+
+    lead_tid = await resolve_public_intake_lead_draft_tenant_id(db, token)
+    if lead_tid:
+        return lead_tid
     tid = await db.scalar(
         select(Candidate.tenant_id).where(
             Candidate.intake_token == token,

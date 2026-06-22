@@ -127,6 +127,64 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
             normalized[preserve_key] = True
 
 
+async def refresh_meta_lead_normalized_from_stored_payload(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    payload: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Re-normalize ``field_data`` from stored payload into ``lead.normalized`` without
+    running the full conversion pipeline (Graph recovery / UI contact display).
+    """
+    from backend.app.modules.leads.field_mapping_resolve import resolve_field_mapping_for_ingest
+    from backend.app.services.lead_communications import normalized_merging_lead_persisted_blocks
+
+    settings_row = await _load_settings(db, tenant_id)
+    payload_dict = _coerce_lead_payload_to_dict(payload if payload is not None else lead.payload)
+    to_normalize = (
+        normalizer.coerce_generic_json_to_meta_normalizer_payload(payload_dict)
+        if _payload_needs_flat_field_data_coercion(payload_dict)
+        else payload_dict
+    )
+    field_mapping = await resolve_field_mapping_for_ingest(
+        db,
+        tenant_id=tenant_id,
+        payload=to_normalize,
+        source=str(getattr(lead, "source", None) or "meta"),
+        settings_row=settings_row,
+    )
+    normalized = normalizer.normalize_meta_payload(to_normalize, field_mapping=field_mapping)
+    normalized.pop("graph_error", None)
+    if payload_dict and not _payload_has_graph_error(payload_dict):
+        lead.payload = payload_dict
+    lead.normalized = normalized_merging_lead_persisted_blocks(lead, normalized)
+    if _is_graph_error(getattr(lead, "error", None)):
+        lead.error = None
+    await db.flush()
+    return normalized
+
+
+def _payload_has_graph_error(payload: Dict[str, Any]) -> bool:
+    for entry in payload.get("entry") or []:
+        if not isinstance(entry, dict):
+            continue
+        for change in entry.get("changes") or []:
+            if not isinstance(change, dict):
+                continue
+            if change.get("field") != "leadgen":
+                continue
+            value = change.get("value")
+            if isinstance(value, dict) and str(value.get("graph_error") or "").strip():
+                return True
+    return False
+
+
+def _is_graph_error(error: Optional[str]) -> bool:
+    return str(error or "").strip().upper().startswith("GRAPH_")
+
+
 def _ad_id_from_meta_lead_export_row(payload: Dict[str, Any]) -> Optional[int]:
     """
     Meta Lead Center CSV exports often use tab-separated rows and ad_id values like 'ag:120245658843840547'.
@@ -445,19 +503,27 @@ async def reprocess_stored_lead_payload(
         if _payload_needs_flat_field_data_coercion(payload_dict)
         else payload_dict
     )
-    from backend.app.modules.leads.field_mapping_resolve import resolve_field_mapping_for_ingest
+    from backend.app.entity_profile.ingest_runtime import prepare_meta_ingest_runtime, stamp_ingest_envelope_v1
 
-    field_mapping = await resolve_field_mapping_for_ingest(
+    validated_mapping, ingest_envelope, intake_route, _profile_view = await prepare_meta_ingest_runtime(
         db,
         tenant_id=tenant_id,
-        payload=to_normalize,
         source=source,
+        raw_payload=to_normalize,
+        own_company_id=own_company_id,
         settings_row=settings_row,
+        vacancy_id=str(stored_db_vacancy_id).strip() if stored_db_vacancy_id else None,
     )
     normalized = normalizer.normalize_meta_payload(
         to_normalize,
-        field_mapping=field_mapping,
+        field_mapping=validated_mapping,
     )
+    ingest_envelope.normalized_payload = dict(normalized)
+    stamp_ingest_envelope_v1(normalized, ingest_envelope)
+    normalized["intake_routing_v1"] = intake_route.to_intake_routing_v1()
+    normalized["intake_route_v1"] = intake_route.to_normalized_block()
+    if intake_route.entity_profile_code:
+        normalized.setdefault("entity_profile_code", intake_route.entity_profile_code)
     _merge_lead_normalized_fallback(normalized, prior_normalized)
     _apply_stored_lead_row_ids_to_normalized(
         normalized,
@@ -519,19 +585,24 @@ async def process_generic_inbound_webhook_lead(
     """
     settings_row = await _load_settings(db, tenant_id)
     coerced = normalizer.coerce_generic_json_to_meta_normalizer_payload(body)
-    from backend.app.modules.leads.field_mapping_resolve import resolve_field_mapping_for_ingest
+    from backend.app.entity_profile.ingest_runtime import prepare_meta_ingest_runtime, stamp_ingest_envelope_v1
 
-    field_mapping = await resolve_field_mapping_for_ingest(
+    validated_mapping, ingest_envelope, intake_route, _profile_view = await prepare_meta_ingest_runtime(
         db,
         tenant_id=tenant_id,
-        payload=coerced,
         source="webhook",
+        raw_payload=coerced,
+        own_company_id=own_company_id,
         settings_row=settings_row,
     )
     normalized = normalizer.normalize_meta_payload(
         coerced,
-        field_mapping=field_mapping,
+        field_mapping=validated_mapping,
     )
+    ingest_envelope.normalized_payload = dict(normalized)
+    stamp_ingest_envelope_v1(normalized, ingest_envelope)
+    normalized["intake_routing_v1"] = intake_route.to_intake_routing_v1()
+    normalized["intake_route_v1"] = intake_route.to_normalized_block()
     raw_lead_id = normalized.get("raw_lead_id")
     external_id = str(raw_lead_id).strip() if raw_lead_id else None
     return await process_normalized_lead(

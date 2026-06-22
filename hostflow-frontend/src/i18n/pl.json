@@ -6231,7 +6231,8 @@
         "duplicated": "Duplikat",
         "needs_routing": "Wymaga przekierowania",
         "failed": "Błąd",
-        "duplicate_review": "Weryfikacja duplikatu (intake)"
+        "duplicate_review": "Weryfikacja duplikatu (intake)",
+        "rejected": "Odrzucony"
       },
       "stages": {
         "new": "Nowy",
@@ -6335,6 +6336,7 @@
           "contact_missing": "Brak e-maila i telefonu",
           "email": "E-mail",
           "phone": "Telefon",
+          "preferred_contact": "Preferowany kanał kontaktu",
           "driving_eu": "Doświadczenie w prowadzeniu (UE)",
           "documents": "Dokumenty (zadeklarowane)",
           "nationality": "Obywatelstwo / narodowość",
@@ -6440,7 +6442,8 @@
           "INTAKE_ROUTING_INCOMPLETE": "Dokończ routing intake (oferta lub ścieżka puli) przed Process.",
           "INTAKE_INFO_REQUESTED": "Na intake poproszono o informacje. Uzupełnij lead lub anuluj prośbę przed Process.",
           "INTAKE_IDENTITY_UNCLEAR": "Tożsamość leada na intake jest niejasna. Rozwiąż to przed Process.",
-          "LEAD_RODO_REQUIRED": "Wyślij informację RODO (art. 14) lub oznacz, że została już pokryta u źródła, zanim skontaktujesz się lub utworzysz kandydata."
+          "LEAD_RODO_REQUIRED": "Wyślij informację RODO (art. 14) lub oznacz, że została już pokryta u źródła, zanim skontaktujesz się lub utworzysz kandydata.",
+          "CLIENT_LEAD_NOT_CANDIDATE": "To ankieta klienta B2B. Użyj „Utwórz klienta”, a nie przetwarzania kandydata."
         }
       },
       "pipeline_errors": {
@@ -6575,6 +6578,8 @@
           "phone_ok": "Telefon podany",
           "phone_missing": "Brak telefonu",
           "email": "{email}",
+          "preferred_contact": "Kanał kontaktu: {value}",
+          "poland_stay": "Podstawa pobytu: {value}",
           "route_label": "Routing",
           "route_confirmed": "Routing potwierdzony",
           "route_unconfirmed": "Oferta na leadzie · potwierdź w panelu Decyzja",
@@ -6690,6 +6695,8 @@
           "needs_routing": "Wybór oferty",
           "new": "Nowy",
           "awaiting_convert": "Do konwersji",
+          "client_lead": "Ankieta klienta",
+          "client_converted": "Klient utworzony",
           "duplicated": "Duplikat",
           "other": "—"
         },
@@ -8623,6 +8630,7 @@
       },
       "consents": {
         "title": "Zgody i oświadczenia",
+        "select_all_required": "Zaznacz wszystkie wymagane",
         "terms": "Akceptuję Regulamin korzystania z formularza.",
         "privacy": "Zapoznałem/am się z Polityką prywatności.",
         "data_processing": "Wyrażam zgodę na przetwarzanie danych osobowych w celu obsługi zapytania i przygotowania oferty współpracy.",

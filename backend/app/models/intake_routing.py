@@ -61,6 +61,12 @@ class IntakeSourceProfile(Base, TimestampMixin):
     form_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     lead_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     lead_target_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    entity_profile_code: Mapped[Optional[str]] = mapped_column(
+        String(128),
+        nullable=True,
+        index=True,
+        comment="Entity Profile Definition Registry code (P2 bridge)",
+    )
     source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     default_assignee_id: Mapped[Optional[str]] = mapped_column(
         String(36),

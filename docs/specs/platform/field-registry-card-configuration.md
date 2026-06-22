@@ -1,7 +1,7 @@
 # Field Registry & Card Configuration — platform capability canon
 
 **Status:** Accepted (architecture canon). **Implementation:** P0 canon accepted; **P1–P5 complete**; **Closure gate** (`test_field_registry_closure.py`). P6+ planned.  
-**Hierarchy:** L2 operating canon — platform layer. Sibling to Process Engine and Document Hub.  
+**Hierarchy:** L2 operating canon — platform layer. Sibling to Process Engine, Document Hub, and Entity Profile Definition Registry.  
 **Owner:** Architecture canon + platform core team.
 
 **Runtime formula (target):**
@@ -584,6 +584,7 @@ Mirror Process Engine closure (`backend/tests/field_registry/test_field_registry
 
 **Must stay consistent:**
 
+- [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) — Entity Profile Definition Registry (P0 canon); composition layer above Field Registry
 - [`process-engine.md`](process-engine.md) — Process Engine **CLOSED**; §9 Field Registry relation; `pe_field_requirements`
 - [`platform-architecture-principles.md`](../architecture/platform-architecture-principles.md) — Core vs module
 - [`hostflow-core-domain-map-v1.md`](../architecture/hostflow-core-domain-map-v1.md) — entity ownership
@@ -706,3 +707,7 @@ When changing card fields, visibility, or transition required-data behaviour:
 | Candidate card | `useEffectiveCandidateLayout` + section order from registry |
 | Fallback | API error / missing layout → existing `profileUtils` + `CandidateProfile.config` |
 | Not in P2 | Save/PATCH, `validateRequiredFields`, vacancy/client card UI wiring, Process Engine field requirement activation |
+
+---
+
+**Next layer (post-closure):** [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) — Entity Profile Definition Registry (P0 canon accepted). Composition of canonical fields into business object types; prerequisite for unified Intake / Form Presentation.

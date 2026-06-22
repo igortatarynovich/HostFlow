@@ -8,7 +8,8 @@
 
 **Related:**
 
-- [`../architecture/ADR-007-forms-platform-capability.md`](../architecture/ADR-007-forms-platform-capability.md) — Forms as input layer; bindings attach forms to intake profiles
+- [`../architecture/ADR-007-forms-platform-capability.md`](../architecture/ADR-007-forms-platform-capability.md) — Forms as input layer; bindings attach forms to intake configs
+- [`../platform/entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md) — Entity Profile (field composition); Intake Source Config references profile, does not define semantics
 - [`../workflows/lead-conversion-contract.md`](../workflows/lead-conversion-contract.md) — Lead → Candidate boundary; outcome rules must align
 - [`lead-types.md`](../lead-types.md) — `Lead.lead_type` legacy; route intent replaces ad-hoc type branching
 - [`../workflows/lead-intake-resolution-and-activity-continuity.md`](../workflows/lead-intake-resolution-and-activity-continuity.md) — operator triage after ingest
@@ -63,15 +64,19 @@ External signal
 - Replacing `Lead` as intake entity
 - Per-field mapping (stays in provider adapters: Meta field mapping, Forms field mapping)
 
-### Relationship to Forms (ADR-007)
+### Relationship to Forms (ADR-007) and Entity Profile
 
 | Layer | Role |
 |-------|------|
-| **Forms** | Collects submission payload, files, consent |
+| **Field Registry** | Canonical field semantics (`qualified_code`) |
+| **Entity Profile Definition** | Which fields belong to a business object type — see [`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md) |
+| **Forms / Intake Source** | Presentation surface; asks a **subset** of Entity Profile fields |
 | **Intake Routing** | Decides operating context + intent + pipeline |
 | **Outcome Rules** | Decides derivative entities after Lead exists |
 
-A public form submission handler calls `IntakeRouter.resolve(...)`, then creates **Lead**, then applies outcome rules.
+A public form submission handler calls `IntakeRouter.resolve(...)`, resolves **Entity Profile**, normalizes via Mapping, runs **Decision Layer**, creates **Lead**, then applies outcome rules.
+
+**Terminology note:** `intake_source_profiles` (this spec) configures **routing** — not Entity Profile field composition. Prefer **Intake Source Config** in new docs to avoid collision with Entity Profile Definition Registry.
 
 ---
 

@@ -137,5 +137,6 @@ export const HrEmployeesPage = lazy(() => loadHrWorkspace().then((m) => ({ defau
 export const HrEmployeeDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrEmployeeDetailPage })))
 export const HrHandoffDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrHandoffDetailPage })))
 export const LeadFormsSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadFormsSettingsPage })))
+export const IntakeFormDetailPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntakeFormDetailPage })))
 export const LegalDocumentsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LegalDocumentsPage })))
 export const LeadMessageTemplatesPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadMessageTemplatesPage })))

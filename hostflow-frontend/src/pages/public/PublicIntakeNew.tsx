@@ -12,6 +12,7 @@ import { PublicLogo } from '../../components/public/PublicLogo'
 import Select from '../../components/controls/Select'
 import { buildCountryOptions } from '../../data/countries'
 import { usePublicIntake } from '../../modules/public-intake/usePublicIntake'
+import PublicIntakePresentationForm from './PublicIntakePresentationForm'
 import type { IntakeData, IntakeEmployment } from '../../api/publicIntake'
 import { presignPublicDocument, uploadPublicDocument, updatePublicIntake } from '../../api/publicIntake'
 import { subscribeToNotifications } from '../../api/publicNotifications'
@@ -53,6 +54,7 @@ export default function PublicIntakeNew() {
     upsertEmployment: apiUpsertEmployment,
     removeEmployment: apiRemoveEmployment,
     updateAgreements: apiUpdateAgreements,
+    updatePresentationValues: apiUpdatePresentationValues,
     submit: apiSubmit,
   } = usePublicIntake(token)
   
@@ -887,6 +889,35 @@ export default function PublicIntakeNew() {
           <p className="text-slate-600">{t('public.intake.new.loading')}</p>
         </div>
       </PublicPageShell>
+    )
+  }
+
+  const presentationRuntime = apiState?.form_presentation
+  if (
+    presentationRuntime?.contract_version === 'form_presentation_runtime_v1' &&
+    !documentsOnlyMode
+  ) {
+    return (
+      <PublicIntakePresentationForm
+        intake={{
+          loading: apiLoading,
+          saving: apiSaving,
+          submitting,
+          error: error || apiError,
+          state: apiState,
+          formData: apiFormData,
+          refresh,
+          updateContacts: apiUpdateContacts,
+          updatePersonal: apiUpdatePersonal,
+          updateExperience: apiUpdateExperience,
+          upsertEmployment: apiUpsertEmployment,
+          removeEmployment: apiRemoveEmployment,
+          updateAgreements: apiUpdateAgreements,
+          updatePresentationValues: apiUpdatePresentationValues,
+          submit: apiSubmit,
+        }}
+        presentation={presentationRuntime}
+      />
     )
   }
 

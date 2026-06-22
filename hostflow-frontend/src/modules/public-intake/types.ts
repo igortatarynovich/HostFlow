@@ -78,3 +78,21 @@ export interface MultiSelectOption {
   labelKey: string;
 }
 
+export type FormPresentationField = {
+  qualified_code: string;
+  sort_order: number;
+  intake_level: string;
+  label: string;
+  field_type?: string | null;
+  widget_hint?: string | null;
+};
+
+export type FormPresentationRuntime = {
+  contract_version: string;
+  entity_profile_code: string;
+  presentation_code: string;
+  profile_name?: string | null;
+  fields: FormPresentationField[];
+  warnings?: string[];
+};
+

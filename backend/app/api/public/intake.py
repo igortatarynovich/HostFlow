@@ -33,6 +33,7 @@ from backend.app.api.public.intake_tenant_bind import (
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.candidate import Candidate
+from backend.app.models.lead import Lead
 from backend.app.models.company import Company
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
@@ -94,7 +95,7 @@ from backend.app.services.integration_inbound_normalization import (
 )
 
 
-_UPLOADS_ROOT = get_uploads_root_via_contract()
+_UPLOADS_ROOT = Path(get_uploads_root_via_contract())
 
 router = APIRouter(prefix="/public", tags=["public-intake"])
 
@@ -448,6 +449,10 @@ class IntakeData(BaseModel):
     agreements: IntakeAgreements = Field(default_factory=IntakeAgreements)
     lead_form: Optional[Dict[str, Any]] = None
     client_company: Optional[IntakeClientCompany] = None
+    presentation_values: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="P7: values keyed by Field Registry qualified_code from form_presentation_runtime_v1.",
+    )
     application_kind: Optional[Literal["candidate", "client"]] = Field(
         default=None,
         description="candidate (default): hiring intake only. client: B2B client inquiry — may create CRM Lead on submit when owner company is known.",
@@ -512,7 +517,8 @@ class PublicLeadFormListItem(BaseModel):
 class PublicIntakeCreateResponse(BaseModel):
     apply_url: str
     token: str
-    candidate_id: str
+    candidate_id: Optional[str] = None
+    lead_id: Optional[str] = None
     expires_at: datetime
 
 
@@ -527,7 +533,8 @@ class PublicTimelineEntry(BaseModel):
 
 class PublicIntakeState(BaseModel):
     token: str
-    candidate_id: str
+    candidate_id: Optional[str] = None
+    lead_id: Optional[str] = None
     status: str
     stage: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -538,6 +545,10 @@ class PublicIntakeState(BaseModel):
     documents: Dict[str, Any]
     timeline: List[PublicTimelineEntry] = Field(default_factory=list)
     status_share_token: Optional[str] = None
+    form_presentation: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="P7: form_presentation_runtime_v1 when intake source binds an Entity Profile presentation.",
+    )
 
 
 class PublicStatusState(BaseModel):
@@ -625,7 +636,8 @@ class PublicMagicLinkRedeemResponse(BaseModel):
     apply_url: str
     status_share_token: Optional[str] = None
     expires_at: datetime
-    candidate_id: str
+    candidate_id: Optional[str] = None
+    lead_id: Optional[str] = None
     cooldown_seconds: int = MIN_MAGIC_LINK_INTERVAL_SECONDS
     daily_limit: int = MAX_MAGIC_LINKS_PER_DAY
 
@@ -870,6 +882,244 @@ async def _load_candidate_for_storage_upload(
             raise HTTPException(status_code=410, detail="Intake link expired")
         return c
     return await _load_candidate_by_status_token(session, tenant_id, token)
+
+
+async def _load_public_intake_session(
+    session: AsyncSession,
+    tenant_id: UUID,
+    token: str,
+):
+    from backend.app.entity_profile.public_intake_draft_session import resolve_public_intake_session
+
+    return await resolve_public_intake_session(
+        session,
+        tenant_id=str(tenant_id),
+        token=token,
+        legacy_loader=_load_candidate_by_token,
+    )
+
+
+async def _build_checklist_and_docs_for_session(
+    session: AsyncSession,
+    tenant_id: UUID,
+    public_session,
+    *,
+    download_scope: str = "apply",
+    download_token: Optional[str] = None,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    if public_session.kind == "legacy_candidate" and public_session.candidate is not None:
+        return await _build_checklist_and_docs(
+            session,
+            tenant_id,
+            public_session.candidate,
+            download_scope=download_scope,
+            download_token=download_token,
+        )
+    from backend.app.entity_profile.public_intake_draft_session import session_intake_state
+
+    state = session_intake_state(public_session)
+    owner_id = public_session.lead_id or "draft"
+    owner_context = _owner_context_from_state(state, owner_id)
+    ruleset_version = await ensure_ruleset_seed_via_contract(
+        session,
+        tenant_id=str(tenant_id),
+        ruleset_payload=load_default_ruleset(),
+        own_company_id=None,
+    )
+    ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
+    checklist = compute_candidate_checklist_via_contract(owner_context, ruleset_payload)
+    checklist = _ensure_checklist_defaults(checklist, ruleset_payload)
+    pending = []
+    if public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import get_public_intake_draft_block
+
+        pending = list(get_public_intake_draft_block(public_session.lead).get("pending_documents") or [])
+    serialized_docs: List[Dict[str, Any]] = []
+    token_for_download = download_token if download_token is not None else public_session.token
+    for entry in pending:
+        if not isinstance(entry, dict):
+            continue
+        doc_type = str(entry.get("doc_type") or "").strip()
+        if not doc_type:
+            continue
+        download_url = None
+        if entry.get("has_files") and token_for_download:
+            download_url = f"/api/v1/public/apply/{token_for_download}/documents/{entry.get('id')}/file"
+        serialized_docs.append(
+            {
+                "id": entry.get("id"),
+                "type": doc_type,
+                "doc_type": doc_type,
+                "status": entry.get("status") or "submitted",
+                "has_files": bool(entry.get("has_files")),
+                "download_url": download_url,
+            }
+        )
+    summary = compute_owner_summary_via_contract(owner_context, ruleset_payload, serialized_docs)
+    synthetic = [
+        entry.model_dump()
+        for entry in build_synthetic_documents_via_contract(
+            str(tenant_id), UUID(owner_id), checklist, serialized_docs
+        )
+    ]
+    doc_entries = serialized_docs + synthetic
+    doc_type_codes = _collect_doc_type_codes(checklist, doc_entries)
+    if not doc_type_codes:
+        catalog = await list_document_types_via_contract(session, tenant_id=str(tenant_id))
+        doc_type_codes = [getattr(row, "code", None) or getattr(row, "key", None) or "" for row in catalog]
+        doc_type_codes = [code for code in doc_type_codes if code]
+    documents_payload = {
+        "summary": summary,
+        "documents": doc_entries,
+        "doc_types": _serialize_doc_types(doc_type_codes),
+    }
+    return checklist, documents_payload
+
+
+def _intake_data_from_state_dict(state: Dict[str, Any]) -> IntakeData:
+    lf_raw = state.get("lead_form")
+    lf = lf_raw if isinstance(lf_raw, dict) else None
+    ak = _coerce_intake_application_kind(str(state.get("application_kind")))
+    contacts_raw = dict(state.get("contacts") or {})
+    personal_raw = dict(state.get("personal") or {})
+    experience_raw = dict(state.get("experience") or {})
+    agreements_raw = dict(state.get("agreements") or {})
+    employments_raw = list(state.get("employments") or [])
+    employments: List[IntakeEmployment] = []
+    for row in employments_raw[:MAX_EMPLOYMENTS]:
+        if isinstance(row, IntakeEmployment):
+            employments.append(row)
+        elif isinstance(row, dict):
+            try:
+                employments.append(IntakeEmployment(**row))
+            except Exception:
+                continue
+    client_company = None
+    if isinstance(state.get("client_company"), dict):
+        client_company = IntakeClientCompany(**state["client_company"])
+    pv_raw = state.get("presentation_values_v1")
+    presentation_values = dict(pv_raw) if isinstance(pv_raw, dict) else None
+    return IntakeData(
+        contacts=IntakeContacts(**contacts_raw) if contacts_raw else IntakeContacts(),
+        personal=IntakePersonal(**personal_raw) if personal_raw else IntakePersonal(),
+        experience=IntakeExperience(**experience_raw) if experience_raw else IntakeExperience(),
+        employments=employments,
+        agreements=IntakeAgreements(**agreements_raw) if agreements_raw else IntakeAgreements(),
+        lead_form=lf,
+        client_company=client_company,
+        presentation_values=presentation_values,
+        application_kind=ak,
+    )
+
+
+async def _response_payload_from_session(
+    db: AsyncSession,
+    tenant_id: UUID,
+    public_session,
+    checklist: Dict[str, Any],
+    documents: Dict[str, Any],
+) -> PublicIntakeState:
+    from backend.app.entity_profile.public_intake_draft_session import (
+        session_created_at,
+        session_expires_at,
+        session_intake_state,
+        session_intake_status,
+        session_status_share_token,
+        session_submitted_at,
+    )
+
+    if public_session.kind == "legacy_candidate" and public_session.candidate is not None:
+        employments = await _list_employments(db, tenant_id, public_session.candidate.id)
+        return _response_payload(public_session.candidate, employments, checklist, documents)
+
+    state = session_intake_state(public_session)
+    data_payload = _intake_data_from_state_dict(state)
+    timeline = _build_timeline_entries_for_draft(public_session, data_payload, checklist, documents)
+    from backend.app.entity_profile.public_intake_presentation_bridge import (
+        presentation_values_dict_from_state,
+        resolve_public_session_form_presentation,
+    )
+
+    form_presentation = await resolve_public_session_form_presentation(
+        db,
+        tenant_id=str(tenant_id),
+        intake_state=state,
+    )
+    if form_presentation:
+        field_codes = [
+            str(f.get("qualified_code") or "")
+            for f in (form_presentation.get("fields") or [])
+            if isinstance(f, dict)
+        ]
+        merged_pv = presentation_values_dict_from_state(state, field_codes)
+        if merged_pv:
+            data_payload = data_payload.model_copy(update={"presentation_values": merged_pv})
+    return PublicIntakeState(
+        token=public_session.token,
+        candidate_id=public_session.candidate_id,
+        lead_id=public_session.lead_id,
+        status=session_intake_status(public_session),
+        stage=getattr(public_session.lead, "stage", None) if public_session.lead else None,
+        created_at=session_created_at(public_session),
+        expires_at=session_expires_at(public_session),
+        submitted_at=session_submitted_at(public_session),
+        data=data_payload,
+        checklist=checklist,
+        documents=documents,
+        timeline=timeline,
+        status_share_token=session_status_share_token(public_session),
+        form_presentation=form_presentation,
+    )
+
+
+def _build_timeline_entries_for_draft(
+    public_session,
+    data: IntakeData,
+    checklist: Dict[str, Any],
+    documents_payload: Dict[str, Any],
+) -> List[PublicTimelineEntry]:
+    from backend.app.entity_profile.public_intake_draft_session import session_created_at, session_submitted_at
+
+    created_at = session_created_at(public_session)
+    submitted_at = session_submitted_at(public_session)
+    required_types: List[str] = list(checklist.get("requiredTypes") or [])
+    doc_entries = documents_payload.get("documents") or []
+    entries_by_type: Dict[str, Dict[str, Any]] = {}
+    for entry in doc_entries:
+        doc_type = str(entry.get("doc_type") or entry.get("type") or "").strip()
+        if doc_type:
+            entries_by_type.setdefault(doc_type, entry)
+    ready_required = sum(1 for code in required_types if entries_by_type.get(code, {}).get("has_files"))
+    items = [
+        {
+            "key": "intake_created",
+            "title": "Application started",
+            "done": bool(created_at),
+            "completed_at": created_at,
+        },
+        {
+            "key": "submitted",
+            "title": "Application submitted",
+            "done": bool(submitted_at),
+            "completed_at": submitted_at,
+        },
+    ]
+    timeline: List[PublicTimelineEntry] = []
+    pending_locked = False
+    for item in items:
+        status = "done" if item["done"] else "pending"
+        if status != "done" and not pending_locked:
+            status = "current"
+            pending_locked = True
+        timeline.append(
+            PublicTimelineEntry(
+                key=item["key"],
+                title=item["title"],
+                status=status,
+                completed_at=item.get("completed_at"),
+            )
+        )
+    return timeline
 
 
 async def _load_candidate_by_token(
@@ -2145,10 +2395,15 @@ def _build_storage_key(candidate: Candidate, filename: str) -> str:
     )
 
 
+def _build_draft_storage_key(tenant_id: str, owner_id: str, filename: str) -> str:
+    sanitized = sanitize_filename_via_contract(filename) or "document.bin"
+    return str(Path(tenant_id) / "leads" / str(owner_id) / f"{uuid4().hex}_{sanitized}")
+
+
 def _resolve_storage_path(relative: str) -> Path:
     rel = Path(relative.strip().lstrip("/\\"))
-    candidate = (_UPLOADS_ROOT / rel).resolve()
     uploads_root = _UPLOADS_ROOT.resolve()
+    candidate = (uploads_root / rel).resolve()
     if uploads_root not in candidate.parents and candidate != uploads_root:
         raise HTTPException(status_code=400, detail="Invalid storage path")
     return candidate
@@ -2375,6 +2630,92 @@ async def _save_public_document_upload(
     )
     await session.commit()
     return doc
+
+
+async def _save_lead_draft_document_upload(
+    session: AsyncSession,
+    lead: Lead,
+    doc_type_hint: str,
+    *,
+    upload_file: Optional[UploadFile],
+    storage_key: Optional[str],
+    user_comment: Optional[str] = None,
+) -> dict[str, Any]:
+    from backend.app.entity_profile.public_intake_draft_session import (
+        get_public_intake_draft_block,
+        set_public_intake_draft_block,
+    )
+
+    if not upload_file and not storage_key:
+        raise HTTPException(status_code=422, detail="Either file or storage_key must be provided")
+
+    defaults = get_doc_type_defaults(doc_type_hint)
+    doc_type = defaults.doc_type
+    normalized_comment = _normalize_user_comment(user_comment)
+    _ensure_user_comment(doc_type, normalized_comment)
+
+    if storage_key:
+        target_path = _resolve_storage_path(storage_key)
+        rel_path = storage_key.strip().lstrip("/\\")
+        original_name = os.path.basename(rel_path)
+    else:
+        rel_dir = Path(str(lead.tenant_id)) / "leads" / str(lead.id)
+        target_dir = _UPLOADS_ROOT / rel_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_name = sanitize_filename_via_contract(upload_file.filename if upload_file else "document")
+        stored_name = f"{uuid4().hex}_{safe_name}"
+        target_path = target_dir / stored_name
+
+        try:
+            with target_path.open("wb") as fh:
+                while True:
+                    chunk = await upload_file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+        finally:
+            await upload_file.close()
+
+        rel_path = target_path.relative_to(_UPLOADS_ROOT).as_posix()
+        original_name = upload_file.filename if upload_file and upload_file.filename else stored_name
+
+    allowed_prefix = f"{lead.tenant_id}/leads/{lead.id}/"
+    if not rel_path.startswith(allowed_prefix):
+        raise HTTPException(status_code=403, detail="Storage key does not belong to draft session")
+
+    block = get_public_intake_draft_block(lead)
+    pending = [
+        entry
+        for entry in list(block.get("pending_documents") or [])
+        if isinstance(entry, dict) and str(entry.get("doc_type") or "") != doc_type
+    ]
+    doc_id = str(uuid4())
+    entry: dict[str, Any] = {
+        "id": doc_id,
+        "doc_type": doc_type,
+        "status": "submitted",
+        "has_files": True,
+        "storage_path": rel_path,
+        "filename": original_name,
+        "uploaded_at": _now().isoformat(),
+    }
+    if normalized_comment:
+        entry["user_comment"] = normalized_comment
+    pending.append(entry)
+    block["pending_documents"] = pending
+    set_public_intake_draft_block(lead, block)
+    await session.flush()
+    return entry
+
+
+def _storage_allowed_prefix_for_session(public_session, tenant_id: UUID) -> str:
+    if public_session.kind == "lead_draft" and public_session.lead_id:
+        return f"{tenant_id}/leads/{public_session.lead_id}/"
+    if public_session.candidate is not None:
+        candidate = public_session.candidate
+        return f"{candidate.tenant_id}/candidates/{candidate.id}/"
+    raise HTTPException(status_code=404, detail="Invalid intake token")
 
 
 def _serialize_contacts(candidate: Candidate, state: Dict[str, Any]) -> IntakeContacts:
@@ -2838,11 +3179,14 @@ def _response_payload(
     employments: List[CandidateEmployment],
     checklist: Dict[str, Any],
     documents: Dict[str, Any],
+    *,
+    lead_id: Optional[str] = None,
 ) -> PublicIntakeState:
     data_payload, timeline = _build_state_components(candidate, employments, checklist, documents)
     return PublicIntakeState(
         token=candidate.intake_token or "",
         candidate_id=candidate.id,
+        lead_id=lead_id,
         status=candidate.intake_status or ("submitted" if candidate.intake_submitted_at else "draft"),
         stage=candidate.stage,
         created_at=getattr(candidate, "intake_token_created_at", None),
@@ -3079,6 +3423,7 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     extra["route_types"] = _normalize_string_list(merged_route_types)
     
     candidate._set_extra(extra)
+    candidate.intake_state = state
 
 
 @router.get(
@@ -3190,8 +3535,10 @@ async def list_public_intake_lead_forms(
     response_model=PublicIntakeCreateResponse,
     summary="Create or reuse public intake session",
     description=(
-        "Creates a draft candidate (or reuses by contact) in the workspace resolved from **lead_form_slug** / **lead_form_id** "
-        "or from **X-Tenant-Id** (non-demo). Returns an **apply** token and URLs."
+        "Creates a lead-first intake draft session (or reuses by contact / legacy candidate draft) "
+        "in the workspace resolved from **lead_form_slug** / **lead_form_id** "
+        "or from **X-Tenant-Id** (non-demo). Returns an **apply** token and URLs. "
+        "Candidate rows are created only after submit when Decision Layer returns ``create_candidate``."
     ),
     responses={
         400: {
@@ -3305,52 +3652,51 @@ async def create_public_intake(
             apply_url=f"/public/apply/{candidate.intake_token}",
             token=candidate.intake_token or "",
             candidate_id=candidate.id,
+            lead_id=None,
             expires_at=expires_at,
         )
 
-    token = _generate_token()
-    await ensure_active_records_quota(db, str(tenant_id))
-    intake_source = normalize_candidate_source(payload.source, default="Анкета")
-    candidate = Candidate(
-        id=str(uuid4()),
-        tenant_id=str(tenant_id),
-        first_name="Candidate",
-        last_name="Draft",
-        phone_country_code=contacts.phone_country_code,
-        phone=contacts.phone,
-        email=contacts.email,
-        vacancy_id=resolved_vacancy_id,
-        intake_token=token,
-        intake_token_created_at=now,
-        intake_token_expires_at=expires_at,
-        intake_status="draft",
-        stage="docs_wait",
-        source=intake_source,
-    )
+    from backend.app.entity_profile.public_intake_draft_session import create_or_reuse_public_intake_lead_draft
+
     ak = _coerce_intake_application_kind(str(payload.application_kind) if payload.application_kind is not None else None)
-    state: Dict[str, Any] = {
-        "contacts": contacts.model_dump(),
-        "personal": {},
-        "experience": {},
-        "agreements": {},
-        "application_kind": ak,
-    }
+    lf_meta = lead_form_meta_for_intake_state(lf) if lf is not None else None
+    client_company = None
     if payload.client_company is not None:
-        state["client_company"] = {
+        client_company = {
             k: v for k, v in payload.client_company.model_dump().items() if v not in (None, "", [], {})
         }
-    if lf is not None:
-        state["lead_form"] = lead_form_meta_for_intake_state(lf)
-    candidate.intake_state = state
-    _ensure_status_share_token(candidate)
+    try:
+        lead, token, expires_at = await create_or_reuse_public_intake_lead_draft(
+            db,
+            tenant_id=str(tenant_id),
+            contacts=contacts.model_dump(exclude_none=True),
+            intake_source=normalize_candidate_source(payload.source),
+            vacancy_id=resolved_vacancy_id,
+            application_kind=ak,
+            lead_form_meta=lf_meta,
+            client_company=client_company,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    db.add(candidate)
+    await log_public_event(
+        db,
+        tenant_id=str(tenant_id),
+        action="intake_lead_draft_created",
+        target_id=lead.id,
+        payload={
+            "contacts": contacts.model_dump(exclude_none=True),
+            "source": normalize_candidate_source(payload.source),
+            **({"lead_form_id": lf.id} if lf is not None else {}),
+            **({"vacancy_id": resolved_vacancy_id} if resolved_vacancy_id else {}),
+        },
+    )
     await db.commit()
-
     return PublicIntakeCreateResponse(
         apply_url=f"/public/apply/{token}",
         token=token,
-        candidate_id=candidate.id,
+        candidate_id=None,
+        lead_id=lead.id,
         expires_at=expires_at,
     )
 
@@ -3361,12 +3707,12 @@ async def get_public_intake(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
-    if _ensure_status_share_token(candidate):
-        await db.commit()
-    employments = await _list_employments(db, tenant_id, candidate.id)
-    checklist, documents = await _build_checklist_and_docs(db, tenant_id, candidate)
-    return _response_payload(candidate, employments, checklist, documents)
+    public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "legacy_candidate" and public_session.candidate is not None:
+        if _ensure_status_share_token(public_session.candidate):
+            await db.commit()
+    checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+    return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
 
 
 @router.post(
@@ -3417,41 +3763,74 @@ async def request_public_magic_link(
         phone_country_code=payload.phone_country_code,
         phone=payload.phone,
     )
-    if candidate:
-        contact_type = "email" if payload.email else "phone"
-        phone_parts = _normalize_phone_parts(payload.phone_country_code, payload.phone)
-        contact_value = _contact_value(
-            contact_type,
-            email=payload.email,
-            phone=phone_parts,
+    contact_type = "email" if payload.email else "phone"
+    phone_parts = _normalize_phone_parts(payload.phone_country_code, payload.phone)
+    contact_value = _contact_value(
+        contact_type,
+        email=payload.email,
+        phone=phone_parts,
+    )
+    if candidate and contact_value:
+        _ensure_status_share_token(candidate)
+        _ensure_intake_token(candidate)
+        link = await _create_magic_link(
+            db,
+            tenant_id,
+            candidate,
+            contact_type=contact_type,
+            contact_value=contact_value,
         )
-        if contact_value:
-            _ensure_status_share_token(candidate)
-            _ensure_intake_token(candidate)
-            link = await _create_magic_link(
-                db,
-                tenant_id,
-                candidate,
+        magic_url = f"/public?magic={link.token}"
+        logger.info(
+            "Magic link issued for candidate=%s contact=%s value=%s url=%s",
+            candidate.id,
+            contact_type,
+            contact_value,
+            magic_url,
+        )
+        await log_public_event(
+            db,
+            tenant_id=str(tenant_id),
+            action="magic_link_requested",
+            target_id=candidate.id,
+            payload={
+                "contact_type": contact_type,
+                "contact_value": contact_value,
+                "magic_token": link.token,
+            },
+            ip=request.client.host if request and request.client else None,
+            ua=request.headers.get("user-agent") if request else None,
+        )
+    elif it and contact_value:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            find_lead_draft_by_intake_token,
+            get_public_intake_draft_block,
+        )
+
+        lead = await find_lead_draft_by_intake_token(db, tenant_id=str(tenant_id), token=it)
+        if lead is not None:
+            await _assert_magic_link_limits(db, tenant_id, contact_type, contact_value)
+            block = get_public_intake_draft_block(lead)
+            link = MagicLink(
+                tenant_id=str(tenant_id),
+                candidate_id=None,
+                token=_generate_token(),
                 contact_type=contact_type,
                 contact_value=contact_value,
+                expires_at=_now() + timedelta(minutes=MAGIC_LINK_TTL_MINUTES),
+                meta={"lead_id": str(lead.id), "intake_token": it},
             )
-            magic_url = f"/public?magic={link.token}"
-            logger.info(
-                "Magic link issued for candidate=%s contact=%s value=%s url=%s",
-                candidate.id,
-                contact_type,
-                contact_value,
-                magic_url,
-            )
+            db.add(link)
             await log_public_event(
                 db,
                 tenant_id=str(tenant_id),
                 action="magic_link_requested",
-                target_id=candidate.id,
+                target_id=str(lead.id),
                 payload={
                     "contact_type": contact_type,
                     "contact_value": contact_value,
                     "magic_token": link.token,
+                    "lead_draft": True,
                 },
                 ip=request.client.host if request and request.client else None,
                 ua=request.headers.get("user-agent") if request else None,
@@ -3471,7 +3850,39 @@ async def redeem_public_magic_link(
     db, tenant_id = db_tenant
     link = await _load_magic_link(db, tenant_id, token)
     if not link.candidate_id:
-        raise HTTPException(status_code=404, detail="Candidate not attached to link")
+        meta = dict(link.meta or {}) if isinstance(link.meta, dict) else {}
+        intake_token = str(meta.get("intake_token") or "").strip()
+        lead_id = str(meta.get("lead_id") or "").strip() or None
+        if not intake_token:
+            raise HTTPException(status_code=404, detail="Candidate not attached to link")
+        from backend.app.entity_profile.public_intake_draft_session import (
+            find_lead_draft_by_intake_token,
+            get_public_intake_draft_block,
+        )
+
+        lead = await find_lead_draft_by_intake_token(db, tenant_id=str(tenant_id), token=intake_token)
+        if lead is None:
+            raise HTTPException(status_code=404, detail="Lead draft not found")
+        block = get_public_intake_draft_block(lead)
+        expires_raw = block.get("intake_token_expires_at")
+        expires_at = _now() + timedelta(days=INTAKE_TOKEN_TTL_DAYS)
+        if expires_raw:
+            try:
+                expires_at = datetime.fromisoformat(str(expires_raw).replace("Z", "+00:00"))
+            except ValueError:
+                pass
+        link.redeemed_at = _now()
+        await db.commit()
+        return PublicMagicLinkRedeemResponse(
+            token=intake_token,
+            apply_url=f"/public/apply/{intake_token}",
+            status_share_token=str(block.get("status_share_token") or "") or None,
+            expires_at=expires_at,
+            candidate_id=None,
+            lead_id=lead_id or str(lead.id),
+            cooldown_seconds=MIN_MAGIC_LINK_INTERVAL_SECONDS,
+            daily_limit=MAX_MAGIC_LINKS_PER_DAY,
+        )
     stmt = (
         select(Candidate)
         .where(
@@ -3533,6 +3944,120 @@ async def rotate_public_status_token(
 
 
 
+def _merge_intake_payload_into_state(state: Dict[str, Any], payload: IntakeData) -> Dict[str, Any]:
+    """Merge IntakeData into intake_state dict (lead-first draft sessions)."""
+    contacts = payload.contacts
+    personal = payload.personal
+    experience = payload.experience
+    existing_contacts = dict(state.get("contacts") or {})
+    existing_personal = dict(state.get("personal") or {})
+    existing_experience = dict(state.get("experience") or {})
+    existing_agreements = dict(state.get("agreements") or {})
+    existing_employments = list(state.get("employments") or [])
+    residency = _auto_residency_status(
+        personal.citizenship or existing_personal.get("citizenship"),
+        personal.residency_status,
+    )
+    merged_years_ce = experience.years_ce if experience.years_ce is not None else existing_experience.get("years_ce")
+    merged_intl_experience = (
+        experience.intl_experience
+        if experience.intl_experience is not None
+        else existing_experience.get("intl_experience")
+    )
+    merged_trailer_types = experience.trailer_types or existing_experience.get("trailer_types") or []
+    merged_route_types = experience.route_types or existing_experience.get("route_types") or []
+    state["contacts"] = {
+        **existing_contacts,
+        **{k: v for k, v in contacts.model_dump().items() if v not in (None, "", [], {})},
+    }
+    state["personal"] = {
+        **existing_personal,
+        **{k: v for k, v in personal.model_dump().items() if v not in (None, "", [], {})},
+        "residency_status": residency or existing_personal.get("residency_status"),
+    }
+    state["experience"] = {
+        **existing_experience,
+        **{k: v for k, v in experience.model_dump().items() if v not in (None, "", [], {})},
+        "years_ce": merged_years_ce,
+        "intl_experience": merged_intl_experience,
+        "trailer_types": merged_trailer_types,
+        "route_types": merged_route_types,
+    }
+    merged_agreements = existing_agreements.copy()
+    for key, val in payload.agreements.model_dump().items():
+        if val is True or key not in merged_agreements:
+            merged_agreements[key] = val
+    state["agreements"] = merged_agreements
+    new_employments = [_employment_state_payload(entry) for entry in payload.employments]
+    state["employments"] = new_employments or existing_employments
+    if payload.lead_form is not None:
+        state["lead_form"] = payload.lead_form
+    if payload.client_company is not None:
+        state["client_company"] = {
+            **dict(state.get("client_company") or {}),
+            **{k: v for k, v in payload.client_company.model_dump().items() if v not in (None, "", [], {})},
+        }
+    if payload.application_kind is not None:
+        ak = str(payload.application_kind).strip().lower()
+        state["application_kind"] = ak if ak in ("candidate", "client") else "candidate"
+    if payload.presentation_values is not None:
+        from backend.app.entity_profile.public_intake_presentation_bridge import apply_presentation_values_to_state
+
+        apply_presentation_values_to_state(state, dict(payload.presentation_values))
+    return state
+
+
+async def _finalize_public_client_lead_draft(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    intake_state: dict[str, Any],
+) -> None:
+    if _coerce_intake_application_kind(str(intake_state.get("application_kind"))) != "client":
+        return
+    personal = dict(intake_state.get("personal") or {})
+    contacts = dict(intake_state.get("contacts") or {})
+    client_company = dict(intake_state.get("client_company") or {})
+    full_name = str(personal.get("full_name") or "").strip()
+    lead.stage = "questionnaire_submitted"
+    lead.status = "new"
+    normalized = dict(lead.normalized or {})
+    normalized.update(
+        {
+            "email": contacts.get("email"),
+            "phone": contacts.get("phone"),
+            "full_name": full_name or None,
+            "company_name": str(client_company.get("name") or "").strip() or None,
+            "intake_application_kind": "client",
+        }
+    )
+    lead.normalized = {k: v for k, v in normalized.items() if v is not None}
+    lead.payload = {
+        **(lead.payload if isinstance(lead.payload, dict) else {}),
+        "intake": True,
+        "contacts": contacts,
+        "personal": personal,
+        "client_company": client_company,
+    }
+    display_name = full_name or str(client_company.get("name") or "").strip() or str(lead.id)
+    await emit_event(
+        db,
+        tenant_id=tenant_id,
+        event_type="lead_public_intake_client",
+        payload={
+            "lead_id": str(lead.id),
+            "candidate_id": None,
+            "candidate_name": display_name,
+            "href": spa_paths.spa_lead(str(lead.id)),
+        },
+        audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+        entity_type="lead",
+        entity_id=str(lead.id),
+    )
+    await db.flush()
+
+
 @router.put("/apply/{token}", response_model=PublicIntakeState)
 async def update_public_intake(
     token: str,
@@ -3540,7 +4065,33 @@ async def update_public_intake(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
+    public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "lead_draft" and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            session_intake_state,
+            write_session_intake_state,
+        )
+
+        state = session_intake_state(public_session)
+        state = _merge_intake_payload_into_state(state, payload.data)
+        write_session_intake_state(public_session, state)
+        normalized = dict(public_session.lead.normalized or {})
+        contacts = dict(state.get("contacts") or {})
+        if contacts.get("email"):
+            normalized["email"] = contacts.get("email")
+        if contacts.get("phone"):
+            normalized["phone"] = contacts.get("phone")
+        public_session.lead.normalized = normalized
+        public_session.lead.payload = {
+            **(public_session.lead.payload if isinstance(public_session.lead.payload, dict) else {}),
+            "intake_state": state,
+        }
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
+    candidate = public_session.candidate
+    assert candidate is not None
     _update_candidate_from_data(candidate, payload.data)
     state = _ensure_intake_state(candidate)
     state["employments"] = [_employment_state_payload(entry) for entry in payload.data.employments] or state.get("employments") or []
@@ -3560,7 +4111,74 @@ async def submit_public_intake(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
+    public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "lead_draft" and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            mark_session_submitted,
+            session_intake_state,
+            submit_public_intake_lead_draft,
+            write_session_intake_state,
+        )
+
+        if not payload.has_all_required():
+            raise HTTPException(status_code=422, detail="Required consents must be accepted before submit")
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        state = session_intake_state(public_session)
+        state["agreements"] = {
+            "general": payload.consents.general,
+            "employer_share": payload.consents.employer_share,
+            "terms_acceptance": payload.consents.terms_acceptance,
+            "cookies_accepted": payload.cookies_accepted,
+        }
+        write_session_intake_state(public_session, state)
+        from backend.app.entity_profile.public_intake_presentation_bridge import (
+            resolve_public_session_form_presentation,
+            validate_presentation_required_fields,
+        )
+
+        form_presentation = await resolve_public_session_form_presentation(
+            db,
+            tenant_id=str(tenant_id),
+            intake_state=state,
+        )
+        if form_presentation:
+            missing = validate_presentation_required_fields(form_presentation, state)
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "presentation_required_fields",
+                        "message": "Required presentation fields are missing",
+                        "missing": missing,
+                    },
+                )
+        mark_session_submitted(public_session)
+        decision, created_candidate_id = await submit_public_intake_lead_draft(
+            db,
+            tenant_id=str(tenant_id),
+            lead=public_session.lead,
+            intake_state=state,
+        )
+        if created_candidate_id:
+            await _log_consent_snapshot(db, tenant_id, created_candidate_id, payload, client_ip, user_agent)
+            employments_payload = state.get("employments") or []
+            if employments_payload:
+                parsed = _intake_data_from_state_dict(state).employments
+                if parsed:
+                    await _upsert_employments(db, tenant_id, created_candidate_id, parsed)
+        await _finalize_public_client_lead_draft(
+            db,
+            tenant_id=str(tenant_id),
+            lead=public_session.lead,
+            intake_state=state,
+        )
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
+    candidate = public_session.candidate
+    assert candidate is not None
     state = _ensure_intake_state(candidate)
     state["agreements"] = {
         "general": payload.consents.general,
@@ -3613,6 +4231,76 @@ async def submit_public_intake(
     candidate.intake_submitted_at = _now()
     await _log_consent_snapshot(db, tenant_id, candidate.id, payload, client_ip, user_agent)
 
+    from backend.app.entity_profile.ingest_runtime import (
+        prepare_public_intake_runtime,
+        resolve_public_intake_source_profile_id,
+    )
+
+    _lf_meta = intake_state.get("lead_form") if isinstance(intake_state.get("lead_form"), dict) else {}
+    lead_form_id = str(_lf_meta.get("id") or "").strip() or None
+    public_slug = str(_lf_meta.get("public_slug") or "").strip() or None
+    intake_source_profile_id = await resolve_public_intake_source_profile_id(
+        db,
+        tenant_id=str(tenant_id),
+        lead_form_id=lead_form_id,
+        public_slug=public_slug,
+    )
+    envelope, _profile_view, _validation = await prepare_public_intake_runtime(
+        db,
+        tenant_id=str(tenant_id),
+        intake_state=intake_state,
+        intake_source_profile_id=intake_source_profile_id,
+        candidate_profile_id=None,
+        vacancy_id=str(candidate.vacancy_id) if getattr(candidate, "vacancy_id", None) else None,
+    )
+    state["ingest_envelope_v1"] = envelope.to_dict()
+    if envelope.entity_profile_code:
+        state["entity_profile_code"] = envelope.entity_profile_code
+
+    from backend.app.entity_profile.decision_layer import (
+        DecisionInput,
+        IngestDecisionContext,
+        evaluate_ingest_decision,
+    )
+    from backend.app.entity_profile.public_intake_bridge import ensure_public_intake_lead_record
+
+    flat_normalized = dict(envelope.normalized_payload or {})
+    flat_normalized["ingest_envelope_v1"] = envelope.to_dict()
+    if envelope.entity_profile_code:
+        flat_normalized["entity_profile_code"] = envelope.entity_profile_code
+    decision_input = DecisionInput.from_normalized(
+        tenant_id=str(tenant_id),
+        source="public_intake",
+        normalized=flat_normalized,
+        vacancy_id=str(candidate.vacancy_id) if getattr(candidate, "vacancy_id", None) else None,
+        company_id=str(getattr(candidate, "company_id", None) or "") or None,
+        existing_candidate_id=str(candidate.id),
+    )
+    decision = await evaluate_ingest_decision(
+        db,
+        decision_input,
+        ctx=IngestDecisionContext(vacancy_resolved=bool(getattr(candidate, "vacancy_id", None))),
+        email=getattr(candidate, "email", None),
+        phone=getattr(candidate, "phone", None),
+    )
+    state["decision_input_v1"] = decision_input.to_dict()
+    state["decision_result_v1"] = decision.to_dict()
+    state["decision_result_v1"]["entity_profile_code"] = decision_input.entity_profile_code
+    try:
+        await ensure_public_intake_lead_record(
+            db,
+            tenant_id=str(tenant_id),
+            candidate=candidate,
+            intake_state=state,
+            envelope_dict=envelope.to_dict(),
+            decision_input=decision_input,
+            decision=decision,
+        )
+    except ValueError:
+        pass
+
+    candidate.intake_state = state
+
     notify_user_ids: List[str] = []
     manager_id = str(candidate.manager) if _looks_like_uuid(getattr(candidate, "manager", None)) else None
     if manager_id:
@@ -3659,9 +4347,19 @@ async def presign_public_document_upload(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicPresignResponse:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
+    public_session = await _load_public_intake_session(db, tenant_id, token)
     filename = payload.filename.strip() or f"{payload.doc_type}.bin"
-    key = _build_storage_key(candidate, filename)
+    if public_session.kind == "lead_draft" and public_session.lead_id:
+        key = _build_draft_storage_key(str(tenant_id), public_session.lead_id, filename)
+        owner_id = public_session.lead_id
+        candidate_id = None
+    else:
+        candidate = public_session.candidate
+        if candidate is None:
+            raise HTTPException(status_code=404, detail="Invalid intake token")
+        key = _build_storage_key(candidate, filename)
+        owner_id = str(candidate.id)
+        candidate_id = str(candidate.id)
     url = f"/api/v1/public/uploads/{token}/{key}"
     emit_document_security_event_v1(
         event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
@@ -3672,7 +4370,7 @@ async def presign_public_document_upload(
         document_id=None,
         access_kind=None,
         document_class=payload.doc_type.strip(),
-        candidate_id=str(candidate.id),
+        candidate_id=candidate_id,
         upload_presign=True,
         intake_channel="apply_token",
     )
@@ -3778,11 +4476,28 @@ async def upload_public_document(
     if not file and not storage_key:
         raise HTTPException(status_code=422, detail="file or storage_key is required")
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
+    public_session = await _load_public_intake_session(db, tenant_id, token)
+    doc_type_clean = doc_type.strip()
+    if public_session.kind == "lead_draft" and public_session.lead is not None:
+        await _save_lead_draft_document_upload(
+            db,
+            public_session.lead,
+            doc_type_clean,
+            upload_file=file,
+            storage_key=storage_key,
+            user_comment=user_comment,
+        )
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
+    candidate = public_session.candidate
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="Invalid intake token")
     await _save_public_document_upload(
         db,
         candidate,
-        doc_type.strip(),
+        doc_type_clean,
         upload_file=file,
         storage_key=storage_key,
         user_comment=user_comment,
@@ -3792,7 +4507,7 @@ async def upload_public_document(
             db,
             tenant_id=str(tenant_id),
             candidate=candidate,
-            source_doc_type=doc_type.strip(),
+            source_doc_type=doc_type_clean,
         )
     except Exception:
         logger.exception(
@@ -3875,7 +4590,29 @@ async def download_public_document_file(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> FileResponse:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
+    public_session = await _load_public_intake_session(db, tenant_id, token)
+    doc_id_str = str(doc_id)
+
+    if public_session.kind == "lead_draft" and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import get_public_intake_draft_block
+
+        pending = list(get_public_intake_draft_block(public_session.lead).get("pending_documents") or [])
+        entry = next(
+            (row for row in pending if isinstance(row, dict) and str(row.get("id") or "") == doc_id_str),
+            None,
+        )
+        if not entry or not entry.get("storage_path"):
+            raise HTTPException(status_code=404, detail="Document not found")
+        file_path = _resolve_storage_path(str(entry["storage_path"]))
+        if not file_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+        filename = str(entry.get("filename") or file_path.name)
+        media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        return FileResponse(str(file_path), media_type=media_type, filename=filename)
+
+    candidate = public_session.candidate
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="Invalid intake token")
     stmt = (
         select(Document)
         .where(
@@ -4008,11 +4745,11 @@ async def upload_public_storage_object(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_storage_upload_session),
 ) -> Response:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_for_storage_upload(db, tenant_id, token)
-    allowed_prefix = f"{candidate.tenant_id}/candidates/{candidate.id}/"
+    public_session = await _load_public_intake_session(db, tenant_id, token)
+    allowed_prefix = _storage_allowed_prefix_for_session(public_session, tenant_id)
     normalized_key = storage_key.strip().lstrip("/\\")
     if not normalized_key.startswith(allowed_prefix):
-        raise HTTPException(status_code=403, detail="Storage key does not belong to candidate")
+        raise HTTPException(status_code=403, detail="Storage key does not belong to intake session")
     target_path = _resolve_storage_path(normalized_key)
     target_path.parent.mkdir(parents=True, exist_ok=True)
     with target_path.open("wb") as fh:

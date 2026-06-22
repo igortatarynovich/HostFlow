@@ -3,7 +3,6 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
 import {
-  AgencyClientsPage,
   AuditLogPage,
   AutomationsHubPage,
   AutomationLogPage,
@@ -12,7 +11,6 @@ import {
   CandidateCard,
   CandidateProfilesPage,
   Candidates,
-  ClientLinkDetailPage,
   CommunicationsCalendarPage,
   CommunicationsCommandAuditPage,
   CommunicationsEmailInboxPage,
@@ -58,6 +56,7 @@ import {
   LeadsDistributionRulesPage,
   LegalDocumentsPage,
   LeadFormsSettingsPage,
+  IntakeFormDetailPage,
   LeadMessageTemplatesPage,
   IntegrationsHubPage,
   IntegrationsSourcePlaceholderPage,
@@ -100,6 +99,19 @@ function RedirectLeadConversionFunnelToInsights() {
 /** §2.17.14 SSOT: `settingsLeads` is an alias; canonical Meta / lead-source admin is `settingsIntegrationsMeta`. */
 function LegacySettingsLeadsToMetaRedirect() {
   return <Navigate to={CRM.settingsIntegrationsMeta} replace />
+}
+
+function ClientsRootRedirect() {
+  return <Navigate to={CRM.clientsDirectory} replace />
+}
+
+function ClientNewRedirect() {
+  return <Navigate to={`${CRM.clientsDirectory}?add=1`} replace />
+}
+
+function ClientLinkDetailRedirect() {
+  const { linkId } = useParams<{ linkId: string }>()
+  return <Navigate to={`${CRM.clientsDirectory}?link=${encodeURIComponent(linkId || '')}`} replace />
 }
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
@@ -569,9 +581,10 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'candidate-detail', path: `${seg(CRM.candidates)}/:id`, Component: CandidateCard, permission: 'candidates.view' },
   { key: 'candidate-tab', path: `${seg(CRM.candidates)}/:id/:tab`, Component: CandidateCard, permission: 'candidates.view' },
   { key: 'companies-legacy', path: seg(CRM.companiesLegacy), Component: LegacyCompaniesRedirect, permission: 'companies.view' },
-  { key: 'client-link-detail', path: `${seg(CRM.clientsLinkBase)}/:linkId`, Component: ClientLinkDetailPage, permission: 'companies.view' },
+  { key: 'client-new', path: seg(CRM.clientNew), Component: ClientNewRedirect, permission: 'companies.view' },
   { key: 'clients-directory', path: seg(CRM.clientsDirectory), Component: Companies, permission: 'companies.view' },
-  { key: 'clients', path: seg(CRM.agencyClients), Component: AgencyClientsPage, permission: 'companies.view' },
+  { key: 'clients', path: seg(CRM.agencyClients), Component: ClientsRootRedirect, permission: 'companies.view' },
+  { key: 'client-link-detail', path: `${seg(CRM.clientsLinkBase)}/:linkId`, Component: ClientLinkDetailRedirect, permission: 'companies.view' },
   { key: 'procesowani', path: seg(CRM.procesowani), Component: DoProcesowaniaPage, permission: 'companies.view' },
   { key: 'do-procesowania-legacy', path: seg(CRM.doProcesowaniaLegacy), Component: LegacyDoProcesowaniaRedirect, permission: 'companies.view' },
   { key: 'client-detail', path: `${seg(CRM.agencyClients)}/:id`, Component: Companies, permission: 'companies.view' },
@@ -682,6 +695,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'settings-lead-forms',
     path: seg(CRM.settingsLeadForms),
     Component: LeadFormsSettingsPage,
+    permission: ['admin.users', 'leads.view'],
+  },
+  {
+    key: 'settings-intake-form-detail',
+    path: `${seg(CRM.settingsLeadForms)}/:formId`,
+    Component: IntakeFormDetailPage,
     permission: ['admin.users', 'leads.view'],
   },
   {

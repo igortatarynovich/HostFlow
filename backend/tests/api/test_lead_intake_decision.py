@@ -15,6 +15,7 @@ from backend.app.models import Lead, LeadImportJob, RecruitmentApplication
 from backend.app.models.audit import ActivityLog
 from backend.app.models.lead_import_job import LeadImportJobStatus
 from backend.app.modules.leads import service as leads_service
+from backend.app.modules.leads.service import _retry as retry_service
 from backend.app.services.imports.leads import IMPORT_SOURCE, _normalize_row, run_import_job
 from backend.tests.api.test_leads_meta import (
     _ensure_company,
@@ -462,6 +463,109 @@ async def test_bulk_single_lead_worker_respects_intake_reject_block_code(client,
     async with async_session_maker() as session:
         lead_row = await session.get(Lead, lead_id)
         assert lead_row is not None
+        assert lead_row.candidate_id is None
+
+
+@pytest.mark.anyio
+async def test_retry_graph_error_refreshes_payload_before_vacancy_confirm_gate(
+    monkeypatch, tenant_id
+):
+    async with async_session_maker() as session:
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+        await _ensure_meta_settings(session, tenant_id, str(settings.meta_webhook_secret or "test-secret"))
+
+    u = uuid.uuid4().hex[:12]
+    lead_id = str(uuid.uuid4())
+    leadgen = f"lg-graph-retry-{u}"
+    stale_payload = {
+        "entry": [
+            {
+                "id": "259905353877064",
+                "changes": [
+                    {
+                        "field": "leadgen",
+                        "value": {
+                            "leadgen_id": leadgen,
+                            "page_id": "259905353877064",
+                            "field_data": [],
+                            "graph_error": "GRAPH_NO_TOKEN",
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    hydrated_payload = {
+        "entry": [
+            {
+                "id": "259905353877064",
+                "changes": [
+                    {
+                        "field": "leadgen",
+                        "value": {
+                            "leadgen_id": leadgen,
+                            "page_id": "259905353877064",
+                            "field_data": [
+                                {"name": "full_name", "values": ["Meta Lead"]},
+                                {"name": "email", "values": [f"graph-retry-{u}@example.com"]},
+                                {"name": "phone_number", "values": [f"+48142{u[:9]}"]},
+                                {"name": "vacancy_id", "values": [str(vacancy_id)]},
+                            ],
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+
+    async def fake_hydrate_webhook_payload(*args, **kwargs):
+        assert kwargs.get("refresh_graph") is True
+        return hydrated_payload
+
+    monkeypatch.setattr(
+        retry_service.pipeline,
+        "hydrate_webhook_payload",
+        fake_hydrate_webhook_payload,
+    )
+
+    async with async_session_maker() as session:
+        session.add(
+            Lead(
+                id=lead_id,
+                tenant_id=str(tenant_id),
+                source="meta",
+                status="failed",
+                stage="new",
+                company_id=str(company_id),
+                vacancy_id=str(vacancy_id),
+                payload=stale_payload,
+                normalized={"resolved_vacancy_id": str(vacancy_id)},
+                external_id=leadgen,
+                error="GRAPH_NO_TOKEN",
+            )
+        )
+        await session.commit()
+
+    async with async_session_maker() as session:
+        outcomes = await leads_service.retry_meta_leads(
+            session,
+            tenant_id=str(tenant_id),
+            lead_ids=[lead_id],
+            refresh_graph=True,
+        )
+
+    assert len(outcomes) == 1
+    assert outcomes[0].processed is False
+    assert outcomes[0].message == "VACANCY_NOT_CONFIRMED"
+    assert outcomes[0].error_before == "GRAPH_NO_TOKEN"
+    assert outcomes[0].error_after is None
+
+    async with async_session_maker() as session:
+        lead_row = await session.get(Lead, lead_id)
+        assert lead_row is not None
+        assert lead_row.error is None
+        assert lead_row.payload == hydrated_payload
         assert lead_row.candidate_id is None
 
 

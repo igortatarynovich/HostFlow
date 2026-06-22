@@ -14,6 +14,7 @@
 - Границы tenant/company — [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md).  
 - Три уровня настроек — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md) (пресеты форм per company / per module — по мере внедрения).  
 - Слои платформы и монетизация baseline vs paid — [`ADR-006`](ADR-006-marketplace-and-integration-platform.md).  
+- Entity Profile Definition Registry (composition layer) — [`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md).  
 - Детали текущего public intake / lead types — [`../lead-types.md`](../lead-types.md), [`../../SSOT.md`](../../SSOT.md).
 
 ## Decision: Forms = отдельная платформенная capability
@@ -34,7 +35,7 @@
 - **Submissions** — принятые ответы, статус, идемпотентность, аудит.  
 - **File uploads** — безопасное хранение, связь с Document где применимо.  
 - **Consent capture** — RODO / oświadczenia / явные согласия (по политике продукта).  
-- **Field mapping** — правила «поле формы → поле сущности / custom field».  
+- **Field mapping** — правила «поле формы → `qualified_code` Field Registry / Entity Profile»; форма **не создаёт** новую семантику поля.  
 - **Automation triggers** — события для rules / workflows (см. существующий контур автоматизаций).
 
 ### Целевые типы результатов (submission handlers)

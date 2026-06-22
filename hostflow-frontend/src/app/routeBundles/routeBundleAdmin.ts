@@ -24,5 +24,6 @@ export { default as BillingPlanMatrixPage } from '../../pages/admin/BillingPlanM
 export { default as EmailSettingsPage } from '../../pages/admin/EmailSettingsPage'
 export { default as TenantLinksSettingsPage } from '../../pages/admin/TenantLinksSettingsPage'
 export { default as LeadFormsSettingsPage } from '../../pages/admin/LeadFormsSettingsPage'
+export { default as IntakeFormDetailPage } from '../../pages/admin/IntakeFormDetailPage'
 export { default as LegalDocumentsPage } from '../../pages/admin/LegalDocumentsPage'
 export { default as LeadMessageTemplatesPage } from '../../pages/admin/LeadMessageTemplatesPage'

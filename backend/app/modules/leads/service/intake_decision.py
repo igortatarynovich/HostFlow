@@ -61,7 +61,91 @@ _INTAKE_EVENT_BY_DECISION: Dict[str, str] = {
 }
 
 _ALLOWED_LEAD_STATUSES = frozenset({"new", "needs_routing", "failed", "duplicate_review"})
+_CLIENT_LEAD_INTAKE_STATUSES = _ALLOWED_LEAD_STATUSES | frozenset({"processed"})
 _MANUAL_SOURCES = frozenset({"meta", "csv_import"})
+CLIENT_LEAD_NOT_CANDIDATE = "CLIENT_LEAD_NOT_CANDIDATE"
+
+
+def is_client_lead(lead: Lead) -> bool:
+    lt = str(getattr(lead, "lead_type", "") or "").strip().lower()
+    ltt = str(getattr(lead, "lead_target_type", "") or "").strip().lower()
+    return lt == "client" and ltt == "client_lead"
+
+
+def client_lead_rejection_finalized(lead: Lead) -> bool:
+    """True when client lead rejection is fully persisted (status + intake stamp)."""
+    if not is_client_lead(lead):
+        return False
+    st = str(getattr(lead, "status", "") or "").strip().lower()
+    if st == "rejected":
+        return True
+    norm: Dict[str, Any] = lead.normalized if isinstance(lead.normalized, dict) else {}
+    ir = norm.get("intake_resolution_v1")
+    if isinstance(ir, dict) and str(ir.get("status") or "").strip().lower() == "rejected":
+        return True
+    return False
+
+
+def client_lead_is_terminal(lead: Lead) -> bool:
+    """UI / gating: client lead closed (including stage=lost before legacy rows are finalized)."""
+    if client_lead_rejection_finalized(lead):
+        return True
+    if not is_client_lead(lead):
+        return False
+    if str(getattr(lead, "stage", "") or "").strip().lower() == "lost":
+        return True
+    return False
+
+
+def lead_intake_terminal(lead: Lead) -> bool:
+    """True when intake/CRM closed the lead — no repeat reject or lost transition."""
+    if client_lead_rejection_finalized(lead):
+        return True
+    st = str(getattr(lead, "status", "") or "").strip().lower()
+    if st == "rejected":
+        return True
+    err = str(getattr(lead, "error", "") or "").strip()
+    if err == "INTAKE_REJECTED":
+        return True
+    norm: Dict[str, Any] = lead.normalized if isinstance(lead.normalized, dict) else {}
+    ir = norm.get("intake_resolution_v1")
+    if isinstance(ir, dict) and str(ir.get("status") or "").strip().lower() == "rejected":
+        return True
+    if str(getattr(lead, "stage", "") or "").strip().lower() == "lost" and norm.get("lead_lost_reason_v1"):
+        return True
+    return False
+
+
+def apply_client_lead_rejection(
+    lead: Lead,
+    *,
+    reason_code: Optional[str],
+    note: Optional[str],
+    actor_sub: Optional[str],
+) -> None:
+    """Terminalize a B2B client lead — not a candidate pipeline reject, but same intake stamp."""
+    norm = dict(lead.normalized or {})
+    rc_raw = str(reason_code or "").strip()
+    intake_rc = rc_raw if rc_raw in INTAKE_REJECT_REASON_CODES else "other"
+    _stamp_intake_resolution_v1(
+        norm,
+        status="rejected",
+        reason_code=intake_rc,
+        note=str(note).strip() if note else None,
+        actor_sub=actor_sub,
+        last_decision=INTAKE_DECISION_REJECT,
+    )
+    now_iso = datetime.now(timezone.utc).isoformat()
+    lr_block: Dict[str, Any] = {"at": now_iso, "code": rc_raw or intake_rc}
+    if actor_sub:
+        lr_block["set_by"] = str(actor_sub).strip()
+    if note:
+        lr_block["note"] = str(note).strip()
+    norm["lead_lost_reason_v1"] = lr_block
+    lead.stage = "lost"
+    lead.status = "rejected"
+    lead.error = "INTAKE_REJECTED"
+    lead.normalized = norm
 
 
 def pool_intake_manual_convert_ready(lead: Lead, normalized: Dict[str, Any]) -> bool:
@@ -105,6 +189,10 @@ async def manual_process_block_code(
     """Return a stable machine code if ``POST .../process`` must be blocked, else None."""
     if getattr(lead, "candidate_id", None):
         return None
+    if is_client_lead(lead):
+        if client_lead_rejection_finalized(lead):
+            return "INTAKE_REJECTED"
+        return CLIENT_LEAD_NOT_CANDIDATE
     src = str(getattr(lead, "source", "") or "").strip().lower()
     if src not in _MANUAL_SOURCES:
         rodo = await ensure_lead_rodo_allows_action(
@@ -172,7 +260,10 @@ async def apply_lead_intake_decision(
         raise LeadProcessingError("invalid", "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED")
 
     st = str(getattr(lead, "status", "") or "").strip().lower()
-    if st not in _ALLOWED_LEAD_STATUSES:
+    allowed_statuses = (
+        _CLIENT_LEAD_INTAKE_STATUSES if is_client_lead(lead) else _ALLOWED_LEAD_STATUSES
+    )
+    if st not in allowed_statuses:
         raise LeadProcessingError("invalid", "LEAD_STATUS_INTAKE_DECISION_UNSUPPORTED")
 
     if getattr(lead, "candidate_id", None):
@@ -182,6 +273,8 @@ async def apply_lead_intake_decision(
     prev_ir = norm.get("intake_resolution_v1")
     if isinstance(prev_ir, dict) and str(prev_ir.get("status") or "").strip().lower() == "rejected":
         raise LeadProcessingError("invalid", "LEAD_INTAKE_ALREADY_REJECTED")
+    if lead_intake_terminal(lead):
+        raise LeadProcessingError("invalid", "LEAD_INTAKE_ALREADY_REJECTED")
 
     dec = str(decision or "").strip().lower()
     note_s = str(note).strip() if note else None
@@ -190,27 +283,35 @@ async def apply_lead_intake_decision(
     if dec == INTAKE_DECISION_REJECT:
         if not rc or rc not in INTAKE_REJECT_REASON_CODES:
             raise LeadProcessingError("invalid", "INTAKE_REJECT_REASON_REQUIRED")
-        _stamp_intake_resolution_v1(
-            norm,
-            status="rejected",
-            reason_code=rc,
-            note=note_s,
-            actor_sub=actor_sub,
-            last_decision=dec,
-        )
-        lead.stage = "lost"
-        lr_block: Dict[str, Any] = {
-            "at": datetime.now(timezone.utc).isoformat(),
-            "code": f"intake_{rc}",
-        }
-        if actor_sub:
-            lr_block["set_by"] = str(actor_sub).strip()
-        if note_s:
-            lr_block["note"] = note_s
-        norm["lead_lost_reason_v1"] = lr_block
-        lead.error = "INTAKE_REJECTED"
-        lead.status = "rejected"
-        lead.normalized = norm
+        if is_client_lead(lead):
+            apply_client_lead_rejection(
+                lead,
+                reason_code=rc,
+                note=note_s,
+                actor_sub=actor_sub,
+            )
+        else:
+            _stamp_intake_resolution_v1(
+                norm,
+                status="rejected",
+                reason_code=rc,
+                note=note_s,
+                actor_sub=actor_sub,
+                last_decision=dec,
+            )
+            lead.stage = "lost"
+            lr_block: Dict[str, Any] = {
+                "at": datetime.now(timezone.utc).isoformat(),
+                "code": f"intake_{rc}",
+            }
+            if actor_sub:
+                lr_block["set_by"] = str(actor_sub).strip()
+            if note_s:
+                lr_block["note"] = note_s
+            norm["lead_lost_reason_v1"] = lr_block
+            lead.error = "INTAKE_REJECTED"
+            lead.status = "rejected"
+            lead.normalized = norm
         await db.flush()
         from backend.app.services.lead_communications import maybe_send_lead_rejected_notice
         from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup

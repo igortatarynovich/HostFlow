@@ -102,6 +102,32 @@ async def run_seed(db: AsyncSession) -> None:
                 pass
             logger.warning(f"[seed] Failed to seed Field Registry defaults for tenant {tenant_id}: {e}")
 
+        # Entity Profile Definition Registry P1 — composition layer over Field Registry
+        try:
+            from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
+
+            await ensure_tenant_entity_profile_defaults(db, tenant_id)
+            await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(f"[seed] Failed to seed Entity Profile defaults for tenant {tenant_id}: {e}")
+
+        # P6 — default driver_ce public intake form + intake source binding
+        try:
+            from backend.app.entity_profile.seed_intake_demo_form import ensure_tenant_default_driver_ce_intake_form
+
+            await ensure_tenant_default_driver_ce_intake_form(db, tenant_id)
+            await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(f"[seed] Failed to seed default driver_ce intake form for tenant {tenant_id}: {e}")
+
         # Module Registry P1 — canonical module catalog + tenant installation rows
         try:
             from backend.app.module_registry.seed import ensure_tenant_module_installations

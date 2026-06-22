@@ -69,6 +69,7 @@ function cloneData(input?: IntakeData | null): IntakeData {
     client_company: input.client_company ? { ...input.client_company } : null,
     application_kind: input.application_kind ?? null,
     lead_form: lf && typeof lf === 'object' ? { ...(lf as Record<string, unknown>) } : lf ?? null,
+    presentation_values: input.presentation_values ? { ...input.presentation_values } : undefined,
   }
 }
 
@@ -86,6 +87,7 @@ export type PublicIntakeHook = {
   upsertEmployment: (index: number, value: IntakeEmployment) => void
   removeEmployment: (index: number) => void
   updateAgreements: (next: Partial<IntakeAgreements>) => void
+  updatePresentationValues: (values: Record<string, string>) => void
   submit: (payload: PublicIntakeSubmitPayload) => Promise<void>
 }
 
@@ -215,6 +217,17 @@ export function usePublicIntake(token?: string): PublicIntakeHook {
     })
   }, [markDirty])
 
+  const updatePresentationValues = useCallback((values: Record<string, string>) => {
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        presentation_values: { ...(prev.presentation_values || {}), ...values },
+      }
+      markDirty(updated)
+      return updated
+    })
+  }, [markDirty])
+
   const submit = useCallback(async (payload: PublicIntakeSubmitPayload) => {
     if (!token) return
     setSubmitting(true)
@@ -247,6 +260,7 @@ export function usePublicIntake(token?: string): PublicIntakeHook {
     upsertEmployment,
     removeEmployment,
     updateAgreements,
+    updatePresentationValues,
     submit,
   }
 }
