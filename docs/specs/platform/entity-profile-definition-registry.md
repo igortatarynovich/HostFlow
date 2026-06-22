@@ -722,7 +722,7 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **P10A acceptance:** Field show/hide by sibling value; required-if enforced client + server; rules stored in presentation only; source/target ⊆ presentation subset; Documents/Process/Readiness untouched.
 
-**Next implementation step:** [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) P0 gate → **P1 Requirement Rules Engine** (schema + evaluator + `driver_ce` seed). Not Form Builder / not P10B in presentation layer.
+**Next implementation step:** [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) **P2** — Process Profile hooks + consumer wiring. P1 evaluator complete.
 
 ### P9 implementation status (2026-06-22)
 
@@ -945,3 +945,4 @@ define Entity Profile → bind Intake Source → define Form Presentation subset
 - 2026-06-22: P9 complete — Provider field mapping on IntakeSourceProfile; profile-scoped validation; mapping preview/test-ingest API; Settings mapping UI; ingest prefers source-level mapping_rules.
 - 2026-06-22: P10A complete — Presentation Rules evaluator; show/hide/required-if/readonly-if in presentation_overrides; public form dynamic field state; submit validates required_if; Settings rules editor.
 - 2026-06-22: Requirement Rules Engine P0 canon — [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md); P10B gated as separate platform layer.
+- 2026-06-22: Requirement Rules Engine P1 — evaluator + read/evaluate API; Entity Profile + Document Pack sources only; `driver_ce` proof case.

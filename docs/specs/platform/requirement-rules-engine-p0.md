@@ -411,13 +411,30 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 | 8 | Hard rules + P1 scope gate | **Done** (§12–§13) |
 | 9 | Cross-links from sibling canon docs | **Done** (header + §10) |
 
-**Next implementation step (after P0 acceptance):** **P1 — Requirement Rules Engine** — schema + evaluator + `driver_ce` seed + read/evaluate API.
+**Next implementation step:** **P2 — Process Profile hooks** + consumer wiring (PE transition, readiness). P1 complete — see §16.
 
-**Do not start P10B implementation or Form Builder requirement UI until P1 schema is accepted.**
+**Do not implement requirement logic in Form Presentation or Form Builder.**
 
 ---
 
-## 15. Code anchors (future P1)
+## 16. P1 implementation status (2026-06-22)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Document pack manifests | Done | `backend/app/requirement_rules/manifests/recruitment.py` |
+| Rule compiler (Entity Profile + Document Pack only) | Done | `backend/app/requirement_rules/registry.py` |
+| Evaluator | Done | `backend/app/requirement_rules/evaluator.py` |
+| Facade | Done | `backend/app/requirement_rules/facade.py` |
+| Read API | Done | `GET /api/v1/platform/requirement-rules/{entity_profile_code}` |
+| Evaluate API | Done | `POST /api/v1/platform/requirement-rules/evaluate` |
+| `driver_ce` proof case | Done | EP required fields + `recruitment.driver_ce_documents` pack |
+| Tests | Done | `backend/tests/requirement_rules/` |
+
+**P1 acceptance:** `driver_ce` + `readiness` → required fields (first/last/phone) + 4 documents; `intake` → fields only; evaluate reports blockers; Process Profile + Tenant Override excluded.
+
+---
+
+## 15. Code anchors (P1)
 
 | Area | Target location (P1) |
 |------|----------------------|
@@ -442,3 +459,4 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 ## Changelog
 
 - 2026-06-22: P0 accepted — Requirement Rules Engine canon; P10A/P10B boundary; P1 scope gate (Entity Profile + Document Pack only); migration map from CandidateProfile.config.
+- 2026-06-22: P1 complete — manifest-backed Document Pack + Entity Profile rule compiler; evaluate API; `driver_ce` proof case; tests.

@@ -1,0 +1,181 @@
+"""Requirement Rules evaluator (P1) — pure evaluation, no side effects."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from backend.app.requirement_rules.constants import (
+    LEVEL_BLOCKING,
+    REQUIREMENT_EVALUATION_V1,
+    RULE_TYPE_DOCUMENT_REQUIRED,
+    RULE_TYPE_FIELD_REQUIRED,
+)
+from backend.app.requirement_rules.registry import build_requirement_rule_set
+
+
+def _is_empty(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, dict)):
+        return len(value) == 0
+    return False
+
+
+def _payload_value(normalized_payload: dict[str, Any], qualified_code: str) -> Any:
+    if not isinstance(normalized_payload, dict):
+        return None
+    if qualified_code in normalized_payload:
+        return normalized_payload.get(qualified_code)
+    legacy_aliases = {
+        "recruitment.candidate.first_name": ["first_name"],
+        "recruitment.candidate.last_name": ["last_name"],
+        "recruitment.candidate.contacts.phone": ["phone"],
+        "recruitment.candidate.contacts.email": ["email"],
+        "platform.identity.citizenship": ["citizenship"],
+        "platform.identity.birth_date": ["birth_date"],
+        "recruitment.candidate.experience.years_ce": ["experience_eu_years", "years_ce"],
+    }
+    for key in legacy_aliases.get(qualified_code, []):
+        if key in normalized_payload and not _is_empty(normalized_payload.get(key)):
+            return normalized_payload.get(key)
+    return None
+
+
+def _document_type_code(doc: dict[str, Any]) -> str:
+    for key in ("document_type_code", "type", "type_code", "doc_type"):
+        raw = doc.get(key)
+        if raw is not None and str(raw).strip():
+            return str(raw).strip().lower()
+    return ""
+
+
+def _document_satisfied(doc: dict[str, Any], *, verification: str) -> bool:
+    status = str(doc.get("status") or "").strip().lower()
+    if status in {"missing", "rejected", "expired"}:
+        return False
+    if status in {"uploaded", "approved", "verified", "ready", "in_progress", "pending_review"}:
+        if verification == "required":
+            readiness = str(doc.get("readiness_state") or doc.get("verification") or "").strip().lower()
+            if readiness in {"verified", "approved"}:
+                return True
+            if doc.get("verified_at"):
+                return True
+            return False
+        return True
+    if doc.get("has_files") is True:
+        return True
+    return False
+
+
+def _documents_index(documents: list[Any]) -> dict[str, dict[str, Any]]:
+    index: dict[str, dict[str, Any]] = {}
+    for raw in documents or []:
+        if not isinstance(raw, dict):
+            continue
+        code = _document_type_code(raw)
+        if not code:
+            continue
+        existing = index.get(code)
+        if existing is None or _document_satisfied(raw, verification="optional"):
+            index[code] = raw
+    return index
+
+
+def evaluate_requirement_rules(
+    profile_view: dict[str, Any],
+    *,
+    context: str,
+    normalized_payload: Optional[dict[str, Any]] = None,
+    documents: Optional[list[Any]] = None,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Evaluate Entity Profile + Document Pack rules for a context."""
+    rule_set = build_requirement_rule_set(profile_view, context=context)
+    payload = dict(normalized_payload or {})
+    doc_index = _documents_index(list(documents or []))
+
+    required_fields: list[dict[str, Any]] = []
+    required_documents: list[dict[str, Any]] = []
+    blockers: list[dict[str, Any]] = []
+    warnings: list[dict[str, Any]] = []
+
+    for rule in rule_set.get("rules") or []:
+        if not isinstance(rule, dict):
+            continue
+        rule_type = str(rule.get("rule_type") or "").strip()
+        level = str(rule.get("level") or LEVEL_BLOCKING).strip().lower()
+        reason_code = str(rule.get("reason_code") or "").strip()
+
+        if rule_type == RULE_TYPE_FIELD_REQUIRED:
+            code = str(rule.get("qualified_code") or rule.get("target") or "").strip()
+            if not code:
+                continue
+            entry = {
+                "qualified_code": code,
+                "level": level,
+                "reason_code": reason_code or f"field_required:{code}",
+                "source": rule.get("source"),
+                "source_ref": rule.get("source_ref"),
+            }
+            required_fields.append(entry)
+            if _is_empty(_payload_value(payload, code)):
+                blocker = {
+                    "code": reason_code or f"field_required:{code}",
+                    "message": f"Required field missing: {code}",
+                    "source_rule_id": code,
+                    "layer": "requirement_rules",
+                    "qualified_code": code,
+                }
+                if level == LEVEL_BLOCKING:
+                    blockers.append(blocker)
+                else:
+                    warnings.append(blocker)
+
+        elif rule_type == RULE_TYPE_DOCUMENT_REQUIRED:
+            doc_code = str(rule.get("document_type_code") or rule.get("target") or "").strip().lower()
+            if not doc_code:
+                continue
+            verification = str(rule.get("verification") or "optional").strip().lower()
+            entry = {
+                "document_type_code": doc_code,
+                "pack_code": rule.get("pack_code"),
+                "level": level,
+                "verification": verification,
+                "reason_code": reason_code or f"document_required:{doc_code}",
+                "source": rule.get("source"),
+                "source_ref": rule.get("source_ref"),
+            }
+            required_documents.append(entry)
+            doc_row = doc_index.get(doc_code)
+            if doc_row is None or not _document_satisfied(doc_row, verification=verification):
+                blocker = {
+                    "code": reason_code or f"document_required:{doc_code}",
+                    "message": f"Required document missing: {doc_code}",
+                    "source_rule_id": doc_code,
+                    "layer": "requirement_rules",
+                    "document_type_code": doc_code,
+                }
+                if level == LEVEL_BLOCKING:
+                    blockers.append(blocker)
+                else:
+                    warnings.append(blocker)
+
+    return {
+        "evaluation_version": REQUIREMENT_EVALUATION_V1,
+        "entity_profile_code": rule_set["entity_profile_code"],
+        "entity_type": entity_type or rule_set.get("entity_type"),
+        "entity_id": entity_id,
+        "context": rule_set["context"],
+        "required_fields": required_fields,
+        "required_documents": required_documents,
+        "blockers": blockers,
+        "warnings": warnings,
+        "satisfied": len(blockers) == 0,
+        "rule_sources_applied": rule_set.get("rule_sources_applied") or [],
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+        "p1_sources_only": True,
+    }
