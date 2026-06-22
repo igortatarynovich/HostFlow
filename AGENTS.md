@@ -78,3 +78,36 @@ HostFlow использует живую спецификацию в `docs/specs
 2. Согласовать изменения с ответственными разработчиками или агентом Codex.
 3. После обновления спецификации — сгенерировать/обновить код и тесты.
 4. Поддерживать согласованность кода и документации на всех этапах.
+
+## Cursor Cloud specific instructions
+
+Дев-окружение в облаке использует **локальный PostgreSQL** (а не docker-compose). Постгрес ставится один раз и сохраняется в snapshot; update-скрипт только переустанавливает зависимости (Python venv `.venv312` + npm в `hostflow-frontend`).
+
+### Services
+- **PostgreSQL 16** (local cluster): role/db `hostflow`/`hostflow` on `localhost:5432`. Start if not running: `sudo pg_ctlcluster 16 main start` (или `sudo service postgresql start`). Дев-БД уже мигрирована до head и лежит в snapshot.
+- **Backend (FastAPI/uvicorn)** on `:8000`: `make up` (reads repo-root `.env`, runs `uvicorn --reload`). Admin seeded on startup: `admin@hostflow.dev` / `Admin@025`. API requires header `X-Tenant-Id: 11111111-1111-1111-1111-111111111111` + `Authorization: Bearer <token>` (получить через `POST /api/v1/auth/login`).
+- **Frontend (Vite/React)** on `:5173`: `cd hostflow-frontend && npm run dev`. API base auto-resolves to `http://localhost:8000/api/v1` on localhost.
+- Lint: `.venv312/bin/ruff check backend` (Python), `npm run lint` in `hostflow-frontend` (eslint). Tests: from `backend/` run `PYTHONPATH=/workspace:/workspace/backend /workspace/.venv312/bin/pytest -q` (in-process ASGI against local Postgres).
+
+### Required env (`/workspace/.env`, gitignored — recreate if missing)
+`make up`/alembic read these. The Makefile's built-in defaults point at docker host `db:5432`, so the localhost `.env` below is **required** for non-docker dev:
+```
+DATABASE_URL=postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+ASYNC_DATABASE_URL=postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+SYNC_DATABASE_URL=postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+ALEMBIC_DATABASE_URL=postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+JWT_SECRET=hostflow-dev-secret
+TENANT_ID=11111111-1111-1111-1111-111111111111
+```
+
+### Dependency pin (critical)
+`requirements.txt` pins are too loose. Newer FastAPI (≥0.116) adds `_IncludedRouter` route objects that `prometheus-fastapi-instrumentator` 8.x cannot introspect (`'_IncludedRouter' object has no attribute 'path'`), which makes **every request return 500**. Keep `fastapi==0.115.6` + `prometheus-fastapi-instrumentator==7.0.0` (with `starlette 0.41.x`). Run `scripts/cursor-cloud-update.sh` on agent startup; do not blindly `pip install -U fastapi`.
+
+### Migration caveats (non-obvious)
+`alembic upgrade heads` does **not** apply cleanly on a fresh DB (pre-existing bugs). The snapshot DB is already at head. If you ever rebuild the DB from scratch, this sequence works (run from repo root with `.env` loaded, `PYTHONPATH=backend`):
+1. Pre-create `alembic_version` with `version_num VARCHAR(255)` (default 32 chars is too short for some revision ids).
+2. Apply parallel branch tips in dependency order so "create table" runs before sibling "alter table" migrations: `202512010310_meta_leads_pipeline` (creates `leads`), then `202512150001_unify_documents_module` (creates `document_templates`), `202512150001_documents_module_restructure`, `202512010300_ruleset_versioning_foundation`, `202512010300_expand_reminder_entity_id`, `202512210001_documents_type_dedup`, then `alembic upgrade 202605050001`.
+3. Skip the broken double-`CREATE TYPE` migration `202605200001`: manually `CREATE TYPE document_scan_status_enum ...` + a stub `document_scan_sessions` table, then `alembic stamp 202605200001` (the next migration drops them), then `alembic upgrade heads`.
+4. Post-migration fixups the bootstrap seed needs: `ALTER TYPE role ADD VALUE IF NOT EXISTS 'superadmin';` and `ALTER TABLE users ALTER COLUMN preferences SET DEFAULT '{}'::jsonb;` (the seed creates the admin with role `superadmin` and omits `preferences`, which is NOT NULL without a default).
+
+Many `pytest` failures stem from pre-existing bugs and schema/seed gaps (≈60 tests pass); CI's `alembic upgrade head` also fails on a fresh DB for the reasons above.
