@@ -191,7 +191,7 @@ async def resolve_public_session_form_presentation(
         public_slug=public_slug,
     )
     entity_profile_code = DRIVER_CE_PROFILE_CODE
-    presentation_code = DRIVER_CE_INTAKE_PRESENTATION_CODE
+    presentation_code = ""
 
     if intake_source_profile_id:
         from backend.app.modules.intake_routing import crud as intake_crud
@@ -205,14 +205,23 @@ async def resolve_public_session_form_presentation(
             bound = str(getattr(profile, "entity_profile_code", None) or "").strip()
             if bound:
                 entity_profile_code = bound
-        try:
-            return await resolve_form_presentation_for_intake_source(
-                db,
-                tenant_id=str(tenant_id),
-                intake_source_profile_id=str(intake_source_profile_id),
-                presentation_code=presentation_code,
-            )
-        except FormPresentationNotFoundError:
-            return None
+            presentation_code = str(getattr(profile, "presentation_code", None) or "").strip()
+
+        codes_to_try: list[str] = []
+        if presentation_code:
+            codes_to_try.append(presentation_code)
+        if DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
+            codes_to_try.append(DRIVER_CE_INTAKE_PRESENTATION_CODE)
+
+        for code in codes_to_try:
+            try:
+                return await resolve_form_presentation_for_intake_source(
+                    db,
+                    tenant_id=str(tenant_id),
+                    intake_source_profile_id=str(intake_source_profile_id),
+                    presentation_code=code,
+                )
+            except FormPresentationNotFoundError:
+                continue
 
     return None

@@ -16,10 +16,20 @@ import { useToast } from '../../components/Toast'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
   getIntakeFormDetail,
+  patchIntakeForm,
+  putIntakeFormPresentation,
   smokeTestIntakeForm,
   type IntakeFormDetail,
   type IntakeFormSmokeTestResult,
+  type PresentationFieldInput,
 } from '../../api/intakeForms'
+import {
+  detailFieldsToDraft,
+  IntakeFormPresentationEditor,
+  SavePresentationButton,
+  type PresentationFieldDraft,
+} from '../../components/admin/IntakeFormPresentationEditor'
+import { IntakeFormMappingEditor } from '../../components/admin/IntakeFormMappingEditor'
 import {
   friendlyErrorBannerSecondary,
   getFriendlyErrorInfo,
@@ -44,6 +54,13 @@ export default function IntakeFormDetailPage() {
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
   const [smokeRunning, setSmokeRunning] = useState(false)
   const [smokeResult, setSmokeResult] = useState<IntakeFormSmokeTestResult | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editSlug, setEditSlug] = useState('')
+  const [entityProfileCode, setEntityProfileCode] = useState('')
+  const [presentationFields, setPresentationFields] = useState<PresentationFieldInput[]>([])
+  const [presentationDraft, setPresentationDraft] = useState<PresentationFieldDraft[]>([])
+  const [metaSaving, setMetaSaving] = useState(false)
+  const [presentationSaving, setPresentationSaving] = useState(false)
 
   const load = useCallback(async () => {
     if (!formId) return
@@ -52,6 +69,10 @@ export default function IntakeFormDetailPage() {
       setLoading(true)
       const payload = await getIntakeFormDetail(formId)
       setDetail(payload)
+      setEditTitle(payload.form.title || '')
+      setEditSlug(payload.form.public_slug || '')
+      setEntityProfileCode(payload.entity_profile.code)
+      setPresentationDraft(detailFieldsToDraft(payload))
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(
@@ -110,6 +131,65 @@ export default function IntakeFormDetailPage() {
     }
   }
 
+  const saveMetadata = async () => {
+    if (!canMutate || !formId) return
+    setPageError(null)
+    setMetaSaving(true)
+    try {
+      const updated = await patchIntakeForm(formId, {
+        title: editTitle.trim() || undefined,
+        public_slug: editSlug.trim() || undefined,
+        entity_profile_code: entityProfileCode || undefined,
+      })
+      setDetail(updated)
+      notify({
+        title: t('admin.intake_forms.toast.saved', { defaultValue: 'Form settings saved' }),
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      setPageError(
+        getFriendlyErrorInfo(err, t('admin.intake_forms.errors.save', { defaultValue: 'Failed to save form' }), t),
+      )
+    } finally {
+      setMetaSaving(false)
+    }
+  }
+
+  const savePresentation = async () => {
+    if (!canMutate || !formId || !entityProfileCode) return
+    if (presentationFields.length === 0) {
+      notify({
+        title: t('admin.intake_forms.errors.no_fields', { defaultValue: 'Select at least one field' }),
+        variant: 'error',
+      })
+      return
+    }
+    setPageError(null)
+    setPresentationSaving(true)
+    try {
+      const updated = await putIntakeFormPresentation(formId, {
+        entity_profile_code: entityProfileCode,
+        fields: presentationFields,
+      })
+      setDetail(updated)
+      setPresentationDraft(detailFieldsToDraft(updated))
+      notify({
+        title: t('admin.intake_forms.toast.presentation_saved', { defaultValue: 'Presentation saved' }),
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      setPageError(
+        getFriendlyErrorInfo(
+          err,
+          t('admin.intake_forms.errors.save_presentation', { defaultValue: 'Failed to save presentation' }),
+          t,
+        ),
+      )
+    } finally {
+      setPresentationSaving(false)
+    }
+  }
+
   const sortedFields = useMemo(
     () => [...(detail?.presentation.fields ?? [])].sort((a, b) => a.sort_order - b.sort_order),
     [detail?.presentation.fields],
@@ -133,7 +213,7 @@ export default function IntakeFormDetailPage() {
           }
           subtitle={t('admin.intake_forms.detail_subtitle', {
             defaultValue:
-              'Read-only view of Entity Profile, presentation fields, public link, and submit pipeline. UI does not create canon.',
+              'Configure Entity Profile presentation fields, public link, and submit pipeline. UI selects canon fields only.',
           })}
         />
 
@@ -229,11 +309,77 @@ export default function IntakeFormDetailPage() {
 
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('admin.intake_forms.sections.form_edit', { defaultValue: 'Form metadata' })}
+              </h3>
+              {canMutate ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm">
+                    <span className="text-slate-500">{t('admin.lead_forms.fields.title', { defaultValue: 'Title' })}</span>
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                      value={editTitle}
+                      onChange={(event) => setEditTitle(event.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-slate-500">{t('admin.intake_forms.fields.slug', { defaultValue: 'Public slug' })}</span>
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-sm"
+                      value={editSlug}
+                      onChange={(event) => setEditSlug(event.target.value)}
+                    />
+                  </label>
+                  <div className="sm:col-span-2">
+                    <button type="button" className="btn-secondary" disabled={metaSaving} onClick={() => void saveMetadata()}>
+                      {metaSaving ? t('common.loading') : t('admin.intake_forms.save_metadata', { defaultValue: 'Save metadata' })}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {canMutate && (
+              <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('admin.intake_forms.sections.presentation_edit', { defaultValue: 'Presentation fields (P8)' })}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {t('admin.intake_forms.presentation_edit_hint', {
+                    defaultValue: 'Select fields from Entity Profile, set labels and required level. Does not create canonical fields.',
+                  })}
+                </p>
+                <div className="mt-4">
+                  <IntakeFormPresentationEditor
+                    entityProfileCode={entityProfileCode}
+                    initialFields={presentationDraft}
+                    onEntityProfileChange={setEntityProfileCode}
+                    onChange={setPresentationFields}
+                  />
+                </div>
+                <div className="mt-4">
+                  <SavePresentationButton saving={presentationSaving} onClick={() => void savePresentation()} />
+                </div>
+              </div>
+            )}
+
+            {canMutate && (
+              <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('admin.intake_forms.sections.mapping_edit', { defaultValue: 'Provider field mapping (P9)' })}
+                </h3>
+                <div className="mt-4">
+                  <IntakeFormMappingEditor formId={formId} entityProfileCode={entityProfileCode} />
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('admin.intake_forms.sections.preview', { defaultValue: 'Field preview (P5A runtime)' })}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {t('admin.intake_forms.preview_hint', {
-                  defaultValue: 'Display-only fields returned by Form Presentation Runtime — not editable in P6.',
+                  defaultValue: 'Display-only fields returned by Form Presentation Runtime after save.',
                 })}
               </p>
               {sortedFields.length === 0 ? (

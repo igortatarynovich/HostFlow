@@ -129,6 +129,19 @@ async def prepare_meta_ingest_runtime(
         source=src,
         settings_row=settings_row,
     )
+    if intake_route.intake_source_profile_id:
+        from backend.app.modules.intake_routing import crud as intake_crud
+
+        isp = await intake_crud.get_profile_by_id(
+            db,
+            tenant_id=str(tenant_id),
+            profile_id=str(intake_route.intake_source_profile_id),
+        )
+        if isp is not None:
+            source_rules = isp.mapping_rules if isinstance(getattr(isp, "mapping_rules", None), list) else []
+            source_rules = [dict(r) for r in source_rules if isinstance(r, dict)]
+            if source_rules:
+                raw_rules = source_rules
 
     allowed = allowed_qualified_codes_from_profile_view(profile_view)
     validation = validate_mapping_rules_for_profile(

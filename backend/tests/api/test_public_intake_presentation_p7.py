@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
@@ -84,10 +86,11 @@ async def test_p7_legacy_form_without_binding_has_no_presentation(client: AsyncC
 @pytest.mark.asyncio
 async def test_p7_submit_presentation_required_validation(client: AsyncClient, tenant_id: str) -> None:
     slug = await _seed_driver_ce(tenant_id)
+    email = f"p7-val-{uuid4().hex[:8]}@example.com"
     create = await client.post(
         "/api/v1/public/intake",
         headers=_headers(tenant_id),
-        json={"contacts": {"email": "p7-val@example.com"}, "lead_form_slug": slug},
+        json={"contacts": {"email": email}, "lead_form_slug": slug},
     )
     token = create.json()["token"]
     submit = await client.post(

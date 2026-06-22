@@ -103,7 +103,7 @@ async def build_intake_form_admin_context(
         str(getattr(intake_source, "entity_profile_code", None) or "").strip()
         or DRIVER_CE_PROFILE_CODE
     )
-    presentation_code = DRIVER_CE_INTAKE_PRESENTATION_CODE
+    presentation_code = str(getattr(intake_source, "presentation_code", None) or "").strip()
     route_intent = str(getattr(intake_source, "route_intent", None) or "candidate_application")
 
     try:
@@ -128,29 +128,47 @@ async def build_intake_form_admin_context(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     presentations = list(profile_view.get("presentations") or [])
-    if presentations:
+    if not presentation_code and presentations:
         first_code = str(presentations[0].get("presentation_code") or "").strip()
         if first_code:
             presentation_code = first_code
+    if not presentation_code:
+        presentation_code = DRIVER_CE_INTAKE_PRESENTATION_CODE
 
-    try:
-        if intake_source_profile_id:
-            presentation_runtime = await resolve_form_presentation_for_intake_source(
-                db,
-                tenant_id=str(tenant_id),
-                intake_source_profile_id=str(intake_source_profile_id),
-                presentation_code=presentation_code,
-            )
-        else:
-            presentation_runtime = await resolve_form_presentation(
-                db,
-                tenant_id=str(tenant_id),
-                entity_profile_code=entity_profile_code,
-                presentation_code=presentation_code,
-                intake_source_profile_id=intake_source_profile_id,
-            )
-    except FormPresentationNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if not presentation_code:
+        presentation_code = DRIVER_CE_INTAKE_PRESENTATION_CODE
+
+    codes_to_try: list[str] = []
+    if presentation_code:
+        codes_to_try.append(presentation_code)
+    if DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
+        codes_to_try.append(DRIVER_CE_INTAKE_PRESENTATION_CODE)
+
+    presentation_runtime = None
+    last_error: FormPresentationNotFoundError | None = None
+    for code in codes_to_try:
+        try:
+            if intake_source_profile_id:
+                presentation_runtime = await resolve_form_presentation_for_intake_source(
+                    db,
+                    tenant_id=str(tenant_id),
+                    intake_source_profile_id=str(intake_source_profile_id),
+                    presentation_code=code,
+                )
+            else:
+                presentation_runtime = await resolve_form_presentation(
+                    db,
+                    tenant_id=str(tenant_id),
+                    entity_profile_code=entity_profile_code,
+                    presentation_code=code,
+                    intake_source_profile_id=intake_source_profile_id,
+                )
+            break
+        except FormPresentationNotFoundError as exc:
+            last_error = exc
+            continue
+    if presentation_runtime is None:
+        raise HTTPException(status_code=404, detail=str(last_error or "Form presentation not found"))
 
     profile_meta = _record(profile_view.get("profile"))
     intake_source_payload: Optional[dict[str, Any]] = None
@@ -163,6 +181,7 @@ async def build_intake_form_admin_context(
             "channel": intake_source.channel,
             "route_intent": intake_source.route_intent,
             "entity_profile_code": intake_source.entity_profile_code,
+            "presentation_code": intake_source.presentation_code,
             "default_assignee_id": intake_source.default_assignee_id,
             "default_language": intake_source.default_language,
             "is_active": bool(intake_source.is_active),

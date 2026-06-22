@@ -61,10 +61,14 @@ def _presentation_field_row(
     override = presentation_overrides.get(qualified_code)
     override_dict = dict(override) if isinstance(override, dict) else {}
     embedded = field_row.get("field") if isinstance(field_row.get("field"), dict) else {}
+    override_level = str(override_dict.get("intake_level") or "").strip().lower()
+    intake_level = override_level if override_level in ("required", "optional", "hidden") else (
+        field_row.get("intake_level") or "optional"
+    )
     return {
         "qualified_code": qualified_code,
         "sort_order": sort_order,
-        "intake_level": field_row.get("intake_level") or "optional",
+        "intake_level": intake_level,
         "label": _effective_label(
             qualified_code=qualified_code,
             field_row=field_row,

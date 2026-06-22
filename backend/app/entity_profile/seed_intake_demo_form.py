@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
+from backend.app.entity_profile.constants import DRIVER_CE_INTAKE_PRESENTATION_CODE, DRIVER_CE_PROFILE_CODE
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant_lead_form import TenantLeadForm
@@ -79,6 +79,9 @@ async def ensure_tenant_default_driver_ce_intake_form(db: AsyncSession, tenant_i
             is_active=True,
         )
         db.add(intake_profile)
+        await db.flush()
+    elif intake_profile is not None:
+        intake_profile.presentation_code = DRIVER_CE_INTAKE_PRESENTATION_CODE
         await db.flush()
 
     binding_key = f"public_slug:{DRIVER_CE_FORM_SLUG}"

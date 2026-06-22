@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db.base import Base
@@ -16,6 +18,8 @@ from .intake_routing_enums import (
 )
 
 from .mixins import TimestampMixin
+
+JSONAnyType = SQLiteJSON().with_variant(JSONB, "postgresql")
 
 
 class IntakeSourceProfile(Base, TimestampMixin):
@@ -66,6 +70,19 @@ class IntakeSourceProfile(Base, TimestampMixin):
         nullable=True,
         index=True,
         comment="Entity Profile Definition Registry code (P2 bridge)",
+    )
+    presentation_code: Mapped[Optional[str]] = mapped_column(
+        String(128),
+        nullable=True,
+        index=True,
+        comment="Form Presentation Runtime code bound to this intake source (P8)",
+    )
+    mapping_rules: Mapped[list[Any]] = mapped_column(
+        JSONAnyType,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'"),
+        comment="Provider field → qualified_code mapping rules (P9)",
     )
     source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     default_assignee_id: Mapped[Optional[str]] = mapped_column(

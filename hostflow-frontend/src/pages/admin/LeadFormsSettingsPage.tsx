@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { IconClipboardList, IconCopy, IconSettings } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -7,6 +7,12 @@ import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
 import { CRM_APP_PATHS, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
+import {
+  createIntakeForm,
+  listIntakeFormEntityProfiles,
+  type PresentationFieldInput,
+} from '../../api/intakeForms'
+import { IntakeFormPresentationEditor } from '../../components/admin/IntakeFormPresentationEditor'
 import {
   createLeadForm,
   listLeadForms,
@@ -38,8 +44,15 @@ export default function LeadFormsSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
   const [newTitle, setNewTitle] = useState('')
+  const navigate = useNavigate()
   const [creating, setCreating] = useState(false)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [showProfileCreate, setShowProfileCreate] = useState(false)
+  const [profileCreateTitle, setProfileCreateTitle] = useState('')
+  const [profileCreateSlug, setProfileCreateSlug] = useState('')
+  const [profileCreateCode, setProfileCreateCode] = useState('')
+  const [profileCreateFields, setProfileCreateFields] = useState<PresentationFieldInput[]>([])
+  const [profileCreating, setProfileCreating] = useState(false)
 
   const syncDraftsFromRows = useCallback((rows: TenantLeadForm[]) => {
     setDrafts(
@@ -77,6 +90,44 @@ export default function LeadFormsSettingsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!canMutate) return
+    void listIntakeFormEntityProfiles()
+      .then((items) => {
+        if (items.length > 0 && !profileCreateCode) setProfileCreateCode(items[0].code)
+      })
+      .catch(() => undefined)
+  }, [canMutate, profileCreateCode])
+
+  const handleCreateWithProfile = async () => {
+    if (!canMutate) return
+    setPageError(null)
+    setProfileCreating(true)
+    try {
+      const created = await createIntakeForm({
+        title: profileCreateTitle.trim() || 'Public form',
+        public_slug: profileCreateSlug.trim(),
+        entity_profile_code: profileCreateCode,
+        fields: profileCreateFields,
+      })
+      notify({
+        title: t('admin.intake_forms.toast.created', { defaultValue: 'Public form created' }),
+        variant: 'success',
+      })
+      navigate(settingsLeadFormDetailPath(created.form.id))
+    } catch (err: unknown) {
+      setPageError(
+        getFriendlyErrorInfo(
+          err,
+          t('admin.intake_forms.errors.create', { defaultValue: 'Failed to create public form' }),
+          t,
+        ),
+      )
+    } finally {
+      setProfileCreating(false)
+    }
+  }
 
   const updateDraft = (id: string, patch: Partial<Draft>) => {
     setDrafts((prev) => {
@@ -239,6 +290,58 @@ export default function LeadFormsSettingsPage() {
             </label>
             <button type="button" className="btn-primary" disabled={creating} onClick={() => void handleCreate()}>
               {creating ? t('common.saving', { defaultValue: 'Saving…' }) : t('admin.lead_forms.create', { defaultValue: 'Create form' })}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setShowProfileCreate((value) => !value)}
+            >
+              {showProfileCreate
+                ? t('admin.intake_forms.hide_profile_create', { defaultValue: 'Hide profile builder' })
+                : t('admin.intake_forms.show_profile_create', { defaultValue: 'Create with Entity Profile' })}
+            </button>
+          </div>
+        )}
+
+        {canMutate && showProfileCreate && (
+          <div className="mb-6 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('admin.intake_forms.create_with_profile', { defaultValue: 'New public form (Entity Profile)' })}
+            </h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="text-slate-500">{t('admin.lead_forms.fields.title', { defaultValue: 'Title' })}</span>
+                <input
+                  className="input mt-1 w-full"
+                  value={profileCreateTitle}
+                  onChange={(event) => setProfileCreateTitle(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-500">{t('admin.intake_forms.fields.slug', { defaultValue: 'Public slug' })}</span>
+                <input
+                  className="input mt-1 w-full font-mono text-sm"
+                  value={profileCreateSlug}
+                  onChange={(event) => setProfileCreateSlug(event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="mt-4">
+              <IntakeFormPresentationEditor
+                entityProfileCode={profileCreateCode}
+                onEntityProfileChange={setProfileCreateCode}
+                onChange={setProfileCreateFields}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-primary mt-4"
+              disabled={profileCreating || profileCreateFields.length === 0}
+              onClick={() => void handleCreateWithProfile()}
+            >
+              {profileCreating
+                ? t('common.loading')
+                : t('admin.intake_forms.create_public_form', { defaultValue: 'Create public form' })}
             </button>
           </div>
         )}

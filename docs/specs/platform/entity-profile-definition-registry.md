@@ -1,6 +1,6 @@
 # Entity Profile Definition Registry — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon accepted; **P1 complete**; **P2 complete**; **P3 complete**; **P4 complete**; **P5A complete** (Form Presentation Runtime foundation); **P5B complete** (Outcome Executor expansion); **P5C complete** (Lead-first public intake draft session); **P6 complete** (Intake Source / Form Builder UI foundation); **P7 complete** (Public Form Runtime Wiring).  
+**Status:** Accepted (architecture canon). **Implementation:** P0 canon accepted; **P1 complete**; **P2 complete**; **P3 complete**; **P4 complete**; **P5A complete** (Form Presentation Runtime foundation); **P5B complete** (Outcome Executor expansion); **P5C complete** (Lead-first public intake draft session); **P6 complete** (Intake Source / Form Builder UI foundation); **P7 complete** (Public Form Runtime Wiring); **P8 complete** (Intake Source CRUD + Presentation Write API).  
 **Hierarchy:** L2 operating canon — platform layer. **Composition layer** between Field Registry and Intake / Process runtime.  
 **Owner:** Architecture canon + platform core team.
 
@@ -632,6 +632,7 @@ flowchart TB
 | **P5C — Lead-first draft session** | Public intake draft without transitional `Candidate()` insert | Lead/session token; draft state on intake record | **Done** |
 | **P6 — Intake Source / Form Builder UI foundation** | Settings list + detail; P5A preview; public link; smoke test | Read-only admin UI; no canon writes | **Done** |
 | **P7 — Public Form Runtime Wiring** | Public form reads `form_presentation_runtime_v1`; submit maps `qualified_code`; required validation | Legacy public intake unchanged when no IntakeSource binding | **Done** |
+| **P8 — Intake Source CRUD + Presentation Write API** | Create/update public forms; persist `ep_intake_presentations`; field subset validation | UI selects Entity Profile fields only | **Done** |
 | **P6+ — Bridge removal** | Stop writing `field_configs` outside layout editor | `CandidateProfile.config` deprecated |
 | **Closure gate** | Guards: no new semantic fields outside Field Registry + Entity Profile | Remove config JSON field matrix |
 
@@ -662,6 +663,10 @@ flowchart TB
 | P7 presentation bridge | `backend/app/entity_profile/public_intake_presentation_bridge.py` |
 | P7 tests | `backend/tests/api/test_public_intake_presentation_p7.py` |
 | P7 public UI | `hostflow-frontend/src/pages/public/PublicIntakePresentationForm.tsx` |
+| P8 presentation write | `backend/app/entity_profile/presentation_write.py` |
+| P8 intake form write | `backend/app/services/intake_form_write_service.py` |
+| P8 tests | `backend/tests/api/test_intake_forms_settings_p8.py` |
+| P8 UI editor | `hostflow-frontend/src/components/admin/IntakeFormPresentationEditor.tsx` |
 | Public intake | `backend/app/api/public/intake.py` |
 
 ---
@@ -683,7 +688,57 @@ P0 is **canon only** — no Form Builder UI, no runtime schema requirement.
 | 9 | Hard rule: forms do not create semantics | **Done** (§3) |
 | 10 | Cross-links from sibling canon docs | **Done** (§10) |
 
-**Next implementation step:** P8 — Intake Source CRUD + Presentation write API (Form Builder write path).
+**Next implementation step:** P10A — Presentation Rules (conditional visibility in forms only). P10B — Requirement Rules (Entity Profile / Process Engine; separate track).
+
+### P10 scope split (architecture gate — before implementation)
+
+**Hard rule:** Conditional visibility belongs to the **Presentation Layer** only. It does **not** define business requirements for the entity.
+
+Two rule types must **never** be mixed in one engine or UI:
+
+| Type | Layer | Examples | Affects |
+|------|-------|----------|---------|
+| **Presentation Rules (P10A)** | Form UI / runtime display | show/hide field; show section; required-if; readonly-if | Public/settings form render only — scoped to the form session |
+| **Requirement Rules (P10B)** | Entity Profile / Process Engine | citizenship not EU → Work Permit; driver → Driver Card; stay status → visa | Documents, Process Engine, Readiness, Outcome Rules |
+
+**Why split:** Combining P10A and P10B in the form builder creates a second Process Engine inside the constructor — a common failure mode. P10A answers “what does the applicant see right now?” P10B answers “what does this entity type require to be complete/ready?”
+
+**P10A in scope:** show/hide field, show section, required-if, readonly-if — evaluated only inside form presentation runtime.
+
+**P10B out of P10A scope:** document gates, readiness, process stage requirements — owned by Entity Profile + Process Engine canon (future slice).
+
+### P9 implementation status (2026-06-22)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| `mapping_rules` on IntakeSourceProfile | Done | migration `202608220004_entity_profile_p9_mapping_rules.py` |
+| Mapping write validation (profile-scoped) | Done | `backend/app/entity_profile/mapping_write.py` |
+| Mapping read/write/preview/test API | Done | `GET/PUT/POST .../settings/intake-forms/{id}/mapping*` |
+| Ingest prefers IntakeSource mapping_rules | Done | `backend/app/entity_profile/ingest_runtime.py` |
+| Settings mapping UI | Done | `IntakeFormMappingEditor`, `IntakeFormDetailPage` |
+| Tests | Done | `backend/tests/api/test_intake_forms_settings_p9.py` |
+
+**P9 acceptance:** Manager opens intake form → sees provider source fields from sample → maps to Entity Profile `qualified_code` → saves → previews normalized payload → gets 422 for target outside profile → test ingest creates Lead draft with canonical payload (no direct Candidate).
+
+**Hard rules preserved:** mapping does not create fields; targets only from selected Entity Profile; client fields cannot map into candidate profile; raw payload stored separately; normalized built via mapping + Field Registry only.
+
+**Not changed in P9 (by design):** Meta admin page replacement, TikTok/CSV adapters, conditional presentation fields.
+
+### P8 implementation status (2026-06-22)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Intake form create + patch | Done | `POST/PATCH /settings/intake-forms` |
+| Presentation write API | Done | `PUT /settings/intake-forms/{id}/presentation` |
+| Field subset validation | Done | `presentation_write.py` |
+| IntakeSource + bindings provision | Done | `intake_form_write_service.py` |
+| Entity profile picker API | Done | `GET /settings/intake-forms/entity-profiles` |
+| Settings UI create/edit | Done | `LeadFormsSettingsPage`, `IntakeFormDetailPage`, `IntakeFormPresentationEditor` |
+| Tests | Done | `backend/tests/api/test_intake_forms_settings_p8.py` |
+
+**P8 acceptance:** Manager creates public form → selects Entity Profile → picks fields with label/order/required → saves presentation → gets public slug → public form renders saved fields → smoke test creates Lead draft → invalid field outside profile rejected with 422.
+
+**Not changed in P8 (by design):** drag-and-drop, Mapping UI, Field Registry editing, provider bindings, conditional fields.
 
 ### P7 implementation status (2026-06-22)
 
@@ -868,3 +923,5 @@ define Entity Profile → bind Intake Source → define Form Presentation subset
 - 2026-06-22: P4 accepted — architectural chain `Source → Lead → Decision → Outcome → Entity`; P5 split into P5A/P5B/P5C; P5 hard gates documented.
 - 2026-06-22: P5A complete — Form Presentation Runtime resolver, `form_presentation_runtime_v1` contract, read API, tests.
 - 2026-06-22: P7 complete — Public form wired to presentation runtime; qualified_code submit mapping; required validation; lead-first create preserved; legacy intake compatibility.
+- 2026-06-22: P8 complete — Intake Source CRUD + Presentation write API; tenant-scoped `ep_intake_presentations`; Settings UI field picker; public render reflects saved presentation.
+- 2026-06-22: P9 complete — Provider field mapping on IntakeSourceProfile; profile-scoped validation; mapping preview/test-ingest API; Settings mapping UI; ingest prefers source-level mapping_rules.
