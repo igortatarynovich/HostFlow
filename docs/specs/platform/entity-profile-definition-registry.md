@@ -703,7 +703,9 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **P10A in scope:** show/hide field, show section, required-if, readonly-if — evaluated only inside form presentation runtime.
 
-**P10B out of P10A scope:** document gates, readiness, process stage requirements — owned by Entity Profile + Process Engine canon (future slice).
+**P10B out of P10A scope:** document gates, readiness, process stage requirements — owned by **Requirement Rules Engine** (see [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md)).
+
+**P10B implementation gate:** P0 canon for Requirement Rules Engine must be accepted before P1 schema/evaluator work. Do not implement P10B inside Form Builder or Presentation layer.
 
 ### P10A implementation status (2026-06-22)
 
@@ -720,7 +722,7 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **P10A acceptance:** Field show/hide by sibling value; required-if enforced client + server; rules stored in presentation only; source/target ⊆ presentation subset; Documents/Process/Readiness untouched.
 
-**Next implementation step:** P10B — Requirement Rules (Entity Profile / Process Engine).
+**Next implementation step:** [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) P0 gate → **P1 Requirement Rules Engine** (schema + evaluator + `driver_ce` seed). Not Form Builder / not P10B in presentation layer.
 
 ### P9 implementation status (2026-06-22)
 
@@ -892,6 +894,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 **Must stay consistent:**
 
 - [`field-registry-card-configuration.md`](field-registry-card-configuration.md) — canonical field semantics (layer below)
+- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (parallel layer; **not** P10A presentation rules)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)
 - [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md) — Intake Source bindings and routing
 - [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) — Forms as intake provider type
@@ -941,3 +944,4 @@ define Entity Profile → bind Intake Source → define Form Presentation subset
 - 2026-06-22: P8 complete — Intake Source CRUD + Presentation write API; tenant-scoped `ep_intake_presentations`; Settings UI field picker; public render reflects saved presentation.
 - 2026-06-22: P9 complete — Provider field mapping on IntakeSourceProfile; profile-scoped validation; mapping preview/test-ingest API; Settings mapping UI; ingest prefers source-level mapping_rules.
 - 2026-06-22: P10A complete — Presentation Rules evaluator; show/hide/required-if/readonly-if in presentation_overrides; public form dynamic field state; submit validates required_if; Settings rules editor.
+- 2026-06-22: Requirement Rules Engine P0 canon — [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md); P10B gated as separate platform layer.
