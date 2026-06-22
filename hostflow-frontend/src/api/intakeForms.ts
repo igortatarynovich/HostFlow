@@ -6,6 +6,12 @@ export type PresentationFieldInput = {
   intake_level: 'required' | 'optional' | 'hidden'
   sort_order?: number | null
   widget_hint?: string | null
+  presentation_rules?: {
+    show_if?: { source_field: string; operator?: string; value?: unknown }
+    hide_if?: { source_field: string; operator?: string; value?: unknown }
+    required_if?: { source_field: string; operator?: string; value?: unknown }
+    readonly_if?: { source_field: string; operator?: string; value?: unknown }
+  }
 }
 
 export type EntityProfileOption = {

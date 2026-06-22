@@ -15,6 +15,10 @@ from backend.app.entity_profile.presentation_runtime import (
     FormPresentationNotFoundError,
     resolve_form_presentation_for_intake_source,
 )
+from backend.app.entity_profile.presentation_rules import (
+    apply_presentation_rules_evaluation,
+    missing_required_presentation_fields,
+)
 
 PRESENTATION_VALUES_V1 = "presentation_values_v1"
 
@@ -157,20 +161,14 @@ def validate_presentation_required_fields(
     presentation: dict[str, Any],
     state: dict[str, Any],
 ) -> list[str]:
-    """Return list of missing required qualified_codes."""
-    missing: list[str] = []
-    for field in presentation.get("fields") or []:
-        if not isinstance(field, dict):
-            continue
-        level = str(field.get("intake_level") or "optional").strip().lower()
-        if level != "required":
-            continue
-        code = str(field.get("qualified_code") or "").strip()
-        if not code:
-            continue
-        if _is_empty(presentation_value_from_state(state, code)):
-            missing.append(code)
-    return missing
+    """Return list of missing required qualified_codes (static + P10A required_if)."""
+    field_codes = [
+        str(f.get("qualified_code") or "")
+        for f in (presentation.get("fields") or [])
+        if isinstance(f, dict)
+    ]
+    values = presentation_values_dict_from_state(state, field_codes)
+    return missing_required_presentation_fields(presentation, values)
 
 
 async def resolve_public_session_form_presentation(
@@ -215,12 +213,19 @@ async def resolve_public_session_form_presentation(
 
         for code in codes_to_try:
             try:
-                return await resolve_form_presentation_for_intake_source(
+                presentation = await resolve_form_presentation_for_intake_source(
                     db,
                     tenant_id=str(tenant_id),
                     intake_source_profile_id=str(intake_source_profile_id),
                     presentation_code=code,
                 )
+                field_codes = [
+                    str(f.get("qualified_code") or "")
+                    for f in (presentation.get("fields") or [])
+                    if isinstance(f, dict)
+                ]
+                values = presentation_values_dict_from_state(intake_state, field_codes)
+                return apply_presentation_rules_evaluation(presentation, values)
             except FormPresentationNotFoundError:
                 continue
 

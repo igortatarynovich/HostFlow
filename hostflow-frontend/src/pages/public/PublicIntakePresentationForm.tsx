@@ -10,6 +10,7 @@ import { CONSENT_DOCUMENT_VERSIONS } from './constants'
 import type { FormPresentationRuntime } from '../../modules/public-intake/types'
 import type { PublicIntakeHook } from '../../modules/public-intake/usePublicIntake'
 import type { PublicIntakeSubmitPayload } from '../../api/publicIntake'
+import { evaluatePresentationFields } from '../../utils/presentationRules'
 
 type Props = {
   intake: PublicIntakeHook
@@ -37,6 +38,25 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
   const [values, setValues] = useState<Record<string, string>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const valueMap = useMemo(() => {
+    const map: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(values)) {
+      map[key] = val
+    }
+    return map
+  }, [values])
+
+  const evaluatedFields = useMemo(
+    () => evaluatePresentationFields(sortedFields, valueMap),
+    [sortedFields, valueMap],
+  )
+
+  const visibleFields = useMemo(
+    () => evaluatedFields.filter((field) => field.evaluated.visible),
+    [evaluatedFields],
+  )
+
   const [agreements, setAgreements] = useState({
     general: Boolean(formData.agreements?.general),
     employer_share: Boolean(formData.agreements?.employer_share),
@@ -83,8 +103,9 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
   const validateRequired = useCallback(() => {
     const nextErrors: Record<string, string> = {}
-    for (const field of sortedFields) {
-      if (field.intake_level !== 'required') continue
+    for (const field of evaluatedFields) {
+      if (!field.evaluated.visible) continue
+      if (field.evaluated.intake_level !== 'required') continue
       const val = (values[field.qualified_code] || '').trim()
       if (!val) {
         nextErrors[field.qualified_code] = t('public.intake.presentation.required', {
@@ -94,7 +115,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     }
     setFieldErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
-  }, [sortedFields, values, t])
+  }, [evaluatedFields, values, t])
 
   const handleSubmit = async () => {
     if (!validateRequired()) return
@@ -176,18 +197,19 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
       </div>
 
       <div className="card space-y-5 p-6">
-        {sortedFields.map((field) => (
+        {visibleFields.map((field) => (
           <label key={field.qualified_code} className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
               {field.label}
-              {field.intake_level === 'required' ? <span className="text-red-500"> *</span> : null}
+              {field.evaluated.intake_level === 'required' ? <span className="text-red-500"> *</span> : null}
             </span>
             <input
               type={inputTypeForField(field)}
               className="input w-full"
               value={values[field.qualified_code] || ''}
               onChange={(e) => handleChange(field.qualified_code, e.target.value)}
-              disabled={submitting}
+              disabled={submitting || field.evaluated.readonly}
+              readOnly={field.evaluated.readonly}
             />
             {fieldErrors[field.qualified_code] ? (
               <span className="mt-1 block text-xs text-red-600">{fieldErrors[field.qualified_code]}</span>

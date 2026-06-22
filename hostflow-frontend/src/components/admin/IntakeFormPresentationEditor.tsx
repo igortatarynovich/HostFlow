@@ -9,12 +9,35 @@ import {
   type PresentationFieldInput,
 } from '../../api/intakeForms'
 
+import type { PresentationRules } from '../../utils/presentationRules'
+
 export type PresentationFieldDraft = {
   qualified_code: string
   label_override: string
   intake_level: 'required' | 'optional' | 'hidden'
   sort_order: number
   selected: boolean
+  presentation_rules?: PresentationRules
+}
+
+const RULE_KEYS = ['show_if', 'hide_if', 'required_if', 'readonly_if'] as const
+
+function fieldsToPayload(rows: PresentationFieldDraft[]): PresentationFieldInput[] {
+  return rows
+    .filter((row) => row.selected)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((row, index) => {
+      const payload: PresentationFieldInput = {
+        qualified_code: row.qualified_code,
+        label_override: row.label_override.trim() || undefined,
+        intake_level: row.intake_level,
+        sort_order: (index + 1) * 10,
+      }
+      if (row.presentation_rules && Object.keys(row.presentation_rules).length > 0) {
+        payload.presentation_rules = row.presentation_rules
+      }
+      return payload
+    })
 }
 
 type Props = {
@@ -23,18 +46,6 @@ type Props = {
   onEntityProfileChange?: (code: string) => void
   onChange: (fields: PresentationFieldInput[]) => void
   disabled?: boolean
-}
-
-function fieldsToPayload(rows: PresentationFieldDraft[]): PresentationFieldInput[] {
-  return rows
-    .filter((row) => row.selected)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((row, index) => ({
-      qualified_code: row.qualified_code,
-      label_override: row.label_override.trim() || undefined,
-      intake_level: row.intake_level,
-      sort_order: (index + 1) * 10,
-    }))
 }
 
 export function IntakeFormPresentationEditor({
@@ -263,12 +274,88 @@ export function IntakeFormPresentationEditor({
           </table>
         </div>
       )}
+
+      {selectedRows.length > 0 && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('admin.intake_forms.sections.presentation_rules', { defaultValue: 'Presentation rules (P10A)' })}
+          </h4>
+          <p className="mt-1 text-xs text-slate-500">
+            {t('admin.intake_forms.presentation_rules_hint', {
+              defaultValue: 'UI-only show/hide/required-if/readonly-if. Not business requirements (P10B).',
+            })}
+          </p>
+          <div className="mt-3 space-y-3">
+            {selectedRows.map((row) => (
+              <div key={row.qualified_code} className="rounded-lg border border-slate-100 bg-white p-3">
+                <p className="font-mono text-xs text-slate-700">{row.qualified_code}</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {RULE_KEYS.map((ruleKey) => {
+                    const condition = row.presentation_rules?.[ruleKey]
+                    const sourceOptions = selectedRows
+                      .map((item) => item.qualified_code)
+                      .filter((code) => code !== row.qualified_code)
+                    return (
+                      <label key={ruleKey} className="block text-xs">
+                        <span className="text-slate-500">{ruleKey}</span>
+                        <select
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1"
+                          disabled={disabled || sourceOptions.length === 0}
+                          value={condition?.source_field || ''}
+                          onChange={(event) => {
+                            const source = event.target.value
+                            setRows((prev) =>
+                              prev.map((item) => {
+                                if (item.qualified_code !== row.qualified_code) return item
+                                const nextRules = { ...(item.presentation_rules || {}) }
+                                if (!source) {
+                                  delete nextRules[ruleKey]
+                                } else {
+                                  nextRules[ruleKey] = {
+                                    source_field: source,
+                                    operator: condition?.operator || 'truthy',
+                                  }
+                                }
+                                return {
+                                  ...item,
+                                  presentation_rules: Object.keys(nextRules).length ? nextRules : undefined,
+                                }
+                              }),
+                            )
+                          }}
+                        >
+                          <option value="">
+                            {t('admin.intake_forms.rules_off', { defaultValue: 'Off' })}
+                          </option>
+                          {sourceOptions.map((code) => (
+                            <option key={code} value={code}>
+                              {code.split('.').slice(-2).join('.')}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export function detailFieldsToDraft(detail: {
-  presentation: { fields: Array<{ qualified_code: string; label: string; intake_level: string; sort_order: number }> }
+  presentation: {
+    fields: Array<{
+      qualified_code: string
+      label: string
+      intake_level: string
+      sort_order: number
+      presentation_rules?: PresentationRules
+    }>
+  }
 }): PresentationFieldDraft[] {
   return detail.presentation.fields.map((field) => ({
     qualified_code: field.qualified_code,
@@ -280,6 +367,7 @@ export function detailFieldsToDraft(detail: {
         : 'optional') as 'required' | 'optional' | 'hidden',
     sort_order: field.sort_order,
     selected: true,
+    presentation_rules: field.presentation_rules,
   }))
 }
 

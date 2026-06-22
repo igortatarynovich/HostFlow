@@ -59,12 +59,26 @@ class EntityProfileFieldsOut(BaseModel):
     fields: List[EntityProfileFieldOptionOut] = Field(default_factory=list)
 
 
+class PresentationRuleConditionIn(BaseModel):
+    source_field: str = Field(..., min_length=1, max_length=191)
+    operator: Literal["eq", "neq", "truthy", "falsy", "in"] = "eq"
+    value: Optional[Any] = None
+
+
+class PresentationRulesIn(BaseModel):
+    show_if: Optional[PresentationRuleConditionIn] = None
+    hide_if: Optional[PresentationRuleConditionIn] = None
+    required_if: Optional[PresentationRuleConditionIn] = None
+    readonly_if: Optional[PresentationRuleConditionIn] = None
+
+
 class PresentationFieldIn(BaseModel):
     qualified_code: str = Field(..., min_length=1, max_length=191)
     label_override: Optional[str] = Field(default=None, max_length=255)
     intake_level: Literal["required", "optional", "hidden"] = "optional"
     sort_order: Optional[int] = None
     widget_hint: Optional[str] = Field(default=None, max_length=64)
+    presentation_rules: Optional[PresentationRulesIn] = None
 
 
 class IntakeFormCreateIn(BaseModel):
@@ -285,7 +299,7 @@ async def create_intake_form(
         title=payload.title,
         public_slug=payload.public_slug,
         entity_profile_code=payload.entity_profile_code,
-        fields=[f.model_dump() for f in payload.fields],
+        fields=[f.model_dump(exclude_none=True) for f in payload.fields],
         is_active=payload.is_active,
     )
     return IntakeFormDetailOut.model_validate(result)
@@ -354,7 +368,7 @@ async def put_intake_form_presentation(
         tenant_id=tenant_id,
         form_id=form_id,
         entity_profile_code=payload.entity_profile_code,
-        fields=[f.model_dump() for f in payload.fields],
+        fields=[f.model_dump(exclude_none=True) for f in payload.fields],
     )
     return IntakeFormDetailOut.model_validate(result)
 

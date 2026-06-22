@@ -688,8 +688,6 @@ P0 is **canon only** — no Form Builder UI, no runtime schema requirement.
 | 9 | Hard rule: forms do not create semantics | **Done** (§3) |
 | 10 | Cross-links from sibling canon docs | **Done** (§10) |
 
-**Next implementation step:** P10A — Presentation Rules (conditional visibility in forms only). P10B — Requirement Rules (Entity Profile / Process Engine; separate track).
-
 ### P10 scope split (architecture gate — before implementation)
 
 **Hard rule:** Conditional visibility belongs to the **Presentation Layer** only. It does **not** define business requirements for the entity.
@@ -706,6 +704,23 @@ Two rule types must **never** be mixed in one engine or UI:
 **P10A in scope:** show/hide field, show section, required-if, readonly-if — evaluated only inside form presentation runtime.
 
 **P10B out of P10A scope:** document gates, readiness, process stage requirements — owned by Entity Profile + Process Engine canon (future slice).
+
+### P10A implementation status (2026-06-22)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Rule schema (show/hide/required-if/readonly-if) | Done | `presentation_overrides.presentation_rules` on `ep_intake_presentations` |
+| Rules evaluator | Done | `backend/app/entity_profile/presentation_rules.py` |
+| Write validation (subset-scoped sources) | Done | `presentation_write.py` + `validate_presentation_rules_for_subset()` |
+| Runtime evaluated state | Done | `evaluated` on each field in `form_presentation_runtime_v1` |
+| Public GET + submit validation | Done | `public_intake_presentation_bridge.py` |
+| Public form dynamic UI | Done | `PublicIntakePresentationForm.tsx`, `presentationRules.ts` |
+| Settings rules editor | Done | `IntakeFormPresentationEditor.tsx` |
+| Tests | Done | `test_presentation_rules_p10a.py`, `test_public_intake_presentation_p10a.py` |
+
+**P10A acceptance:** Field show/hide by sibling value; required-if enforced client + server; rules stored in presentation only; source/target ⊆ presentation subset; Documents/Process/Readiness untouched.
+
+**Next implementation step:** P10B — Requirement Rules (Entity Profile / Process Engine).
 
 ### P9 implementation status (2026-06-22)
 
@@ -925,3 +940,4 @@ define Entity Profile → bind Intake Source → define Form Presentation subset
 - 2026-06-22: P7 complete — Public form wired to presentation runtime; qualified_code submit mapping; required validation; lead-first create preserved; legacy intake compatibility.
 - 2026-06-22: P8 complete — Intake Source CRUD + Presentation write API; tenant-scoped `ep_intake_presentations`; Settings UI field picker; public render reflects saved presentation.
 - 2026-06-22: P9 complete — Provider field mapping on IntakeSourceProfile; profile-scoped validation; mapping preview/test-ingest API; Settings mapping UI; ingest prefers source-level mapping_rules.
+- 2026-06-22: P10A complete — Presentation Rules evaluator; show/hide/required-if/readonly-if in presentation_overrides; public form dynamic field state; submit validates required_if; Settings rules editor.

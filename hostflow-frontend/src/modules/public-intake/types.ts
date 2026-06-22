@@ -85,6 +85,8 @@ export type FormPresentationField = {
   label: string;
   field_type?: string | null;
   widget_hint?: string | null;
+  presentation_rules?: import('../../utils/presentationRules').PresentationRules;
+  evaluated?: import('../../utils/presentationRules').PresentationFieldEvaluated;
 };
 
 export type FormPresentationRuntime = {

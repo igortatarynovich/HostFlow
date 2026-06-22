@@ -65,7 +65,8 @@ def _presentation_field_row(
     intake_level = override_level if override_level in ("required", "optional", "hidden") else (
         field_row.get("intake_level") or "optional"
     )
-    return {
+    rules = override_dict.get("presentation_rules")
+    row: dict[str, Any] = {
         "qualified_code": qualified_code,
         "sort_order": sort_order,
         "intake_level": intake_level,
@@ -79,6 +80,9 @@ def _presentation_field_row(
         "presentation_overrides": override_dict,
         "widget_hint": override_dict.get("widget_hint") or embedded.get("field_type"),
     }
+    if isinstance(rules, dict) and rules:
+        row["presentation_rules"] = dict(rules)
+    return row
 
 
 async def _load_intake_presentation(

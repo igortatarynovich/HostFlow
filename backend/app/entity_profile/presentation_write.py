@@ -16,6 +16,10 @@ from backend.app.entity_profile.constants import REQUIREMENT_OPTIONAL, REQUIREME
 from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
 from backend.app.entity_profile.facade import resolve_entity_profile_facade
 from backend.app.entity_profile.mapping_validation import allowed_qualified_codes_from_profile_view
+from backend.app.entity_profile.presentation_rules import (
+    PresentationRulesWriteError,
+    validate_presentation_rules_for_subset,
+)
 from backend.app.models.entity_profile import EpIntakePresentation
 
 
@@ -83,6 +87,9 @@ def _normalize_field_rows(fields: list[dict[str, Any]]) -> tuple[list[str], dict
         widget = str(raw.get("widget_hint") or "").strip()
         if widget:
             override["widget_hint"] = widget
+        rules = raw.get("presentation_rules")
+        if isinstance(rules, dict) and rules:
+            override["presentation_rules"] = dict(rules)
         ordered.append((order, code, override))
 
     if not ordered:
@@ -151,6 +158,15 @@ async def validate_presentation_fields_for_profile(
                 message=f"Required field must be included in presentation subset: {code}",
                 details={"qualified_code": code},
             )
+
+    try:
+        validate_presentation_rules_for_subset(presentation_overrides, field_subset)
+    except PresentationRulesWriteError as exc:
+        raise PresentationWriteError(
+            code=exc.code,
+            message=exc.message,
+            details=exc.details,
+        ) from exc
 
     return field_subset, presentation_overrides, profile_view
 
