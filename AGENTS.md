@@ -101,7 +101,7 @@ TENANT_ID=11111111-1111-1111-1111-111111111111
 ```
 
 ### Dependency pin (critical)
-`requirements.txt` pins are too loose. Newer FastAPI (≥0.116) adds `_IncludedRouter` route objects that `prometheus-fastapi-instrumentator` 8.x cannot introspect (`'_IncludedRouter' object has no attribute 'path'`), which makes **every request return 500**. The update script forces a compatible set: `fastapi==0.115.6` + `prometheus-fastapi-instrumentator==7.0.0` (with `starlette 0.41.x`). Keep these pins; do not blindly `pip install -U fastapi`.
+`requirements.txt` pins are too loose. Newer FastAPI (≥0.116) adds `_IncludedRouter` route objects that `prometheus-fastapi-instrumentator` 8.x cannot introspect (`'_IncludedRouter' object has no attribute 'path'`), which makes **every request return 500**. Keep `fastapi==0.115.6` + `prometheus-fastapi-instrumentator==7.0.0` (with `starlette 0.41.x`). Run `scripts/cursor-cloud-update.sh` on agent startup; do not blindly `pip install -U fastapi`.
 
 ### Migration caveats (non-obvious)
 `alembic upgrade heads` does **not** apply cleanly on a fresh DB (pre-existing bugs). The snapshot DB is already at head. If you ever rebuild the DB from scratch, this sequence works (run from repo root with `.env` loaded, `PYTHONPATH=backend`):
@@ -110,5 +110,4 @@ TENANT_ID=11111111-1111-1111-1111-111111111111
 3. Skip the broken double-`CREATE TYPE` migration `202605200001`: manually `CREATE TYPE document_scan_status_enum ...` + a stub `document_scan_sessions` table, then `alembic stamp 202605200001` (the next migration drops them), then `alembic upgrade heads`.
 4. Post-migration fixups the bootstrap seed needs: `ALTER TYPE role ADD VALUE IF NOT EXISTS 'superadmin';` and `ALTER TABLE users ALTER COLUMN preferences SET DEFAULT '{}'::jsonb;` (the seed creates the admin with role `superadmin` and omits `preferences`, which is NOT NULL without a default).
 
-### Known pre-existing app bug (not an env issue)
-`POST /api/v1/candidates` returns 500 because of an undefined `visibility` variable in `backend/app/api/v1/candidates/router.py` (~line 592), which runs **after** the candidate is already committed — the candidate is still created/persisted. Company/vacancy creation works cleanly. Many `pytest` failures stem from similar pre-existing bugs and schema/seed gaps (≈60 tests pass); CI's `alembic upgrade head` also fails on a fresh DB for the reasons above.
+Many `pytest` failures stem from pre-existing bugs and schema/seed gaps (≈60 tests pass); CI's `alembic upgrade head` also fails on a fresh DB for the reasons above.
