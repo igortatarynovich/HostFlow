@@ -6,7 +6,7 @@
 
 **Opened:** 2026-06-23 — immediately after **Requirement Rules Engine v1 closed** ([`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) §20).
 
-**Next platform track (post-v1 foundation):** Document Expiry Notifications P0 — downstream consumer; **not** Document Runtime v2 foundation expansion.
+**Next platform track (post-v1 foundation):** [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — Document Expiry Notifications canon (downstream). **Not** Document Runtime v2 foundation expansion.
 
 **Related canon (must stay consistent):**
 
@@ -15,6 +15,7 @@
 | [`ADR-009`](../architecture/ADR-009-document-hub-platform-layer.md) | Document Hub owns storage, types, links, verification workflow shell |
 | [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) | Requirement Engine evaluates *what must exist*; Document Runtime evaluates *instance lifecycle state* |
 | [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) | Entity Profile references `document_pack_code`; does not own per-document lifecycle |
+| [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) | Downstream expiry notification events (post-v1) |
 | [`process-engine.md`](process-engine.md) | Stage transitions consume readiness + document satisfaction signals |
 
 ---
@@ -266,7 +267,7 @@ Evaluation output: `document_runtime_v1` with `evaluation_version=document_runti
 | Auto-create document rows | Document Hub product scope |
 | Advanced review workflow | Document Hub verification UX |
 
-**Next practical downstream track:** **Document Expiry Notifications P0** — consumes `document_runtime_v1` from delivery contract; does not extend evaluator or contract.
+**Next practical downstream track:** [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — Document Expiry Notifications P0 canon; P1 Expiry Event Evaluator next.
 
 Requirement Engine answers *what is required*; Document Runtime answers *what state each document instance is in*; Delivery Contract answers *how all consumers read that state consistently*.
 

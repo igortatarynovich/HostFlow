@@ -4,7 +4,7 @@
 **Hierarchy:** L2 operating canon — platform layer. **Evaluation layer** between Entity Profile composition and Documents / Process Engine / Readiness runtime.  
 **Owner:** Architecture canon + platform core team.
 
-**Next platform track (post-v1):** [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20 — Document Runtime Engine **v1 closed**. Downstream: Document Expiry Notifications P0. **Not** Requirement Rules P4 (custom expressions, rule builder, scripting).
+**Next platform track (post-v1):** [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — Document Expiry Notifications P0 canon. **Not** Requirement Rules P4 (custom expressions, rule builder, scripting).
 
 **Related canon (must stay consistent):**
 
@@ -14,6 +14,7 @@
 | [`field-registry-card-configuration.md`](field-registry-card-configuration.md) | Canonical field codes; requirement rules reference `qualified_code` only |
 | [`process-engine.md`](process-engine.md) | Transition / handoff evaluation consumes requirement results; Field & Document Requirement Registries migrate here |
 | [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (**v1 closed** §20); feeds back into requirement satisfaction |
+| [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) | Downstream expiry notification events (post-v1) |
 | P10A Presentation Rules | **Separate layer** — UI visibility only; see §9 |
 
 ---
