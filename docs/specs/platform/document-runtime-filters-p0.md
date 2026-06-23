@@ -6,7 +6,7 @@
 
 **Opened:** 2026-06-24 — after **Document UI Status Badges v1 closed** ([`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) §20).
 
-**Next implementation step:** Track D — Candidate Workspace runtime readiness surface ([`document-runtime-filters-p0.md`](document-runtime-filters-p0.md) P1 complete).
+**Next implementation step:** Superseded — Track D P1 complete. **Next:** Track B — Dashboard KPIs.
 
 **Related canon:**
 
