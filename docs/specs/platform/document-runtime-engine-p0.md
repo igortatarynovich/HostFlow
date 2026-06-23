@@ -1,10 +1,12 @@
 # Document Runtime Engine — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon only — **no runtime unification in this slice**.  
+**Status:** Accepted (architecture canon). **Implementation:** **Document Runtime Engine v1 — closed** (2026-06-23). P0 canon + P1–P4 runtime complete.  
 **Hierarchy:** L2 operating canon — platform layer. **Lifecycle runtime** for document *instances* (distinct from Document Hub storage and Requirement Rules evaluation).  
 **Owner:** Architecture canon + platform core team.
 
 **Opened:** 2026-06-23 — immediately after **Requirement Rules Engine v1 closed** ([`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) §20).
+
+**Next platform track (post-v1 foundation):** Document Expiry Notifications P0 — downstream consumer; **not** Document Runtime v2 foundation expansion.
 
 **Related canon (must stay consistent):**
 
@@ -81,16 +83,31 @@ Document Runtime Engine      ← instance lifecycle state
 
 Requirement Engine **consumes** document snapshots; Document Runtime **defines** how those snapshots are interpreted into lifecycle states.
 
-### 3.2 Current code (partial — not yet unified)
+### 3.2 Closed foundation chain (v1)
 
-| Area | Path | Role today |
-|------|------|------------|
-| Expiry evaluation | `backend/app/services/document_expiry_engine.py` | Per-document expiry states |
-| Workflow statuses | `backend/app/models/enums.py` (`DocumentStatus`) | Operational status enum |
-| Owner summary buckets | `backend/app/modules/documents/owner_summary.py` | ready / in_progress / problem / missing |
-| Requirement satisfaction | `backend/app/requirement_rules/evaluator.py` | `_document_satisfied()` — tactical, not lifecycle canon |
+```
+Document Instance (Document Hub snapshot)
+        ↓
+Document Runtime Evaluator     ← lifecycle + expiry (single source)
+        ↓
+Delivery Contract              ← document_runtime_v1 DTO (single delivery layer)
+        ↓
+┌──────────────┬─────────────────┬─────────────────┐
+│ Readiness    │ Document Hub    │ Process Engine  │
+│ (P1)         │ (P2)            │ (P3)            │
+└──────────────┴─────────────────┴─────────────────┘
+```
 
-**P0 goal:** unify lifecycle vocabulary and evaluation contract — not rewrite all consumers in P0.
+| Area | Path | Role |
+|------|------|------|
+| Runtime evaluator | `backend/app/document_runtime/evaluator.py` | Canonical lifecycle + expiry → `document_runtime_v1` |
+| Expiry primitives | `backend/app/services/document_expiry_engine.py` | Expiry date evaluation (used by evaluator) |
+| Delivery contract | `backend/app/document_runtime/delivery_contract.py` | Single runtime delivery layer for all consumers |
+| Service facade | `backend/app/services/document_runtime_delivery_contract.py` | Service-layer `_via_contract` entry points |
+| Readiness bridge | `backend/app/document_runtime/readiness_bridge.py` | Thin delegate to delivery contract |
+| Hub bridge | `backend/app/document_runtime/hub_bridge.py` | Thin delegate + hub section overlay |
+| PE bridge | `backend/app/document_runtime/pe_bridge.py` | Thin delegate + transition gate mapping |
+| Requirement Engine integration | `backend/app/requirement_rules/evaluator.py` | Consumes delivery contract for document satisfaction |
 
 ---
 
@@ -142,12 +159,12 @@ document_runtime_v1:
 
 | Consumer | Uses runtime for |
 |----------|------------------|
-| **Requirement Rules Engine** | `_document_satisfied()` replacement — verification + expiry aware |
-| **Readiness / Transfer policy** | Package ready, handoff allowed |
-| **Process Engine** | Transition gates beyond field/doc presence |
-| **Document Hub UI** | Summary buckets, missing/expiring tabs |
-| **Notifications** | Expiry reminders, rejection follow-ups |
-| **HR / workforce queues** | Verification backlog |
+| **Requirement Rules Engine** | Document satisfaction via delivery contract — verification + expiry aware |
+| **Readiness** / Transfer policy | ✅ v1 wired — package ready, handoff signals |
+| **Process Engine** | ✅ v1 wired — `ready_for_handoff` transition gate |
+| **Document Hub** | ✅ v1 wired — checklist / summary runtime items |
+| **Notifications** | Downstream — Document Expiry Notifications P0 (post-v1) |
+| **HR / workforce queues** | Downstream — consumes contract |
 
 ---
 
@@ -177,22 +194,102 @@ Document lifecycle logic **must not** be duplicated ad hoc in:
 | 5 | Target output contract sketch | **Done** (§4.3) |
 | 6 | Hard rules | **Done** (§6) |
 
-**Next implementation step (P1):** `document_runtime_v1` evaluator module; map existing `DocumentStatus` + expiry engine into unified output; wire Readiness consumer first (strangler).
+**Next implementation step:** Superseded — **v1 closed** (§20). Next downstream track: Document Expiry Notifications P0 (after doc closure).
 
 ---
 
-## 8. Explicitly not next (avoid architecture bloat)
+## 9. P1–P4 implementation status (2026-06-23)
 
-Same discipline as Requirement Rules post-v1:
+| Milestone | Scope | Status | Location |
+|-----------|-------|--------|----------|
+| **P1** | Unified evaluator + Readiness consumer | ✅ Done | `evaluator.py`, `readiness_bridge.py`, `requirement_rules/evaluator.py` |
+| **P2** | Document Hub consumer bridge | ✅ Done | `hub_bridge.py`, `document_hub_bridge.py` |
+| **P3** | Process Engine transition gate (`ready_for_handoff`) | ✅ Done | `pe_bridge.py`, `transition_bridge.py` |
+| **P4** | Runtime delivery contract | ✅ Done | `delivery_contract.py`, `document_runtime_delivery_contract.py` |
+
+**P1 acceptance:** `satisfies_requirement` only when approved + not expired; uploaded/pending/rejected/expired block; expiring soon warns.
+
+**P2 acceptance:** Document Hub checklist exposes `document_runtime_v1` per required document type; instance matching via best precedence.
+
+**P3 acceptance:** PE transition block reasons include `source_layer=document_runtime` + nested `document_runtime_v1`.
+
+**P4 acceptance:** Readiness / Hub / PE receive identical runtime for the same document instance via delivery contract; lifecycle + expiry defined only in evaluator.
+
+---
+
+## 20. Document Runtime Engine v1 — closed (2026-06-23)
+
+**Milestone:** Document Runtime Engine **v1 foundation is closed**. Working runtime with three wired consumers and a unified delivery contract — not a concept doc.
+
+### 20.1 Foundation chain (complete)
+
+```
+Document Instance → Document Runtime Evaluator → Delivery Contract → Consumers
+```
+
+| Layer | Question | Owner |
+|-------|----------|-------|
+| **Document Hub** | Where is the file / instance snapshot? | Document Hub |
+| **Requirement Rules Engine** | What document types are required? | Requirement Engine |
+| **Document Runtime Evaluator** | What is lifecycle + expiry state? | `document_runtime/evaluator.py` |
+| **Delivery Contract** | How is `document_runtime_v1` delivered uniformly? | `document_runtime/delivery_contract.py` |
+
+### 20.2 Runtime consumers (complete)
+
+| Consumer | Status | Bridge |
+|----------|--------|--------|
+| **Readiness** / Recruitment Package | ✅ | P1 `readiness_bridge.py` |
+| **Document Hub** checklist / summary | ✅ | P2 `hub_bridge.py` + `document_hub_bridge.py` |
+| **Process Engine** `ready_for_handoff` gate | ✅ | P3 `pe_bridge.py` + `transition_bridge.py` |
+
+All consumers read through **P4 delivery contract** — no separate lifecycle mappers.
+
+Evaluation output: `document_runtime_v1` with `evaluation_version=document_runtime_v1`.
+
+### 20.3 Post-v1 maintenance (not foundation expansion)
+
+| Track | Scope |
+|-------|--------|
+| Legacy owner-summary bucket alignment | Strangler — legacy `owner_summary.py` buckets remain for non-requirement-engine paths |
+| Consumer hardening | Tests, parity, fail-safe guards |
+| `DocumentStatus` enum mapping | Gradual alignment to canonical workflow states |
+
+### 20.4 Explicitly out of scope for Document Runtime v2+ foundation (do not expand now)
+
+| Forbidden expansion | Why |
+|---------------------|-----|
+| Notifications / reminder dispatch | Downstream consumer — Document Expiry Notifications P0 |
+| Dashboard KPIs / HR queue scoring | Downstream consumer |
+| Expiry cron jobs / campaigns | Downstream scheduler — not runtime canon |
+| UI redesign / status badges | Presentation layer — consumes contract |
+| Tenant lifecycle policies / scripting | Same anti-pattern as Requirement Rules custom expressions |
+| Auto-create document rows | Document Hub product scope |
+| Advanced review workflow | Document Hub verification UX |
+
+**Next practical downstream track:** **Document Expiry Notifications P0** — consumes `document_runtime_v1` from delivery contract; does not extend evaluator or contract.
+
+Requirement Engine answers *what is required*; Document Runtime answers *what state each document instance is in*; Delivery Contract answers *how all consumers read that state consistently*.
+
+---
+
+## 8. Explicitly not next (avoid foundation bloat)
+
+Same discipline as Requirement Rules post-v1 — **downstream consumers only after v1 closure (§20):**
 
 - Custom lifecycle expressions per tenant  
 - Visual lifecycle designer UI  
 - Per-client lifecycle overrides  
 - Replacing Document Hub storage model  
-- Requirement Rules P4 / v2 feature creep  
+- Notifications, dashboards, expiry cron (separate downstream tracks — §20.4)  
+- Requirement Rules v2 feature creep  
 
 ---
 
 ## Changelog
 
 - 2026-06-23: P0 accepted — Document Runtime Engine canon opened as next foundation layer after Requirement Rules Engine v1 closure.
+- 2026-06-23: P1 complete — unified evaluator + Readiness consumer; runtime-aware requirement satisfaction.
+- 2026-06-23: P2 complete — Document Hub consumer bridge; runtime checklist per required document type.
+- 2026-06-23: P3 complete — Process Engine `ready_for_handoff` gate via document runtime blockers.
+- 2026-06-23: P4 complete — runtime delivery contract; Readiness / Hub / PE cross-consumer consistency.
+- 2026-06-23: **Document Runtime Engine v1 foundation closed** — evaluator + delivery contract + three consumers; §20 milestone record.

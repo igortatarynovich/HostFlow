@@ -4,7 +4,7 @@
 **Hierarchy:** L2 operating canon — platform layer. **Evaluation layer** between Entity Profile composition and Documents / Process Engine / Readiness runtime.  
 **Owner:** Architecture canon + platform core team.
 
-**Next platform track (post-v1):** [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — Document Lifecycle Runtime canon. **Not** Requirement Rules P4 (custom expressions, rule builder, scripting).
+**Next platform track (post-v1):** [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20 — Document Runtime Engine **v1 closed**. Downstream: Document Expiry Notifications P0. **Not** Requirement Rules P4 (custom expressions, rule builder, scripting).
 
 **Related canon (must stay consistent):**
 
@@ -13,7 +13,7 @@
 | [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) | Entity Profile defines *which* fields/documents/process profile apply; Requirement Engine evaluates *what is still required* |
 | [`field-registry-card-configuration.md`](field-registry-card-configuration.md) | Canonical field codes; requirement rules reference `qualified_code` only |
 | [`process-engine.md`](process-engine.md) | Transition / handoff evaluation consumes requirement results; Field & Document Requirement Registries migrate here |
-| [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (post-v1 foundation); feeds back into requirement satisfaction |
+| [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (**v1 closed** §20); feeds back into requirement satisfaction |
 | P10A Presentation Rules | **Separate layer** — UI visibility only; see §9 |
 
 ---
@@ -548,7 +548,7 @@ Evaluation output: `requirement_evaluation_v1` with `source_layer=requirement_en
 | Per-client overrides | Breaks tenant-scoped override model (P3B) |
 | Requirement admin UI | Separate product slice after runtime stabilizes |
 
-**Next foundation layer for HostFlow platform:** **Document Runtime Engine** — see [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md). Requirement Engine answers *what is required*; Document Runtime answers *what state each document instance is in*.
+**Next foundation layer for HostFlow platform:** **Document Runtime Engine v1 closed** — see [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20. Next downstream: Document Expiry Notifications P0.
 
 ---
 
