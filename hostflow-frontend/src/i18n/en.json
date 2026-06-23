@@ -1665,7 +1665,12 @@
       "expires_on": "Expires on {{date}}",
       "errors": {
         "load": "Failed to load notification alerts",
-        "status": "Failed to update alert status"
+        "status": "Failed to update alert status",
+        "sync": "Failed to sync document expiry alerts"
+      },
+      "sync": {
+        "success": "Expiry alerts synced",
+        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
       },
       "toast": {
         "resolved": "Alert marked as resolved",
@@ -1702,7 +1707,8 @@
       "actions": {
         "mark_resolved": "Mark resolved",
         "mark_ignored": "Mark ignored",
-        "open_owner": "Open owner profile"
+        "open_owner": "Open owner profile",
+        "sync_now": "Sync now"
       }
     },
     "communications_inbox_center": {

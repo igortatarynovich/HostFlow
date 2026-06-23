@@ -1,5 +1,10 @@
 import { api } from './client'
-import type { ListNotificationEventsParams, NotificationEventOut, NotificationEventStatus } from './types/notificationEvent'
+import type {
+  ListNotificationEventsParams,
+  NotificationEventOut,
+  NotificationEventStatus,
+  NotificationEventSyncOut,
+} from './types/notificationEvent'
 
 export async function listNotificationEvents(
   params: ListNotificationEventsParams = {},
@@ -22,6 +27,18 @@ export async function patchNotificationEventStatus(
   const { data } = await api.patch<NotificationEventOut>(
     `/platform/notification-events/${encodeURIComponent(eventId)}/status`,
     { status },
+  )
+  return data
+}
+
+export async function syncDocumentExpiryNotificationEvents(body?: {
+  candidate_ids?: string[]
+  candidate_limit?: number
+  expiring_soon_days?: number
+}): Promise<NotificationEventSyncOut> {
+  const { data } = await api.post<NotificationEventSyncOut>(
+    '/platform/notification-events/sync',
+    body ?? {},
   )
   return data
 }

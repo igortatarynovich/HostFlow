@@ -23,6 +23,7 @@ from backend.app.document_expiry_notifications.event_registry import (
     notification_event_to_dict,
     update_notification_event_status,
 )
+from backend.app.document_expiry_notifications.sync_job import sync_document_expiry_notification_events
 from backend.app.models.notification_event import NotificationEvent
 
 ADMIN_ROLES = ("administrator", "superadmin", "supervisor")
@@ -58,6 +59,23 @@ class NotificationEventStatusIn(BaseModel):
     status: Literal["open", "resolved", "ignored"]
 
 
+class NotificationEventSyncIn(BaseModel):
+    candidate_ids: list[str] | None = None
+    candidate_limit: int = Field(default=5000, ge=1, le=50000)
+    expiring_soon_days: int = Field(default=30, ge=0, le=365)
+
+
+class NotificationEventSyncOut(BaseModel):
+    tenant_id: str
+    evaluated_owners: int
+    evaluated_documents: int
+    events_evaluated: int
+    created: int
+    updated: int
+    skipped: int
+    event_codes: dict[str, int] = Field(default_factory=dict)
+
+
 def _row_to_out(row: NotificationEvent) -> NotificationEventOut:
     payload = notification_event_to_dict(row)
     return NotificationEventOut(**payload)
@@ -90,6 +108,29 @@ async def list_open_notification_events(
         event_code=normalized_event_code,
     )
     return [_row_to_out(row) for row in rows]
+
+
+@router.post(
+    "/sync",
+    response_model=NotificationEventSyncOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+)
+async def run_document_expiry_notification_sync(
+    body: NotificationEventSyncIn | None = None,
+    db_tenant: tuple = Depends(get_db_with_tenant),
+) -> NotificationEventSyncOut:
+    """Cron-ready sync: Runtime delivery contract → evaluator → event registry upsert (no dispatch)."""
+    db, tenant_id = db_tenant
+    payload = body or NotificationEventSyncIn()
+    summary = await sync_document_expiry_notification_events(
+        db,
+        tenant_id=str(tenant_id),
+        candidate_ids=payload.candidate_ids,
+        candidate_limit=payload.candidate_limit,
+        expiring_soon_days=payload.expiring_soon_days,
+    )
+    await db.commit()
+    return NotificationEventSyncOut(**summary)
 
 
 @router.get(

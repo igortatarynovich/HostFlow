@@ -14,6 +14,7 @@ from backend.app.document_expiry_notifications.constants import (
     EVENT_STATUS_OPEN,
     SOURCE_LAYER,
     VALID_EVENT_STATUSES,
+    UpsertAction,
 )
 from backend.app.document_expiry_notifications.evaluator import evaluate_document_expiry_events
 from backend.app.models.notification_event import NotificationEvent
@@ -82,6 +83,17 @@ async def upsert_notification_event(
     tenant_id: str | None = None,
 ) -> NotificationEvent:
     """Insert or refresh one evaluated notification event (idempotent on event_key)."""
+    entity, _action = await upsert_notification_event_with_action(db, event, tenant_id=tenant_id)
+    return entity
+
+
+async def upsert_notification_event_with_action(
+    db: AsyncSession,
+    event: dict[str, Any],
+    *,
+    tenant_id: str | None = None,
+) -> tuple[NotificationEvent, UpsertAction]:
+    """Insert or refresh one event and report whether it was created, updated, or skipped."""
     scoped_tenant_id = str(tenant_id or event.get("tenant_id") or "").strip()
     event_key = str(event.get("event_key") or "").strip()
     if not scoped_tenant_id or not event_key:
@@ -104,11 +116,16 @@ async def upsert_notification_event(
             status=EVENT_STATUS_OPEN,
         )
         db.add(entity)
-    else:
-        entity = existing
+        _apply_event_payload(entity, event)
+        return entity, "created"
 
+    entity = existing
+    preserved_status = str(entity.status or EVENT_STATUS_OPEN)
     _apply_event_payload(entity, event)
-    return entity
+    if preserved_status != EVENT_STATUS_OPEN:
+        entity.status = preserved_status
+        return entity, "skipped"
+    return entity, "updated"
 
 
 async def upsert_notification_events(
@@ -121,8 +138,62 @@ async def upsert_notification_events(
     for event in events or []:
         if not isinstance(event, dict):
             continue
-        rows.append(await upsert_notification_event(db, event, tenant_id=tenant_id))
+        entity, _action = await upsert_notification_event_with_action(db, event, tenant_id=tenant_id)
+        rows.append(entity)
     return rows
+
+
+def empty_sync_summary(*, tenant_id: str) -> dict[str, Any]:
+    return {
+        "tenant_id": str(tenant_id),
+        "evaluated_owners": 0,
+        "evaluated_documents": 0,
+        "events_evaluated": 0,
+        "created": 0,
+        "updated": 0,
+        "skipped": 0,
+        "event_codes": {},
+    }
+
+
+async def sync_document_expiry_events_with_summary(
+    db: AsyncSession,
+    runtime_snapshots: list[dict[str, Any]],
+    *,
+    tenant_id: str,
+    expiring_soon_days: int = DEFAULT_EXPIRING_SOON_DAYS,
+) -> dict[str, Any]:
+    """Evaluate P1 expiry events, persist idempotently, and return observability summary."""
+    scoped_tenant_id = str(tenant_id or "").strip()
+    summary = empty_sync_summary(tenant_id=scoped_tenant_id)
+    normalized_snapshots: list[dict[str, Any]] = []
+    for snapshot in runtime_snapshots or []:
+        if not isinstance(snapshot, dict):
+            continue
+        row = dict(snapshot)
+        row.setdefault("tenant_id", scoped_tenant_id)
+        normalized_snapshots.append(row)
+
+    summary["evaluated_documents"] = len(normalized_snapshots)
+    evaluated = evaluate_document_expiry_events(
+        normalized_snapshots,
+        expiring_soon_days=expiring_soon_days,
+    )
+    summary["events_evaluated"] = len(evaluated)
+
+    for event in evaluated:
+        _entity, action = await upsert_notification_event_with_action(
+            db,
+            event,
+            tenant_id=scoped_tenant_id,
+        )
+        summary[action] = int(summary.get(action) or 0) + 1
+        code = str(event.get("event_code") or "").strip()
+        if code:
+            codes = summary.setdefault("event_codes", {})
+            codes[code] = int(codes.get(code) or 0) + 1
+
+    return summary
 
 
 async def sync_document_expiry_events(

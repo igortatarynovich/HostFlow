@@ -6,6 +6,7 @@ import {
   getNotificationEvent,
   listNotificationEvents,
   patchNotificationEventStatus,
+  syncDocumentExpiryNotificationEvents,
 } from '../api/notificationEvents'
 import type { NotificationEventOut } from '../api/types/notificationEvent'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -47,6 +48,8 @@ export default function NotificationAlertsPage() {
   const [items, setItems] = useState<NotificationEventOut[]>([])
   const [selected, setSelected] = useState<NotificationEventOut | null>(null)
   const [statusBusy, setStatusBusy] = useState(false)
+  const [syncBusy, setSyncBusy] = useState(false)
+  const [lastSyncSummary, setLastSyncSummary] = useState<string | null>(null)
 
   const statusFilter = (searchParams.get('status') || 'open') as StatusFilter
   const eventTypeFilter = (searchParams.get('event_type') || 'all') as EventTypeFilter
@@ -152,6 +155,33 @@ export default function NotificationAlertsPage() {
     [clearSelection, load, notify, selected, statusFilter, t],
   )
 
+  const runSync = useCallback(async () => {
+    setSyncBusy(true)
+    setLastSyncSummary(null)
+    try {
+      const summary = await syncDocumentExpiryNotificationEvents()
+      setLastSyncSummary(
+        t('app.notification_alerts.sync.summary', {
+          created: summary.created,
+          updated: summary.updated,
+          skipped: summary.skipped,
+        }),
+      )
+      notify({
+        title: t('app.notification_alerts.sync.success'),
+        variant: 'success',
+      })
+      await load()
+    } catch (err: unknown) {
+      notify({
+        title: getFriendlyErrorInfo(err, t('app.notification_alerts.errors.sync'), t).title,
+        variant: 'error',
+      })
+    } finally {
+      setSyncBusy(false)
+    }
+  }, [load, notify, t])
+
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] || enUS
 
   return (
@@ -168,10 +198,21 @@ export default function NotificationAlertsPage() {
           <h1 className="text-xl font-semibold text-slate-900">{t('app.notification_alerts.title')}</h1>
           <p className="mt-1 text-sm text-slate-600">{t('app.notification_alerts.subtitle')}</p>
         </div>
-        <button type="button" className="btn btn-secondary" onClick={() => void load()} disabled={loading}>
-          {t('common.actions.refresh')}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-primary" onClick={() => void runSync()} disabled={syncBusy || loading}>
+            {syncBusy ? t('common.saving') : t('app.notification_alerts.actions.sync_now')}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => void load()} disabled={loading}>
+            {t('common.actions.refresh')}
+          </button>
+        </div>
       </div>
+
+      {lastSyncSummary ? (
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          {lastSyncSummary}
+        </div>
+      ) : null}
 
       {loadError ? (
         <ErrorRecoveryBanner

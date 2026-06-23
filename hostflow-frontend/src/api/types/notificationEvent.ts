@@ -22,6 +22,17 @@ export type NotificationEventOut = {
   updated_at?: string | null
 }
 
+export type NotificationEventSyncOut = {
+  tenant_id: string
+  evaluated_owners: number
+  evaluated_documents: number
+  events_evaluated: number
+  created: number
+  updated: number
+  skipped: number
+  event_codes: Record<string, number>
+}
+
 export type ListNotificationEventsParams = {
   status?: NotificationEventStatus | string
   source_layer?: string
