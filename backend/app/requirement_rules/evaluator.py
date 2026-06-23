@@ -5,6 +5,15 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from backend.app.document_runtime.evaluator import (
+    evaluate_document_runtime,
+    map_runtime_to_requirement_items,
+    runtime_precedence,
+)
+from backend.app.document_runtime.readiness_bridge import (
+    build_document_runtime_section,
+    enrich_documents_with_runtime,
+)
 from backend.app.requirement_rules.constants import (
     LEVEL_BLOCKING,
     REQUIREMENT_EVALUATION_V1,
@@ -53,35 +62,28 @@ def _document_type_code(doc: dict[str, Any]) -> str:
     return ""
 
 
-def _document_satisfied(doc: dict[str, Any], *, verification: str) -> bool:
-    status = str(doc.get("status") or "").strip().lower()
-    if status in {"missing", "rejected", "expired"}:
-        return False
-    if status in {"uploaded", "approved", "verified", "ready", "in_progress", "pending_review"}:
-        if verification == "required":
-            readiness = str(doc.get("readiness_state") or doc.get("verification") or "").strip().lower()
-            if readiness in {"verified", "approved"}:
-                return True
-            if doc.get("verified_at"):
-                return True
-            return False
-        return True
-    if doc.get("has_files") is True:
-        return True
-    return False
-
-
 def _documents_index(documents: list[Any]) -> dict[str, dict[str, Any]]:
+    """Index best document instance per type using Document Runtime precedence."""
     index: dict[str, dict[str, Any]] = {}
+    runtime_by_code: dict[str, dict[str, Any]] = {}
     for raw in documents or []:
         if not isinstance(raw, dict):
             continue
         code = _document_type_code(raw)
         if not code:
             continue
+        runtime = raw.get("document_runtime")
+        if not isinstance(runtime, dict):
+            runtime = evaluate_document_runtime(raw, document_type_code=code)
         existing = index.get(code)
-        if existing is None or _document_satisfied(raw, verification="optional"):
+        if existing is None:
             index[code] = raw
+            runtime_by_code[code] = runtime
+            continue
+        existing_runtime = runtime_by_code.get(code) or {}
+        if runtime_precedence(runtime) >= runtime_precedence(existing_runtime):
+            index[code] = raw
+            runtime_by_code[code] = runtime
     return index
 
 
@@ -106,7 +108,8 @@ def evaluate_requirement_rules(
         tenant_overrides=tenant_overrides,
     )
     payload = dict(normalized_payload or {})
-    doc_index = _documents_index(list(documents or []))
+    doc_list = enrich_documents_with_runtime(list(documents or []))
+    doc_index = _documents_index(doc_list)
 
     required_fields: list[dict[str, Any]] = []
     required_documents: list[dict[str, Any]] = []
@@ -161,18 +164,25 @@ def evaluate_requirement_rules(
             }
             required_documents.append(entry)
             doc_row = doc_index.get(doc_code)
-            if doc_row is None or not _document_satisfied(doc_row, verification=verification):
-                blocker = {
-                    "code": reason_code or f"document_required:{doc_code}",
-                    "message": f"Required document missing: {doc_code}",
-                    "source_rule_id": doc_code,
-                    "layer": "requirement_rules",
-                    "document_type_code": doc_code,
-                }
+            runtime = (
+                doc_row.get("document_runtime")
+                if isinstance(doc_row, dict) and isinstance(doc_row.get("document_runtime"), dict)
+                else evaluate_document_runtime(doc_row, document_type_code=doc_code)
+            )
+            if not runtime.get("satisfies_requirement"):
+                doc_blockers, doc_warnings = map_runtime_to_requirement_items(
+                    runtime,
+                    doc_code=doc_code,
+                    verification=verification,
+                    reason_code=reason_code or f"document_required:{doc_code}",
+                    level=level,
+                )
                 if level == LEVEL_BLOCKING:
-                    blockers.append(blocker)
+                    blockers.extend(doc_blockers)
+                    warnings.extend(doc_warnings)
                 else:
-                    warnings.append(blocker)
+                    warnings.extend(doc_blockers)
+                    warnings.extend(doc_warnings)
 
     return {
         "evaluation_version": REQUIREMENT_EVALUATION_V1,
@@ -191,4 +201,5 @@ def evaluate_requirement_rules(
         "rule_sources_applied": rule_set.get("rule_sources_applied") or [],
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
         "p1_sources_only": bool(rule_set.get("p1_sources_only", True)),
+        "document_runtime": build_document_runtime_section(doc_list),
     }

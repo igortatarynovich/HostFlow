@@ -64,16 +64,16 @@ def test_p2c_driver_ce_required_documents_from_engine() -> None:
     assert hub["satisfied_documents"] == []
 
 
-def test_p2c_satisfied_documents_when_uploaded() -> None:
+def test_p2c_satisfied_documents_when_approved() -> None:
     evaluation = evaluate_requirement_rules(
         _profile_view_from_manifest(),
         context="readiness",
         normalized_payload={},
         documents=[
-            {"type": "passport", "status": "uploaded"},
-            {"type": "driver_license", "status": "approved"},
-            {"type": "code95", "status": "verified"},
-            {"type": "tacho_card", "status": "uploaded", "has_files": True},
+            {"type": "passport", "status": "approved", "has_files": True},
+            {"type": "driver_license", "status": "approved", "has_files": True},
+            {"type": "code95", "status": "approved", "has_files": True},
+            {"type": "tacho_card", "status": "approved", "has_files": True},
         ],
     )
     hub = map_requirement_evaluation_to_document_hub(evaluation)
@@ -89,15 +89,15 @@ def test_p2c_missing_documents_when_absent() -> None:
         _profile_view_from_manifest(),
         context="readiness",
         normalized_payload={},
-        documents=[{"type": "passport", "status": "uploaded"}],
+        documents=[{"type": "passport", "status": "uploaded", "has_files": True}],
     )
     hub = map_requirement_evaluation_to_document_hub(evaluation)
 
-    assert hub["satisfied_documents"] == ["passport"]
-    assert set(hub["missing_documents"]) == {"driver_license", "code95", "tacho_card"}
+    assert hub["satisfied_documents"] == []
+    assert set(hub["missing_documents"]) == {"passport", "driver_license", "code95", "tacho_card"}
 
     by_code = {row["document_type_code"]: row for row in hub["required_documents"]}
-    assert by_code["passport"]["status"] == "satisfied"
+    assert by_code["passport"]["status"] == "missing"
     assert by_code["code95"]["status"] == "missing"
     assert by_code["code95"]["source_layer"] == SOURCE_LAYER
 
@@ -107,7 +107,7 @@ def test_p2c_merge_into_owner_summary_overlays_requirement_engine() -> None:
         _profile_view_from_manifest(),
         context="readiness",
         normalized_payload={},
-        documents=[{"type": "passport", "status": "uploaded"}],
+        documents=[{"type": "passport", "status": "uploaded", "has_files": True}],
     )
     hub = map_requirement_evaluation_to_document_hub(evaluation)
     legacy_summary = compute_owner_summary(
@@ -120,8 +120,8 @@ def test_p2c_merge_into_owner_summary_overlays_requirement_engine() -> None:
 
     assert merged["source_layer"] == SOURCE_LAYER
     assert merged["requirement_engine"]["applied"] is True
-    assert set(merged["required"]["missing_types"]) == {"driver_license", "code95", "tacho_card"}
-    assert merged["required"]["ready_types"] == ["passport"]
+    assert set(merged["required"]["missing_types"]) == {"passport", "driver_license", "code95", "tacho_card"}
+    assert merged["required"]["ready_types"] == []
     assert set(merged["checklist"]["requiredTypes"]) == {
         "passport",
         "driver_license",

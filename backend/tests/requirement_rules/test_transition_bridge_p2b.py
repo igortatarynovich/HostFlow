@@ -325,10 +325,10 @@ async def test_p2b_integration_full_package_allows_transition(db, tenant_id: str
             "recruitment.candidate.contacts.phone": "+48123456789",
         },
         documents=[
-            {"document_type_code": "passport", "status": "uploaded"},
-            {"document_type_code": "driver_license", "status": "approved"},
-            {"document_type_code": "code95", "status": "uploaded"},
-            {"document_type_code": "tacho_card", "status": "uploaded"},
+            {"document_type_code": "passport", "status": "approved", "has_files": True},
+            {"document_type_code": "driver_license", "status": "approved", "has_files": True},
+            {"document_type_code": "code95", "status": "approved", "has_files": True},
+            {"document_type_code": "tacho_card", "status": "approved", "has_files": True},
         ],
     )
     assert evaluation["satisfied"] is True

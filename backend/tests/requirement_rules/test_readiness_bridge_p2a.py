@@ -64,10 +64,10 @@ def test_p2a_map_evaluation_to_readiness_fragments() -> None:
         _profile_view_from_manifest(),
         context="readiness",
         normalized_payload={"recruitment.candidate.first_name": "Jan"},
-        documents=[{"type": "passport", "status": "uploaded"}],
+        documents=[{"type": "passport", "status": "uploaded", "has_files": True}],
     )
     fragments = map_requirement_evaluation_to_package_fragments(evaluation)
-    assert "passport" not in fragments["missing_documents"]
+    assert "passport" in fragments["missing_documents"]
     assert "code95" in fragments["missing_documents"]
     assert "tacho_card" in fragments["missing_documents"]
     assert any(row["field_code"] == "last_name" for row in fragments["missing_data_fields"])

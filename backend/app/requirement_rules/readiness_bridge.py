@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.entity_profile.vacancy_bridge import resolve_entity_profile_hints_from_vacancy
 from backend.app.models.candidate import Candidate
 from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.document_runtime.readiness_bridge import enrich_snapshot_with_runtime
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.registry import RequirementRulesNotFoundError
 
@@ -111,14 +112,22 @@ def _document_row_to_snapshot(doc: Any) -> dict[str, Any]:
         meta = {}
     files = getattr(doc, "files", None) or []
     doc_type = _norm_doc(getattr(doc, "doc_type", "") or "")
-    return {
+    expire_date = getattr(doc, "expire_date", None)
+    snapshot = {
+        "document_id": str(getattr(doc, "id", "") or ""),
         "document_type_code": doc_type,
         "type": doc_type,
         "status": status,
         "readiness_state": meta.get("readiness_state"),
         "verified_at": meta.get("verified_at"),
         "has_files": bool(files),
+        "expires_on": expire_date.isoformat() if expire_date else None,
+        "expire_date": expire_date,
+        "meta": meta,
+        "superseded": bool(meta.get("superseded")),
+        "replaced": bool(meta.get("replaced")),
     }
+    return enrich_snapshot_with_runtime(snapshot)
 
 
 async def load_candidate_documents_snapshot(
@@ -243,7 +252,7 @@ def map_requirement_evaluation_to_package_fragments(
 
 def build_requirement_engine_section(evaluation: dict[str, Any]) -> dict[str, Any]:
     """Embed requirement engine evaluation on recruitment-package response."""
-    return {
+    section = {
         "applied": True,
         "entity_profile_code": evaluation.get("entity_profile_code"),
         "evaluation_version": evaluation.get("evaluation_version") or REQUIREMENT_EVALUATION_V1,
@@ -258,6 +267,10 @@ def build_requirement_engine_section(evaluation: dict[str, Any]) -> dict[str, An
         "transition_code": evaluation.get("transition_code"),
         "process_profile_code": evaluation.get("process_profile_code"),
     }
+    runtime_section = evaluation.get("document_runtime")
+    if isinstance(runtime_section, dict):
+        section["document_runtime"] = runtime_section
+    return section
 
 
 async def evaluate_candidate_requirements(

@@ -178,10 +178,10 @@ def test_p3a_stage_blocker_only_in_stage_context() -> None:
             "recruitment.candidate.contacts.phone": "+48111222333",
         },
         documents=[
-            {"type": "passport", "status": "uploaded"},
-            {"type": "driver_license", "status": "uploaded"},
-            {"type": "code95", "status": "uploaded"},
-            {"type": "tacho_card", "status": "uploaded"},
+            {"type": "passport", "status": "approved", "has_files": True},
+            {"type": "driver_license", "status": "approved", "has_files": True},
+            {"type": "code95", "status": "approved", "has_files": True},
+            {"type": "tacho_card", "status": "approved", "has_files": True},
         ],
     )
     missing_fields = {row.get("qualified_code") for row in evaluation["blockers"] if row.get("qualified_code")}

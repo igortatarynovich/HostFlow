@@ -62,7 +62,7 @@ def test_p1_evaluator_reports_missing_fields_and_documents() -> None:
         _profile_view_from_manifest(),
         context="readiness",
         normalized_payload={"recruitment.candidate.first_name": "Jan"},
-        documents=[{"type": "passport", "status": "uploaded"}],
+        documents=[{"type": "passport", "status": "uploaded", "has_files": True}],
     )
     assert result["satisfied"] is False
     missing_field_codes = {b.get("qualified_code") for b in result["blockers"] if b.get("qualified_code")}
@@ -70,7 +70,7 @@ def test_p1_evaluator_reports_missing_fields_and_documents() -> None:
     missing_doc_codes = {b.get("document_type_code") for b in result["blockers"] if b.get("document_type_code")}
     assert "driver_license" in missing_doc_codes
     assert "code95" in missing_doc_codes
-    assert "passport" not in missing_doc_codes
+    assert "passport" in missing_doc_codes
 
 
 def test_p1_evaluator_satisfied_when_complete() -> None:
@@ -83,10 +83,10 @@ def test_p1_evaluator_satisfied_when_complete() -> None:
             "recruitment.candidate.contacts.phone": "+48123456789",
         },
         documents=[
-            {"document_type_code": "passport", "status": "uploaded"},
-            {"document_type_code": "driver_license", "status": "approved"},
-            {"document_type_code": "code95", "status": "uploaded"},
-            {"document_type_code": "tacho_card", "status": "uploaded"},
+            {"document_type_code": "passport", "status": "approved", "has_files": True},
+            {"document_type_code": "driver_license", "status": "approved", "has_files": True},
+            {"document_type_code": "code95", "status": "approved", "has_files": True},
+            {"document_type_code": "tacho_card", "status": "approved", "has_files": True},
         ],
     )
     assert result["satisfied"] is True
