@@ -6,7 +6,7 @@
 
 **Opened:** 2026-06-24 — immediately after **Document Expiry Notifications v1 closed** ([`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) §20).
 
-**Next implementation step:** Superseded — **v1 closed** (§20). Downstream: filter UX alignment, Notification Center badge parity review, legacy owner-summary strangler — not foundation expansion.
+**Next implementation step:** Superseded — **v1 closed** (§20). Downstream: [`document-runtime-filters-p0.md`](document-runtime-filters-p0.md) — runtime-aware list filters (Track A).
 
 **Related canon (must stay consistent):**
 
