@@ -6,7 +6,7 @@
 
 **Opened:** 2026-06-23 — immediately after **Requirement Rules Engine v1 closed** ([`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) §20).
 
-**Next platform track (post-v1 foundation):** [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — Document Expiry Notifications canon (downstream). **Not** Document Runtime v2 foundation expansion.
+**Next platform track (post-v1 foundation):** [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) — **v1 closed** (§20). Further downstream: filter UX, dashboard tiles — not Document Runtime v2 foundation expansion.
 
 **Related canon (must stay consistent):**
 
@@ -16,7 +16,7 @@
 | [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) | Requirement Engine evaluates *what must exist*; Document Runtime evaluates *instance lifecycle state* |
 | [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) | Entity Profile references `document_pack_code`; does not own per-document lifecycle |
 | [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) | Downstream expiry notification events (post-v1) |
-| [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) | UI badge projection of `document_runtime_v1` (P1 consumer layer) |
+| [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) | UI badge projection of `document_runtime_v1` — **v1 closed** |
 | [`process-engine.md`](process-engine.md) | Stage transitions consume readiness + document satisfaction signals |
 
 ---
@@ -263,7 +263,7 @@ Evaluation output: `document_runtime_v1` with `evaluation_version=document_runti
 | Notifications / reminder dispatch | Downstream consumer — Document Expiry Notifications P0 |
 | Dashboard KPIs / HR queue scoring | Downstream consumer |
 | Expiry cron jobs / campaigns | Downstream scheduler — not runtime canon |
-| UI redesign / status badges | [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) — consumes contract |
+| UI redesign / status badges | [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) — **v1 closed** |
 | Tenant lifecycle policies / scripting | Same anti-pattern as Requirement Rules custom expressions |
 | Auto-create document rows | Document Hub product scope |
 | Advanced review workflow | Document Hub verification UX |

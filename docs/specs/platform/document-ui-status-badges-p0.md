@@ -1,12 +1,12 @@
 # Document UI Status Badges — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon open; P1 consumer layer in progress.  
+**Status:** Accepted (architecture canon). **Implementation:** **Document UI Status Badges v1 — closed** (2026-06-24). P0 canon + P1 consumer layer complete.  
 **Hierarchy:** L2 operating canon — presentation layer. **Read-only projection** of `document_runtime_v1`.  
 **Owner:** Architecture canon + platform core team.
 
 **Opened:** 2026-06-24 — immediately after **Document Expiry Notifications v1 closed** ([`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) §20).
 
-**Next implementation step:** P1 — `runtimeBadgePresentation` mapper + wire DocumentCard, Document Hub checklist, Candidate Docs rail/panel.
+**Next implementation step:** Superseded — **v1 closed** (§20). Downstream: filter UX alignment, Notification Center badge parity review, legacy owner-summary strangler — not foundation expansion.
 
 **Related canon (must stay consistent):**
 
@@ -166,18 +166,96 @@ All P1 consumers call **`runtimeBadgePresentation`** (or its exported helpers). 
 
 ---
 
-## 9. Post-P1 (not foundation)
+## 9. P1 implementation status (2026-06-24)
+
+| Milestone | Scope | Status | Location |
+|-----------|-------|--------|----------|
+| **P0** | Architecture canon | ✅ Done | this doc |
+| **P1** | Runtime badge mapper + consumers | ✅ Done | `runtimeBadgePresentation.ts`, `DocumentCard`, `CandidateDocuments`, `CandidateDocsRailPanel`, `CandidateDocsChecklistMiniPanel` |
+
+**P1 acceptance:** All badge paths use `runtimeBadgePresentation`; `document_runtime` on `DocumentOut`; 11 mapper unit tests; backend evaluator unchanged.
+
+---
+
+## 10. Post-v1 maintenance (not foundation expansion)
 
 | Track | Scope |
 |-------|-------|
-| Filter UX alignment | Map status filters to runtime badges where product requires |
-| Upcoming deadlines panel | May keep date display for calendar UX — not a status badge |
-| v1 closure §20 | After P1 acceptance + tests green |
+| Filter UX alignment | Map document list filters to runtime badge vocabulary where product requires |
+| Upcoming deadlines panel | Calendar date display — not a status badge; may stay on raw dates |
+| Legacy owner-summary rail fallback | Strangler — runtime items preferred; legacy buckets when Requirement Engine path absent |
+| Notification Center | Separate presentation canon — not badge mapper scope |
 
-**Foundation stack (complete upstream):**
+**Foundation stack (complete upstream + this layer):**
 
 ```
 Field Registry → Entity Profile → Requirement Rules → Document Hub → Document Runtime → Delivery Contract
                                                                                               ↓
                                                                               Document UI Status Badges (this)
 ```
+
+---
+
+## 20. Document UI Status Badges v1 — closed (2026-06-24)
+
+**Milestone:** Document UI Status Badges **v1 foundation is closed**. Single read-only projection layer from `document_runtime_v1` to UI badges — no frontend expiry math in badge paths.
+
+### 20.1 Foundation chain (complete)
+
+```
+document_runtime_v1 (Delivery Contract)
+        ↓
+runtimeBadgePresentation (P1 mapper)
+        ↓
+Consumers: DocumentCard · Hub checklist · Candidate Docs rail/panel
+```
+
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| P0 | Architecture canon + badge vocabulary v1 | ✅ |
+| P1 | `runtimeBadgePresentation` + API `document_runtime` on instances | ✅ |
+| P1 | DocumentCard instance badges | ✅ |
+| P1 | Document Hub checklist runtime strip | ✅ |
+| P1 | Candidate Docs rail + mini checklist | ✅ |
+
+**Commits:** `2fe6102a` (P0 canon), `f83664f3` (P1 implementation).
+
+### 20.2 Wired consumers (complete)
+
+| Consumer | Status | Notes |
+|----------|--------|-------|
+| **DocumentCard** | ✅ | Badge from `document_runtime`; `satisfies_requirement` secondary indicator |
+| **Document Hub checklist** | ✅ | Per-type badges from `runtimeItems` / `document_runtime.items` |
+| **Candidate Docs rail** | ✅ | Row labels from runtime when items present |
+| **Candidate Docs mini checklist** | ✅ | Runtime checklist list |
+| **Notification Center** | ❌ (by design) | `notificationEventPresentation` — separate track |
+
+### 20.3 Hard rules enforced in v1
+
+| Rule | Enforcement |
+|------|-------------|
+| No frontend expiry date math for badges | `isExpiringSoonDoc` → thin runtime adapter |
+| Single mapper | `runtimeBadgePresentation.ts` only |
+| Backend evaluator frozen | `enrich_snapshot_via_contract` on read path only |
+| Badge vocabulary fixed | 6 kinds: approved, pending, rejected, expired, expiring_soon, missing |
+
+### 20.4 Explicitly out of scope for v1 (downstream tracks)
+
+| Track | Why deferred |
+|-------|--------------|
+| Notification Center badge unification | Separate event presentation canon |
+| Status filter dropdown → runtime vocabulary | Product UX follow-up |
+| Remove all legacy owner-summary bucket UI | Strangler — fallback when no runtime items |
+| Dashboard / KPI document status tiles | Downstream consumer |
+| Per-tenant badge styling / themes | Presentation product scope |
+| i18n copy pass for all locales | Follow-up localization |
+
+**Do not expand v1 foundation with:** new badge types, client-side runtime re-evaluation, or owner-summary as badge source.
+
+---
+
+## Changelog
+
+- 2026-06-24: **Document UI Status Badges v1 foundation closed** — P0 canon + P1 consumers complete; §20 milestone record.
+- 2026-06-24: **P1 complete** — `runtimeBadgePresentation`; `document_runtime` on `DocumentOut`; DocumentCard + Hub checklist + Candidate Docs rail/panel; 11 mapper tests.
+- 2026-06-24: P0 accepted — Document UI Status Badges canon opened as read-only projection of `document_runtime_v1`.

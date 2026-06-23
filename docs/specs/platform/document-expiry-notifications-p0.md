@@ -17,6 +17,7 @@
 | [`activity-notification-operating-layer.md`](../architecture/activity-notification-operating-layer.md) | Activity vs Notification boundary; expiry types exist historically — migrate via this engine |
 | [`ADR-009`](../architecture/ADR-009-document-hub-platform-layer.md) | Document Hub owns instances; does **not** own expiry notification logic |
 | [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) | Requirement Engine defines *what is required*; does **not** trigger expiry notifications |
+| [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) | UI badge projection of runtime — separate presentation consumer |
 
 ---
 
@@ -414,6 +415,7 @@ HostFlow platform foundation layers closed before this track:
 | Requirement Rules Engine v1 | ✅ Closed |
 | Document Runtime Engine v1 | ✅ Closed |
 | **Document Expiry Notifications** | **v1 closed** (this doc) |
+| **Document UI Status Badges** | **v1 closed** ([`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) §20) |
 
 ---
 
