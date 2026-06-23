@@ -6,7 +6,7 @@
 
 **Opened:** 2026-06-24 — after **Document UI Status Badges v1 closed** ([`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) §20).
 
-**Next implementation step:** P1 — `runtimeMatchesFilter` + wire CandidateDocuments, Candidate Docs rail, document list views.
+**Next implementation step:** Track D — Candidate Workspace runtime readiness surface ([`document-runtime-filters-p0.md`](document-runtime-filters-p0.md) P1 complete).
 
 **Related canon:**
 
@@ -81,3 +81,22 @@ Workflow edit controls and sort keys may still read hub fields — that is not f
 ## 6. Post-P1 (Track D preview)
 
 Candidate Workspace readiness KPIs and blockers — runtime-driven surfaces; filters are prerequisite to remove legacy bucket drift in list + card views.
+
+---
+
+## 7. P1 implementation status (2026-06-24)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| `runtimeMatchesFilter` | ✅ | `runtimeDocumentFilters.ts` |
+| `CandidateDocuments` | ✅ | Runtime dropdown; legacy status + expiring/missing checkboxes removed |
+| `CandidateDocsRailPanel` | ✅ | Runtime filter on checklist rows |
+| `DocumentsRegistryPage` | ✅ | Preset filters → runtime vocabulary (+ legacy URL compat) |
+| Unit tests | ✅ | 9 tests |
+
+---
+
+## Changelog
+
+- 2026-06-24: **P1 complete** — `runtimeMatchesFilter` + three consumers; no frontend date math in filter paths.
+- 2026-06-24: P0 accepted — Document Runtime Filters Track A canon opened.
