@@ -84,7 +84,7 @@
 | Deprecation guard | No new direct `hiring_gates_from_tenant_settings` / `hiring_stage_gates_v1` reads outside legacy editor + adapter fallback |
 | Tests | `backend/tests/process_engine/test_process_engine_closure.py` |
 
-**Next layer (post-closure):** [`field-registry-card-configuration.md`](field-registry-card-configuration.md) — Field Registry & Card Configuration (P0 canon accepted).
+**Next layer (post-closure):** [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) — Entity Profile Definition Registry (P0 canon accepted). Field Registry: [`field-registry-card-configuration.md`](field-registry-card-configuration.md) (P1–P5 complete).
 
 **Related (must stay consistent):**
 

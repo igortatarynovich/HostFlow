@@ -722,7 +722,7 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **P10A acceptance:** Field show/hide by sibling value; required-if enforced client + server; rules stored in presentation only; source/target ⊆ presentation subset; Documents/Process/Readiness untouched.
 
-**Next implementation step:** Requirement Rules Engine source stack complete (EP → Pack → Process Profile → Tenant Overrides). Next: consumer deprecation / legacy validator removal milestone.
+**Next implementation step:** [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — **Document Runtime Engine P0** (lifecycle canon). Requirement Rules Engine v1 closed — see [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) §20.
 
 ### P9 implementation status (2026-06-22)
 
@@ -894,7 +894,8 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 **Must stay consistent:**
 
 - [`field-registry-card-configuration.md`](field-registry-card-configuration.md) — canonical field semantics (layer below)
-- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (parallel layer; **not** P10A presentation rules)
+- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20)
+- [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (next foundation layer)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)
 - [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md) — Intake Source bindings and routing
 - [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) — Forms as intake provider type

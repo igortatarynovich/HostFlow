@@ -1,8 +1,10 @@
 # Requirement Rules Engine — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon only — **no runtime code in this slice**.  
+**Status:** Accepted (architecture canon). **Implementation:** **Requirement Rules Engine v1 — closed** (2026-06-23). P0 canon + P1–P3B runtime complete.  
 **Hierarchy:** L2 operating canon — platform layer. **Evaluation layer** between Entity Profile composition and Documents / Process Engine / Readiness runtime.  
 **Owner:** Architecture canon + platform core team.
+
+**Next platform track (post-v1):** [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — Document Lifecycle Runtime canon. **Not** Requirement Rules P4 (custom expressions, rule builder, scripting).
 
 **Related canon (must stay consistent):**
 
@@ -11,6 +13,7 @@
 | [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) | Entity Profile defines *which* fields/documents/process profile apply; Requirement Engine evaluates *what is still required* |
 | [`field-registry-card-configuration.md`](field-registry-card-configuration.md) | Canonical field codes; requirement rules reference `qualified_code` only |
 | [`process-engine.md`](process-engine.md) | Transition / handoff evaluation consumes requirement results; Field & Document Requirement Registries migrate here |
+| [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (post-v1 foundation); feeds back into requirement satisfaction |
 | P10A Presentation Rules | **Separate layer** — UI visibility only; see §9 |
 
 ---
@@ -412,7 +415,7 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 | 8 | Hard rules + P1 scope gate | **Done** (§12–§13) |
 | 9 | Cross-links from sibling canon docs | **Done** (header + §10) |
 
-**Next implementation step:** **P3A — Process Profile hooks** — add Process Profile as requirement source; stage context (`stage_code`, `transition_code`); stage-specific field/document requirements; merge order Entity Profile → Document Pack → Process Profile. P2 consumer wiring complete — see §17.
+**Next implementation step:** Superseded — **v1 closed** (§20). Post-v1 maintenance: legacy validator deprecation. Next platform track: [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md).
 
 **Do not implement requirement logic in Form Presentation or Form Builder.**
 
@@ -451,7 +454,7 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 
 **P2C acceptance:** Document Hub reads required documents from Requirement Engine; driver_ce pack (passport, driver_license, code95, tacho_card) → required/missing/satisfied; legacy ruleset path when `entity_profile_code` unresolved; API output includes `source_layer=requirement_engine`.
 
-**Next implementation step:** Requirement Rules Engine source stack complete — see §19. Consumer deprecation / legacy validator removal is the next milestone.
+**Next implementation step:** Superseded by P3A–P3B and **v1 closed** (§20).
 
 ---
 
@@ -472,7 +475,7 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 
 **Hard rule:** Process Profile adds stage requirements only — it does not redefine canonical field or document types already required by Entity Profile or Document Pack.
 
-**Next implementation step:** **P3B — Tenant Overrides** complete — see §19. Requirement Rules Engine source stack closed through tenant override layer.
+**Next implementation step:** Superseded — P3B complete; **v1 closed** (§20).
 
 ---
 
@@ -494,6 +497,58 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 **P3B forbidden:** custom expressions, arbitrary scripts, override canonical field meaning, per-user hacks, per-client overrides.
 
 **Hard rule:** Tenant overrides apply after all platform sources; they cannot relax Entity Profile canonical fields or non-overridable document types (`passport`, `work_permit`, etc.).
+
+**Next implementation step:** **Requirement Rules Engine v1 closed** — see §20. Post-v1: legacy validator deprecation only. Next foundation layer: [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md).
+
+---
+
+## 20. Requirement Rules Engine v1 — closed (2026-06-23)
+
+**Milestone:** Requirement Rules Engine **v1 is closed**. This is a working runtime with wired consumers — not a concept doc.
+
+### 20.1 Source stack (complete)
+
+| # | Source | Status |
+|---|--------|--------|
+| 1 | **Entity Profile** | ✅ |
+| 2 | **Document Pack** | ✅ |
+| 3 | **Process Profile** | ✅ |
+| 4 | **Tenant Overrides** | ✅ |
+
+**Canonical merge order:**
+
+```
+Entity Profile → Document Pack → Process Profile → Tenant Overrides
+```
+
+### 20.2 Runtime consumers
+
+| Consumer | Status | Bridge |
+|----------|--------|--------|
+| **Readiness** / Recruitment Package | ✅ | P2A `readiness_bridge.py` |
+| **Process Engine** transition gate | ✅ | P2B `transition_bridge.py` |
+| **Document Hub** required/missing/satisfied | ✅ | P2C `document_hub_bridge.py` |
+
+Evaluation output: `requirement_evaluation_v1` with `source_layer=requirement_engine` at consumer boundaries.
+
+### 20.3 Post-v1 maintenance (not new rule sources)
+
+| Track | Scope |
+|-------|--------|
+| Legacy validator deprecation | Dual-run → remove tactical checks in `recruitment_package_readiness`, `TransferPolicyResolver` |
+| Consumer hardening | Tests, parity, fail-safe guards |
+
+### 20.4 Explicitly out of scope for Requirement Rules v2+ (do not expand now)
+
+| Forbidden expansion | Why |
+|---------------------|-----|
+| Custom expressions | Becomes a second rule engine |
+| Visual rule builder | UI/product scope; not evaluation canon |
+| Tenant scripting | Arbitrary logic bypasses audited override layer |
+| Per-client overrides | Breaks tenant-scoped override model (P3B) |
+| Requirement admin UI | Separate product slice after runtime stabilizes |
+
+**Next foundation layer for HostFlow platform:** **Document Runtime Engine** — see [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md). Requirement Engine answers *what is required*; Document Runtime answers *what state each document instance is in*.
 
 ---
 
@@ -526,3 +581,4 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 - 2026-06-23: P2 consumer wiring closed — P2A Readiness, P2B PE transition gate, P2C Document Hub; next step P3A Process Profile hooks.
 - 2026-06-23: P3A complete — Process Profile requirement source; stage/transition context; merge order EP → Pack → Process Profile; P2B stage wiring.
 - 2026-06-23: P3B complete — Tenant override layer (relax/add/severity); merge order through tenant overrides; admin API; policy guards.
+- 2026-06-23: **Requirement Rules Engine v1 closed** — full source stack + Readiness / PE / Document Hub consumers; §20 milestone record.
