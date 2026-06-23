@@ -113,6 +113,12 @@ async def evaluate_recruitment_package(
     relaxed_doc_types: Optional[set[str]] = None,
 ) -> dict[str, Any]:
     """Evaluate dossier-aligned package for recruitment handoff gate + UI."""
+    from backend.app.requirement_rules.readiness_bridge import (
+        build_requirement_engine_section,
+        evaluate_candidate_readiness_requirements,
+        map_requirement_evaluation_to_package_fragments,
+    )
+
     cand = (
         await db.execute(
             select(Candidate).where(
@@ -147,6 +153,22 @@ async def evaluate_recruitment_package(
     missing_docs = {_norm_doc(x) for x in (decision.get("missing_documents") or []) if _norm_doc(x)} - relaxed
     pending_docs = {_norm_doc(x) for x in (decision.get("pending_verification_documents") or []) if _norm_doc(x)} - relaxed
 
+    requirement_evaluation = await evaluate_candidate_readiness_requirements(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        candidate=cand,
+    )
+    requirement_engine: dict[str, Any] | None = None
+    req_fragments: dict[str, Any] | None = None
+    if requirement_evaluation is not None:
+        requirement_engine = build_requirement_engine_section(requirement_evaluation)
+        req_fragments = map_requirement_evaluation_to_package_fragments(requirement_evaluation)
+        for doc_code in req_fragments.get("missing_documents") or []:
+            norm = _norm_doc(doc_code)
+            if norm:
+                missing_docs.add(norm)
+        missing_docs -= relaxed
+
     seen_keys: set[str] = set()
     blocks: list[dict[str, Any]] = []
     missing_data_fields: list[dict[str, str]] = []
@@ -158,7 +180,22 @@ async def evaluate_recruitment_package(
         seen_keys.add(key)
 
         if key in DATA_ONLY_VERIFICATION_KEYS:
-            missing_fields = await _missing_contact_fields(db, tenant_id, cand) if key == "Contacts & address" else []
+            if key == "Contacts & address":
+                if req_fragments is not None:
+                    missing_fields = list(req_fragments.get("missing_data_fields") or [])
+                    legacy_address = [
+                        row
+                        for row in _missing_contact_fields_legacy(cand)
+                        if row.get("field_code") == "address"
+                    ]
+                    seen_field_codes = {row.get("field_code") for row in missing_fields}
+                    missing_fields.extend(
+                        row for row in legacy_address if row.get("field_code") not in seen_field_codes
+                    )
+                else:
+                    missing_fields = await _missing_contact_fields(db, tenant_id, cand)
+            else:
+                missing_fields = []
             status = "ready" if not missing_fields else "data"
             if missing_fields:
                 missing_data_fields.extend(missing_fields)
@@ -206,7 +243,7 @@ async def evaluate_recruitment_package(
     handoff_allowed = bool(ops.get("handoff_to_hr", ops.get("hr_handoff", True)))
     ready = handoff_allowed and not blocking_blocks and not missing_data_fields
 
-    return {
+    result: dict[str, Any] = {
         "ready": ready,
         "handoff_allowed": handoff_allowed,
         "blocking_blocks": blocking_blocks,
@@ -217,6 +254,9 @@ async def evaluate_recruitment_package(
         "eligibility_status": decision.get("eligibility_status"),
         "readiness_profiles": decision.get("readiness_profiles") or {},
     }
+    if requirement_engine is not None:
+        result["requirement_engine"] = requirement_engine
+    return result
 
 
 async def assert_recruitment_package_ready_for_handoff(

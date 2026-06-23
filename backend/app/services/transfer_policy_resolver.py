@@ -358,6 +358,33 @@ class TransferPolicyResolver:
                 )
             )
 
+        req_engine = pkg.get("requirement_engine") or {}
+        if req_engine.get("applied"):
+            source_layers.add("requirement_engine")
+            from backend.app.requirement_rules.readiness_bridge import (
+                map_requirement_evaluation_to_package_fragments,
+            )
+
+            req_fragments = map_requirement_evaluation_to_package_fragments(req_engine)
+            for reason in req_fragments.get("blocking_reasons") or []:
+                blocking_reasons.append(reason)
+            for warning in req_fragments.get("warnings") or []:
+                warnings.append(warning)
+            for doc_code in req_fragments.get("missing_documents") or []:
+                norm = str(doc_code or "").strip()
+                if not norm or norm in approved_overrides:
+                    continue
+                if norm not in missing_documents:
+                    missing_documents.append(norm)
+            missing_documents = sorted(set(missing_documents))
+            if req_fragments.get("missing_data_fields"):
+                seen_field_codes = {str(f.get("field_code") or "") for f in missing_data_fields}
+                for field in req_fragments["missing_data_fields"]:
+                    fc = str(field.get("field_code") or "")
+                    if fc and fc not in seen_field_codes:
+                        missing_data_fields.append(field)
+                        seen_field_codes.add(fc)
+
         package_blocks = list(pkg.get("blocks") or [])
         required_confirmations = _pending_confirmations(package_blocks, confirmed_blocks)
         if required_confirmations:
