@@ -19,6 +19,8 @@ export type DocumentRuntimeV1 = {
   satisfies_requirement?: boolean
   document_type_code?: string | null
   document_id?: string | null
+  expires_on?: string | null
+  days_left?: number | null
 }
 
 export type RuntimeBadgePresentation = {

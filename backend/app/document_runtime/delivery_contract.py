@@ -26,6 +26,33 @@ def _document_type_code(doc: dict[str, Any]) -> str:
     return ""
 
 
+def _attach_expiry_metadata_to_runtime(
+    runtime: dict[str, Any],
+    snapshot: dict[str, Any] | None,
+    *,
+    expiry_required: bool = False,
+) -> dict[str, Any]:
+    """Attach ``expires_on`` / ``days_left`` at delivery contract — not in UI."""
+    from backend.app.services.document_expiry_engine import evaluate_document_expiry
+
+    enriched = dict(runtime)
+    expires_on = None
+    if snapshot and isinstance(snapshot, dict):
+        expires_on = snapshot.get("expires_on") or snapshot.get("expire_date")
+        if expires_on is None and isinstance(snapshot.get("meta"), dict):
+            expires_on = snapshot["meta"].get("expires_at") or snapshot["meta"].get("expire_date")
+
+    evaluation = evaluate_document_expiry(
+        expires_on=expires_on,
+        expiry_required=expiry_required,
+    )
+    if evaluation.expires_on is not None:
+        enriched["expires_on"] = evaluation.expires_on.isoformat()
+    if evaluation.days_left is not None:
+        enriched["days_left"] = evaluation.days_left
+    return enriched
+
+
 def evaluate_snapshot_via_contract(
     snapshot: dict[str, Any] | None,
     *,
@@ -34,9 +61,14 @@ def evaluate_snapshot_via_contract(
 ) -> dict[str, Any]:
     """Canonical ``document_runtime_v1`` for one document instance snapshot."""
     doc_type = document_type_code or (_document_type_code(snapshot) if snapshot else "")
-    return evaluate_document_runtime(
+    runtime = evaluate_document_runtime(
         snapshot,
         document_type_code=doc_type,
+        expiry_required=expiry_required,
+    )
+    return _attach_expiry_metadata_to_runtime(
+        runtime,
+        snapshot,
         expiry_required=expiry_required,
     )
 
@@ -50,6 +82,12 @@ def enrich_snapshot_via_contract(
     enriched = dict(snapshot)
     existing = enriched.get("document_runtime")
     if isinstance(existing, dict) and existing.get("evaluation_version") == DOCUMENT_RUNTIME_V1:
+        if existing.get("days_left") is None:
+            enriched["document_runtime"] = _attach_expiry_metadata_to_runtime(
+                existing,
+                enriched,
+                expiry_required=expiry_required,
+            )
         return enriched
     runtime = evaluate_snapshot_via_contract(
         enriched,

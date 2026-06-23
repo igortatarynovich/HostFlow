@@ -95,3 +95,81 @@ export function documentMatchesRuntimeFilterSelection(
   if (filter === 'all') return true
   return documentMatchesRuntimeFilter(doc, filter)
 }
+
+/** Track B — dashboard KPI vocabulary v1 (extends Track A filters). */
+export const RUNTIME_DASHBOARD_KPIS = [
+  'expired',
+  'expiring_soon',
+  'expiring_7d',
+  'pending_review',
+  'rejected',
+  'missing_required',
+  'ready_documents',
+] as const
+
+export type RuntimeDashboardKpi = (typeof RUNTIME_DASHBOARD_KPIS)[number]
+
+export const DASHBOARD_KPI_LABEL_KEYS: Record<RuntimeDashboardKpi, string> = {
+  expired: 'admin.documents.runtime_filters.expired',
+  expiring_soon: 'admin.documents.runtime_filters.expiring_soon',
+  expiring_7d: 'app.dashboard.widgets.documents.runtime_kpis.expiring_7d',
+  pending_review: 'admin.documents.runtime_filters.pending_review',
+  rejected: 'admin.documents.runtime_filters.rejected',
+  missing_required: 'admin.documents.runtime_filters.missing',
+  ready_documents: 'admin.documents.runtime_filters.satisfied',
+}
+
+/** Map dashboard KPI → documents registry quick filter (Track A vocabulary). */
+export const DASHBOARD_KPI_TO_REGISTRY_QUICK: Record<RuntimeDashboardKpi, string> = {
+  expired: 'expired',
+  expiring_soon: 'expiring_soon',
+  expiring_7d: 'expiring_soon',
+  pending_review: 'pending_review',
+  rejected: 'rejected',
+  missing_required: 'missing',
+  ready_documents: 'satisfied',
+}
+
+export function runtimeMatchesDashboardKpi(
+  runtime: DocumentRuntimeV1 | null | undefined,
+  kpi: RuntimeDashboardKpi,
+): boolean {
+  if (!runtime || typeof runtime !== 'object') {
+    return false
+  }
+
+  const workflow = norm(runtime.workflow_status)
+  const expiry = norm(runtime.expiry_status)
+  const signal = norm(runtime.runtime_signal)
+
+  switch (kpi) {
+    case 'expired':
+      return expiry === 'expired'
+    case 'expiring_soon':
+      return expiry === 'expiring_soon'
+    case 'expiring_7d':
+      if (expiry !== 'expiring_soon') return false
+      if (runtime.days_left == null) return false
+      return Number(runtime.days_left) <= 7
+    case 'pending_review':
+      return signal === 'pending_verification'
+    case 'rejected':
+      return workflow === 'rejected'
+    case 'missing_required':
+      return workflow === 'missing'
+    case 'ready_documents':
+      return runtime.satisfies_requirement === true
+    default:
+      return false
+  }
+}
+
+/** Dashboard KPI rows shown in documents widget (actionable subset). */
+export const DASHBOARD_KPI_TILE_ORDER: RuntimeDashboardKpi[] = [
+  'expired',
+  'expiring_7d',
+  'missing_required',
+  'pending_review',
+  'rejected',
+  'ready_documents',
+]

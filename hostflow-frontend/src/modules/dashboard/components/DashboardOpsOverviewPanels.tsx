@@ -6,6 +6,7 @@ import type {
   HandoffStatsResponse,
   ContactAttemptStatsResponse,
   DocumentStatsResponse,
+  DocumentRuntimeKpisResponse,
   AnalyticsProfileSummary,
 } from '../../../api/analytics'
 import type { DashboardWidgetId } from '../types'
@@ -16,6 +17,12 @@ import type {
   GroupedStage,
   StageStackSegment,
 } from '../hooks/useDashboardDerivedAnalytics'
+import {
+  DASHBOARD_KPI_LABEL_KEYS,
+  DASHBOARD_KPI_TILE_ORDER,
+  DASHBOARD_KPI_TO_REGISTRY_QUICK,
+  type RuntimeDashboardKpi,
+} from '../../../utils/runtimeDocumentFilters'
 
 export interface DashboardCompanyLabels {
   singular: string
@@ -33,6 +40,7 @@ export interface DashboardOpsOverviewPanelsProps {
   handoffStats: HandoffStatsResponse | null
   contactStats: ContactAttemptStatsResponse | null
   documentStats: DocumentStatsResponse | null
+  documentRuntimeKpis: DocumentRuntimeKpisResponse | null
   documentBlockerAnalytics: DocumentBlockerAnalytics
   profileSummary: AnalyticsProfileSummary | null
   stageStackSegments: StageStackSegment[]
@@ -63,6 +71,7 @@ export function DashboardOpsOverviewPanels(props: DashboardOpsOverviewPanelsProp
     handoffStats,
     contactStats,
     documentStats,
+    documentRuntimeKpis,
     documentBlockerAnalytics,
     profileSummary,
     stageStackSegments,
@@ -80,6 +89,30 @@ export function DashboardOpsOverviewPanels(props: DashboardOpsOverviewPanelsProp
     groupedDeclinedReasons,
     drillInlineClass,
   } = props
+
+  const runtimeKpisActive = documentRuntimeKpis?.source === 'runtime'
+
+  const documentRuntimeKpiHref = (kpi: RuntimeDashboardKpi): string => {
+    const quick = DASHBOARD_KPI_TO_REGISTRY_QUICK[kpi]
+    return `${CRM_APP_PATHS.documents}?quick=${encodeURIComponent(quick)}`
+  }
+
+  const kpiTileClass = (kpi: RuntimeDashboardKpi): string => {
+    switch (kpi) {
+      case 'expired':
+      case 'rejected':
+        return 'bg-rose-50 text-rose-800 hover:bg-rose-100'
+      case 'expiring_7d':
+      case 'pending_review':
+        return 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+      case 'missing_required':
+        return 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+      case 'ready_documents':
+        return 'bg-green-50 text-green-800 hover:bg-green-100'
+      default:
+        return 'bg-slate-50 text-slate-800 hover:bg-slate-100'
+    }
+  }
 
   const showTripleWidgets =
     (isWidgetVisible('handoff') && !!handoffStats) ||
@@ -165,7 +198,11 @@ export function DashboardOpsOverviewPanels(props: DashboardOpsOverviewPanelsProp
           {isWidgetVisible('documents') && documentStats && (
             <div className="card p-4">
               <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.documents.title')}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.documents.subtitle')}</div>
+              <div className="text-xs text-slate-500 mt-0.5">
+                {runtimeKpisActive
+                  ? t('app.dashboard.widgets.documents.runtime_kpis.subtitle')
+                  : t('app.dashboard.widgets.documents.subtitle')}
+              </div>
               <div className="mt-3 space-y-2 text-sm">
                 <Link
                   to={CRM_APP_PATHS.documents}
@@ -175,73 +212,108 @@ export function DashboardOpsOverviewPanels(props: DashboardOpsOverviewPanelsProp
                   <span className="text-slate-500">{t('app.dashboard.widgets.documents.total')} <span className="text-[10px]">↗</span></span>
                   <span className="font-semibold">{formatNumber(documentStats.total_docs)}</span>
                 </Link>
-                <Link
-                  to={`${CRM_APP_PATHS.documents}?quick=ready`}
-                  title={drilldownTitle}
-                  className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
-                >
-                  <span className="text-slate-500">{t('app.dashboard.widgets.documents.complete')} <span className="text-[10px]">↗</span></span>
-                  <span className="font-semibold">{formatNumber(documentStats.candidates_with_complete_docs)}</span>
-                </Link>
-                {Object.keys(documentStats.by_status || {}).length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-slate-100">
-                    <span className="text-xs text-slate-500">{t('app.dashboard.widgets.documents.by_status')}</span>
-                    <ul className="mt-1 space-y-0.5 text-xs">
-                      {Object.entries(documentStats.by_status || {}).slice(0, 5).map(([status, count]) => (
-                        <li key={status} className="flex justify-between">
-                          <Link className="hover:underline" to={documentQuickFilterHref(status)}>{status}</Link>
-                          <span>{formatNumber(count)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                {runtimeKpisActive && documentRuntimeKpis ? (
+                  <>
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                      <div className="text-xs text-slate-500">
+                        {t('app.dashboard.widgets.documents.runtime_kpis.title')}
+                      </div>
+                      <div className="mt-1 grid grid-cols-1 gap-1.5 text-xs">
+                        {DASHBOARD_KPI_TILE_ORDER.map((kpi) => (
+                          <Link
+                            key={kpi}
+                            to={documentRuntimeKpiHref(kpi)}
+                            title={drilldownTitle}
+                            className={`flex items-center justify-between rounded px-2 py-1 ${kpiTileClass(kpi)}`}
+                          >
+                            <span>{t(DASHBOARD_KPI_LABEL_KEYS[kpi], { defaultValue: kpi })}</span>
+                            <span className="font-semibold">
+                              {formatNumber(documentRuntimeKpis.kpis[kpi] ?? 0)}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-[11px] text-slate-500">
+                        {t('app.dashboard.widgets.documents.runtime_kpis.coverage_hint', {
+                          values: {
+                            items: formatNumber(documentRuntimeKpis.runtime_items_scanned),
+                            candidates: formatNumber(documentRuntimeKpis.runtime_candidates),
+                          },
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to={`${CRM_APP_PATHS.documents}?quick=ready`}
+                      title={drilldownTitle}
+                      className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
+                    >
+                      <span className="text-slate-500">{t('app.dashboard.widgets.documents.complete')} <span className="text-[10px]">↗</span></span>
+                      <span className="font-semibold">{formatNumber(documentStats.candidates_with_complete_docs)}</span>
+                    </Link>
+                    {Object.keys(documentStats.by_status || {}).length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-100">
+                        <span className="text-xs text-slate-500">{t('app.dashboard.widgets.documents.by_status')}</span>
+                        <ul className="mt-1 space-y-0.5 text-xs">
+                          {Object.entries(documentStats.by_status || {}).slice(0, 5).map(([status, count]) => (
+                            <li key={status} className="flex justify-between">
+                              <Link className="hover:underline" to={documentQuickFilterHref(status)}>{status}</Link>
+                              <span>{formatNumber(count)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                      <div className="text-xs text-slate-500">
+                        {t('app.dashboard.widgets.documents.blockers_title')}
+                      </div>
+                      <div className="mt-1 grid grid-cols-1 gap-1.5 text-xs">
+                        <Link
+                          to={`${CRM_APP_PATHS.documents}?quick=missing`}
+                          className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-blue-800 hover:bg-blue-100"
+                        >
+                          <span>{t('app.dashboard.widgets.documents.blockers_missing')}</span>
+                          <span className="font-semibold">{formatNumber(documentBlockerAnalytics.missingOrRequested)}</span>
+                        </Link>
+                        <Link
+                          to={`${CRM_APP_PATHS.documents}?quick=in_progress`}
+                          className="flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-amber-800 hover:bg-amber-100"
+                        >
+                          <span>{t('app.dashboard.widgets.documents.blockers_review')}</span>
+                          <span className="font-semibold">{formatNumber(documentBlockerAnalytics.awaitingReview)}</span>
+                        </Link>
+                        <Link
+                          to={`${CRM_APP_PATHS.documents}?status=rejected`}
+                          className="flex items-center justify-between rounded bg-rose-50 px-2 py-1 text-rose-800 hover:bg-rose-100"
+                        >
+                          <span>{t('app.dashboard.widgets.documents.blockers_problematic')}</span>
+                          <span className="font-semibold">{formatNumber(documentBlockerAnalytics.problematic)}</span>
+                        </Link>
+                      </div>
+                      {documentBlockerAnalytics.total > 0 ? (
+                        <div className="mt-2 text-[11px] text-slate-600">
+                          {t('app.dashboard.widgets.documents.blockers_total_hint', { values: { count: formatNumber(documentBlockerAnalytics.total) } })}
+                        </div>
+                      ) : null}
+                      {profileSummary?.business_type === 'services' && documentBlockerAnalytics.estimatedBlockedRevenue > 0 ? (
+                        <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800">
+                          {t('app.dashboard.widgets.documents.blockers_cost_hint', {
+                            values: {
+                              amount: new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US', {
+                                style: 'currency',
+                                currency: 'EUR',
+                                maximumFractionDigits: 0,
+                              }).format(documentBlockerAnalytics.estimatedBlockedRevenue),
+                            },
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
                 )}
-                <div className="mt-2 pt-2 border-t border-slate-100">
-                  <div className="text-xs text-slate-500">
-                    {t('app.dashboard.widgets.documents.blockers_title')}
-                  </div>
-                  <div className="mt-1 grid grid-cols-1 gap-1.5 text-xs">
-                    <Link
-                      to={`${CRM_APP_PATHS.documents}?quick=missing`}
-                      className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-blue-800 hover:bg-blue-100"
-                    >
-                      <span>{t('app.dashboard.widgets.documents.blockers_missing')}</span>
-                      <span className="font-semibold">{formatNumber(documentBlockerAnalytics.missingOrRequested)}</span>
-                    </Link>
-                    <Link
-                      to={`${CRM_APP_PATHS.documents}?quick=in_progress`}
-                      className="flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-amber-800 hover:bg-amber-100"
-                    >
-                      <span>{t('app.dashboard.widgets.documents.blockers_review')}</span>
-                      <span className="font-semibold">{formatNumber(documentBlockerAnalytics.awaitingReview)}</span>
-                    </Link>
-                    <Link
-                      to={`${CRM_APP_PATHS.documents}?status=rejected`}
-                      className="flex items-center justify-between rounded bg-rose-50 px-2 py-1 text-rose-800 hover:bg-rose-100"
-                    >
-                      <span>{t('app.dashboard.widgets.documents.blockers_problematic')}</span>
-                      <span className="font-semibold">{formatNumber(documentBlockerAnalytics.problematic)}</span>
-                    </Link>
-                  </div>
-                  {documentBlockerAnalytics.total > 0 ? (
-                    <div className="mt-2 text-[11px] text-slate-600">
-                      {t('app.dashboard.widgets.documents.blockers_total_hint', { values: { count: formatNumber(documentBlockerAnalytics.total) } })}
-                    </div>
-                  ) : null}
-                  {profileSummary?.business_type === 'services' && documentBlockerAnalytics.estimatedBlockedRevenue > 0 ? (
-                    <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800">
-                      {t('app.dashboard.widgets.documents.blockers_cost_hint', {
-                        values: {
-                          amount: new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US', {
-                            style: 'currency',
-                            currency: 'EUR',
-                            maximumFractionDigits: 0,
-                          }).format(documentBlockerAnalytics.estimatedBlockedRevenue),
-                        },
-                      })}
-                    </div>
-                  ) : null}
-                </div>
               </div>
             </div>
           )}

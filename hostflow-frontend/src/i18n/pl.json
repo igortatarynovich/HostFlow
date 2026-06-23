@@ -3910,7 +3910,13 @@
           "blockers_problematic": "Blokery problematyczne",
           "blockers_review": "Przegląd blokerów",
           "blockers_title": "Co blokuje kandydatów",
-          "blockers_total_hint": "Całkowita podpowiedź blokerów"
+          "blockers_total_hint": "Całkowita podpowiedź blokerów",
+          "runtime_kpis": {
+            "title": "Runtime wymaganych dokumentów",
+            "subtitle": "Agregaty z document_runtime_v1",
+            "expiring_7d": "Wygasa w ciągu 7 dni",
+            "coverage_hint": "{{items}} pozycji checklisty u {{candidates}} kandydatów"
+          }
         }
       },
       "retention": {

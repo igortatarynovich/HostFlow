@@ -177,3 +177,13 @@ def test_p4_pending_document_same_blocker_semantics_everywhere() -> None:
     assert passport_hub["satisfies_requirement"] is False
     assert passport_hub["lifecycle_status"] == "uploaded"
     assert passport_hub["status"] == "pending"
+
+
+def test_p4_delivery_contract_attaches_expiry_metadata() -> None:
+    expires = (date.today() + timedelta(days=5)).isoformat()
+    runtime = evaluate_snapshot_via_contract(
+        _snapshot(expires_on=expires, status="approved"),
+        document_type_code="passport",
+    )
+    assert runtime.get("days_left") == 5
+    assert runtime.get("expires_on") == expires

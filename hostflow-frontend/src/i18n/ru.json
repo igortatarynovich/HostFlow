@@ -4449,7 +4449,13 @@
           "blockers_problematic": "Блокаторы проблематичны",
           "blockers_review": "Обзор блокировщиков",
           "blockers_title": "Что блокирует кандидатов",
-          "blockers_total_hint": "Общая подсказка о блокировщиках"
+          "blockers_total_hint": "Общая подсказка о блокировщиках",
+          "runtime_kpis": {
+            "title": "Runtime обязательных документов",
+            "subtitle": "Агрегаты из document_runtime_v1",
+            "expiring_7d": "Истекают в течение 7 дней",
+            "coverage_hint": "{{items}} пунктов чеклиста у {{candidates}} кандидатов"
+          }
         }
       },
       "retention": {

@@ -20,6 +20,7 @@ import {
   getHandoffStats,
   getContactAttemptStats,
   getDocumentStats,
+  getDocumentRuntimeKpis,
 } from '../api/analytics'
 import { listTenantManagers } from '../api/users'
 import { listCandidateStages } from '../api/candidate_stages'
@@ -219,6 +220,9 @@ export default function Dashboard() {
   const [handoffStats, setHandoffStats] = useState<Awaited<ReturnType<typeof getHandoffStats>> | null>(null)
   const [contactStats, setContactStats] = useState<Awaited<ReturnType<typeof getContactAttemptStats>> | null>(null)
   const [documentStats, setDocumentStats] = useState<Awaited<ReturnType<typeof getDocumentStats>> | null>(null)
+  const [documentRuntimeKpis, setDocumentRuntimeKpis] = useState<
+    Awaited<ReturnType<typeof getDocumentRuntimeKpis>> | null
+  >(null)
   const [profileSummary, setProfileSummary] = useState<Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null>(null)
   const [compareWithPrevious, setCompareWithPrevious] = useState(false)
   const [prevPeriodTotal, setPrevPeriodTotal] = useState<number | null>(null)
@@ -405,7 +409,8 @@ export default function Dashboard() {
       const prevPeriod = from && to ? calcPrevPeriod(from, to) : null
       const shouldCompare = doCompare && prevPeriod
 
-      const [cand, comps, vacs, sliceResp, handoffResp, contactResp, docResp, profileResp] = await Promise.all([
+      const [cand, comps, vacs, sliceResp, handoffResp, contactResp, docResp, docRuntimeKpisResp, profileResp] =
+        await Promise.all([
         candidatesClient.get<ListResp<any>>('/candidates', { params: candParams }),
         api.get<ListResp<any>>('/companies/', { params: { limit: 50, offset: 0 } }),
         api.get<ListResp<any>>('/vacancies/', { params: { limit: 50, offset: 0 } }),
@@ -413,6 +418,7 @@ export default function Dashboard() {
         getHandoffStats(periodParams).catch(() => null),
         getContactAttemptStats(periodParams).catch(() => null),
         getDocumentStats(periodParams).catch(() => null),
+        getDocumentRuntimeKpis(periodParams).catch(() => null),
         getAnalyticsProfileSummary().catch(() => null),
       ])
 
@@ -440,6 +446,7 @@ export default function Dashboard() {
       setHandoffStats(handoffResp)
       setContactStats(contactResp)
       setDocumentStats(docResp)
+      setDocumentRuntimeKpis(docRuntimeKpisResp)
       setProfileSummary(profileResp)
       setPrevPeriodTotal(prevTotal)
       setPrevHandoffStats(prevHandoff)
@@ -1185,6 +1192,7 @@ export default function Dashboard() {
           handoffStats={handoffStats}
           contactStats={contactStats}
           documentStats={documentStats}
+          documentRuntimeKpis={documentRuntimeKpis}
           documentBlockerAnalytics={documentBlockerAnalytics}
           profileSummary={profileSummary}
           stageStackSegments={stageStackSegments}

@@ -3,6 +3,7 @@ import {
   documentMatchesRuntimeFilter,
   isRuntimeDocumentFilter,
   resolveRuntimeDocumentFilter,
+  runtimeMatchesDashboardKpi,
   runtimeMatchesFilter,
 } from '../runtimeDocumentFilters'
 
@@ -45,6 +46,21 @@ describe('runtimeDocumentFilters', () => {
         'rejected',
       ),
     ).toBe(true)
+  })
+
+  it('matches expiring_7d using days_left metadata', () => {
+    expect(
+      runtimeMatchesDashboardKpi({ expiry_status: 'expiring_soon', days_left: 7 }, 'expiring_7d'),
+    ).toBe(true)
+    expect(
+      runtimeMatchesDashboardKpi({ expiry_status: 'expiring_soon', days_left: 10 }, 'expiring_7d'),
+    ).toBe(false)
+    expect(runtimeMatchesDashboardKpi({ expiry_status: 'expiring_soon' }, 'expiring_7d')).toBe(false)
+  })
+
+  it('matches dashboard missing_required and ready_documents', () => {
+    expect(runtimeMatchesDashboardKpi({ workflow_status: 'missing' }, 'missing_required')).toBe(true)
+    expect(runtimeMatchesDashboardKpi({ satisfies_requirement: true }, 'ready_documents')).toBe(true)
   })
 
   it('validates and resolves filter vocabulary', () => {

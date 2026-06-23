@@ -26,6 +26,25 @@ export type DocumentStatsResponse = {
   period: { from: string | null; to: string | null }
 }
 
+export type DocumentRuntimeKpisResponse = {
+  evaluation_version: string
+  source: 'runtime' | 'no_runtime' | string
+  kpis: Record<
+    | 'expired'
+    | 'expiring_soon'
+    | 'expiring_7d'
+    | 'pending_review'
+    | 'rejected'
+    | 'missing_required'
+    | 'ready_documents',
+    number
+  >
+  candidates_scanned: number
+  runtime_candidates: number
+  runtime_items_scanned: number
+  period: { from: string | null; to: string | null }
+}
+
 export type AnalyticsProfileSummary = {
   business_type: 'agency' | 'employer' | 'services'
   generated_at: string
@@ -381,6 +400,19 @@ export async function getDocumentStats(params?: {
   if (params?.from) q.from = params.from
   if (params?.to) q.to = params.to
   const { data } = await api.get<DocumentStatsResponse>('/analytics/document-stats', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function getDocumentRuntimeKpis(params?: {
+  from?: string
+  to?: string
+}): Promise<DocumentRuntimeKpisResponse> {
+  const q: Record<string, string> = {}
+  if (params?.from) q.from = params.from
+  if (params?.to) q.to = params.to
+  const { data } = await api.get<DocumentRuntimeKpisResponse>('/analytics/document-runtime-kpis', {
     params: Object.keys(q).length ? q : undefined,
   })
   return data

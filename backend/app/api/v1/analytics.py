@@ -2047,6 +2047,75 @@ async def document_stats(
     }
 
 
+# ------- /analytics/document-runtime-kpis (Track B) -------
+@router.get("/analytics/document-runtime-kpis")
+async def document_runtime_kpis(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+):
+    """Aggregate document_runtime_v1 checklist KPIs for dashboard tiles."""
+    from backend.app.document_runtime.dashboard_projection import (
+        aggregate_runtime_items_to_kpis,
+        build_dashboard_kpi_payload,
+        extract_runtime_items_from_hub_section,
+    )
+    from backend.app.document_runtime.kpi_predicates import empty_dashboard_kpi_counts
+    from backend.app.services.document_hub_delivery_contract import (
+        evaluate_document_hub_requirements_via_contract,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+    dfrom = _parse_dt(date_from)
+    dto = _parse_dt(date_to, end_of_day=True)
+
+    cand_stmt = select(Candidate).where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    if dfrom:
+        cand_stmt = cand_stmt.where(Candidate.created_at >= dfrom)
+    if dto:
+        cand_stmt = cand_stmt.where(Candidate.created_at <= dto)
+
+    candidates = (await db.execute(cand_stmt)).scalars().all()
+    kpis = empty_dashboard_kpi_counts()
+    runtime_candidates = 0
+    runtime_items_scanned = 0
+    all_items: list[dict[str, Any]] = []
+
+    for candidate in candidates:
+        hub = await evaluate_document_hub_requirements_via_contract(
+            db,
+            tenant_id=tenant_id_str,
+            candidate=candidate,
+        )
+        if not hub or not hub.get("applied"):
+            continue
+        runtime_candidates += 1
+        items = extract_runtime_items_from_hub_section(hub)
+        all_items.extend(items)
+        runtime_items_scanned += len(items)
+
+    if all_items:
+        kpis = aggregate_runtime_items_to_kpis(all_items)
+
+    source = "runtime" if runtime_items_scanned > 0 else "no_runtime"
+    period = {
+        "from": dfrom.isoformat() if dfrom else None,
+        "to": dto.isoformat() if dto else None,
+    }
+    return build_dashboard_kpi_payload(
+        kpis=kpis,
+        candidates_scanned=len(candidates),
+        runtime_candidates=runtime_candidates,
+        runtime_items_scanned=runtime_items_scanned,
+        source=source,
+        period=period,
+    )
+
+
 # ------- /analytics/export (оставим простой CSV-дашьборд) -------
 @router.get("/analytics/export")
 async def analytics_export(

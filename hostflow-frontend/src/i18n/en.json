@@ -4672,7 +4672,13 @@
           "blockers_problematic": "Blockers problematic",
           "blockers_review": "Blockers review",
           "blockers_title": "What blocks candidates",
-          "blockers_total_hint": "Blockers total hint"
+          "blockers_total_hint": "Blockers total hint",
+          "runtime_kpis": {
+            "title": "Required document runtime",
+            "subtitle": "Aggregates from document_runtime_v1",
+            "expiring_7d": "Expiring within 7 days",
+            "coverage_hint": "{{items}} checklist items across {{candidates}} candidates"
+          }
         }
       },
       "retention": {
