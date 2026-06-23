@@ -130,6 +130,9 @@ async def test_transition_evaluator_adapter_delegates_to_transfer_policy(monkeyp
         TransitionEvaluatorAdapter,
         "_resolve_recruitment_target_system_stage",
         new=AsyncMock(return_value="ready_for_handoff"),
+    ), patch(
+        "backend.app.requirement_rules.transition_bridge.evaluate_ready_for_handoff_requirement_gate",
+        new=AsyncMock(return_value=None),
     ):
         report = await TransitionEvaluatorAdapter.evaluate_transition(
             db=None,  # type: ignore[arg-type]

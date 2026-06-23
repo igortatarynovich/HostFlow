@@ -251,13 +251,14 @@ def build_requirement_engine_section(evaluation: dict[str, Any]) -> dict[str, An
     }
 
 
-async def evaluate_candidate_readiness_requirements(
+async def evaluate_candidate_requirements(
     db: AsyncSession,
     *,
     tenant_id: str,
     candidate: Candidate,
+    context: str,
 ) -> Optional[dict[str, Any]]:
-    """Evaluate readiness requirements via Requirement Engine; None → legacy fallback."""
+    """Evaluate requirements via Requirement Engine; None → legacy fallback."""
     entity_profile_code = await resolve_entity_profile_code_for_candidate(
         db,
         tenant_id=str(tenant_id).strip(),
@@ -279,7 +280,7 @@ async def evaluate_candidate_readiness_requirements(
             db,
             tenant_id=str(tenant_id).strip(),
             entity_profile_code=entity_profile_code,
-            context=READINESS_CONTEXT,
+            context=str(context or READINESS_CONTEXT).strip().lower(),
             normalized_payload=normalized_payload,
             documents=documents,
             entity_type="candidate",
@@ -287,3 +288,18 @@ async def evaluate_candidate_readiness_requirements(
         )
     except RequirementRulesNotFoundError:
         return None
+
+
+async def evaluate_candidate_readiness_requirements(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate: Candidate,
+) -> Optional[dict[str, Any]]:
+    """Evaluate readiness requirements via Requirement Engine; None → legacy fallback."""
+    return await evaluate_candidate_requirements(
+        db,
+        tenant_id=tenant_id,
+        candidate=candidate,
+        context=READINESS_CONTEXT,
+    )

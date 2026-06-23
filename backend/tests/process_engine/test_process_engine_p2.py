@@ -45,13 +45,17 @@ async def test_p2_assert_transition_allowed_preserves_require_destination_semant
 ) -> None:
     captured: dict[str, bool] = {}
 
-    async def _assert(db, *, tenant_id, candidate_id, target_stage=None, require_destination=False):
+    async def _resolve(db, *, tenant_id, candidate_id, target_stage=None, require_destination=False):
         captured["require_destination"] = require_destination
-        return {}
+        return {"transfer_allowed": True, "handoff_create_allowed": True, "blocking_reasons": [], "source_layers": []}
 
     monkeypatch.setattr(
-        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.assert_transfer_allowed",
-        _assert,
+        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.resolve",
+        _resolve,
+    )
+    monkeypatch.setattr(
+        "backend.app.requirement_rules.transition_bridge.evaluate_ready_for_handoff_requirement_gate",
+        AsyncMock(return_value=None),
     )
     monkeypatch.setattr(
         TransitionEvaluatorAdapter,

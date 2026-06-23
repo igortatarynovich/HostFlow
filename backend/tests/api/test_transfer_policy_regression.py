@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from backend.tests.test_support.candidate_handoff_gate import seed_documents_for_ready_for_handoff
 
 _RESOLVE = "backend.app.services.transfer_policy_resolver.TransferPolicyResolver.resolve"
-_ASSERT = "backend.app.services.transfer_policy_resolver.TransferPolicyResolver.assert_transfer_allowed"
+_ASSERT = "backend.app.process_engine.evaluator_adapter.TransitionEvaluatorAdapter.assert_transition_allowed"
 
 
 @pytest.mark.anyio

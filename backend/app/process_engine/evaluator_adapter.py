@@ -25,6 +25,58 @@ class TransitionEvaluatorAdapter:
     """Process Engine runtime facade — API/service layer must call this, not TransferPolicyResolver."""
 
     @classmethod
+    async def _apply_ready_for_handoff_requirement_gate(
+        cls,
+        db: AsyncSession,
+        *,
+        tenant_id: str,
+        candidate_id: str,
+        target_stage: str | None,
+        report: dict[str, Any],
+    ) -> dict[str, Any]:
+        from backend.app.requirement_rules.transition_bridge import (
+            evaluate_ready_for_handoff_requirement_gate,
+            is_ready_for_handoff_gate,
+            merge_transition_requirement_gate,
+        )
+
+        if not is_ready_for_handoff_gate(target_stage):
+            return report
+        gate = await evaluate_ready_for_handoff_requirement_gate(
+            db,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+        )
+        if gate is None:
+            return report
+        return merge_transition_requirement_gate(report, gate)
+
+    @classmethod
+    async def _resolve_recruitment_transfer_report(
+        cls,
+        db: AsyncSession,
+        *,
+        tenant_id: str,
+        candidate_id: str,
+        target_stage: str | None,
+        require_destination: bool,
+    ) -> dict[str, Any]:
+        report = await TransferPolicyResolver.resolve(
+            db,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            target_stage=target_stage,
+            require_destination=require_destination,
+        )
+        return await cls._apply_ready_for_handoff_requirement_gate(
+            db,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            target_stage=target_stage,
+            report=report,
+        )
+
+    @classmethod
     async def _resolve_recruitment_target_system_stage(
         cls,
         db: AsyncSession,
@@ -74,7 +126,7 @@ class TransitionEvaluatorAdapter:
                     legacy_stage_code=target_system_stage,
                 )
             # Compatibility: recruitment transfer policy still lives in TransferPolicyResolver (P2).
-            report = await TransferPolicyResolver.resolve(
+            report = await cls._resolve_recruitment_transfer_report(
                 db,
                 tenant_id=tenant_id,
                 candidate_id=entity_id,
@@ -121,13 +173,38 @@ class TransitionEvaluatorAdapter:
                     legacy_stage_code=target_system_stage,
                 )
             # Compatibility: recruitment transfer policy still lives in TransferPolicyResolver (P2).
-            return await TransferPolicyResolver.assert_transfer_allowed(
+            report = await cls._resolve_recruitment_transfer_report(
                 db,
                 tenant_id=tenant_id,
                 candidate_id=entity_id,
                 target_stage=target_stage,
                 require_destination=require_destination,
             )
+            allowed = report.get("handoff_create_allowed") if require_destination else report.get("transfer_allowed")
+            if allowed:
+                return {}
+            return {
+                "code": "transfer_blocked",
+                "message": "Transfer is blocked by transfer policy",
+                "policy_version": report.get("policy_version"),
+                "blocking_reasons": report.get("blocking_reasons") or [],
+                "missing_types": sorted(
+                    set(
+                        [
+                            *(report.get("missing_documents") or []),
+                            *(report.get("pending_verification_documents") or []),
+                        ]
+                    )
+                ),
+                "missing_data_fields": report.get("missing_data_fields") or [],
+                "blocking_blocks": report.get("blocking_blocks") or [],
+                "required_confirmations": report.get("required_confirmations") or [],
+                "package_blocks": report.get("package_blocks") or [],
+                "eligibility_status": report.get("eligibility_status"),
+                "destinations_allowed": report.get("destinations_allowed") or [],
+                "approved_overrides": report.get("approved_overrides") or [],
+                "source_layers": report.get("source_layers") or [],
+            }
         report = await cls.evaluate_transition(
             db,
             tenant_id=tenant_id,

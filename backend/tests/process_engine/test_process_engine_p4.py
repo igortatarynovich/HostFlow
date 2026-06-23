@@ -71,13 +71,17 @@ async def test_p4_evaluator_resolves_legacy_stage_before_transfer_policy(
 ) -> None:
     captured: dict[str, str | None] = {}
 
-    async def _assert(db, *, tenant_id, candidate_id, target_stage=None, require_destination=False):
+    async def _resolve(db, *, tenant_id, candidate_id, target_stage=None, require_destination=False):
         captured["target_stage"] = target_stage
-        return {}
+        return {"transfer_allowed": True, "handoff_create_allowed": True, "blocking_reasons": [], "source_layers": []}
 
     monkeypatch.setattr(
-        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.assert_transfer_allowed",
-        _assert,
+        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.resolve",
+        _resolve,
+    )
+    monkeypatch.setattr(
+        "backend.app.requirement_rules.transition_bridge.evaluate_ready_for_handoff_requirement_gate",
+        AsyncMock(return_value=None),
     )
     monkeypatch.setattr(
         TransitionEvaluatorAdapter,
