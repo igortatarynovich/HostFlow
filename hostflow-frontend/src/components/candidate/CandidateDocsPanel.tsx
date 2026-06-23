@@ -7,6 +7,7 @@ import { sanitizeDocsProgress } from '../../modules/candidates/candidateUtils'
 import CandidateDocsChecklistMiniPanel from './CandidateDocsChecklistMiniPanel'
 import CandidateDocsWorkspacePanel from './CandidateDocsWorkspacePanel'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import { useCandidateRuntimeWorkspace } from '../../hooks/useCandidateRuntimeWorkspace'
 
 export default function CandidateDocsPanel({
   candidate,
@@ -36,11 +37,37 @@ export default function CandidateDocsPanel({
   const { t } = useI18n()
   const [mode, setMode] = useState<'blockers' | 'workspace'>('blockers')
 
+  const candidateId = String((candidate as { id?: string })?.id || '')
+  const { workspace } = useCandidateRuntimeWorkspace({
+    candidateId,
+    ownerContext: ownerContext || null,
+    enabled: Boolean(candidateId) && !isMasked,
+  })
+
   const docsMeta = useMemo(() => deriveDocsMeta(candidate as any), [candidate])
-  const badge = DOC_READINESS_META[docsMeta.readinessKey] ?? DOC_READINESS_META.pending
-  const readinessLabel = t(docsMeta.readinessLabelKey, { defaultValue: docsMeta.readinessKey })
+  const runtimeReadiness = workspace
+    ? DOC_READINESS_META[workspace.readinessKey] ?? DOC_READINESS_META.pending
+    : null
+  const badge = runtimeReadiness ?? DOC_READINESS_META[docsMeta.readinessKey] ?? DOC_READINESS_META.pending
+  const readinessLabel = t(
+    runtimeReadiness?.labelKey ?? docsMeta.readinessLabelKey,
+    { defaultValue: workspace?.readinessKey ?? docsMeta.readinessKey },
+  )
 
   const counts = useMemo(() => {
+    if (workspace) {
+      const problem = workspace.items.filter((item) =>
+        ['missing', 'rejected', 'expired'].includes(item.badge.badge),
+      ).length
+      const inProgress = workspace.items.filter((item) => item.badge.badge === 'pending').length
+      return {
+        total: workspace.totalRequired,
+        ready: workspace.satisfiedCount,
+        problem,
+        inProgress,
+        withFiles: 0,
+      }
+    }
     const p = sanitizeDocsProgress((candidate as any)?.docs_progress)
     const total = Number(p.total ?? p.count ?? 0) || 0
     const ready = Number(p.ready ?? p.verified ?? p.approved ?? 0) || 0
@@ -48,13 +75,14 @@ export default function CandidateDocsPanel({
     const inProgress = Number(p.in_progress ?? p.submitted ?? p.pending_validation ?? 0) || 0
     const withFiles = Number(p.with_files ?? p.uploaded ?? p.files ?? p.files_count ?? 0) || 0
     return { total, ready, problem, inProgress, withFiles }
-  }, [candidate])
+  }, [candidate, workspace])
 
   const pct = useMemo(() => {
+    if (workspace) return workspace.percentReady
     const total = counts.total || 0
     if (!total) return 0
     return Math.max(0, Math.min(100, Math.round((counts.ready / total) * 100)))
-  }, [counts.ready, counts.total])
+  }, [counts.ready, counts.total, workspace])
 
   if (isMasked) return null
 
@@ -76,10 +104,20 @@ export default function CandidateDocsPanel({
             </span>
             {counts.total ? (
               <span className="text-[11px] text-slate-500">
-                {t('app.candidate_card.docs_panel.kpi', {
-                  defaultValue: '{ready}/{total} ready · {problem} issues · {files} files',
-                  values: { ready: counts.ready, total: counts.total, problem: counts.problem, files: counts.withFiles },
-                })}
+                {workspace
+                  ? t('app.candidate_card.docs_panel.runtime_kpi', {
+                      defaultValue: '{ready}/{total} satisfied · {problem} blockers · {percent}%',
+                      values: {
+                        ready: counts.ready,
+                        total: counts.total,
+                        problem: counts.problem,
+                        percent: pct,
+                      },
+                    })
+                  : t('app.candidate_card.docs_panel.kpi', {
+                      defaultValue: '{ready}/{total} ready · {problem} issues · {files} files',
+                      values: { ready: counts.ready, total: counts.total, problem: counts.problem, files: counts.withFiles },
+                    })}
               </span>
             ) : (
               <span className="text-[11px] text-slate-500">{t('common.labels.not_available')}</span>

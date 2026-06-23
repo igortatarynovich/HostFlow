@@ -5,27 +5,10 @@ import { getSummary } from '../../api/documents'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
-import { extractRuntimeItemsFromSummary, runtimeBadgeFromRuntime } from '../../utils/runtimeBadgePresentation'
+import { buildRuntimeWorkspaceFromSummary } from '../../utils/runtimeWorkspacePresentation'
+import { RUNTIME_FILTER_LABEL_KEYS } from '../../utils/runtimeDocumentFilters'
 
-type SummaryRequired = {
-  total: number
-  approved?: number
-  ready: number
-  in_progress: number
-  missing_count: number
-  problems: number
-  missing: string[]
-  problematic: string[]
-  ready_types?: string[]
-  in_progress_types?: string[]
-}
-
-type Summary = {
-  status: string
-  percent_ready: number
-  required: SummaryRequired
-  expiring_soon: Array<{ type: string; expires_at: string }>
-}
+type Summary = Record<string, unknown>
 
 export default function CandidateDocsChecklistMiniPanel({
   candidateId,
@@ -38,7 +21,7 @@ export default function CandidateDocsChecklistMiniPanel({
   onOpenDocs?: () => void
   alwaysOpen?: boolean
 }) {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const [open, setOpen] = useState(alwaysOpen)
   const [loaded, setLoaded] = useState(false)
@@ -52,10 +35,10 @@ export default function CandidateDocsChecklistMiniPanel({
     setDocumentsError(null)
     try {
       const res = await getSummary(candidateId, { context: ownerContext || null, fillMissing: true })
-      const s = (res as any)?.summary as Summary | undefined
+      const s = (res as { summary?: Summary })?.summary
       setSummary(s ?? null)
       setLoaded(true)
-    } catch (err: any) {
+    } catch (err: unknown) {
       const fb = t('common.errors.request_failed', { defaultValue: 'Request failed' })
       if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
         setDocumentsError(getFriendlyErrorInfo(err, fb, t))
@@ -85,29 +68,22 @@ export default function CandidateDocsChecklistMiniPanel({
     [t],
   )
 
-  const missing = useMemo(() => summary?.required?.missing ?? [], [summary])
-  const problematic = useMemo(() => summary?.required?.problematic ?? [], [summary])
-  const expiring = useMemo(() => summary?.expiring_soon ?? [], [summary])
+  const workspace = useMemo(() => buildRuntimeWorkspaceFromSummary(summary), [summary])
 
-  const runtimeChecklistRows = useMemo(() => {
-    const items = extractRuntimeItemsFromSummary(summary as Record<string, unknown> | null)
-    return items
-      .map((item) => {
-        const type = String(item.document_type_code || '').trim()
-        if (!type) return null
-        const badge = runtimeBadgeFromRuntime(item.document_runtime)
-        return { type, badge }
-      })
-      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+  const legacyMissing = useMemo(() => {
+    const required = summary?.required as { missing?: string[] } | undefined
+    return required?.missing ?? []
+  }, [summary])
+  const legacyProblematic = useMemo(() => {
+    const required = summary?.required as { problematic?: string[] } | undefined
+    return required?.problematic ?? []
+  }, [summary])
+  const legacyExpiring = useMemo(() => {
+    const rows = summary?.expiring_soon
+    return Array.isArray(rows) ? rows : []
   }, [summary])
 
-  const hasRuntimeChecklist = runtimeChecklistRows.length > 0
-
-  const percent = useMemo(() => {
-    const p = Number(summary?.percent_ready ?? 0)
-    if (!Number.isFinite(p)) return 0
-    return Math.max(0, Math.min(100, Math.round(p)))
-  }, [summary])
+  const percent = workspace?.percentReady ?? Math.max(0, Math.min(100, Math.round(Number(summary?.percent_ready ?? 0) || 0)))
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -123,7 +99,18 @@ export default function CandidateDocsChecklistMiniPanel({
                 style={{ width: `${percent}%` }}
               />
             </div>
-            <div className="text-[11px] text-slate-500">{percent}%</div>
+            <div className="text-[11px] text-slate-500">
+              {workspace
+                ? t('app.candidate_card.documents.runtime_kpi', {
+                    defaultValue: '{ready}/{total} · {percent}%',
+                    values: {
+                      ready: workspace.satisfiedCount,
+                      total: workspace.totalRequired,
+                      percent: workspace.percentReady,
+                    },
+                  })
+                : `${percent}%`}
+            </div>
           </div>
         </div>
 
@@ -159,46 +146,85 @@ export default function CandidateDocsChecklistMiniPanel({
 
           {!loading && !documentsError && (
             <>
-              {hasRuntimeChecklist ? (
-                <ul className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                  {runtimeChecklistRows.map((row) => (
-                    <li key={row.type} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-medium text-slate-800">{labelForType(row.type)}</span>
-                      <span className={clsx('rounded-full px-1.5 py-0.5 text-[11px] font-semibold', row.badge.className)}>
-                        {t(row.badge.labelKey, { defaultValue: row.badge.badge })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              {workspace ? (
+                <>
+                  <ul className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                    {workspace.items.map((item) => (
+                      <li key={item.documentTypeCode} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium text-slate-800">{labelForType(item.documentTypeCode)}</span>
+                        <span className={clsx('rounded-full px-1.5 py-0.5 text-[11px] font-semibold', item.badge.className)}>
+                          {t(item.badge.labelKey, { defaultValue: item.badge.badge })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {workspace.blockingItems.length ? (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-700">
+                        {t('app.candidate_card.docs_checklist.blockers', { defaultValue: 'Blockers' })}
+                      </div>
+                      <ul className="mt-1 space-y-1">
+                        {workspace.blockingItems.slice(0, 6).map((item) => (
+                          <li key={item.documentTypeCode} className="text-xs text-rose-800">
+                            <span className="font-medium">{labelForType(item.documentTypeCode)}</span>
+                            {item.blockers[0]?.message ? (
+                              <span className="ml-1 text-rose-700/90">— {item.blockers[0].message}</span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {workspace.warningOnlyItems.length ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                        {t('app.candidate_card.docs_checklist.warnings', { defaultValue: 'Warnings' })}
+                      </div>
+                      <ul className="mt-1 space-y-1">
+                        {workspace.warningOnlyItems.slice(0, 6).map((item) => (
+                          <li key={item.documentTypeCode} className="text-xs text-amber-900">
+                            <span className="font-medium">{labelForType(item.documentTypeCode)}</span>
+                            <span className="ml-1 text-amber-800/90">
+                              — {t(RUNTIME_FILTER_LABEL_KEYS.expiring_soon, { defaultValue: 'Expiring soon' })}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {!workspace.blockingItems.length && !workspace.warningOnlyItems.length ? (
+                    <div className="text-xs text-slate-500">
+                      {t('app.candidate_card.docs_checklist.ok', { defaultValue: 'No blockers detected.' })}
+                    </div>
+                  ) : null}
+                </>
               ) : null}
 
-              {!hasRuntimeChecklist && missing.length ? (
+              {!workspace && legacyMissing.length ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-700">
                     {t('app.candidate_card.docs_checklist.missing', { defaultValue: 'Missing' })}
                   </div>
                   <ul className="mt-1 space-y-1">
-                    {missing.slice(0, 6).map((code) => (
+                    {legacyMissing.slice(0, 6).map((code) => (
                       <li key={code} className="text-xs text-rose-800">
                         {labelForType(code)}
                       </li>
                     ))}
-                    {missing.length > 6 ? (
-                      <li className="text-[11px] text-rose-700">
-                        {t('common.and_more', { defaultValue: 'and more…' })}
-                      </li>
-                    ) : null}
                   </ul>
                 </div>
               ) : null}
 
-              {!hasRuntimeChecklist && problematic.length ? (
+              {!workspace && legacyProblematic.length ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
                     {t('app.candidate_card.docs_checklist.problematic', { defaultValue: 'Needs attention' })}
                   </div>
                   <ul className="mt-1 space-y-1">
-                    {problematic.slice(0, 6).map((code) => (
+                    {legacyProblematic.slice(0, 6).map((code) => (
                       <li key={code} className="text-xs text-amber-900">
                         {labelForType(code)}
                       </li>
@@ -207,29 +233,22 @@ export default function CandidateDocsChecklistMiniPanel({
                 </div>
               ) : null}
 
-              {!hasRuntimeChecklist && expiring.length ? (
+              {!workspace && legacyExpiring.length ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                     {t('app.candidate_card.docs_checklist.expiring', { defaultValue: 'Expiring soon' })}
                   </div>
                   <ul className="mt-1 space-y-1">
-                    {expiring.slice(0, 5).map((x) => (
-                      <li key={`${x.type}-${x.expires_at}`} className="text-xs text-slate-700">
-                        <span className="font-medium">{labelForType(String(x.type || ''))}</span>
-                        <span className="ml-2 text-slate-500" title={x.expires_at}>
-                          {new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : undefined, {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                          }).format(new Date(x.expires_at))}
-                        </span>
+                    {legacyExpiring.slice(0, 5).map((x) => (
+                      <li key={`${String(x.type)}-${String(x.expires_at)}`} className="text-xs text-slate-700">
+                        {labelForType(String(x.type || ''))}
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : null}
 
-              {hasRuntimeChecklist ? null : !missing.length && !problematic.length && !expiring.length ? (
+              {!workspace && !legacyMissing.length && !legacyProblematic.length && !legacyExpiring.length ? (
                 <div className="text-xs text-slate-500">
                   {t('app.candidate_card.docs_checklist.ok', { defaultValue: 'No blockers detected.' })}
                 </div>

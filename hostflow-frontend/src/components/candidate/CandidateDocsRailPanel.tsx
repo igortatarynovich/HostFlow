@@ -20,6 +20,9 @@ import {
   type DocumentRuntimeV1,
 } from '../../utils/runtimeBadgePresentation'
 import {
+  buildRuntimeWorkspaceFromSummary,
+} from '../../utils/runtimeWorkspacePresentation'
+import {
   RUNTIME_DOCUMENT_FILTERS,
   RUNTIME_FILTER_LABEL_KEYS,
   runtimeMatchesFilter,
@@ -208,11 +211,35 @@ export default function CandidateDocsRailPanel({
     onLoadingChange?.(loading)
   }, [loading, onLoadingChange])
 
-  const missing = useMemo(() => summary?.required?.missing ?? [], [summary])
-  const problematic = useMemo(() => summary?.required?.problematic ?? [], [summary])
-  const readyTypes = useMemo(() => summary?.required?.ready_types ?? [], [summary])
-  const inProgressTypes = useMemo(() => summary?.required?.in_progress_types ?? [], [summary])
   const expiringSoon = useMemo(() => summary?.expiring_soon ?? [], [summary])
+
+  const workspace = useMemo(
+    () => buildRuntimeWorkspaceFromSummary(summary as Record<string, unknown> | null),
+    [summary],
+  )
+
+  const missing = useMemo(
+    () => workspace?.pipelineBlockers.missing ?? summary?.required?.missing ?? [],
+    [workspace, summary],
+  )
+  const problematic = useMemo(
+    () => workspace?.pipelineBlockers.problematic ?? summary?.required?.problematic ?? [],
+    [workspace, summary],
+  )
+  const inProgressTypes = useMemo(
+    () => workspace?.pipelineBlockers.inProgress ?? summary?.required?.in_progress_types ?? [],
+    [workspace, summary],
+  )
+  const readyTypes = useMemo(() => {
+    if (workspace) {
+      return workspace.items
+        .filter((item) => item.runtime.satisfies_requirement === true)
+        .map((item) => item.documentTypeCode)
+    }
+    return summary?.required?.ready_types ?? []
+  }, [workspace, summary])
+
+  const percentReady = workspace?.percentReady ?? summary?.percent_ready ?? 0
 
   const showMissingList = missing.length > 0 || problematic.length > 0
   const showInProgressOnly = !showMissingList && inProgressTypes.length > 0
@@ -483,8 +510,23 @@ export default function CandidateDocsRailPanel({
                     : t('app.candidate_card.documents.blockers_subtitle_soft', {
                         defaultValue: 'Checklist visible — not blocking this stage',
                       })
-                : t('app.candidate_card.documents.ok_subtitle', { defaultValue: 'Ready to move forward' })}
+                : t('app.candidate_card.documents.ok_subtitle', {
+                    defaultValue: 'Ready to move forward',
+                    values: { percent: percentReady },
+                  })}
           </div>
+          {workspace ? (
+            <div className="mt-1 text-[11px] font-medium text-slate-700">
+              {t('app.candidate_card.documents.runtime_kpi', {
+                defaultValue: '{ready}/{total} satisfied · {percent}%',
+                values: {
+                  ready: workspace.satisfiedCount,
+                  total: workspace.totalRequired,
+                  percent: workspace.percentReady,
+                },
+              })}
+            </div>
+          ) : null}
         </div>
 
         {onUpload ? (
@@ -773,7 +815,12 @@ export default function CandidateDocsRailPanel({
                       })}
                 </div>
                 <ul className="mt-1 space-y-1">
-                  {[...missing, ...problematic].slice(0, 8).map((code) => (
+                  {(workspace?.blockingItems.length
+                    ? workspace.blockingItems.map((item) => item.documentTypeCode)
+                    : [...missing, ...problematic]
+                  )
+                    .slice(0, 8)
+                    .map((code) => (
                     <li
                       key={code}
                       className={clsx('text-xs', pipelineBlockingEffective ? 'text-rose-800' : 'text-slate-800')}
@@ -783,6 +830,21 @@ export default function CandidateDocsRailPanel({
                   ))}
                 </ul>
               </div>
+
+              {workspace?.warningOnlyItems.length ? (
+                <div>
+                  <div className="text-xs font-semibold text-amber-800">
+                    {t('app.candidate_card.docs_checklist.expiring', { defaultValue: 'Expiring soon' })}
+                  </div>
+                  <ul className="mt-1 space-y-1">
+                    {workspace.warningOnlyItems.slice(0, 6).map((item) => (
+                      <li key={item.documentTypeCode} className="text-xs text-amber-900">
+                        {labelForType(item.documentTypeCode)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <div
                 className={clsx(

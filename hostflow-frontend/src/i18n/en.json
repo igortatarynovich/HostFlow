@@ -5486,16 +5486,19 @@
         "updated": "Updated"
       },
       "docs_checklist": {
+        "blockers": "Blockers",
         "expiring": "Expiring",
         "missing": "Missing",
         "ok": "Ok",
         "open": "Open",
         "problematic": "Problematic",
-        "title": "Docs checklist"
+        "title": "Docs checklist",
+        "warnings": "Warnings"
       },
       "docs_panel": {
         "kpi": "KPI",
         "open_full": "Open full",
+        "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%",
         "tabs": {
           "blockers": "Blockers",
           "workspace": "Workspace"
@@ -5509,6 +5512,7 @@
         "open": "Open",
         "problem": "Problem",
         "ready": "Ready",
+        "required": "Required",
         "title": "Document readiness"
       },
       "docs_workspace": {
@@ -5522,6 +5526,7 @@
         "next_step": "Next step: -> Request documents",
         "no_blocks": "No blocks",
         "ok_subtitle": "Ready to move forward",
+        "runtime_kpi": "{ready}/{total} satisfied · {percent}%",
         "status": {
           "expiring": "Expiring",
           "in_progress": "In progress",
