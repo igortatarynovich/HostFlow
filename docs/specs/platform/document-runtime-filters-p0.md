@@ -6,12 +6,13 @@
 
 **Opened:** 2026-06-24 — after **Document UI Status Badges v1 closed** ([`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) §20).
 
-**Next implementation step:** Superseded — Track D P1 complete. **Next:** Track B — Dashboard KPIs.
+**Next implementation step:** Track B P1 complete. **Next:** Track C — Notification Delivery.
 
 **Related canon:**
 
 | Document | Relationship |
 |----------|--------------|
+| [`document-runtime-dashboard-kpis-p0.md`](document-runtime-dashboard-kpis-p0.md) | Track B — tenant-level KPI aggregates (extends filter vocabulary) |
 | [`document-ui-status-badges-p0.md`](document-ui-status-badges-p0.md) | Badges = display projection; filters = selection predicate — same runtime source |
 | [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | **Single upstream source** — `document_runtime_v1` |
 | [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) | Notification events — separate from list filters |
