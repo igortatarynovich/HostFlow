@@ -40,6 +40,8 @@ class RequirementRuleSetOut(BaseModel):
     entity_profile_code: str
     entity_type: Optional[str] = None
     context: str
+    stage_code: Optional[str] = None
+    transition_code: Optional[str] = None
     document_pack_code: Optional[str] = None
     process_profile_code: Optional[str] = None
     rule_sources_applied: List[dict[str, str]] = Field(default_factory=list)
@@ -51,6 +53,8 @@ class RequirementRuleSetOut(BaseModel):
 class RequirementEvaluateIn(BaseModel):
     entity_profile_code: str = Field(..., min_length=1, max_length=191)
     context: Literal["intake", "card_save", "transition", "handoff", "readiness"] = "readiness"
+    stage_code: Optional[str] = Field(default=None, max_length=128)
+    transition_code: Optional[str] = Field(default=None, max_length=128)
     entity_type: Optional[str] = None
     entity_id: Optional[str] = None
     normalized_payload: dict[str, Any] = Field(default_factory=dict)
@@ -90,6 +94,9 @@ class RequirementEvaluationOut(BaseModel):
     entity_type: Optional[str] = None
     entity_id: Optional[str] = None
     context: str
+    stage_code: Optional[str] = None
+    transition_code: Optional[str] = None
+    process_profile_code: Optional[str] = None
     required_fields: List[RequirementFieldGapOut]
     required_documents: List[RequirementDocumentGapOut]
     blockers: List[RequirementBlockerOut]
@@ -115,6 +122,8 @@ def _validate_context(context: str) -> str:
 async def get_requirement_rules(
     entity_profile_code: str,
     context: str = Query(default="readiness"),
+    stage_code: Optional[str] = Query(default=None),
+    transition_code: Optional[str] = Query(default=None),
     ctx_user=Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
 ) -> RequirementRuleSetOut:
@@ -126,6 +135,8 @@ async def get_requirement_rules(
             tenant_id=str(tenant_id),
             entity_profile_code=entity_profile_code,
             context=eval_context,
+            stage_code=stage_code,
+            transition_code=transition_code,
         )
     except RequirementRulesNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -153,6 +164,8 @@ async def post_requirement_rules_evaluate(
             documents=body.documents,
             entity_type=body.entity_type,
             entity_id=body.entity_id,
+            stage_code=body.stage_code,
+            transition_code=body.transition_code,
         )
     except RequirementRulesNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

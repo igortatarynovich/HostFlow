@@ -15,6 +15,7 @@ from backend.app.requirement_rules.readiness_bridge import (
 )
 
 READY_FOR_HANDOFF_STAGE = "ready_for_handoff"
+READY_FOR_HANDOFF_GATE_CODE = "ready_for_handoff_gate"
 TRANSITION_CONTEXT = "transition"
 
 
@@ -33,6 +34,9 @@ def map_requirement_evaluation_to_transition_gate(
         "entity_profile_code": evaluation.get("entity_profile_code"),
         "evaluation_version": evaluation.get("evaluation_version"),
         "context": evaluation.get("context") or TRANSITION_CONTEXT,
+        "stage_code": evaluation.get("stage_code"),
+        "transition_code": evaluation.get("transition_code"),
+        "process_profile_code": evaluation.get("process_profile_code"),
         "blocking_reasons": list(fragments.get("blocking_reasons") or []),
         "warnings": list(fragments.get("warnings") or []),
         "missing_documents": list(fragments.get("missing_documents") or []),
@@ -86,6 +90,9 @@ def merge_transition_requirement_gate(
         "satisfied": bool(gate.get("satisfied")),
         "context": gate.get("context") or TRANSITION_CONTEXT,
         "entity_profile_code": gate.get("entity_profile_code"),
+        "stage_code": gate.get("stage_code"),
+        "transition_code": gate.get("transition_code"),
+        "process_profile_code": gate.get("process_profile_code"),
     }
 
     if not gate.get("satisfied"):
@@ -121,6 +128,8 @@ async def evaluate_ready_for_handoff_requirement_gate(
         tenant_id=str(tenant_id).strip(),
         candidate=cand,
         context=TRANSITION_CONTEXT,
+        stage_code=READY_FOR_HANDOFF_STAGE,
+        transition_code=READY_FOR_HANDOFF_GATE_CODE,
     )
     if evaluation is None:
         return None

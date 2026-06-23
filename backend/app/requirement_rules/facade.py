@@ -21,6 +21,8 @@ async def resolve_requirement_rule_set(
     tenant_id: str,
     entity_profile_code: str,
     context: str = "readiness",
+    stage_code: str | None = None,
+    transition_code: str | None = None,
 ) -> dict[str, Any]:
     profile_code = str(entity_profile_code or "").strip()
     if not profile_code:
@@ -39,7 +41,12 @@ async def resolve_requirement_rule_set(
     if profile_view.get("resolution_source") == "not_found" or not profile_view.get("profile"):
         raise RequirementRulesNotFoundError(entity_profile_code=profile_code)
 
-    return build_requirement_rule_set(profile_view, context=context)
+    return build_requirement_rule_set(
+        profile_view,
+        context=context,
+        stage_code=stage_code,
+        transition_code=transition_code,
+    )
 
 
 async def evaluate_entity_requirements(
@@ -52,6 +59,8 @@ async def evaluate_entity_requirements(
     documents: Optional[list[Any]] = None,
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
+    stage_code: str | None = None,
+    transition_code: str | None = None,
 ) -> dict[str, Any]:
     profile_code = str(entity_profile_code or "").strip()
     if not profile_code:
@@ -77,4 +86,6 @@ async def evaluate_entity_requirements(
         documents=documents,
         entity_type=entity_type,
         entity_id=entity_id,
+        stage_code=stage_code,
+        transition_code=transition_code,
     )

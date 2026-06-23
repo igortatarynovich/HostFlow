@@ -168,6 +168,24 @@ def recruitment_module_manifest() -> dict[str, Any]:
                 "relaxed_by_override": True,
             },
         },
+        {
+            "code": "recruitment_handoff_medical",
+            "name": "Medical certificate required at handoff transition",
+            "entity_type": "candidate",
+            "config": {
+                "requirement_kind": "document_types",
+                "context": "transition",
+                "system_stage": "ready_for_handoff",
+                "required_documents": [
+                    {
+                        "document_type_code": "medical_certificate",
+                        "level": "blocking",
+                        "verification": "optional",
+                        "reason_code": "process_profile_handoff_medical",
+                    }
+                ],
+            },
+        },
     ]
 
     override_rules = [

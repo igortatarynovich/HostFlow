@@ -19,6 +19,7 @@ _QUALIFIED_TO_LEGACY_FIELD: dict[str, tuple[str, str]] = {
     "recruitment.candidate.last_name": ("last_name", "Last name"),
     "recruitment.candidate.contacts.phone": ("phone", "Phone"),
     "recruitment.candidate.contacts.email": ("email", "Email"),
+    "platform.identity.address": ("address", "Address"),
 }
 
 
@@ -88,6 +89,11 @@ def build_normalized_payload_from_candidate(candidate: Candidate) -> dict[str, A
     if birth_date:
         payload["platform.identity.birth_date"] = birth_date
         payload["birth_date"] = birth_date
+
+    address = _pick_text(extra.get("address"), personal.get("address"), contacts.get("address"))
+    if address:
+        payload["platform.identity.address"] = address
+        payload["address"] = address
 
     years_ce = _pick_text(extra.get("experience_eu_years"), extra.get("years_ce"), personal.get("years_ce"))
     if years_ce:
@@ -248,6 +254,9 @@ def build_requirement_engine_section(evaluation: dict[str, Any]) -> dict[str, An
         "required_documents": list(evaluation.get("required_documents") or []),
         "rule_sources_applied": list(evaluation.get("rule_sources_applied") or []),
         "context": evaluation.get("context") or READINESS_CONTEXT,
+        "stage_code": evaluation.get("stage_code"),
+        "transition_code": evaluation.get("transition_code"),
+        "process_profile_code": evaluation.get("process_profile_code"),
     }
 
 
@@ -257,6 +266,8 @@ async def evaluate_candidate_requirements(
     tenant_id: str,
     candidate: Candidate,
     context: str,
+    stage_code: str | None = None,
+    transition_code: str | None = None,
 ) -> Optional[dict[str, Any]]:
     """Evaluate requirements via Requirement Engine; None → legacy fallback."""
     entity_profile_code = await resolve_entity_profile_code_for_candidate(
@@ -285,6 +296,8 @@ async def evaluate_candidate_requirements(
             documents=documents,
             entity_type="candidate",
             entity_id=str(candidate.id),
+            stage_code=stage_code,
+            transition_code=transition_code,
         )
     except RequirementRulesNotFoundError:
         return None

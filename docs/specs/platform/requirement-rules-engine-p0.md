@@ -412,7 +412,7 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 | 8 | Hard rules + P1 scope gate | **Done** (§12–§13) |
 | 9 | Cross-links from sibling canon docs | **Done** (header + §10) |
 
-**Next implementation step:** **P3A — Process Profile hooks** (stage/transition requirements). P2 consumer wiring complete — see §17.
+**Next implementation step:** **P3A — Process Profile hooks** — add Process Profile as requirement source; stage context (`stage_code`, `transition_code`); stage-specific field/document requirements; merge order Entity Profile → Document Pack → Process Profile. P2 consumer wiring complete — see §17.
 
 **Do not implement requirement logic in Form Presentation or Form Builder.**
 
@@ -451,7 +451,28 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 
 **P2C acceptance:** Document Hub reads required documents from Requirement Engine; driver_ce pack (passport, driver_license, code95, tacho_card) → required/missing/satisfied; legacy ruleset path when `entity_profile_code` unresolved; API output includes `source_layer=requirement_engine`.
 
-**Next implementation step:** **P3A — Process Profile hooks** — add Process Profile as requirement source; stage context (`stage_code`, `transition_code`); stage-specific field/document requirements; merge order Entity Profile → Document Pack → Process Profile. **Not in P3A:** Tenant Overrides (P3B), custom expressions, UI, scripts, per-client overrides.
+**Next implementation step:** **P3B — Tenant Overrides** (audited relax/add). P3A Process Profile hooks complete — see §18.
+
+---
+
+## 18. P3A implementation status (2026-06-23)
+
+**Process Profile hooks — done.**
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Process Profile source compiler | Done | `backend/app/requirement_rules/process_profile_source.py` |
+| Merge order EP → Pack → Process Profile | Done | `backend/app/requirement_rules/registry.py` |
+| Stage context (`stage_code`, `transition_code`) | Done | registry, evaluator, facade, API |
+| P2B transition bridge stage wiring | Done | `backend/app/requirement_rules/transition_bridge.py` |
+| Stage-specific PE manifest proof | Done | `backend/app/process_engine/manifests/recruitment.py` |
+| Tests | Done | `backend/tests/requirement_rules/test_process_profile_hooks_p3a.py` |
+
+**P3A acceptance:** `stage_code=ready_for_handoff` + `context=transition` adds PE email/address fields and `medical_certificate` document; requirements absent without stage context; merge order preserved; Process Profile cannot override EP/Pack canonical targets; P2 readiness path unchanged without `stage_code`.
+
+**Hard rule:** Process Profile adds stage requirements only — it does not redefine canonical field or document types already required by Entity Profile or Document Pack.
+
+**Next implementation step:** **P3B — Tenant Overrides** — audited relax/add registry. **Not in P3B:** custom expressions, UI, scripts, per-client overrides.
 
 ---
 
@@ -482,3 +503,4 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 - 2026-06-22: P0 accepted — Requirement Rules Engine canon; P10A/P10B boundary; P1 scope gate (Entity Profile + Document Pack only); migration map from CandidateProfile.config.
 - 2026-06-22: P1 complete — manifest-backed Document Pack + Entity Profile rule compiler; evaluate API; `driver_ce` proof case; tests.
 - 2026-06-23: P2 consumer wiring closed — P2A Readiness, P2B PE transition gate, P2C Document Hub; next step P3A Process Profile hooks.
+- 2026-06-23: P3A complete — Process Profile requirement source; stage/transition context; merge order EP → Pack → Process Profile; P2B stage wiring.

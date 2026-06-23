@@ -36,6 +36,7 @@ def _payload_value(normalized_payload: dict[str, Any], qualified_code: str) -> A
         "recruitment.candidate.contacts.email": ["email"],
         "platform.identity.citizenship": ["citizenship"],
         "platform.identity.birth_date": ["birth_date"],
+        "platform.identity.address": ["address"],
         "recruitment.candidate.experience.years_ce": ["experience_eu_years", "years_ce"],
     }
     for key in legacy_aliases.get(qualified_code, []):
@@ -92,9 +93,16 @@ def evaluate_requirement_rules(
     documents: Optional[list[Any]] = None,
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
+    stage_code: str | None = None,
+    transition_code: str | None = None,
 ) -> dict[str, Any]:
-    """Evaluate Entity Profile + Document Pack rules for a context."""
-    rule_set = build_requirement_rule_set(profile_view, context=context)
+    """Evaluate Entity Profile + Document Pack + Process Profile rules for a context."""
+    rule_set = build_requirement_rule_set(
+        profile_view,
+        context=context,
+        stage_code=stage_code,
+        transition_code=transition_code,
+    )
     payload = dict(normalized_payload or {})
     doc_index = _documents_index(list(documents or []))
 
@@ -170,6 +178,9 @@ def evaluate_requirement_rules(
         "entity_type": entity_type or rule_set.get("entity_type"),
         "entity_id": entity_id,
         "context": rule_set["context"],
+        "stage_code": rule_set.get("stage_code"),
+        "transition_code": rule_set.get("transition_code"),
+        "process_profile_code": rule_set.get("process_profile_code"),
         "required_fields": required_fields,
         "required_documents": required_documents,
         "blockers": blockers,
@@ -177,5 +188,5 @@ def evaluate_requirement_rules(
         "satisfied": len(blockers) == 0,
         "rule_sources_applied": rule_set.get("rule_sources_applied") or [],
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
-        "p1_sources_only": True,
+        "p1_sources_only": bool(rule_set.get("p1_sources_only", True)),
     }

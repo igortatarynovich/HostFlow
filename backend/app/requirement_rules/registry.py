@@ -1,4 +1,4 @@
-"""Requirement rule registry — Entity Profile + Document Pack sources only (P1)."""
+"""Requirement rule registry — Entity Profile + Document Pack + Process Profile (P3A)."""
 
 from __future__ import annotations
 
@@ -13,9 +13,11 @@ from backend.app.requirement_rules.constants import (
     RULE_TYPE_FIELD_REQUIRED,
     SOURCE_DOCUMENT_PACK,
     SOURCE_ENTITY_PROFILE,
+    SOURCE_PROCESS_PROFILE,
     VALID_CONTEXTS,
 )
 from backend.app.requirement_rules.manifests import DOCUMENT_PACK_MANIFESTS
+from backend.app.requirement_rules.process_profile_source import build_process_profile_rules
 
 
 class RequirementRulesNotFoundError(LookupError):
@@ -112,12 +114,41 @@ def build_document_required_rules(
     return rules
 
 
+def _rule_dedup_key(rule: dict[str, Any]) -> tuple[str, str]:
+    rule_type = str(rule.get("rule_type") or "").strip()
+    if rule_type == RULE_TYPE_FIELD_REQUIRED:
+        return ("field", str(rule.get("qualified_code") or rule.get("target") or "").strip())
+    if rule_type == RULE_TYPE_DOCUMENT_REQUIRED:
+        return ("document", str(rule.get("document_type_code") or rule.get("target") or "").strip().lower())
+    return ("other", str(rule.get("target") or rule.get("reason_code") or ""))
+
+
+def merge_requirement_rules(*rule_layers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge rule layers in order; earlier layers win (Process Profile is additive only)."""
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    order: list[tuple[str, str]] = []
+    for layer in rule_layers:
+        for rule in layer or []:
+            if not isinstance(rule, dict):
+                continue
+            key = _rule_dedup_key(rule)
+            if not key[1]:
+                continue
+            if key in merged:
+                continue
+            merged[key] = rule
+            order.append(key)
+    return [merged[key] for key in order]
+
+
 def build_requirement_rule_set(
     profile_view: dict[str, Any],
     *,
     context: str = "readiness",
+    stage_code: str | None = None,
+    transition_code: str | None = None,
 ) -> dict[str, Any]:
-    """Compile deterministic rules from Entity Profile + Document Pack (P1 sources only)."""
+    """Compile rules: Entity Profile → Document Pack → Process Profile."""
     profile_meta = profile_view.get("profile") if isinstance(profile_view.get("profile"), dict) else profile_view
     entity_profile_code = str(
         profile_view.get("profile_code")
@@ -140,19 +171,37 @@ def build_requirement_rule_set(
         context=ctx,
     )
 
+    process_profile_code = str(profile_meta.get("process_profile_code") or profile_view.get("process_profile_code") or "").strip() or None
+    process_rules: list[dict[str, Any]] = []
+    if process_profile_code and stage_code:
+        process_rules = build_process_profile_rules(
+            process_profile_code=process_profile_code,
+            context=ctx,
+            stage_code=stage_code,
+            transition_code=transition_code,
+            occupied_field_targets={str(r.get("qualified_code") or "") for r in field_rules},
+            occupied_doc_targets={str(r.get("document_type_code") or "") for r in document_rules},
+        )
+
+    merged_rules = merge_requirement_rules(field_rules, document_rules, process_rules)
+
     rule_sources_applied: list[dict[str, str]] = [{"source": SOURCE_ENTITY_PROFILE, "ref": entity_profile_code}]
     if pack_code and document_rules:
         rule_sources_applied.append({"source": SOURCE_DOCUMENT_PACK, "ref": pack_code})
+    if process_rules and process_profile_code:
+        rule_sources_applied.append({"source": SOURCE_PROCESS_PROFILE, "ref": process_profile_code})
 
     return {
         "contract_version": REQUIREMENT_RULES_V1,
         "entity_profile_code": entity_profile_code,
         "entity_type": str(profile_meta.get("entity_type") or profile_view.get("entity_type") or "").strip() or None,
         "context": ctx,
+        "stage_code": str(stage_code or "").strip() or None,
+        "transition_code": str(transition_code or "").strip() or None,
         "document_pack_code": pack_code or None,
-        "process_profile_code": str(profile_meta.get("process_profile_code") or "").strip() or None,
+        "process_profile_code": process_profile_code,
         "rule_sources_applied": rule_sources_applied,
-        "rules": field_rules + document_rules,
-        "p1_sources_only": True,
-        "excluded_sources": ["process_profile", "tenant_override"],
+        "rules": merged_rules,
+        "p1_sources_only": not bool(process_rules),
+        "excluded_sources": ["tenant_override"] if process_rules else ["process_profile", "tenant_override"],
     }

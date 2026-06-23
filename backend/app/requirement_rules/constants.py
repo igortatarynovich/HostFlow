@@ -10,6 +10,7 @@ RULE_TYPE_DOCUMENT_REQUIRED = "document_required"
 
 SOURCE_ENTITY_PROFILE = "entity_profile"
 SOURCE_DOCUMENT_PACK = "document_pack"
+SOURCE_PROCESS_PROFILE = "process_profile"
 
 LEVEL_BLOCKING = "blocking"
 LEVEL_WARNING = "warning"
