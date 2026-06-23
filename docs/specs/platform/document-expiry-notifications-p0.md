@@ -1,12 +1,12 @@
 # Document Expiry Notifications — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon + **P1 Evaluator** + **P2 Event Registry** complete (2026-06-24). No dispatch or Notification Center UI yet.  
+**Status:** Accepted (architecture canon). **Implementation:** P0 canon + **P1 Evaluator** + **P2 Event Registry** + **P3 Read UI** complete (2026-06-24). No dispatch adapters yet.  
 **Hierarchy:** L2 operating canon — platform layer. **Downstream consumer** of Document Runtime Engine v1 — emits notification *events*, not messages.  
 **Owner:** Architecture canon + platform core team.
 
 **Opened:** 2026-06-23 — immediately after **Document Runtime Engine v1 closed** ([`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20).
 
-**Next implementation step (post-P2 gate):** **P3 — Notification Center read UI** — consume stored open events; still no email/WhatsApp/cron/dispatch adapters.
+**Next implementation step (post-P3 gate):** **P4 — Scheduled sync job** — periodic evaluate + upsert from Document Runtime delivery contract; still no email/WhatsApp/dispatch.
 
 **Related canon (must stay consistent):**
 
@@ -250,7 +250,7 @@ notification_event_v1[]
         ↓
 (P2: Event Registry / Store — done)
         ↓
-(P3: Notification Center read UI — next)
+(P3: Notification Center read UI — done)
 ```
 
 ---
@@ -283,35 +283,57 @@ notification_events (status: open | resolved | ignored)
         ↓
 GET /platform/notification-events?status=open
         ↓
-(P3: Notification Center read UI — next)
+NotificationAlertsPage (`/app/notifications/alerts`)
+        ↓
+(P4: Scheduled sync job — next)
 ```
 
 **Table:** `notification_events` — unique `(tenant_id, event_key)`; separate from ADR-012 `notifications` delivery sink.
 
 ---
 
-## 11. P3 scope (after P2 gate)
+## 11. P3 implementation status (2026-06-24)
 
-**P3 — Notification Center read UI** (display consumer only):
+| Milestone | Scope | Status | Location |
+|-----------|-------|--------|----------|
+| **P3** | Notification Center read UI | ✅ Done | `NotificationAlertsPage.tsx`, `api/notificationEvents.ts` |
 
-| Deliverable | Description |
-|-------------|-------------|
-| Read UI | In-app list of open expiry events for assigned users |
-| Input | Stored `notification_events` rows (`status=open`) |
-| Output | Notification Center presentation — no channel dispatch |
+**P3 acceptance:**
 
-**Explicitly out of P3:**
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | User sees list of open expiry events | ✅ |
+| 2 | Filter expired / expiring_soon | ✅ |
+| 3 | Open event detail | ✅ |
+| 4 | Mark event resolved | ✅ |
+| 5 | Mark event ignored | ✅ |
+| 6 | UI does not send messages or create tasks | ✅ |
 
-- Email / WhatsApp / webhooks
-- Cron / scheduler jobs
-- Templates and i18n (beyond minimal display)
-- Escalation, digests, manager copies
-- Activity / Task creation
-- ADR-012 `notifications` row creation (optional later adapter)
+**Route:** `/app/notifications/alerts` — consumes P2 registry via `GET /platform/notification-events`.
 
 ---
 
-## 12. Explicitly not next (avoid second Process Engine)
+## 12. P4 scope (after P3 gate)
+
+**P4 — Scheduled sync job** (evaluate + persist only):
+
+| Deliverable | Description |
+|-------------|-------------|
+| Scheduler hook | Periodic run: Document Runtime snapshots → P1 evaluate → P2 upsert |
+| Input | Tenant document instances via delivery contract |
+| Output | Updated `notification_events` rows |
+| Tests | Job idempotency, no duplicate dispatch side effects |
+
+**Explicitly out of P4:**
+
+- Email / WhatsApp / webhooks / push
+- Templates and escalation
+- ADR-012 `notifications` row creation
+- Task / Activity creation
+
+---
+
+## 13. Explicitly not next (avoid second Process Engine)
 
 Without P0 discipline, expiry notifications become a second orchestration engine. **Forbidden early expansion:**
 
@@ -322,11 +344,11 @@ Without P0 discipline, expiry notifications become a second orchestration engine
 - Per-tenant notification rule builder  
 - Custom expression triggers  
 
-These belong to **downstream product tracks** after P3 Notification Center read UI proves the event model.
+These belong to **downstream product tracks** after P4 scheduled sync proves the end-to-end evaluate → store → read loop.
 
 ---
 
-## 13. Reference architecture context
+## 14. Reference architecture context
 
 HostFlow platform foundation layers closed before this track:
 
@@ -336,12 +358,13 @@ HostFlow platform foundation layers closed before this track:
 | Entity Profile Registry v1 | ✅ Closed |
 | Requirement Rules Engine v1 | ✅ Closed |
 | Document Runtime Engine v1 | ✅ Closed |
-| **Document Expiry Notifications** | **P0 + P1 + P2 complete** (this doc) |
+| **Document Expiry Notifications** | **P0 + P1 + P2 + P3 complete** (this doc) |
 
 ---
 
 ## Changelog
 
+- 2026-06-24: **P3 complete** — Notification Center read UI at `/app/notifications/alerts`; filters + detail + resolve/ignore; no dispatch.
 - 2026-06-24: **P2 complete** — `notification_events` registry; idempotent upsert on `event_key`; open/resolved/ignored status; read API; 8 tests; no dispatch.
 - 2026-06-23: **P1 complete** — `evaluate_document_expiry_events()`; delivery-contract input only; deterministic `event_key`; 9 tests; no dispatch.
 - 2026-06-23: P0 accepted — Document Expiry Notifications canon opened as downstream consumer of Document Runtime v1; events-first model; P1 evaluator scope gate.
