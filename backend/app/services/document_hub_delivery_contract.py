@@ -153,3 +153,35 @@ def get_uploads_root_via_contract() -> str:
 def sanitize_filename_via_contract(filename: str) -> str:
     """Document Hub delivery contract adapter for filename sanitization."""
     return sanitize_filename(filename)
+
+
+async def evaluate_document_hub_requirements_via_contract(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate: Any,
+) -> dict[str, Any] | None:
+    """Document Hub delivery contract adapter for Requirement Engine document requirements."""
+    from backend.app.requirement_rules.document_hub_bridge import (
+        evaluate_candidate_document_hub_requirements,
+    )
+
+    return await evaluate_candidate_document_hub_requirements(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        candidate=candidate,
+    )
+
+
+def merge_document_hub_requirements_into_summary_via_contract(
+    summary: dict[str, Any],
+    hub_section: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Document Hub delivery contract adapter for Requirement Engine summary overlay."""
+    if not hub_section:
+        return summary
+    from backend.app.requirement_rules.document_hub_bridge import (
+        merge_requirement_engine_into_owner_summary,
+    )
+
+    return merge_requirement_engine_into_owner_summary(summary, hub_section)

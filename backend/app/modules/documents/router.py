@@ -2102,6 +2102,17 @@ async def fetch_candidate_documents_summary_response(
 
     serialized_visible = _serialized_visible(serialized_docs_full)
     summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
+    from backend.app.services.document_hub_delivery_contract import (
+        evaluate_document_hub_requirements_via_contract,
+        merge_document_hub_requirements_into_summary_via_contract,
+    )
+
+    hub_requirements = await evaluate_document_hub_requirements_via_contract(
+        session,
+        tenant_id=cand_ctx.owner_tenant_id,
+        candidate=cand_ctx.candidate,
+    )
+    summary = merge_document_hub_requirements_into_summary_via_contract(summary, hub_requirements)
     checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
@@ -2140,6 +2151,7 @@ async def fetch_candidate_documents_summary_response(
         ]
         serialized_visible = _serialized_visible(serialized_docs_full)
         summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
+        summary = merge_document_hub_requirements_into_summary_via_contract(summary, hub_requirements)
         checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
         summary["checklist"] = checklist
     synthetic_models = _build_synthetic_documents(
@@ -2181,6 +2193,9 @@ async def fetch_candidate_documents_summary_response(
         ),
         "checklist": checklist,
     }
+    if hub_requirements and hub_requirements.get("applied"):
+        out["requirement_engine"] = hub_requirements
+        out["source_layer"] = hub_requirements.get("source_layer")
     if document_access_trace_response_enabled():
         out["document_access_trace"] = {
             "surface": "candidate_documents_summary",
@@ -2252,6 +2267,23 @@ async def api_candidate_checklist(
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = _fill_checklist_defaults(compute_candidate_checklist(ctx, ruleset_payload), ruleset_payload)
+    from backend.app.services.document_hub_delivery_contract import (
+        evaluate_document_hub_requirements_via_contract,
+    )
+
+    hub_requirements = await evaluate_document_hub_requirements_via_contract(
+        session,
+        tenant_id=cand_ctx.owner_tenant_id,
+        candidate=cand_ctx.candidate,
+    )
+    if hub_requirements and hub_requirements.get("applied"):
+        required_codes = [
+            str(row.get("document_type_code") or "")
+            for row in hub_requirements.get("required_documents") or []
+            if isinstance(row, dict) and row.get("document_type_code")
+        ]
+        checklist["requiredTypes"] = required_codes
+        checklist["source_layer"] = hub_requirements.get("source_layer")
     await log_ruleset_usage(
         session,
         cand_ctx.owner_tenant_id,
@@ -2261,12 +2293,16 @@ async def api_candidate_checklist(
         meta={"context_keys": sorted(ctx.keys())[:10]},
     )
     await session.commit()
-    return {
+    response: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "context": ctx,
         "checklist": checklist,
         "ruleset_version": _ruleset_to_out(ruleset_version).model_dump(),
     }
+    if hub_requirements and hub_requirements.get("applied"):
+        response["requirement_engine"] = hub_requirements
+        response["source_layer"] = hub_requirements.get("source_layer")
+    return response
 
 
 @router.get("/candidate/{candidate_id}/documents/export.json")
