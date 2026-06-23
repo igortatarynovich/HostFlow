@@ -72,6 +72,7 @@
     "fleetSettings": "/app/fleet/settings",
     "setupCommunications": "/app/setup/communications",
     "slaIncidents": "/app/sla-incidents",
+    "notificationAlerts": "/app/notifications/alerts",
     "communicationsCommandAudit": "/app/communications/command-audit",
     "communicationsThreadsBase": "/app/communications/threads",
     "communicationsLegacyHub": "/app/communications",

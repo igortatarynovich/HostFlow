@@ -11,6 +11,7 @@ export const SIDEBAR_CLIENT_FLAT_ORDER = [
   'candidates',
   'do-procesowania',
   'tasks',
+  'notification-alerts',
   'settings-integrations',
   'profile',
 ] as const
@@ -25,7 +26,7 @@ export const SIDEBAR_AGENCY_PIPELINE_ORDER = [
   'vacancies',
   'leads',
 ] as const
-export const SIDEBAR_AGENCY_TASKS_ORDER = ['tasks', 'calendar'] as const
+export const SIDEBAR_AGENCY_TASKS_ORDER = ['tasks', 'notification-alerts', 'calendar'] as const
 export const SIDEBAR_AGENCY_PROCESSING_ORDER = ['do-procesowania'] as const
 export const SIDEBAR_AGENCY_TEAM_ORDER = ['team-availability', 'my-availability', 'time-off'] as const
 export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const

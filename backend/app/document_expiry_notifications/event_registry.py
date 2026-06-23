@@ -155,14 +155,32 @@ async def list_notification_events(
     *,
     status: str = EVENT_STATUS_OPEN,
     source_layer: str | None = SOURCE_LAYER,
+    event_code: str | None = None,
 ) -> list[NotificationEvent]:
     stmt = select(NotificationEvent).where(NotificationEvent.tenant_id == str(tenant_id).strip())
     if status:
         stmt = stmt.where(NotificationEvent.status == str(status).strip())
     if source_layer:
         stmt = stmt.where(NotificationEvent.source_layer == str(source_layer).strip())
+    if event_code:
+        stmt = stmt.where(NotificationEvent.event_code == str(event_code).strip())
     stmt = stmt.order_by(NotificationEvent.evaluated_at.desc(), NotificationEvent.event_key.asc())
     return list((await db.execute(stmt)).scalars().all())
+
+
+async def get_notification_event(
+    db: AsyncSession,
+    tenant_id: str,
+    event_id: str,
+) -> NotificationEvent | None:
+    return (
+        await db.execute(
+            select(NotificationEvent).where(
+                NotificationEvent.id == str(event_id).strip(),
+                NotificationEvent.tenant_id == str(tenant_id).strip(),
+            )
+        )
+    ).scalar_one_or_none()
 
 
 async def update_notification_event_status(

@@ -763,6 +763,7 @@
         "planner": "Планировщик",
         "activities": "Активности",
         "sla_incidents": "SLA",
+        "notification_alerts": "Оповещения",
         "command_audit": "Аудит команд",
         "team_availability": "Доступность команды",
         "my_availability": "Моя доступность",

@@ -71,6 +71,9 @@ export const CommunicationsPlannerPage = lazy(() =>
 export const CommunicationsSlaIncidentsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsSlaIncidentsPage })),
 )
+export const NotificationAlertsPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.NotificationAlertsPage })),
+)
 export const CommunicationsCommandAuditPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsCommandAuditPage })),
 )

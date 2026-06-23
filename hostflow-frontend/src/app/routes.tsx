@@ -22,6 +22,7 @@ import {
   CommunicationsQueueSettingsPage,
   CommunicationsSettingsPage,
   CommunicationsSlaIncidentsPage,
+  NotificationAlertsPage,
   CommunicationsSlaSettingsPage,
   CommunicationsThreadPage,
   Companies,
@@ -263,6 +264,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: CRM.tasks,
     group: 'workflows',
     permission: 'notifications.view',
+  },
+  {
+    key: 'notification-alerts',
+    labelKey: 'app.nav.items.notification_alerts',
+    path: CRM.notificationAlerts,
+    group: 'workflows',
+    permission: ['admin.users', 'settings.view', 'notifications.view'],
   },
   {
     key: 'calendar',
@@ -644,6 +652,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'communications', path: seg(CRM.communicationsLegacyHub), Component: LegacyCommunicationsRedirect, permission: 'notifications.view' },
   { key: 'communications-thread', path: `${seg(CRM.communicationsThreadsBase)}/:threadId`, Component: withCommAnyFeature(CommunicationsThreadPage, ['messages', 'email']), permission: 'notifications.view' },
   { key: 'tasks', path: seg(CRM.tasks), Component: RemindersPage, permission: 'notifications.view' },
+  {
+    key: 'notification-alerts',
+    path: seg(CRM.notificationAlerts),
+    Component: NotificationAlertsPage,
+    permission: ['admin.users', 'settings.view', 'notifications.view'],
+  },
   { key: 'reminders-legacy', path: seg(CRM.remindersLegacy), Component: LegacyRemindersRedirect, permission: 'notifications.view' },
   { key: 'activities-legacy', path: seg(CRM.activitiesLegacy), Component: LegacyActivitiesRedirect, permission: 'notifications.view' },
   {

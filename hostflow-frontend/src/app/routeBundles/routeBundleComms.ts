@@ -4,6 +4,7 @@ export { default as CommunicationsInboxCenterPage } from '../../pages/Communicat
 export { default as CommunicationsEmailInboxPage } from '../../pages/CommunicationsEmailInboxPage'
 export { default as CommunicationsCalendarPage } from '../../pages/CommunicationsCalendarPage'
 export { default as CommunicationsSlaIncidentsPage } from '../../pages/CommunicationsSlaIncidentsPage'
+export { default as NotificationAlertsPage } from '../../pages/NotificationAlertsPage'
 export { default as CommunicationsCommandAuditPage } from '../../pages/CommunicationsCommandAuditPage'
 export { default as TeamAvailabilityPage } from '../../pages/TeamAvailabilityPage'
 export { default as MyAvailabilityPage } from '../../pages/MyAvailabilityPage'

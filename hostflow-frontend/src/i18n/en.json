@@ -896,6 +896,7 @@
         "planner": "Planner",
         "activities": "Activities",
         "sla_incidents": "SLA",
+        "notification_alerts": "Alerts",
         "command_audit": "Command audit",
         "team_availability": "Team availability",
         "my_availability": "My availability",
@@ -1653,6 +1654,55 @@
         "false_sla": "Potential false SLA",
         "duplicates": "Potential duplicates",
         "summary": "Closure rate: {rate}% · Total: {total} · Duplicate groups: {groups}. Metrics are heuristic and based on payload signals."
+      }
+    },
+    "notification_alerts": {
+      "title": "Notification Center",
+      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
+      "list_title": "Open alerts ({count})",
+      "empty": "No alerts match the current filters.",
+      "detail_empty": "Select an alert to view details.",
+      "expires_on": "Expires on {{date}}",
+      "errors": {
+        "load": "Failed to load notification alerts",
+        "status": "Failed to update alert status"
+      },
+      "toast": {
+        "resolved": "Alert marked as resolved",
+        "ignored": "Alert marked as ignored"
+      },
+      "filters": {
+        "event_type": "Event type",
+        "event_type_all": "All expiry events",
+        "event_type_expired": "Expired documents",
+        "event_type_expiring_soon": "Expiring soon",
+        "source_layer": "Source",
+        "source_document_expiry": "Document expiry notifications",
+        "source_all": "All sources",
+        "status": {
+          "open": "Open",
+          "resolved": "Resolved",
+          "ignored": "Ignored"
+        }
+      },
+      "event_code": {
+        "document_expired": "Document expired",
+        "document_expiring_soon": "Document expiring soon"
+      },
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning"
+      },
+      "detail": {
+        "document_type": "Document type",
+        "owner": "Owner",
+        "expires_on": "Expires on",
+        "source_layer": "Source layer"
+      },
+      "actions": {
+        "mark_resolved": "Mark resolved",
+        "mark_ignored": "Mark ignored",
+        "open_owner": "Open owner profile"
       }
     },
     "communications_inbox_center": {

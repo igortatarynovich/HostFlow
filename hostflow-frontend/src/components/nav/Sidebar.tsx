@@ -96,6 +96,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   invoices: IconFileText,
   inbox: IconInbox,
   tasks: IconChecklist,
+  'notification-alerts': IconBell,
   calendar: IconCalendarEvent,
   'sla-incidents': IconBell,
   'command-audit': IconShield,

@@ -988,7 +988,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                       className="text-xs font-semibold text-brand-700 hover:text-brand-800"
                       onClick={() => {
                         setNotifOpen(false)
-                        navigate(CRM_APP_PATHS.remindersLegacy)
+                        navigate(CRM_APP_PATHS.notificationAlerts)
                       }}
                     >
                       {t('app.topbar.notifications.open_center')}
@@ -1169,7 +1169,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                       className={isCandidate ? 'btn-secondary' : 'btn-primary'}
                       onClick={() => {
                         void ackAndClear()
-                        navigate(CRM_APP_PATHS.remindersLegacy)
+                        navigate(CRM_APP_PATHS.notificationAlerts)
                       }}
                     >
                       {t('app.notifications.reminder_popup.all_reminders', { defaultValue: 'All reminders' })}

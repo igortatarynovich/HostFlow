@@ -82,6 +82,7 @@ export const CRM_APP_PATHS = {
   fleetSettings: "/app/fleet/settings",
   setupCommunications: "/app/setup/communications",
   slaIncidents: "/app/sla-incidents",
+  notificationAlerts: "/app/notifications/alerts",
   communicationsCommandAudit: "/app/communications/command-audit",
   communicationsThreadsBase: "/app/communications/threads",
   /** Legacy aggregate URL kept for redirects/bookmarks. */

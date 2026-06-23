@@ -18,6 +18,7 @@ from backend.app.document_expiry_notifications.constants import (
     VALID_EVENT_STATUSES,
 )
 from backend.app.document_expiry_notifications.event_registry import (
+    get_notification_event,
     list_notification_events,
     notification_event_to_dict,
     update_notification_event_status,
@@ -71,19 +72,40 @@ async def list_open_notification_events(
     db_tenant: tuple = Depends(get_db_with_tenant),
     status: str = Query(default=EVENT_STATUS_OPEN),
     source_layer: Optional[str] = Query(default=SOURCE_LAYER),
+    event_code: Optional[str] = Query(default=None, alias="event_type"),
 ) -> list[NotificationEventOut]:
     db, tenant_id = db_tenant
     normalized_status = str(status or EVENT_STATUS_OPEN).strip().lower()
     if normalized_status not in VALID_EVENT_STATUSES:
         raise HTTPException(status_code=422, detail=f"Unsupported status filter: {status}")
 
+    normalized_source_layer = str(source_layer).strip() if source_layer is not None else None
+    normalized_event_code = str(event_code).strip() if event_code else None
+
     rows = await list_notification_events(
         db,
         str(tenant_id),
         status=normalized_status,
-        source_layer=source_layer,
+        source_layer=normalized_source_layer or None,
+        event_code=normalized_event_code,
     )
     return [_row_to_out(row) for row in rows]
+
+
+@router.get(
+    "/{event_id}",
+    response_model=NotificationEventOut,
+    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+)
+async def get_notification_event_detail(
+    event_id: str,
+    db_tenant: tuple = Depends(get_db_with_tenant),
+) -> NotificationEventOut:
+    db, tenant_id = db_tenant
+    row = await get_notification_event(db, str(tenant_id), event_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Notification event not found")
+    return _row_to_out(row)
 
 
 @router.patch(

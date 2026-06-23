@@ -763,6 +763,7 @@
         "planner": "Planer",
         "activities": "Aktywności",
         "sla_incidents": "SLA",
+        "notification_alerts": "Alerty",
         "command_audit": "Audyt komend",
         "team_availability": "Dostępność zespołu",
         "my_availability": "Moja dostępność",
