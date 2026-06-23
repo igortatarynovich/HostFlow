@@ -1,12 +1,12 @@
 # Document Expiry Notifications — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon + **P1 Evaluator** + **P2 Event Registry** + **P3 Read UI** complete (2026-06-24). No dispatch adapters yet.  
+**Status:** Accepted (architecture canon). **Implementation:** **Document Expiry Notifications v1 — closed** (2026-06-24). P0–P4 complete. No channel dispatch adapters in v1.  
 **Hierarchy:** L2 operating canon — platform layer. **Downstream consumer** of Document Runtime Engine v1 — emits notification *events*, not messages.  
 **Owner:** Architecture canon + platform core team.
 
 **Opened:** 2026-06-23 — immediately after **Document Runtime Engine v1 closed** ([`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20).
 
-**Next implementation step (post-P3 gate):** **P4 — Scheduled sync job** — periodic evaluate + upsert from Document Runtime delivery contract; still no email/WhatsApp/dispatch.
+**Next implementation step:** Superseded — **v1 closed** (§20). Downstream tracks: channel adapters, ADR-012 projection, escalation — not foundation expansion.
 
 **Related canon (must stay consistent):**
 
@@ -285,7 +285,7 @@ GET /platform/notification-events?status=open
         ↓
 NotificationAlertsPage (`/app/notifications/alerts`)
         ↓
-(P4: Scheduled sync job — next)
+POST /platform/notification-events/sync (P4 — done)
 ```
 
 **Table:** `notification_events` — unique `(tenant_id, event_key)`; separate from ADR-012 `notifications` delivery sink.
@@ -313,23 +313,78 @@ NotificationAlertsPage (`/app/notifications/alerts`)
 
 ---
 
-## 12. P4 scope (after P3 gate)
+## 12. P4 implementation status (2026-06-24)
 
-**P4 — Scheduled sync job** (evaluate + persist only):
+| Milestone | Scope | Status | Location |
+|-----------|-------|--------|----------|
+| **P4** | Scheduled sync job | ✅ Done | `sync_job.py`, `POST /platform/notification-events/sync` |
 
-| Deliverable | Description |
-|-------------|-------------|
-| Scheduler hook | Periodic run: Document Runtime snapshots → P1 evaluate → P2 upsert |
-| Input | Tenant document instances via delivery contract |
-| Output | Updated `notification_events` rows |
-| Tests | Job idempotency, no duplicate dispatch side effects |
+**P4 acceptance:**
 
-**Explicitly out of P4:**
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Job creates events for expired / expiring_soon | ✅ |
+| 2 | Replay does not create duplicates | ✅ |
+| 3 | resolved / ignored stay non-open | ✅ |
+| 4 | Job returns created / updated / skipped summary | ✅ |
+| 5 | No dispatch | ✅ |
+| 6 | Notification Center shows results after sync | ✅ |
 
-- Email / WhatsApp / webhooks / push
-- Templates and escalation
-- ADR-012 `notifications` row creation
-- Task / Activity creation
+**P4 chain:**
+
+```
+Document Hub (instances via delivery contract adapter)
+        ↓
+enrich_documents_via_contract()
+        ↓
+evaluate_document_expiry_events()
+        ↓
+sync_document_expiry_notification_events()
+        ↓
+notification_events (idempotent upsert)
+        ↓
+NotificationAlertsPage (Sync now + list open)
+```
+
+**Cron-ready entrypoint:** `POST /api/v1/platform/notification-events/sync` — same as manual run; wire external scheduler to this endpoint.
+
+---
+
+## 20. Document Expiry Notifications v1 — closed (2026-06-24)
+
+**Milestone:** Document Expiry Notifications **v1 foundation is closed**. End-to-end loop: evaluate → store → read → manual/scheduled sync — without channel dispatch.
+
+### 20.1 Foundation chain (complete)
+
+```
+Document Runtime Delivery Contract
+        ↓
+Expiry Event Evaluator (P1)
+        ↓
+Event Registry (P2)
+        ↓
+Notification Center read UI (P3)
+        ↓
+Scheduled sync job (P4)
+```
+
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| P0 | Architecture canon | ✅ |
+| P1 | `evaluate_document_expiry_events()` | ✅ |
+| P2 | `notification_events` registry | ✅ |
+| P3 | `/app/notifications/alerts` read UI | ✅ |
+| P4 | `sync_document_expiry_notification_events()` | ✅ |
+
+### 20.2 Explicitly out of scope for v1 (downstream tracks)
+
+| Track | Why deferred |
+|-------|--------------|
+| Email / WhatsApp / push | Channel adapters |
+| ADR-012 `notifications` row projection | Delivery sink adapter |
+| Escalation / digests / SLA | Activity & Notification policies |
+| Task / Activity creation | ADR-012 Activity domain |
+| Auto-assignment / manager routing | Product routing layer |
 
 ---
 
@@ -358,12 +413,14 @@ HostFlow platform foundation layers closed before this track:
 | Entity Profile Registry v1 | ✅ Closed |
 | Requirement Rules Engine v1 | ✅ Closed |
 | Document Runtime Engine v1 | ✅ Closed |
-| **Document Expiry Notifications** | **P0 + P1 + P2 + P3 complete** (this doc) |
+| **Document Expiry Notifications** | **v1 closed** (this doc) |
 
 ---
 
 ## Changelog
 
+- 2026-06-24: **P4 complete** — `sync_document_expiry_notification_events()`; sync summary; cron-ready POST `/platform/notification-events/sync`; Sync now in UI.
+- 2026-06-24: **Document Expiry Notifications v1 foundation closed** — P0–P4 complete; §20 milestone record.
 - 2026-06-24: **P3 complete** — Notification Center read UI at `/app/notifications/alerts`; filters + detail + resolve/ignore; no dispatch.
 - 2026-06-24: **P2 complete** — `notification_events` registry; idempotent upsert on `event_key`; open/resolved/ignored status; read API; 8 tests; no dispatch.
 - 2026-06-23: **P1 complete** — `evaluate_document_expiry_events()`; delivery-contract input only; deterministic `event_key`; 9 tests; no dispatch.
