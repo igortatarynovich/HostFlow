@@ -2277,13 +2277,9 @@ async def api_candidate_checklist(
         candidate=cand_ctx.candidate,
     )
     if hub_requirements and hub_requirements.get("applied"):
-        required_codes = [
-            str(row.get("document_type_code") or "")
-            for row in hub_requirements.get("required_documents") or []
-            if isinstance(row, dict) and row.get("document_type_code")
-        ]
-        checklist["requiredTypes"] = required_codes
-        checklist["source_layer"] = hub_requirements.get("source_layer")
+        from backend.app.requirement_rules.document_hub_bridge import apply_hub_requirements_to_checklist
+
+        checklist = apply_hub_requirements_to_checklist(checklist, hub_requirements)
     await log_ruleset_usage(
         session,
         cand_ctx.owner_tenant_id,

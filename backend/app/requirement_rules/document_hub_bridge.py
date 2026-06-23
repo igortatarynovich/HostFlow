@@ -1,4 +1,4 @@
-"""P2C — Document Hub consumer bridge to Requirement Rules Engine."""
+"""P2C/P2 — Document Hub consumer bridge (Requirement Engine + Document Runtime)."""
 
 from __future__ import annotations
 
@@ -6,11 +6,17 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.document_runtime.hub_bridge import (
+    SOURCE_LAYER as RUNTIME_SOURCE_LAYER,
+    apply_runtime_checklist_to_hub_section,
+    build_document_hub_runtime_checklist,
+)
 from backend.app.models.candidate import Candidate
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.readiness_bridge import (
     READINESS_CONTEXT,
     evaluate_candidate_readiness_requirements,
+    load_candidate_documents_snapshot,
 )
 
 DOCUMENT_HUB_CONTEXT = READINESS_CONTEXT
@@ -23,63 +29,61 @@ def _norm_doc(code: str) -> str:
 
 def map_requirement_evaluation_to_document_hub(
     evaluation: dict[str, Any],
+    *,
+    documents: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
-    """Map requirement_evaluation_v1 to Document Hub required/missing/satisfied view."""
-    blocker_codes = {
-        _norm_doc(str(row.get("document_type_code") or ""))
-        for row in evaluation.get("blockers") or []
-        if isinstance(row, dict) and row.get("document_type_code")
-    }
-    blocker_codes.discard("")
+    """Map requirement_evaluation_v1 + document_runtime_v1 to Document Hub view."""
+    runtime_checklist = build_document_hub_runtime_checklist(
+        evaluation,
+        documents=documents,
+        requirement_source_layer=SOURCE_LAYER,
+    )
 
-    required_items: list[dict[str, Any]] = []
-    missing_documents: list[str] = []
-    satisfied_documents: list[str] = []
-
-    for req in evaluation.get("required_documents") or []:
-        if not isinstance(req, dict):
-            continue
-        doc_code = _norm_doc(str(req.get("document_type_code") or ""))
-        if not doc_code:
-            continue
-        status = "missing" if doc_code in blocker_codes else "satisfied"
-        required_items.append(
-            {
-                "document_type_code": doc_code,
-                "status": status,
-                "source_layer": SOURCE_LAYER,
-                "level": req.get("level"),
-                "verification": req.get("verification"),
-                "reason_code": req.get("reason_code"),
-                "pack_code": req.get("pack_code"),
-                "source": req.get("source"),
-                "source_ref": req.get("source_ref"),
-            }
-        )
-        if status == "missing":
-            missing_documents.append(doc_code)
-        else:
-            satisfied_documents.append(doc_code)
-
-    return {
+    hub_section: dict[str, Any] = {
         "applied": True,
         "source_layer": SOURCE_LAYER,
         "entity_profile_code": evaluation.get("entity_profile_code"),
         "evaluation_version": evaluation.get("evaluation_version") or REQUIREMENT_EVALUATION_V1,
         "context": evaluation.get("context") or DOCUMENT_HUB_CONTEXT,
         "satisfied": bool(evaluation.get("satisfied")),
-        "required_documents": required_items,
-        "missing_documents": sorted(set(missing_documents)),
-        "satisfied_documents": sorted(set(satisfied_documents)),
+        "required_documents": list(evaluation.get("required_documents") or []),
+        "missing_documents": list(runtime_checklist.get("missing_documents") or []),
+        "satisfied_documents": list(runtime_checklist.get("satisfied_documents") or []),
         "rule_sources_applied": list(evaluation.get("rule_sources_applied") or []),
     }
+
+    return apply_runtime_checklist_to_hub_section(hub_section, runtime_checklist)
+
+
+def apply_hub_requirements_to_checklist(
+    checklist: dict[str, Any],
+    hub_section: dict[str, Any],
+) -> dict[str, Any]:
+    """Attach runtime-aware required-doc checklist items."""
+    if not hub_section.get("applied"):
+        return checklist
+
+    merged = dict(checklist)
+    required_codes = [
+        str(row.get("document_type_code") or "")
+        for row in hub_section.get("required_documents") or []
+        if isinstance(row, dict) and row.get("document_type_code")
+    ]
+    merged["requiredTypes"] = required_codes
+    merged["source_layer"] = hub_section.get("source_layer") or SOURCE_LAYER
+    merged["source_layers"] = list(hub_section.get("source_layers") or [SOURCE_LAYER, RUNTIME_SOURCE_LAYER])
+
+    runtime_section = hub_section.get("document_runtime") or {}
+    merged["document_runtime"] = runtime_section
+    merged["runtimeItems"] = list(runtime_section.get("items") or [])
+    return merged
 
 
 def merge_requirement_engine_into_owner_summary(
     summary: dict[str, Any],
     hub_section: dict[str, Any],
 ) -> dict[str, Any]:
-    """Overlay Requirement Engine document requirements on legacy owner summary."""
+    """Overlay Requirement Engine + Document Runtime on legacy owner summary."""
     if not hub_section.get("applied"):
         return summary
 
@@ -91,6 +95,8 @@ def merge_requirement_engine_into_owner_summary(
     ]
     missing = list(hub_section.get("missing_documents") or [])
     satisfied = list(hub_section.get("satisfied_documents") or [])
+    pending = list(hub_section.get("pending_documents") or [])
+    problems = list(hub_section.get("problem_documents") or [])
 
     total = len(required_codes)
     ready_count = len(satisfied)
@@ -103,28 +109,28 @@ def merge_requirement_engine_into_owner_summary(
         "missing": missing,
         "ready_types": satisfied,
         "missing_types": missing,
-        "problems": 0,
-        "problematic": [],
-        "in_progress": 0,
-        "in_progress_types": [],
+        "problems": len(problems) + len(pending),
+        "problematic": sorted(set(problems + pending)),
+        "in_progress": len(pending),
+        "in_progress_types": pending,
     }
     merged["percent_ready"] = 100 if total == 0 else round(100 * ready_count / total)
 
     if total == 0:
         merged["status"] = merged.get("status") or "no_required"
-    elif missing:
-        merged["status"] = "missing"
+    elif missing or problems or pending:
+        merged["status"] = "missing" if missing else "attention"
     elif ready_count == total:
         merged["status"] = "ok"
     else:
         merged["status"] = merged.get("status") or "missing"
 
-    checklist = dict(merged.get("checklist") or {})
-    checklist["requiredTypes"] = required_codes
-    checklist["source_layer"] = SOURCE_LAYER
+    checklist = apply_hub_requirements_to_checklist(dict(merged.get("checklist") or {}), hub_section)
     merged["checklist"] = checklist
     merged["requirement_engine"] = hub_section
-    merged["source_layer"] = SOURCE_LAYER
+    merged["document_runtime"] = hub_section.get("document_runtime")
+    merged["source_layer"] = hub_section.get("source_layer") or SOURCE_LAYER
+    merged["source_layers"] = list(hub_section.get("source_layers") or [SOURCE_LAYER, RUNTIME_SOURCE_LAYER])
     return merged
 
 
@@ -142,4 +148,10 @@ async def evaluate_candidate_document_hub_requirements(
     )
     if evaluation is None:
         return None
-    return map_requirement_evaluation_to_document_hub(evaluation)
+
+    documents = await load_candidate_documents_snapshot(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        candidate_id=str(candidate.id),
+    )
+    return map_requirement_evaluation_to_document_hub(evaluation, documents=documents)

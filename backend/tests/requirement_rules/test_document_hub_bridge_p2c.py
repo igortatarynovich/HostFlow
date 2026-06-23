@@ -62,6 +62,7 @@ def test_p2c_driver_ce_required_documents_from_engine() -> None:
     assert all(row["source_layer"] == SOURCE_LAYER for row in hub["required_documents"])
     assert hub["missing_documents"] == sorted(required_codes)
     assert hub["satisfied_documents"] == []
+    assert hub["document_runtime"]["evaluation_version"] == "document_runtime_v1"
 
 
 def test_p2c_satisfied_documents_when_approved() -> None:
@@ -94,10 +95,12 @@ def test_p2c_missing_documents_when_absent() -> None:
     hub = map_requirement_evaluation_to_document_hub(evaluation)
 
     assert hub["satisfied_documents"] == []
-    assert set(hub["missing_documents"]) == {"passport", "driver_license", "code95", "tacho_card"}
+    assert set(hub["missing_documents"]) == {"driver_license", "code95", "tacho_card"}
+    assert hub["pending_documents"] == ["passport"]
 
     by_code = {row["document_type_code"]: row for row in hub["required_documents"]}
-    assert by_code["passport"]["status"] == "missing"
+    assert by_code["passport"]["status"] == "pending"
+    assert by_code["passport"]["lifecycle_status"] == "uploaded"
     assert by_code["code95"]["status"] == "missing"
     assert by_code["code95"]["source_layer"] == SOURCE_LAYER
 
@@ -120,8 +123,11 @@ def test_p2c_merge_into_owner_summary_overlays_requirement_engine() -> None:
 
     assert merged["source_layer"] == SOURCE_LAYER
     assert merged["requirement_engine"]["applied"] is True
-    assert set(merged["required"]["missing_types"]) == {"passport", "driver_license", "code95", "tacho_card"}
+    assert set(merged["required"]["missing_types"]) == {"driver_license", "code95", "tacho_card"}
+    assert merged["required"]["in_progress_types"] == ["passport"]
     assert merged["required"]["ready_types"] == []
+    assert merged["checklist"]["runtimeItems"]
+    assert merged["document_runtime"]["evaluation_version"] == "document_runtime_v1"
     assert set(merged["checklist"]["requiredTypes"]) == {
         "passport",
         "driver_license",
