@@ -49,8 +49,6 @@ import {
   READY_STATUSES,
   NEGATIVE_STATUSES,
   EQUIVALENT_TYPE_GROUPS,
-  EXPIRING_SOON_THRESHOLD_DAYS,
-  REQUIRED_STATUS_META,
   STATUS_FROM_RANK,
   READINESS_TO_STATUS,
   CREATION_STATUS_OPTIONS,
@@ -75,7 +73,14 @@ import {
   computeTodayIso,
   normalizeDocTypeCode,
   resolveDocTypeLabel,
+  isExpiringSoonDoc,
 } from "./documentUtils";
+import {
+  extractRuntimeItemsFromSummary,
+  indexRuntimeItemsByType,
+  runtimeBadgeFromRuntime,
+  type RuntimeBadgePresentation,
+} from "../../utils/runtimeBadgePresentation";
 import type { DocType, OrderDraft, MetadataFieldConfig, RequiredState, MetadataState, CoreFields } from "./types";
 
 // Constants are now imported from ./constants
@@ -801,15 +806,6 @@ useEffect(() => {
   setAdditionalComment("");
 }, [selectedType]);
 
-  const isExpiringSoonDoc = useCallback(
-    (doc: Document) => {
-      const expiry = doc.expire_date || doc.expires_at;
-      const diff = daysUntil(expiry);
-      return diff !== null && diff >= 0 && diff <= EXPIRING_SOON_THRESHOLD_DAYS;
-    },
-    []
-  );
-
   const isPassportIncompleteDoc = useCallback(
     (doc: Document) => normalizeDocTypeCode(doc.doc_type || doc.type_code || "") === "passport" && !READY_STATUSES.has(primaryStatus(doc)),
     []
@@ -1100,26 +1096,21 @@ useEffect(() => {
   }, [summaryResponse, docs]);
 
   const requiredEntries = useMemo(() => {
-    if (!checklist) return [] as Array<{ type: string; label: string; status: RequiredState; documents: Document[] }>;
-    const reqSummary = summary?.required;
-    const readySet = new Set((reqSummary?.ready_types ?? []).map((item) => normalizeDocTypeCode(String(item))));
-    const inProgressSet = new Set((reqSummary?.in_progress_types ?? []).map((item) => normalizeDocTypeCode(String(item))));
-    const problemSet = new Set((reqSummary?.problematic ?? []).map((item) => normalizeDocTypeCode(String(item))));
-    const missingSet = new Set((reqSummary?.missing ?? []).map((item) => normalizeDocTypeCode(String(item))));
+    if (!checklist?.requiredTypes?.length) {
+      return [] as Array<{ type: string; label: string; badge: RuntimeBadgePresentation; documents: Document[] }>;
+    }
+    const summaryPayload = (summaryResponse?.summary ?? summaryResponse ?? null) as Record<string, unknown> | null;
+    const runtimeByType = indexRuntimeItemsByType(extractRuntimeItemsFromSummary(summaryPayload));
 
     return checklist.requiredTypes.map((rawType) => {
       const typeCode = normalizeDocTypeCode(String(rawType));
-      let status: RequiredState = "missing";
-      if (readySet.has(typeCode)) status = "ready";
-      else if (problemSet.has(typeCode)) status = "problem";
-      else if (inProgressSet.has(typeCode)) status = "in_progress";
-      else if (missingSet.has(typeCode)) status = "missing";
       const typeInfo = typeByCode.get(typeCode);
       const label = getDocTypeLabel(typeCode, typeInfo?.name);
+      const badge = runtimeBadgeFromRuntime(runtimeByType.get(typeCode));
       const documentsForType = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || "") === typeCode);
-      return { type: typeCode, label, status, documents: documentsForType };
+      return { type: typeCode, label, badge, documents: documentsForType };
     });
-  }, [checklist, summary, docs, typeByCode, getDocTypeLabel]);
+  }, [checklist, summaryResponse, docs, typeByCode, getDocTypeLabel]);
 
 
   const handleOrderType = useCallback(
@@ -1840,6 +1831,22 @@ useEffect(() => {
       ) : null}
       {info ? (
         <div className="rounded border border-green-200 bg-green-50 px-2 py-1.5 text-sm text-green-700">{info}</div>
+      ) : null}
+
+      {!hideHeader && requiredEntries.length > 0 ? (
+        <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          {requiredEntries.map((entry) => (
+            <span
+              key={entry.type}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
+            >
+              <span className="font-medium">{entry.label}</span>
+              <span className={clsx("rounded-full px-1.5 py-0.5 text-[11px] font-semibold", entry.badge.className)}>
+                {t(entry.badge.labelKey, { defaultValue: entry.badge.badge })}
+              </span>
+            </span>
+          ))}
+        </div>
       ) : null}
 
       {!hideHeader && upcomingDeadlinesByDate.length > 0 && (

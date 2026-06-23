@@ -78,6 +78,7 @@ from backend.app.services.ruleset_versioning import (
     normalize_ruleset_payload,
 )
 from backend.app.services.document_workflow import STATUS_ORDER, default_workflow
+from backend.app.services.document_runtime_delivery_contract import enrich_snapshot_via_contract
 from .ocr_pipeline import OcrPipeline
 from .owner_summary import compute_owner_summary
 from .rules_engine import compute_candidate_checklist
@@ -685,6 +686,23 @@ async def _document_to_out(
     if raw_type and canonical_type != raw_type:
         meta_payload.setdefault("legacy_doc_type", raw_type)
         extra_payload.setdefault("legacy_doc_type", raw_type)
+    expire_value = _as_date(getattr(doc, "expire_date", None))
+    runtime_snapshot = {
+        "id": str(doc.id),
+        "document_id": str(doc.id),
+        "status": status_value,
+        "doc_type": canonical_type,
+        "type": canonical_type,
+        "type_code": canonical_type,
+        "document_type_code": canonical_type,
+        "expire_date": expire_value,
+        "expires_at": expire_value,
+        "expires_on": expire_value,
+        "has_files": has_files,
+        "meta": meta_payload,
+    }
+    enriched_runtime = enrich_snapshot_via_contract(runtime_snapshot)
+    document_runtime = enriched_runtime.get("document_runtime")
     return DocumentOut(
         id=str(doc.id),
         tenant_id=str(doc.tenant_id),
@@ -728,6 +746,7 @@ async def _document_to_out(
         reminders=reminders,
         version=getattr(doc, "version", None),
         last_check=last_check_out,
+        document_runtime=document_runtime if isinstance(document_runtime, dict) else None,
         responsible_user_id=responsible_user_id,
         responsible_name=responsible_name,
     )

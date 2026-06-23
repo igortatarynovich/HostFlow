@@ -9,11 +9,9 @@ import { DocumentFieldInput } from "./DocumentFieldInput";
 import { getDocumentFieldsConfig } from "../documentFieldsConfig";
 import {
   DOCUMENT_STATUS_META,
-  READY_STATUSES,
-  NEGATIVE_STATUSES,
-  EXPIRING_SOON_THRESHOLD_DAYS,
 } from "../constants";
-import { formatDate, primaryStatus, resolveRequestedFromDate, isExpiringSoonDoc, normalizeDocTypeCode, resolveDocTypeLabel } from "../documentUtils";
+import { formatDate, primaryStatus, resolveRequestedFromDate, normalizeDocTypeCode, resolveDocTypeLabel } from "../documentUtils";
+import { runtimeBadgeFromDocument } from "../../../utils/runtimeBadgePresentation";
 import { buildMetadataStateFromDoc } from "../documentUtils";
 import type { DocType, MetadataState, CoreFields } from "../types";
 import { useI18n } from "../../../i18n";
@@ -93,20 +91,19 @@ export const DocumentCard = memo(function DocumentCard({
   const typeLabel = resolveDocTypeLabel(t, normalizedTypeCode || doc.doc_type || doc.type_code || "", typeInfo?.name);
   const title = doc.custom_name || doc.title || typeLabel;
   const statusValue = primaryStatus(doc);
-  const statusMeta =
-    DOCUMENT_STATUS_META[statusValue] ?? {
-      labelKey: statusValue,
-      color: "bg-slate-100 text-slate-600",
-      order: 99,
-    };
+  const badgePresentation = runtimeBadgeFromDocument(doc);
+  const statusMeta = {
+    labelKey: badgePresentation.labelKey,
+    color: badgePresentation.className,
+    order: DOCUMENT_STATUS_META[statusValue]?.order ?? 99,
+  };
   const metadataFields = metadataFieldMap.get(normalizedTypeCode || doc.doc_type) ?? [];
   const metadataValues = metadataEdits[doc.id] ?? buildMetadataStateFromDoc(doc, metadataFields);
-  const statusLabel = translateStatus(statusValue);
+  const statusLabel = t(badgePresentation.labelKey, { defaultValue: badgePresentation.badge });
   const selectStatus = statusValue;
   const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
   const firstFileName = Array.isArray(doc.files) ? doc.files[0]?.name : undefined;
-  const isExpiringSoon = isExpiringSoonDoc(doc);
-  const needsVerification = hasFiles && !READY_STATUSES.has(statusValue) && !NEGATIVE_STATUSES.has(statusValue);
+  const needsVerification = badgePresentation.badge === "pending";
   const fieldsConfig = getDocumentFieldsConfig(normalizedTypeCode || doc.doc_type || doc.type_code || "");
   const docReminders = Array.isArray(doc.reminders) ? doc.reminders : [];
   const hasLastCheck = Boolean(doc.last_check);
@@ -204,11 +201,6 @@ export const DocumentCard = memo(function DocumentCard({
                   {hasFiles ? t("admin.documents.badges.files_present") : t("admin.documents.badges.files_missing")}
                 </span>
                 {hasFiles && firstFileName ? <span className="text-xs text-slate-600">{firstFileName}</span> : null}
-                {isExpiringSoon && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
-                    {t("admin.documents.badges.expiring", { values: { days: EXPIRING_SOON_THRESHOLD_DAYS } })}
-                  </span>
-                )}
               </div>
             )}
             {showFollowUps ? (
@@ -230,6 +222,11 @@ export const DocumentCard = memo(function DocumentCard({
             )}
           >
             {statusLabel}
+            {badgePresentation.showSatisfactionIndicator ? (
+              <span className="text-[10px] opacity-80" title={t("admin.documents.runtime_badges.satisfies_requirement", { defaultValue: "Satisfies requirement" })}>
+                ✓
+              </span>
+            ) : null}
             {statusUpdating[doc.id] && <span className="text-[10px] text-slate-600">…</span>}
           </span>
           {!isCompact && (

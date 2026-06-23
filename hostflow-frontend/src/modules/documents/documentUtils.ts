@@ -14,6 +14,7 @@ import {
 } from "./constants";
 import type { Document, DocumentStatus } from "../../api/types";
 import type { DocumentExpiryEvaluation, DocumentExpiryState, OwnerExpiryAggregate } from "../../api/types/document";
+import { isRuntimeExpiringSoon } from "../../utils/runtimeBadgePresentation";
 import type { MetadataFieldConfig, MetadataState } from "./types";
 
 export const toArray = <T,>(value: any): T[] => {
@@ -207,15 +208,8 @@ export const resolveRequestedFromDate = (doc: Document): string | null => {
   return null;
 };
 
-export const isExpiringSoonDoc = (doc: Document): boolean => {
-  const expiry = doc.expire_date || doc.expires_at;
-  const evaluation = evaluateDocumentExpiry({
-    expiresOn: expiry,
-    expiryRequired: false,
-    expiringSoonDays: EXPIRING_SOON_THRESHOLD_DAYS,
-  });
-  return evaluation.state === "expiring_soon";
-};
+/** Thin adapter to document_runtime_v1 — do not use date math for badges. */
+export const isExpiringSoonDoc = (doc: Document): boolean => isRuntimeExpiringSoon(doc);
 
 export const coerceExpiryDate = (value?: string | null): string | null => {
   if (!value) return null;

@@ -10473,6 +10473,10 @@
         "rejected": "Rejected",
         "pending_verification": "Pending verification"
       },
+      "runtime_badges": {
+        "expiring_soon": "Expiring soon",
+        "satisfies_requirement": "Satisfies requirement"
+      },
       "labels": {
         "created_at": "Created",
         "entry_missing": "Entry missing",

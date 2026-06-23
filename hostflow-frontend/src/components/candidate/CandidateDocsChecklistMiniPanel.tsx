@@ -5,6 +5,7 @@ import { getSummary } from '../../api/documents'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { extractRuntimeItemsFromSummary, runtimeBadgeFromRuntime } from '../../utils/runtimeBadgePresentation'
 
 type SummaryRequired = {
   total: number
@@ -88,6 +89,20 @@ export default function CandidateDocsChecklistMiniPanel({
   const problematic = useMemo(() => summary?.required?.problematic ?? [], [summary])
   const expiring = useMemo(() => summary?.expiring_soon ?? [], [summary])
 
+  const runtimeChecklistRows = useMemo(() => {
+    const items = extractRuntimeItemsFromSummary(summary as Record<string, unknown> | null)
+    return items
+      .map((item) => {
+        const type = String(item.document_type_code || '').trim()
+        if (!type) return null
+        const badge = runtimeBadgeFromRuntime(item.document_runtime)
+        return { type, badge }
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+  }, [summary])
+
+  const hasRuntimeChecklist = runtimeChecklistRows.length > 0
+
   const percent = useMemo(() => {
     const p = Number(summary?.percent_ready ?? 0)
     if (!Number.isFinite(p)) return 0
@@ -144,7 +159,20 @@ export default function CandidateDocsChecklistMiniPanel({
 
           {!loading && !documentsError && (
             <>
-              {missing.length ? (
+              {hasRuntimeChecklist ? (
+                <ul className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                  {runtimeChecklistRows.map((row) => (
+                    <li key={row.type} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-medium text-slate-800">{labelForType(row.type)}</span>
+                      <span className={clsx('rounded-full px-1.5 py-0.5 text-[11px] font-semibold', row.badge.className)}>
+                        {t(row.badge.labelKey, { defaultValue: row.badge.badge })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {!hasRuntimeChecklist && missing.length ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-700">
                     {t('app.candidate_card.docs_checklist.missing', { defaultValue: 'Missing' })}
@@ -164,7 +192,7 @@ export default function CandidateDocsChecklistMiniPanel({
                 </div>
               ) : null}
 
-              {problematic.length ? (
+              {!hasRuntimeChecklist && problematic.length ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
                     {t('app.candidate_card.docs_checklist.problematic', { defaultValue: 'Needs attention' })}
@@ -179,7 +207,7 @@ export default function CandidateDocsChecklistMiniPanel({
                 </div>
               ) : null}
 
-              {expiring.length ? (
+              {!hasRuntimeChecklist && expiring.length ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                     {t('app.candidate_card.docs_checklist.expiring', { defaultValue: 'Expiring soon' })}
@@ -201,7 +229,7 @@ export default function CandidateDocsChecklistMiniPanel({
                 </div>
               ) : null}
 
-              {!missing.length && !problematic.length && !expiring.length ? (
+              {hasRuntimeChecklist ? null : !missing.length && !problematic.length && !expiring.length ? (
                 <div className="text-xs text-slate-500">
                   {t('app.candidate_card.docs_checklist.ok', { defaultValue: 'No blockers detected.' })}
                 </div>

@@ -12,6 +12,12 @@ import { useHiringPipelineGates } from '../../contexts/HiringPipelineGatesContex
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
+import {
+  extractRuntimeItemsFromSummary,
+  runtimeBadgeFromRuntime,
+  type RuntimeBadgeKind,
+  type RuntimeBadgePresentation,
+} from '../../utils/runtimeBadgePresentation'
 
 type RequiredState = {
   missing: string[]
@@ -86,6 +92,26 @@ type Props = {
 }
 
 type RowStatus = 'missing' | 'expiring' | 'valid' | 'in_progress'
+
+type DocRow = {
+  type: string
+  status: RowStatus
+  meta?: string
+  badgePresentation?: RuntimeBadgePresentation
+}
+
+function runtimeBadgeToRowStatus(badge: RuntimeBadgeKind): RowStatus {
+  switch (badge) {
+    case 'approved':
+      return 'valid'
+    case 'expiring_soon':
+      return 'expiring'
+    case 'pending':
+      return 'in_progress'
+    default:
+      return 'missing'
+  }
+}
 
 export default function CandidateDocsRailPanel({
   candidateId,
@@ -233,13 +259,30 @@ export default function CandidateDocsRailPanel({
   )
 
   const rows = useMemo(() => {
+    const runtimeItems = extractRuntimeItemsFromSummary(summary as Record<string, unknown> | null)
+    if (runtimeItems.length > 0) {
+      const seen = new Set<string>()
+      const out: DocRow[] = []
+      for (const item of runtimeItems) {
+        const type = String(item.document_type_code || '').trim()
+        if (!type) continue
+        const badgePresentation = runtimeBadgeFromRuntime(item.document_runtime)
+        const status = runtimeBadgeToRowStatus(badgePresentation.badge)
+        const key = `${type}::${status}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({ type, status, badgePresentation })
+      }
+      return out
+    }
+
     const expMap = new Map<string, string>()
     for (const x of expiringSoon) {
       if (!x?.type) continue
       if (!expMap.has(String(x.type))) expMap.set(String(x.type), String(x.expires_at || ''))
     }
 
-    const out: Array<{ type: string; status: RowStatus; meta?: string }> = []
+    const out: DocRow[] = []
 
     // Blockers first
     for (const code of missing) out.push({ type: code, status: 'missing' })
@@ -265,7 +308,7 @@ export default function CandidateDocsRailPanel({
       seen.add(k)
       return true
     })
-  }, [expiringSoon, inProgressTypes, missing, problematic, readyTypes])
+  }, [summary, expiringSoon, inProgressTypes, missing, problematic, readyTypes])
 
   const statusPill = useCallback(
     (s: RowStatus, opts?: { softChecklist?: boolean }) => {
@@ -613,7 +656,11 @@ export default function CandidateDocsRailPanel({
                           {labelForType(r.type)}
                         </div>
                         <div className="shrink-0 text-[11px] font-semibold">
-                          {r.status === 'missing'
+                          {r.badgePresentation ? (
+                            <>
+                              → {t(r.badgePresentation.labelKey, { defaultValue: r.badgePresentation.badge })}
+                            </>
+                          ) : r.status === 'missing'
                             ? pipelineBlockingEffective
                               ? `→ ${t('app.candidate_card.documents.status.missing', { defaultValue: 'missing' })}`
                               : `→ ${t('app.candidate_card.documents.status.checklist_not_uploaded', { defaultValue: 'not uploaded yet' })}`

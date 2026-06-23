@@ -239,6 +239,7 @@ if PYDANTIC_V2:
         reminders: List[DocumentReminderOut] = Field(default_factory=list)
         version: Optional[int] = None
         last_check: Optional[DocumentCheckOut] = None
+        document_runtime: Optional[Dict[str, Any]] = None
         responsible_user_id: Optional[str] = None
         responsible_name: Optional[str] = None
 
@@ -290,6 +291,7 @@ else:
         reminders: List[DocumentReminderOut] = Field(default_factory=list)
         version: Optional[int] = None
         last_check: Optional[DocumentCheckOut] = None
+        document_runtime: Optional[Dict[str, Any]] = None
         responsible_user_id: Optional[str] = None
         responsible_name: Optional[str] = None
 

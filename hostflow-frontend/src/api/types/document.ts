@@ -114,6 +114,16 @@ export type DocumentReadinessState =
   | 'problem'
   | (string & {});
 
+export interface DocumentRuntimeV1 {
+  evaluation_version?: string;
+  workflow_status?: string | null;
+  expiry_status?: string | null;
+  runtime_signal?: string | null;
+  satisfies_requirement?: boolean;
+  document_type_code?: string | null;
+  document_id?: string | null;
+}
+
 export interface Document {
   id: UUID;
   tenant_id: UUID;
@@ -147,6 +157,7 @@ export interface Document {
   workflow?: DocumentWorkflow | null;
   last_check?: DocumentCheck | null;
   readiness_state?: DocumentReadinessState | null;
+  document_runtime?: DocumentRuntimeV1 | null;
   company_id?: UUID | null;
   source?: string | null;
   external_id?: string | null;
@@ -228,5 +239,15 @@ export interface CandidateDocumentChecklist {
   optionalTypes?: string[];
   missingTypes?: string[];
   readyTypes?: string[];
+  runtimeItems?: Array<{
+    document_type_code?: string;
+    document_runtime?: DocumentRuntimeV1 | null;
+  }>;
+  document_runtime?: {
+    items?: Array<{
+      document_type_code?: string;
+      document_runtime?: DocumentRuntimeV1 | null;
+    }>;
+  };
 }
 
