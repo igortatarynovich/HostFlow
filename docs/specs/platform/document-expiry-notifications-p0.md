@@ -1,12 +1,12 @@
 # Document Expiry Notifications — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon + **P1 Expiry Event Evaluator complete** (2026-06-23). No dispatch, persistence, or Notification Center in P1.  
+**Status:** Accepted (architecture canon). **Implementation:** P0 canon + **P1 Evaluator** + **P2 Event Registry** complete (2026-06-24). No dispatch or Notification Center UI yet.  
 **Hierarchy:** L2 operating canon — platform layer. **Downstream consumer** of Document Runtime Engine v1 — emits notification *events*, not messages.  
 **Owner:** Architecture canon + platform core team.
 
 **Opened:** 2026-06-23 — immediately after **Document Runtime Engine v1 closed** ([`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20).
 
-**Next implementation step (post-P1 gate):** **P2 — Notification Event Registry / Store** — persist computed `notification_event_v1` rows; still no dispatch or Notification Center wiring.
+**Next implementation step (post-P2 gate):** **P3 — Notification Center read UI** — consume stored open events; still no email/WhatsApp/cron/dispatch adapters.
 
 **Related canon (must stay consistent):**
 
@@ -31,7 +31,7 @@ It does **not** notify about everything. It reacts **only** to states already co
 | Responsibility | Detail |
 |----------------|--------|
 | **Event evaluation** | Map runtime expiry signals → canonical notification events |
-| **Idempotent event records** | Deduplicated event intent for Notification Center (P1+) |
+| **Idempotent event records** | Deduplicated event intent in `notification_events` (P2) |
 | **Scope gate** | P0: `expiring_soon`, `expired` only |
 
 **Main canon (non-negotiable):**
@@ -248,34 +248,70 @@ evaluate_document_expiry_events()
         ↓
 notification_event_v1[]
         ↓
-(P2: Event Registry / Store — next)
+(P2: Event Registry / Store — done)
+        ↓
+(P3: Notification Center read UI — next)
 ```
 
 ---
 
-## 10. P2 scope (after P1 gate)
+## 10. P2 implementation status (2026-06-24)
 
-**P2 — Notification Event Registry / Store** (persistence only):
+| Milestone | Scope | Status | Location |
+|-----------|-------|--------|----------|
+| **P2** | Notification Event Registry / Store | ✅ Done | `notification_events` table, `event_registry.py`, `api/v1/platform/notification_events.py` |
 
-| Deliverable | Description |
-|-------------|-------------|
-| Event store | Persist `notification_event_v1` rows with idempotent upsert on `event_key` |
-| Input | Output of P1 evaluator |
-| Output | Stored event records for downstream consumers |
-| Tests | Insert, dedup, replay idempotency |
+**P2 acceptance:**
 
-**Explicitly out of P2:**
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Expired/expiring events persist | ✅ |
+| 2 | Repeated evaluator run → no duplicates | ✅ |
+| 3 | `event_key` unique per tenant | ✅ |
+| 4 | List open events (read API) | ✅ |
+| 5 | Mark event `resolved` or `ignored` | ✅ |
+| 6 | No message dispatch | ✅ |
 
-- Notification Center UI / in-app display
-- Email / WhatsApp / webhooks
-- Cron / scheduler jobs
-- Templates and i18n
-- Escalation, digests, manager copies
-- Activity / Task creation
+**P2 chain:**
+
+```
+evaluate_document_expiry_events()
+        ↓
+sync_document_expiry_events() / upsert_notification_events()
+        ↓
+notification_events (status: open | resolved | ignored)
+        ↓
+GET /platform/notification-events?status=open
+        ↓
+(P3: Notification Center read UI — next)
+```
+
+**Table:** `notification_events` — unique `(tenant_id, event_key)`; separate from ADR-012 `notifications` delivery sink.
 
 ---
 
-## 11. Explicitly not next (avoid second Process Engine)
+## 11. P3 scope (after P2 gate)
+
+**P3 — Notification Center read UI** (display consumer only):
+
+| Deliverable | Description |
+|-------------|-------------|
+| Read UI | In-app list of open expiry events for assigned users |
+| Input | Stored `notification_events` rows (`status=open`) |
+| Output | Notification Center presentation — no channel dispatch |
+
+**Explicitly out of P3:**
+
+- Email / WhatsApp / webhooks
+- Cron / scheduler jobs
+- Templates and i18n (beyond minimal display)
+- Escalation, digests, manager copies
+- Activity / Task creation
+- ADR-012 `notifications` row creation (optional later adapter)
+
+---
+
+## 12. Explicitly not next (avoid second Process Engine)
 
 Without P0 discipline, expiry notifications become a second orchestration engine. **Forbidden early expansion:**
 
@@ -286,11 +322,11 @@ Without P0 discipline, expiry notifications become a second orchestration engine
 - Per-tenant notification rule builder  
 - Custom expression triggers  
 
-These belong to **downstream product tracks** after P2 event registry + Notification Center wiring prove the event model.
+These belong to **downstream product tracks** after P3 Notification Center read UI proves the event model.
 
 ---
 
-## 12. Reference architecture context
+## 13. Reference architecture context
 
 HostFlow platform foundation layers closed before this track:
 
@@ -300,11 +336,12 @@ HostFlow platform foundation layers closed before this track:
 | Entity Profile Registry v1 | ✅ Closed |
 | Requirement Rules Engine v1 | ✅ Closed |
 | Document Runtime Engine v1 | ✅ Closed |
-| **Document Expiry Notifications** | **P0 + P1 complete** (this doc) |
+| **Document Expiry Notifications** | **P0 + P1 + P2 complete** (this doc) |
 
 ---
 
 ## Changelog
 
+- 2026-06-24: **P2 complete** — `notification_events` registry; idempotent upsert on `event_key`; open/resolved/ignored status; read API; 8 tests; no dispatch.
 - 2026-06-23: **P1 complete** — `evaluate_document_expiry_events()`; delivery-contract input only; deterministic `event_key`; 9 tests; no dispatch.
 - 2026-06-23: P0 accepted — Document Expiry Notifications canon opened as downstream consumer of Document Runtime v1; events-first model; P1 evaluator scope gate.
