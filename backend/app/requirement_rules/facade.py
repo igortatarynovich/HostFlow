@@ -13,6 +13,7 @@ from backend.app.requirement_rules.registry import (
     RequirementRulesNotFoundError,
     build_requirement_rule_set,
 )
+from backend.app.requirement_rules.tenant_override_repository import list_active_tenant_requirement_overrides
 
 
 async def resolve_requirement_rule_set(
@@ -41,11 +42,20 @@ async def resolve_requirement_rule_set(
     if profile_view.get("resolution_source") == "not_found" or not profile_view.get("profile"):
         raise RequirementRulesNotFoundError(entity_profile_code=profile_code)
 
+    tenant_overrides = await list_active_tenant_requirement_overrides(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        entity_profile_code=profile_code,
+        context=str(context or "readiness").strip().lower(),
+        stage_code=stage_code,
+    )
+
     return build_requirement_rule_set(
         profile_view,
         context=context,
         stage_code=stage_code,
         transition_code=transition_code,
+        tenant_overrides=tenant_overrides,
     )
 
 
@@ -79,6 +89,14 @@ async def evaluate_entity_requirements(
     if profile_view.get("resolution_source") == "not_found" or not profile_view.get("profile"):
         raise RequirementRulesNotFoundError(entity_profile_code=profile_code)
 
+    tenant_overrides = await list_active_tenant_requirement_overrides(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        entity_profile_code=profile_code,
+        context=str(context or "readiness").strip().lower(),
+        stage_code=stage_code,
+    )
+
     return evaluate_requirement_rules(
         profile_view,
         context=context,
@@ -88,4 +106,5 @@ async def evaluate_entity_requirements(
         entity_id=entity_id,
         stage_code=stage_code,
         transition_code=transition_code,
+        tenant_overrides=tenant_overrides,
     )

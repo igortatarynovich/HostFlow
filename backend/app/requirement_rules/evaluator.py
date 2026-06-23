@@ -95,13 +95,15 @@ def evaluate_requirement_rules(
     entity_id: Optional[str] = None,
     stage_code: str | None = None,
     transition_code: str | None = None,
+    tenant_overrides: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Evaluate Entity Profile + Document Pack + Process Profile rules for a context."""
+    """Evaluate Entity Profile + Document Pack + Process Profile + Tenant Overrides."""
     rule_set = build_requirement_rule_set(
         profile_view,
         context=context,
         stage_code=stage_code,
         transition_code=transition_code,
+        tenant_overrides=tenant_overrides,
     )
     payload = dict(normalized_payload or {})
     doc_index = _documents_index(list(documents or []))

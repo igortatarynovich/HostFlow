@@ -11,6 +11,14 @@ RULE_TYPE_DOCUMENT_REQUIRED = "document_required"
 SOURCE_ENTITY_PROFILE = "entity_profile"
 SOURCE_DOCUMENT_PACK = "document_pack"
 SOURCE_PROCESS_PROFILE = "process_profile"
+SOURCE_TENANT_OVERRIDE = "tenant_override"
+
+OVERRIDE_KIND_RELAX = "relax"
+OVERRIDE_KIND_ADD = "add"
+OVERRIDE_KIND_SEVERITY = "severity"
+
+OVERRIDE_STATUS_ACTIVE = "active"
+OVERRIDE_STATUS_REVOKED = "revoked"
 
 LEVEL_BLOCKING = "blocking"
 LEVEL_WARNING = "warning"

@@ -14,10 +14,15 @@ from backend.app.requirement_rules.constants import (
     SOURCE_DOCUMENT_PACK,
     SOURCE_ENTITY_PROFILE,
     SOURCE_PROCESS_PROFILE,
+    SOURCE_TENANT_OVERRIDE,
     VALID_CONTEXTS,
 )
 from backend.app.requirement_rules.manifests import DOCUMENT_PACK_MANIFESTS
 from backend.app.requirement_rules.process_profile_source import build_process_profile_rules
+from backend.app.requirement_rules.tenant_override_source import (
+    apply_tenant_overrides,
+    filter_applicable_tenant_overrides,
+)
 
 
 class RequirementRulesNotFoundError(LookupError):
@@ -147,8 +152,9 @@ def build_requirement_rule_set(
     context: str = "readiness",
     stage_code: str | None = None,
     transition_code: str | None = None,
+    tenant_overrides: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Compile rules: Entity Profile → Document Pack → Process Profile."""
+    """Compile rules: Entity Profile → Document Pack → Process Profile → Tenant Overrides."""
     profile_meta = profile_view.get("profile") if isinstance(profile_view.get("profile"), dict) else profile_view
     entity_profile_code = str(
         profile_view.get("profile_code")
@@ -185,11 +191,40 @@ def build_requirement_rule_set(
 
     merged_rules = merge_requirement_rules(field_rules, document_rules, process_rules)
 
+    canonical_field_targets = {
+        str(r.get("qualified_code") or "")
+        for r in field_rules
+        if r.get("source") == SOURCE_ENTITY_PROFILE and r.get("qualified_code")
+    }
+    filtered_overrides = filter_applicable_tenant_overrides(
+        list(tenant_overrides or []),
+        entity_profile_code=entity_profile_code,
+        context=ctx,
+        stage_code=stage_code,
+    )
+    tenant_rules, tenant_sources = apply_tenant_overrides(
+        merged_rules,
+        filtered_overrides,
+        canonical_field_targets=canonical_field_targets,
+        context=ctx,
+    )
+
     rule_sources_applied: list[dict[str, str]] = [{"source": SOURCE_ENTITY_PROFILE, "ref": entity_profile_code}]
     if pack_code and document_rules:
         rule_sources_applied.append({"source": SOURCE_DOCUMENT_PACK, "ref": pack_code})
     if process_rules and process_profile_code:
         rule_sources_applied.append({"source": SOURCE_PROCESS_PROFILE, "ref": process_profile_code})
+    if tenant_sources:
+        seen_refs: set[str] = set()
+        for item in tenant_sources:
+            ref = str(item.get("ref") or "")
+            if ref and ref in seen_refs:
+                continue
+            if ref:
+                seen_refs.add(ref)
+            rule_sources_applied.append(item)
+
+    has_platform_extensions = bool(process_rules or tenant_sources)
 
     return {
         "contract_version": REQUIREMENT_RULES_V1,
@@ -201,7 +236,7 @@ def build_requirement_rule_set(
         "document_pack_code": pack_code or None,
         "process_profile_code": process_profile_code,
         "rule_sources_applied": rule_sources_applied,
-        "rules": merged_rules,
-        "p1_sources_only": not bool(process_rules),
-        "excluded_sources": ["tenant_override"] if process_rules else ["process_profile", "tenant_override"],
+        "rules": tenant_rules,
+        "p1_sources_only": not has_platform_extensions,
+        "excluded_sources": [] if tenant_sources else (["tenant_override"] if process_rules else ["process_profile", "tenant_override"]),
     }

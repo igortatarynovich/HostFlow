@@ -332,7 +332,7 @@ See [`entity-profile-definition-registry.md`](entity-profile-definition-registry
 | **P1 — Schema + read/evaluate + seed** | `requirement_evaluation_v1` API; `driver_ce` from Entity Profile + Document Pack **only** | Legacy validators still run; dual-read compare in tests |
 | **P2 — Consumer wiring** | Readiness (P2A), PE transition gate (P2B), Document Hub (P2C) | Legacy validators dual-run; requirement engine overlays |
 | **P3A — Process Profile hooks** | `stage_requirement` source; stage/transition context; merge order EP → Pack → Process Profile | Legacy stage validators dual-run |
-| **P3B — Tenant overrides** | Audited relax/add registry + admin write | — |
+| **P3B — Tenant overrides** | Audited relax/add/severity registry + admin write API | Legacy parallel validators dual-run |
 | **Closure** | No requirement logic outside engine + sources | Remove `CandidateProfile.config` requirement fragments |
 
 **Do not migrate:** layout-only `field_configs` (visible, order, labels) — those stay in Card Layout / Entity Profile presentation.
@@ -372,7 +372,7 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 | **Entity Profile** | ✅ | — |
 | **Document Pack** | ✅ | — |
 | **Process Profile** | ❌ | **P3A** — stage/transition hooks |
-| **Tenant Override** | ❌ | **P3B** — audited relax/add |
+| **Tenant Override** | ❌ | **P3B** ✅ — audited relax/add/severity |
 
 **P1 proof case:** `recruitment.candidate.driver_ce` → required fields (from Entity Profile composition) + required documents (from `document_pack_code` / pack manifest). No stage-aware rules, no tenant-specific waivers.
 
@@ -451,7 +451,7 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 
 **P2C acceptance:** Document Hub reads required documents from Requirement Engine; driver_ce pack (passport, driver_license, code95, tacho_card) → required/missing/satisfied; legacy ruleset path when `entity_profile_code` unresolved; API output includes `source_layer=requirement_engine`.
 
-**Next implementation step:** **P3B — Tenant Overrides** (audited relax/add). P3A Process Profile hooks complete — see §18.
+**Next implementation step:** Requirement Rules Engine source stack complete — see §19. Consumer deprecation / legacy validator removal is the next milestone.
 
 ---
 
@@ -472,7 +472,28 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 
 **Hard rule:** Process Profile adds stage requirements only — it does not redefine canonical field or document types already required by Entity Profile or Document Pack.
 
-**Next implementation step:** **P3B — Tenant Overrides** — audited relax/add registry. **Not in P3B:** custom expressions, UI, scripts, per-client overrides.
+**Next implementation step:** **P3B — Tenant Overrides** complete — see §19. Requirement Rules Engine source stack closed through tenant override layer.
+
+---
+
+## 19. P3B implementation status (2026-06-23)
+
+**Tenant override layer — done.**
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Tenant override model + migration | Done | `backend/app/models/tenant_requirement_override.py` |
+| Override compiler / merge | Done | `backend/app/requirement_rules/tenant_override_source.py` |
+| Merge order EP → Pack → Process Profile → Tenant | Done | `backend/app/requirement_rules/registry.py` |
+| Admin write API (no UI) | Done | `backend/app/api/v1/platform/tenant_requirement_overrides.py` |
+| Policy guards | Done | canonical EP fields + non-overridable docs |
+| Tests | Done | `backend/tests/requirement_rules/test_tenant_overrides_p3b.py` |
+
+**P3B allowed:** disable requirement (`relax`), add requirement (`add`), change severity (`severity`), tenant-scoped only.
+
+**P3B forbidden:** custom expressions, arbitrary scripts, override canonical field meaning, per-user hacks, per-client overrides.
+
+**Hard rule:** Tenant overrides apply after all platform sources; they cannot relax Entity Profile canonical fields or non-overridable document types (`passport`, `work_permit`, etc.).
 
 ---
 
@@ -504,3 +525,4 @@ P1 must not implement Process Profile or Tenant Override resolution. Those sourc
 - 2026-06-22: P1 complete — manifest-backed Document Pack + Entity Profile rule compiler; evaluate API; `driver_ce` proof case; tests.
 - 2026-06-23: P2 consumer wiring closed — P2A Readiness, P2B PE transition gate, P2C Document Hub; next step P3A Process Profile hooks.
 - 2026-06-23: P3A complete — Process Profile requirement source; stage/transition context; merge order EP → Pack → Process Profile; P2B stage wiring.
+- 2026-06-23: P3B complete — Tenant override layer (relax/add/severity); merge order through tenant overrides; admin API; policy guards.

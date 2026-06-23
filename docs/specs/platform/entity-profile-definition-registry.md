@@ -722,7 +722,7 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **P10A acceptance:** Field show/hide by sibling value; required-if enforced client + server; rules stored in presentation only; source/target ⊆ presentation subset; Documents/Process/Readiness untouched.
 
-**Next implementation step:** [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) **P3B** — Tenant Overrides. P3A Process Profile hooks complete.
+**Next implementation step:** Requirement Rules Engine source stack complete (EP → Pack → Process Profile → Tenant Overrides). Next: consumer deprecation / legacy validator removal milestone.
 
 ### P9 implementation status (2026-06-22)
 
