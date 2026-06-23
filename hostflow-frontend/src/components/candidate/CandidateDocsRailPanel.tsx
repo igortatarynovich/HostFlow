@@ -17,7 +17,14 @@ import {
   runtimeBadgeFromRuntime,
   type RuntimeBadgeKind,
   type RuntimeBadgePresentation,
+  type DocumentRuntimeV1,
 } from '../../utils/runtimeBadgePresentation'
+import {
+  RUNTIME_DOCUMENT_FILTERS,
+  RUNTIME_FILTER_LABEL_KEYS,
+  runtimeMatchesFilter,
+  type RuntimeDocumentFilterSelection,
+} from '../../utils/runtimeDocumentFilters'
 
 type RequiredState = {
   missing: string[]
@@ -98,6 +105,7 @@ type DocRow = {
   status: RowStatus
   meta?: string
   badgePresentation?: RuntimeBadgePresentation
+  runtime?: DocumentRuntimeV1 | null
 }
 
 function runtimeBadgeToRowStatus(badge: RuntimeBadgeKind): RowStatus {
@@ -151,6 +159,7 @@ export default function CandidateDocsRailPanel({
   const [documentsError, setDocumentsError] = useState<FriendlyErrorInfo | null>(null)
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [runtimeTypeFilter, setRuntimeTypeFilter] = useState<RuntimeDocumentFilterSelection>('all')
 
   const load = useCallback(async () => {
     if (!candidateId) return
@@ -271,7 +280,7 @@ export default function CandidateDocsRailPanel({
         const key = `${type}::${status}`
         if (seen.has(key)) continue
         seen.add(key)
-        out.push({ type, status, badgePresentation })
+        out.push({ type, status, badgePresentation, runtime: item.document_runtime ?? null })
       }
       return out
     }
@@ -309,6 +318,16 @@ export default function CandidateDocsRailPanel({
       return true
     })
   }, [summary, expiringSoon, inProgressTypes, missing, problematic, readyTypes])
+
+  const visibleRows = useMemo(() => {
+    if (runtimeTypeFilter === 'all') return rows
+    return rows.filter((row) => {
+      if (row.runtime) {
+        return runtimeMatchesFilter(row.runtime, runtimeTypeFilter)
+      }
+      return false
+    })
+  }, [rows, runtimeTypeFilter])
 
   const statusPill = useCallback(
     (s: RowStatus, opts?: { softChecklist?: boolean }) => {
@@ -637,8 +656,25 @@ export default function CandidateDocsRailPanel({
               </div>
             ) : (
               <div className="space-y-1">
-                {rows.length ? (
-                  rows.map((r, idx) => (
+                <select
+                  className="input mb-2 w-full text-xs"
+                  aria-label={t('admin.documents.filters.runtime_status', { defaultValue: 'Runtime status' })}
+                  value={runtimeTypeFilter}
+                  onChange={(e) =>
+                    setRuntimeTypeFilter(
+                      e.target.value === 'all' ? 'all' : (e.target.value as RuntimeDocumentFilterSelection),
+                    )
+                  }
+                >
+                  <option value="all">{t('admin.documents.filters.all_statuses')}</option>
+                  {RUNTIME_DOCUMENT_FILTERS.map((value) => (
+                    <option key={value} value={value}>
+                      {t(RUNTIME_FILTER_LABEL_KEYS[value], { defaultValue: value })}
+                    </option>
+                  ))}
+                </select>
+                {visibleRows.length ? (
+                  visibleRows.map((r, idx) => (
                     <button
                       key={`${r.type}-${r.status}-${idx}`}
                       type="button"
@@ -676,7 +712,7 @@ export default function CandidateDocsRailPanel({
                     </button>
                   ))
                 ) : (
-                  <div className="text-xs text-slate-500">{t('app.candidate_card.documents.empty', { defaultValue: 'No document data.' })}</div>
+                  <div className="text-xs text-slate-500">{t('admin.documents.filters.no_results', { defaultValue: 'No results.' })}</div>
                 )}
               </div>
             )

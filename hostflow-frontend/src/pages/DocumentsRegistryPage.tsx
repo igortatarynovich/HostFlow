@@ -20,8 +20,14 @@ import {
   isProcessAssignedToUser,
   isProcessDocument,
 } from '../modules/documents/workflowUtils'
+import {
+  documentMatchesRuntimeFilter,
+  resolveRuntimeDocumentFilter,
+  RUNTIME_DOCUMENT_FILTERS,
+  RUNTIME_FILTER_LABEL_KEYS,
+  type RuntimeDocumentFilter,
+} from '../utils/runtimeDocumentFilters'
 
-const QUICK_FILTERS = ['missing', 'requested', 'in_progress', 'ready'] as const
 const QUEUE_FILTERS = ['all', 'process', 'my_process', 'wf_overdue'] as const
 type QueueFilter = (typeof QUEUE_FILTERS)[number]
 const PAGE_SIZE = 20
@@ -34,11 +40,10 @@ export default function DocumentsRegistryPage() {
   const storageQuotaWarning = quotaWarningFor('storage')
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(() => (searchParams.get('q') || '').trim())
-  const [activeFilter, setActiveFilter] = useState<typeof QUICK_FILTERS[number] | null>(() => {
+  const [activeFilter, setActiveFilter] = useState<RuntimeDocumentFilter | null>(() => {
     const quick = (searchParams.get('quick') || '').trim()
-    if (quick && (QUICK_FILTERS as readonly string[]).includes(quick)) {
-      return quick as (typeof QUICK_FILTERS)[number]
-    }
+    const resolved = resolveRuntimeDocumentFilter(quick)
+    if (resolved) return resolved
     if ((searchParams.get('status') || '').trim()) return null
     return 'missing'
   })
@@ -132,9 +137,13 @@ export default function DocumentsRegistryPage() {
     } else {
       setQueueFilter('all')
     }
-    if (quick && (QUICK_FILTERS as readonly string[]).includes(quick)) {
-      setActiveFilter(quick as (typeof QUICK_FILTERS)[number])
+    if (quick) {
+      const resolved = resolveRuntimeDocumentFilter(quick)
+      setActiveFilter(resolved)
     } else if (status) {
+      const resolvedStatus = resolveRuntimeDocumentFilter(status)
+      setActiveFilter(resolvedStatus)
+    } else {
       setActiveFilter(null)
     }
   }, [searchParams])
@@ -315,17 +324,14 @@ export default function DocumentsRegistryPage() {
     return documents
       .filter((doc) => {
         if (!activeFilter) return true
-        const readiness = doc.readiness_state?.toLowerCase()
-        if (activeFilter === 'ready') {
-          return doc.status === 'approved' || readiness === 'ready'
-        }
-        return doc.status === activeFilter || readiness === activeFilter
+        return documentMatchesRuntimeFilter(doc, activeFilter)
       })
       .filter(matchesSearch)
       .filter((doc) => {
         if (docTypeFilter && doc.doc_type !== docTypeFilter) return false
         if (ownerKindFilter && doc.kind !== ownerKindFilter) return false
-        if (statusFilter && String(doc.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false
+        const runtimeStatus = resolveRuntimeDocumentFilter(statusFilter)
+        if (runtimeStatus && !documentMatchesRuntimeFilter(doc, runtimeStatus)) return false
         if (mineOnly && me?.id && doc.responsible_user_id !== me.id) return false
         if (queueFilter === 'process') {
           if (!isProcessDocument(doc)) return false
@@ -540,13 +546,13 @@ export default function DocumentsRegistryPage() {
               value={activeFilter ?? ''}
               onChange={(event) => {
                 const v = event.target.value
-                setActiveFilter(v === '' ? null : (v as (typeof QUICK_FILTERS)[number]))
+                setActiveFilter(v === '' ? null : (v as RuntimeDocumentFilter))
               }}
             >
               <option value="">{t('admin.documents.registry.table.all')}</option>
-              {QUICK_FILTERS.map((filter) => (
+              {RUNTIME_DOCUMENT_FILTERS.map((filter) => (
                 <option key={filter} value={filter}>
-                  {t(`admin.documents.status_labels.${filter}`)}
+                  {t(RUNTIME_FILTER_LABEL_KEYS[filter], { defaultValue: filter })}
                 </option>
               ))}
             </select>

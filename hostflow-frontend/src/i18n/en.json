@@ -10477,6 +10477,14 @@
         "expiring_soon": "Expiring soon",
         "satisfies_requirement": "Satisfies requirement"
       },
+      "runtime_filters": {
+        "expired": "Expired",
+        "expiring_soon": "Expiring soon",
+        "missing": "Missing",
+        "pending_review": "Pending review",
+        "rejected": "Rejected",
+        "satisfied": "Satisfied"
+      },
       "labels": {
         "created_at": "Created",
         "entry_missing": "Entry missing",

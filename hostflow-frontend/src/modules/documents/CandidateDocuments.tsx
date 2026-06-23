@@ -73,8 +73,13 @@ import {
   computeTodayIso,
   normalizeDocTypeCode,
   resolveDocTypeLabel,
-  isExpiringSoonDoc,
 } from "./documentUtils";
+import {
+  documentMatchesRuntimeFilterSelection,
+  RUNTIME_DOCUMENT_FILTERS,
+  RUNTIME_FILTER_LABEL_KEYS,
+  type RuntimeDocumentFilterSelection,
+} from "../../utils/runtimeDocumentFilters";
 import {
   extractRuntimeItemsFromSummary,
   indexRuntimeItemsByType,
@@ -380,7 +385,7 @@ export default function CandidateDocuments({
   // Preview state is now handled by useDocumentPreview hook
 
   const [kindFilter, setKindFilter] = useState<DocumentKind | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<DocumentStatus | "all">("all");
+  const [runtimeFilter, setRuntimeFilter] = useState<RuntimeDocumentFilterSelection>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderedFilter, setOrderedFilter] = useState<"all" | "ordered" | "not_ordered">("all");
 
@@ -394,8 +399,6 @@ export default function CandidateDocuments({
   const [expandedDocs, setExpandedDocs] = useState<Record<string, boolean>>({});
   const [orderDrafts, setOrderDrafts] = useState<Record<string, OrderDraft>>({});
   const [orderingTypes, setOrderingTypes] = useState<Record<string, boolean>>({});
-  const [expiringSoonOnly, setExpiringSoonOnly] = useState(false);
-  const [missingOnly, setMissingOnly] = useState(false);
   const [passportIncompleteOnly, setPassportIncompleteOnly] = useState(false);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -811,11 +814,6 @@ useEffect(() => {
     []
   );
 
-  const expiringSoonSet = useMemo(
-    () => new Set(docs.filter((doc) => isExpiringSoonDoc(doc)).map((doc) => doc.id)),
-    [docs, isExpiringSoonDoc]
-  );
-
   const passportIncompleteSet = useMemo(
     () => new Set(docs.filter((doc) => isPassportIncompleteDoc(doc)).map((doc) => doc.id)),
     [docs, isPassportIncompleteDoc]
@@ -873,8 +871,7 @@ useEffect(() => {
 
     docs.forEach((doc) => {
       if (kindFilter !== "all" && doc.kind !== kindFilter) return;
-      const statusValue = primaryStatus(doc);
-      if (statusFilter !== "all" && statusValue !== statusFilter) return;
+      if (!documentMatchesRuntimeFilterSelection(doc, runtimeFilter)) return;
       if (orderedFilter === "ordered" && !doc.ordered_at) return;
       if (orderedFilter === "not_ordered" && doc.ordered_at) return;
       if (search) {
@@ -887,8 +884,6 @@ useEffect(() => {
           return;
         }
       }
-      if (expiringSoonOnly && !expiringSoonSet.has(doc.id)) return;
-      if (missingOnly && primaryStatus(doc) !== "missing") return;
       if (passportIncompleteOnly && !passportIncompleteSet.has(doc.id)) return;
       groups[doc.kind].push(doc);
     });
@@ -918,16 +913,14 @@ useEffect(() => {
   }, [
     docs,
     kindFilter,
-    statusFilter,
+    runtimeFilter,
     orderedFilter,
     searchQuery,
     typeByCode,
     getDocTypeLabel,
-    expiringSoonOnly,
-    missingOnly,
     passportIncompleteOnly,
-    expiringSoonSet,
     passportIncompleteSet,
+    locale,
   ]);
 
   const statsByKind = useMemo(() => {
@@ -1905,15 +1898,19 @@ useEffect(() => {
             ))}
           </select>
           <select
-            className="input max-w-[130px] text-sm"
-            aria-label={t("admin.documents.filters.status")}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentStatus))}
+            className="input max-w-[150px] text-sm"
+            aria-label={t("admin.documents.filters.runtime_status", { defaultValue: "Runtime status" })}
+            value={runtimeFilter}
+            onChange={(e) =>
+              setRuntimeFilter(
+                e.target.value === "all" ? "all" : (e.target.value as RuntimeDocumentFilterSelection),
+              )
+            }
           >
             <option value="all">{t("admin.documents.filters.all_statuses")}</option>
-            {Object.entries(DOCUMENT_STATUS_META).map(([value, meta]) => (
+            {RUNTIME_DOCUMENT_FILTERS.map((value) => (
               <option key={value} value={value}>
-                {t(meta.labelKey ?? value, { defaultValue: value })}
+                {t(RUNTIME_FILTER_LABEL_KEYS[value], { defaultValue: value })}
               </option>
             ))}
           </select>
@@ -1935,24 +1932,6 @@ useEffect(() => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
-            <input
-              type="checkbox"
-              className="rounded border-slate-300"
-              checked={expiringSoonOnly}
-              onChange={(e) => setExpiringSoonOnly(e.target.checked)}
-            />
-            {t("admin.documents.filters.expiring_soon")}
-          </label>
-          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
-            <input
-              type="checkbox"
-              className="rounded border-slate-300"
-              checked={missingOnly}
-              onChange={(e) => setMissingOnly(e.target.checked)}
-            />
-            {t("admin.documents.filters.missing_only")}
-          </label>
           <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
             <input
               type="checkbox"
@@ -1980,12 +1959,10 @@ useEffect(() => {
               return docType === normalizedSelected;
             })
             .filter((doc) => {
-              const statusValue = primaryStatus(doc);
-              if (statusFilter !== "all" && statusValue !== statusFilter) return false;
+              if (kindFilter !== "all" && doc.kind !== kindFilter) return false;
+              if (!documentMatchesRuntimeFilterSelection(doc, runtimeFilter)) return false;
               if (orderedFilter === "ordered" && !doc.ordered_at) return false;
               if (orderedFilter === "not_ordered" && doc.ordered_at) return false;
-              if (expiringSoonOnly && !expiringSoonSet.has(doc.id)) return false;
-              if (missingOnly && primaryStatus(doc) !== "missing") return false;
               if (passportIncompleteOnly && !passportIncompleteSet.has(doc.id)) return false;
               if (searchQuery.trim()) {
                 const search = searchQuery.trim().toLowerCase();
