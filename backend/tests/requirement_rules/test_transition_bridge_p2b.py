@@ -55,14 +55,16 @@ def test_p2b_map_evaluation_to_transition_gate_blockers() -> None:
         _profile_view_from_manifest(),
         context=TRANSITION_CONTEXT,
         normalized_payload={"recruitment.candidate.first_name": "Jan"},
-        documents=[{"type": "passport", "status": "uploaded"}],
+        documents=[{"type": "passport", "status": "uploaded", "has_files": True}],
     )
     gate = map_requirement_evaluation_to_transition_gate(evaluation)
     assert gate["applied"] is True
     assert gate["satisfied"] is False
     assert gate["context"] == TRANSITION_CONTEXT
     assert "code95" in gate["missing_documents"]
-    assert any(row["source_layer"] == "requirement_engine" for row in gate["blocking_reasons"])
+    assert "passport" in gate["pending_documents"]
+    assert any(row["source_layer"] == "document_runtime" for row in gate["blocking_reasons"])
+    assert gate["document_runtime"]["evaluation_version"] == "document_runtime_v1"
 
 
 def test_p2b_merge_blocks_transition_when_unsatisfied() -> None:
@@ -98,6 +100,7 @@ def test_p2b_merge_blocks_transition_when_unsatisfied() -> None:
     assert merged["transfer_allowed"] is False
     assert merged["handoff_create_allowed"] is False
     assert "requirement_engine" in merged["source_layers"]
+    assert "document_runtime" in merged["source_layers"]
     assert any(
         row.get("source_layer") == "requirement_engine" and row.get("document_type_code") == "code95"
         for row in merged["blocking_reasons"]
@@ -319,19 +322,25 @@ async def test_p2b_integration_full_package_allows_transition(db, tenant_id: str
     evaluation = evaluate_requirement_rules(
         _profile_view_from_manifest(),
         context=TRANSITION_CONTEXT,
+        stage_code="ready_for_handoff",
+        transition_code="ready_for_handoff_gate",
         normalized_payload={
             "recruitment.candidate.first_name": "Jan",
             "recruitment.candidate.last_name": "Kowalski",
             "recruitment.candidate.contacts.phone": "+48123456789",
+            "recruitment.candidate.contacts.email": "jan@example.com",
+            "platform.identity.address": "Warsaw",
         },
         documents=[
             {"document_type_code": "passport", "status": "approved", "has_files": True},
             {"document_type_code": "driver_license", "status": "approved", "has_files": True},
             {"document_type_code": "code95", "status": "approved", "has_files": True},
             {"document_type_code": "tacho_card", "status": "approved", "has_files": True},
+            {"document_type_code": "medical_certificate", "status": "approved", "has_files": True},
         ],
     )
     assert evaluation["satisfied"] is True
     satisfied_gate = map_requirement_evaluation_to_transition_gate(evaluation)
     assert satisfied_gate["satisfied"] is True
     assert satisfied_gate["blocking_reasons"] == []
+    assert satisfied_gate["document_runtime"]["evaluation_version"] == "document_runtime_v1"
