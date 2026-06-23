@@ -1,12 +1,12 @@
 # Document Expiry Notifications — platform capability canon (P0)
 
-**Status:** Accepted (architecture canon). **Implementation:** P0 canon only — **no runtime code in this slice**.  
+**Status:** Accepted (architecture canon). **Implementation:** P0 canon + **P1 Expiry Event Evaluator complete** (2026-06-23). No dispatch, persistence, or Notification Center in P1.  
 **Hierarchy:** L2 operating canon — platform layer. **Downstream consumer** of Document Runtime Engine v1 — emits notification *events*, not messages.  
 **Owner:** Architecture canon + platform core team.
 
 **Opened:** 2026-06-23 — immediately after **Document Runtime Engine v1 closed** ([`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) §20).
 
-**Next implementation step (post-P0 gate):** **P1 — Expiry Event Evaluator** — list candidates/documents that are `expired` or `expiring_soon` via delivery contract; evaluation only, no dispatch.
+**Next implementation step (post-P1 gate):** **P2 — Notification Event Registry / Store** — persist computed `notification_event_v1` rows; still no dispatch or Notification Center wiring.
 
 **Related canon (must stay consistent):**
 
@@ -170,7 +170,7 @@ notification_event_v1:
   evaluated_at: ...
 ```
 
-P1 evaluator may output a list of these events — still **no dispatch**.
+P1 evaluator outputs a list of these events — still **no dispatch**. Implemented in `document_expiry_notifications/evaluator.py` (`evaluate_document_expiry_events`).
 
 ---
 
@@ -221,22 +221,53 @@ Expiry notification logic **must not** be implemented in:
 
 ---
 
-## 9. P1 scope (after P0 gate)
+## 9. P1 implementation status (2026-06-23)
 
-**P1 — Expiry Event Evaluator** (evaluation only):
+| Milestone | Scope | Status | Location |
+|-----------|-------|--------|----------|
+| **P1** | Expiry Event Evaluator | ✅ Done | `document_expiry_notifications/evaluator.py`, `document_expiry_notifications_delivery_contract.py` |
+
+**P1 acceptance:**
+
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Expired document → `document_expired` | ✅ |
+| 2 | Expiring soon → `document_expiring_soon` | ✅ |
+| 3 | Valid outside window → no event | ✅ |
+| 4 | `no_expiry` → no event | ✅ |
+| 5 | Rejected document → no expiry event | ✅ |
+| 6 | One runtime snapshot → deterministic `event_key` | ✅ |
+| 7 | No delivery / dispatch | ✅ |
+
+**P1 chain:**
+
+```
+Document Runtime Delivery Contract
+        ↓
+evaluate_document_expiry_events()
+        ↓
+notification_event_v1[]
+        ↓
+(P2: Event Registry / Store — next)
+```
+
+---
+
+## 10. P2 scope (after P1 gate)
+
+**P2 — Notification Event Registry / Store** (persistence only):
 
 | Deliverable | Description |
 |-------------|-------------|
-| Evaluator | Pure function: delivery contract snapshot(s) → `notification_event_v1[]` |
-| Input | Document Runtime delivery contract output per owner (candidate / employee) |
-| Output | List of `document_expiring_soon` / `document_expired` events |
-| Filter | Only instances with `expiry_status` ∈ `{expiring_soon, expired}` and acceptable workflow (typically `approved`) |
-| Tests | Expired, expiring soon, valid (no event), missing expiry (no event) |
+| Event store | Persist `notification_event_v1` rows with idempotent upsert on `event_key` |
+| Input | Output of P1 evaluator |
+| Output | Stored event records for downstream consumers |
+| Tests | Insert, dedup, replay idempotency |
 
-**Explicitly out of P1:**
+**Explicitly out of P2:**
 
+- Notification Center UI / in-app display
 - Email / WhatsApp / webhooks
-- Notification Center persistence (P2 consumer wiring)
 - Cron / scheduler jobs
 - Templates and i18n
 - Escalation, digests, manager copies
@@ -244,7 +275,7 @@ Expiry notification logic **must not** be implemented in:
 
 ---
 
-## 10. Explicitly not next (avoid second Process Engine)
+## 11. Explicitly not next (avoid second Process Engine)
 
 Without P0 discipline, expiry notifications become a second orchestration engine. **Forbidden early expansion:**
 
@@ -255,11 +286,11 @@ Without P0 discipline, expiry notifications become a second orchestration engine
 - Per-tenant notification rule builder  
 - Custom expression triggers  
 
-These belong to **downstream product tracks** after P1 evaluator + P2 Notification Center wiring prove the event model.
+These belong to **downstream product tracks** after P2 event registry + Notification Center wiring prove the event model.
 
 ---
 
-## 11. Reference architecture context
+## 12. Reference architecture context
 
 HostFlow platform foundation layers closed before this track:
 
@@ -269,10 +300,11 @@ HostFlow platform foundation layers closed before this track:
 | Entity Profile Registry v1 | ✅ Closed |
 | Requirement Rules Engine v1 | ✅ Closed |
 | Document Runtime Engine v1 | ✅ Closed |
-| **Document Expiry Notifications** | **P0 opened** (this doc) |
+| **Document Expiry Notifications** | **P0 + P1 complete** (this doc) |
 
 ---
 
 ## Changelog
 
+- 2026-06-23: **P1 complete** — `evaluate_document_expiry_events()`; delivery-contract input only; deterministic `event_key`; 9 tests; no dispatch.
 - 2026-06-23: P0 accepted — Document Expiry Notifications canon opened as downstream consumer of Document Runtime v1; events-first model; P1 evaluator scope gate.

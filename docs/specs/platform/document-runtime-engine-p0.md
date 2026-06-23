@@ -267,7 +267,7 @@ Evaluation output: `document_runtime_v1` with `evaluation_version=document_runti
 | Auto-create document rows | Document Hub product scope |
 | Advanced review workflow | Document Hub verification UX |
 
-**Next practical downstream track:** [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — Document Expiry Notifications P0 canon; P1 Expiry Event Evaluator next.
+**Next practical downstream track:** [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — Document Expiry Notifications P1 complete; **P2 Notification Event Registry / Store** next.
 
 Requirement Engine answers *what is required*; Document Runtime answers *what state each document instance is in*; Delivery Contract answers *how all consumers read that state consistently*.
 
@@ -294,3 +294,4 @@ Same discipline as Requirement Rules post-v1 — **downstream consumers only aft
 - 2026-06-23: P3 complete — Process Engine `ready_for_handoff` gate via document runtime blockers.
 - 2026-06-23: P4 complete — runtime delivery contract; Readiness / Hub / PE cross-consumer consistency.
 - 2026-06-23: **Document Runtime Engine v1 foundation closed** — evaluator + delivery contract + three consumers; §20 milestone record.
+- 2026-06-23: Cross-link — Document Expiry Notifications P1 complete; P2 event registry next.
