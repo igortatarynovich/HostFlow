@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.entity_profile.vacancy_bridge import resolve_entity_profile_hints_from_vacancy
 from backend.app.models.candidate import Candidate
 from backend.app.modules.documents.crud import list_candidate_documents
-from backend.app.document_runtime.readiness_bridge import enrich_snapshot_with_runtime
+from backend.app.services.document_runtime_delivery_contract import (
+    enrich_snapshot_via_contract,
+)
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.registry import RequirementRulesNotFoundError
 
@@ -127,7 +129,7 @@ def _document_row_to_snapshot(doc: Any) -> dict[str, Any]:
         "superseded": bool(meta.get("superseded")),
         "replaced": bool(meta.get("replaced")),
     }
-    return enrich_snapshot_with_runtime(snapshot)
+    return enrich_snapshot_via_contract(snapshot)
 
 
 async def load_candidate_documents_snapshot(

@@ -10,9 +10,9 @@ from backend.app.document_runtime.evaluator import (
     map_runtime_to_requirement_items,
     runtime_precedence,
 )
-from backend.app.document_runtime.readiness_bridge import (
-    build_document_runtime_section,
-    enrich_documents_with_runtime,
+from backend.app.document_runtime.delivery_contract import (
+    build_instances_delivery_via_contract,
+    enrich_documents_via_contract,
 )
 from backend.app.requirement_rules.constants import (
     LEVEL_BLOCKING,
@@ -108,7 +108,7 @@ def evaluate_requirement_rules(
         tenant_overrides=tenant_overrides,
     )
     payload = dict(normalized_payload or {})
-    doc_list = enrich_documents_with_runtime(list(documents or []))
+    doc_list = enrich_documents_via_contract(list(documents or []))
     doc_index = _documents_index(doc_list)
 
     required_fields: list[dict[str, Any]] = []
@@ -201,5 +201,5 @@ def evaluate_requirement_rules(
         "rule_sources_applied": rule_set.get("rule_sources_applied") or [],
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
         "p1_sources_only": bool(rule_set.get("p1_sources_only", True)),
-        "document_runtime": build_document_runtime_section(doc_list),
+        "document_runtime": build_instances_delivery_via_contract(doc_list),
     }

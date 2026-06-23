@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from backend.app.document_runtime.constants import DOCUMENT_RUNTIME_V1
-from backend.app.document_runtime.hub_bridge import build_document_hub_runtime_checklist
+from backend.app.document_runtime.delivery_contract import (
+    SOURCE_LAYER as RUNTIME_SOURCE_LAYER,
+    build_required_documents_delivery_via_contract,
+)
 
-SOURCE_LAYER = "document_runtime"
 REQUIREMENT_SOURCE_LAYER = "requirement_engine"
 
 
@@ -25,7 +26,7 @@ def _runtime_blocking_reason(
     return {
         "code": str(base.get("code") or f"document_not_satisfied:{doc_code}"),
         "message": str(base.get("message") or f"Required document not satisfied: {doc_code}"),
-        "source_layer": SOURCE_LAYER,
+        "source_layer": RUNTIME_SOURCE_LAYER,
         "document_type_code": doc_code,
         "lifecycle_status": runtime.get("workflow_status"),
         "expiry_status": runtime.get("expiry_status"),
@@ -42,7 +43,7 @@ def _runtime_warning(
 ) -> dict[str, Any]:
     return {
         **warning,
-        "source_layer": str(warning.get("source_layer") or SOURCE_LAYER),
+        "source_layer": RUNTIME_SOURCE_LAYER,
         "document_type_code": doc_code,
         "lifecycle_status": runtime.get("workflow_status"),
         "expiry_status": runtime.get("expiry_status"),
@@ -126,7 +127,7 @@ def build_transition_gate_from_evaluation(
     Requirement Engine defines required document types; Document Runtime decides whether
     the best instance satisfies the gate.
     """
-    runtime_checklist = build_document_hub_runtime_checklist(
+    runtime_checklist = build_required_documents_delivery_via_contract(
         evaluation,
         documents=documents,
         requirement_source_layer=REQUIREMENT_SOURCE_LAYER,

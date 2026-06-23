@@ -6,11 +6,11 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.document_runtime.hub_bridge import (
+from backend.app.document_runtime.delivery_contract import (
     SOURCE_LAYER as RUNTIME_SOURCE_LAYER,
-    apply_runtime_checklist_to_hub_section,
-    build_document_hub_runtime_checklist,
+    build_required_documents_delivery_via_contract,
 )
+from backend.app.document_runtime.hub_bridge import apply_runtime_checklist_to_hub_section
 from backend.app.models.candidate import Candidate
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.readiness_bridge import (
@@ -33,7 +33,7 @@ def map_requirement_evaluation_to_document_hub(
     documents: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """Map requirement_evaluation_v1 + document_runtime_v1 to Document Hub view."""
-    runtime_checklist = build_document_hub_runtime_checklist(
+    runtime_checklist = build_required_documents_delivery_via_contract(
         evaluation,
         documents=documents,
         requirement_source_layer=SOURCE_LAYER,
