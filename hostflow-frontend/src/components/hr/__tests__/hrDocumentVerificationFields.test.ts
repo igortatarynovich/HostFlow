@@ -54,7 +54,7 @@ describe('hrDocumentVerificationFields', () => {
       doc({ document_key: 'c', required: false, document_id: '3' }),
     ]
     expect(requiredDocumentQueue(docs).map((d) => d.document_key)).toEqual(['a', 'c'])
-    expect(countVerifiedDocuments(docs)).toEqual({ verified: 0, total: 1 })
+    expect(countVerifiedDocuments(docs)).toEqual({ verified: 0, total: 3 })
   })
 
   it('picks first pending index', () => {

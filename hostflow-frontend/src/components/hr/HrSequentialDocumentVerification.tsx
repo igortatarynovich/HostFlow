@@ -279,62 +279,58 @@ export default function HrSequentialDocumentVerification({
         })
   const activeMapped = mapHrVerificationDocumentRow(activeDoc, t)
 
-  const documentViewer = (
-    <div className="flex flex-1 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <DocumentRow compact className="border-slate-200 shadow-none" {...activeMapped.row} />
-      <div className="mt-5 flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center">
-        {showFilePanel ? (
-          <HrVerificationDocumentFileActions
-            activeDoc={activeDoc}
-            candidateId={candidateId}
-            employeeId={effectiveEmployeeId || employeeId}
-            manage={manage}
-            busy={!!busy}
-            onOpen={handleOpenDocument}
-            onPanelUpdated={onPanelUpdated}
-          />
-        ) : (
-          <div className="max-w-sm space-y-2">
-            <p className="text-sm font-medium text-slate-800">
-              {t('app.hr.dossier.data_block', { defaultValue: 'Employee data' })}
-            </p>
-            <p className="text-sm text-slate-600">
-              {t('app.hr.verify_shell.data_only_hint', {
-                defaultValue:
-                  'No file for this block — check and complete the fields on the right, then confirm.',
-              })}
-            </p>
-          </div>
-        )}
-      </div>
-      {queue.length > 1 ? (
-        <nav
-          className="mt-4 space-y-1.5"
-          aria-label={t('app.hr.verify_shell.doc_nav', { defaultValue: 'Documents' })}
-        >
-          {queue.map((d, i) => {
-            const mapped = mapHrVerificationDocumentRow(d, t)
-            const current = i === activeIndex
-            return (
-              <button
-                key={d.document_key}
-                type="button"
-                aria-label={d.label}
-                aria-current={current ? 'step' : undefined}
-                className={clsx(
-                  'w-full rounded-lg text-left transition-shadow',
-                  current && 'ring-2 ring-brand-400 ring-offset-1',
-                )}
-                onClick={() => setActiveIndex(i)}
-              >
-                <DocumentRow compact className="pointer-events-none border-slate-200 shadow-none" {...mapped.row} />
-              </button>
-            )
-          })}
-        </nav>
-      ) : null}
+  const fileStrip = showFilePanel ? (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+      <DocumentRow compact className="min-w-0 flex-1 border-0 shadow-none" {...activeMapped.row} />
+      <HrVerificationDocumentFileActions
+        compact
+        activeDoc={activeDoc}
+        candidateId={candidateId}
+        employeeId={effectiveEmployeeId || employeeId}
+        manage={manage}
+        busy={!!busy}
+        onOpen={handleOpenDocument}
+        onPanelUpdated={onPanelUpdated}
+      />
     </div>
-  )
+  ) : blockKind === 'data_only' ? (
+    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+      {t('app.hr.verify_shell.data_only_hint', {
+        defaultValue: 'No file for this block — check and complete the fields below, then confirm.',
+      })}
+    </p>
+  ) : null
+
+  const documentNav =
+    queue.length > 1 ? (
+      <nav
+        className="flex gap-2 overflow-x-auto pb-1"
+        aria-label={t('app.hr.verify_shell.doc_nav', { defaultValue: 'Documents' })}
+      >
+        {queue.map((d, i) => {
+          const mapped = mapHrVerificationDocumentRow(d, t)
+          const current = i === activeIndex
+          return (
+            <button
+              key={d.document_key}
+              type="button"
+              aria-label={d.label}
+              aria-current={current ? 'step' : undefined}
+              className={clsx(
+                'shrink-0 rounded-full border px-3 py-1.5 text-left text-xs font-medium transition-colors',
+                current
+                  ? 'border-brand-400 bg-brand-50 text-brand-900'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+              )}
+              onClick={() => setActiveIndex(i)}
+            >
+              <span className="block">{d.label || d.document_key}</span>
+              <span className="mt-0.5 block text-[10px] font-normal text-slate-500">{mapped.statusLabel}</span>
+            </button>
+          )
+        })}
+      </nav>
+    ) : null
 
   const dataPanel = (
     <>
@@ -489,7 +485,8 @@ export default function HrSequentialDocumentVerification({
       verifiedCount={progress.verified}
       totalCount={progress.total}
       nextDocumentLabel={nextPendingLabel}
-      documentViewer={documentViewer}
+      fileStrip={fileStrip}
+      documentNav={documentNav}
       dataPanel={dataPanel}
       footer={
         <>

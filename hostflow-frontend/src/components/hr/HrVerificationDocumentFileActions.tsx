@@ -15,6 +15,7 @@ type Props = {
   employeeId?: string
   manage: boolean
   busy: boolean
+  compact?: boolean
   onOpen: () => void | Promise<void>
   onPanelUpdated?: (panel: HrReviewPanel) => void
 }
@@ -25,6 +26,7 @@ export default function HrVerificationDocumentFileActions({
   employeeId,
   manage,
   busy,
+  compact = false,
   onOpen,
   onPanelUpdated,
 }: Props) {
@@ -106,6 +108,47 @@ export default function HrVerificationDocumentFileActions({
   }
 
   const disabled = busy || uploading
+
+  if (compact) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {canOpen ? (
+          <button type="button" className="btn-primary btn-sm" disabled={disabled} onClick={() => void onOpen()}>
+            {t('app.hr.verify_shell.open_file', { defaultValue: 'Open file' })}
+          </button>
+        ) : null}
+        {canUpload ? (
+          <>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={disabled}
+              onClick={() => inputRef.current?.click()}
+            >
+              {canOpen
+                ? t('app.hr.verify_shell.replace_file', { defaultValue: 'Replace file' })
+                : t('app.hr.verify_shell.upload_file', { defaultValue: 'Upload file' })}
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              disabled={disabled}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void handleUpload(file)
+              }}
+            />
+          </>
+        ) : null}
+        {!canOpen && !canUpload ? (
+          <span className="text-xs font-medium text-amber-800">
+            {t('app.hr.verify_shell.no_file_readonly', { defaultValue: 'No file uploaded yet.' })}
+          </span>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col items-center gap-3">

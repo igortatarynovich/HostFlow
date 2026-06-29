@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { HrReviewEligibilitySummary, HrReviewPanel } from '../../api/workforce'
-import WorkEligibilityJourneyWorkspace from './WorkEligibilityJourneyWorkspace'
+import WorkEligibilityJourneyPanel from './WorkEligibilityJourneyPanel'
 import { useI18n } from '../../i18n'
 
 type Props = {
@@ -90,7 +90,7 @@ export default function HrWorkEligibilityCompact({
       ) : null}
       {showFull && employeeId ? (
         <div className="mt-4 border-t border-slate-100 pt-4">
-          <WorkEligibilityJourneyWorkspace employeeId={employeeId} manage={manage} onChanged={onRefresh} />
+          <WorkEligibilityJourneyPanel employeeId={employeeId} manage={manage} onChanged={onRefresh} />
         </div>
       ) : null}
     </section>

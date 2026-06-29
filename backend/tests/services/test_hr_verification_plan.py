@@ -192,6 +192,30 @@ def test_sync_plan_clears_blocking_after_verify() -> None:
     assert out["blocking_reasons"] == []
 
 
+def test_medical_included_in_handoff_dossier_by_default() -> None:
+    slot = next(s for s in VERIFICATION_SLOT_DEFS if s.document_key == "Medical")
+    level = _classify_slot(
+        slot,
+        required_types=set(),
+        optional_types=set(),
+        journey={"steps": []},
+        position_category="office",
+    )
+    assert level == "required"
+
+
+def test_work_experience_always_in_handoff_dossier() -> None:
+    slot = next(s for s in VERIFICATION_SLOT_DEFS if s.document_key == "Work experience")
+    level = _classify_slot(
+        slot,
+        required_types=set(),
+        optional_types=set(),
+        journey={"steps": []},
+        position_category="office",
+    )
+    assert level == "required"
+
+
 def test_passport_always_required() -> None:
     slot = next(s for s in VERIFICATION_SLOT_DEFS if s.document_key == "Passport / ID")
     level = _classify_slot(

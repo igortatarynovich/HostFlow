@@ -390,7 +390,7 @@ export default function WorkEligibilityJourneyWorkspace({
   const [journey, setJourney] = useState<WorkEligibilityJourney | null>(null)
   const [journeyLoading, setJourneyLoading] = useState(true)
 
-  const paySig = paymentRequirements.map((r) => `${r.id}:${r.payment_status}:${r.updated_at}`).join('|')
+  const paySig = (paymentRequirements ?? []).map((r) => `${r.id}:${r.payment_status}:${r.updated_at}`).join('|')
 
   const reloadJourney = useCallback(async () => {
     setJourneyLoading(true)
@@ -481,7 +481,7 @@ export default function WorkEligibilityJourneyWorkspace({
           <div className="relative mt-4 space-y-2 pl-1">
             <div className="absolute left-[11px] top-2 bottom-2 w-px bg-slate-200" aria-hidden />
             <ol className="relative space-y-2">
-              {journey.steps.map((step) => {
+              {(journey.steps ?? []).map((step) => {
                 const payRow = paymentRowForStep(step, paymentRequirements)
                 const { attached, suggested } = docsForStep(step.step_code, docItems)
                 const showDocs = step.status !== 'not_required' && (attached.length > 0 || suggested.length > 0)

@@ -18,6 +18,7 @@ from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import WorkforceHrReview
 from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
 from backend.app.services.hr_review_document_resolution import DOC_KEY_CANDIDATE_TYPES
+from backend.app.services.hr_verified_field_catalog import OPTIONAL_FILE_VERIFICATION_KEYS
 from backend.app.services.hr_verification_requirements import (
     is_driver_position,
     resolve_position_category_for_review,
@@ -423,7 +424,10 @@ def _classify_slot(
     for ct in optional_types:
         if CATALOG_TO_DOCUMENT_KEY.get(ct) == slot.document_key:
             return "optional"
-    return "not_required"
+    if slot.document_key in OPTIONAL_FILE_VERIFICATION_KEYS:
+        return "optional"
+    # Handoff dossier mirrors recruitment package — include standard blocks for HR review.
+    return "required"
 
 
 def _legacy_row_for_slot(

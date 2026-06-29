@@ -59,11 +59,12 @@ export function isPlanRecommendedDocument(d: HrReviewDocumentRow): boolean {
   return documentRequirementTier(d) === 'recommended'
 }
 
-/** Main HR queue: hard blockers + vacancy/client required + HR-requested. */
+/** Main HR queue: hard blockers + vacancy/client required + HR-requested + recommended handoff blocks. */
 export function requiredPlanDocuments(docs: HrReviewDocumentRow[]): HrReviewDocumentRow[] {
   return docs.filter((d) => {
+    if (d.requirement_level === 'not_required') return false
     const tier = documentRequirementTier(d)
-    return tier === 'hard_blocker' || tier === 'required' || tier === 'hr_requested'
+    return tier !== 'not_required'
   })
 }
 

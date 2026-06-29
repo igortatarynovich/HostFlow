@@ -16,7 +16,10 @@ type Props = {
   verifiedCount: number
   totalCount: number
   nextDocumentLabel?: string | null
-  documentViewer: ReactNode
+  /** Compact file strip (open/upload) above the field list. */
+  fileStrip?: ReactNode
+  /** Optional horizontal document switcher. */
+  documentNav?: ReactNode
   dataPanel: ReactNode
   footer: ReactNode
   /** Optional compact identity strip below progress (employment setup hint). */
@@ -34,7 +37,8 @@ export default function HrVerificationStepShell({
   verifiedCount,
   totalCount,
   nextDocumentLabel,
-  documentViewer,
+  fileStrip,
+  documentNav,
   dataPanel,
   footer,
   identityStrip,
@@ -114,12 +118,13 @@ export default function HrVerificationStepShell({
             </p>
           ) : null}
 
+          {documentNav ? <div className="mt-3">{documentNav}</div> : null}
           {identityStrip ? <div className="mt-3">{identityStrip}</div> : null}
         </header>
 
-        <div className="grid min-h-[26rem] flex-1 grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-100">
-          <div className="flex flex-col bg-slate-50/60 p-4">{documentViewer}</div>
-          <div className="flex flex-col p-4">{dataPanel}</div>
+        <div className="flex flex-col gap-4 p-4">
+          {fileStrip}
+          <div>{dataPanel}</div>
         </div>
 
         <footer className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
