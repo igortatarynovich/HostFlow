@@ -66,7 +66,10 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { listVacancies } from '../api/vacancies'
-import { createPortalLink, listTenantLinks, revokePortalLink, updateTenantLink, type TenantLink } from '../api/tenantLinks'
+import { listTenantLinks, getContactPolicy, type TenantLink } from '../api/tenantLinks'
+import { AddClientModal } from '../components/clients/AddClientModal'
+import { ClientAccessPanel } from '../components/clients/ClientAccessPanel'
+import { ClientLeadOriginPanel } from '../components/clients/ClientLeadOriginPanel'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useAuth } from '../store/useAuth'
 import { useToast } from '../components/Toast'
@@ -224,8 +227,8 @@ export default function Companies(){
     navigate(`${location.pathname}?${next.toString()}`, { replace: true })
   }, [location.pathname, navigate, searchParams, showExtendedSections])
   const handleCreateClientCompany = useCallback(() => {
-    navigate(CRM_APP_PATHS.clientNew)
-  }, [navigate])
+    setAddClientOpen(true)
+  }, [])
   const handleCreateOperatingCompany = useCallback(() => {
     navigate(CRM_APP_PATHS.onboardingCompany)
   }, [navigate])
@@ -277,8 +280,8 @@ export default function Companies(){
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [clientAccessLink, setClientAccessLink] = useState<TenantLink | null>(null)
   const [clientAccessLoading, setClientAccessLoading] = useState(false)
-  const [clientAccessSaving, setClientAccessSaving] = useState(false)
-  const [clientPortalBusy, setClientPortalBusy] = useState(false)
+  const [addClientOpen, setAddClientOpen] = useState(false)
+  const [tenantLinksByCompanyId, setTenantLinksByCompanyId] = useState<Map<string, TenantLink>>(new Map())
 
   // list filters/sort
   const [query, setQuery] = useState('')
@@ -1691,59 +1694,92 @@ export default function Companies(){
     }
   }, [id, isOperatingProfileRoute, tenantIdForLinks])
 
-  const handleClientAccessToggle = useCallback(
-    async (patch: { handoff_enabled?: boolean; see_vacancies?: boolean; see_reduced_profiles?: boolean }) => {
-      if (!tenantIdForLinks || !clientAccessLink) return
-      setClientAccessSaving(true)
+  useEffect(() => {
+    if (isOperatingProfileRoute || !tenantIdForLinks) {
+      setTenantLinksByCompanyId(new Map())
+      return
+    }
+    let cancelled = false
+    ;(async () => {
       try {
-        const updated = await updateTenantLink(tenantIdForLinks, clientAccessLink.id, patch)
-        setClientAccessLink(updated)
-        notify({ title: t('common.saved', { defaultValue: 'Saved' }), variant: 'success' })
-      } catch (err: any) {
-        console.error('[Companies] client access update failed', err)
-        const detail = err?.response?.data?.detail
-        const message = typeof detail === 'string' ? detail : t('app.companies.messages.save_error')
-        notify({ title: message, variant: 'error' })
-      } finally {
-        setClientAccessSaving(false)
+        const links = await listTenantLinks(tenantIdForLinks)
+        if (cancelled) return
+        const map = new Map<string, TenantLink>()
+        for (const link of links) {
+          const companyKey = String(link.client_company_id || '').trim()
+          if (companyKey) map.set(companyKey, link)
+        }
+        setTenantLinksByCompanyId(map)
+      } catch {
+        if (!cancelled) setTenantLinksByCompanyId(new Map())
       }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isOperatingProfileRoute, tenantIdForLinks])
+
+  useEffect(() => {
+    if (isOperatingProfileRoute || id) return
+    if (searchParams.get('add') === '1') {
+      setAddClientOpen(true)
+      const next = new URLSearchParams(searchParams)
+      next.delete('add')
+      const q = next.toString()
+      navigate(q ? `${location.pathname}?${q}` : location.pathname, { replace: true })
+    }
+  }, [id, isOperatingProfileRoute, location.pathname, navigate, searchParams])
+
+  useEffect(() => {
+    if (!isOperatingProfileRoute && id === 'new') {
+      navigate(`${CRM_APP_PATHS.clientsDirectory}?add=1`, { replace: true })
+    }
+  }, [id, isOperatingProfileRoute, navigate])
+
+  const handleClientCreated = useCallback(
+    async (link: TenantLink) => {
+      setAddClientOpen(false)
+      notify({
+        title: t('app.clients.created_dynamic', {
+          defaultValue: '{entity} added',
+          values: { entity: link.company_name || t('app.nav.items.clients') },
+        }),
+        variant: 'success',
+      })
+      try {
+        const status = await getOnboardingStatus()
+        if (!status.steps.first_client_created) {
+          void recordTtvStepCompleted({
+            event: 'ttv_step',
+            action: 'completed',
+            step_key: 'first_client_created',
+          })
+        }
+      } catch {
+        // ignore onboarding/TTV errors
+      }
+      if (tenantIdForLinks) {
+        try {
+          const links = await listTenantLinks(tenantIdForLinks)
+          const map = new Map<string, TenantLink>()
+          for (const row of links) {
+            const companyKey = String(row.client_company_id || '').trim()
+            if (companyKey) map.set(companyKey, row)
+          }
+          setTenantLinksByCompanyId(map)
+        } catch {
+          // ignore list refresh errors
+        }
+      }
+      const companyId = String(link.client_company_id || link.handoff_include_company_id || '').trim()
+      if (companyId) {
+        navigate(`${CRM_APP_PATHS.agencyClients}/${companyId}`)
+        return
+      }
+      void loadList()
     },
-    [tenantIdForLinks, clientAccessLink, notify, t],
+    [loadList, navigate, notify, t, tenantIdForLinks],
   )
-
-  const handleCreateClientPortalLink = useCallback(async () => {
-    if (!tenantIdForLinks || !clientAccessLink) return
-    setClientPortalBusy(true)
-    try {
-      const out = await createPortalLink(tenantIdForLinks, clientAccessLink.id)
-      setClientAccessLink((prev) => (prev ? { ...prev, portal_token: out.token, portal_expires_at: out.expires_at } : prev))
-      notify({ title: t('app.clients.portal_created', { defaultValue: 'Ссылка создана' }), variant: 'success' })
-    } catch (err: any) {
-      console.error('[Companies] create client portal link failed', err)
-      const detail = err?.response?.data?.detail
-      const message = typeof detail === 'string' ? detail : t('app.companies.messages.save_error')
-      notify({ title: message, variant: 'error' })
-    } finally {
-      setClientPortalBusy(false)
-    }
-  }, [tenantIdForLinks, clientAccessLink, notify, t])
-
-  const handleRevokeClientPortalLink = useCallback(async () => {
-    if (!tenantIdForLinks || !clientAccessLink) return
-    setClientPortalBusy(true)
-    try {
-      await revokePortalLink(tenantIdForLinks, clientAccessLink.id)
-      setClientAccessLink((prev) => (prev ? { ...prev, portal_token: null, portal_expires_at: null } : prev))
-      notify({ title: t('app.clients.portal_revoked', { defaultValue: 'Ссылка отозвана' }), variant: 'success' })
-    } catch (err: any) {
-      console.error('[Companies] revoke client portal link failed', err)
-      const detail = err?.response?.data?.detail
-      const message = typeof detail === 'string' ? detail : t('app.companies.messages.save_error')
-      notify({ title: message, variant: 'error' })
-    } finally {
-      setClientPortalBusy(false)
-    }
-  }, [tenantIdForLinks, clientAccessLink, notify, t])
 
   useEffect(() => {
     let cancelled = false
@@ -1762,43 +1798,6 @@ export default function Companies(){
       cancelled = true
     }
   }, [])
-
-  // auto-create draft on /companies/new and redirect to the real id
-  useEffect(() => {
-    let cancelled = false
-    async function createDraft() {
-      try {
-        const { data } = await api.post('/companies/', {
-          name: untitledNameRef.current,
-          company_role: 'client',
-        })
-        if (cancelled) return
-        navigate(`${listBasePath}/${data.id}`, { replace: true })
-      } catch (err) {
-        console.error('[Companies] failed to create draft', err)
-        void planLimitModal?.showPlanLimitIfNeeded(err, t('app.companies.messages.save_error'))
-      }
-    }
-    if (id === 'new') {
-      void createDraft().then(async () => {
-        try {
-          const status = await getOnboardingStatus()
-          if (!status.steps.first_client_created) {
-            void recordTtvStepCompleted({
-              event: 'ttv_step',
-              action: 'completed',
-              step_key: 'first_client_created',
-            })
-          }
-        } catch {
-          // ignore onboarding/TTV errors
-        }
-      })
-    }
-    return () => {
-      cancelled = true
-    }
-  }, [id, listBasePath, navigate, planLimitModal, t])
 
   // build detail form whenever current changes
   useEffect(() => {
@@ -2334,90 +2333,34 @@ export default function Companies(){
 
             {clientWorkspaceTab === 'overview' && (
               <>
+                <ClientLeadOriginPanel companyExtra={asRecord(currentAny ?? {}).extra as Record<string, unknown> | undefined} />
+
                 <SectionCard
-                  title={t('app.clients.settings', { defaultValue: 'Настройки доступа' })}
-                  description={t('app.clients.subtitle_dynamic', {
-                    defaultValue: 'Manage client-facing access without technical details.',
-                    values: { entityPlural: 'clients' },
+                  title={t('app.clients.settings', { defaultValue: 'Access settings' })}
+                  description={t('app.clients.settings_desc', {
+                    defaultValue: 'Handoff, client portal, and contact attempt rules for this client.',
                   })}
                 >
-                  {clientAccessLoading ? (
-                    <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</p>
-                  ) : !clientAccessLink ? (
-                    <p className="text-sm text-slate-500">
-                      {t('app.clients.empty_desc', {
-                        defaultValue: 'Client access link is not configured yet.',
-                        values: { entity: 'client' },
-                      })}
-                    </p>
+                  {tenantIdForLinks && id ? (
+                    <ClientAccessPanel
+                      tenantId={tenantIdForLinks}
+                      companyId={id}
+                      link={clientAccessLink}
+                      loading={clientAccessLoading}
+                      onLinkUpdated={(next) => {
+                        setClientAccessLink(next)
+                        if (next?.client_company_id) {
+                          setTenantLinksByCompanyId((prev) => {
+                            const map = new Map(prev)
+                            map.set(next.client_company_id as string, next)
+                            return map
+                          })
+                        }
+                      }}
+                      onNotify={notify}
+                    />
                   ) : (
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap gap-6">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(clientAccessLink.handoff_enabled)}
-                            disabled={clientAccessSaving}
-                            onChange={(e) => void handleClientAccessToggle({ handoff_enabled: e.target.checked })}
-                          />
-                          <span className="text-sm">{t('app.clients.handoff_label', { defaultValue: 'Передача кандидатов' })}</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(clientAccessLink.see_vacancies)}
-                            disabled={clientAccessSaving}
-                            onChange={(e) => void handleClientAccessToggle({ see_vacancies: e.target.checked })}
-                          />
-                          <span className="text-sm">{t('app.clients.see_vacancies_label', { defaultValue: 'Видеть вакансии' })}</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(clientAccessLink.see_reduced_profiles)}
-                            disabled={clientAccessSaving}
-                            onChange={(e) => void handleClientAccessToggle({ see_reduced_profiles: e.target.checked })}
-                          />
-                          <span className="text-sm">{t('app.clients.see_reduced_label', { defaultValue: 'Урезанные профили' })}</span>
-                        </label>
-                      </div>
-                      <div className="border-t border-slate-100 pt-3">
-                        <p className="mb-2 text-sm font-medium text-slate-700">
-                          {t('app.clients.portal_access', { defaultValue: 'Доступ по ссылке' })}
-                        </p>
-                        {clientAccessLink.portal_token ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              className="btn-secondary btn-sm"
-                              onClick={() => {
-                                const url = `${window.location.origin}/client-portal?token=${clientAccessLink.portal_token}`
-                                void navigator.clipboard.writeText(url)
-                              }}
-                            >
-                              {t('common.copy', { defaultValue: 'Копировать' })}
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-danger btn-sm"
-                              disabled={clientPortalBusy}
-                              onClick={() => void handleRevokeClientPortalLink()}
-                            >
-                              {t('app.clients.revoke_link', { defaultValue: 'Отозвать' })}
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn-secondary btn-sm"
-                            disabled={clientPortalBusy}
-                            onClick={() => void handleCreateClientPortalLink()}
-                          >
-                            {t('app.clients.create_portal_link', { defaultValue: 'Создать ссылку' })}
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <p className="text-sm text-slate-500">{t('common.loading')}</p>
                   )}
                 </SectionCard>
 
@@ -4145,6 +4088,9 @@ export default function Companies(){
           <thead className="bg-slate-50/90 text-left">
             <tr>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.name')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.clients.access_column', { defaultValue: 'Access' })}
+              </th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.legal_name')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.kind', { defaultValue: 'Type' })}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
@@ -4177,21 +4123,40 @@ export default function Companies(){
           <tbody>
             {loading && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={14}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={15}>
                   {t('app.companies.list.table.loading')}
                 </td>
               </tr>
             )}
             {!loading &&
-              filteredItems.map((it) => (
-                <tr key={(it as any).id} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
+              filteredItems.map((it) => {
+                const rowId = String((it as any).id)
+                const accessLink = tenantLinksByCompanyId.get(rowId)
+                const contactPolicy = accessLink ? getContactPolicy(accessLink) : null
+                return (
+                <tr key={rowId} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
                   <td className="border-r border-slate-200 px-4 py-3 font-medium text-brand-700">
                     <Link
                       className="hover:underline"
-                      to={`${CRM_APP_PATHS.agencyClients}/${(it as any).id}`}
+                      to={`${CRM_APP_PATHS.agencyClients}/${rowId}`}
                     >
                       {(it as any).name}
                     </Link>
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {!accessLink ? (
+                      <span className="badge bg-amber-50 text-amber-800">
+                        {t('app.clients.access_needs_setup', { defaultValue: 'Needs setup' })}
+                      </span>
+                    ) : contactPolicy?.enabled ? (
+                      <span className="badge bg-emerald-50 text-emerald-800">
+                        {t('app.clients.access_contact_on', { defaultValue: 'Contact tracking' })}
+                      </span>
+                    ) : (
+                      <span className="badge bg-slate-100 text-slate-700">
+                        {t('app.clients.access_ready', { defaultValue: 'Configured' })}
+                      </span>
+                    )}
                   </td>
                   <td className="border-r border-slate-200 px-4 py-3">{(it as any).legal_name || '—'}</td>
                   <td className="border-r border-slate-200 px-4 py-3">
@@ -4261,10 +4226,10 @@ export default function Companies(){
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
             {!loading && filteredItems.length === 0 && (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={14}>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={15}>
                   {t('app.companies.list.table.empty')}
                 </td>
               </tr>
@@ -4276,7 +4241,27 @@ export default function Companies(){
   )
 
   /// единая точка возврата — порядок хуков стабилен
-  return id ? (pageContent ?? <div className="card p-4">{t('common.loading')}</div>) : listView;
+  const addClientModal =
+    addClientOpen && tenantIdForLinks ? (
+      <AddClientModal
+        tenantId={tenantIdForLinks}
+        onClose={() => setAddClientOpen(false)}
+        onCreated={(link) => void handleClientCreated(link)}
+        onError={(msg) => notify({ title: msg, variant: 'error' })}
+      />
+    ) : null
+
+  return id ? (
+    <>
+      {pageContent ?? <div className="card p-4">{t('common.loading')}</div>}
+      {addClientModal}
+    </>
+  ) : (
+    <>
+      {listView}
+      {addClientModal}
+    </>
+  );
   }
 
 // ----- Presentation helpers -----

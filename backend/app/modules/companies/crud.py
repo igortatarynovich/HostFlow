@@ -16,6 +16,7 @@ from backend.app.models.tenant import TenantType
 from backend.app.models.tenant import TenantLink
 from backend.app.models.user import Role as UserRole, User
 from backend.app.services.operating_company_slots import get_operating_company_slots
+from backend.app.services.tenant_links import ensure_client_company_tenant_link
 
 from .funnel_presets import business_funnel_presets, normalize_industry
 from .schemas import (
@@ -1353,6 +1354,13 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
                 modules=tenant_modules,
                 industry=industry_eff,
             )
+
+    if company_role == "client":
+        await ensure_client_company_tenant_link(
+            session,
+            agency_tenant_id=tenant_id,
+            client_company_id=str(obj.id),
+        )
 
     await session.commit()
     await session.refresh(obj)

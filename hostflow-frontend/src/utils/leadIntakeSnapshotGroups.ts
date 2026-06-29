@@ -144,6 +144,32 @@ export function buildIntakeSnapshotGroups(lead: Lead, normalized: Record<string,
     communication.push({ key: 'email', severity: 'info', label: t('app.leads.intake_workspace.snapshot.email', { values: { email } }) })
   }
 
+  const preferredContact = str(normalized.preferred_contact) || str(normalized.preferred_contact_raw)
+  if (preferredContact) {
+    const channelKey = `app.candidate_card.contacts.options.${preferredContact}`
+    const channelLabel = t(channelKey)
+    communication.push({
+      key: 'preferred_contact',
+      severity: 'info',
+      label: t('app.leads.intake_workspace.snapshot.preferred_contact', {
+        values: { value: channelLabel === channelKey ? preferredContact : channelLabel },
+      }),
+    })
+  }
+
+  const polandBasis = str(normalized.poland_stay_basis) || str(normalized.poland_stay_basis_raw)
+  if (polandBasis) {
+    const basisKey = `app.candidate_card.status.poland_basis.${polandBasis}`
+    const basisLabel = t(basisKey)
+    legal.push({
+      key: 'poland_basis',
+      severity: 'info',
+      label: t('app.leads.intake_workspace.snapshot.poland_stay', {
+        values: { value: basisLabel === basisKey ? polandBasis : basisLabel },
+      }),
+    })
+  }
+
   const citizenship = str(normalized.nationality) || str(normalized.nationality_code) || str(normalized.country) || str(normalized.geo_country)
   if (citizenship) {
     legal.push({

@@ -9,6 +9,7 @@ import {
   INTAKE_REJECT_REASON_CODES,
   leadRodoSatisfied,
   leadStatusAllowsIntakeDecision,
+  leadIntakeResolutionRejected,
   manualProcessBlockHint,
 } from '../../utils/intakeResolution'
 import { leadSupportsManualProcess } from '../../utils/leadCrm'
@@ -85,9 +86,11 @@ export default function LeadIntakeResolutionPanel({
     blockHint === 'INTAKE_POOL_PATH_REQUIRED' ||
     blockHint === 'DUPLICATE_REVIEW_PENDING'
   /** Vacancy confirm + unified header: any manual-pipeline lead that still needs routing help. */
+  const intakeRejected = useMemo(() => leadIntakeResolutionRejected(lead), [lead])
   const shellOk =
     !isServicesTenant &&
     !lead.candidate_id &&
+    !intakeRejected &&
     leadSupportsManualProcess(lead) &&
     (srcOk || hintOk)
   /** POST /intake-decision — backend only allows new | needs_routing | failed | duplicate_review */
@@ -98,13 +101,6 @@ export default function LeadIntakeResolutionPanel({
   const currentVacancyId = lead.vacancy_id != null ? String(lead.vacancy_id) : ''
 
   const norm = lead.normalized && typeof lead.normalized === 'object' && !Array.isArray(lead.normalized) ? lead.normalized : {}
-  const intakeRejected = useMemo(() => {
-    const ir = (norm as Record<string, unknown>).intake_resolution_v1
-    if (!ir || typeof ir !== 'object' || Array.isArray(ir)) return false
-    return String((ir as { status?: string }).status || '')
-      .trim()
-      .toLowerCase() === 'rejected'
-  }, [norm])
 
   useEffect(() => {
     if (!shellOk) return

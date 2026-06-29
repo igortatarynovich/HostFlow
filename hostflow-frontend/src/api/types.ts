@@ -752,14 +752,17 @@ export type LeadStatus =
   | 'duplicated'
   | 'failed'
   | 'needs_routing'
-  | 'duplicate_review';
+  | 'duplicate_review'
+  | 'rejected';
 export type LeadType = 'candidate' | 'client';
+export type LeadTargetType = 'candidate' | 'client_lead' | 'service_order_lead' | 'partner_lead';
 
 export interface Lead {
   id: UUID;
   tenant_id: UUID;
   business_type?: 'agency' | 'employer' | 'services' | null;
   lead_type?: LeadType;
+  lead_target_type?: LeadTargetType;
   company_id?: UUID | null;
   company_name?: string | null;
   vacancy_id?: UUID | null;

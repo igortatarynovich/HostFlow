@@ -4,6 +4,7 @@ import type { Lead } from '../../api/types'
 import {
   leadIntakeWorkspaceBlocking,
   leadRoutingTableAction,
+  leadIntakeResolutionRejected,
   manualProcessBlockHint,
   manualProcessBlockedUserMessage,
   type ManualProcessBlockCode,
@@ -92,6 +93,37 @@ describe('manualProcessBlockHint', () => {
       },
     })
     expect(manualProcessBlockHint(lead)).toBe('INTAKE_REJECTED')
+  })
+
+  it('client_lead without vacancy does not ask for candidate routing', () => {
+    const lead = metaLead({
+      lead_type: 'client',
+      lead_target_type: 'client_lead',
+      status: 'processed',
+    })
+    expect(manualProcessBlockHint(lead)).toBe('CLIENT_LEAD_NOT_CANDIDATE')
+    expect(leadRoutingTableAction(lead, false)).toEqual({ kind: 'none' })
+    expect(leadIntakeWorkspaceBlocking(lead, false)).toBe(false)
+  })
+
+  it('terminal client_lead is blocked as rejected', () => {
+    const lead = metaLead({
+      lead_type: 'client',
+      lead_target_type: 'client_lead',
+      status: 'rejected',
+      stage: 'lost',
+    })
+    expect(manualProcessBlockHint(lead)).toBe('INTAKE_REJECTED')
+    expect(leadIntakeResolutionRejected(lead)).toBe(true)
+  })
+
+  it('CRM stage lost with lost reason → intake rejected (no re-reject)', () => {
+    const lead = metaLead({
+      status: 'processed',
+      stage: 'lost',
+      normalized: { lead_lost_reason_v1: { code: 'not_qualified' } },
+    })
+    expect(leadIntakeResolutionRejected(lead)).toBe(true)
   })
 })
 

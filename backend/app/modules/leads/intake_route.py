@@ -86,6 +86,7 @@ class IntakeRouteContext:
     form_id: Optional[str]
     page_id: Optional[str]
     source: str
+    entity_profile_code: Optional[str] = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
     fallback_reason: Optional[str] = None
 
@@ -152,6 +153,7 @@ def _context_from_routing_result(
         pipeline_preset=pipeline,
         default_assignee_id=routing.default_assignee_id,
         intake_source_profile_id=routing.intake_source_profile_id,
+        entity_profile_code=str(getattr(routing, "entity_profile_code", None) or "").strip() or None,
         form_id=form_id,
         page_id=page_id,
         source=source,
@@ -186,6 +188,7 @@ async def resolve_intake_route_for_ingest(
             pipeline_preset=None,
             default_assignee_id=None,
             intake_source_profile_id=None,
+            entity_profile_code=None,
             form_id=form_id,
             page_id=page_id,
             source=src,

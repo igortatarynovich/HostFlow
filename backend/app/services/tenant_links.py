@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.tenant import TenantLink
+from backend.app.models.tenant import Tenant, TenantLink, TenantType
 
 
 async def get_tenant_link(
@@ -58,3 +60,37 @@ async def list_links_for_agency(
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+async def ensure_client_company_tenant_link(
+    db: AsyncSession,
+    *,
+    agency_tenant_id: str,
+    client_company_id: str,
+    handoff_enabled: bool = True,
+) -> TenantLink | None:
+    """Ensure agency client company has a tenant link (needed for handoff and contact attempts)."""
+    tenant = await db.get(Tenant, agency_tenant_id)
+    if not tenant or tenant.type != TenantType.agency:
+        return None
+
+    existing = await get_tenant_link(
+        db,
+        agency_tenant_id=agency_tenant_id,
+        client_company_id=client_company_id,
+    )
+    if existing:
+        return existing
+
+    link = TenantLink(
+        id=str(uuid4()),
+        agency_tenant_id=agency_tenant_id,
+        client_company_id=client_company_id,
+        client_tenant_id=None,
+        handoff_include_company_id=None,
+        status="active",
+        features_json={"handoff_enabled": handoff_enabled},
+    )
+    db.add(link)
+    await db.flush()
+    return link

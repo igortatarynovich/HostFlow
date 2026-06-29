@@ -212,9 +212,15 @@ export function validateRequiredFields(
     } else if (fieldKey === 'license_categories') {
       value = extra?.license_categories
     } else if (fieldKey === 'in_poland') {
-      value = extra?.in_poland
+      value = extra?.in_poland ?? extra?.personal_data?.in_poland ?? extra?.personal?.in_poland
+    } else if (fieldKey === 'preferred_contact') {
+      value = extra?.preferred_contact ?? extra?.contacts?.preferred_messenger
     } else if (fieldKey === 'poland_stay_basis') {
-      value = extra?.poland_stay_basis
+      value =
+        extra?.poland_stay_basis ??
+        extra?.poland_stay_basis_raw ??
+        extra?.personal_data?.residency_status ??
+        extra?.personal?.residency_status
     } else if (fieldKey === 'current_location') {
       value = extra?.current_location
     } else if (fieldKey === 'experience_eu_years') {

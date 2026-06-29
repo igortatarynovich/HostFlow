@@ -427,3 +427,55 @@ async def compute_docs_summary_for_candidate(db: AsyncSession, candidate_id: str
         "files": completed_i,
         "total_count": total_i,
     }
+
+
+def _as_dict(value: Any) -> Dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _non_empty_str(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def resolve_preferred_contact_from_storage(
+    extra: Any,
+    contacts: Any = None,
+) -> Optional[str]:
+    """Resolve preferred contact channel from legacy and profile-contract storage paths."""
+    extra_data = _as_dict(extra)
+    contacts_data = _as_dict(contacts)
+    nested_contacts = _as_dict(extra_data.get("contacts"))
+    for source in (
+        extra_data.get("preferred_contact"),
+        contacts_data.get("preferred_messenger"),
+        nested_contacts.get("preferred_messenger"),
+    ):
+        resolved = _non_empty_str(source)
+        if resolved:
+            return resolved
+    return None
+
+
+def resolve_poland_stay_basis_from_storage(
+    extra: Any,
+    personal_data: Any = None,
+) -> Optional[str]:
+    """Resolve Poland stay basis from legacy and profile-contract storage paths."""
+    extra_data = _as_dict(extra)
+    personal = _as_dict(personal_data)
+    nested_personal = _as_dict(extra_data.get("personal_data"))
+    nested_profile_personal = _as_dict(extra_data.get("personal"))
+    for source in (
+        extra_data.get("poland_stay_basis"),
+        extra_data.get("poland_stay_basis_raw"),
+        personal.get("residency_status"),
+        nested_personal.get("residency_status"),
+        nested_profile_personal.get("residency_status"),
+    ):
+        resolved = _non_empty_str(source)
+        if resolved:
+            return resolved
+    return None

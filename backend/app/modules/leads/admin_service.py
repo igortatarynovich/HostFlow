@@ -1013,8 +1013,11 @@ async def get_page_access_token(
     tenant_id: str,
     page_id: str,
 ) -> Optional[str]:
+    """Return the newest **active** page token (skips inactive duplicates for the same page_id)."""
     entries = await crud.list_meta_credentials(db, tenant_id=tenant_id)
     for entry in entries:
+        if str(getattr(entry, "status", "") or "").strip().lower() != "active":
+            continue
         decrypted_page = decrypt_secret(entry.encrypted_page_id)
         if decrypted_page and decrypted_page.strip() == page_id:
             token = decrypt_secret(entry.encrypted_access_token)

@@ -45,6 +45,14 @@ function listStr(v: unknown): string | null {
   return str(v)
 }
 
+function readPreferredContact(n: Record<string, unknown>): string | null {
+  return str(n.preferred_contact) || str(n.preferred_contact_raw)
+}
+
+function readPolandStayBasis(n: Record<string, unknown>): string | null {
+  return str(n.poland_stay_basis) || str(n.poland_stay_basis_raw)
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="mt-3 first:mt-0">
@@ -116,6 +124,8 @@ export default function LeadQualificationSummaryCard({
     isFitBlock ||
     email ||
     phone ||
+    readPreferredContact(n) ||
+    readPolandStayBasis(n) ||
     str(n.country) ||
     str(n.geo_country) ||
     str(n.nationality) ||
@@ -171,6 +181,16 @@ export default function LeadQualificationSummaryCard({
         <Row label={t('app.leads.detail.qualification_summary.contact_complete')} value={t(contactKey)} />
         <Row label={t('app.leads.detail.qualification_summary.email')} value={email} />
         <Row label={t('app.leads.detail.qualification_summary.phone')} value={phone} />
+        <Row
+          label={t('app.leads.detail.qualification_summary.preferred_contact')}
+          value={(() => {
+            const code = readPreferredContact(n)
+            if (!code) return null
+            const key = `app.candidate_card.contacts.options.${code}`
+            const translated = t(key)
+            return translated === key ? code : translated
+          })()}
+        />
       </Section>
 
       <Section title={t('app.leads.detail.qualification_summary.section_profile')}>
@@ -194,7 +214,13 @@ export default function LeadQualificationSummaryCard({
         <Row label={t('app.leads.detail.intake_resolution.in_poland')} value={str(n.in_poland)} />
         <Row
           label={t('app.leads.detail.qualification_summary.poland_stay')}
-          value={str(n.poland_stay_basis) || str(n.poland_stay_basis_raw)}
+          value={(() => {
+            const code = readPolandStayBasis(n)
+            if (!code) return null
+            const key = `app.candidate_card.status.poland_basis.${code}`
+            const translated = t(key)
+            return translated === key ? code : translated
+          })()}
         />
         <Row
           label={t('app.leads.detail.qualification_summary.languages')}

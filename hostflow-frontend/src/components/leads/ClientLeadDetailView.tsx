@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
 
 type ClientLeadDetailViewProps = {
   lead: Lead
@@ -85,6 +86,16 @@ export default function ClientLeadDetailView({
   const sourceProfile = record(meta.source_profile)
   const companyName = text(company.name) || text(normalized.company_name) || text(payloadCompany.name) || lead.company_name || 'Client Lead'
   const convertedId = text(lead.converted_client_id)
+  const terminal = leadIntakeResolutionRejected(lead)
+  const statusLabel = terminal
+    ? 'Отклонён'
+    : convertedId
+      ? 'Клиент создан'
+      : lead.status === 'processed'
+        ? 'Новая анкета'
+        : lead.status === 'rejected'
+          ? 'Отклонён'
+          : lead.status
 
   return (
     <div className="space-y-5">
@@ -98,20 +109,29 @@ export default function ClientLeadDetailView({
               {text(need.summary) || [text(need.people_count), text(need.what_needed)].filter(Boolean).join(' ') || 'Анкета транспортной компании'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                {lead.status}
+              <span
+                className={`inline-flex rounded-lg px-2 py-0.5 text-xs font-medium ${
+                  terminal ? 'bg-red-50 text-red-800' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                {statusLabel}
               </span>
-              <span className="inline-flex rounded-lg bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800">
-                {lead.stage || 'questionnaire_submitted'}
-              </span>
+              {!terminal ? (
+                <span className="inline-flex rounded-lg bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800">
+                  {lead.stage || 'questionnaire_submitted'}
+                </span>
+              ) : null}
               <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                 {lead.source}
               </span>
             </div>
+            {terminal ? (
+              <p className="mt-3 text-sm text-red-700">Лид отклонён и исключён из обработки кандидатов.</p>
+            ) : null}
             <p className="mt-3 font-mono text-[11px] leading-relaxed text-slate-400 break-all">ID · {lead.id}</p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-            {convertedId ? (
+            {terminal ? null : convertedId ? (
               <Link to={`${CRM_APP_PATHS.agencyClients}/${convertedId}`} className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold">
                 Открыть клиента
               </Link>
@@ -125,15 +145,19 @@ export default function ClientLeadDetailView({
                 {converting ? 'Создаём...' : 'Создать клиента'}
               </button>
             )}
-            <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('contacted')}>
-              Контакт установлен
-            </button>
-            <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('qualified')}>
-              Квалифицировать
-            </button>
-            <button type="button" className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60" disabled={patching || converting} onClick={() => void onStage('lost')}>
-              Отклонить
-            </button>
+            {!terminal ? (
+              <>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('contacted')}>
+                  Контакт установлен
+                </button>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('qualified')}>
+                  Квалифицировать
+                </button>
+                <button type="button" className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60" disabled={patching || converting} onClick={() => void onStage('lost')}>
+                  Отклонить
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       </header>

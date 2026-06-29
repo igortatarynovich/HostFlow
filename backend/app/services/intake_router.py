@@ -38,6 +38,7 @@ class IntakeRoutingResult:
     route_intent: str = RouteIntent.unknown.value
     pipeline_preset: Optional[str] = None
     default_assignee_id: Optional[str] = None
+    entity_profile_code: Optional[str] = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, Any]:
@@ -50,6 +51,7 @@ class IntakeRoutingResult:
             "route_intent": self.route_intent,
             "pipeline_preset": self.pipeline_preset,
             "default_assignee_id": self.default_assignee_id,
+            "entity_profile_code": self.entity_profile_code,
             "warnings": list(self.warnings),
         }
 
@@ -71,6 +73,7 @@ def _result_from_profile(
         route_intent=normalize_route_intent(profile.route_intent),
         pipeline_preset=str(profile.pipeline_preset or "").strip() or None,
         default_assignee_id=str(profile.default_assignee_id or "").strip() or None,
+        entity_profile_code=str(getattr(profile, "entity_profile_code", None) or "").strip() or None,
         warnings=warnings,
     )
 

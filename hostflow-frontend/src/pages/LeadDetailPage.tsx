@@ -45,6 +45,7 @@ import {
 } from '../utils/intakeResolution'
 import { CRM_STAGE_VALUES, leadAssignmentLocked, leadSupportsManualProcess } from '../utils/leadCrm'
 import { intakeStickyVacancySummary, leadIntakeColumnStatusKey } from '../utils/leadIntakeWorkspace'
+import { leadIntakeResolutionRejected } from '../utils/intakeResolution'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useAuth } from '../store/auth'
 import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
@@ -426,6 +427,7 @@ export default function LeadDetailPage() {
         needs_routing: t('app.leads.statuses.needs_routing'),
         failed: t('app.leads.statuses.failed'),
         duplicate_review: t('app.leads.statuses.duplicate_review'),
+        rejected: t('app.leads.statuses.rejected'),
       }) satisfies Record<LeadStatus, string>,
     [t],
   )
@@ -447,6 +449,11 @@ export default function LeadDetailPage() {
 
   const normalized = lead?.normalized && typeof lead.normalized === 'object' && !Array.isArray(lead.normalized) ? lead.normalized : {}
   const isClientLead = Boolean(lead && lead.lead_type === 'client' && lead.lead_target_type === 'client_lead')
+  const leadRejected = Boolean(lead && leadIntakeResolutionRejected(lead))
+  const crmStageValues = useMemo(
+    () => (leadRejected ? CRM_STAGE_VALUES.filter((v) => v !== 'lost') : CRM_STAGE_VALUES),
+    [leadRejected],
+  )
   const contactName =
     (normalized as Record<string, unknown>).full_name ||
     `${(normalized as Record<string, unknown>).first_name || ''} ${(normalized as Record<string, unknown>).last_name || ''}`.trim()
@@ -658,13 +665,14 @@ export default function LeadDetailPage() {
       if (!lead?.id) return
       const next = nextRaw || ''
       if (next === 'lost') {
+        if (leadIntakeResolutionRejected(lead)) return
         setLostStagePrompt({ previousStage: lead.stage ?? null })
         return
       }
       setLostStagePrompt(null)
       void handleDetailStageChange(next)
     },
-    [handleDetailStageChange, lead?.id, lead?.stage],
+    [handleDetailStageChange, lead, lead?.id, lead?.stage],
   )
 
   const cancelLostStagePrompt = useCallback(() => setLostStagePrompt(null), [])
@@ -711,8 +719,12 @@ export default function LeadDetailPage() {
       const updated = await convertClientLeadToClient(lead.id)
       setLead(updated)
       bumpNextActionTick()
-      notify({ title: 'Клиент создан из анкеты', variant: 'success' })
+      const clientId = String(updated.converted_client_id || '').trim()
+      notify({ title: t('app.clients.created_from_lead', { defaultValue: 'Клиент создан из анкеты' }), variant: 'success' })
       void loadTimeline()
+      if (clientId) {
+        navigate(`${CRM_APP_PATHS.agencyClients}/${clientId}?ctab=overview`)
+      }
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, 'Не удалось создать клиента')) {
         return
@@ -725,7 +737,7 @@ export default function LeadDetailPage() {
     } finally {
       setConvertingClientLead(false)
     }
-  }, [bumpNextActionTick, lead?.id, loadTimeline, notify, planLimitModal])
+  }, [bumpNextActionTick, lead?.id, loadTimeline, navigate, notify, planLimitModal, t])
 
   const handleDeleteLead = useCallback(async () => {
     if (!leadId) return
@@ -1136,11 +1148,11 @@ export default function LeadDetailPage() {
                     <select
                       className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
                       value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
-                      disabled={patching}
+                      disabled={patching || leadRejected}
                       onChange={(e) => void handleDetailStageSelect(e.target.value)}
                     >
                       <option value="">{t('app.leads.inbox.stage_unset')}</option>
-                      {CRM_STAGE_VALUES.map((v) => (
+                      {crmStageValues.map((v) => (
                         <option key={v} value={v}>
                           {stageLabels[v] ?? v}
                         </option>
@@ -1152,7 +1164,7 @@ export default function LeadDetailPage() {
                       type="checkbox"
                       className="rounded border-slate-300"
                       checked={leadAssignmentLocked(lead)}
-                      disabled={patching}
+                      disabled={patching || leadRejected}
                       onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
                     />
                     <span>{t('app.leads.inbox.lock_assignment')}</span>
@@ -1173,11 +1185,11 @@ export default function LeadDetailPage() {
                     <select
                       className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
                       value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
-                      disabled={patching}
+                      disabled={patching || leadRejected}
                       onChange={(e) => void handleDetailStageSelect(e.target.value)}
                     >
                       <option value="">{t('app.leads.inbox.stage_unset')}</option>
-                      {CRM_STAGE_VALUES.map((v) => (
+                      {crmStageValues.map((v) => (
                         <option key={v} value={v}>
                           {stageLabels[v] ?? v}
                         </option>
@@ -1189,7 +1201,7 @@ export default function LeadDetailPage() {
                       type="checkbox"
                       className="rounded border-slate-300"
                       checked={leadAssignmentLocked(lead)}
-                      disabled={patching}
+                      disabled={patching || leadRejected}
                       onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
                     />
                     <span>{t('app.leads.inbox.lock_assignment')}</span>
@@ -1206,11 +1218,11 @@ export default function LeadDetailPage() {
                   <select
                     className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
                     value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
-                    disabled={patching}
+                    disabled={patching || leadRejected}
                     onChange={(e) => void handleDetailStageSelect(e.target.value)}
                   >
                     <option value="">{t('app.leads.inbox.stage_unset')}</option>
-                    {CRM_STAGE_VALUES.map((v) => (
+                    {crmStageValues.map((v) => (
                       <option key={v} value={v}>
                         {stageLabels[v] ?? v}
                       </option>
@@ -1222,7 +1234,7 @@ export default function LeadDetailPage() {
                     type="checkbox"
                     className="rounded border-slate-300"
                     checked={leadAssignmentLocked(lead)}
-                    disabled={patching}
+                    disabled={patching || leadRejected}
                     onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
                   />
                   <span>{t('app.leads.inbox.lock_assignment')}</span>
@@ -1564,11 +1576,11 @@ export default function LeadDetailPage() {
                         <select
                           className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
                           value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
-                          disabled={patching}
+                          disabled={patching || leadRejected}
                           onChange={(e) => void handleDetailStageSelect(e.target.value)}
                         >
                           <option value="">{t('app.leads.inbox.stage_unset')}</option>
-                          {CRM_STAGE_VALUES.map((v) => (
+                          {crmStageValues.map((v) => (
                             <option key={v} value={v}>
                               {stageLabels[v] ?? v}
                             </option>
@@ -1580,7 +1592,7 @@ export default function LeadDetailPage() {
                           type="checkbox"
                           className="rounded border-slate-300"
                           checked={leadAssignmentLocked(lead)}
-                          disabled={patching}
+                          disabled={patching || leadRejected}
                           onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
                         />
                         <span>{t('app.leads.inbox.lock_assignment')}</span>
@@ -1666,11 +1678,11 @@ export default function LeadDetailPage() {
                       <select
                         className="input h-9 min-w-[11rem] rounded-lg border-slate-300 bg-white px-2 text-sm"
                         value={lostStagePrompt ? lostStagePrompt.previousStage ?? '' : lead.stage ?? ''}
-                        disabled={patching}
+                        disabled={patching || leadRejected}
                         onChange={(e) => void handleDetailStageSelect(e.target.value)}
                       >
                         <option value="">{t('app.leads.inbox.stage_unset')}</option>
-                        {CRM_STAGE_VALUES.map((v) => (
+                        {crmStageValues.map((v) => (
                           <option key={v} value={v}>
                             {stageLabels[v] ?? v}
                           </option>
@@ -1682,7 +1694,7 @@ export default function LeadDetailPage() {
                         type="checkbox"
                         className="rounded border-slate-300"
                         checked={leadAssignmentLocked(lead)}
-                        disabled={patching}
+                        disabled={patching || leadRejected}
                         onChange={(e) => void handleDetailAssignmentLockToggle(e.target.checked)}
                       />
                       <span>{t('app.leads.inbox.lock_assignment')}</span>

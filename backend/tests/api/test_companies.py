@@ -257,3 +257,48 @@ async def test_company_limit_applies_only_to_operating_profiles(
     assert client_resp.status_code == 200, client_resp.text
     client_company = client_resp.json()
     assert client_company["extra"]["company_role"] == "client"
+
+
+@pytest.mark.anyio
+async def test_tenant_link_display_name_sets_client_company_role(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    tenant_id: str,
+) -> None:
+    create_resp = await client.post(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+        json={"display_name": "Tenant Link Client Co", "handoff_enabled": True},
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    payload = create_resp.json()
+    company_id = payload.get("client_company_id")
+    assert company_id
+
+    company_resp = await client.get(f"{COMPANY_BASE_URL}/{company_id}", headers=manager_headers)
+    assert company_resp.status_code == 200, company_resp.text
+    company = company_resp.json()
+    assert company["extra"]["company_role"] == "client"
+
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    tenant_id: str,
+) -> None:
+    create_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Auto Link Client Co", "company_role": "client"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    company = create_resp.json()
+    assert company["extra"]["company_role"] == "client"
+
+    links_resp = await client.get(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+    )
+    assert links_resp.status_code == 200, links_resp.text
+    links = links_resp.json()
+    matched = [row for row in links if str(row.get("client_company_id") or "") == company["id"]]
+    assert len(matched) == 1, links
+    assert matched[0]["status"] == "active"

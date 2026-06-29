@@ -24,7 +24,7 @@ from backend.app.models.user import Role as UserRole
 from backend.app.services import events
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.events import EventAudience
-from backend.app.services.handoff import get_agency_handoff_blocking_recruitment
+from backend.app.services.handoff import get_accepted_handoff_for_agency
 
 DuplicateMatchLevel = Literal["none", "exact", "probable"]
 
@@ -186,7 +186,7 @@ async def _hr_duplicate_blockers(
     tid = str(tenant_id).strip()
     if await is_candidate_locked_by_workforce(db, tenant_id=tid, candidate_id=cid):
         blockers.append("workforce")
-    ho = await get_agency_handoff_blocking_recruitment(db, cid, tid)
+    ho = await get_accepted_handoff_for_agency(db, cid, tid)
     if ho is not None:
         blockers.append("active_handoff")
     return blockers

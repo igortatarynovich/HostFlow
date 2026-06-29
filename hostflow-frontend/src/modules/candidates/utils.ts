@@ -11,6 +11,18 @@ import {
   toTimestamp,
   extractExtraObject,
 } from './candidateUtils';
+import { mapResidencyStatusToPolandBasis } from '../candidate-card/utils';
+
+function readNestedString(root: Record<string, any>, path: string[]): string | null {
+  let node: any = root;
+  for (const key of path) {
+    if (!node || typeof node !== 'object' || Array.isArray(node)) return null;
+    node = node[key];
+  }
+  if (typeof node !== 'string') return null;
+  const trimmed = node.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 export function deriveDocsMeta(candidate: UICandidate): DocsMeta {
   const progress = sanitizeDocsProgress(candidate.docs_progress);
@@ -150,10 +162,21 @@ export function normalizeCandidateExtra(raw: any): CandidateExtraNormalized {
 
   return {
     citizenship: asString(extra.citizenship ?? extra.passport_country) ?? null,
-    preferredContact: asString(extra.preferred_contact) ?? null,
+    preferredContact:
+      asString(extra.preferred_contact) ??
+      readNestedString(extra, ['contacts', 'preferred_messenger']) ??
+      null,
     firstContactAt: asString(extra.first_contact_at) ?? null,
-    inPoland: toBool(extra.in_poland),
-    polandStayBasis: asString(extra.poland_stay_basis) ?? null,
+    inPoland: toBool(extra.in_poland ?? readNestedString(extra, ['personal_data', 'in_poland']) ?? readNestedString(extra, ['personal', 'in_poland'])),
+    polandStayBasis:
+      asString(extra.poland_stay_basis) ??
+      asString(extra.poland_stay_basis_raw) ??
+      (() => {
+        const residency =
+          readNestedString(extra, ['personal_data', 'residency_status']) ??
+          readNestedString(extra, ['personal', 'residency_status']);
+        return residency ? mapResidencyStatusToPolandBasis(residency) || residency : null;
+      })(),
     trailerTypes: arrayOfStrings(extra.trailer_types),
     opsMode: normalizeOpsMode(extra?.candidate_ops?.mode),
   };

@@ -440,6 +440,15 @@ def _normalize_preferred_contact(value: Optional[str]) -> Optional[str]:
     # fall back to trimmed original if it's already one of supported options
     if raw in {"phone", "viber", "whatsapp", "telegram"}:
         return raw
+    # Meta forms often return labels like "WhatsApp Messenger" or "Telefon"
+    if "whatsapp" in raw or "ватсап" in raw:
+        return "whatsapp"
+    if "viber" in raw or "вайбер" in raw:
+        return "viber"
+    if "telegram" in raw or "телеграм" in raw or raw == "tg":
+        return "telegram"
+    if any(token in raw for token in ("phone", "call", "telefon", "телефон", "звонок")):
+        return "phone"
     return None
 
 
@@ -660,7 +669,8 @@ def normalize_meta_payload(
     phone = _first_valid(mapping, _clean_phone, *PHONE_ALIASES)
     phone_country_code = _infer_country_code(phone)
     country_hint = _first(mapping, *COUNTRY_ALIASES)
-    preferred_contact = _normalize_preferred_contact(_first(mapping, *CONTACT_ALIASES))
+    preferred_contact_raw = _first(mapping, *CONTACT_ALIASES)
+    preferred_contact = _normalize_preferred_contact(preferred_contact_raw)
 
     vacancy_field = _first(mapping, "vacancy_id", "vacancy", "position_id")
     vacancy_hint_fields = [v for key, values in mapping.items() if key.startswith("utm") for v in values]
@@ -740,6 +750,12 @@ def normalize_meta_payload(
         normalized["geo_country"] = normalize_inbound_country_alpha2(geo_hint)
     if preferred_contact:
         normalized["preferred_contact"] = preferred_contact
+        if preferred_contact_raw and preferred_contact_raw.strip() != preferred_contact:
+            normalized["preferred_contact_raw"] = preferred_contact_raw.strip()
+    elif preferred_contact_raw and preferred_contact_raw.strip():
+        cleaned = preferred_contact_raw.strip()
+        normalized["preferred_contact"] = cleaned
+        normalized["preferred_contact_raw"] = cleaned
     in_poland_hint = _first(mapping, *IN_POLAND_ALIASES)
     in_poland_value = _normalize_bool_hint(in_poland_hint)
     if in_poland_value is not None:

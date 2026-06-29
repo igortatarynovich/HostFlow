@@ -1,11 +1,17 @@
 import type { Lead } from '../api/types'
 import {
+  leadIntakeResolutionRejected,
   leadIntakeWorkspaceBlocking,
   leadRoutingTableAction,
   leadStatusAllowsIntakeDecision,
   manualProcessBlockHint,
 } from './intakeResolution'
-import { leadSupportsManualProcess } from './leadCrm'
+import {
+  clientLeadIsTerminal,
+  clientLeadRejectionFinalized,
+  isClientLead,
+  leadSupportsManualProcess,
+} from './leadCrm'
 
 /** Public-intake leads: no backend support for intake-decision / manual process — show read-only guidance only. */
 export function leadRecruitmentPublicIntakeReadonly(lead: Lead | null, isServicesTenant: boolean): boolean {
@@ -34,6 +40,12 @@ export function intakeStickyVacancySummary(
 /** Short intake-focused label for the leads table (recruitment). */
 export function leadIntakeColumnStatusKey(lead: Lead, isServicesTenant: boolean): string {
   if (isServicesTenant) return 'app.leads.intake_workspace.col.services'
+  if (isClientLead(lead)) {
+    if (clientLeadRejectionFinalized(lead)) return 'app.leads.intake_workspace.col.rejected'
+    if (String(lead.stage || '').trim().toLowerCase() === 'lost') return 'app.leads.intake_workspace.col.rejected'
+    if (lead.converted_client_id) return 'app.leads.intake_workspace.col.client_converted'
+    return 'app.leads.intake_workspace.col.client_lead'
+  }
   if (lead.candidate_id) return 'app.leads.intake_workspace.col.converted'
   if (!leadSupportsManualProcess(lead)) return 'app.leads.intake_workspace.col.unsupported'
 
@@ -69,6 +81,7 @@ export type LeadRowPrimaryAction =
 
 export function leadRowPrimaryAction(lead: Lead, isServicesTenant: boolean): LeadRowPrimaryAction {
   if (isServicesTenant) return { kind: 'none' }
+  if (isClientLead(lead)) return { kind: 'none' }
   if (lead.candidate_id) return { kind: 'open_candidate', candidateId: String(lead.candidate_id) }
 
   const st = String(lead.status || '')
@@ -144,14 +157,8 @@ export function leadIntakeWorkspaceSuppressesCrmChrome(lead: Lead | null, isServ
   return leadIntakeWorkspaceBlocking(lead, isServicesTenant)
 }
 
-export function leadIntakeResolutionRejected(lead: Lead): boolean {
-  const n = lead.normalized && typeof lead.normalized === 'object' && !Array.isArray(lead.normalized) ? lead.normalized : {}
-  const ir = (n as Record<string, unknown>).intake_resolution_v1
-  if (!ir || typeof ir !== 'object' || Array.isArray(ir)) return false
-  return String((ir as { status?: string }).status || '')
-    .trim()
-    .toLowerCase() === 'rejected'
-}
+/** @deprecated import from `intakeResolution` — re-export for existing call sites. */
+export { leadIntakeResolutionRejected } from './intakeResolution'
 
 /** Same shell as `LeadIntakeDecisionRail` — recruitment manual intake list + detail. */
 export function leadQueueIntakeShellOk(lead: Lead, isServicesTenant: boolean): boolean {

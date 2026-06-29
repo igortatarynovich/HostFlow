@@ -4,7 +4,7 @@
 
 import type { UUID } from './common';
 
-export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
+export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing' | 'duplicate_review' | 'rejected';
 export type LeadType = 'candidate' | 'client';
 export type LeadTargetType = 'candidate' | 'client_lead' | 'service_order_lead' | 'partner_lead';
 export type LeadStage = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';

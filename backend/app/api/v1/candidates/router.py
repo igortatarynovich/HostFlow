@@ -98,6 +98,10 @@ from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 from backend.app.api.v1.candidates import service as cand_service
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.api.v1.candidates import repo as cand_repo
+from backend.app.api.v1.candidates.helpers import (
+    resolve_poland_stay_basis_from_storage,
+    resolve_preferred_contact_from_storage,
+)
 from backend.app.models.candidate import Candidate
 from backend.app.models.recruitment_application import RecruitmentApplication
 from backend.app.models.audit import ActivityLog
@@ -1216,12 +1220,14 @@ async def list_candidates(
 
         extra_payload = _extra_dict(c)
         docs_progress = _docs_progress_dict(c)
+        personal_data_row = getattr(c, "personal_data", None)
+        contacts_row = getattr(c, "contacts", None)
         extra_summary = {
             "citizenship": extra_payload.get("citizenship"),
-            "preferred_contact": extra_payload.get("preferred_contact"),
+            "preferred_contact": resolve_preferred_contact_from_storage(extra_payload, contacts_row),
             "first_contact_at": extra_payload.get("first_contact_at"),
             "in_poland": extra_payload.get("in_poland"),
-            "poland_stay_basis": extra_payload.get("poland_stay_basis"),
+            "poland_stay_basis": resolve_poland_stay_basis_from_storage(extra_payload, personal_data_row),
             "trailer_types": extra_payload.get("trailer_types"),
         }
 

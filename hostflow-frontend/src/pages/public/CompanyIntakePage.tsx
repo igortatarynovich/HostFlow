@@ -408,11 +408,26 @@ export default function CompanyIntakePage() {
     if (currentStep === 'company') return Boolean(form.company.name.trim())
     return true
   }
-  const canSubmit =
+  const allRequiredConsentsAccepted =
     form.consent.terms_accepted &&
     form.consent.privacy_accepted &&
     form.consent.data_processing_accepted &&
     form.consent.accuracy_confirmed
+
+  const canSubmit = allRequiredConsentsAccepted
+
+  const toggleAllRequiredConsents = (checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      consent: {
+        ...prev.consent,
+        terms_accepted: checked,
+        privacy_accepted: checked,
+        data_processing_accepted: checked,
+        accuracy_confirmed: checked,
+      },
+    }))
+  }
 
   const goNext = () => {
     if (!canContinue()) {
@@ -744,6 +759,15 @@ export default function CompanyIntakePage() {
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-900">{t('public.company_intake.consents.title')}</p>
               <div className="mt-3 space-y-3">
+                <label className="flex gap-3 border-b border-slate-200 pb-3 text-sm font-medium text-slate-900">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-brand-600"
+                    checked={allRequiredConsentsAccepted}
+                    onChange={(e) => toggleAllRequiredConsents(e.target.checked)}
+                  />
+                  <span>{t('public.company_intake.consents.select_all_required')}</span>
+                </label>
                 <label className="flex gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={form.consent.terms_accepted} onChange={(e) => updateConsent('terms_accepted', e.target.checked)} />
                   <span>

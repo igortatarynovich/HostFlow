@@ -17,6 +17,7 @@ from backend.app.reference.core_immutable_catalogs import (
 )
 from backend.app.reference.legal_document_catalogs import (
     CATALOG_VERSION as LEGAL_DOCUMENT_CATALOG_VERSION,
+    get_citizenship_by_alpha2,
     list_citizenships_canonical,
     list_document_categories_canonical,
     list_document_types_canonical,

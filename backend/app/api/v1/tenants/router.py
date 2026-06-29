@@ -294,11 +294,12 @@ async def create_tenant_link(
         company = await db.get(Company, cid)
         company_name = company.name if company else None
     elif display_name:
-        # Create new company in agency tenant and link
+        # Create new client company in agency tenant and link
         new_company = Company(
             id=str(uuid4()),
             tenant_id=str(tenant_id),
             name=display_name,
+            extra={"company_role": "client"},
         )
         db.add(new_company)
         await db.flush()

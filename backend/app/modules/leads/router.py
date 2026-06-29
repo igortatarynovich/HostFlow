@@ -518,6 +518,14 @@ async def update_lead_stage_endpoint(
 
     if "stage" in payload.model_fields_set and payload.stage is not None:
         stage_will_change = str(payload.stage or "") != str(getattr(lead, "stage", None) or "")
+        if stage_will_change and str(payload.stage or "").strip().lower() == "lost":
+            from backend.app.modules.leads.service.intake_decision import lead_intake_terminal
+
+            if lead_intake_terminal(lead):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"code": "LEAD_INTAKE_ALREADY_REJECTED"},
+                )
         if stage_will_change and str(payload.stage or "").strip().lower() == "contacted":
             if await ensure_lead_rodo_allows_action(
                 db,
@@ -608,6 +616,19 @@ async def update_lead_stage_endpoint(
                 lr_block["note"] = lost_reason_note
             norm["lead_lost_reason_v1"] = lr_block
             lead.normalized = norm
+            from backend.app.modules.leads.service.intake_decision import (
+                apply_client_lead_rejection,
+                client_lead_rejection_finalized,
+                is_client_lead,
+            )
+
+            if is_client_lead(lead) and not client_lead_rejection_finalized(lead):
+                apply_client_lead_rejection(
+                    lead,
+                    reason_code=lost_reason_code,
+                    note=lost_reason_note,
+                    actor_sub=actor_for_enforcement,
+                )
         elif ps == "lost":
             norm.pop("lead_lost_reason_v1", None)
             lead.normalized = norm
@@ -622,6 +643,29 @@ async def update_lead_stage_endpoint(
             lost_reason_code=lost_reason_code,
             lost_reason_note=lost_reason_note,
         )
+
+    from backend.app.modules.leads.service.intake_decision import (
+        apply_client_lead_rejection,
+        client_lead_rejection_finalized,
+        is_client_lead,
+    )
+
+    if (
+        is_client_lead(lead)
+        and str(getattr(lead, "stage", "") or "").strip().lower() == "lost"
+        and not client_lead_rejection_finalized(lead)
+    ):
+        norm = dict(lead.normalized or {})
+        lr = norm.get("lead_lost_reason_v1")
+        lr_dict = lr if isinstance(lr, dict) else {}
+        apply_client_lead_rejection(
+            lead,
+            reason_code=str(lr_dict.get("code") or lost_reason_code or "other"),
+            note=str(lr_dict.get("note") or lost_reason_note or "") or None,
+            actor_sub=actor_for_enforcement,
+        )
+        await db.flush()
+
     await db.commit()
     await db.refresh(lead)
     if stage_changed:
@@ -1149,6 +1193,13 @@ async def convert_client_lead_to_client_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Only Client Leads can be converted to Client",
         )
+    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal
+
+    if client_lead_is_terminal(lead):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "INTAKE_REJECTED"},
+        )
     if not getattr(lead, "own_company_id", None):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -1242,6 +1293,16 @@ async def convert_client_lead_to_client_endpoint(
     )
 
     client = await create_company_service(db=db, data=company_in, actor_user_id=actor_id)
+
+    from backend.app.services.tenant_links import ensure_client_company_tenant_link
+
+    await ensure_client_company_tenant_link(
+        db,
+        agency_tenant_id=tenant_id_str,
+        client_company_id=str(client.id),
+        handoff_enabled=True,
+    )
+
     normalized_updated = dict(normalized)
     normalized_updated["converted_client_id"] = str(client.id)
     normalized_updated["converted_client_at"] = datetime.now(timezone.utc).isoformat()

@@ -27,7 +27,11 @@ import {
 import { leadSupportsManualProcess } from '../../utils/leadCrm'
 import { intakeFitReviewSummary } from '../../utils/leadIntakeSnapshotGroups'
 import LeadIntakePublicIntakeReadonlyNotice from './LeadIntakePublicIntakeReadonlyNotice'
-import { intakeWorkspaceHeader, leadRecruitmentPublicIntakeReadonly } from '../../utils/leadIntakeWorkspace'
+import {
+  intakeWorkspaceHeader,
+  leadIntakeResolutionRejected,
+  leadRecruitmentPublicIntakeReadonly,
+} from '../../utils/leadIntakeWorkspace'
 
 export type LeadIntakeDecisionRailLayout = 'panel' | 'embedded'
 
@@ -100,8 +104,9 @@ export default function LeadIntakeDecisionRail({
     blockHint === 'INTAKE_POOL_PATH_REQUIRED' ||
     blockHint === 'DUPLICATE_REVIEW_PENDING'
 
+  const intakeRejected = useMemo(() => leadIntakeResolutionRejected(lead), [lead])
   const shellOk =
-    !lead.candidate_id && leadSupportsManualProcess(lead) && (srcOk || hintOk)
+    !lead.candidate_id && !intakeRejected && leadSupportsManualProcess(lead) && (srcOk || hintOk)
   const showIntakeDecisions = shellOk && leadStatusAllowsIntakeDecision(lead)
 
   const suggestedId = lead.suggested_vacancy_id != null ? String(lead.suggested_vacancy_id).trim() : ''
@@ -109,13 +114,6 @@ export default function LeadIntakeDecisionRail({
   const currentVacancyId = lead.vacancy_id != null ? String(lead.vacancy_id).trim() : ''
 
   const norm = lead.normalized && typeof lead.normalized === 'object' && !Array.isArray(lead.normalized) ? lead.normalized : {}
-  const intakeRejected = useMemo(() => {
-    const ir = (norm as Record<string, unknown>).intake_resolution_v1
-    if (!ir || typeof ir !== 'object' || Array.isArray(ir)) return false
-    return String((ir as { status?: string }).status || '')
-      .trim()
-      .toLowerCase() === 'rejected'
-  }, [norm])
 
   const tone = intakeWorkspaceHeader(lead, false)
   const routingNeedsPicker = routing.kind === 'pick_vacancy'

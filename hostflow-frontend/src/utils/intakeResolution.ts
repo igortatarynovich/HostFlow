@@ -1,12 +1,19 @@
 import type { Lead } from '../api/types'
-import { leadSupportsManualProcess } from './leadCrm'
+import { clientLeadIsTerminal, clientLeadRejectionFinalized, isClientLead, leadSupportsManualProcess } from './leadCrm'
 
 /** Same set as backend ``_ALLOWED_LEAD_STATUSES`` in ``intake_decision.py`` (POST /leads/.../intake-decision). */
 export const LEAD_INTAKE_DECISION_ALLOWED_STATUSES = new Set(['new', 'needs_routing', 'failed', 'duplicate_review'])
+/** Client leads may be rejected while already ``processed`` (awaiting convert-to-client). */
+export const CLIENT_LEAD_INTAKE_DECISION_ALLOWED_STATUSES = new Set([
+  ...LEAD_INTAKE_DECISION_ALLOWED_STATUSES,
+  'processed',
+])
 
-export function leadStatusAllowsIntakeDecision(lead: Pick<Lead, 'status'> | null): boolean {
+export function leadStatusAllowsIntakeDecision(lead: Pick<Lead, 'status' | 'lead_type' | 'lead_target_type'> | null): boolean {
   if (!lead) return false
-  return LEAD_INTAKE_DECISION_ALLOWED_STATUSES.has(String(lead.status || '').trim().toLowerCase())
+  const st = String(lead.status || '').trim().toLowerCase()
+  if (isClientLead(lead)) return CLIENT_LEAD_INTAKE_DECISION_ALLOWED_STATUSES.has(st)
+  return LEAD_INTAKE_DECISION_ALLOWED_STATUSES.has(st)
 }
 
 /** Canonical reject codes — must match backend ``INTAKE_REJECT_REASON_CODES``. */
@@ -35,6 +42,7 @@ export type ManualProcessBlockCode =
   | 'INTAKE_INFO_REQUESTED'
   | 'INTAKE_IDENTITY_UNCLEAR'
   | 'LEAD_RODO_REQUIRED'
+  | 'CLIENT_LEAD_NOT_CANDIDATE'
 
 function normalizedRecord(lead: Lead | null): Record<string, unknown> {
   const n = lead?.normalized
@@ -136,6 +144,11 @@ function intakeResolutionStatus(lead: Lead | null): string {
 export function manualProcessBlockHint(lead: Lead | null): ManualProcessBlockCode | null {
   if (!lead || lead.candidate_id) return null
   if (!leadSupportsManualProcess(lead)) return null
+  if (isClientLead(lead)) {
+    if (clientLeadRejectionFinalized(lead)) return 'INTAKE_REJECTED'
+    if (clientLeadIsTerminal(lead)) return 'INTAKE_REJECTED'
+    return 'CLIENT_LEAD_NOT_CANDIDATE'
+  }
 
   const n = normalizedRecord(lead)
   const irSt = intakeResolutionStatus(lead)
@@ -170,6 +183,33 @@ export function manualProcessBlockHint(lead: Lead | null): ManualProcessBlockCod
   return null
 }
 
+/** Lead closed at intake — no repeat reject / routing / process. */
+export function leadIntakeResolutionRejected(lead: Lead | null | undefined): boolean {
+  if (!lead) return false
+  if (isClientLead(lead) && clientLeadIsTerminal(lead)) return true
+  const st = String(lead.status || '')
+    .trim()
+    .toLowerCase()
+  if (st === 'rejected') return true
+  if (String(lead.error || '').trim() === 'INTAKE_REJECTED') return true
+  const stage = String(lead.stage || '')
+    .trim()
+    .toLowerCase()
+  const n = normalizedRecord(lead as Lead)
+  const ir = n.intake_resolution_v1
+  if (ir && typeof ir === 'object' && !Array.isArray(ir)) {
+    if (
+      String((ir as { status?: string }).status || '')
+        .trim()
+        .toLowerCase() === 'rejected'
+    ) {
+      return true
+    }
+  }
+  if (stage === 'lost' && n.lead_lost_reason_v1) return true
+  return false
+}
+
 export function parseProcessBlockedCodeFromAxios(err: unknown): ManualProcessBlockCode | null {
   const raw = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
   if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'code' in raw) {
@@ -191,6 +231,8 @@ export function manualProcessBlockedUserMessage(
 /** Recruitment inbox: hide CRM-noise rail until routing / duplicate / intake guards clear. */
 export function leadIntakeWorkspaceBlocking(lead: Lead | null, isServicesTenant: boolean): boolean {
   if (!lead || isServicesTenant || lead.candidate_id) return false
+  if (leadIntakeResolutionRejected(lead)) return false
+  if (isClientLead(lead)) return false
   if (!leadSupportsManualProcess(lead)) return false
   const hint = manualProcessBlockHint(lead)
   if (hint === 'INTAKE_REJECTED') return false
@@ -215,6 +257,7 @@ export function leadRoutingTableAction(lead: Lead | null, isServicesTenant: bool
   if (!lead || isServicesTenant || lead.candidate_id || !leadSupportsManualProcess(lead)) {
     return { kind: 'none' }
   }
+  if (isClientLead(lead)) return { kind: 'none' }
   const st = String(lead.status || '')
     .trim()
     .toLowerCase()
