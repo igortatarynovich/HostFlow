@@ -15,6 +15,7 @@ type Props = {
   employeeId: string
   hrReview: HrReviewPanel
   manage: boolean
+  caseMode?: boolean
   allDocsConfirmed: boolean
   onPanelUpdated: (panel: HrReviewPanel) => void
   onScrollTo?: (anchor: string) => void
@@ -70,6 +71,7 @@ export function EmployeeDossierHrActions({
   employeeId,
   hrReview,
   manage,
+  caseMode = false,
   allDocsConfirmed,
   onPanelUpdated,
   onScrollTo,
@@ -162,7 +164,7 @@ export function EmployeeDossierHrActions({
         </section>
       ) : null}
 
-      {manage && !terminal ? (
+      {manage && !terminal && !caseMode ? (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('app.hr.dossier.case_actions', { defaultValue: 'Case actions' })}

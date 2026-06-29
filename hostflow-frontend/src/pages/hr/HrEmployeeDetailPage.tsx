@@ -126,7 +126,9 @@ export default function HrEmployeeDetailPage() {
   }, [hrReview])
 
   const showPostVerifySections = Boolean(hrReview && (caseWorkspace || dossierDocsVerified))
-  const showEmploymentDecision = showPostVerifySections
+  const showEmploymentDecision =
+    Boolean(hrReview) &&
+    (hrReview.status === 'approved_for_employment' || (!caseWorkspace && dossierDocsVerified))
 
   const load = useCallback(async () => {
     if (!employeeId) return
@@ -290,6 +292,7 @@ export default function HrEmployeeDetailPage() {
               profile={profile}
               hrReview={hrReview}
               manage={manage}
+              caseMode={caseWorkspace}
               onHrPanelUpdated={handleDossierHrPanelUpdated}
               onScrollTo={scrollToAnchor}
             />

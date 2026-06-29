@@ -132,3 +132,88 @@ export async function ensureTenantLinkInternalHr(
   })
   expect(create.ok(), await create.text()).toBeTruthy()
 }
+
+const BLOCKING_TIERS = new Set(['hard_blocker', 'required', 'hr_requested'])
+
+export type HrReviewPanelJson = {
+  verification_plan?: {
+    can_approve?: boolean
+    verification_order?: Array<{ step_order?: number; label?: string; document_keys?: string[] }>
+    documents?: Array<Record<string, unknown>>
+  }
+  documents_for_approval?: Array<Record<string, unknown>>
+}
+
+export async function fetchEmployeeHrReview(
+  request: APIRequestContext,
+  hrToken: string,
+  employeeId: string,
+): Promise<HrReviewPanelJson> {
+  const res = await request.get(`${API_BASE}/workforce/employees/${employeeId}/hr-review`, {
+    headers: authHeaders(hrToken),
+  })
+  expect(res.ok(), await res.text()).toBeTruthy()
+  return (await res.json()) as HrReviewPanelJson
+}
+
+function reviewedFieldsPayload(doc: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  const fields = (doc.fields_to_review || []) as Array<Record<string, unknown>>
+  for (const f of fields) {
+    const code = String(f.field_code || '').trim()
+    if (!code) continue
+    let value = ''
+    const profileVals = f.current_profile_values as Record<string, unknown> | undefined
+    if (profileVals) {
+      for (const v of Object.values(profileVals)) {
+        if (v != null && String(v).trim()) {
+          value = String(v).trim()
+          break
+        }
+      }
+    }
+    if (!value) value = 'E2E-CONFIRMED'
+    out[code] = { value, comment: '', confirmed: true }
+  }
+  return out
+}
+
+export async function verifyEmployeeDocument(
+  request: APIRequestContext,
+  hrToken: string,
+  employeeId: string,
+  documentKey: string,
+  doc: Record<string, unknown>,
+): Promise<HrReviewPanelJson> {
+  const headers = authHeaders(hrToken)
+  const res = await request.post(
+    `${API_BASE}/workforce/employees/${employeeId}/hr-review/document-verifications/${encodeURIComponent(documentKey)}/verify`,
+    { headers, data: { reviewed_fields: reviewedFieldsPayload(doc) } },
+  )
+  expect(res.ok(), await res.text()).toBeTruthy()
+  return fetchEmployeeHrReview(request, hrToken, employeeId)
+}
+
+export function blockingPlanDocuments(panel: HrReviewPanelJson): Array<Record<string, unknown>> {
+  const planDocs = panel.verification_plan?.documents || []
+  const legacy = panel.documents_for_approval || []
+  const docs = planDocs.length > 0 ? planDocs : legacy
+  return docs.filter((d) => BLOCKING_TIERS.has(String(d.requirement_tier || '')))
+}
+
+export async function confirmAllBlockingEmployeeDocuments(
+  request: APIRequestContext,
+  hrToken: string,
+  employeeId: string,
+  panel?: HrReviewPanelJson,
+): Promise<HrReviewPanelJson> {
+  let current = panel || (await fetchEmployeeHrReview(request, hrToken, employeeId))
+  for (const doc of blockingPlanDocuments(current)) {
+    const key = String(doc.document_key || '')
+    if (!key || !doc.document_id) continue
+    const status = String(doc.verification_status || '').toLowerCase()
+    if (status === 'verified' || status === 'not_required') continue
+    current = await verifyEmployeeDocument(request, hrToken, employeeId, key, doc)
+  }
+  return current
+}

@@ -2,7 +2,7 @@
 
 | PR | Scope | Status |
 |----|--------|--------|
-| **PR14** | UX/style sequential HR verification | WIP — **freeze new HR pages**; sections only inside person profile after PR17 |
+| **PR14** | UX/style sequential HR verification | **Done** on employee card (`caseMode` → `HrDataVerificationWorkspace`) |
 | **PR-INFRA** | [pytest email mock safety](PR-INFRA-pytest-email-mock.md) | Branch `feat/pr-infra-pytest-email-mock` — **merge first** if tests send mail |
 | **PR15** | [Hybrid approve readiness](PR15-unify-hr-approve-readiness.md) | Branch `feat/pr15-hr-approve-readiness` — backend only; **do not expand scope** |
 | **PR17** | [Candidate → employee HR handoff](PR17-candidate-to-employee-handoff-spec.md) | **Next** — handoff mapping + filled HR employee card (modules stay separate) |

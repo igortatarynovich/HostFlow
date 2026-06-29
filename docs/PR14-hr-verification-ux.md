@@ -1,6 +1,6 @@
 # PR14 — HR Verification UX + E2E
 
-**Status:** Separate UX/style work — **WIP, in progress**. Do not block or bundle with PR15/PR16.  
+**Status:** UX integrated into employee card (case mode) after PR17.  
 **Branch:** `feat/pr14-hr-verification-ux` (when active).  
 **Depends on:** [PR13 hybrid verification plan](PR13-hybrid-verification-plan.md).  
 **Backend approve alignment:** [PR15](PR15-unify-hr-approve-readiness.md) (not part of PR14).
@@ -101,7 +101,7 @@ One full case on staging/dev:
 - [x] Human blocking hints on step view (no raw `blocking_reasons`).
 - [x] Approve CTA on ready screen; hidden from decision panel when plan ready.
 - [x] API E2E: EU non-driver ready + approve, non-EU driver gating, waiver, HR-requested, correction return.
-- [ ] Optional Playwright UI smoke (`e2e/hr-verification-pr14.api.spec.ts` with env credentials).
+- [x] Optional Playwright UI smoke (`e2e/hr-verification-pr14.api.spec.ts` with env credentials).
 
 ### Regression smoke (pre-merge)
 
