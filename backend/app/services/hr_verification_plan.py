@@ -86,7 +86,7 @@ VERIFICATION_SLOT_DEFS: tuple[_SlotDef, ...] = (
     _SlotDef("Work permit", STEP_LEGAL_STAY, 2, 2, frozenset({"work_permit", "work_permit_application", "oswiadczenie", "zezwolenie_a"}), "work_permit"),
     _SlotDef("Red paper", STEP_LEGAL_STAY, 2, 3, frozenset({"red_paper", "red_paper_certificate", "pesel"}), "red_paper"),
     _SlotDef("Driver license", STEP_PROFESSIONAL, 3, 1, frozenset({"driver_license", "prawo_jazdy", "eu_driver_license", "swiadectwo_kierowcy"})),
-    _SlotDef("Code95", STEP_PROFESSIONAL, 3, 2, frozenset({"code95", "qualification_code95"})),
+    _SlotDef("Code95", STEP_PROFESSIONAL, 3, 2, frozenset({"code95", "qualification_code95", "code_95"})),
     _SlotDef("Tacho card", STEP_PROFESSIONAL, 3, 3, frozenset({"tacho_card", "tachograph_card", "karta_tachografu"})),
     _SlotDef("Medical", STEP_EMPLOYMENT, 4, 1, frozenset({"medical", "medical_certificate", "badania_lekarskie"})),
     _SlotDef("Psychological", STEP_EMPLOYMENT, 4, 2, frozenset({"psychological", "psychological_certificate", "psychotest"})),

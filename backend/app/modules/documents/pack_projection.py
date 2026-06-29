@@ -31,18 +31,19 @@ def _normalize_type_code(value: Any) -> str:
 
 
 def _alias_codes(code: str) -> set[str]:
+    from backend.app.services.document_type_canonical_bridge import (
+        legacy_codes_for_ref_canonical,
+        normalize_legacy_doc_type,
+    )
+
     canonical = _normalize_type_code(code)
-    aliases = {canonical}
+    ref_code = normalize_legacy_doc_type(canonical)
+    aliases = set(legacy_codes_for_ref_canonical(ref_code))
+    aliases.add(canonical)
+    aliases.add(ref_code)
     defaults = get_doc_type_defaults(canonical)
     for alias in defaults.aliases:
         aliases.add(_normalize_type_code(alias))
-    legacy = {
-        "code_95": {"code95", "qualification_code95"},
-        "tachograph_card": {"tacho_card", "tachograph"},
-        "id_card": {"national_id", "identity_document"},
-        "psychotest": {"psychotest", "psych_tests", "psycho_test"},
-    }
-    aliases.update(legacy.get(canonical, set()))
     return {item for item in aliases if item}
 
 

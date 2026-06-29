@@ -248,6 +248,8 @@ class DocumentTypeDefinition:
     title: Dict[str, str]
     kind: DocumentKind
     requested_from: DocumentRequestedFrom
+    # Platform Reference Layer canonical code (ref_document_types.code).
+    canonical_ref_code: str = "other"
     process_type: DocumentProcessType = DocumentProcessType.none
     metadata_schema: Dict[str, Any] = field(default_factory=dict)
     required_files: Dict[str, Any] = field(default_factory=dict)
@@ -268,6 +270,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Водительское удостоверение", "en": "Driver license"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="driver_license",
         metadata_schema=_object_schema(
             ("number", "categories", "issued_by", "issued_at", "expires_at", "country"),
             {
@@ -298,6 +301,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         },
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="driver_license",
         metadata_schema=_object_schema(
             ("number", "categories", "issued_at", "expires_at", "country"),
             {
@@ -327,6 +331,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         },
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="code_95",
         metadata_schema=_object_schema(
             ("number", "issued_by", "issued_at", "expires_at", "country"),
             {
@@ -350,6 +355,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
         process_type=DocumentProcessType.tachograph_card,
+        canonical_ref_code="tachograph_card",
         metadata_schema=_object_schema(
             ("number", "issued_at", "expires_at", "country"),
             {
@@ -371,6 +377,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Национальный ID", "en": "National ID"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="id_card",
         metadata_schema=_object_schema(
             ("number", "country", "issued_at", "expires_at"),
             {
@@ -393,6 +400,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Паспорт", "en": "Passport"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="passport",
         metadata_schema=_object_schema(
             ("number", "country", "issued_at", "expires_at"),
             {
@@ -416,6 +424,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
         process_type=DocumentProcessType.residence_card,
+        canonical_ref_code="residence_card",
         metadata_schema=_object_schema(
             ("number", "type", "issued_at", "expires_at", "voivodeship"),
             {
@@ -439,6 +448,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
         process_type=DocumentProcessType.visa,
+        canonical_ref_code="visa",
         metadata_schema=_object_schema(
             ("number", "type", "issued_at", "expires_at", "country"),
             {
@@ -485,6 +495,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Медицинская справка", "en": "Medical certificate", "pl": "Orzeczenie lekarskie"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="medical_certificate",
         metadata_schema=_object_schema(
             ("issued_at", "expires_at", "clinic"),
             {
@@ -496,7 +507,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         required_files=_single_required("a4", **A4_FRAME),
         expiry_rule=_expiry_rule("expires_at"),
         default_expire_in_days=365,
-        aliases=("badania_lekarskie", "medical_cert", "orzeczenie_lekarskie", "orzeczenie"),
+        aliases=("badania_lekarskie", "medical_cert", "orzeczenie_lekarskie", "orzeczenie", "medical"),
         owner_summary_weight=30,
     ),
     DocumentTypeDefinition(
@@ -505,6 +516,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Психологические тесты", "en": "Psychological tests"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="psychotest",
         metadata_schema=_object_schema(
             ("issued_at", "expires_at", "center"),
             {
@@ -516,7 +528,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         required_files=_any_required(min_files=1, max_files=2, preset="a4", frame_kwargs=_frame_kwargs(A4_FRAME)),
         expiry_rule=_expiry_rule("expires_at"),
         default_expire_in_days=365,
-        aliases=("psychotest", "psychotests", "psychological_certificate"),
+        aliases=("psychotest", "psychotests", "psychological_certificate", "psycho_test"),
         owner_summary_weight=25,
     ),
     DocumentTypeDefinition(
@@ -551,6 +563,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         kind=DocumentKind.process,
         requested_from=DocumentRequestedFrom.agency,
         process_type=DocumentProcessType.work_permit,
+        canonical_ref_code="work_permit",
         metadata_schema=_object_schema(
             ("number", "issued_by", "issued_at", "valid_from", "valid_to"),
             {
@@ -608,6 +621,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         required_files=_any_required(min_files=1),
         duplicate_policy=DocumentDuplicatePolicy.many_allowed,
         requires_custom_name=True,
+        canonical_ref_code="other",
         aliases=("other", "translation"),
         owner_summary_weight=10,
     ),

@@ -46,52 +46,13 @@ def _seed_types() -> list[CanonicalDocSeed]:
     ]
 
 
-LEGACY_CODE_MAP: dict[str, str] = {
-    "identity_document": "passport",
-    "passport": "passport",
-    "id": "id_card",
-    "id_card": "id_card",
-    "national_id": "id_card",
-    "residence_card": "residence_card",
-    "karta_pobytu": "residence_card",
-    "visa": "visa",
-    "visa_d": "visa",
-    "visa_c": "visa",
-    "work_permit": "work_permit",
-    "zezwolenie_a": "work_permit",
-    "driver_license": "driver_license",
-    "driver_license_ce": "driver_license",
-    "qualification_code95": "code_95",
-    "code95": "code_95",
-    "code_95": "code_95",
-    "tachograph": "tachograph_card",
-    "tachograph_card": "tachograph_card",
-    "medical": "medical_certificate",
-    "medical_certificate": "medical_certificate",
-    "psycho_test": "psychotest",
-    "psychotest": "psychotest",
-    "contract": "employment_contract",
-    "employment_contract": "employment_contract",
-    "civil_contract": "civil_contract",
-    "zus_zua": "zus_zua",
-    "zus_zza": "zus_zza",
-    "tax_declaration": "tax_declaration",
-    "other": "other",
-    "additional_document": "other",
-}
-
 SYSTEM_CODES = {item.code for item in _seed_types()}
+
+from backend.app.services.document_type_canonical_bridge import normalize_legacy_doc_type  # noqa: E402
 
 
 def _j(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True)
-
-
-def normalize_legacy_doc_type(value: Optional[str]) -> str:
-    key = str(value or "").strip().lower()
-    if not key:
-        return "other"
-    return LEGACY_CODE_MAP.get(key, "other")
 
 
 def _schema(seed: CanonicalDocSeed) -> dict[str, Any]:
@@ -249,16 +210,23 @@ def seed_and_sync_on_connection(conn) -> dict[str, str]:
     )
 
     docs = conn.execute(
-        text("SELECT id, doc_type FROM documents WHERE document_type_id IS NULL OR document_type_version_id IS NULL")
+        text("SELECT id, doc_type, document_type_id, document_type_version_id FROM documents")
     ).mappings().all()
     for row in docs:
         code = normalize_legacy_doc_type(row.get("doc_type"))
+        target_doc_id = code_to_doc_id.get(code, code_to_doc_id["other"])
+        target_ver_id = code_to_ver_id.get(code, code_to_ver_id["other"])
+        if (
+            str(row.get("document_type_id") or "") == target_doc_id
+            and str(row.get("document_type_version_id") or "") == target_ver_id
+        ):
+            continue
         conn.execute(
             text("UPDATE documents SET document_type_id=:document_type_id, document_type_version_id=:document_type_version_id WHERE id=:id"),
             {
                 "id": row["id"],
-                "document_type_id": code_to_doc_id.get(code, code_to_doc_id["other"]),
-                "document_type_version_id": code_to_ver_id.get(code, code_to_ver_id["other"]),
+                "document_type_id": target_doc_id,
+                "document_type_version_id": target_ver_id,
             },
         )
 

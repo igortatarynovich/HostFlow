@@ -37,7 +37,7 @@ DOC_KEY_CANDIDATE_TYPES: dict[str, frozenset[str]] = {
     "Medical": frozenset({"medical", "medical_certificate", "medical_exam"}),
     "Psychological": frozenset({"psychological", "psychological_certificate", "psychotest", "psychological_exam"}),
     "Driver license": frozenset({"driver_license", "driver_license_code95", "eu_driver_license"}),
-    "Code95": frozenset({"code95", "qualification_code95", "driver_license_code95"}),
+    "Code95": frozenset({"code95", "qualification_code95", "code_95", "driver_license_code95"}),
     "Tacho card": frozenset({"tacho_card", "tachograph_card", "tachograph"}),
     "Work experience": frozenset(
         {

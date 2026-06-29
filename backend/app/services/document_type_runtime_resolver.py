@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.document import Document
 from backend.app.models.ref_document_type import RefDocumentType, RefDocumentTypeVersion
-from backend.app.services.document_reference_sync import normalize_legacy_doc_type
+from backend.app.services.document_type_canonical_bridge import normalize_legacy_doc_type
 
 logger = logging.getLogger("backend.app.services.document_type_runtime_resolver")
 

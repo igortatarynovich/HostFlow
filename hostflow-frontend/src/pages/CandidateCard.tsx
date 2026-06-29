@@ -110,8 +110,9 @@ import CandidateNextActionPanel from '../components/candidate/CandidateNextActio
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
 import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
-import TransferReadinessReport from '../components/candidate/TransferReadinessReport'
+import RecruitmentDossierChecklist from '../components/candidate/RecruitmentDossierChecklist'
 import { useTransferReadiness } from '../components/candidate/useTransferReadiness'
+import { useRecruitmentPackage } from '../components/candidate/useRecruitmentPackage'
 import {
   RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY,
   readConfirmedRecruitmentBlocks,
@@ -532,6 +533,9 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   if (!extraFallback.preferred_contact && typeof intakeContacts?.preferred_messenger === 'string') {
     extraFallback.preferred_contact = intakeContacts.preferred_messenger
   }
+  if (!extraFallback.preferred_contact && typeof contactsData?.preferred_messenger === 'string') {
+    extraFallback.preferred_contact = contactsData.preferred_messenger
+  }
   if (!extraFallback.phone_prefix && intakePhoneCode.startsWith('+')) {
     extraFallback.phone_prefix = intakePhoneCode
   }
@@ -552,6 +556,10 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   if (!extraFallback.poland_stay_basis && intakeResidencyBasis) {
     extraFallback.poland_stay_basis = intakeResidencyBasis
   }
+  if (!extraFallback.poland_stay_basis && typeof personalData?.residency_status === 'string') {
+    const mapped = mapResidencyStatusToPolandBasis(personalData.residency_status)
+    if (mapped) extraFallback.poland_stay_basis = mapped
+  }
   if ((!extraFallback.trailer_types || extraFallback.trailer_types.length === 0) && Array.isArray(intakeExperience?.trailer_types)) {
     extraFallback.trailer_types = intakeExperience.trailer_types.map((item: any) => String(item)).filter(Boolean)
   }
@@ -569,6 +577,9 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   if (!mergedExtra.preferred_contact && typeof intakeContacts?.preferred_messenger === 'string') {
     mergedExtra.preferred_contact = intakeContacts.preferred_messenger
   }
+  if (!mergedExtra.preferred_contact && typeof contactsData?.preferred_messenger === 'string') {
+    mergedExtra.preferred_contact = contactsData.preferred_messenger
+  }
   if (!mergedExtra.citizenship) {
     if (typeof personalData?.citizenship === 'string') {
       mergedExtra.citizenship = personalData.citizenship
@@ -578,6 +589,10 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   }
   if (!mergedExtra.poland_stay_basis && intakeResidencyBasis) {
     mergedExtra.poland_stay_basis = intakeResidencyBasis
+  }
+  if (!mergedExtra.poland_stay_basis && typeof personalData?.residency_status === 'string') {
+    const mapped = mapResidencyStatusToPolandBasis(personalData.residency_status)
+    if (mapped) mergedExtra.poland_stay_basis = mapped
   }
   if (!mergedExtra.phone_prefix && intakePhoneCode.startsWith('+')) {
     mergedExtra.phone_prefix = intakePhoneCode
@@ -3674,6 +3689,12 @@ export default function CandidateCard(){
   )
   const { report: transferReport, loading: transferReportLoading, reload: reloadTransferReport } =
     useTransferReadiness(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
+  const { pkg: recruitmentPkg, loading: recruitmentPkgLoading, reload: reloadRecruitmentPkg } =
+    useRecruitmentPackage(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
+  const confirmedRecruitmentBlocks = useMemo(
+    () => readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined),
+    [extra],
+  )
 
   const transferReadinessGateActive = showTransferReadinessReport && !handoffActiveBlock
 
@@ -3745,6 +3766,7 @@ export default function CandidateCard(){
         await api.patch(`/candidates/${model.id}`, { extra: nextExtra })
         setExtra(nextExtra)
         await reloadTransferReport()
+        await reloadRecruitmentPkg()
         notify({
           title: t('app.candidate_card.dossier_checklist.confirmed_toast', {
             defaultValue: 'Block confirmed',
@@ -3760,7 +3782,7 @@ export default function CandidateCard(){
         setRecruitmentConfirmBusy(false)
       }
     },
-    [extra, model?.can_edit, model?.id, notify, reloadTransferReport, t],
+    [extra, model?.can_edit, model?.id, notify, reloadRecruitmentPkg, reloadTransferReport, t],
   )
 
   const employerDataMissingForHint = useMemo(() => {
@@ -4301,16 +4323,6 @@ export default function CandidateCard(){
                     )
                   })}
 
-                  {!isMasked && showTransferReadinessReport ? (
-                    <TransferReadinessReport
-                      report={transferReport}
-                      loading={transferReportLoading}
-                      onConfirmBlock={model.can_edit !== false ? handleConfirmRecruitmentBlock : undefined}
-                      confirmBusy={recruitmentConfirmBusy}
-                      canConfirm={model.can_edit !== false}
-                    />
-                  ) : null}
-
                   {/* Работодатель и вакансия */}
                   {!isMasked && (
                     <section
@@ -4462,6 +4474,22 @@ export default function CandidateCard(){
                 }
                 documentsChecklistSibling
               />
+
+              {!isMasked && showTransferReadinessReport ? (
+                <RecruitmentDossierChecklist
+                  candidateId={String(model.id)}
+                  pkg={recruitmentPkg}
+                  pkgLoading={recruitmentPkgLoading}
+                  confirmedBlocks={confirmedRecruitmentBlocks}
+                  onConfirmBlock={model.can_edit !== false ? handleConfirmRecruitmentBlock : undefined}
+                  confirmBusy={recruitmentConfirmBusy}
+                  canConfirm={model.can_edit !== false}
+                  missing={effectiveDocsBlockersForPipeline.missing}
+                  problematic={effectiveDocsBlockersForPipeline.problematic}
+                  contactsReady={dossierContactsReady}
+                  experienceReady={dossierExperienceReady}
+                />
+              ) : null}
 
               <CandidateDocsRailPanel
                 candidateId={String(model.id)}
