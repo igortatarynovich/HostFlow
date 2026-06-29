@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { HrReviewDocumentRow } from '../../../api/workforce'
 import {
   buildConfirmedReviewedPayload,
+  canConfirmHrVerificationDocument,
   countVerifiedDocuments,
   findReviewDocumentForEmployeeDoc,
   firstPendingDocumentIndex,
@@ -82,5 +83,35 @@ describe('hrDocumentVerificationFields', () => {
       title: 'Passport',
     })
     expect(match?.document_key).toBe('Passport / ID')
+  })
+
+  it('sorts sequential queue by step_order then slot_order', () => {
+    const docs = [
+      doc({ document_key: 'Passport / ID', document_id: '1', step_order: 1, slot_order: 1 }),
+      doc({
+        document_key: 'Contacts & address',
+        fields_to_review: [{ field_code: 'address', label: 'Address' }],
+        step_order: 1,
+        slot_order: 0,
+        block_kind: 'data_only',
+      }),
+    ]
+    expect(sequentialDocumentQueue(docs).map((d) => d.document_key)).toEqual([
+      'Contacts & address',
+      'Passport / ID',
+    ])
+  })
+
+  it('allows confirm for data-only blocks without document_id', () => {
+    const dataOnly = doc({
+      document_key: 'Contacts & address',
+      block_kind: 'data_only',
+      file_required_for_confirm: false,
+      fields_to_review: [{ field_code: 'address', label: 'Address' }],
+      actions: { can_verify: true },
+    })
+    const edits = { address: { value: 'Warsaw', comment: '', confirmed: false } }
+    expect(canConfirmHrVerificationDocument(dataOnly, true, edits)).toBe(true)
+    expect(canConfirmHrVerificationDocument(dataOnly, true, {})).toBe(false)
   })
 })

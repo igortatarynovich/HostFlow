@@ -1,5 +1,6 @@
 import type { HrDocumentFieldReview, HrReviewDocumentRow, HrReviewPanel } from '../../api/workforce'
 import { reviewDocCoversPackCode } from '../../utils/documentReadinessLabels'
+import { dossierFileRequiredForConfirm } from './dossierBlockKind'
 
 export type DocumentFieldEdit = {
   value: string
@@ -76,12 +77,19 @@ export function optionalPlanDocuments(docs: HrReviewDocumentRow[]): HrReviewDocu
 
 /** Documents in the sequential walkthrough (required always; optional only when uploaded). */
 export function sequentialDocumentQueue(docs: HrReviewDocumentRow[]): HrReviewDocumentRow[] {
-  return docs.filter((d) => {
-    const hasWork = Boolean(d.document_id) || (d.fields_to_review?.length ?? 0) > 0
-    if (!hasWork) return false
-    if (!isDocumentRequiredForReview(d)) return Boolean(d.document_id)
-    return true
-  })
+  return docs
+    .filter((d) => {
+      const hasWork = Boolean(d.document_id) || (d.fields_to_review?.length ?? 0) > 0
+      if (!hasWork) return false
+      if (!isDocumentRequiredForReview(d)) return Boolean(d.document_id)
+      return true
+    })
+    .sort((a, b) => {
+      const stepA = a.step_order ?? 99
+      const stepB = b.step_order ?? 99
+      if (stepA !== stepB) return stepA - stepB
+      return (a.slot_order ?? 99) - (b.slot_order ?? 99)
+    })
 }
 
 /** Required documents only — used for progress and approve readiness in the UI. */
@@ -220,4 +228,33 @@ export function countMissingFieldsOnDocument(doc: HrReviewDocumentRow): number {
     if (!hasRecruiter && !rv && !String(f.reviewed_value ?? '').trim()) missing += 1
   }
   return missing
+}
+
+export function countUnfilledFieldEdits(
+  doc: HrReviewDocumentRow,
+  fieldEdits: Record<string, DocumentFieldEdit>,
+): number {
+  const fields = doc.fields_to_review || []
+  let missing = 0
+  for (const f of fields) {
+    const value = (fieldEdits[f.field_code]?.value ?? '').trim()
+    if (!value) missing += 1
+  }
+  return missing
+}
+
+export function canConfirmHrVerificationDocument(
+  doc: HrReviewDocumentRow,
+  manage: boolean,
+  fieldEdits: Record<string, DocumentFieldEdit>,
+): boolean {
+  if (!manage) return false
+  if (isDocumentVerified(doc)) return false
+  if (doc.actions?.can_verify === false) return false
+  const status = String(doc.verification_status || doc.status || '').toLowerCase()
+  if (status === 'needs_correction') return false
+  if (dossierFileRequiredForConfirm(doc) && !doc.document_id) return false
+  const fields = doc.fields_to_review ?? []
+  if (fields.length > 0 && countUnfilledFieldEdits(doc, fieldEdits) > 0) return false
+  return true
 }

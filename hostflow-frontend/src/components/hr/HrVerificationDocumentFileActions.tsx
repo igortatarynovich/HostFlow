@@ -3,6 +3,7 @@ import type { HrReviewDocumentRow, HrReviewPanel } from '../../api/workforce'
 import { createCandidateDocument, presignUpload, mockUpload } from '../../api/documents'
 import { getWorkforceHrReview } from '../../api/workforce'
 import { openHrDocumentInNewTab } from '../../utils/hrDocumentOpen'
+import { dossierShowFileActions } from './dossierBlockKind'
 import { MAX_FILE_MB } from '../../modules/documents/constants'
 import { isTooLarge } from '../../modules/documents/documentUtils'
 import { useI18n } from '../../i18n'
@@ -33,8 +34,9 @@ export default function HrVerificationDocumentFileActions({
   const [uploading, setUploading] = useState(false)
 
   const openUrl = activeDoc.open_url || activeDoc.file_url
-  const canOpen = Boolean(openUrl) && activeDoc.actions?.can_open !== false
-  const canUpload = manage && Boolean(candidateId?.trim())
+  const showFileActions = dossierShowFileActions(activeDoc)
+  const canOpen = showFileActions && Boolean(openUrl) && activeDoc.actions?.can_open !== false
+  const canUpload = showFileActions && manage && Boolean(candidateId?.trim())
 
   const handlePreview = async () => {
     if (!openUrl) return

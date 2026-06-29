@@ -13,6 +13,7 @@ import { mapHrVerificationDocumentRow } from '../surfaces/mapHrVerificationDocum
 import {
   buildConfirmedReviewedPayload,
   buildInitialFieldEdits,
+  canConfirmHrVerificationDocument,
   countMissingFieldsOnDocument,
   isDocumentVerified,
   recruiterDisplayForField,
@@ -69,12 +70,7 @@ export function EmployeeDossierDocumentBlock({
   const missingFieldCount = countMissingFieldsOnDocument(doc)
   const docNeedsCorrection =
     String(doc.verification_status || doc.status || '').toLowerCase() === 'needs_correction'
-  const canConfirm =
-    manage &&
-    doc.actions?.can_verify !== false &&
-    !docNeedsCorrection &&
-    !verified &&
-    (!fileRequired || Boolean(doc.document_id))
+  const canConfirm = canConfirmHrVerificationDocument(doc, manage, fieldEdits)
   const allFieldsHaveValues =
     fields.length === 0 || fields.every((f) => (fieldEdits[f.field_code]?.value ?? '').trim().length > 0)
   const canUpload = manage && Boolean(candidateId?.trim()) && showFileActions

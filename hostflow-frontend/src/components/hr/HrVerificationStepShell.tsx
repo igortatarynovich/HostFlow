@@ -6,6 +6,8 @@ type Props = {
   stepNumber: number
   stepLabel: string
   documentLabel: string
+  /** When set, replaces default "Step N: Verify …" heading. */
+  stepHeadline?: string
   /** Legacy badge; ignored when `statusBadge` is set. */
   documentStatusLabel?: string
   documentStatusTone?: 'success' | 'warning' | 'danger' | 'info' | 'neutral'
@@ -25,6 +27,7 @@ export default function HrVerificationStepShell({
   stepNumber,
   stepLabel,
   documentLabel,
+  stepHeadline,
   documentStatusLabel,
   documentStatusTone = 'neutral',
   statusBadge,
@@ -58,10 +61,11 @@ export default function HrVerificationStepShell({
             {t('app.hr.verify_shell.phase', { defaultValue: 'Document verification' })}
           </p>
           <h2 className="mt-1 text-lg font-semibold text-slate-900">
-            {t('app.hr.verify_shell.step_verify', {
-              defaultValue: 'Step {step}: Verify {document}',
-              values: { step: stepNumber, document: documentLabel },
-            })}
+            {stepHeadline ??
+              t('app.hr.verify_shell.step_verify', {
+                defaultValue: 'Step {step}: Verify {document}',
+                values: { step: stepNumber, document: documentLabel },
+              })}
           </h2>
           <p className="text-sm text-slate-600">{stepLabel}</p>
 

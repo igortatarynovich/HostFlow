@@ -27,7 +27,9 @@ import { openHrDocumentInNewTab } from '../../utils/hrDocumentOpen'
 import {
   buildConfirmedReviewedPayload,
   buildInitialFieldEdits,
+  canConfirmHrVerificationDocument,
   countMissingFieldsOnDocument,
+  countUnfilledFieldEdits,
   countVerifiedDocuments,
   documentsFromPanel,
   findQueueIndexForDocumentFocus,
@@ -38,6 +40,7 @@ import {
   sequentialDocumentQueue,
   type DocumentFieldEdit,
 } from './hrDocumentVerificationFields'
+import { dossierBlockKind, dossierShowFileActions } from './dossierBlockKind'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
 
@@ -250,31 +253,58 @@ export default function HrSequentialDocumentVerification({
   if (!activeDoc) return null
 
   const fields = activeDoc.fields_to_review ?? []
-  const missingFieldCount = countMissingFieldsOnDocument(activeDoc)
+  const blockKind = dossierBlockKind(activeDoc)
+  const showFilePanel = dossierShowFileActions(activeDoc)
+  const missingFieldCount = manage
+    ? countUnfilledFieldEdits(activeDoc, fieldEdits)
+    : countMissingFieldsOnDocument(activeDoc)
   const docNeedsCorrection =
     String(activeDoc.verification_status || activeDoc.status || '').toLowerCase() === 'needs_correction'
-  const canConfirm =
-    manage && Boolean(activeDoc.document_id) && activeDoc.actions?.can_verify !== false && !docNeedsCorrection
+  const canConfirm = canConfirmHrVerificationDocument(activeDoc, manage, fieldEdits)
   const allFieldsHaveValues =
-    fields.length === 0 || fields.every((f) => (fieldEdits[f.field_code]?.value ?? '').trim().length > 0)
+    fields.length === 0 || countUnfilledFieldEdits(activeDoc, fieldEdits) === 0
 
   const stepNumber = activeStep?.step_order ?? activeIndex + 1
   const stepLabel = activeStep?.label ?? t('app.hr.verify_shell.default_step', { defaultValue: 'Required documents' })
+  const stepHeadline =
+    blockKind === 'data_only'
+      ? t('app.hr.verify_shell.step_confirm_data', {
+          defaultValue: 'Step {step}: Confirm {label}',
+          values: { step: stepNumber, label: activeDoc.label },
+        })
+      : t('app.hr.verify_shell.step_verify', {
+          defaultValue: 'Step {step}: Verify {document}',
+          values: { step: stepNumber, document: activeDoc.label },
+        })
   const activeMapped = mapHrVerificationDocumentRow(activeDoc, t)
 
   const documentViewer = (
     <div className="flex flex-1 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <DocumentRow compact className="border-slate-200 shadow-none" {...activeMapped.row} />
       <div className="mt-5 flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center">
-        <HrVerificationDocumentFileActions
-          activeDoc={activeDoc}
-          candidateId={candidateId}
-          employeeId={effectiveEmployeeId || employeeId}
-          manage={manage}
-          busy={!!busy}
-          onOpen={handleOpenDocument}
-          onPanelUpdated={onPanelUpdated}
-        />
+        {showFilePanel ? (
+          <HrVerificationDocumentFileActions
+            activeDoc={activeDoc}
+            candidateId={candidateId}
+            employeeId={effectiveEmployeeId || employeeId}
+            manage={manage}
+            busy={!!busy}
+            onOpen={handleOpenDocument}
+            onPanelUpdated={onPanelUpdated}
+          />
+        ) : (
+          <div className="max-w-sm space-y-2">
+            <p className="text-sm font-medium text-slate-800">
+              {t('app.hr.dossier.data_block', { defaultValue: 'Employee data' })}
+            </p>
+            <p className="text-sm text-slate-600">
+              {t('app.hr.verify_shell.data_only_hint', {
+                defaultValue:
+                  'No file for this block — check and complete the fields on the right, then confirm.',
+              })}
+            </p>
+          </div>
+        )}
       </div>
       {queue.length > 1 ? (
         <nav
@@ -312,10 +342,15 @@ export default function HrSequentialDocumentVerification({
       </p>
       {missingFieldCount > 0 ? (
         <p className="mt-1 text-xs font-medium text-amber-800">
-          {t('app.hr.verify_shell.missing_count', {
-            defaultValue: '{count} field(s) missing — enter from the document',
-            values: { count: missingFieldCount },
-          })}
+          {blockKind === 'data_only'
+            ? t('app.hr.verify_shell.missing_count_data', {
+                defaultValue: '{count} field(s) still empty — enter the value',
+                values: { count: missingFieldCount },
+              })
+            : t('app.hr.verify_shell.missing_count', {
+                defaultValue: '{count} field(s) missing — enter from the document',
+                values: { count: missingFieldCount },
+              })}
         </p>
       ) : null}
       {fields.length > 0 ? (
@@ -333,7 +368,13 @@ export default function HrSequentialDocumentVerification({
                   </p>
                 ) : (
                   <p className="mt-0.5 text-xs font-medium text-amber-800">
-                    {t('app.hr.verify_shell.missing_field', { defaultValue: 'Missing — enter from document' })}
+                    {blockKind === 'data_only'
+                      ? t('app.hr.verify_shell.missing_field_data', {
+                          defaultValue: 'Missing — enter manually',
+                        })
+                      : t('app.hr.verify_shell.missing_field', {
+                          defaultValue: 'Missing — enter from document',
+                        })}
                   </p>
                 )}
                 {manage ? (
@@ -375,7 +416,9 @@ export default function HrSequentialDocumentVerification({
 
   const confirmLabel = isDocumentVerified(activeDoc)
     ? t('app.hr.verify_shell.confirm_next', { defaultValue: 'Confirm & next document' })
-    : t('app.hr.verify_shell.confirm', { defaultValue: 'Confirm this document' })
+    : blockKind === 'data_only'
+      ? t('app.hr.dossier.confirm_data', { defaultValue: 'Confirm data' })
+      : t('app.hr.verify_shell.confirm', { defaultValue: 'Confirm this document' })
 
   const footer = (
     <HrDocumentDecisionFooter
@@ -434,6 +477,7 @@ export default function HrSequentialDocumentVerification({
       stepNumber={stepNumber}
       stepLabel={stepLabel}
       documentLabel={activeDoc.label}
+      stepHeadline={stepHeadline}
       statusBadge={
         <DocumentStatus
           label={activeMapped.statusLabel}
