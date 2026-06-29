@@ -77,13 +77,15 @@ def _missing_contact_fields_legacy(candidate: Candidate) -> list[dict[str, str]]
         missing.append({"field_code": "email", "label": "Email"})
 
     address_raw = personal.get("address") or extra.get("address") or getattr(candidate, "address", None)
-    address = ""
+    address_ok = False
     if isinstance(address_raw, str):
-        address = address_raw.strip()
+        address_ok = bool(address_raw.strip())
     elif isinstance(address_raw, dict):
-        address = str(address_raw.get("line1") or address_raw.get("address") or "").strip()
-    if not address:
-        missing.append({"field_code": "address", "label": "Address"})
+        from backend.app.services.hr_profile_address import address_dict_complete
+
+        address_ok = address_dict_complete(address_raw)
+    if not address_ok:
+        missing.append({"field_code": "address_street", "label": "Street"})
 
     return missing
 

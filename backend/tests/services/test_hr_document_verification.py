@@ -9,6 +9,7 @@ from backend.app.services.hr_document_verification import (
     document_required_for_position,
     verification_blocks_approval,
 )
+from backend.app.services.hr_profile_address import promote_address_fields
 from backend.app.models.workforce_hr_document_verification import WorkforceHrDocumentVerification
 
 
@@ -98,11 +99,25 @@ def test_build_fields_to_review_passport_fields() -> None:
 
 
 def test_build_fields_to_review_contacts_block() -> None:
+    snapshot: dict[str, object] = {"email": "jan@example.com"}
+    promote_address_fields(
+        snapshot,
+        {
+            "country": "PL",
+            "city": "Warsaw",
+            "street": "Marszałkowska",
+            "house": "10",
+            "zip": "00-001",
+        },
+    )
     fields = build_fields_to_review(
         "Contacts & address",
         {
             "employee": {"display_name": "Jan Kowalski", "meta": {"personal_data": {"phone": "+48123456789"}}},
-            "snapshot": {"email": "jan@example.com"},
+            "snapshot": {
+                "email": "jan@example.com",
+                **snapshot,
+            },
             "contacts": {"phone": "+48123456789"},
             "handoff": {"candidate": {"email": "jan@example.com", "phone": "+48123456789"}},
             "document": {},
@@ -114,6 +129,13 @@ def test_build_fields_to_review_contacts_block() -> None:
     codes = {f["field_code"] for f in fields}
     assert "phone" in codes
     assert "email" in codes
+    assert "address_country" in codes
+    assert "address_street" in codes
+    country = next(f for f in fields if f["field_code"] == "address_country")
+    assert country["input_type"] == "country"
+    assert "PL" in str(country["current_profile_values"])
+    street = next(f for f in fields if f["field_code"] == "address_street")
+    assert "Marszałkowska" in str(street["current_profile_values"])
 
 
 def test_data_only_keys_constant() -> None:

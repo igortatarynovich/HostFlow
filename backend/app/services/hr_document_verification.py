@@ -28,7 +28,9 @@ from backend.app.services.hr_verified_field_catalog import (
     DATA_ONLY_VERIFICATION_KEYS,
     FIELD_SPECS,
     OPTIONAL_FILE_VERIFICATION_KEYS,
+    resolve_field_input_type,
 )
+from backend.app.services.hr_profile_address import promote_address_fields
 
 # document_key -> checklist item that this card primarily supports
 # Transport document cards are optional when position is not driver (PR12 sequential flow).
@@ -170,6 +172,30 @@ def _build_profile_context(
         ctx["handoff"] = handoff
     if candidate_live:
         ctx["candidate"] = {"extra": candidate_live, **{k: v for k, v in candidate_live.items() if k != "extra"}}
+
+    snap_out = ctx["snapshot"] if isinstance(ctx.get("snapshot"), dict) else {}
+    extra_snap = snap.get("extra") if isinstance(snap.get("extra"), dict) else {}
+    personal_snap = snap.get("personal_data") if isinstance(snap.get("personal_data"), dict) else {}
+    hr_identity = snap.get("hr_identity") if isinstance(snap.get("hr_identity"), dict) else {}
+    handoff_cand = handoff.get("candidate") if isinstance(handoff, dict) and isinstance(handoff.get("candidate"), dict) else {}
+    cand_extra = {}
+    if isinstance(ctx.get("candidate"), dict):
+        cand_extra = ctx["candidate"].get("extra") if isinstance(ctx["candidate"].get("extra"), dict) else {}
+    promote_address_fields(
+        snap_out,
+        snap_out.get("address"),
+        personal_meta.get("address"),
+        personal_snap.get("address"),
+        extra_snap.get("address"),
+        hr_identity.get("address"),
+        handoff_cand.get("address"),
+        cand_extra.get("address"),
+    )
+    if isinstance(handoff_cand, dict):
+        for key in ("address_country", "city", "postal_code", "address_street", "address_house", "address_apt"):
+            if handoff_cand.get(key):
+                snap_out.setdefault(key, handoff_cand.get(key))
+    ctx["snapshot"] = snap_out
     return ctx
 
 
@@ -194,6 +220,7 @@ def build_fields_to_review(
             {
                 "field_code": code,
                 "label": spec.get("label") or code,
+                "input_type": resolve_field_input_type(code, spec),
                 "downstream_use": list(spec.get("downstream_use") or []),
                 "current_profile_values": values,
                 "needs_manual_confirmation": needs_manual,

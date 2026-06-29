@@ -7,7 +7,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+from backend.app.services.hr_profile_address import coerce_address_dict, promote_address_fields
 
 _DOC_TYPE_ALIASES: dict[str, str] = {
     "driver_license": "driver_license",
@@ -37,17 +37,23 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
     birth_date = cand.get("birth_date")
     if birth_date is not None:
         birth_date = str(birth_date).strip()[:10] or None
+    candidate_out: dict[str, Any] = {
+        "full_name": full,
+        "first_name": first or None,
+        "last_name": last or None,
+        "citizenship": citizenship,
+        "birth_date": birth_date,
+        "email": contacts.get("email"),
+        "phone": contacts.get("phone"),
+    }
+    addr_raw = cand.get("address")
+    if isinstance(addr_raw, str) and addr_raw.strip():
+        candidate_out["address"] = addr_raw.strip()
+    elif isinstance(addr_raw, dict):
+        promote_address_fields(candidate_out, addr_raw)
+        candidate_out["address"] = addr_raw
     return {
-        "candidate": {
-            "full_name": full,
-            "first_name": first or None,
-            "last_name": last or None,
-            "citizenship": citizenship,
-            "birth_date": birth_date,
-            "email": contacts.get("email"),
-            "phone": contacts.get("phone"),
-            "address": cand.get("address") if isinstance(cand.get("address"), str) else None,
-        },
+        "candidate": candidate_out,
         "application": payload.get("application") if isinstance(payload.get("application"), dict) else None,
         "documents": list(payload.get("documents") or []) if isinstance(payload.get("documents"), list) else [],
     }
@@ -144,6 +150,7 @@ async def _load_live_candidate_fields(
         flat["address"] = personal.get("address")
     elif extra.get("address"):
         flat["address"] = extra.get("address")
+    promote_address_fields(flat, flat.get("address"), personal.get("address"), extra.get("address"))
     profile = extra.get("profile") if isinstance(extra.get("profile"), dict) else {}
     if profile.get("experience"):
         flat["experience"] = profile.get("experience")

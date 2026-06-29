@@ -16,9 +16,10 @@ import {
   canConfirmHrVerificationDocument,
   countMissingFieldsOnDocument,
   isDocumentVerified,
-  recruiterDisplayForField,
   type DocumentFieldEdit,
 } from './hrDocumentVerificationFields'
+import { formatRecruiterValueForField } from './hrVerificationFieldMeta'
+import HrVerificationFieldInput from './HrVerificationFieldInput'
 import {
   dossierBlockKind,
   dossierDefaultUploadDocType,
@@ -298,7 +299,7 @@ export function EmployeeDossierDocumentBlock({
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {fields.map((f) => {
             const ed = fieldEdits[f.field_code] || { value: '', comment: '', confirmed: false }
-            const recruiter = recruiterDisplayForField(f)
+            const recruiter = formatRecruiterValueForField(f)
             const missing = !(ed.value ?? '').trim()
             return (
               <label
@@ -315,14 +316,14 @@ export function EmployeeDossierDocumentBlock({
                   </span>
                 ) : null}
                 {manage && !verified ? (
-                  <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  <HrVerificationFieldInput
+                    field={f}
                     value={ed.value}
-                    aria-label={f.label}
-                    onChange={(e) =>
+                    disabled={disabled}
+                    onChange={(next) =>
                       setFieldEdits((prev) => ({
                         ...prev,
-                        [f.field_code]: { ...ed, value: e.target.value },
+                        [f.field_code]: { ...ed, value: next },
                       }))
                     }
                   />

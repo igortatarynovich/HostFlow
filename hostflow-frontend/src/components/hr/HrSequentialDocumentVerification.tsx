@@ -35,11 +35,12 @@ import {
   findQueueIndexForDocumentFocus,
   firstPendingDocumentIndex,
   isDocumentVerified,
-  recruiterDisplayForField,
   requiredPlanDocuments,
   sequentialDocumentQueue,
   type DocumentFieldEdit,
 } from './hrDocumentVerificationFields'
+import { formatRecruiterValueForField } from './hrVerificationFieldMeta'
+import HrVerificationFieldInput from './HrVerificationFieldInput'
 import { dossierBlockKind, dossierShowFileActions } from './dossierBlockKind'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
@@ -357,7 +358,7 @@ export default function HrSequentialDocumentVerification({
         <ul className="mt-3 flex-1 space-y-3">
           {fields.map((f) => {
             const ed = fieldEdits[f.field_code] || { value: '', comment: '', confirmed: false }
-            const recruiter = recruiterDisplayForField(f)
+            const recruiter = formatRecruiterValueForField(f)
             return (
               <li key={f.field_code} className="rounded-lg border border-slate-200 bg-white p-3">
                 <label className="block text-sm font-medium text-slate-900">{f.label}</label>
@@ -378,14 +379,14 @@ export default function HrSequentialDocumentVerification({
                   </p>
                 )}
                 {manage ? (
-                  <input
-                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  <HrVerificationFieldInput
+                    field={f}
                     value={ed.value}
-                    aria-label={f.label}
-                    onChange={(e) =>
+                    disabled={!!busy}
+                    onChange={(next) =>
                       setFieldEdits((prev) => ({
                         ...prev,
-                        [f.field_code]: { ...ed, value: e.target.value },
+                        [f.field_code]: { ...ed, value: next },
                       }))
                     }
                   />

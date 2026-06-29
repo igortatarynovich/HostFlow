@@ -27,6 +27,45 @@ BASE_CRITICAL_FIELD_CODES: frozenset[str] = frozenset(
 # Backward-compatible alias (base set only).
 CRITICAL_FIELD_CODES: frozenset[str] = BASE_CRITICAL_FIELD_CODES
 
+DATE_FIELD_CODES: frozenset[str] = frozenset(
+    {
+        "birth_date",
+        "document_issue_date",
+        "document_expiry",
+        "driver_license_expiry",
+        "code95_expiry",
+        "tacho_card_expiry",
+        "exam_valid_until",
+        "passport_issue_date",
+        "passport_expiry",
+        "passport_valid_to",
+        "medical_expiry",
+    }
+)
+
+COUNTRY_FIELD_CODES: frozenset[str] = frozenset({"citizenship", "work_country", "address_country"})
+
+
+def resolve_field_input_type(field_code: str, spec: dict[str, Any]) -> str:
+    explicit = str(spec.get("input_type") or "").strip().lower()
+    if explicit:
+        return explicit
+    code = str(field_code or "").strip()
+    if code in COUNTRY_FIELD_CODES:
+        return "country"
+    if (
+        code in DATE_FIELD_CODES
+        or code.endswith("_date")
+        or code.endswith("_expiry")
+        or code.endswith("_valid_to")
+    ):
+        return "date"
+    if code == "email":
+        return "email"
+    if code == "phone":
+        return "tel"
+    return "text"
+
 FIELD_CATALOG: dict[str, dict[str, Any]] = {
     "full_name": {
         "label": "Full name",
@@ -367,6 +406,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "field_code": "phone",
             "label": "Phone",
+            "input_type": "tel",
             "downstream_use": ["contract", "zus"],
             "profile_keys": [
                 "handoff.candidate.phone",
@@ -378,6 +418,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "field_code": "email",
             "label": "Email",
+            "input_type": "email",
             "downstream_use": ["contract"],
             "profile_keys": [
                 "handoff.candidate.email",
@@ -387,31 +428,70 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             ],
         },
         {
-            "field_code": "address",
-            "label": "Address",
+            "field_code": "address_country",
+            "label": "Country",
+            "input_type": "country",
             "downstream_use": ["contract", "zus"],
             "profile_keys": [
-                "handoff.candidate.address",
-                "snapshot.address",
-                "employee.meta.personal_data.address",
+                "snapshot.address_country",
+                "handoff.candidate.address_country",
+                "employee.meta.personal_data.address_country",
+                "employee.meta.personal_data.address.country",
             ],
         },
         {
             "field_code": "city",
             "label": "City",
-            "downstream_use": ["contract"],
+            "downstream_use": ["contract", "zus"],
             "profile_keys": [
                 "snapshot.city",
+                "handoff.candidate.city",
                 "employee.meta.personal_data.city",
+                "employee.meta.personal_data.address.city",
             ],
         },
         {
             "field_code": "postal_code",
             "label": "Postal code",
-            "downstream_use": ["contract"],
+            "downstream_use": ["contract", "zus"],
             "profile_keys": [
                 "snapshot.postal_code",
+                "handoff.candidate.postal_code",
                 "employee.meta.personal_data.postal_code",
+                "employee.meta.personal_data.address.zip",
+            ],
+        },
+        {
+            "field_code": "address_street",
+            "label": "Street",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "snapshot.address_street",
+                "handoff.candidate.address_street",
+                "employee.meta.personal_data.address_street",
+                "employee.meta.personal_data.address.street",
+            ],
+        },
+        {
+            "field_code": "address_house",
+            "label": "House number",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "snapshot.address_house",
+                "handoff.candidate.address_house",
+                "employee.meta.personal_data.address_house",
+                "employee.meta.personal_data.address.house",
+            ],
+        },
+        {
+            "field_code": "address_apt",
+            "label": "Apartment",
+            "downstream_use": ["contract"],
+            "profile_keys": [
+                "snapshot.address_apt",
+                "handoff.candidate.address_apt",
+                "employee.meta.personal_data.address_apt",
+                "employee.meta.personal_data.address.apt",
             ],
         },
     ],

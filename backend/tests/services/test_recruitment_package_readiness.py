@@ -20,7 +20,7 @@ def test_missing_contact_fields_detects_gaps() -> None:
     codes = {m["field_code"] for m in missing}
     assert "phone" in codes
     assert "email" in codes
-    assert "address" in codes
+    assert "address_street" in codes
 
 
 def test_missing_contact_fields_passes_when_complete() -> None:

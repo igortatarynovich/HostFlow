@@ -1,6 +1,7 @@
 import type { HrDocumentFieldReview, HrReviewDocumentRow, HrReviewPanel } from '../../api/workforce'
 import { reviewDocCoversPackCode } from '../../utils/documentReadinessLabels'
 import { dossierFileRequiredForConfirm } from './dossierBlockKind'
+import { profileValueForField } from './hrVerificationFieldMeta'
 
 export type DocumentFieldEdit = {
   value: string
@@ -92,9 +93,9 @@ export function sequentialDocumentQueue(docs: HrReviewDocumentRow[]): HrReviewDo
     })
 }
 
-/** Required documents only — used for progress and approve readiness in the UI. */
+/** Required documents for progress — required slots plus optional uploads already on file. */
 export function requiredDocumentQueue(docs: HrReviewDocumentRow[]): HrReviewDocumentRow[] {
-  return sequentialDocumentQueue(docs).filter(isDocumentRequiredForReview)
+  return sequentialDocumentQueue(docs)
 }
 
 /** All required documents for the dossier — including slots without a file yet. */
@@ -116,8 +117,7 @@ export function buildInitialFieldEdits(doc: HrReviewDocumentRow): Record<string,
   for (const f of fields) {
     const prev = reviewed[f.field_code]
     const p = prev && typeof prev === 'object' ? (prev as Record<string, unknown>) : {}
-    const profileVals = Object.values(f.current_profile_values || {})
-    const fallback = profileVals.length > 0 ? String(profileVals[0]) : ''
+    const fallback = profileValueForField(f, reviewed)
     init[f.field_code] = {
       value: String(p.value ?? f.reviewed_value ?? fallback),
       comment: String(p.comment ?? f.review_comment ?? ''),
@@ -230,6 +230,8 @@ export function countMissingFieldsOnDocument(doc: HrReviewDocumentRow): number {
   return missing
 }
 
+const OPTIONAL_VERIFICATION_FIELD_CODES = new Set(['address_apt'])
+
 export function countUnfilledFieldEdits(
   doc: HrReviewDocumentRow,
   fieldEdits: Record<string, DocumentFieldEdit>,
@@ -237,6 +239,7 @@ export function countUnfilledFieldEdits(
   const fields = doc.fields_to_review || []
   let missing = 0
   for (const f of fields) {
+    if (OPTIONAL_VERIFICATION_FIELD_CODES.has(f.field_code)) continue
     const value = (fieldEdits[f.field_code]?.value ?? '').trim()
     if (!value) missing += 1
   }

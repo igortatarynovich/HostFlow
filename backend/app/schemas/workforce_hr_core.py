@@ -226,6 +226,7 @@ class HrReviewChecklistItemOut(BaseModel):
 class HrDocumentFieldReviewOut(BaseModel):
     field_code: str
     label: str
+    input_type: Optional[str] = None
     downstream_use: list[str] = Field(default_factory=list)
     current_profile_values: dict[str, Any] = Field(default_factory=dict)
     needs_manual_confirmation: bool = False

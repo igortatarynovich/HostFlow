@@ -321,6 +321,7 @@ export type HrReviewChecklistItem = {
 export type HrDocumentFieldReview = {
   field_code: string
   label: string
+  input_type?: 'text' | 'date' | 'country' | 'email' | 'tel' | string | null
   downstream_use?: string[]
   current_profile_values?: Record<string, unknown>
   needs_manual_confirmation?: boolean
