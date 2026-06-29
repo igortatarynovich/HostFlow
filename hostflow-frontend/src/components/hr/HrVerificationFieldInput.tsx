@@ -1,7 +1,6 @@
-import { useMemo } from 'react'
 import type { HrDocumentFieldReview } from '../../api/workforce'
 import { Combobox } from '../ui/Combobox'
-import { buildCountryOptions } from '../../data/countries'
+import { usePlatformCountryOptions, usePlatformDialCodeOptions } from '../../hooks/usePlatformCatalogOptions'
 import { useI18n } from '../../i18n'
 import { resolveHrFieldInputType } from './hrVerificationFieldMeta'
 
@@ -22,18 +21,24 @@ function normalizeDateValue(value: string): string {
 }
 
 export default function HrVerificationFieldInput({ field, value, disabled, onChange }: Props) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const inputType = resolveHrFieldInputType(field)
-  const countryOptions = useMemo(() => buildCountryOptions(locale), [locale])
+  const countryOptions = usePlatformCountryOptions()
+  const dialCodeOptions = usePlatformDialCodeOptions()
 
-  if (inputType === 'country') {
+  if (inputType === 'country' || inputType === 'dial_code') {
+    const options = inputType === 'dial_code' ? dialCodeOptions : countryOptions
     return (
       <div className="mt-2">
         <Combobox
-          options={countryOptions}
+          options={options}
           value={value}
           disabled={disabled}
-          placeholder={t('app.hr.verify_field.country_placeholder', { defaultValue: 'Select country' })}
+          placeholder={
+            inputType === 'dial_code'
+              ? t('app.hr.verify_field.dial_code_placeholder', { defaultValue: 'Select dial code' })
+              : t('app.hr.verify_field.country_placeholder', { defaultValue: 'Select country' })
+          }
           searchPlaceholder={t('common.search', { defaultValue: 'Search' })}
           noResultsLabel={t('common.no_results', { defaultValue: 'No results' })}
           onChange={onChange}

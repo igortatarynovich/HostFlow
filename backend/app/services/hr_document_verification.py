@@ -121,9 +121,10 @@ def _build_profile_context(
     contacts = meta.get("contacts") if isinstance(meta.get("contacts"), dict) else {}
     if not contacts and isinstance(snap.get("contacts"), dict):
         contacts = snap.get("contacts")
-    exp_raw = snap.get("experience") or snap.get("employments")
-    if not exp_raw and isinstance(snap.get("profile"), dict):
-        exp_raw = snap["profile"].get("experience")
+    exp_raw = snap.get("employments") or snap.get("experience") or snap.get("employment_history")
+    if not exp_raw and isinstance(snap.get("extra"), dict):
+        extra_for_exp = snap.get("extra")
+        exp_raw = extra_for_exp.get("employment_history") or extra_for_exp.get("employments") or extra_for_exp.get("experience")
     experience_summary = _format_profile_value(exp_raw)
     doc_meta = document.meta if document and isinstance(document.meta, dict) else {}
     issue = None
@@ -148,8 +149,13 @@ def _build_profile_context(
             "passport_series": snap.get("passport_series") or personal_meta.get("passport_series"),
             "passport_issue_date": snap.get("passport_issue_date") or personal_meta.get("passport_issue_date"),
             "experience_summary": experience_summary or snap.get("experience_summary"),
+            "last_position": snap.get("last_position"),
+            "experience_eu_years": snap.get("experience_eu_years"),
             "phone": snap.get("phone") or contacts.get("phone") or personal_meta.get("phone"),
+            "phone_country_code": snap.get("phone_country_code") or contacts.get("phone_country_code") or personal_meta.get("phone_country_code"),
             "email": snap.get("email") or contacts.get("email") or personal_meta.get("email"),
+            "country_code": snap.get("country_code") or personal_meta.get("country_code"),
+            "work_country": snap.get("work_country") or personal_meta.get("work_country") or snap.get("work_country"),
             "address": snap.get("address") or personal_meta.get("address") or contacts.get("address"),
             "city": snap.get("city") or personal_meta.get("city"),
             "postal_code": snap.get("postal_code") or personal_meta.get("postal_code"),
@@ -192,7 +198,21 @@ def _build_profile_context(
         cand_extra.get("address"),
     )
     if isinstance(handoff_cand, dict):
-        for key in ("address_country", "city", "postal_code", "address_street", "address_house", "address_apt"):
+        for key in (
+            "address_country",
+            "city",
+            "postal_code",
+            "address_street",
+            "address_house",
+            "address_apt",
+            "phone_country_code",
+            "country_code",
+            "work_country",
+            "birth_date",
+            "experience_summary",
+            "last_position",
+            "experience_eu_years",
+        ):
             if handoff_cand.get(key):
                 snap_out.setdefault(key, handoff_cand.get(key))
     ctx["snapshot"] = snap_out

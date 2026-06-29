@@ -25,6 +25,11 @@ from backend.app.services.workforce_work_eligibility_payments import list_paymen
 from backend.app.models.workforce_absence import WorkforceAbsence
 from backend.app.models.workforce_compliance_state import WorkforceComplianceState
 from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.services.hr_recruitment_transfer import (
+    enrich_snapshot_experience,
+    flatten_recruitment_candidate_fields,
+)
+from backend.app.services.hr_profile_address import promote_address_fields
 from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
 from backend.app.models.workforce_insurance_profile import WorkforceInsuranceProfile
 from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
@@ -73,6 +78,7 @@ def _candidate_snapshot(candidate: Candidate) -> dict[str, Any]:
     personal = candidate._get_personal_data() if hasattr(candidate, "_get_personal_data") else {}
     contacts = candidate._get_contacts() if hasattr(candidate, "_get_contacts") else {}
     vacancy_ctx = _vacancy_context(candidate.vacancy)
+    flat = flatten_recruitment_candidate_fields(candidate)
     notes = {
         "candidate_note": candidate.note,
         "recruiter_notes": extra.get("recruiter_notes") or extra.get("internal_notes"),
@@ -84,14 +90,17 @@ def _candidate_snapshot(candidate: Candidate) -> dict[str, Any]:
         if value in (None, ""):
             continue
         personal_augmented.setdefault(key, value)
-    return {
+    snap: dict[str, Any] = {
         "captured_at": now,
         "candidate_id": str(candidate.id),
-        "first_name": candidate.first_name,
-        "last_name": candidate.last_name,
-        "email": candidate.email,
-        "phone": candidate.phone,
-        "birth_date": hr_identity.get("birth_date"),
+        "first_name": flat.get("first_name") or candidate.first_name,
+        "last_name": flat.get("last_name") or candidate.last_name,
+        "full_name": flat.get("full_name"),
+        "email": flat.get("email") or candidate.email,
+        "phone": flat.get("phone") or candidate.phone,
+        "phone_country_code": flat.get("phone_country_code"),
+        "birth_date": flat.get("birth_date") or hr_identity.get("birth_date"),
+        "country_code": flat.get("country_code"),
         "passport_number": hr_identity.get("passport_number"),
         "passport_series": hr_identity.get("passport_series"),
         "passport_issue_date": hr_identity.get("passport_issue_date"),
@@ -104,8 +113,8 @@ def _candidate_snapshot(candidate: Candidate) -> dict[str, Any]:
         "extra": extra,
         "hr_identity": hr_identity,
         "vacancy_context": vacancy_ctx,
-        "citizenship": extra.get("citizenship") or personal.get("citizenship"),
-        "work_country": extra.get("work_country") or personal.get("work_country"),
+        "citizenship": flat.get("citizenship") or extra.get("citizenship") or personal.get("citizenship"),
+        "work_country": flat.get("work_country") or extra.get("work_country") or personal.get("work_country"),
         "legal_status": extra.get("legal_status") or extra.get("residency_status") or personal.get("residency_status"),
         "position_category": (
             extra.get("position_category")
@@ -115,7 +124,26 @@ def _candidate_snapshot(candidate: Candidate) -> dict[str, Any]:
         ),
         "document_field_values": _document_related_field_values(extra, personal),
         "notes": {k: v for k, v in notes.items() if isinstance(v, str) and v.strip()},
+        "experience_eu_years": flat.get("experience_eu_years"),
     }
+    promote_address_fields(
+        snap,
+        flat.get("address"),
+        hr_identity.get("address"),
+        personal.get("address") if isinstance(personal, dict) else None,
+        extra.get("address") if isinstance(extra, dict) else None,
+    )
+    return snap
+
+
+async def _candidate_snapshot_with_experience(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate: Candidate,
+) -> dict[str, Any]:
+    snap = _candidate_snapshot(candidate)
+    await enrich_snapshot_experience(db, tenant_id, candidate, snap)
+    return snap
 
 
 def _now() -> datetime:
@@ -240,6 +268,12 @@ def _hr_identity_fields(
             p.get("phone"),
             c.get("phone"),
             candidate.phone,
+        ),
+        "phone_country_code": _first_non_empty(
+            getattr(candidate, "phone_country_code", None),
+            c.get("phone_country_code"),
+            e.get("phone_country_code"),
+            e.get("phone_prefix"),
         ),
         "email": _first_non_empty(
             p.get("email"),
@@ -751,7 +785,7 @@ async def handoff_from_candidate(
             existing.status = "onboarding"
             existing.handoff_at = now
             existing.handoff_by_user_id = actor_user_id
-            snap = _candidate_snapshot(candidate)
+            snap = await _candidate_snapshot_with_experience(db, tenant_id, candidate)
             existing.candidate_snapshot = snap
             md = dict(existing.meta or {})
             md.update(_handoff_meta_from_snapshot(candidate, snap))
@@ -770,7 +804,7 @@ async def handoff_from_candidate(
     parts = [candidate.first_name or "", candidate.last_name or ""]
     display_name = " ".join(p for p in parts if p).strip() or (candidate.email or "Employee")
     now = _now()
-    snap = _candidate_snapshot(candidate)
+    snap = await _candidate_snapshot_with_experience(db, tenant_id, candidate)
     row = WorkforceEmployee(
         id=str(uuid4()),
         tenant_id=tenant_id,

@@ -1,6 +1,6 @@
 import type { HrDocumentFieldReview } from '../../api/workforce'
 
-export type HrFieldInputType = 'text' | 'date' | 'country' | 'email' | 'tel'
+export type HrFieldInputType = 'text' | 'date' | 'country' | 'dial_code' | 'email' | 'tel'
 
 const DATE_FIELD_CODES = new Set([
   'birth_date',
@@ -16,11 +16,11 @@ const DATE_FIELD_CODES = new Set([
   'medical_expiry',
 ])
 
-const COUNTRY_FIELD_CODES = new Set(['citizenship', 'work_country', 'address_country'])
+const COUNTRY_FIELD_CODES = new Set(['citizenship', 'work_country', 'address_country', 'country_of_residence'])
 
 export function resolveHrFieldInputType(field: HrDocumentFieldReview): HrFieldInputType {
   const explicit = String(field.input_type || '').trim().toLowerCase()
-  if (explicit === 'date' || explicit === 'country' || explicit === 'email' || explicit === 'tel') {
+  if (explicit === 'date' || explicit === 'country' || explicit === 'dial_code' || explicit === 'email' || explicit === 'tel') {
     return explicit
   }
   const code = String(field.field_code || '').trim()
@@ -33,7 +33,7 @@ export function resolveHrFieldInputType(field: HrDocumentFieldReview): HrFieldIn
   ) {
     return 'date'
   }
-  if (code === 'email') return 'email'
+  if (code === 'phone_country_code') return 'dial_code'
   if (code === 'phone') return 'tel'
   return 'text'
 }

@@ -20,6 +20,10 @@ from backend.app.modules.documents.crud import list_candidate_documents
 from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
 from backend.app.services.recruitment_application_service import get_application_for_handoff
 from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
+from backend.app.services.hr_recruitment_transfer import (
+    enrich_snapshot_experience,
+    flatten_recruitment_candidate_fields,
+)
 
 
 def _iso(dt: datetime | date | None) -> str | None:
@@ -172,6 +176,40 @@ async def build_handoff_snapshot_payload_v1(
 
     requested_by = await _user_label(db, str(handoff.requested_by_user_id))
 
+    flat = flatten_recruitment_candidate_fields(candidate)
+    candidate_block: dict[str, Any] = {
+        "id": str(candidate.id),
+        "name": {
+            "first_name": str(candidate.first_name or ""),
+            "last_name": str(candidate.last_name or ""),
+        },
+        "contacts": {
+            "email": flat.get("email"),
+            "phone": flat.get("phone"),
+            "phone_country_code": flat.get("phone_country_code"),
+        },
+        "citizenship": flat.get("citizenship"),
+        "birth_date": flat.get("birth_date"),
+        "work_country": flat.get("work_country"),
+        "country_code": flat.get("country_code"),
+        "current_stage": getattr(candidate, "stage", None),
+    }
+    if flat.get("address") is not None:
+        candidate_block["address"] = flat.get("address")
+    for key in (
+        "address_country",
+        "city",
+        "postal_code",
+        "address_street",
+        "address_house",
+        "address_apt",
+        "address_line",
+        "experience_eu_years",
+    ):
+        if flat.get(key) not in (None, ""):
+            candidate_block[key] = flat.get(key)
+    await enrich_snapshot_experience(db, agency_tid, candidate, candidate_block)
+
     lead_id = str(app.lead_id) if app and getattr(app, "lead_id", None) else None
     app_source = str(app.source) if app else (getattr(candidate, "source", None) or None)
     if app_source is not None:
@@ -194,20 +232,7 @@ async def build_handoff_snapshot_payload_v1(
             "created_at": _iso(handoff.requested_at),
             "requested_by": requested_by,
         },
-        "candidate": {
-            "id": str(candidate.id),
-            "name": {
-                "first_name": str(candidate.first_name or ""),
-                "last_name": str(candidate.last_name or ""),
-            },
-            "contacts": {
-                "email": getattr(candidate, "email", None),
-                "phone": getattr(candidate, "phone", None),
-                "phone_country_code": getattr(candidate, "phone_country_code", None),
-            },
-            "citizenship": _citizenship(candidate),
-            "current_stage": getattr(candidate, "stage", None),
-        },
+        "candidate": candidate_block,
         "application": application_block,
         "documents": documents_out,
         "expected_documents": applicability_out,

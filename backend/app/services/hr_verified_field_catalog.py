@@ -43,7 +43,9 @@ DATE_FIELD_CODES: frozenset[str] = frozenset(
     }
 )
 
-COUNTRY_FIELD_CODES: frozenset[str] = frozenset({"citizenship", "work_country", "address_country"})
+COUNTRY_FIELD_CODES: frozenset[str] = frozenset(
+    {"citizenship", "work_country", "address_country", "country_of_residence"}
+)
 
 
 def resolve_field_input_type(field_code: str, spec: dict[str, Any]) -> str:
@@ -135,14 +137,18 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "downstream_use": ["contract", "zus"],
             "profile_keys": [
                 "handoff.candidate.full_name",
+                "handoff.candidate.first_name",
+                "handoff.candidate.last_name",
                 "employee.display_name",
                 "snapshot.first_name",
                 "snapshot.last_name",
+                "snapshot.full_name",
             ],
         },
         {
             "field_code": "citizenship",
             "label": "Citizenship",
+            "input_type": "country",
             "downstream_use": ["work_permit", "zus"],
             "profile_keys": [
                 "handoff.candidate.citizenship",
@@ -155,13 +161,14 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "field_code": "birth_date",
             "label": "Date of birth",
+            "input_type": "date",
             "downstream_use": ["contract", "zus"],
             "profile_keys": [
+                "handoff.candidate.birth_date",
                 "snapshot.birth_date",
                 "employee.meta.personal_data.birth_date",
                 "candidate.birth_date",
                 "candidate.extra.birth_date",
-                "handoff.candidate.birth_date",
             ],
         },
         {
@@ -416,6 +423,19 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             ],
         },
         {
+            "field_code": "phone_country_code",
+            "label": "Phone country code",
+            "input_type": "dial_code",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "handoff.candidate.phone_country_code",
+                "handoff.candidate.contacts.phone_country_code",
+                "snapshot.phone_country_code",
+                "contacts.phone_country_code",
+                "employee.meta.personal_data.phone_country_code",
+            ],
+        },
+        {
             "field_code": "email",
             "label": "Email",
             "input_type": "email",
@@ -425,6 +445,30 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
                 "contacts.email",
                 "snapshot.email",
                 "employee.meta.personal_data.email",
+            ],
+        },
+        {
+            "field_code": "work_country",
+            "label": "Work country",
+            "input_type": "country",
+            "downstream_use": ["contract", "zus", "permit"],
+            "profile_keys": [
+                "handoff.candidate.work_country",
+                "snapshot.work_country",
+                "employee.meta.personal_data.work_country",
+                "eligibility.work_country",
+            ],
+        },
+        {
+            "field_code": "country_of_residence",
+            "label": "Country of residence",
+            "input_type": "country",
+            "downstream_use": ["contract", "zus"],
+            "profile_keys": [
+                "handoff.candidate.country_code",
+                "snapshot.country_code",
+                "employee.meta.personal_data.country_code",
+                "candidate.extra.country_code",
             ],
         },
         {
@@ -502,7 +546,10 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "downstream_use": ["contract"],
             "profile_keys": [
                 "snapshot.experience_summary",
+                "snapshot.employments",
+                "handoff.candidate.experience_summary",
                 "candidate.extra.experience",
+                "candidate.extra.employment_history",
                 "employee.meta.experience_summary",
             ],
         },
@@ -512,7 +559,9 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "downstream_use": ["contract"],
             "profile_keys": [
                 "snapshot.last_position",
+                "handoff.candidate.last_position",
                 "employee.meta.last_position",
+                "candidate.extra.last_position",
             ],
         },
         {
@@ -521,6 +570,7 @@ FIELD_SPECS: dict[str, list[dict[str, Any]]] = {
             "downstream_use": ["compliance"],
             "profile_keys": [
                 "snapshot.experience_eu_years",
+                "handoff.candidate.experience_eu_years",
                 "candidate.extra.experience_eu_years",
             ],
         },

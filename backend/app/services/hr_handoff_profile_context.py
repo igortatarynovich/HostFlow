@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
 from backend.app.services.hr_profile_address import coerce_address_dict, promote_address_fields
+from backend.app.services.hr_recruitment_transfer import (
+    flatten_recruitment_candidate_fields,
+    merge_flat_into_handoff_candidate,
+)
 
 _DOC_TYPE_ALIASES: dict[str, str] = {
     "driver_license": "driver_license",
@@ -46,6 +50,7 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
         "birth_date": birth_date,
         "email": contacts.get("email"),
         "phone": contacts.get("phone"),
+        "phone_country_code": contacts.get("phone_country_code") or cand.get("phone_country_code"),
     }
     addr_raw = cand.get("address")
     if isinstance(addr_raw, str) and addr_raw.strip():
@@ -53,6 +58,24 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
     elif isinstance(addr_raw, dict):
         promote_address_fields(candidate_out, addr_raw)
         candidate_out["address"] = addr_raw
+    for key in (
+        "birth_date",
+        "work_country",
+        "country_code",
+        "phone_country_code",
+        "address_country",
+        "city",
+        "postal_code",
+        "address_street",
+        "address_house",
+        "address_apt",
+        "address_line",
+        "experience_summary",
+        "last_position",
+        "experience_eu_years",
+    ):
+        if cand.get(key) not in (None, ""):
+            candidate_out.setdefault(key, cand.get(key))
     return {
         "candidate": candidate_out,
         "application": payload.get("application") if isinstance(payload.get("application"), dict) else None,
@@ -136,31 +159,20 @@ async def _load_live_candidate_fields(
         return None, None, {}
     extra = cand._get_extra()
     personal = cand._get_personal_data()
-    flat: dict[str, Any] = {}
+    flat: dict[str, Any] = flatten_recruitment_candidate_fields(cand)
     contacts_data = getattr(cand, "contacts", None)
     if isinstance(contacts_data, dict):
-        if contacts_data.get("email"):
+        if contacts_data.get("email") and not flat.get("email"):
             flat["email"] = contacts_data.get("email")
-        if contacts_data.get("phone"):
+        if contacts_data.get("phone") and not flat.get("phone"):
             flat["phone"] = contacts_data.get("phone")
-    if getattr(cand, "email", None):
-        flat["email"] = flat.get("email") or cand.email
-    if getattr(cand, "phone", None):
-        flat["phone"] = flat.get("phone") or cand.phone
-    if personal.get("address"):
-        flat["address"] = personal.get("address")
-    elif extra.get("address"):
-        flat["address"] = extra.get("address")
-    promote_address_fields(flat, flat.get("address"), personal.get("address"), extra.get("address"))
+        if contacts_data.get("phone_country_code") and not flat.get("phone_country_code"):
+            flat["phone_country_code"] = contacts_data.get("phone_country_code")
     profile = extra.get("profile") if isinstance(extra.get("profile"), dict) else {}
     if profile.get("experience"):
-        flat["experience"] = profile.get("experience")
+        flat.setdefault("experience_summary", profile.get("experience"))
     if extra.get("experience_eu_years") is not None:
-        flat["experience_eu_years"] = extra.get("experience_eu_years")
-    if extra.get("citizenship"):
-        flat["citizenship"] = extra.get("citizenship")
-    if personal.get("citizenship"):
-        flat["citizenship"] = flat.get("citizenship") or personal.get("citizenship")
+        flat.setdefault("experience_eu_years", extra.get("experience_eu_years"))
     for k in (
         "birth_date",
         "pesel",
@@ -173,19 +185,21 @@ async def _load_live_candidate_fields(
         "passport_valid_to",
     ):
         if extra.get(k):
-            flat[k] = extra.get(k)
+            flat.setdefault(k, extra.get(k))
         if personal.get(k):
-            flat[k] = flat.get(k) or personal.get(k)
+            flat.setdefault(k, flat.get(k) or personal.get(k))
     if getattr(cand, "birth_date", None):
-        flat["birth_date"] = str(cand.birth_date)[:10]
+        flat.setdefault("birth_date", str(cand.birth_date)[:10])
     elif personal.get("birth_date"):
-        flat["birth_date"] = str(personal.get("birth_date"))[:10]
+        flat.setdefault("birth_date", str(personal.get("birth_date"))[:10])
     first = str(cand.first_name or "").strip()
     last = str(cand.last_name or "").strip()
     if first:
-        flat["first_name"] = first
+        flat.setdefault("first_name", first)
     if last:
-        flat["last_name"] = last
+        flat.setdefault("last_name", last)
+    if first or last:
+        flat.setdefault("full_name", f"{first} {last}".strip())
     return extra, personal, flat
 
 
@@ -211,9 +225,7 @@ async def load_handoff_profile_namespace(
     ns = build_handoff_profile_namespace(payload)
 
     extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
-    if flat.get("citizenship") and isinstance(ns.get("candidate"), dict):
-        ns["candidate"] = {**ns["candidate"], "citizenship": ns["candidate"].get("citizenship") or flat["citizenship"]}
-
+    ns = merge_flat_into_handoff_candidate(ns, flat)
     return merge_recruiter_transport_fields(
         ns,
         snapshot_payload=payload,
@@ -236,14 +248,7 @@ async def load_recruiter_profile_namespace(
         )
     extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
     ns: dict[str, Any] = {"candidate": {}}
-    if flat.get("citizenship"):
-        ns["candidate"]["citizenship"] = flat["citizenship"]
-    if flat.get("first_name") or flat.get("last_name"):
-        ns["candidate"]["first_name"] = flat.get("first_name")
-        ns["candidate"]["last_name"] = flat.get("last_name")
-        fn = f"{flat.get('first_name') or ''} {flat.get('last_name') or ''}".strip()
-        if fn:
-            ns["candidate"]["full_name"] = fn
+    ns = merge_flat_into_handoff_candidate(ns, flat)
     return merge_recruiter_transport_fields(
         ns,
         snapshot_payload=None,
