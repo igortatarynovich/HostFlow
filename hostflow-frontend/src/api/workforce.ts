@@ -809,6 +809,9 @@ export type WorkforceEmployeeDirectoryRow = {
   missing_documents_count: number
   expiring_documents_count: number
   risk_level: string
+  hr_review_status?: string | null
+  documents_verified_count?: number | null
+  documents_total_count?: number | null
 }
 
 export type WorkforceEmployeeDirectoryPage = {

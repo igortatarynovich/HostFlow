@@ -72,11 +72,13 @@ async def build_reminder_payload_enrichments_for_api(
         if not eid:
             continue
         pl = r.payload if isinstance(r.payload, dict) else {}
-        if str(pl.get("candidate_name") or "").strip():
+        if str(pl.get("candidate_name") or "").strip() and str(pl.get("workforce_employee_id") or "").strip():
             continue
         candidate_ids.add(eid)
     if not candidate_ids:
         return {}
+
+    from backend.app.models.workforce_employee import WorkforceEmployee
 
     rows = await db.execute(
         select(Candidate.id, Candidate.first_name, Candidate.last_name, Candidate.email).where(
@@ -90,6 +92,17 @@ async def build_reminder_payload_enrichments_for_api(
         if label:
             name_by_id[str(cid)] = label
 
+    emp_rows = await db.execute(
+        select(WorkforceEmployee.candidate_id, WorkforceEmployee.id).where(
+            WorkforceEmployee.tenant_id == tenant_id,
+            WorkforceEmployee.candidate_id.in_(list(candidate_ids)),
+        )
+    )
+    employee_by_candidate: Dict[str, str] = {}
+    for cid, eid in emp_rows.all():
+        if cid and eid:
+            employee_by_candidate[str(cid)] = str(eid)
+
     out: Dict[str, Dict[str, Any]] = {}
     for r in reminders:
         if str(r.entity_type or "").strip().lower() != "candidate":
@@ -98,11 +111,17 @@ async def build_reminder_payload_enrichments_for_api(
         if not eid:
             continue
         pl = r.payload if isinstance(r.payload, dict) else {}
-        if str(pl.get("candidate_name") or "").strip():
-            continue
-        nm = name_by_id.get(eid)
-        if nm:
-            out[str(r.id)] = {"candidate_name": nm}
+        merge: Dict[str, Any] = {}
+        if not str(pl.get("candidate_name") or "").strip():
+            nm = name_by_id.get(eid)
+            if nm:
+                merge["candidate_name"] = nm
+        if not str(pl.get("workforce_employee_id") or "").strip():
+            wf = employee_by_candidate.get(eid)
+            if wf:
+                merge["workforce_employee_id"] = wf
+        if merge:
+            out[str(r.id)] = merge
     return out
 
 

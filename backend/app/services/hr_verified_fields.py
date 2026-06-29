@@ -108,6 +108,73 @@ async def ensure_critical_field_placeholders(
     await db.flush()
 
 
+def _profile_value_from_snapshot(field_code: str, snap: dict[str, Any]) -> Optional[str]:
+    if not isinstance(snap, dict):
+        return None
+    hr_identity = snap.get("hr_identity") if isinstance(snap.get("hr_identity"), dict) else {}
+    personal = snap.get("personal_data") if isinstance(snap.get("personal_data"), dict) else {}
+    doc_fields = snap.get("document_field_values") if isinstance(snap.get("document_field_values"), dict) else {}
+
+    def pick(*keys: str) -> Optional[str]:
+        for key in keys:
+            for src in (hr_identity, personal, doc_fields, snap):
+                if not isinstance(src, dict):
+                    continue
+                val = src.get(key)
+                if val not in (None, ""):
+                    return _normalize_value(val)
+        return None
+
+    mapping: dict[str, tuple[str, ...]] = {
+        "full_name": ("legal_name", "full_name"),
+        "citizenship": ("citizenship",),
+        "work_country": ("work_country",),
+        "pesel": ("pesel",),
+        "document_expiry": ("passport_expiry", "passport_valid_to", "document_expiry"),
+        "permit_type": ("legal_status", "residency_status", "legal_stay_document_type", "permit_type"),
+    }
+    keys = mapping.get(field_code)
+    if not keys:
+        return None
+    if field_code == "full_name":
+        name = pick(*keys)
+        if name:
+            return name
+        parts = [str(snap.get("first_name") or "").strip(), str(snap.get("last_name") or "").strip()]
+        joined = " ".join(p for p in parts if p).strip()
+        return joined or None
+    return pick(*keys)
+
+
+async def seed_profile_values_from_candidate_snapshot(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    review: WorkforceHrReview,
+    snapshot: dict[str, Any] | None,
+) -> None:
+    """PR17: pre-fill verified field profile_values from recruitment handoff snapshot."""
+    if review.status in HR_REVIEW_TERMINAL_STATUSES or not isinstance(snapshot, dict):
+        return
+    res = await db.execute(
+        select(WorkforceHrVerifiedField).where(
+            WorkforceHrVerifiedField.tenant_id == tenant_id,
+            WorkforceHrVerifiedField.hr_review_id == review.id,
+        )
+    )
+    for row in res.scalars().all():
+        if str(row.status or "") != FIELD_STATUS_PENDING:
+            continue
+        existing_profile = dict(row.profile_values_json or {})
+        if existing_profile:
+            continue
+        val = _profile_value_from_snapshot(str(row.field_code), snapshot)
+        if not val:
+            continue
+        row.profile_values_json = {"recruitment": val, "candidate_snapshot": val}
+    await db.flush()
+
+
 async def list_for_review(
     db: AsyncSession,
     tenant_id: str,

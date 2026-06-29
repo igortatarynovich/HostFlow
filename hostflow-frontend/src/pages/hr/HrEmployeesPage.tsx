@@ -9,8 +9,10 @@ import {
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
 
-const hrEmployeePath = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`
+const hrEmployeePath = (id: string, hash?: string) =>
+  `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}${hash ? `#${hash.replace(/^#/, '')}` : ''}`
 
 const STATUS_OPTIONS = [
   '',
@@ -59,6 +61,8 @@ function statusTone(status: string | null | undefined): string {
 }
 
 function deriveNextAction(r: WorkforceEmployeeDirectoryRow): string {
+  const review = String(r.hr_review_status || '').toLowerCase()
+  if (review && review !== 'approved_for_employment') return 'Complete HR verification'
   if ((r.missing_documents_count || 0) > 0) return 'Upload missing documents'
   if ((r.expiring_documents_count || 0) > 0) return 'Renew expiring documents'
   if (String(r.compliance_status || '').toLowerCase().includes('block')) return 'Resolve compliance blockers'
@@ -352,6 +356,7 @@ export default function HrEmployeesPage() {
                   <th>{t('app.nav.hr.employees.col_name', { defaultValue: 'Employee' })}</th>
                   <th>{t('app.nav.hr.directory.col_client', { defaultValue: 'Company / Client' })}</th>
                   <th>{t('app.nav.hr.employees.col_status', { defaultValue: 'Status' })}</th>
+                  <th>{t('app.nav.hr.directory.col_verification', { defaultValue: 'Verification' })}</th>
                   <th>{t('app.nav.hr.directory.col_compliance', { defaultValue: 'Eligibility' })}</th>
                   <th>{t('app.nav.hr.directory.col_missing', { defaultValue: 'Missing' })}</th>
                   <th>{t('app.nav.hr.directory.col_expiring', { defaultValue: 'Expiring' })}</th>
@@ -381,6 +386,13 @@ export default function HrEmployeesPage() {
                       </span>
                     </td>
                     <td>
+                      <HrVerificationProgressBadge
+                        verified={r.documents_verified_count}
+                        total={r.documents_total_count}
+                        hrReviewStatus={r.hr_review_status}
+                      />
+                    </td>
+                    <td>
                       <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${eligibilityTone(r.compliance_status)}`}>
                         {r.compliance_status || dash}
                       </span>
@@ -395,10 +407,20 @@ export default function HrEmployeesPage() {
                     </td>
                     <td>
                       <div className="flex flex-col gap-1">
-                        <Link className="text-sm font-medium text-brand-700 hover:underline" to={hrEmployeePath(r.employee_id)}>
-                          {t('app.nav.hr.employees.open', { defaultValue: 'Open' })}
+                        <Link
+                          className="text-sm font-medium text-brand-700 hover:underline"
+                          to={hrEmployeePath(
+                            r.employee_id,
+                            r.hr_review_status && r.hr_review_status !== 'approved_for_employment'
+                              ? 'hr-verification'
+                              : undefined,
+                          )}
+                        >
+                          {r.hr_review_status && r.hr_review_status !== 'approved_for_employment'
+                            ? t('app.hr.verify_task.open_verification', { defaultValue: 'Verify documents' })
+                            : t('app.nav.hr.employees.open', { defaultValue: 'Open' })}
                         </Link>
-                        {r.handoff_id ? (
+                        {r.handoff_id && (!r.hr_review_status || r.hr_review_status === 'approved_for_employment') ? (
                           <Link
                             className="text-xs font-medium text-brand-700 hover:underline"
                             to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(r.handoff_id)}`}

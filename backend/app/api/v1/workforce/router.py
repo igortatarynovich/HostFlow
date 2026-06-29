@@ -199,6 +199,9 @@ class EmployeeDirectoryRowOut(BaseModel):
     missing_documents_count: int
     expiring_documents_count: int
     risk_level: str
+    hr_review_status: Optional[str] = None
+    documents_verified_count: Optional[int] = None
+    documents_total_count: Optional[int] = None
 
 
 class EmployeeDirectoryPageOut(BaseModel):

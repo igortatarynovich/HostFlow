@@ -13,7 +13,7 @@ import {
   type OperationalSeverity,
 } from '../../constants/workforceOperationalTaxonomy'
 
-const empDocsHash = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-employee-linked-documents`
+import { hrEmployeeVerificationPath, hrHandoffPath } from '../../utils/hrEmployeeLinks'
 
 function parseIso(value: string | null | undefined): number | null {
   if (!value) return null
@@ -209,6 +209,7 @@ function ComplianceSection({
   rows: Array<(HrDocumentQueueItem & { source?: string })>
   emptyText: string
 }) {
+  const { t } = useI18n()
   return (
     <section className="card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -236,13 +237,18 @@ function ComplianceSection({
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {row.workforce_employee_id ? (
-                    <Link className="text-sm font-medium text-brand-700 hover:underline" to={empDocsHash(row.workforce_employee_id)}>
-                      Open employee
-                    </Link>
+                    <>
+                      <Link className="text-sm font-medium text-brand-700 hover:underline" to={hrEmployeeVerificationPath(row.workforce_employee_id)}>
+                        {t('app.hr.verify_task.open_verification', { defaultValue: 'Verify documents' })}
+                      </Link>
+                      <Link className="text-xs font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(row.workforce_employee_id)}#hr-employee-linked-documents`}>
+                        {t('app.hr.documents_hub.open_employee', { defaultValue: 'Open employee' })}
+                      </Link>
+                    </>
                   ) : null}
                   {row.handoff_id ? (
-                    <Link className="text-xs font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}>
-                      Open handoff
+                    <Link className="text-xs font-medium text-brand-700 hover:underline" to={hrHandoffPath(row.handoff_id)}>
+                      {t('app.hr.documents_hub.open_handoff', { defaultValue: 'Review' })}
                     </Link>
                   ) : null}
                 </div>

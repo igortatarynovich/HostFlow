@@ -36,6 +36,9 @@ class HrHandoffInboxItem(BaseModel):
     delayed_hr_workforce_creation: bool = False
     can_approve_for_employment: bool = False
     awaiting_employment_approval: bool = False
+    transfer_summary: Optional[dict[str, Any]] = None
+    documents_verified_count: Optional[int] = None
+    documents_total_count: Optional[int] = None
 
 
 class HrHandoffInboxListOut(BaseModel):
@@ -60,6 +63,9 @@ def _inbox_item_from_row(row: dict[str, Any]) -> HrHandoffInboxItem:
         delayed_hr_workforce_creation=bool(row.get("delayed_hr_workforce_creation")),
         can_approve_for_employment=bool(row.get("can_approve_for_employment")),
         awaiting_employment_approval=bool(row.get("awaiting_employment_approval")),
+        transfer_summary=row.get("transfer_summary"),
+        documents_verified_count=row.get("documents_verified_count"),
+        documents_total_count=row.get("documents_total_count"),
     )
 
 

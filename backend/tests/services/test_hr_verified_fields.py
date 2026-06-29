@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from backend.app.services.hr_verified_fields import (
+    _profile_value_from_snapshot,
     critical_fields_block_approval,
     summarize_critical,
 )
@@ -51,3 +52,16 @@ def test_override_status_counts_as_ready() -> None:
     fields = [_field(c, "overridden", verified_value=f"v-{c}") for c in CRITICAL_FIELD_CODES]
     summary = summarize_critical(fields)
     assert summary["ready"] is True
+
+
+def test_profile_value_from_candidate_snapshot() -> None:
+    snap = {
+        "first_name": "Jan",
+        "last_name": "Kowalski",
+        "citizenship": "UA",
+        "work_country": "PL",
+        "hr_identity": {"pesel": "90010112345", "legal_name": "Jan Kowalski"},
+    }
+    assert _profile_value_from_snapshot("full_name", snap) == "Jan Kowalski"
+    assert _profile_value_from_snapshot("citizenship", snap) == "UA"
+    assert _profile_value_from_snapshot("pesel", snap) == "90010112345"

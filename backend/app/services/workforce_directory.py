@@ -17,7 +17,9 @@ from backend.app.models.user import User
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_employment import WorkforceEmployment
+from backend.app.models.workforce_hr_review import WorkforceHrReview
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
+from backend.app.services.hr_inbox import _document_verification_counts_by_review
 from backend.app.services.hr_operational_risk import list_operational_risk_items
 
 _logger = logging.getLogger(__name__)
@@ -294,6 +296,22 @@ async def list_employees_directory(
     except Exception:
         _logger.exception("directory: list_operational_risk_items failed tenant=%s", tid)
 
+    reviews_by_emp: dict[str, WorkforceHrReview] = {}
+    if emp_ids:
+        review_rows = (
+            await db.execute(
+                select(WorkforceHrReview).where(
+                    WorkforceHrReview.tenant_id == tid,
+                    WorkforceHrReview.employee_id.in_(emp_ids),
+                )
+            )
+        ).scalars().all()
+        for rev in review_rows:
+            if rev.employee_id:
+                reviews_by_emp[str(rev.employee_id)] = rev
+    review_ids = [str(r.id) for r in reviews_by_emp.values() if r.id]
+    doc_counts = await _document_verification_counts_by_review(db, tenant_id=tid, review_ids=review_ids)
+
     rows_out: list[dict[str, Any]] = []
     for e in emp_rows:
         eid = str(e.id)
@@ -323,6 +341,14 @@ async def list_employees_directory(
         aid = _assigned_hr_user_id(meta, str(e.recruiter_user_id) if e.recruiter_user_id else None)
         assigned_label = user_labels.get(aid) if aid else None
 
+        review = reviews_by_emp.get(eid)
+        hr_review_status = str(review.status) if review else None
+        verified_n, total_n = (None, None)
+        if review and review.id:
+            counts = doc_counts.get(str(review.id))
+            if counts:
+                verified_n, total_n = counts
+
         row = {
             "employee_id": eid,
             "full_name": _full_name_from_employee(e),
@@ -339,6 +365,9 @@ async def list_employees_directory(
             "missing_documents_count": missing_n,
             "expiring_documents_count": expiring_n,
             "risk_level": risk_lv,
+            "hr_review_status": hr_review_status,
+            "documents_verified_count": verified_n,
+            "documents_total_count": total_n,
         }
 
         if compliance_status and str(compliance_status).strip().lower() != str(row["compliance_status"]).lower():

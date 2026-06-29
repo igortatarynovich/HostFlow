@@ -10,6 +10,8 @@ import {
   type HrOperationalQueue,
 } from '../../api/hrWorkspace'
 import { acceptHandoff } from '../../api/handoffs'
+import { HrTransferSummaryChips, type HrTransferSummary } from '../../components/hr/HrTransferSummaryChips'
+import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 
@@ -127,8 +129,17 @@ export default function HrInboxPage() {
     }
   }
 
-  const empHref = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`
+  const empHref = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-verification`
+  const empProfileHref = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`
   const handoffHref = (id: string) => `${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(id)}`
+
+  const primaryCaseHref = (row: HrHandoffInboxItem): string | null => {
+    const id = row.handoff?.id
+    if (!id) return null
+    if (row.workforce_employee_id) return empHref(row.workforce_employee_id)
+    if (row.operational_queue === 'awaiting_hr_pickup') return handoffHref(id)
+    return handoffHref(id)
+  }
 
   const lanes = useMemo(
     () => [
@@ -294,11 +305,22 @@ export default function HrInboxPage() {
                           <li key={id || `${row.candidate_display_name}-${lane.key}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="font-medium text-slate-900">{row.candidate_display_name || '—'}</div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="font-medium text-slate-900">{row.candidate_display_name || '—'}</div>
+                                  <HrVerificationProgressBadge
+                                    verified={row.documents_verified_count}
+                                    total={row.documents_total_count}
+                                    hrReviewStatus={row.hr_review_status}
+                                  />
+                                </div>
                                 <div className="mt-0.5 text-xs text-slate-600">
                                   {queueLabel(String(row.operational_queue))}
                                   {row.awaiting_employment_approval ? ` · ${t('app.hr.review.approve', { defaultValue: 'Approve for employment' })}` : ''}
                                 </div>
+                                <HrTransferSummaryChips
+                                  className="mt-2"
+                                  summary={row.transfer_summary as HrTransferSummary | null | undefined}
+                                />
                                 {id ? <div className="mt-0.5 font-mono text-[10px] text-slate-400">handoff:{id.slice(0, 8)}…</div> : null}
                               </div>
                               <div className="flex flex-col items-end gap-1">
@@ -312,15 +334,17 @@ export default function HrInboxPage() {
                                     {t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' })}
                                   </button>
                                 ) : null}
-                                {id ? (
-                                  <Link className="text-sm font-medium text-brand-700 hover:underline" to={handoffHref(id)}>
-                                    {isPickup
-                                      ? t('app.nav.hr.inbox.view_snapshot', { defaultValue: 'Open case' })
-                                      : t('app.nav.hr.inbox.view_review', { defaultValue: 'HR review' })}
+                                {primaryCaseHref(row) ? (
+                                  <Link className="text-sm font-medium text-brand-700 hover:underline" to={primaryCaseHref(row)!}>
+                                    {row.workforce_employee_id
+                                      ? t('app.hr.verify_task.open_verification', { defaultValue: 'Verify documents' })
+                                      : isPickup
+                                        ? t('app.nav.hr.inbox.view_snapshot', { defaultValue: 'Open case' })
+                                        : t('app.nav.hr.inbox.view_review', { defaultValue: 'HR review' })}
                                   </Link>
                                 ) : null}
                                 {wf && row.hr_review_status === 'approved_for_employment' ? (
-                                  <Link className="text-xs font-medium text-brand-700 hover:underline" to={empHref(wf)}>
+                                  <Link className="text-xs font-medium text-brand-700 hover:underline" to={empProfileHref(wf)}>
                                     {t('app.hr.review_case.open_employee_profile', { defaultValue: 'Open employee profile' })}
                                   </Link>
                                 ) : null}

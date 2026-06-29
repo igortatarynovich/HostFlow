@@ -49,12 +49,26 @@ export default function HrTasksPage() {
   }, [items])
 
   const entityHref = (r: ReminderRecord): string | null => {
+    const payload = r.payload && typeof r.payload === 'object' ? r.payload : {}
+    const wfId = String(payload.workforce_employee_id || '').trim()
+    if (wfId) {
+      return `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(wfId)}#hr-verification`
+    }
     const et = String(r.entity_type || '').toLowerCase()
     const id = String(r.entity_id || '').trim()
     if (!id) return null
+    if (et === 'workforce_employee') {
+      return `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-verification`
+    }
     if (et === 'candidate') return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(id)}`
     if (et === 'lead') return `${CRM_APP_PATHS.leads}/${encodeURIComponent(id)}`
     return null
+  }
+
+  const entityLabel = (r: ReminderRecord): string => {
+    const payload = r.payload && typeof r.payload === 'object' ? r.payload : {}
+    if (payload.workforce_employee_id) return 'workforce_employee'
+    return String(r.entity_type || '')
   }
 
   return (
@@ -134,8 +148,8 @@ export default function HrTasksPage() {
                     <td className="font-mono text-xs text-slate-700">{r.type}</td>
                     <td className="text-slate-700">{r.status}</td>
                     <td className="whitespace-nowrap text-xs text-slate-600">{formatDue(r.due_at)}</td>
-                    <td className="max-w-[14rem] truncate font-mono text-xs text-slate-600" title={`${r.entity_type}:${r.entity_id}`}>
-                      {r.entity_id ? `${r.entity_type}:${r.entity_id}` : '—'}
+                    <td className="max-w-[14rem] truncate font-mono text-xs text-slate-600" title={`${entityLabel(r)}:${r.entity_id}`}>
+                      {r.entity_id ? `${entityLabel(r)}:${r.entity_id}` : '—'}
                     </td>
                     <td className="text-xs text-slate-600">{r.sla_status || '—'}</td>
                     <td>

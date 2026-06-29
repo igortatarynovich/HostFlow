@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import {
   getWorkforceEmployeeOperationalProfile,
@@ -95,7 +95,6 @@ function Section({
 
 export default function HrEmployeeDetailPage() {
   const { employeeId } = useParams<{ employeeId: string }>()
-  const location = useLocation()
   const { t } = useI18n()
   const { can } = usePermissions()
   const { notify } = useToast()
@@ -108,8 +107,7 @@ export default function HrEmployeeDetailPage() {
   const bundle = profile?.hr_bundle ?? null
 
   const manage = can('workforce.manage')
-  const isEmployeesRoute = location.pathname.startsWith(CRM_APP_PATHS.hrEmployees)
-  const caseWorkspace = !isEmployeesRoute && isEmploymentCaseWorkspace(hrReview)
+  const caseWorkspace = isEmploymentCaseWorkspace(hrReview)
 
   const [employmentDecisionOpen, setEmploymentDecisionOpen] = useState(false)
   const [workEligibilityJourneyOpen, setWorkEligibilityJourneyOpen] = useState(false)
@@ -165,6 +163,12 @@ export default function HrEmployeeDetailPage() {
   useEffect(() => {
     if (can('workforce.view') && employeeId) void load()
   }, [can, employeeId, load])
+
+  useEffect(() => {
+    if (loading || !employee) return
+    const hash = window.location.hash
+    if (hash) scrollToAnchor(hash)
+  }, [loading, employee])
 
   const handleDossierHrPanelUpdated = useCallback(
     (next: HrReviewPanel) => {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any, Sequence
 
 from sqlalchemy import func, select
@@ -20,6 +21,10 @@ from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_WAITING_RED_PAPER,
     HR_REVIEW_STATUS_WAITING_WORK_PERMIT,
     WorkforceHrReview,
+)
+from backend.app.models.workforce_hr_document_verification import (
+    VERIFICATION_TERMINAL_OK,
+    WorkforceHrDocumentVerification,
 )
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
 from backend.app.services.workforce_hr_review import ensure_hr_review_for_handoff
@@ -54,6 +59,60 @@ def _candidate_display_from_snapshot(snapshot: dict[str, Any] | None) -> str | N
         if dn:
             return dn
     return None
+
+
+def _transfer_summary_from_snapshot(snapshot: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(snapshot, dict):
+        return None
+    cand = snapshot.get("candidate")
+    base: dict[str, Any] = cand if isinstance(cand, dict) else {}
+    if not base:
+        summary = snapshot.get("candidate_snapshot_summary")
+        base = summary if isinstance(summary, dict) else snapshot
+    vacancy = snapshot.get("vacancy") if isinstance(snapshot.get("vacancy"), dict) else {}
+    out = {
+        "first_name": base.get("first_name"),
+        "last_name": base.get("last_name"),
+        "email": base.get("email"),
+        "phone": base.get("phone"),
+        "citizenship": base.get("citizenship") or snapshot.get("citizenship"),
+        "work_country": base.get("work_country") or snapshot.get("work_country"),
+        "position_category": base.get("position_category") or snapshot.get("position_category"),
+        "vacancy_title": vacancy.get("title") or base.get("vacancy_title"),
+        "documents_count": snapshot.get("documents_count") or base.get("documents_count"),
+    }
+    cleaned = {k: v for k, v in out.items() if v not in (None, "")}
+    return cleaned or None
+
+
+async def _document_verification_counts_by_review(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    review_ids: list[str],
+) -> dict[str, tuple[int, int]]:
+    if not review_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(
+                WorkforceHrDocumentVerification.hr_review_id,
+                WorkforceHrDocumentVerification.verification_status,
+            ).where(
+                WorkforceHrDocumentVerification.tenant_id == str(tenant_id),
+                WorkforceHrDocumentVerification.hr_review_id.in_(review_ids),
+                WorkforceHrDocumentVerification.required.is_(True),
+            )
+        )
+    ).all()
+    totals: dict[str, int] = defaultdict(int)
+    verified: dict[str, int] = defaultdict(int)
+    for rid, status in rows:
+        key = str(rid)
+        totals[key] += 1
+        if str(status or "") in VERIFICATION_TERMINAL_OK:
+            verified[key] += 1
+    return {k: (verified.get(k, 0), totals[k]) for k in totals}
 
 
 def derive_operational_queue(
@@ -140,6 +199,8 @@ def enrich_handoff_inbox_row(
     workforce_employee_id: str | None,
     review: WorkforceHrReview | None,
     delayed_workforce: bool,
+    documents_verified_count: int | None = None,
+    documents_total_count: int | None = None,
 ) -> dict[str, Any]:
     review_status = review.status if review else None
     emp_id = workforce_employee_id or (str(review.employee_id) if review and review.employee_id else None)
@@ -171,6 +232,9 @@ def enrich_handoff_inbox_row(
             and not employment_approved
             and operational_queue not in (QUEUE_RETURNED, QUEUE_REJECTED)
         ),
+        "transfer_summary": _transfer_summary_from_snapshot(snapshot),
+        "documents_verified_count": documents_verified_count,
+        "documents_total_count": documents_total_count,
     }
 
 
@@ -264,17 +328,28 @@ async def list_internal_hr_handoffs_for_hr_inbox(
         delayed_workforce=delayed_workforce,
     )
 
+    review_ids = [str(r.id) for r in reviews_by_hid.values() if r and r.id]
+    doc_counts = await _document_verification_counts_by_review(db, tenant_id=tid, review_ids=review_ids)
+
     items: list[dict[str, Any]] = []
     for handoff, snap in pairs:
         snap_dict = dict(snap.payload) if snap is not None else None
         hid = str(handoff.id)
+        review = reviews_by_hid.get(hid)
+        verified_n, total_n = (None, None)
+        if review and review.id:
+            counts = doc_counts.get(str(review.id))
+            if counts:
+                verified_n, total_n = counts
         items.append(
             enrich_handoff_inbox_row(
                 handoff=handoff,
                 snapshot=snap_dict,
                 workforce_employee_id=wf_by_hid.get(hid),
-                review=reviews_by_hid.get(hid),
+                review=review,
                 delayed_workforce=delayed_workforce,
+                documents_verified_count=verified_n,
+                documents_total_count=total_n,
             )
         )
     return items, total
@@ -311,10 +386,21 @@ async def get_internal_hr_handoff_inbox_row(
         reviews_by_hid=reviews,
         delayed_workforce=delayed_workforce,
     )
+    review = reviews.get(hid)
+    verified_n, total_n = (None, None)
+    if review and review.id:
+        doc_counts = await _document_verification_counts_by_review(
+            db, tenant_id=tid, review_ids=[str(review.id)]
+        )
+        counts = doc_counts.get(str(review.id))
+        if counts:
+            verified_n, total_n = counts
     return enrich_handoff_inbox_row(
         handoff=handoff,
         snapshot=snap_dict,
         workforce_employee_id=wf_map.get(hid),
-        review=reviews.get(hid),
+        review=review,
         delayed_workforce=delayed_workforce,
+        documents_verified_count=verified_n,
+        documents_total_count=total_n,
     )

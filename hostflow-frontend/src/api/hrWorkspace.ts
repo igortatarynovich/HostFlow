@@ -33,6 +33,9 @@ export type HrHandoffInboxItem = {
   delayed_hr_workforce_creation?: boolean
   can_approve_for_employment?: boolean
   awaiting_employment_approval?: boolean
+  transfer_summary?: Record<string, unknown> | null
+  documents_verified_count?: number | null
+  documents_total_count?: number | null
 }
 
 export type HrHandoffInboxListOut = {

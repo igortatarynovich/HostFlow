@@ -250,6 +250,11 @@ async def ensure_hr_review_for_employee(
             await db.flush()
     if sync_from_sources:
         await _sync_review_from_sources(db, tid, employee, row)
+    from backend.app.services import hr_verified_fields as vf_svc
+
+    await vf_svc.ensure_critical_field_placeholders(db, tenant_id=tid, review=row, employee_id=eid)
+    snap = employee.candidate_snapshot if isinstance(employee.candidate_snapshot, dict) else None
+    await vf_svc.seed_profile_values_from_candidate_snapshot(db, tenant_id=tid, review=row, snapshot=snap)
     return row
 
 
@@ -298,6 +303,15 @@ async def ensure_hr_review_for_handoff(
         row.candidate_id = cid
         await db.flush()
     await _sync_review_from_candidate_handoff(db, tid, cid, row)
+    from backend.app.services import hr_verified_fields as vf_svc
+
+    await vf_svc.ensure_critical_field_placeholders(db, tenant_id=tid, review=row)
+    cand = await db.get(Candidate, cid)
+    if cand:
+        from backend.app.services import workforce_employees as we_svc
+
+        snap = we_svc._candidate_snapshot(cand)
+        await vf_svc.seed_profile_values_from_candidate_snapshot(db, tenant_id=tid, review=row, snapshot=snap)
     return row
 
 

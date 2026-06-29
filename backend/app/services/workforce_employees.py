@@ -311,6 +311,33 @@ def _hr_identity_fields(
     }
 
 
+def _handoff_meta_from_snapshot(
+    candidate: Candidate,
+    snap: dict[str, Any],
+    *,
+    internal_hr_handoff_id: str | None = None,
+) -> dict[str, Any]:
+    """PR17: recruitment context copied into employee.meta (modules stay separate)."""
+    vacancy_ctx = snap.get("vacancy_context") if isinstance(snap.get("vacancy_context"), dict) else {}
+    hr_identity = snap.get("hr_identity") if isinstance(snap.get("hr_identity"), dict) else {}
+    meta: dict[str, Any] = {
+        "source": "recruitment_handoff",
+        "recruitment_transfer": {
+            "candidate_id": str(candidate.id),
+            "captured_at": snap.get("captured_at"),
+            "citizenship": snap.get("citizenship") or hr_identity.get("citizenship"),
+            "work_country": snap.get("work_country"),
+            "position_category": snap.get("position_category") or vacancy_ctx.get("position_category"),
+            "legal_status": snap.get("legal_status"),
+            "vacancy_id": snap.get("vacancy_id"),
+            "vacancy_title": vacancy_ctx.get("title"),
+        },
+    }
+    if internal_hr_handoff_id:
+        meta["internal_hr_handoff_id"] = internal_hr_handoff_id
+    return meta
+
+
 async def _seed_work_eligibility_from_candidate(
     db: AsyncSession, tenant_id: str, employee_id: str, candidate: Candidate
 ) -> None:
@@ -724,7 +751,11 @@ async def handoff_from_candidate(
             existing.status = "onboarding"
             existing.handoff_at = now
             existing.handoff_by_user_id = actor_user_id
-            existing.candidate_snapshot = _candidate_snapshot(candidate)
+            snap = _candidate_snapshot(candidate)
+            existing.candidate_snapshot = snap
+            md = dict(existing.meta or {})
+            md.update(_handoff_meta_from_snapshot(candidate, snap))
+            existing.meta = md
             if not (existing.notes or "").strip():
                 existing.notes = str(candidate.note or "").strip() or None
             await db.flush()
@@ -755,7 +786,7 @@ async def handoff_from_candidate(
         handoff_by_user_id=actor_user_id,
         notes=str(candidate.note or "").strip() or None,
         candidate_snapshot=snap,
-        meta={"source": "recruitment_handoff"},
+        meta=_handoff_meta_from_snapshot(candidate, snap),
     )
     db.add(row)
     await db.flush()

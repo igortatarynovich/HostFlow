@@ -21,6 +21,7 @@ import {
 import { HubEmployeeDocumentPacksPreview } from '../../components/hr/HubEmployeeDocumentPacksPreview'
 import { HubEmployeeDocumentActionsPanel } from '../../components/hr/HubEmployeeDocumentActionsPanel'
 import { resolveFocusedEmployeeId } from '../../utils/hrDocumentsHubFocus'
+import { hrEmployeeVerificationPath, hrHandoffPath } from '../../utils/hrEmployeeLinks'
 
 type HubView = 'all' | 'missing' | 'expiring' | 'verification'
 
@@ -253,7 +254,7 @@ export default function HrDocumentsHubPage() {
           {t('app.hr.documents_hub.tab_expiring', { defaultValue: 'Expiring' })}
         </NavLink>
         <NavLink to={p.hrDocumentsVerification} className={hubTabClass}>
-          {t('app.hr.documents_hub.tab_verification', { defaultValue: 'Verification' })}
+          {t('app.hr.documents_hub.tab_verification', { defaultValue: 'Needs verification' })}
         </NavLink>
       </nav>
 
@@ -439,11 +440,11 @@ function OperationalQueues({
       : view === 'expiring'
         ? [{ key: 'expiring', title: 'Expiring soon', rows: expiringSoon, empty: 'No documents expiring soon' }]
         : view === 'verification'
-          ? [{ key: 'verification', title: 'Verification needed', rows: verificationNeeded, empty: 'No documents waiting for review' }]
+          ? [{ key: 'verification', title: t('app.hr.documents_hub.queue_verification', { defaultValue: 'Needs verification' }), rows: verificationNeeded, empty: t('app.hr.documents_hub.queue_verification_empty', { defaultValue: 'No documents waiting for review' }) }]
           : [
               { key: 'missing', title: 'Missing required', rows: missingRequired, empty: 'No missing required documents' },
               { key: 'expiring', title: 'Expiring soon', rows: expiringSoon, empty: 'No documents expiring soon' },
-              { key: 'verification', title: 'Verification needed', rows: verificationNeeded, empty: 'No documents waiting for review' },
+              { key: 'verification', title: t('app.hr.documents_hub.queue_verification', { defaultValue: 'Needs verification' }), rows: verificationNeeded, empty: t('app.hr.documents_hub.queue_verification_empty', { defaultValue: 'No documents waiting for review' }) },
             ]
 
   return (
@@ -485,14 +486,14 @@ function OperationalQueues({
                       {row.workforce_employee_id ? (
                         <Link
                           className="text-sm font-medium text-brand-700 hover:text-brand-900 hover:underline"
-                          to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(row.workforce_employee_id)}#hr-employee-linked-documents`}
+                          to={hrEmployeeVerificationPath(row.workforce_employee_id)}
                         >
-                          {t('app.hr.documents_hub.open_employee', { defaultValue: 'Open employee' })}
+                          {t('app.hr.verify_task.open_verification', { defaultValue: 'Verify documents' })}
                         </Link>
                       ) : null}
                       <Link
                         className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
-                        to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}
+                        to={hrHandoffPath(row.handoff_id)}
                       >
                         {t('app.hr.documents_hub.open_handoff', { defaultValue: 'Review' })}
                       </Link>
@@ -584,39 +585,19 @@ function DocumentQueueTable({
                     {row.workforce_employee_id ? (
                       <Link
                         className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
-                        to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(row.workforce_employee_id)}#hr-employee-linked-documents`}
+                        to={hrEmployeeVerificationPath(row.workforce_employee_id)}
                       >
-                        {t('app.hr.documents_hub.open_employee', { defaultValue: 'Open employee' })}
+                        {t('app.hr.verify_task.open_verification', { defaultValue: 'Verify documents' })}
                       </Link>
                     ) : (
                       <span className="text-xs text-slate-400">—</span>
                     )}
                     <Link
                       className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
-                      to={`${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(row.handoff_id)}`}
+                      to={hrHandoffPath(row.handoff_id)}
                     >
                       {t('app.hr.documents_hub.open_handoff', { defaultValue: 'Handoff' })}
                     </Link>
-                    <button
-                      type="button"
-                      disabled
-                      className="cursor-not-allowed text-left text-xs text-slate-400"
-                      title={t('app.hr.documents_hub.planned_verify', {
-                        defaultValue: 'Document verification actions will use workforce APIs in a follow-up.',
-                      })}
-                    >
-                      {t('app.hr.documents_hub.mark_verified', { defaultValue: 'Mark verified' })}
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      className="cursor-not-allowed text-left text-xs text-slate-400"
-                      title={t('app.hr.documents_hub.planned_correction', {
-                        defaultValue: 'Request correction will open a guided task in a follow-up.',
-                      })}
-                    >
-                      {t('app.hr.documents_hub.request_correction', { defaultValue: 'Request correction' })}
-                    </button>
                   </div>
                 </td>
               </tr>
