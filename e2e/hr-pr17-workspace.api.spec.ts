@@ -1,31 +1,22 @@
 import { test, expect } from '@playwright/test'
-import type { APIRequestContext } from '@playwright/test'
+import { API_BASE, apiOrigin } from './helpers/hostflowApi'
 
 /**
  * PR17 HR workspace API smoke — inbox enrichment, directory read-model, by-candidate lookup.
  *
- * Prerequisite: recruitment team scenario seed (same as recruit-flow-scenario.api.spec.ts).
+ * Scenario tenant (recruitment team flow seed). Override via RECRUIT_FLOW_* env vars.
  */
-const API_BASE = (process.env.PLAYWRIGHT_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').replace(/\/+$/, '')
 const TENANT_ID = (
   process.env.RECRUIT_FLOW_SCENARIO_TENANT_ID || '22222222-2222-2222-2222-222222222222'
 ).trim()
 const SCENARIO_PASSWORD = (process.env.RECRUIT_FLOW_SCENARIO_PASSWORD || 'RecruitFlow123!').trim()
-
-const EMAILS = {
-  hr: 'scenario.hr@recruit-flow.local',
-} as const
 
 const IDS = {
   candidateHrReadonly: 'ccde37f1-618d-5a97-9fa7-aafa562e6fc2',
   workforceHrReadonly: 'de6bd134-5f58-555f-9264-2292c3bb9662',
 } as const
 
-function apiOrigin(): string {
-  return API_BASE.replace(/\/api\/v1\/?$/i, '') || 'http://127.0.0.1:8000'
-}
-
-function authHeaders(accessToken: string) {
+function scenarioHeaders(accessToken: string): Record<string, string> {
   return {
     Authorization: `Bearer ${accessToken}`,
     'X-Tenant-Id': TENANT_ID,
@@ -33,7 +24,7 @@ function authHeaders(accessToken: string) {
   }
 }
 
-async function login(request: APIRequestContext, email: string): Promise<string> {
+async function loginScenario(request: Parameters<typeof login>[0], email: string): Promise<string> {
   const res = await request.post(`${API_BASE}/auth/login`, {
     data: { email, password: SCENARIO_PASSWORD },
     headers: { 'X-Tenant-Id': TENANT_ID, 'Content-Type': 'application/json' },
@@ -57,7 +48,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
       return
     }
     try {
-      hrToken = await login(request, EMAILS.hr)
+      hrToken = await loginScenario(request, 'scenario.hr@recruit-flow.local')
       apiUp = true
     } catch {
       apiUp = false
@@ -67,7 +58,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
   test('workforce employees directory exposes PR17 verification fields', async ({ request }) => {
     test.skip(!apiUp || !hrToken, `API at ${apiOrigin()} not healthy or HR login failed`)
     const res = await request.get(`${API_BASE}/workforce/employees/directory`, {
-      headers: authHeaders(hrToken as string),
+      headers: scenarioHeaders(hrToken as string),
       params: { limit: 50, offset: 0 },
     })
     expect(res.ok(), await res.text()).toBeTruthy()
@@ -85,7 +76,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
     test.skip(!apiUp || !hrToken, `API at ${apiOrigin()} not healthy or HR login failed`)
     const res = await request.get(
       `${API_BASE}/workforce/employees/by-candidate/${IDS.candidateHrReadonly}`,
-      { headers: authHeaders(hrToken as string) },
+      { headers: scenarioHeaders(hrToken as string) },
     )
     expect(res.ok(), await res.text()).toBeTruthy()
     const body = (await res.json()) as { id?: string; candidate_id?: string }
@@ -96,7 +87,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
   test('HR inbox pending list includes PR17 enrichment keys', async ({ request }) => {
     test.skip(!apiUp || !hrToken, `API at ${apiOrigin()} not healthy or HR login failed`)
     const res = await request.get(`${API_BASE}/hr/handoffs/pending`, {
-      headers: authHeaders(hrToken as string),
+      headers: scenarioHeaders(hrToken as string),
       params: { limit: 20, offset: 0 },
     })
     expect(res.ok(), await res.text()).toBeTruthy()
@@ -114,7 +105,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
   test('HR dashboard summary and high-risk expose drill-down fields', async ({ request }) => {
     test.skip(!apiUp || !hrToken, `API at ${apiOrigin()} not healthy or HR login failed`)
     const summary = await request.get(`${API_BASE}/hr/dashboard/summary`, {
-      headers: authHeaders(hrToken as string),
+      headers: scenarioHeaders(hrToken as string),
       params: { assignee_scope: 'team' },
     })
     expect(summary.ok(), await summary.text()).toBeTruthy()
@@ -123,7 +114,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
     expect(sBody.previews).toBeTruthy()
 
     const highRisk = await request.get(`${API_BASE}/hr/dashboard/high-risk`, {
-      headers: authHeaders(hrToken as string),
+      headers: scenarioHeaders(hrToken as string),
       params: { assignee_scope: 'team', horizon_days: 30, limit: 10, offset: 0 },
     })
     expect(highRisk.ok(), await highRisk.text()).toBeTruthy()
@@ -138,7 +129,7 @@ test.describe('HR PR17 workspace (API smoke)', () => {
   test('handoff employee meta includes recruitment_transfer after materialization', async ({ request }) => {
     test.skip(!apiUp || !hrToken, `API at ${apiOrigin()} not healthy or HR login failed`)
     const res = await request.get(`${API_BASE}/workforce/employees/${IDS.workforceHrReadonly}`, {
-      headers: authHeaders(hrToken as string),
+      headers: scenarioHeaders(hrToken as string),
     })
     expect(res.ok(), await res.text()).toBeTruthy()
     const body = (await res.json()) as {

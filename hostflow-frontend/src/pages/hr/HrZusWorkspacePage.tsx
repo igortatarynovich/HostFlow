@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { hrEmployeePostApprovePath, hrEmployeeVerificationPath } from '../../utils/hrEmployeeLinks'
 import {
   createZusWorkspaceTask,
   listZusWorkspaceTasks,
@@ -148,7 +149,8 @@ export default function HrZusWorkspacePage() {
     }
   }
 
-  const employeeHref = useMemo(() => (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}`, [])
+  const employeePostApproveHref = useMemo(() => (id: string) => hrEmployeePostApprovePath(id), [])
+  const employeeVerifyHref = useMemo(() => (id: string) => hrEmployeeVerificationPath(id), [])
 
   return (
     <div className="space-y-4">
@@ -327,7 +329,7 @@ export default function HrZusWorkspacePage() {
               {items.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <Link className="font-medium text-brand-700 hover:underline" to={employeeHref(row.employee_id)}>
+                    <Link className="font-medium text-brand-700 hover:underline" to={employeePostApproveHref(row.employee_id)}>
                       {row.employee_display_name || row.employee_id}
                     </Link>
                     <div className="text-[10px] font-mono text-slate-400">{row.employee_id}</div>
@@ -357,9 +359,14 @@ export default function HrZusWorkspacePage() {
                   <td className="whitespace-nowrap text-xs">{formatDue(row.due_at)}</td>
                   <td className="text-xs">{row.export_status || '—'}</td>
                   <td>
-                    <Link to={employeeHref(row.employee_id)} className="text-xs font-medium text-brand-700 hover:underline">
-                      {t('app.nav.hr.zus_workspace.open_employee', { defaultValue: 'Profile' })}
-                    </Link>
+                    <div className="flex flex-col gap-1">
+                      <Link to={employeePostApproveHref(row.employee_id)} className="text-xs font-medium text-brand-700 hover:underline">
+                        {t('app.nav.hr.zus_workspace.open_zus_profile', { defaultValue: 'ZUS profile' })}
+                      </Link>
+                      <Link to={employeeVerifyHref(row.employee_id)} className="text-xs font-medium text-slate-600 hover:underline">
+                        {t('app.hr.verify_task.open_verification', { defaultValue: 'Verify documents' })}
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

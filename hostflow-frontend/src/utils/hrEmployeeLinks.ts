@@ -12,6 +12,10 @@ export function hrEmployeeDocumentsPath(employeeId: string): string {
   return `${hrEmployeeProfilePath(employeeId)}#hr-employee-linked-documents`
 }
 
+export function hrEmployeePostApprovePath(employeeId: string): string {
+  return `${hrEmployeeProfilePath(employeeId)}#hr-post-approve`
+}
+
 export function hrHandoffPath(handoffId: string): string {
   return `${CRM_APP_PATHS.hrHandoffs}/${encodeURIComponent(handoffId)}`
 }
