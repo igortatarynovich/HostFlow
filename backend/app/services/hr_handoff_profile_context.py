@@ -7,6 +7,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
 from backend.app.services.hr_profile_address import coerce_address_dict, promote_address_fields
 
 _DOC_TYPE_ALIASES: dict[str, str] = {

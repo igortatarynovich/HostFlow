@@ -81,8 +81,10 @@ export function sequentialDocumentQueue(docs: HrReviewDocumentRow[]): HrReviewDo
   return docs
     .filter((d) => {
       const hasWork = Boolean(d.document_id) || (d.fields_to_review?.length ?? 0) > 0
-      if (!hasWork) return false
-      if (!isDocumentRequiredForReview(d)) return Boolean(d.document_id)
+      if (hasWork) return true
+      const tier = documentRequirementTier(d)
+      if (tier === 'hard_blocker' || tier === 'required' || tier === 'hr_requested') return true
+      if (!isDocumentRequiredForReview(d)) return false
       return true
     })
     .sort((a, b) => {
@@ -148,7 +150,7 @@ export function recruiterDisplayForField(f: HrDocumentFieldReview): string {
 }
 
 export function countVerifiedDocuments(docs: HrReviewDocumentRow[]): { verified: number; total: number } {
-  const queue = requiredDocumentQueue(docs)
+  const queue = dossierDocumentList(docs)
   const total = queue.length
   const verified = queue.filter(isDocumentVerified).length
   return { verified, total }

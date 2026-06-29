@@ -22,13 +22,14 @@ function doc(partial: Partial<HrReviewDocumentRow> & { document_key: string }): 
 }
 
 describe('hrDocumentVerificationFields', () => {
-  it('queues only documents with file or fields', () => {
+  it('queues required slots even without upload; optional only when present', () => {
     const docs = [
       doc({ document_key: 'a', document_id: '1' }),
       doc({ document_key: 'b' }),
-      doc({ document_key: 'c', fields_to_review: [{ field_code: 'x', label: 'X' }] }),
+      doc({ document_key: 'c', required: false }),
+      doc({ document_key: 'd', required: false, document_id: '3' }),
     ]
-    expect(sequentialDocumentQueue(docs).map((d) => d.document_key)).toEqual(['a', 'c'])
+    expect(sequentialDocumentQueue(docs).map((d) => d.document_key)).toEqual(['a', 'b', 'd'])
   })
 
   it('counts verified documents in queue', () => {
@@ -53,7 +54,7 @@ describe('hrDocumentVerificationFields', () => {
       doc({ document_key: 'c', required: false, document_id: '3' }),
     ]
     expect(requiredDocumentQueue(docs).map((d) => d.document_key)).toEqual(['a', 'c'])
-    expect(countVerifiedDocuments(docs)).toEqual({ verified: 0, total: 2 })
+    expect(countVerifiedDocuments(docs)).toEqual({ verified: 0, total: 1 })
   })
 
   it('picks first pending index', () => {
