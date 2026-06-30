@@ -26,6 +26,10 @@ from backend.app.services.recruitment_funnel_resolver import (
     RecruitmentFunnelForbiddenError,
     validate_recruitment_module_settings_for_company,
 )
+from backend.app.services.hr_employee_funnel_resolver import (
+    HrEmployeeFunnelForbiddenError,
+    validate_hr_module_settings_for_company,
+)
 
 router = APIRouter(prefix="/companies", tags=["company-module-settings"])
 
@@ -234,6 +238,19 @@ async def patch_company_module_settings(
                     settings_json=data["settings_json"],
                 )
             except RecruitmentFunnelForbiddenError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(exc),
+                ) from exc
+        if mk == "hr":
+            try:
+                data["settings_json"] = await validate_hr_module_settings_for_company(
+                    db,
+                    tenant_id=tenant_id,
+                    company_id=cid,
+                    settings_json=data["settings_json"],
+                )
+            except HrEmployeeFunnelForbiddenError as exc:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=str(exc),

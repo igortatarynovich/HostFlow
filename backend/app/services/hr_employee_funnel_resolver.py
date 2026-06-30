@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,6 +152,42 @@ async def validate_hr_employee_funnel_id_for_company(
         tenant_id=tenant_id,
         company_id=company_id,
     )
+
+
+async def validate_hr_module_settings_for_company(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+    settings_json: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate HR CMS JSON; enforce company-owned employee pipeline funnel pointer."""
+    from backend.app.schemas.company_module_settings_json import HrModuleSettingsV1
+
+    normalized = HrModuleSettingsV1.model_validate(settings_json).model_dump(mode="json")
+    raw_fid = normalized.get("employee_pipeline_funnel_id")
+    if not raw_fid or not str(raw_fid).strip():
+        return normalized
+
+    funnel = await validate_hr_employee_funnel_id_for_company(
+        db,
+        tenant_id=str(tenant_id),
+        company_id=str(company_id),
+        funnel_id=str(raw_fid).strip(),
+    )
+    if not funnel.company_id or str(funnel.company_id) != str(company_id).strip():
+        raise HrEmployeeFunnelForbiddenError(
+            "employee_pipeline_funnel_id must be a company-scoped HR employee funnel"
+        )
+    if str(funnel.module_key or "") != HR_MODULE_KEY:
+        raise HrEmployeeFunnelForbiddenError(
+            "employee_pipeline_funnel_id must use module_key=hr"
+        )
+    if str(funnel.type or "") != HR_EMPLOYEE_FUNNEL_TYPE:
+        raise HrEmployeeFunnelForbiddenError(
+            "employee_pipeline_funnel_id must use type=employee"
+        )
+    return normalized
 
 
 async def _resolve_explicit_hr_employee_funnel(

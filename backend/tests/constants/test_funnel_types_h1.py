@@ -46,9 +46,11 @@ def test_funnels_api_pydantic_allows_employee_type_in_schema() -> None:
     assert "is_hr_employee_funnel_type" in source
 
 
-def test_funnels_api_recruitment_create_rejects_employee_type() -> None:
+def test_funnels_api_recruitment_create_routes_employee_to_hr_module() -> None:
     source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
-    assert "recruitment funnels API accepts candidate, lead, and deal only" in source
+    assert "is_hr_employee_funnel_type(payload.type)" in source
+    assert "module_key=HR_MODULE_KEY" in source
+    assert "Recruitment funnels cannot use type=employee" in source
 
 
 def test_hr_employee_funnel_resolver_module_is_hr() -> None:

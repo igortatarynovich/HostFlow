@@ -8,6 +8,9 @@ interface FunnelSelectorProps {
   value: string | null | undefined
   onChange: (funnelId: string | null) => void
   disabled?: boolean
+  moduleKey?: string
+  funnelType?: 'candidate' | 'lead' | 'deal' | 'employee'
+  hint?: string
 }
 
 export default function FunnelSelector({
@@ -15,6 +18,9 @@ export default function FunnelSelector({
   value,
   onChange,
   disabled = false,
+  moduleKey = 'recruitment',
+  funnelType = 'candidate',
+  hint,
 }: FunnelSelectorProps) {
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,14 +35,18 @@ export default function FunnelSelector({
     }
     setLoading(true)
     try {
-      const list = await listFunnels({ companyId: scopeCompanyId, type: 'candidate' })
+      const list = await listFunnels({
+        companyId: scopeCompanyId,
+        type: funnelType,
+        moduleKey,
+      })
       setFunnels(list)
     } catch {
       setFunnels([])
     } finally {
       setLoading(false)
     }
-  }, [scopeCompanyId])
+  }, [scopeCompanyId, moduleKey, funnelType])
 
   useEffect(() => {
     void load()
@@ -75,7 +85,7 @@ export default function FunnelSelector({
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          Этапы берутся из company-scoped воронок (recruitment).{' '}
+          {hint ?? 'Этапы берутся из company-scoped воронок.'}{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
             Редактировать воронки
           </Link>

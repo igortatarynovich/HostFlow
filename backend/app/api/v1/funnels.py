@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,16 +36,21 @@ from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_
 router = APIRouter(prefix="/funnels", tags=["funnels"])
 
 
-async def _enforce_company_recruitment_scope(
+async def _enforce_company_module_scope(
     db: AsyncSession,
     *,
     tenant_id: str,
     company_id: str,
+    module_key: str,
     current_user: UserCtx,
 ) -> tuple[Tenant, Company]:
     cid = str(company_id or "").strip()
     if not cid:
         raise HTTPException(status_code=422, detail="company_id is required")
+
+    mk = str(module_key or "").strip()
+    if mk not in {RECRUITMENT_MODULE_KEY, HR_MODULE_KEY}:
+        raise HTTPException(status_code=422, detail=f"unsupported module_key {module_key!r}")
 
     company = await cms_svc.get_company_for_tenant(db, tenant_id, cid)
     if company is None:
@@ -59,15 +64,38 @@ async def _enforce_company_recruitment_scope(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if not company_allows_module(tenant, company, RECRUITMENT_MODULE_KEY):
+    if not company_allows_module(tenant, company, mk):
         raise HTTPException(
             status_code=403,
-            detail="Recruitment module is not enabled for this company",
+            detail=f"{mk} module is not enabled for this company",
         )
     return tenant, company
 
 
-def _ensure_funnel_mutable(funnel: Funnel) -> None:
+async def _enforce_company_recruitment_scope(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+    current_user: UserCtx,
+) -> tuple[Tenant, Company]:
+    return await _enforce_company_module_scope(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        module_key=RECRUITMENT_MODULE_KEY,
+        current_user=current_user,
+    )
+
+
+def _funnel_owner_module_key(funnel: Funnel) -> str:
+    module = str(getattr(funnel, "module_key", None) or "").strip()
+    if module in {RECRUITMENT_MODULE_KEY, HR_MODULE_KEY}:
+        return module
+    return RECRUITMENT_MODULE_KEY
+
+
+def _ensure_funnel_mutable_for_module(funnel: Funnel, *, module_key: str) -> None:
     if not str(getattr(funnel, "company_id", None) or "").strip():
         raise HTTPException(
             status_code=403,
@@ -76,11 +104,53 @@ def _ensure_funnel_mutable(funnel: Funnel) -> None:
                 "Create company-scoped funnels instead."
             ),
         )
-    module = str(getattr(funnel, "module_key", None) or "").strip()
-    if module and module != RECRUITMENT_MODULE_KEY:
+    owner = _funnel_owner_module_key(funnel)
+    if owner != str(module_key).strip():
         raise HTTPException(
             status_code=403,
-            detail="Only recruitment module funnels are editable via this API",
+            detail=f"Funnel is owned by module {owner}, not {module_key}",
+        )
+
+
+def _ensure_funnel_mutable(funnel: Funnel) -> None:
+    _ensure_funnel_mutable_for_module(funnel, module_key=_funnel_owner_module_key(funnel))
+
+
+async def _enforce_funnel_module_access(
+    db: AsyncSession,
+    *,
+    funnel: Funnel,
+    tenant_id: str,
+    current_user: UserCtx,
+) -> None:
+    company_str = str(getattr(funnel, "company_id", None) or "").strip()
+    if not company_str:
+        _ensure_funnel_mutable(funnel)
+        return
+    module_key = _funnel_owner_module_key(funnel)
+    _ensure_funnel_mutable_for_module(funnel, module_key=module_key)
+    await _enforce_company_module_scope(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_str,
+        module_key=module_key,
+        current_user=current_user,
+    )
+
+
+def _validate_list_module_type(module_key: str, type_filter: Optional[str]) -> None:
+    mk = str(module_key or "").strip()
+    tf = str(type_filter or "").strip()
+    if mk == HR_MODULE_KEY:
+        if tf and tf != HR_EMPLOYEE_FUNNEL_TYPE:
+            raise HTTPException(
+                status_code=422,
+                detail="module_key=hr only supports type=employee",
+            )
+    elif tf == HR_EMPLOYEE_FUNNEL_TYPE:
+        raise HTTPException(
+            status_code=422,
+            detail="type=employee requires module_key=hr",
         )
 
 
@@ -224,6 +294,60 @@ async def _require_candidate_funnel_pe_mapping(
         )
     stage.pe_maps_to_module = mod
     stage.pe_maps_to_code = code
+
+
+async def _require_hr_employee_funnel_pe_mapping(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    funnel: Funnel,
+    stage: FunnelStage,
+) -> None:
+    """HR employee funnel stages must map to registered hr.* Process Engine codes."""
+    if str(getattr(funnel, "type", "") or "") != HR_EMPLOYEE_FUNNEL_TYPE:
+        return
+
+    from backend.app.process_engine.constants import HR_MODULE
+    from backend.app.process_engine.pipeline_mapping import (
+        apply_pe_mapping_to_funnel_stage,
+        validate_pe_system_stage,
+    )
+
+    pe_code = str(stage.code or "").strip()
+    if not pe_code:
+        raise HTTPException(status_code=422, detail="HR employee stage code is required")
+    if not await validate_pe_system_stage(
+        db, tenant_id=tenant_id, module=HR_MODULE, code=pe_code
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Process Engine system stage 'hr.{pe_code}' is not registered for this tenant",
+        )
+    await apply_pe_mapping_to_funnel_stage(
+        db,
+        stage,
+        tenant_id=tenant_id,
+        module=HR_MODULE,
+        code=pe_code,
+        source="pipeline_template",
+    )
+
+
+async def _require_funnel_stage_pe_mapping(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    funnel: Funnel,
+    stage: FunnelStage,
+) -> None:
+    if is_hr_employee_funnel_type(str(getattr(funnel, "type", "") or "")):
+        await _require_hr_employee_funnel_pe_mapping(
+            db, tenant_id=tenant_id, funnel=funnel, stage=stage
+        )
+        return
+    await _require_candidate_funnel_pe_mapping(
+        db, tenant_id=tenant_id, funnel=funnel, stage=stage
+    )
 
 
 class StageContractV1(BaseModel):
@@ -386,11 +510,16 @@ async def list_funnels(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
     company_str = str(company_id).strip()
+    module_str = str(module_key).strip()
+    if module_str not in {RECRUITMENT_MODULE_KEY, HR_MODULE_KEY}:
+        raise HTTPException(status_code=422, detail=f"unsupported module_key {module_key!r}")
+    _validate_list_module_type(module_str, type_filter)
 
-    await _enforce_company_recruitment_scope(
+    await _enforce_company_module_scope(
         db,
         tenant_id=tenant_str,
         company_id=company_str,
+        module_key=module_str,
         current_user=current_user,
     )
 
@@ -399,11 +528,13 @@ async def list_funnels(
         .where(
             Funnel.tenant_id == tenant_str,
             Funnel.company_id == company_str,
-            Funnel.module_key == str(module_key).strip(),
+            Funnel.module_key == module_str,
         )
     )
     if type_filter:
         stmt = stmt.where(Funnel.type == type_filter)
+    elif module_str == HR_MODULE_KEY:
+        stmt = stmt.where(Funnel.type == HR_EMPLOYEE_FUNNEL_TYPE)
     stmt = stmt.order_by(Funnel.is_default.desc(), Funnel.name)
     result = await db.execute(stmt)
     funnels = result.scalars().all()
@@ -433,10 +564,10 @@ async def get_funnel(
 
     funnel_company = str(getattr(funnel, "company_id", None) or "").strip() or None
     if funnel_company:
-        await _enforce_company_recruitment_scope(
+        await _enforce_funnel_module_access(
             db,
+            funnel=funnel,
             tenant_id=tenant_str,
-            company_id=funnel_company,
             current_user=current_user,
         )
 
@@ -452,9 +583,9 @@ async def get_funnel(
 async def create_funnel(
     payload: FunnelIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin, Role.hr_officer)),
 ) -> FunnelOut:
-    """Create a company-scoped recruitment funnel."""
+    """Create a company-scoped operational funnel (recruitment or HR employee)."""
     import uuid
 
     db, tenant_id = db_tenant
@@ -463,21 +594,46 @@ async def create_funnel(
 
     await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     await ensure_custom_funnel_create_allowed(db, tenant_str)
+
+    if is_hr_employee_funnel_type(payload.type):
+        await _enforce_company_module_scope(
+            db,
+            tenant_id=tenant_str,
+            company_id=company_str,
+            module_key=HR_MODULE_KEY,
+            current_user=current_user,
+        )
+        if payload.is_default:
+            existing = await db.execute(
+                select(Funnel).where(
+                    Funnel.tenant_id == tenant_str,
+                    Funnel.company_id == company_str,
+                    Funnel.module_key == HR_MODULE_KEY,
+                    Funnel.type == HR_EMPLOYEE_FUNNEL_TYPE,
+                )
+            )
+            for f in existing.scalars().all():
+                f.is_default = False
+        funnel = Funnel(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_str,
+            company_id=company_str,
+            module_key=HR_MODULE_KEY,
+            type=HR_EMPLOYEE_FUNNEL_TYPE,
+            name=payload.name,
+            is_default=payload.is_default,
+        )
+        db.add(funnel)
+        await db.commit()
+        await db.refresh(funnel)
+        return FunnelOut.from_model(funnel, [])
+
     await _enforce_company_recruitment_scope(
         db,
         tenant_id=tenant_str,
         company_id=company_str,
         current_user=current_user,
     )
-
-    if is_hr_employee_funnel_type(payload.type):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"type={HR_EMPLOYEE_FUNNEL_TYPE} funnels are HR module-owned; "
-                "recruitment funnels API accepts candidate, lead, and deal only"
-            ),
-        )
 
     if payload.is_default:
         unset_stmt = select(Funnel).where(
@@ -522,20 +678,32 @@ async def update_funnel(
         raise HTTPException(status_code=404, detail="Funnel not found")
 
     _ensure_funnel_mutable(funnel)
-    company_str = str(funnel.company_id or "").strip()
-    await _enforce_company_recruitment_scope(
+    await _enforce_funnel_module_access(
         db,
+        funnel=funnel,
         tenant_id=tenant_str,
-        company_id=company_str,
         current_user=current_user,
     )
 
+    owner_module = _funnel_owner_module_key(funnel)
+    if owner_module == HR_MODULE_KEY and not is_hr_employee_funnel_type(payload.type):
+        raise HTTPException(
+            status_code=422,
+            detail="HR funnels only support type=employee",
+        )
+    if owner_module == RECRUITMENT_MODULE_KEY and is_hr_employee_funnel_type(payload.type):
+        raise HTTPException(
+            status_code=422,
+            detail="Recruitment funnels cannot use type=employee",
+        )
+
+    company_str = str(funnel.company_id or "").strip()
     if payload.is_default and not funnel.is_default:
         unset = await db.execute(
             select(Funnel).where(
                 Funnel.tenant_id == tenant_str,
                 Funnel.company_id == company_str,
-                Funnel.module_key == RECRUITMENT_MODULE_KEY,
+                Funnel.module_key == owner_module,
                 Funnel.type == payload.type,
             )
         )
@@ -573,10 +741,10 @@ async def add_funnel_stage(
         raise HTTPException(status_code=404, detail="Funnel not found")
 
     _ensure_funnel_mutable(funnel)
-    await _enforce_company_recruitment_scope(
+    await _enforce_funnel_module_access(
         db,
+        funnel=funnel,
         tenant_id=tenant_str,
-        company_id=str(funnel.company_id or "").strip(),
         current_user=current_user,
     )
 
@@ -611,7 +779,7 @@ async def add_funnel_stage(
         stage_kwargs["stage_contract_v1"] = _stage_contract_db_value(payload.stage_contract)
     stage = FunnelStage(**stage_kwargs)
     db.add(stage)
-    await _require_candidate_funnel_pe_mapping(
+    await _require_funnel_stage_pe_mapping(
         db, tenant_id=tenant_str, funnel=funnel, stage=stage
     )
     await db.commit()
@@ -637,10 +805,10 @@ async def update_funnel_stage(
         raise HTTPException(status_code=404, detail="Funnel not found")
 
     _ensure_funnel_mutable(funnel_row)
-    await _enforce_company_recruitment_scope(
+    await _enforce_funnel_module_access(
         db,
+        funnel=funnel_row,
         tenant_id=tenant_str,
-        company_id=str(funnel_row.company_id or "").strip(),
         current_user=current_user,
     )
 
@@ -679,7 +847,7 @@ async def update_funnel_stage(
         )
     if "stage_contract" in payload.model_fields_set:
         stage.stage_contract_v1 = _stage_contract_db_value(payload.stage_contract)
-    await _require_candidate_funnel_pe_mapping(
+    await _require_funnel_stage_pe_mapping(
         db, tenant_id=tenant_str, funnel=funnel_row, stage=stage
     )
     await db.commit()
@@ -687,7 +855,12 @@ async def update_funnel_stage(
     return FunnelStageOut.from_model(stage)
 
 
-@router.delete("/{funnel_id}/stages/{stage_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{funnel_id}/stages/{stage_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+)
 async def delete_funnel_stage(
     funnel_id: str,
     stage_id: str,
@@ -704,10 +877,10 @@ async def delete_funnel_stage(
         raise HTTPException(status_code=404, detail="Funnel not found")
 
     _ensure_funnel_mutable(funnel)
-    await _enforce_company_recruitment_scope(
+    await _enforce_funnel_module_access(
         db,
+        funnel=funnel,
         tenant_id=tenant_str,
-        company_id=str(funnel.company_id or "").strip(),
         current_user=current_user,
     )
 
@@ -739,7 +912,12 @@ async def delete_funnel_stage(
     await db.commit()
 
 
-@router.delete("/{funnel_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{funnel_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+)
 async def delete_funnel(
     funnel_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -755,10 +933,10 @@ async def delete_funnel(
         raise HTTPException(status_code=404, detail="Funnel not found")
 
     _ensure_funnel_mutable(funnel)
-    await _enforce_company_recruitment_scope(
+    await _enforce_funnel_module_access(
         db,
+        funnel=funnel,
         tenant_id=tenant_str,
-        company_id=str(funnel.company_id or "").strip(),
         current_user=current_user,
     )
 

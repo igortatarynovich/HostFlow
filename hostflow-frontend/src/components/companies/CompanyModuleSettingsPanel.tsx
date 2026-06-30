@@ -73,6 +73,17 @@ export function CompanyModuleSettingsPanel({ companyId, canEdit }: Props) {
     }
   }, [tab, jsonDraft])
 
+  const hrEmployeePipelineFunnelId = useMemo(() => {
+    if (tab !== 'hr') return null
+    try {
+      const parsed = JSON.parse(jsonDraft) as { employee_pipeline_funnel_id?: string | null }
+      const raw = parsed?.employee_pipeline_funnel_id
+      return typeof raw === 'string' && raw.trim() ? raw.trim() : null
+    } catch {
+      return null
+    }
+  }, [tab, jsonDraft])
+
   const handleRecruitmentDefaultFunnelChange = (funnelId: string | null) => {
     let parsed: Record<string, unknown>
     try {
@@ -88,6 +99,25 @@ export function CompanyModuleSettingsPanel({ companyId, canEdit }: Props) {
       parsed.default_candidate_funnel_id = funnelId
     } else {
       delete parsed.default_candidate_funnel_id
+    }
+    setJsonDraft(JSON.stringify(parsed, null, 2))
+  }
+
+  const handleHrEmployeePipelineFunnelChange = (funnelId: string | null) => {
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(jsonDraft) as Record<string, unknown>
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('not_object')
+      }
+    } catch {
+      parsed = {}
+    }
+    parsed.version = 1
+    if (funnelId) {
+      parsed.employee_pipeline_funnel_id = funnelId
+    } else {
+      delete parsed.employee_pipeline_funnel_id
     }
     setJsonDraft(JSON.stringify(parsed, null, 2))
   }
@@ -199,6 +229,32 @@ export function CompanyModuleSettingsPanel({ companyId, canEdit }: Props) {
               })}
             </p>
           ) : null}
+          {tab === 'hr' && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+              <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                {t('app.companies.detail.sections.module_settings.hr.employee_pipeline_title', {
+                  defaultValue: 'Employee pipeline funnel',
+                })}
+              </h3>
+              <p className="mb-3 text-xs text-slate-500">
+                {t('app.companies.detail.sections.module_settings.hr.employee_pipeline_hint', {
+                  defaultValue:
+                    'Used by resolve_hr_employee_funnel when no explicit funnel is set on workforce employee create.',
+                })}
+              </p>
+              <FunnelSelector
+                companyId={companyId}
+                value={hrEmployeePipelineFunnelId}
+                onChange={handleHrEmployeePipelineFunnelChange}
+                disabled={!canEdit}
+                moduleKey="hr"
+                funnelType="employee"
+                hint={t('app.companies.detail.sections.module_settings.hr.employee_pipeline_selector_hint', {
+                  defaultValue: 'Company-scoped HR employee funnels (module_key=hr, type=employee).',
+                })}
+              />
+            </div>
+          )}
           {tab === 'recruitment' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
               <h3 className="mb-2 text-sm font-semibold text-slate-800">

@@ -38,7 +38,7 @@ export interface Funnel {
   tenant_id: string
   company_id?: string | null
   module_key?: string | null
-  type: 'candidate' | 'lead' | 'deal'
+  type: 'candidate' | 'lead' | 'deal' | 'employee'
   name: string
   is_default: boolean
   is_legacy_readonly?: boolean
@@ -47,20 +47,20 @@ export interface Funnel {
 
 export interface FunnelCreate {
   company_id: string
-  type: 'candidate' | 'lead' | 'deal'
+  type: 'candidate' | 'lead' | 'deal' | 'employee'
   name: string
   is_default?: boolean
 }
 
 export interface FunnelUpdate {
-  type?: 'candidate' | 'lead' | 'deal'
+  type?: 'candidate' | 'lead' | 'deal' | 'employee'
   name?: string
   is_default?: boolean
 }
 
 export interface ListFunnelsOptions {
   companyId: string
-  type?: 'candidate' | 'lead' | 'deal'
+  type?: 'candidate' | 'lead' | 'deal' | 'employee'
   moduleKey?: string
 }
 
