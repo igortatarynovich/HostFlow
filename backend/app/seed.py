@@ -17,6 +17,18 @@ async def run_seed(db: AsyncSession) -> None:
     if not tenants:
         return  # Нет тенантов для seed
 
+    try:
+        from backend.app.process_engine.seed import ensure_platform_process_engine_catalog
+
+        await ensure_platform_process_engine_catalog(db)
+        await db.commit()
+    except Exception as e:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        logger.warning(f"[seed] Failed to seed Process Engine platform catalog: {e}")
+
     # Seed для каждого тенанта
     for tenant in tenants:
         tenant_id = tenant.id
@@ -88,6 +100,18 @@ async def run_seed(db: AsyncSession) -> None:
             except Exception:
                 pass
             logger.warning(f"[seed] Failed to seed Process Engine defaults for tenant {tenant_id}: {e}")
+
+        try:
+            from backend.app.process_engine.seed import ensure_hr_process_engine_stages
+
+            await ensure_hr_process_engine_stages(db, tenant_id)
+            await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(f"[seed] Failed to seed HR Process Engine stages for tenant {tenant_id}: {e}")
 
         # Field Registry P1 — canonical fields + default card layouts
         try:

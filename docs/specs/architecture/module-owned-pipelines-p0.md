@@ -404,8 +404,8 @@ These items were **deferred by design**. §7 gate is satisfied without them. **H
 
 | Item | Reason | When |
 |------|--------|------|
-| HR Process Engine manifest + employee pipeline | Pattern proven in Recruitment P0; HR stages must register in PE first | **Next** (§9.1) |
-| HR module settings UI forms | Depends on HR pipeline + CMS | After HR manifest |
+| HR Process Engine manifest (`hr.*` stages) | ✅ P0 shipped — [`hr-process-manifest-p0.md`](hr-process-manifest-p0.md) |
+| HR employee pipeline | Depends on HR manifest — **next** separate gate |
 | Fleet / Services / Finance pipelines | Separate `module_key` values | Separate ADR/gate per module |
 | Removing `system_stage` column | Strangler period | Strangler removal milestone |
 | Removing tenant-wide funnels entirely | Legacy profiles + analytics | After backfill / dashboard migration |
@@ -419,15 +419,13 @@ These items were **deferred by design**. §7 gate is satisfied without them. **H
 
 **Authorized sequence** — do not reorder without ADR:
 
-### 9.1 Next: HR manifest (priority)
+### 9.1 HR manifest (priority) ✅ P0 shipped
 
-Register **`hr.*` system stages** in Process Engine. Confirms platform canon: **PE evaluator is shared; stage namespaces belong to modules.** No HR employee funnel resolver until manifest + `pe_system_stages` seeds land.
+Register **`hr.*` system stages** in Process Engine — **done**. See **[`hr-process-manifest-p0.md`](hr-process-manifest-p0.md)**.
 
-Deliverables (illustrative — detail in HR ADR / task spec):
+Confirms platform canon: **PE evaluator is shared; stage namespaces belong to modules.** No HR employee funnel resolver until separate HR pipeline gate.
 
-- `backend/app/process_engine/manifests/hr.py` (or equivalent) registered via `ProcessEngineRegistry`
-- Tenant/company seed path for HR stages (mirror recruitment manifest pattern)
-- Tests: manifest registration, stage validation, recruitment-only tenant does not require HR stages at runtime
+**Next authorized HR work:** HR employee pipeline (`module_key=hr`, company-scoped funnel, `resolve_hr_funnel`) — separate gate.
 
 ### 9.2 Then: HR employee pipeline
 
@@ -456,3 +454,4 @@ Company-scoped funnels with `module_key=hr`, resolver `resolve_hr_funnel` — **
 - 2026-06: P0 architecture gate — Recruitment company-scoped funnels, resolver canon, migration phases, explicit deferral of HR pipeline and module-settings UI.
 - 2026-06: M1/M2 hardening — default funnel partial unique indexes, full stage clone on backfill, explicit funnel Forbidden (no fallback), profile funnel gate, M3 resolver wiring (candidate/lead create, `/meta/stages`).
 - 2026-06-30: M4–M6 + CMS picker delivered; **§7 gate closure PASS WITH NOTES** — HR manifest authorized as next work (§9.1).
+- 2026-06-30: **HR Process Manifest P0** shipped — [`hr-process-manifest-p0.md`](hr-process-manifest-p0.md).

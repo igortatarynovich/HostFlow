@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.funnel import Funnel
-from backend.app.models.process_engine import PLATFORM_TENANT_SCOPE, PePipelineTemplate, PeProcessProfile
+from backend.app.models.process_engine import (
+    PLATFORM_TENANT_SCOPE,
+    PePipelineTemplate,
+    PeProcessProfile,
+    PeSystemStage,
+)
 from backend.app.models.vacancy import Vacancy
 from backend.app.process_engine.legacy_mapping import (
     ensure_recruitment_funnel_stages_mapped,
     sync_funnel_stages_from_pipeline_config,
 )
+from backend.app.process_engine.manifests.hr import HR_MODULE, hr_module_manifest
 from backend.app.process_engine.manifests.recruitment import (
     DEFAULT_PIPELINE_CODE,
     DEFAULT_PROFILE_CODE,
@@ -21,24 +29,84 @@ from backend.app.process_engine.manifests.recruitment import (
 from backend.app.process_engine.registry import ProcessEngineRegistry
 
 
-async def ensure_platform_process_engine_catalog(db: AsyncSession) -> None:
-    """Register platform-global module manifests (tenant scope = empty string)."""
+async def _platform_module_registered(
+    db: AsyncSession,
+    *,
+    module: str,
+) -> bool:
     existing = (
         await db.execute(
             select(PeProcessProfile)
             .where(
-                PeProcessProfile.module == RECRUITMENT_MODULE,
+                PeProcessProfile.module == module,
                 PeProcessProfile.tenant_id == PLATFORM_TENANT_SCOPE,
             )
             .limit(1)
         )
     ).scalar_one_or_none()
     if existing is not None:
-        return
-    await ProcessEngineRegistry.register_module(
+        return True
+    stage = (
+        await db.execute(
+            select(PeSystemStage)
+            .where(
+                PeSystemStage.module == module,
+                PeSystemStage.tenant_id == PLATFORM_TENANT_SCOPE,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    return stage is not None
+
+
+async def ensure_platform_process_engine_catalog(db: AsyncSession) -> None:
+    """Register platform-global module manifests (tenant scope = empty string)."""
+    if not await _platform_module_registered(db, module=RECRUITMENT_MODULE):
+        await ProcessEngineRegistry.register_module(
+            db,
+            recruitment_module_manifest(),
+            tenant_id=PLATFORM_TENANT_SCOPE,
+        )
+    if not await _platform_module_registered(db, module=HR_MODULE):
+        await ProcessEngineRegistry.register_module(
+            db,
+            hr_module_manifest(),
+            tenant_id=PLATFORM_TENANT_SCOPE,
+        )
+
+
+async def ensure_hr_process_engine_stages(db: AsyncSession, tenant_id: str) -> dict[str, Any]:
+    """Register HR system stages for a tenant when HR module is enabled.
+
+    Stages-only — no pipeline template, process profile, or funnel runtime (HR P0).
+    """
+    from backend.app.api.v1.tenants import service as tenant_service
+
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        return {}
+    modules = tenant_service.get_module_settings_snapshot(tenant)
+    if not modules.get("hr"):
+        return {}
+
+    existing = (
+        await db.execute(
+            select(PeSystemStage)
+            .where(
+                PeSystemStage.module == HR_MODULE,
+                PeSystemStage.tenant_id == str(tenant_id),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return {"module": HR_MODULE, "tenant_id": str(tenant_id), "skipped": True}
+
+    return await ProcessEngineRegistry.register_module(
         db,
-        recruitment_module_manifest(),
-        tenant_id=PLATFORM_TENANT_SCOPE,
+        hr_module_manifest(),
+        tenant_id=str(tenant_id),
+        link_legacy=False,
     )
 
 

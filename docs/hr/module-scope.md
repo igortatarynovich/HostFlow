@@ -165,6 +165,12 @@ HR-модуль в целом должен давать тенанту отве�
 6. Контрактные тесты и CI — см. [`test-plan-org-structure.md`](test-plan-org-structure.md); требуется стабильный `alembic upgrade head` в пайплайне. Интеграционный контракт workforce + рекрутёр: `backend/tests/api/test_workforce_recruiter_contract.py` (ловит отсутствие роутера `workforce` и регресс RBAC). Сид тестовой БД в `conftest._init_data` поднимает квоты мест в `tenant_licenses`, чтобы на общей БД не падали инвайты и смена роли (`seat_limit_reached`).
 7. Углубление по каждому из вопросов **1–5**: ~~черновик критериев v0~~ — см. раздел «Критерии готовности по вопросам 1–5»; далее — алерты (сроки документов, пробелы в payroll), события аудита handoff в бухгалтерию/ZUS/TMS, мини-спеки или ADR по интеграциям.
 
+## Process Engine — HR stages (P0 manifest)
+
+HR owns **`hr.*` system stages** in Process Engine (not recruitment funnel stages or legacy four-bucket `system_stage`). Registration only — no employee funnel / `resolve_hr_funnel` in this phase.
+
+Spec: [`hr-process-manifest-p0.md`](../specs/architecture/hr-process-manifest-p0.md). Recruitment company-scoped funnels: [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md).
+
 ## Сопровождение
 
 - При изменении охвата обновляйте этот файл и задачи в бэклоге.
