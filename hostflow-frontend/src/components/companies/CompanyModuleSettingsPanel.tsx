@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   type CompanyModuleKey,
   getCompanyModuleSettings,
@@ -6,6 +6,7 @@ import {
 } from '../../api/companyModuleSettings'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
+import FunnelSelector from '../profile/FunnelSelector'
 
 const MODULE_TABS: CompanyModuleKey[] = ['hr', 'recruitment', 'fleet', 'services', 'finance']
 
@@ -60,6 +61,36 @@ export function CompanyModuleSettingsPanel({ companyId, canEdit }: Props) {
   useEffect(() => {
     void load()
   }, [load])
+
+  const recruitmentDefaultFunnelId = useMemo(() => {
+    if (tab !== 'recruitment') return null
+    try {
+      const parsed = JSON.parse(jsonDraft) as { default_candidate_funnel_id?: string | null }
+      const raw = parsed?.default_candidate_funnel_id
+      return typeof raw === 'string' && raw.trim() ? raw.trim() : null
+    } catch {
+      return null
+    }
+  }, [tab, jsonDraft])
+
+  const handleRecruitmentDefaultFunnelChange = (funnelId: string | null) => {
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(jsonDraft) as Record<string, unknown>
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('not_object')
+      }
+    } catch {
+      parsed = {}
+    }
+    parsed.version = 1
+    if (funnelId) {
+      parsed.default_candidate_funnel_id = funnelId
+    } else {
+      delete parsed.default_candidate_funnel_id
+    }
+    setJsonDraft(JSON.stringify(parsed, null, 2))
+  }
 
   const handleSave = async () => {
     if (!canEdit || !companyId) return
@@ -168,6 +199,27 @@ export function CompanyModuleSettingsPanel({ companyId, canEdit }: Props) {
               })}
             </p>
           ) : null}
+          {tab === 'recruitment' && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+              <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                {t('app.companies.detail.sections.module_settings.recruitment.default_funnel_title', {
+                  defaultValue: 'Default candidate pipeline',
+                })}
+              </h3>
+              <p className="mb-3 text-xs text-slate-500">
+                {t('app.companies.detail.sections.module_settings.recruitment.default_funnel_hint', {
+                  defaultValue:
+                    'Used by the recruitment resolver when no explicit funnel is set on a candidate or profile.',
+                })}
+              </p>
+              <FunnelSelector
+                companyId={companyId}
+                value={recruitmentDefaultFunnelId}
+                onChange={handleRecruitmentDefaultFunnelChange}
+                disabled={!canEdit}
+              />
+            </div>
+          )}
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.companies.detail.sections.module_settings.json_label', { defaultValue: 'Settings (JSON)' })}

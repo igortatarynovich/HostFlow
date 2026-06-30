@@ -22,6 +22,10 @@ from backend.app.models.company_module_settings import CompanyModuleSettings
 from backend.app.models.tenant import Tenant
 from backend.app.services import company_module_settings_service as cms_svc
 from backend.app.services.company_module_access import company_allows_module
+from backend.app.services.recruitment_funnel_resolver import (
+    RecruitmentFunnelForbiddenError,
+    validate_recruitment_module_settings_for_company,
+)
 
 router = APIRouter(prefix="/companies", tags=["company-module-settings"])
 
@@ -221,6 +225,19 @@ async def patch_company_module_settings(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=exc.errors(),
             ) from exc
+        if mk == "recruitment":
+            try:
+                data["settings_json"] = await validate_recruitment_module_settings_for_company(
+                    db,
+                    tenant_id=tenant_id,
+                    company_id=cid,
+                    settings_json=data["settings_json"],
+                )
+            except RecruitmentFunnelForbiddenError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(exc),
+                ) from exc
 
     row = await cms_svc.upsert_settings(
         db,

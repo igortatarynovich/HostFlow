@@ -237,7 +237,7 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | `GET/POST/PATCH /api/v1/funnels` | Required `company_id` (query or body); filter lists by company + `module_key`; gate `company_allows_module(..., 'recruitment')` | ✅ |
 | `hostflow-frontend` Funnels settings | Scope to **active company**; show module badge `recruitment` | ✅ |
 | `FunnelSelector`, profile admin | Pass `company_id`; list company funnels only | ✅ |
-| Company module settings UI | Display resolved default; optional picker for `default_candidate_funnel_id` (minimal — full forms after P0) | deferred |
+| Company module settings UI | Display resolved default; picker for `default_candidate_funnel_id` on recruitment tab | ✅ |
 | Legacy tenant funnels | Read-only via GET by id (strangler); excluded from list/create | ✅ |
 
 ### Phase M5 — Analytics strangler
@@ -256,7 +256,7 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | `_bootstrap_default_funnels_for_business_type` | Per-company seed via `bootstrap_recruitment_funnels_for_company`; sets `company_id`, `module_key=recruitment` | ✅ |
 | Own-company onboarding | Tenant settings only; **no** tenant-wide funnel creation | ✅ |
 | Operating company create/update | Bootstrap candidate/lead funnels gated by recruitment module flags | ✅ |
-| CMS pointer | Write `default_candidate_funnel_id` on bootstrap when unset (no UI picker yet) | ✅ |
+| CMS pointer | Write `default_candidate_funnel_id` on bootstrap when unset; company module settings picker (M6+) | ✅ |
 | Demo seed | Company-scoped funnel resolution; services demo bootstraps lead funnel on demo client company | ✅ |
 | Legacy tenant funnels | Read-only strangler for demo/resolver; **no new** tenant-wide operational rows | ✅ |
 | PE mapping | Candidate funnel stages mapped on first bootstrap | ✅ |

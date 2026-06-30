@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -326,6 +326,39 @@ async def _resolve_explicit_funnel(
         )
 
     return funnel
+
+
+async def validate_recruitment_module_settings_for_company(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+    settings_json: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate recruitment CMS JSON; enforce company-owned candidate funnel pointer."""
+    from backend.app.schemas.company_module_settings_json import RecruitmentModuleSettingsV1
+
+    normalized = RecruitmentModuleSettingsV1.model_validate(settings_json).model_dump(mode="json")
+    raw_fid = normalized.get("default_candidate_funnel_id")
+    if not raw_fid or not str(raw_fid).strip():
+        return normalized
+
+    funnel = await validate_recruitment_funnel_id_for_company(
+        db,
+        tenant_id=str(tenant_id),
+        company_id=str(company_id),
+        funnel_id=str(raw_fid).strip(),
+        pipeline_type="candidate",
+    )
+    if not funnel.company_id or str(funnel.company_id) != str(company_id).strip():
+        raise RecruitmentFunnelForbiddenError(
+            "default_candidate_funnel_id must be a company-scoped recruitment candidate funnel"
+        )
+    if str(funnel.module_key or "") != RECRUITMENT_MODULE_KEY:
+        raise RecruitmentFunnelForbiddenError(
+            "default_candidate_funnel_id must use module_key=recruitment"
+        )
+    return normalized
 
 
 async def _resolve_cms_default_candidate_funnel(

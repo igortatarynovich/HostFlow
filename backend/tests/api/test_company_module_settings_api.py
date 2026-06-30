@@ -163,6 +163,54 @@ async def test_hr_settings_unknown_field_422(
     assert r.status_code == 422, r.text
 
 
+async def test_patch_recruitment_default_candidate_funnel(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    bootstrap: Dict[str, str],
+) -> None:
+    cid = bootstrap["company_id"]
+
+    create = await client.post(
+        "/api/v1/funnels",
+        headers=manager_headers,
+        json={
+            "company_id": cid,
+            "type": "candidate",
+            "name": "CMS Picker Pipeline",
+            "is_default": True,
+            "stages": [
+                {
+                    "code": "new",
+                    "label": "New",
+                    "system_stage": "new",
+                    "order": 0,
+                    "is_terminal": False,
+                }
+            ],
+        },
+    )
+    assert create.status_code in (200, 201), create.text
+    funnel_id = create.json()["id"]
+
+    p = await client.patch(
+        f"/api/v1/companies/{cid}/module-settings/recruitment",
+        headers=manager_headers,
+        json={
+            "settings_json": {"version": 1, "default_candidate_funnel_id": funnel_id},
+            "is_enabled": True,
+        },
+    )
+    assert p.status_code == 200, p.text
+    assert p.json()["settings_json"]["default_candidate_funnel_id"] == funnel_id
+
+    g = await client.get(
+        f"/api/v1/companies/{cid}/module-settings/recruitment",
+        headers=manager_headers,
+    )
+    assert g.status_code == 200, g.text
+    assert g.json()["settings_json"]["default_candidate_funnel_id"] == funnel_id
+
+
 async def test_invalid_module_key_422(
     client: AsyncClient,
     manager_headers: Dict[str, str],
