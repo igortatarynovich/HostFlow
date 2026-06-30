@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import Lead
@@ -344,10 +345,22 @@ async def apply_lead_intake_decision(
 
     elif dec == INTAKE_DECISION_POOL:
         norm["recruitment_pool_intent_v1"] = True
-        if funnel_id:
-            fid = str(funnel_id).strip()
-            if fid:
-                lead.funnel_id = fid
+        from backend.app.services.recruitment_funnel_assignment import assign_recruitment_funnel_to_lead
+
+        explicit_fid = str(funnel_id).strip() if funnel_id else None
+        try:
+            await assign_recruitment_funnel_to_lead(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                explicit_funnel_id=explicit_fid or None,
+                pipeline_type="lead",
+            )
+        except HTTPException as exc:
+            raise LeadProcessingError(
+                "invalid" if exc.status_code == 403 else "invalid",
+                str(exc.detail),
+            ) from exc
         _stamp_intake_resolution_v1(
             norm,
             status="pooled",

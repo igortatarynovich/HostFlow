@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Any, Optional, Union
 
-from backend.app.auth.deps import UserCtx, get_current_user_optional
+from backend.app.auth.deps import Role, UserCtx, get_current_user_optional, require_roles
 from backend.app.db.deps import get_db
 from backend.app.services.stage_meta_recruitment_filter import apply_handoff_stage_meta_for_user
 
@@ -235,6 +235,20 @@ async def stages_meta(
     if tid and current_user is not None:
         out = await apply_handoff_stage_meta_for_user(db, tid, current_user, out)
     return out
+
+
+@router.get(
+    "/recruitment-funnel-metrics",
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def get_recruitment_funnel_metrics() -> dict[str, int | dict[str, int]]:
+    """In-process resolver usage counters (legacy fallback deprecation telemetry)."""
+    from backend.app.services.recruitment_funnel_metrics import (
+        get_recruitment_funnel_metrics_snapshot,
+    )
+
+    return get_recruitment_funnel_metrics_snapshot().to_dict()
+
 
 # --- Catalogs API ---
 catalogs_router = APIRouter(prefix="/catalogs", tags=["catalogs"])

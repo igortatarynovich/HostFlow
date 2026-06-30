@@ -478,24 +478,16 @@ async def create_candidate_full(
 
     resolved_funnel_id: Optional[str] = None
     if company_id_val:
-        from backend.app.services.recruitment_funnel_resolver import (
-            RecruitmentFunnelNotFoundError,
-            RecruitmentModuleNotEnabledError,
-            first_funnel_stage_code,
-            resolve_recruitment_funnel,
+        from backend.app.services.recruitment_funnel_assignment import (
+            resolve_recruitment_funnel_for_candidate,
         )
+        from backend.app.services.recruitment_funnel_resolver import first_funnel_stage_code
 
-        try:
-            funnel_result = await resolve_recruitment_funnel(
-                db,
-                tenant_id=tenant_id,
-                company_id=company_id_val,
-                pipeline_type="candidate",
-            )
-        except RecruitmentModuleNotEnabledError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
-        except RecruitmentFunnelNotFoundError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        funnel_result = await resolve_recruitment_funnel_for_candidate(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_id_val,
+        )
         resolved_funnel_id = funnel_result.funnel.id
         if stage_input is None or str(stage_input).strip() == "":
             first_code = first_funnel_stage_code(funnel_result.funnel)
@@ -1244,6 +1236,16 @@ async def update_candidate_full(
 
     if not c.short_id:
         changes["short_id"] = await _generate_unique_short_id(db)
+
+    from backend.app.services.recruitment_funnel_assignment import reconcile_candidate_funnel_on_company_change
+
+    await reconcile_candidate_funnel_on_company_change(
+        db,
+        tenant_id=tenant_id,
+        candidate=c,
+        new_company_id=changes.get("company_id") if "company_id" in changes else None,
+        changes=changes,
+    )
 
     target_manager = changes.get("manager", getattr(c, "manager", None))
     target_company = changes.get("company_id", getattr(c, "company_id", None))

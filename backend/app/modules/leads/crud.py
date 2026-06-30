@@ -74,25 +74,20 @@ async def create_lead(
     db.add(lead)
     await db.flush()
     if lt == "candidate" and company_id:
-        from backend.app.services.recruitment_funnel_resolver import (
-            RecruitmentFunnelNotFoundError,
-            RecruitmentModuleNotEnabledError,
-            resolve_recruitment_funnel,
-        )
+        from fastapi import HTTPException
+
+        from backend.app.services.recruitment_funnel_assignment import assign_recruitment_funnel_to_lead
 
         try:
-            resolved = await resolve_recruitment_funnel(
+            await assign_recruitment_funnel_to_lead(
                 db,
                 tenant_id=tenant_id,
-                company_id=str(company_id),
+                lead=lead,
                 pipeline_type="lead",
             )
-            lead.funnel_id = resolved.funnel.id
             await db.flush()
-        except RecruitmentModuleNotEnabledError as exc:
-            raise ValueError(str(exc)) from exc
-        except RecruitmentFunnelNotFoundError as exc:
-            raise ValueError(str(exc)) from exc
+        except HTTPException as exc:
+            raise ValueError(str(exc.detail)) from exc
     return lead
 
 

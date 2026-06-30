@@ -475,6 +475,7 @@ async def process_normalized_lead(
             except Exception:  # pragma: no cover - best effort
                 pass
     else:
+        old_company_id = getattr(lead, "company_id", None)
         lead.company_id = None if sales_lead_without_candidate else resolved_company_id
         lead.vacancy_id = None if sales_lead_without_candidate else (vacancy.id if vacancy else None)
         if getattr(lead, "own_company_id", None) in (None, ""):
@@ -501,6 +502,17 @@ async def process_normalized_lead(
         lead.normalized = normalized_merging_lead_persisted_blocks(lead, normalized)
         lead.ad_id = normalized.get("ad_id")
         await db.flush()
+        from backend.app.services.recruitment_funnel_assignment import (
+            reconcile_lead_funnel_on_company_change,
+        )
+
+        await reconcile_lead_funnel_on_company_change(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            old_company_id=old_company_id,
+            new_company_id=lead.company_id,
+        )
 
     await lead_custom_fields.sync_lead_custom_fields_from_normalized(
         db,

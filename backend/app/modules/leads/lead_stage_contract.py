@@ -7,12 +7,16 @@ from typing import Dict, Optional, Sequence
 from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.funnel import Funnel, FunnelStage
+from backend.app.models.funnel import FunnelStage
 from backend.app.models.lead import Lead
 from backend.app.modules.leads.schemas import LeadStageContractOut
+from backend.app.services.recruitment_funnel_assignment import resolve_lead_funnel_id_for_display
 
 
 async def _default_lead_funnel_id(db: AsyncSession, *, tenant_id: str) -> Optional[str]:
+    """Legacy tenant-scoped fallback for leads without company_id (strangler)."""
+    from backend.app.models.funnel import Funnel
+
     row = await db.execute(
         select(Funnel.id)
         .where(
@@ -46,7 +50,13 @@ async def batch_lead_stage_contracts(
         stage_val = getattr(lead, "stage", None)
         if stage_val is None or not str(stage_val).strip():
             continue
-        fid = lead.funnel_id or default_fid
+        fid = lead.funnel_id
+        if not fid and getattr(lead, "company_id", None):
+            fid = await resolve_lead_funnel_id_for_display(
+                db, tenant_id=tenant_id, lead=lead
+            )
+        if not fid:
+            fid = default_fid
         if not fid:
             continue
         p = (str(fid), str(stage_val).strip())

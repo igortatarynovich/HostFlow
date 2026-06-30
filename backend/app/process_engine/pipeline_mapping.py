@@ -9,14 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.process_engine import (
     PLATFORM_TENANT_SCOPE,
     REGISTRY_STATUS_ACTIVE,
     PeSystemStage,
 )
-from backend.app.models.vacancy import Vacancy
 from backend.app.process_engine.constants import RECRUITMENT_MODULE
 from backend.app.process_engine.manifests.recruitment import (
     RECRUITMENT_MODULE as MANIFEST_RECRUITMENT_MODULE,
@@ -265,49 +263,13 @@ async def _resolve_candidate_funnel_id(
     tenant_id: str,
     candidate: Candidate,
 ) -> Optional[str]:
-    direct = str(getattr(candidate, "funnel_id", None) or "").strip()
-    if direct:
-        return direct
+    from backend.app.services.recruitment_funnel_assignment import (
+        resolve_candidate_funnel_id_for_runtime,
+    )
 
-    vacancy_id = str(getattr(candidate, "vacancy_id", None) or "").strip()
-    if vacancy_id:
-        vacancy = (
-            await db.execute(
-                select(Vacancy).where(
-                    Vacancy.id == vacancy_id,
-                    Vacancy.tenant_id == str(tenant_id),
-                )
-            )
-        ).scalar_one_or_none()
-        if vacancy is not None:
-            vac_funnel = str(getattr(vacancy, "funnel_id", None) or "").strip()
-            if vac_funnel:
-                return vac_funnel
-            profile_id = str(getattr(vacancy, "candidate_profile_id", None) or "").strip()
-            if profile_id:
-                profile = (
-                    await db.execute(
-                        select(CandidateProfile).where(
-                            CandidateProfile.id == profile_id,
-                            CandidateProfile.tenant_id == str(tenant_id),
-                        )
-                    )
-                ).scalar_one_or_none()
-                if profile is not None:
-                    prof_funnel = str(getattr(profile, "funnel_id", None) or "").strip()
-                    if prof_funnel:
-                        return prof_funnel
-
-    default_funnel = (
-        await db.execute(
-            select(Funnel).where(
-                Funnel.tenant_id == str(tenant_id),
-                Funnel.type == "candidate",
-                Funnel.is_default.is_(True),
-            ).limit(1)
-        )
-    ).scalar_one_or_none()
-    return default_funnel.id if default_funnel else None
+    return await resolve_candidate_funnel_id_for_runtime(
+        db, tenant_id=str(tenant_id), candidate=candidate
+    )
 
 
 async def resolve_qualified_system_stage(

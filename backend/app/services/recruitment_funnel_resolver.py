@@ -22,6 +22,7 @@ from backend.app.models.funnel import Funnel
 from backend.app.models.tenant import Tenant
 from backend.app.services import company_module_settings_service as cms_svc
 from backend.app.services.company_module_access import company_allows_module
+from backend.app.services.recruitment_funnel_metrics import record_recruitment_funnel_resolve
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,14 @@ class RecruitmentFunnelResolveResult:
     funnel: Funnel
     source: RecruitmentFunnelSource
     used_legacy_strangler: bool
+
+
+def _return_resolve_result(result: RecruitmentFunnelResolveResult) -> RecruitmentFunnelResolveResult:
+    record_recruitment_funnel_resolve(
+        source=result.source,
+        used_legacy_strangler=result.used_legacy_strangler,
+    )
+    return result
 
 
 async def resolve_recruitment_funnel(
@@ -113,10 +122,12 @@ async def resolve_recruitment_funnel(
             company_id=cid,
             pipeline_type=pipeline_type,
         )
-        return RecruitmentFunnelResolveResult(
-            funnel=explicit,
-            source="explicit",
-            used_legacy_strangler=explicit.company_id is None,
+        return _return_resolve_result(
+            RecruitmentFunnelResolveResult(
+                funnel=explicit,
+                source="explicit",
+                used_legacy_strangler=explicit.company_id is None,
+            )
         )
 
     if pipeline_type == "candidate":
@@ -124,10 +135,12 @@ async def resolve_recruitment_funnel(
             db, tenant_id=tid, company_id=cid
         )
         if cms_funnel is not None:
-            return RecruitmentFunnelResolveResult(
-                funnel=cms_funnel,
-                source="cms",
-                used_legacy_strangler=False,
+            return _return_resolve_result(
+                RecruitmentFunnelResolveResult(
+                    funnel=cms_funnel,
+                    source="cms",
+                    used_legacy_strangler=False,
+                )
             )
 
     company_default = await _load_default_funnel(
@@ -138,10 +151,12 @@ async def resolve_recruitment_funnel(
         legacy_tenant_scope=False,
     )
     if company_default is not None:
-        return RecruitmentFunnelResolveResult(
-            funnel=company_default,
-            source="company_default",
-            used_legacy_strangler=False,
+        return _return_resolve_result(
+            RecruitmentFunnelResolveResult(
+                funnel=company_default,
+                source="company_default",
+                used_legacy_strangler=False,
+            )
         )
 
     legacy = await _load_default_funnel(
@@ -159,10 +174,12 @@ async def resolve_recruitment_funnel(
             pipeline_type,
             legacy.id,
         )
-        return RecruitmentFunnelResolveResult(
-            funnel=legacy,
-            source="legacy_tenant",
-            used_legacy_strangler=True,
+        return _return_resolve_result(
+            RecruitmentFunnelResolveResult(
+                funnel=legacy,
+                source="legacy_tenant",
+                used_legacy_strangler=True,
+            )
         )
 
     platform = await _load_default_funnel(
@@ -180,10 +197,12 @@ async def resolve_recruitment_funnel(
             pipeline_type,
             platform.id,
         )
-        return RecruitmentFunnelResolveResult(
-            funnel=platform,
-            source="platform_seed",
-            used_legacy_strangler=True,
+        return _return_resolve_result(
+            RecruitmentFunnelResolveResult(
+                funnel=platform,
+                source="platform_seed",
+                used_legacy_strangler=True,
+            )
         )
 
     raise RecruitmentFunnelNotFoundError(

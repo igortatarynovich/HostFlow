@@ -202,7 +202,34 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | Lead create / intake (`intake_decision`, conversion) | Resolve lead funnel; set `lead.funnel_id` |
 | `GET /meta/stages` | Query param or header **`company_id`** (and optional `type=candidate|lead`); resolve funnel; return its stages |
 | `CandidateProfile` / vacancy profile binding | Validate `funnel_id` company scope |
-| Process Engine P4 mapping | Unchanged logic; funnel must belong to company when passed to mapping helpers |
+| Process Engine P4 mapping | Resolve via `resolve_candidate_funnel_id_for_runtime` (assignment helper → resolver) |
+
+**M3 hardening (pre-M4 gate):**
+
+| Concern | Canon |
+|---------|-------|
+| Single entry point | Runtime consumers call `recruitment_funnel_assignment` helpers; only `resolve_recruitment_funnel` performs resolution logic |
+| Company change | `reconcile_candidate_funnel_on_company_change` / `reconcile_lead_funnel_on_company_change` rebind funnel via resolver — no stale cross-company `funnel_id` |
+| Legacy fallback telemetry | `record_recruitment_funnel_resolve` on every resolve; `GET /meta/recruitment-funnel-metrics` (admin) exposes counters by source + `legacy_strangler_hits` |
+| Direct `funnel_id` assignment | Legacy at seeds/migrations only; runtime paths listed below must use assignment helpers |
+
+**Runtime entry-point audit (M3):**
+
+| Path | Status | Notes |
+|------|--------|-------|
+| Candidate create | ✅ resolver via assignment | `resolve_recruitment_funnel_for_candidate` |
+| Candidate update (company/vacancy) | ✅ reconcile | `reconcile_candidate_funnel_on_company_change` |
+| Lead create (`leads/crud`) | ✅ assignment | `assign_recruitment_funnel_to_lead` |
+| Lead intake POOL | ✅ assignment | explicit funnel validated via resolver |
+| Lead re-route (`_processing`) | ✅ reconcile | on company change |
+| `GET /meta/stages?company_id=` | ✅ resolver | direct call (read path) |
+| `CandidateProfile` create/patch | ✅ validate | `validate_recruitment_funnel_id_for_company` |
+| Process Engine stage mapping | ✅ assignment | `resolve_candidate_funnel_id_for_runtime` |
+| Lead stage contracts | ✅ display resolve | per-lead when `company_id` set |
+| Seeds / Alembic / demo bootstrap | ⏸ legacy | intentional; M6 removes tenant-wide creation |
+| Funnels CRUD API + UI | ⏸ M4 | still tenant-scoped |
+| Analytics `/analytics/funnel` | ⏸ M5 | deferred |
+| `_bootstrap_default_funnels_for_business_type` | ⏸ M6 | deferred |
 
 ### Phase M4 — API + UI
 
@@ -244,7 +271,8 @@ P0 gate is **closed** when all are true:
 - [x] Partial unique indexes for default funnel per `(company_id, module_key, type)` — migration `202606300002`.
 - [x] `CandidateProfile` funnel_id validated vs company on create/patch.
 - [x] M3 wired: candidate create, lead create, `GET /meta/stages?company_id=` (resolver).
-- [ ] Legacy tenant funnel still works for unmigrated profiles until strangler removed (logged).
+- [x] M3 hardening: assignment helpers, company-change reconcile, resolver metrics, runtime entry-point audit (§6 M3).
+- [ ] Legacy tenant funnel still works for unmigrated profiles until strangler removed (logged + metrics).
 - [ ] Documentation: [`recruitment/module-scope.md`](../../recruitment/module-scope.md) updated with company-scoped funnel ownership.
 
 ---
