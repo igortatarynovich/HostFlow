@@ -227,10 +227,8 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | Process Engine stage mapping | ✅ assignment | `resolve_candidate_funnel_id_for_runtime` |
 | `/analytics/funnel` | ✅ M5 | `company_id` + `pipeline_type`; funnel-bound stages; legacy explicit |
 | Lead stage contracts | ✅ display resolve | per-lead when `company_id` set |
-| Seeds / Alembic / demo bootstrap | ⏸ legacy | intentional; M6 removes tenant-wide creation |
-| Funnels CRUD API + UI | ✅ M4 | `company_id` required; recruitment gate; legacy read-only |
-| Analytics `/analytics/funnel` | ✅ M5 | company_id + pipeline_type; legacy_tenant explicit |
-| `_bootstrap_default_funnels_for_business_type` | ⏸ M6 | deferred |
+| Seeds / Alembic / demo bootstrap | ✅ M6 | company-scoped bootstrap; legacy read-only strangler |
+| `_bootstrap_default_funnels_for_business_type` | ✅ M6 | per-company seed on operating company create/update |
 
 ### Phase M4 — API + UI
 
@@ -251,12 +249,19 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | Metrics | `analytics_by_pipeline` counters (`candidate:recruitment_company`, `lead:legacy_tenant`, …) on `GET /meta/recruitment-funnel-metrics` | ✅ |
 | Legacy dashboards | May continue grouping by funnel-local stage codes during strangler | documented |
 
-### Phase M6 — Bootstrap path
+### Phase M6 — Bootstrap path ✅
 
-- Replace `_bootstrap_default_funnels_for_business_type` tenant seed with **per-company** seed on company create / module enable:
-  - Copy tenant preset → company funnel row
-  - Write `company_module_settings.recruitment.default_candidate_funnel_id` if product wants explicit pointer
-- Stop creating new tenant-wide funnels except `tenant_id='default'` platform seed.
+| Surface | Required change | Status |
+|---------|-----------------|--------|
+| `_bootstrap_default_funnels_for_business_type` | Per-company seed via `bootstrap_recruitment_funnels_for_company`; sets `company_id`, `module_key=recruitment` | ✅ |
+| Own-company onboarding | Tenant settings only; **no** tenant-wide funnel creation | ✅ |
+| Operating company create/update | Bootstrap candidate/lead funnels gated by recruitment module flags | ✅ |
+| CMS pointer | Write `default_candidate_funnel_id` on bootstrap when unset (no UI picker yet) | ✅ |
+| Demo seed | Company-scoped funnel resolution; services demo bootstraps lead funnel on demo client company | ✅ |
+| Legacy tenant funnels | Read-only strangler for demo/resolver; **no new** tenant-wide operational rows | ✅ |
+| PE mapping | Candidate funnel stages mapped on first bootstrap | ✅ |
+
+- Stop creating new tenant-wide funnels except `tenant_id='default'` platform seed and explicit legacy fallback paths (e.g. `driver_ce_default` when no operating company).
 
 ---
 

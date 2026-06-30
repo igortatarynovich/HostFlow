@@ -201,15 +201,32 @@ def _driver_ce_default_config() -> dict:
 
 
 async def _ensure_driver_ce_default_funnel(db: AsyncSession, tenant_id: str) -> str:
-    """Ensure tenant has the default candidate funnel used by driver_ce_default profile."""
-    funnels = (
-        await db.execute(
-            select(Funnel).where(
-                Funnel.tenant_id == tenant_id,
-                Funnel.type == "candidate",
-            )
+    """Ensure driver_ce profile funnel exists (company-scoped when possible).
+
+    Legacy tenant-wide funnel is created only when no operating company exists
+    (fallback for tests / pre-migration tenants).
+    """
+    from backend.app.services.recruitment_funnel_bootstrap import (
+        resolve_first_operating_company_id,
+    )
+    from backend.app.services.recruitment_funnel_resolver import RECRUITMENT_MODULE_KEY
+
+    company_id = await resolve_first_operating_company_id(db, tenant_id=tenant_id)
+    funnel_filters = [
+        Funnel.tenant_id == tenant_id,
+        Funnel.type == "candidate",
+    ]
+    if company_id:
+        funnel_filters.extend(
+            [
+                Funnel.company_id == company_id,
+                Funnel.module_key == RECRUITMENT_MODULE_KEY,
+            ]
         )
-    ).scalars().all()
+    else:
+        funnel_filters.append(Funnel.company_id.is_(None))
+
+    funnels = (await db.execute(select(Funnel).where(*funnel_filters))).scalars().all()
 
     target: Funnel | None = None
     for f in funnels:
@@ -225,15 +242,18 @@ async def _ensure_driver_ce_default_funnel(db: AsyncSession, tenant_id: str) -> 
     if target is None:
         target = Funnel(
             tenant_id=tenant_id,
+            company_id=company_id,
+            module_key=RECRUITMENT_MODULE_KEY if company_id else None,
             type="candidate",
             name=DRIVER_CE_DEFAULT_FUNNEL_NAME,
             is_default=True,
         )
         db.add(target)
         await db.flush()
+        funnels = list(funnels) + [target]
 
     for f in funnels:
-        f.is_default = (f.id == target.id)
+        f.is_default = f.id == target.id
     target.is_default = True
     target.name = DRIVER_CE_DEFAULT_FUNNEL_NAME
 

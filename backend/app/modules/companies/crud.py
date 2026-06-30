@@ -10,15 +10,12 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import Company
-from backend.app.models.funnel import Funnel, FunnelStage
-from backend.app.models.tenant import Tenant
-from backend.app.models.tenant import TenantType
-from backend.app.models.tenant import TenantLink
+from backend.app.models.tenant import Tenant, TenantLink, TenantType
 from backend.app.models.user import Role as UserRole, User
 from backend.app.services.operating_company_slots import get_operating_company_slots
 from backend.app.services.tenant_links import ensure_client_company_tenant_link
 
-from .funnel_presets import business_funnel_presets, normalize_industry
+from .funnel_presets import normalize_industry
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
@@ -621,7 +618,10 @@ def _onboarding_module_profile(company_type: str | None) -> Dict[str, bool]:
             "client_portal": False,
         },
     }
-    return dict(profiles.get(normalized) or profiles["agency"])
+    profile = dict(profiles.get(normalized) or profiles["agency"])
+    if profile.get("candidates") or profile.get("leads"):
+        profile["recruitment"] = True
+    return profile
 
 
 def _bootstrap_tenant_settings_for_company_type(
@@ -661,99 +661,47 @@ def _coalesce_industry(*candidates: str | None) -> str | None:
     return None
 
 
-async def _ensure_default_funnel_if_missing(
-    db: AsyncSession,
-    *,
-    tenant_id: str,
-    funnel_type: str,
-    name: str,
-    stages: list[tuple[str, str, str, bool]],
-) -> None:
-    existing_funnels = (
-        await db.execute(
-            select(Funnel).where(
-                Funnel.tenant_id == tenant_id,
-                Funnel.type == funnel_type,
-            )
-        )
-    ).scalars().all()
-    target: Funnel | None = None
-    for funnel in existing_funnels:
-        if funnel.is_default:
-            target = funnel
-            break
-    if target is None:
-        for funnel in existing_funnels:
-            if (funnel.name or "").strip() == name:
-                target = funnel
-                break
-    created = False
-    if target is None:
-        target = Funnel(
-            tenant_id=tenant_id,
-            type=funnel_type,
-            name=name,
-            is_default=True,
-        )
-        db.add(target)
-        await db.flush()
-        created = True
-    for funnel in existing_funnels:
-        funnel.is_default = funnel.id == target.id
-    target.is_default = True
-    if created:
-        target.name = name
-
-    existing_stages = (
-        await db.execute(
-            select(FunnelStage).where(FunnelStage.funnel_id == target.id)
-        )
-    ).scalars().all()
-    if existing_stages:
-        return
-
-    for order, (code, label, system_stage, is_terminal) in enumerate(stages):
-        db.add(
-            FunnelStage(
-                funnel_id=target.id,
-                code=code,
-                label=label,
-                system_stage=system_stage,
-                order=order,
-                is_terminal=bool(is_terminal),
-            )
-        )
-    await db.flush()
-
-
 async def _bootstrap_default_funnels_for_business_type(
     db: AsyncSession,
     *,
     tenant_id: str,
+    company_id: str,
     company_type: str | None,
     modules: Dict[str, bool] | None,
     industry: str | None = None,
+    tenant: Tenant | None = None,
+    company: Company | None = None,
 ) -> None:
-    presets = business_funnel_presets(company_type, industry)
-    enabled_modules = modules or {}
-    if bool(enabled_modules.get("candidates", True)):
-        candidate = presets["candidate"]
-        await _ensure_default_funnel_if_missing(
-            db,
-            tenant_id=tenant_id,
-            funnel_type="candidate",
-            name=str(candidate["name"]),
-            stages=list(candidate["stages"]),
-        )
-    if bool(enabled_modules.get("leads", True)):
-        lead = presets["lead"]
-        await _ensure_default_funnel_if_missing(
-            db,
-            tenant_id=tenant_id,
-            funnel_type="lead",
-            name=str(lead["name"]),
-            stages=list(lead["stages"]),
-        )
+    from backend.app.services.recruitment_funnel_bootstrap import (
+        bootstrap_recruitment_funnels_for_company,
+    )
+
+    tenant_obj = tenant
+    if tenant_obj is None:
+        tenant_obj = (
+            await db.execute(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+        ).scalar_one_or_none()
+    if tenant_obj is None:
+        return
+
+    company_obj = company
+    if company_obj is None:
+        company_obj = (
+            await db.execute(
+                select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
+            )
+        ).scalar_one_or_none()
+    if company_obj is None:
+        return
+
+    await bootstrap_recruitment_funnels_for_company(
+        db,
+        tenant=tenant_obj,
+        company=company_obj,
+        company_type=company_type,
+        tenant_modules=modules,
+        industry=industry,
+    )
 
 
 async def bootstrap_tenant_for_own_company_onboarding(
@@ -770,7 +718,8 @@ async def bootstrap_tenant_for_own_company_onboarding(
 ) -> None:
     """
     When the first OwnCompany is created (no legacy operating Company yet), align tenant type,
-    module profile, business_type in settings, optional onboarding metadata, and seed default funnels.
+    module profile, business_type in settings, optional onboarding metadata.
+    Recruitment funnels are bootstrapped when the first operating Company is created.
     Optionally seeds the creating user's `working_hours_v1` from `working_hours_preset` when empty.
     """
     normalized = str(company_type or "").strip().lower()
@@ -813,15 +762,7 @@ async def bootstrap_tenant_for_own_company_onboarding(
 
     tenant.settings = settings_payload
     db.add(tenant)
-
-    tenant_modules = _ensure_dict(settings_payload.get("modules"))
-    await _bootstrap_default_funnels_for_business_type(
-        db,
-        tenant_id=tenant_id,
-        company_type=normalized,
-        modules=tenant_modules,
-        industry=industry,
-    )
+    await db.flush()
     aid = str(actor_user_id or "").strip()
     whp = str(working_hours_preset or "").strip()
     if aid and whp:
@@ -1323,24 +1264,25 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
     session.add(obj)
     await session.flush()
 
-    if company_count_before == 0 and company_role == "operating" and company_type in ("agency", "employer", "services"):
+    if company_role == "operating" and company_type in ("agency", "employer", "services"):
         tenant = (
             await session.execute(
                 select(Tenant).where(Tenant.id == tenant_id).limit(1)
             )
         ).scalar_one_or_none()
         if tenant is not None:
-            if company_type == "employer":
-                tenant_type = TenantType.company
-            else:
-                # "services" keeps full workspace behavior (same as agency tenant type).
-                tenant_type = TenantType.agency
-            tenant.type = tenant_type
-            tenant.settings = _bootstrap_tenant_settings_for_company_type(
-                tenant.settings,
-                company_type=company_type,
-            )
-            session.add(tenant)
+            if company_count_before == 0:
+                if company_type == "employer":
+                    tenant_type = TenantType.company
+                else:
+                    # "services" keeps full workspace behavior (same as agency tenant type).
+                    tenant_type = TenantType.agency
+                tenant.type = tenant_type
+                tenant.settings = _bootstrap_tenant_settings_for_company_type(
+                    tenant.settings,
+                    company_type=company_type,
+                )
+                session.add(tenant)
             tenant_modules = _ensure_dict(tenant.settings.get("modules")) if isinstance(tenant.settings, dict) else {}
             ind_raw = extra_normalized.get("industry")
             industry_eff = _coalesce_industry(
@@ -1350,9 +1292,12 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
             await _bootstrap_default_funnels_for_business_type(
                 session,
                 tenant_id=tenant_id,
+                company_id=str(obj.id),
                 company_type=company_type,
                 modules=tenant_modules,
                 industry=industry_eff,
+                tenant=tenant,
+                company=obj,
             )
 
     if company_role == "client":
@@ -1455,9 +1400,12 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
                 await _bootstrap_default_funnels_for_business_type(
                     session,
                     tenant_id=tenant_id,
+                    company_id=str(company.id),
                     company_type=company_type,
                     modules=tenant_modules,
                     industry=industry_eff,
+                    tenant=tenant,
+                    company=company,
                 )
     except Exception:
         # Best-effort: company update should not fail due to tenant bootstrap sync.

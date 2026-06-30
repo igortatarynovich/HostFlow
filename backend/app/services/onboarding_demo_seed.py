@@ -11,7 +11,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
-from backend.app.models import Candidate, Company, Funnel, Lead, Reminder, Tenant
+from backend.app.models import Candidate, Company, Lead, Reminder, Tenant
 from backend.app.models.reminder import ReminderStatus
 
 
@@ -56,20 +56,64 @@ def _extra_demo() -> str:
     return json.dumps({"onboarding_demo": True, "source": "onboarding_seed_v1"})
 
 
-async def _default_funnel_id(db: AsyncSession, tenant_id: str, funnel_type: str) -> str | None:
+async def _legacy_tenant_funnel_id(
+    db: AsyncSession, tenant_id: str, funnel_type: str
+) -> str | None:
+    """Read-only legacy tenant funnel for demo strangler — never creates rows."""
+    from backend.app.models.funnel import Funnel
+
     row = await db.execute(
         select(Funnel.id)
-        .where(Funnel.tenant_id == tenant_id, Funnel.type == funnel_type, Funnel.is_default.is_(True))
+        .where(
+            Funnel.tenant_id == tenant_id,
+            Funnel.company_id.is_(None),
+            Funnel.type == funnel_type,
+            Funnel.is_default.is_(True),
+        )
         .limit(1)
     )
     fid = row.scalar_one_or_none()
     if fid:
         return str(fid)
     row2 = await db.execute(
-        select(Funnel.id).where(Funnel.tenant_id == tenant_id, Funnel.type == funnel_type).order_by(Funnel.created_at.asc()).limit(1)
+        select(Funnel.id)
+        .where(
+            Funnel.tenant_id == tenant_id,
+            Funnel.company_id.is_(None),
+            Funnel.type == funnel_type,
+        )
+        .order_by(Funnel.created_at.asc())
+        .limit(1)
     )
     fid2 = row2.scalar_one_or_none()
     return str(fid2) if fid2 else None
+
+
+async def _resolve_demo_funnel_id(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    funnel_type: str,
+    company_id: str | None = None,
+) -> str | None:
+    from backend.app.services.recruitment_funnel_bootstrap import (
+        resolve_company_default_funnel_id,
+        resolve_first_operating_company_id,
+    )
+
+    target_company_id = (company_id or "").strip() or None
+    if not target_company_id:
+        target_company_id = await resolve_first_operating_company_id(db, tenant_id=tenant_id)
+    if target_company_id:
+        fid = await resolve_company_default_funnel_id(
+            db,
+            tenant_id=tenant_id,
+            company_id=target_company_id,
+            funnel_type=funnel_type,
+        )
+        if fid:
+            return fid
+    return await _legacy_tenant_funnel_id(db, tenant_id, funnel_type)
 
 
 async def _mark_demo_seeded(db: AsyncSession, tenant_id: str) -> None:
@@ -256,7 +300,30 @@ async def seed_onboarding_demo_if_needed(
         db.add(demo_company)
         await db.flush()
 
-        fid = await _default_funnel_id(db, tenant_id, "lead")
+        tenant_obj = (
+            await db.execute(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+        ).scalar_one_or_none()
+        if tenant_obj is not None:
+            from backend.app.services.recruitment_funnel_bootstrap import (
+                bootstrap_recruitment_funnels_for_company,
+            )
+
+            await bootstrap_recruitment_funnels_for_company(
+                db,
+                tenant=tenant_obj,
+                company=demo_company,
+                company_type="services",
+                tenant_modules=dict(tenant_obj.settings.get("modules") or {})
+                if isinstance(tenant_obj.settings, dict)
+                else None,
+            )
+
+        fid = await _resolve_demo_funnel_id(
+            db,
+            tenant_id=tenant_id,
+            funnel_type="lead",
+            company_id=str(demo_company.id),
+        )
         # 12 leads, 3 without reminders, 2 "stuck" in negotiation, rest with reminders
         specs: list[dict[str, Any]] = [
             {"stage": "new", "reminder": True, "old": False, "label": "North Logistics"},
@@ -287,7 +354,7 @@ async def seed_onboarding_demo_if_needed(
         summary["stuck"] = 2
         summary["active_today"] = 5
     else:
-        fid = await _default_funnel_id(db, tenant_id, "candidate")
+        fid = await _resolve_demo_funnel_id(db, tenant_id=tenant_id, funnel_type="candidate")
         if bt == "employer":
             specs = [
                 {"stage": "new", "reminder": True, "old": False, "first_name": "Anna", "last_name": "Kowalski"},
