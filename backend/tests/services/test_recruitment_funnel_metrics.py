@@ -11,6 +11,7 @@ from backend.app.models.funnel import Funnel
 from backend.app.models.tenant import Tenant, TenantStatus, TenantType
 from backend.app.services.recruitment_funnel_metrics import (
     get_recruitment_funnel_metrics_snapshot,
+    record_recruitment_funnel_analytics,
     reset_recruitment_funnel_metrics,
 )
 from backend.app.services.recruitment_funnel_resolver import resolve_recruitment_funnel
@@ -114,3 +115,12 @@ async def test_metrics_record_legacy_strangler(db) -> None:
     assert snap.total_resolves == 1
     assert snap.by_source.get("legacy_tenant") == 1
     assert snap.legacy_strangler_hits == 1
+
+
+def test_metrics_record_analytics_pipeline_scope() -> None:
+    record_recruitment_funnel_analytics(pipeline_type="candidate", scope="recruitment_company")
+    record_recruitment_funnel_analytics(pipeline_type="lead", scope="legacy_tenant")
+
+    snap = get_recruitment_funnel_metrics_snapshot()
+    assert snap.analytics_by_pipeline.get("candidate:recruitment_company") == 1
+    assert snap.analytics_by_pipeline.get("lead:legacy_tenant") == 1

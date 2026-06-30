@@ -210,6 +210,66 @@ async def resolve_recruitment_funnel(
     )
 
 
+async def resolve_legacy_tenant_recruitment_funnel(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    pipeline_type: RecruitmentPipelineType = "candidate",
+) -> RecruitmentFunnelResolveResult:
+    """Legacy tenant-scoped funnel for strangler analytics (read-only path)."""
+    tid = str(tenant_id).strip()
+    if not tid:
+        raise RecruitmentFunnelNotFoundError("tenant_id is required")
+
+    legacy = await _load_default_funnel(
+        db,
+        tenant_id=tid,
+        company_id=None,
+        pipeline_type=pipeline_type,
+        legacy_tenant_scope=True,
+    )
+    if legacy is not None:
+        logger.info(
+            "recruitment_funnel_resolver legacy tenant analytics fallback tenant=%s type=%s funnel=%s",
+            tid,
+            pipeline_type,
+            legacy.id,
+        )
+        return _return_resolve_result(
+            RecruitmentFunnelResolveResult(
+                funnel=legacy,
+                source="legacy_tenant",
+                used_legacy_strangler=True,
+            )
+        )
+
+    platform = await _load_default_funnel(
+        db,
+        tenant_id=PLATFORM_SEED_TENANT_ID,
+        company_id=None,
+        pipeline_type=pipeline_type,
+        legacy_tenant_scope=True,
+    )
+    if platform is not None:
+        logger.info(
+            "recruitment_funnel_resolver platform seed analytics fallback tenant=%s type=%s funnel=%s",
+            tid,
+            pipeline_type,
+            platform.id,
+        )
+        return _return_resolve_result(
+            RecruitmentFunnelResolveResult(
+                funnel=platform,
+                source="platform_seed",
+                used_legacy_strangler=True,
+            )
+        )
+
+    raise RecruitmentFunnelNotFoundError(
+        f"no legacy recruitment funnel for tenant={tid} type={pipeline_type}"
+    )
+
+
 async def validate_recruitment_funnel_id_for_company(
     db: AsyncSession,
     *,

@@ -225,10 +225,11 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | `GET /meta/stages?company_id=` | ✅ resolver | direct call (read path) |
 | `CandidateProfile` create/patch | ✅ validate | `validate_recruitment_funnel_id_for_company` |
 | Process Engine stage mapping | ✅ assignment | `resolve_candidate_funnel_id_for_runtime` |
+| `/analytics/funnel` | ✅ M5 | `company_id` + `pipeline_type`; funnel-bound stages; legacy explicit |
 | Lead stage contracts | ✅ display resolve | per-lead when `company_id` set |
 | Seeds / Alembic / demo bootstrap | ⏸ legacy | intentional; M6 removes tenant-wide creation |
 | Funnels CRUD API + UI | ✅ M4 | `company_id` required; recruitment gate; legacy read-only |
-| Analytics `/analytics/funnel` | ⏸ M5 | deferred |
+| Analytics `/analytics/funnel` | ✅ M5 | company_id + pipeline_type; legacy_tenant explicit |
 | `_bootstrap_default_funnels_for_business_type` | ⏸ M6 | deferred |
 
 ### Phase M4 — API + UI
@@ -243,10 +244,12 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 
 ### Phase M5 — Analytics strangler
 
-| Surface | Required change |
-|---------|-----------------|
-| `/analytics/funnel` | Accept `company_id`; optional `funnel_id`; stage order from resolved funnel labels/order when provided |
-| Legacy dashboards | May continue grouping by `Candidate.stage` code; document that codes are **funnel-local**, not global semantics |
+| Surface | Required change | Status |
+|---------|-----------------|--------|
+| `/analytics/funnel` | `company_id` + `pipeline_type` (`candidate` \| `lead`, never mixed); optional `funnel_id`; stage order from resolved funnel | ✅ |
+| Legacy dashboards | `legacy_tenant=true` explicit mode when `company_id` omitted; counts only stages in active funnel; `excluded_unbound` telemetry | ✅ |
+| Metrics | `analytics_by_pipeline` counters (`candidate:recruitment_company`, `lead:legacy_tenant`, …) on `GET /meta/recruitment-funnel-metrics` | ✅ |
+| Legacy dashboards | May continue grouping by funnel-local stage codes during strangler | documented |
 
 ### Phase M6 — Bootstrap path
 
@@ -267,6 +270,7 @@ P0 gate is **closed** when all are true:
 - [ ] `/meta/stages` returns stages for **company-scoped** funnel when `company_id` provided.
 - [x] Funnels API requires company context; recruitment module gate enforced.
 - [x] SPA funnels UI lists/edits company funnels only (`FunnelsPage`, `FunnelSelector`).
+- [x] `/analytics/funnel` company-scoped with explicit legacy mode; pipeline types not mixed (M5).
 - [ ] No **new** runtime gate logic reads only legacy four-bucket `system_stage`.
 - [x] `RecruitmentModuleSettingsV1.default_candidate_funnel_id` read on resolver path step 2.
 - [x] Partial unique indexes for default funnel per `(company_id, module_key, type)` — migration `202606300002`.

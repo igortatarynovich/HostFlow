@@ -1655,6 +1655,33 @@ async def services_overview(
 @router.get("/analytics/funnel")
 async def funnel(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    company_id: Optional[str] = Query(
+        None,
+        min_length=1,
+        max_length=36,
+        description="Operating company scope (required unless legacy_tenant=true)",
+    ),
+    legacy_tenant: bool = Query(
+        False,
+        description="Explicit legacy tenant-wide analytics (read-only strangler); requires company_id omitted",
+    ),
+    pipeline_type: str = Query(
+        "candidate",
+        pattern="^(candidate|lead)$",
+        description="Recruitment pipeline kind — candidate and lead cannot be mixed in one report",
+    ),
+    module_key: str = Query(
+        "recruitment",
+        min_length=1,
+        max_length=32,
+        description="Module owner (P0: recruitment only)",
+    ),
+    funnel_id: Optional[str] = Query(
+        None,
+        max_length=36,
+        description="Optional explicit funnel override (validated via resolver)",
+    ),
     date_from: Optional[str] = Query(
         None, alias="from", description="ISO дата/время начала (включительно)"
     ),
@@ -1668,9 +1695,13 @@ async def funnel(
     ),
     stage_view: Optional[str] = Query(
         None,
-        description="all | agency | client — режим отображения пайплайна по стадиям",
+        description="all | agency | client — candidate pipeline visibility only",
     ),
 ):
+    from backend.app.services.recruitment_funnel_analytics import (
+        build_recruitment_funnel_analytics,
+    )
+
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
@@ -1680,43 +1711,48 @@ async def funnel(
     dfrom = _parse_dt(date_from)
     dto = _parse_dt(date_to, end_of_day=True)
 
-    base = select(Candidate.stage, func.count()).select_from(Candidate).where(and_(Candidate.deleted_at.is_(None), scope_clause))
-    base = _apply_period_filters(base, dfrom, dto, by)
-    base = base.group_by(Candidate.stage)
+    pipe: Literal["candidate", "lead"] = "lead" if pipeline_type == "lead" else "candidate"
 
-    res = (await db.execute(base)).all()
-    merged: Counter[str] = Counter()
-    for s, cnt in res:
-        key = _normalize_stage_counter_key(s)
-        if not key:
-            continue
-        if not _stage_visible_for_view(key, effective_stage_view):
-            continue
-        merged[key] += int(cnt)
+    stage_visible_fn = None
+    if pipe == "candidate":
 
-    order_set = set(STAGE_ORDER)
-    stages: List[Dict[str, Any]] = []
-    for code in STAGE_ORDER:
-        if not _stage_visible_for_view(code, effective_stage_view):
-            continue
-        cnt = int(merged.get(code, 0))
-        if cnt <= 0:
-            continue
-        stages.append({"name": code, "count": cnt})
-    for code, cnt in sorted(merged.items(), key=lambda kv: (-kv[1], kv[0])):
-        if code in order_set:
-            continue
-        if not _stage_visible_for_view(code, effective_stage_view):
-            continue
-        stages.append({"name": code, "count": int(cnt)})
+        def stage_visible_fn(code: str) -> bool:
+            return _stage_visible_for_view(code, effective_stage_view)
 
+    result = await build_recruitment_funnel_analytics(
+        db,
+        tenant_id=tenant_id_str,
+        current_user=current_user,
+        company_id=str(company_id).strip() if company_id else None,
+        legacy_tenant=legacy_tenant,
+        pipeline_type=pipe,
+        module_key=str(module_key).strip(),
+        explicit_funnel_id=str(funnel_id).strip() if funnel_id else None,
+        scope_clause=scope_clause if pipe == "candidate" else None,
+        date_from=dfrom,
+        date_to=dto,
+        by=by,
+        stage_visible=stage_visible_fn,
+    )
+
+    resolve = result.resolve_result
+    funnel_obj = result.funnel
     return {
         "period": {
             "from": dfrom.isoformat() if dfrom else None,
             "to": dto.isoformat() if dto else None,
         },
         "by": by,
-        "stages": stages,
+        "pipeline_type": result.pipeline_type,
+        "module_key": result.module_key,
+        "company_id": result.company_id,
+        "funnel_id": funnel_obj.id,
+        "funnel_name": funnel_obj.name,
+        "funnel_source": resolve.source,
+        "analytics_scope": result.analytics_scope,
+        "is_legacy_readonly": result.analytics_scope == "legacy_tenant",
+        "excluded_unbound": result.excluded_unbound,
+        "stages": result.stages,
     }
 
 
