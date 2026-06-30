@@ -35,17 +35,12 @@ def _has_column(conn: sa.Connection, table: str, column: str) -> bool:
 
 
 def _stage_columns(conn: sa.Connection) -> list[str]:
-    cols = {c["name"] for c in sa.inspect(conn).get_columns("funnel_stages")}
-    base = ["code", "label", "system_stage", "order", "is_terminal"]
-    optional = [
-        "stage_contract_v1",
-        "conversion_root_v1",
-        "pe_maps_to_module",
-        "pe_maps_to_code",
+    skip = frozenset({"id", "funnel_id"})
+    return [
+        c["name"]
+        for c in sa.inspect(conn).get_columns("funnel_stages")
+        if c["name"] not in skip
     ]
-    out = [c for c in base if c in cols]
-    out.extend(c for c in optional if c in cols)
-    return out
 
 
 def _clone_funnel_stages(

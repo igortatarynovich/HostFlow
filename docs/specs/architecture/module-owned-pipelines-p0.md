@@ -145,18 +145,32 @@ Single service: **`resolve_recruitment_funnel`** (name illustrative) used by all
 
 **Resolution order for `candidate`:**
 
-1. Explicit `funnel_id` on entity/profile **if** funnel belongs to `(company_id, module_key=recruitment, type=candidate)` — validate on write.
+1. **`explicit_funnel_id`** (when passed to resolver): load by id; **Forbidden** if `funnel.company_id` ≠ request company; **NotFound** if missing — **never fallback**.
 2. `company_module_settings.recruitment.settings_json.default_candidate_funnel_id` **if** set and funnel passes ownership check.
-3. Company default: `funnels` where `company_id`, `module_key=recruitment`, `type=candidate`, `is_default=true`.
-4. **Legacy strangler:** tenant-scoped funnel (`company_id IS NULL`) with `tenant_id` match and `is_default=true` — **log deprecation once per request path**.
-5. Platform seed funnel `tenant_id='default'` — last resort for empty tenants.
+3. Company default: `funnels` where `(company_id, module_key, type, is_default=true)` — **at most one** per scope (partial unique index).
+4. **Legacy strangler:** tenant-scoped funnel (`company_id IS NULL`) — log once per path.
+5. Platform seed funnel `tenant_id='default'`.
 
-**Resolution order for `lead`:** same pattern; settings field `default_lead_funnel_id` is **optional follow-up** inside P0 if not in schema yet — until then step 3 uses company default lead funnel only.
+**Funnel identity (canon):** `(company_id, module_key, type)` + display `name`. No «company default» without `module_key`.
 
 **Errors:**
 
-- If Recruitment module not enabled for company → `403` / structured error (no silent fallback to another module).
-- If no funnel resolved after step 5 → `422` with actionable message (admin must configure company funnel).
+- Recruitment disabled → `403`
+- No funnel after step 5 → `422`
+- Explicit funnel wrong company → `403` (`RecruitmentFunnelForbiddenError`) — **no fallback**
+
+---
+
+## 5.1 Database invariants (M1/M2 gate)
+
+| Invariant | Enforcement |
+|-----------|-------------|
+| One default per company scope | PostgreSQL partial unique index `uq_funnels_company_default_scope` on `(company_id, module_key, type) WHERE is_default` |
+| One legacy default per tenant scope | `uq_funnels_tenant_legacy_default_scope` on `(tenant_id, module_key, type) WHERE company_id IS NULL AND is_default` |
+| Clone preserves stage metadata | Backfill copies **all** `funnel_stages` columns except `id`, `funnel_id` (PE mapping, `system_stage`, `stage_contract_v1`, `conversion_root_v1`, order, terminal) |
+| Profile funnel binding | `CandidateProfile` create/patch validates `funnel_id` vs `company_id` / `client_id`; cross-company → `403` |
+
+Migration: `202606300002_funnels_default_uniqueness_p0` dedupes duplicate defaults before creating indexes.
 
 ---
 
@@ -226,7 +240,10 @@ P0 gate is **closed** when all are true:
 - [ ] Funnels API requires company context; recruitment module gate enforced.
 - [ ] SPA funnels UI lists/edits company funnels only.
 - [ ] No **new** runtime gate logic reads only legacy four-bucket `system_stage`.
-- [ ] `RecruitmentModuleSettingsV1.default_candidate_funnel_id` read on resolver path step 2.
+- [x] `RecruitmentModuleSettingsV1.default_candidate_funnel_id` read on resolver path step 2.
+- [x] Partial unique indexes for default funnel per `(company_id, module_key, type)` — migration `202606300002`.
+- [x] `CandidateProfile` funnel_id validated vs company on create/patch.
+- [x] M3 wired: candidate create, lead create, `GET /meta/stages?company_id=` (resolver).
 - [ ] Legacy tenant funnel still works for unmigrated profiles until strangler removed (logged).
 - [ ] Documentation: [`recruitment/module-scope.md`](../../recruitment/module-scope.md) updated with company-scoped funnel ownership.
 
@@ -271,3 +288,4 @@ Ordered product/tech sequence:
 ## History
 
 - 2026-06: P0 architecture gate — Recruitment company-scoped funnels, resolver canon, migration phases, explicit deferral of HR pipeline and module-settings UI.
+- 2026-06: M1/M2 hardening — default funnel partial unique indexes, full stage clone on backfill, explicit funnel Forbidden (no fallback), profile funnel gate, M3 resolver wiring (candidate/lead create, `/meta/stages`).

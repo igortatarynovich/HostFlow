@@ -73,6 +73,26 @@ async def create_lead(
     )
     db.add(lead)
     await db.flush()
+    if lt == "candidate" and company_id:
+        from backend.app.services.recruitment_funnel_resolver import (
+            RecruitmentFunnelNotFoundError,
+            RecruitmentModuleNotEnabledError,
+            resolve_recruitment_funnel,
+        )
+
+        try:
+            resolved = await resolve_recruitment_funnel(
+                db,
+                tenant_id=tenant_id,
+                company_id=str(company_id),
+                pipeline_type="lead",
+            )
+            lead.funnel_id = resolved.funnel.id
+            await db.flush()
+        except RecruitmentModuleNotEnabledError as exc:
+            raise ValueError(str(exc)) from exc
+        except RecruitmentFunnelNotFoundError as exc:
+            raise ValueError(str(exc)) from exc
     return lead
 
 

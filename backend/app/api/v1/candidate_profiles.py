@@ -26,6 +26,48 @@ from backend.app.models.vacancy import Vacancy
 router = APIRouter(prefix="/candidate-profiles", tags=["candidate-profiles"])
 
 
+async def _enforce_profile_funnel_company_scope(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    funnel_id: Optional[str],
+    company_id: Optional[str],
+    client_id: Optional[str],
+) -> None:
+    """Gate: profile funnel_id must not cross company boundaries."""
+    if not funnel_id:
+        return
+    from backend.app.models.funnel import Funnel
+    from backend.app.services.recruitment_funnel_resolver import (
+        RecruitmentFunnelForbiddenError,
+        RecruitmentFunnelNotFoundError,
+        validate_recruitment_funnel_id_for_company,
+    )
+
+    fid = str(funnel_id).strip()
+    scope_company = str(company_id or client_id or "").strip() or None
+    funnel = await db.get(Funnel, fid)
+    if funnel is not None and funnel.company_id and not scope_company:
+        raise HTTPException(
+            status_code=422,
+            detail="company_id is required when funnel_id is company-scoped",
+        )
+    if not scope_company:
+        return
+    try:
+        await validate_recruitment_funnel_id_for_company(
+            db,
+            tenant_id=tenant_id,
+            company_id=scope_company,
+            funnel_id=fid,
+            pipeline_type="candidate",
+        )
+    except RecruitmentFunnelForbiddenError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except RecruitmentFunnelNotFoundError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 def _profile_to_dict(profile: CandidateProfile) -> Dict[str, Any]:
     """Convert profile to dictionary for history snapshot."""
     return {
@@ -99,6 +141,10 @@ class CandidateProfileIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Название профиля")
     description: Optional[str] = Field(None, description="Описание профиля")
     client_id: Optional[str] = Field(None, description="ID клиента (если профиль специфичен для клиента)")
+    company_id: Optional[str] = Field(
+        None,
+        description="Company scope for funnel_id validation (required when funnel is company-scoped)",
+    )
     funnel_id: Optional[str] = Field(None, description="ID воронки (этапы берутся из воронки, не из config)")
     config: dict[str, Any] = Field(default_factory=dict, description="Конфигурация профиля (JSON)")
     owner_user_id: Optional[str] = Field(None, description="ID ответственного пользователя")
@@ -541,6 +587,14 @@ async def create_candidate_profile(
             detail=f"Превышены лимиты ({plan_name}): {', '.join(errors)}"
         )
 
+    await _enforce_profile_funnel_company_scope(
+        db,
+        tenant_id=str(tenant_id),
+        funnel_id=payload.funnel_id,
+        company_id=payload.company_id,
+        client_id=payload.client_id,
+    )
+
     from uuid import uuid4
 
     profile = CandidateProfile(
@@ -787,6 +841,14 @@ async def update_candidate_profile(
             status_code=403,
             detail=f"Превышены лимиты ({plan_name}): {', '.join(errors)}"
         )
+
+    await _enforce_profile_funnel_company_scope(
+        db,
+        tenant_id=str(tenant_id),
+        funnel_id=payload.funnel_id,
+        company_id=payload.company_id,
+        client_id=payload.client_id,
+    )
 
     # Save old data for history
     old_data = _profile_to_dict(profile)

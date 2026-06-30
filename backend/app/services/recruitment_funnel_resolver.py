@@ -1,7 +1,10 @@
 """Resolve Recruitment-owned funnels per company (module-owned pipelines P0).
 
-Runtime wiring (candidate create, /meta/stages, analytics, UI) is a follow-up;
-this module defines the canonical resolution chain only.
+Runtime wiring (candidate create, /meta/stages, analytics, UI) is incremental;
+this module defines the canonical resolution chain and ownership validation.
+
+Funnel identity (canon): ``(company_id, module_key, type)`` + ``name`` for human label.
+There is no company default funnel without ``module_key``.
 """
 
 from __future__ import annotations
@@ -47,6 +50,10 @@ class RecruitmentFunnelNotFoundError(RecruitmentFunnelResolveError):
     """No funnel could be resolved for the requested scope."""
 
 
+class RecruitmentFunnelForbiddenError(RecruitmentFunnelResolveError):
+    """Explicit funnel_id violates company/module/type ownership — no fallback."""
+
+
 @dataclass(frozen=True)
 class RecruitmentFunnelResolveResult:
     funnel: Funnel
@@ -66,12 +73,15 @@ async def resolve_recruitment_funnel(
 ) -> RecruitmentFunnelResolveResult:
     """Resolve a Recruitment funnel for ``company_id`` using the P0 chain.
 
-    Order:
-    1. ``explicit_funnel_id`` when company-scoped and type matches
-    2. ``company_module_settings.recruitment.default_candidate_funnel_id`` (candidate only)
-    3. company default funnel (`is_default=true`)
-    4. legacy tenant-scoped funnel (`company_id IS NULL`) — strangler
-    5. platform seed funnel (`tenant_id='default'`)
+    Order (when ``explicit_funnel_id`` is omitted):
+    1. ``company_module_settings.recruitment.default_candidate_funnel_id`` (candidate only)
+    2. company default funnel (`is_default=true`, scoped by company_id + module_key + type)
+    3. legacy tenant-scoped funnel (`company_id IS NULL`) — strangler
+    4. platform seed funnel (`tenant_id='default'`)
+
+    When ``explicit_funnel_id`` is provided: load by id; on company mismatch →
+    ``RecruitmentFunnelForbiddenError`` (never fallback). When id missing →
+    ``RecruitmentFunnelNotFoundError``.
     """
     tid = str(tenant_id).strip()
     cid = str(company_id).strip()
@@ -96,19 +106,18 @@ async def resolve_recruitment_funnel(
         )
 
     if explicit_funnel_id:
-        explicit = await _load_company_scoped_funnel(
+        explicit = await _resolve_explicit_funnel(
             db,
             funnel_id=str(explicit_funnel_id).strip(),
             tenant_id=tid,
             company_id=cid,
             pipeline_type=pipeline_type,
         )
-        if explicit is not None:
-            return RecruitmentFunnelResolveResult(
-                funnel=explicit,
-                source="explicit",
-                used_legacy_strangler=False,
-            )
+        return RecruitmentFunnelResolveResult(
+            funnel=explicit,
+            source="explicit",
+            used_legacy_strangler=explicit.company_id is None,
+        )
 
     if pipeline_type == "candidate":
         cms_funnel = await _resolve_cms_default_candidate_funnel(
@@ -182,6 +191,64 @@ async def resolve_recruitment_funnel(
     )
 
 
+async def validate_recruitment_funnel_id_for_company(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+    funnel_id: str,
+    pipeline_type: RecruitmentPipelineType = "candidate",
+) -> Funnel:
+    """Validate an explicit funnel binding (profiles, vacancy config). Raises on violation."""
+    return await _resolve_explicit_funnel(
+        db,
+        funnel_id=funnel_id,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        pipeline_type=pipeline_type,
+    )
+
+
+async def _resolve_explicit_funnel(
+    db: AsyncSession,
+    *,
+    funnel_id: str,
+    tenant_id: str,
+    company_id: str,
+    pipeline_type: RecruitmentPipelineType,
+) -> Funnel:
+    if not funnel_id:
+        raise RecruitmentFunnelNotFoundError("explicit funnel_id is empty")
+
+    funnel = await _load_funnel_by_id(
+        db,
+        funnel_id=funnel_id,
+        tenant_id=tenant_id,
+        pipeline_type=pipeline_type,
+    )
+    if funnel is None:
+        raise RecruitmentFunnelNotFoundError(f"explicit funnel not found: {funnel_id}")
+
+    f_company = str(funnel.company_id or "").strip() or None
+    if f_company and f_company != str(company_id).strip():
+        raise RecruitmentFunnelForbiddenError(
+            f"funnel {funnel_id} belongs to company {f_company}, not {company_id}"
+        )
+
+    f_module = str(funnel.module_key or "").strip() or None
+    if f_module and f_module != RECRUITMENT_MODULE_KEY:
+        raise RecruitmentFunnelForbiddenError(
+            f"funnel {funnel_id} module_key={f_module} is not recruitment"
+        )
+
+    if str(funnel.type or "") != pipeline_type:
+        raise RecruitmentFunnelForbiddenError(
+            f"funnel {funnel_id} type={funnel.type} does not match {pipeline_type}"
+        )
+
+    return funnel
+
+
 async def _resolve_cms_default_candidate_funnel(
     db: AsyncSession,
     *,
@@ -195,21 +262,31 @@ async def _resolve_cms_default_candidate_funnel(
     raw_fid = settings.get("default_candidate_funnel_id")
     if not raw_fid or not str(raw_fid).strip():
         return None
-    return await _load_company_scoped_funnel(
-        db,
-        funnel_id=str(raw_fid).strip(),
-        tenant_id=tenant_id,
-        company_id=company_id,
-        pipeline_type="candidate",
-    )
+    try:
+        return await validate_recruitment_funnel_id_for_company(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            funnel_id=str(raw_fid).strip(),
+            pipeline_type="candidate",
+        )
+    except RecruitmentFunnelForbiddenError:
+        logger.warning(
+            "recruitment_funnel_resolver cms funnel forbidden tenant=%s company=%s funnel=%s",
+            tenant_id,
+            company_id,
+            raw_fid,
+        )
+        return None
+    except RecruitmentFunnelNotFoundError:
+        return None
 
 
-async def _load_company_scoped_funnel(
+async def _load_funnel_by_id(
     db: AsyncSession,
     *,
     funnel_id: str,
     tenant_id: str,
-    company_id: str,
     pipeline_type: RecruitmentPipelineType,
 ) -> Optional[Funnel]:
     stmt = (
@@ -217,9 +294,7 @@ async def _load_company_scoped_funnel(
         .options(selectinload(Funnel.stages))
         .where(
             Funnel.id == funnel_id,
-            Funnel.tenant_id == tenant_id,
-            Funnel.company_id == company_id,
-            Funnel.module_key == RECRUITMENT_MODULE_KEY,
+            Funnel.tenant_id.in_([tenant_id, PLATFORM_SEED_TENANT_ID]),
             Funnel.type == pipeline_type,
         )
         .limit(1)
@@ -257,3 +332,15 @@ async def _load_default_funnel(
 
     res = await db.execute(stmt)
     return res.scalar_one_or_none()
+
+
+def first_funnel_stage_code(funnel: Funnel) -> Optional[str]:
+    """First stage code by order (for default candidate/lead stage on create)."""
+    stages = list(getattr(funnel, "stages", None) or [])
+    if not stages:
+        return None
+    ordered = sorted(stages, key=lambda s: (int(getattr(s, "order", 0) or 0), str(s.code)))
+    if not ordered:
+        return None
+    code = str(getattr(ordered[0], "code", "") or "").strip()
+    return code or None

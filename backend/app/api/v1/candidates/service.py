@@ -476,6 +476,34 @@ async def create_candidate_full(
             # vacancy из допустимой компании — добавляем в набор для последующей проверки
             acl.vacancy_ids.add(str(v.id))
 
+    resolved_funnel_id: Optional[str] = None
+    if company_id_val:
+        from backend.app.services.recruitment_funnel_resolver import (
+            RecruitmentFunnelNotFoundError,
+            RecruitmentModuleNotEnabledError,
+            first_funnel_stage_code,
+            resolve_recruitment_funnel,
+        )
+
+        try:
+            funnel_result = await resolve_recruitment_funnel(
+                db,
+                tenant_id=tenant_id,
+                company_id=company_id_val,
+                pipeline_type="candidate",
+            )
+        except RecruitmentModuleNotEnabledError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except RecruitmentFunnelNotFoundError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        resolved_funnel_id = funnel_result.funnel.id
+        if stage_input is None or str(stage_input).strip() == "":
+            first_code = first_funnel_stage_code(funnel_result.funnel)
+            if first_code:
+                normalized_first = _normalize_stage_to_code(str(first_code))
+                if normalized_first:
+                    stage_code = normalized_first
+
     _mgr_in = payload.get("manager") if payload.get("manager") is not None else payload.get("manager_id")
     manager_val: Optional[str] = (str(_mgr_in or "").strip() or None)
     if manager_val:
@@ -602,6 +630,7 @@ async def create_candidate_full(
         "status_reason": status_reason_values,
         "company_id": company_id_val,
         "vacancy_id": vacancy_id_val,
+        "funnel_id": resolved_funnel_id,
         # UI visibility depends on own_company_id (resolved from Topbar).
         # If not set explicitly, list endpoints will filter it out.
         "own_company_id": own_company_id_val,

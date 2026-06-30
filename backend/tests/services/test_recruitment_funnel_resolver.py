@@ -12,6 +12,7 @@ from backend.app.models.tenant import Tenant, TenantStatus, TenantType
 from backend.app.services import company_module_settings_service as cms_svc
 from backend.app.services.recruitment_funnel_resolver import (
     PLATFORM_SEED_TENANT_ID,
+    RecruitmentFunnelForbiddenError,
     RecruitmentFunnelNotFoundError,
     RecruitmentModuleNotEnabledError,
     resolve_recruitment_funnel,
@@ -199,6 +200,46 @@ async def test_resolve_explicit_funnel_id(db) -> None:
     )
     assert result.funnel.id == explicit.id
     assert result.source == "explicit"
+
+
+@pytest.mark.anyio
+async def test_explicit_funnel_wrong_company_forbidden_not_fallback(db) -> None:
+    tenant_id = await _seed_tenant(db)
+    company_a = await _seed_company(db, tenant_id=tenant_id)
+    company_b = await _seed_company(db, tenant_id=tenant_id)
+    funnel_b = await _seed_funnel(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_b,
+        name="Company B funnel",
+    )
+    await db.commit()
+
+    with pytest.raises(RecruitmentFunnelForbiddenError):
+        await resolve_recruitment_funnel(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_a,
+            pipeline_type="candidate",
+            explicit_funnel_id=funnel_b.id,
+        )
+
+
+@pytest.mark.anyio
+async def test_explicit_missing_funnel_not_fallback(db) -> None:
+    tenant_id = await _seed_tenant(db)
+    company_id = await _seed_company(db, tenant_id=tenant_id)
+    await _seed_funnel(db, tenant_id=tenant_id, company_id=company_id)
+    await db.commit()
+
+    with pytest.raises(RecruitmentFunnelNotFoundError):
+        await resolve_recruitment_funnel(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            pipeline_type="candidate",
+            explicit_funnel_id=str(uuid.uuid4()),
+        )
 
 
 @pytest.mark.anyio

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from backend.app.constants.stages_adapter import DEFAULT_STAGE_CODE
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
@@ -61,6 +61,15 @@ router = APIRouter(prefix="/meta", tags=["meta"])
 async def stages_meta(
     db: AsyncSession = Depends(get_db),
     tenant_id_header: Optional[str] = Header(None, alias="X-Tenant-Id"),
+    company_id: Optional[str] = Query(
+        None,
+        description="Operating company scope for recruitment funnel stages (module-owned pipelines P0)",
+    ),
+    pipeline_type: str = Query(
+        "candidate",
+        pattern="^(candidate|lead)$",
+        description="Recruitment pipeline type for funnel resolution",
+    ),
     current_user: Optional[UserCtx] = Depends(get_current_user_optional),
 ):
     """
@@ -88,20 +97,39 @@ async def stages_meta(
             tenant_id_str = str(tenant_id)
 
             from backend.app.models.funnel import Funnel, FunnelStage
-
-            # Prefer default candidate funnel stages when available
-            funnel_stmt = (
-                select(Funnel)
-                .where(
-                    Funnel.tenant_id.in_([tenant_id_str, "default"]),
-                    Funnel.type == "candidate",
-                    Funnel.is_default == True,
-                )
-                .order_by(Funnel.tenant_id.desc())  # tenant's own funnel before default
-                .limit(1)
+            from backend.app.services.recruitment_funnel_resolver import (
+                RecruitmentFunnelNotFoundError,
+                RecruitmentModuleNotEnabledError,
+                resolve_recruitment_funnel,
             )
-            funnel_result = await db.execute(funnel_stmt)
-            funnel = funnel_result.scalar_one_or_none()
+
+            funnel = None
+            if company_id and str(company_id).strip():
+                try:
+                    resolved = await resolve_recruitment_funnel(
+                        db,
+                        tenant_id=tenant_id_str,
+                        company_id=str(company_id).strip(),
+                        pipeline_type="lead" if pipeline_type == "lead" else "candidate",
+                    )
+                    funnel = resolved.funnel
+                except RecruitmentModuleNotEnabledError as exc:
+                    raise HTTPException(status_code=403, detail=str(exc)) from exc
+                except RecruitmentFunnelNotFoundError as exc:
+                    raise HTTPException(status_code=422, detail=str(exc)) from exc
+            else:
+                funnel_stmt = (
+                    select(Funnel)
+                    .where(
+                        Funnel.tenant_id.in_([tenant_id_str, "default"]),
+                        Funnel.type == "candidate",
+                        Funnel.is_default == True,
+                    )
+                    .order_by(Funnel.tenant_id.desc())  # tenant's own funnel before default
+                    .limit(1)
+                )
+                funnel_result = await db.execute(funnel_stmt)
+                funnel = funnel_result.scalar_one_or_none()
 
             if funnel:
                 stages_stmt = (
