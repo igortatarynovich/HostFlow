@@ -4,31 +4,53 @@ import { listFunnels, type Funnel } from '../../api/funnels'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 interface FunnelSelectorProps {
+  companyId: string | null | undefined
   value: string | null | undefined
   onChange: (funnelId: string | null) => void
   disabled?: boolean
 }
 
-export default function FunnelSelector({ value, onChange, disabled = false }: FunnelSelectorProps) {
+export default function FunnelSelector({
+  companyId,
+  value,
+  onChange,
+  disabled = false,
+}: FunnelSelectorProps) {
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [loading, setLoading] = useState(true)
 
+  const scopeCompanyId = String(companyId || '').trim()
+
   const load = useCallback(async () => {
+    if (!scopeCompanyId) {
+      setFunnels([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
     try {
-      const list = await listFunnels({ type: 'candidate' })
+      const list = await listFunnels({ companyId: scopeCompanyId, type: 'candidate' })
       setFunnels(list)
     } catch {
       setFunnels([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [scopeCompanyId])
 
   useEffect(() => {
     void load()
   }, [load])
 
   const selectedFunnel = funnels.find((f) => f.id === value)
+
+  if (!scopeCompanyId) {
+    return (
+      <p className="text-sm text-slate-500">
+        Выберите компанию (client), чтобы привязать company-scoped воронку.
+      </p>
+    )
+  }
 
   if (loading) {
     return <div className="text-sm text-slate-500">Загрузка воронок…</div>
@@ -53,7 +75,7 @@ export default function FunnelSelector({ value, onChange, disabled = false }: Fu
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          Этапы берутся из справочника воронок.{' '}
+          Этапы берутся из company-scoped воронок (recruitment).{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
             Редактировать воронки
           </Link>

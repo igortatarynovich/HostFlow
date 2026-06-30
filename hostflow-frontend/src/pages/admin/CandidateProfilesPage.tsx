@@ -1098,6 +1098,7 @@ function ProfileForm({
             {t('admin.candidate_profiles_page.form.section_funnel')}
           </h3>
           <FunnelSelector
+            companyId={profile?.client_id}
             value={funnelId}
             onChange={setFunnelId}
             disabled={saving || !!profile?.is_system}

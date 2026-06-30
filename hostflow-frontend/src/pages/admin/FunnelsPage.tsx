@@ -41,6 +41,7 @@ import { Modal } from '../../components/Modal'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { refreshMetaStagesCache } from '../../store/useMeta'
 import { DEFAULT_STAGE_CODES } from '../../modules/dashboard/constants'
+import { listCompanies } from '../../api/client'
 
 function SortableStageRow({
   stage,
@@ -480,11 +481,13 @@ function FunnelCreateModal({
   onSave,
   disabled,
   funnelType,
+  companyId,
 }: {
   onClose: () => void
   onSave: (data: FunnelCreate) => Promise<void>
   disabled?: boolean
   funnelType: 'candidate' | 'lead'
+  companyId: string
 }) {
   const { t } = useI18n()
   const [name, setName] = useState('')
@@ -495,7 +498,7 @@ function FunnelCreateModal({
       alert(t('admin.funnels.validation_funnel_name'))
       return
     }
-    await onSave({ type: funnelType, name: name.trim(), is_default: isDefault })
+    await onSave({ company_id: companyId, type: funnelType, name: name.trim(), is_default: isDefault })
   }
 
   return (
@@ -556,6 +559,8 @@ export default function FunnelsPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
+  const [companyOptions, setCompanyOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [companyId, setCompanyId] = useState<string>('')
   const [funnelTab, setFunnelTab] = useState<'candidate' | 'lead'>('candidate')
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [selectedFunnel, setSelectedFunnel] = useState<Funnel | null>(null)
@@ -576,10 +581,46 @@ export default function FunnelsPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  const loadCompanies = useCallback(async () => {
+    try {
+      const data = await listCompanies({ limit: 200 })
+      const source = Array.isArray((data as { items?: unknown[] })?.items)
+        ? (data as { items: Array<{ id?: string; name?: string; title?: string }> }).items
+        : Array.isArray(data)
+          ? (data as Array<{ id?: string; name?: string; title?: string }>)
+          : []
+      const mapped = source
+        .map((c) => ({
+          id: String(c.id || '').trim(),
+          name: String(c.name || c.title || c.id || '').trim(),
+        }))
+        .filter((c) => c.id)
+      setCompanyOptions(mapped)
+      setCompanyId((prev) => {
+        if (prev && mapped.some((c) => c.id === prev)) return prev
+        return mapped[0]?.id || ''
+      })
+    } catch {
+      setCompanyOptions([])
+      setCompanyId('')
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCompanies()
+  }, [loadCompanies])
+
   const loadFunnels = useCallback(async () => {
+    if (!companyId) {
+      setFunnels([])
+      setSelectedFunnel(null)
+      setStages([])
+      setLoading(false)
+      return
+    }
     try {
       setPageError(null)
-      const list = await listFunnels({ type: funnelTab })
+      const list = await listFunnels({ companyId, type: funnelTab })
       setFunnels(list)
       if (list.length > 0) {
         setSelectedFunnel((prev) => {
@@ -602,7 +643,7 @@ export default function FunnelsPage() {
     } finally {
       setLoading(false)
     }
-  }, [funnelTab, planLimitModal, t])
+  }, [companyId, funnelTab, planLimitModal, t])
 
   useEffect(() => {
     setLoading(true)
@@ -819,6 +860,36 @@ export default function FunnelsPage() {
     [planLimitModal, stages, selectedFunnel, refreshSelectedFunnel, t]
   )
 
+  const companyScopeBar = (
+    <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+      <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1">
+          {t('admin.funnels.company_scope', { defaultValue: 'Company' })}
+        </label>
+        <select
+          value={companyId}
+          onChange={(e) => {
+            setCompanyId(e.target.value)
+            setLoading(true)
+          }}
+          className="input min-w-[220px]"
+        >
+          <option value="">
+            {t('admin.funnels.select_company', { defaultValue: 'Select company…' })}
+          </option>
+          {companyOptions.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <span className="inline-flex self-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-800">
+        recruitment
+      </span>
+    </div>
+  )
+
   const errorBanner = pageError ? (
     <ErrorRecoveryBanner
       info={pageError}
@@ -834,8 +905,23 @@ export default function FunnelsPage() {
   if (loading) {
     return (
       <div className="space-y-4">
+        {companyScopeBar}
         <div className="text-sm text-slate-500">
           {t('common.loading')}
+        </div>
+      </div>
+    )
+  }
+
+  if (!companyId) {
+    return (
+      <div className="space-y-4">
+        {errorBanner}
+        {companyScopeBar}
+        <div className="card p-8 text-center text-slate-600">
+          {t('admin.funnels.select_company_hint', {
+            defaultValue: 'Select a company to manage its recruitment funnels.',
+          })}
         </div>
       </div>
     )
@@ -876,6 +962,7 @@ export default function FunnelsPage() {
             {t('admin.funnels.tab_leads')}
           </button>
         </div>
+        {companyScopeBar}
         <div className="card p-8 text-center">
           <p className="text-slate-600 mb-4">
             {funnelTab === 'lead' ? t('admin.funnels.no_funnels_leads') : t('admin.funnels.no_funnels')}
@@ -888,12 +975,13 @@ export default function FunnelsPage() {
             + {t('admin.funnels.create_funnel')}
           </button>
         </div>
-        {showCreateFunnelModal && (
+        {showCreateFunnelModal && companyId && (
           <FunnelCreateModal
             onClose={() => setShowCreateFunnelModal(false)}
             onSave={handleCreateFunnel}
             disabled={saving}
             funnelType={funnelTab}
+            companyId={companyId}
           />
         )}
       </div>
@@ -936,6 +1024,7 @@ export default function FunnelsPage() {
           </button>
         </div>
       </div>
+      {companyScopeBar}
 
       <div className="settings-toolbar">
         <div>
@@ -1094,12 +1183,13 @@ export default function FunnelsPage() {
           funnelType={funnelTab}
         />
       )}
-      {showCreateFunnelModal && (
+      {showCreateFunnelModal && companyId && (
         <FunnelCreateModal
           onClose={() => setShowCreateFunnelModal(false)}
           onSave={handleCreateFunnel}
           disabled={saving}
           funnelType={funnelTab}
+          companyId={companyId}
         />
       )}
     </div>

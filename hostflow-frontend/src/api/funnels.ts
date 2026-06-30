@@ -36,13 +36,17 @@ export interface FunnelStageCreate {
 export interface Funnel {
   id: string
   tenant_id: string
+  company_id?: string | null
+  module_key?: string | null
   type: 'candidate' | 'lead' | 'deal'
   name: string
   is_default: boolean
+  is_legacy_readonly?: boolean
   stages: FunnelStage[]
 }
 
 export interface FunnelCreate {
+  company_id: string
   type: 'candidate' | 'lead' | 'deal'
   name: string
   is_default?: boolean
@@ -55,15 +59,20 @@ export interface FunnelUpdate {
 }
 
 export interface ListFunnelsOptions {
+  companyId: string
   type?: 'candidate' | 'lead' | 'deal'
+  moduleKey?: string
 }
 
-export async function listFunnels(options?: ListFunnelsOptions): Promise<Funnel[]> {
-  const params: Record<string, string> = {}
-  if (options?.type) params.type = options.type
+export async function listFunnels(options: ListFunnelsOptions): Promise<Funnel[]> {
+  const params: Record<string, string> = {
+    company_id: options.companyId,
+  }
+  if (options.type) params.type = options.type
+  if (options.moduleKey) params.module_key = options.moduleKey
 
   const { data } = await api.get<Funnel[]>('/funnels', { params })
-  return data
+  return (data || []).filter((f) => !f.is_legacy_readonly)
 }
 
 export async function getFunnel(funnelId: string): Promise<Funnel> {

@@ -227,18 +227,19 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 | Process Engine stage mapping | ✅ assignment | `resolve_candidate_funnel_id_for_runtime` |
 | Lead stage contracts | ✅ display resolve | per-lead when `company_id` set |
 | Seeds / Alembic / demo bootstrap | ⏸ legacy | intentional; M6 removes tenant-wide creation |
-| Funnels CRUD API + UI | ⏸ M4 | still tenant-scoped |
+| Funnels CRUD API + UI | ✅ M4 | `company_id` required; recruitment gate; legacy read-only |
 | Analytics `/analytics/funnel` | ⏸ M5 | deferred |
 | `_bootstrap_default_funnels_for_business_type` | ⏸ M6 | deferred |
 
 ### Phase M4 — API + UI
 
-| Surface | Required change |
-|---------|-----------------|
-| `GET/POST/PATCH /api/v1/funnels` | Required `company_id` (query or body); filter lists by company + `module_key`; gate `company_allows_module(..., 'recruitment')` |
-| `hostflow-frontend` Funnels settings | Scope to **active company**; show module badge `recruitment` |
-| `FunnelSelector`, profile admin | Pass `company_id`; list company funnels only |
-| Company module settings UI | Display resolved default; optional picker for `default_candidate_funnel_id` (minimal — full forms after P0) |
+| Surface | Required change | Status |
+|---------|-----------------|--------|
+| `GET/POST/PATCH /api/v1/funnels` | Required `company_id` (query or body); filter lists by company + `module_key`; gate `company_allows_module(..., 'recruitment')` | ✅ |
+| `hostflow-frontend` Funnels settings | Scope to **active company**; show module badge `recruitment` | ✅ |
+| `FunnelSelector`, profile admin | Pass `company_id`; list company funnels only | ✅ |
+| Company module settings UI | Display resolved default; optional picker for `default_candidate_funnel_id` (minimal — full forms after P0) | deferred |
+| Legacy tenant funnels | Read-only via GET by id (strangler); excluded from list/create | ✅ |
 
 ### Phase M5 — Analytics strangler
 
@@ -264,8 +265,8 @@ P0 gate is **closed** when all are true:
 - [ ] `resolve_recruitment_funnel` covered by tests for full chain (§5).
 - [ ] Candidate and lead creation use resolver; wrong-company funnel rejected on profile PATCH.
 - [ ] `/meta/stages` returns stages for **company-scoped** funnel when `company_id` provided.
-- [ ] Funnels API requires company context; recruitment module gate enforced.
-- [ ] SPA funnels UI lists/edits company funnels only.
+- [x] Funnels API requires company context; recruitment module gate enforced.
+- [x] SPA funnels UI lists/edits company funnels only (`FunnelsPage`, `FunnelSelector`).
 - [ ] No **new** runtime gate logic reads only legacy four-bucket `system_stage`.
 - [x] `RecruitmentModuleSettingsV1.default_candidate_funnel_id` read on resolver path step 2.
 - [x] Partial unique indexes for default funnel per `(company_id, module_key, type)` — migration `202606300002`.
