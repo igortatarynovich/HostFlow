@@ -67,8 +67,8 @@ async def stages_meta(
     ),
     pipeline_type: str = Query(
         "candidate",
-        pattern="^(candidate|lead)$",
-        description="Recruitment pipeline type for funnel resolution",
+        pattern="^(candidate|lead|employee)$",
+        description="Pipeline type for funnel resolution (recruitment candidate/lead or HR employee)",
     ),
     current_user: Optional[UserCtx] = Depends(get_current_user_optional),
 ):
@@ -97,65 +97,127 @@ async def stages_meta(
             tenant_id_str = str(tenant_id)
 
             from backend.app.models.funnel import Funnel, FunnelStage
-            from backend.app.services.recruitment_funnel_resolver import (
-                RecruitmentFunnelNotFoundError,
-                RecruitmentModuleNotEnabledError,
-                resolve_recruitment_funnel,
-            )
 
-            funnel = None
-            if company_id and str(company_id).strip():
+            if pipeline_type == "employee":
+                from backend.app.constants.funnel_types import HR_MODULE_KEY
+                from backend.app.services.hr_employee_funnel_resolver import (
+                    HrEmployeeFunnelNotFoundError,
+                    HrModuleNotEnabledError,
+                    resolve_hr_employee_funnel,
+                )
+
+                if not company_id or not str(company_id).strip():
+                    raise HTTPException(
+                        status_code=422,
+                        detail="company_id is required for pipeline_type=employee",
+                    )
                 try:
-                    resolved = await resolve_recruitment_funnel(
+                    resolved = await resolve_hr_employee_funnel(
                         db,
                         tenant_id=tenant_id_str,
                         company_id=str(company_id).strip(),
-                        pipeline_type="lead" if pipeline_type == "lead" else "candidate",
                     )
                     funnel = resolved.funnel
-                except RecruitmentModuleNotEnabledError as exc:
+                except HrModuleNotEnabledError as exc:
                     raise HTTPException(status_code=403, detail=str(exc)) from exc
-                except RecruitmentFunnelNotFoundError as exc:
+                except HrEmployeeFunnelNotFoundError as exc:
                     raise HTTPException(status_code=422, detail=str(exc)) from exc
-            else:
-                funnel_stmt = (
-                    select(Funnel)
-                    .where(
-                        Funnel.tenant_id.in_([tenant_id_str, "default"]),
-                        Funnel.type == "candidate",
-                        Funnel.is_default == True,
-                    )
-                    .order_by(Funnel.tenant_id.desc())  # tenant's own funnel before default
-                    .limit(1)
-                )
-                funnel_result = await db.execute(funnel_stmt)
-                funnel = funnel_result.scalar_one_or_none()
 
-            if funnel:
                 stages_stmt = (
                     select(FunnelStage)
                     .where(FunnelStage.funnel_id == funnel.id)
                     .order_by(FunnelStage.order, FunnelStage.code)
                 )
-                stages_result = await db.execute(stages_stmt)
-                funnel_stages = list(stages_result.scalars().all())
+                funnel_stages = [
+                    s
+                    for s in (await db.execute(stages_stmt)).scalars().all()
+                    if str(getattr(s, "pe_maps_to_module", None) or "").strip() == HR_MODULE_KEY
+                    and str(getattr(s, "pe_maps_to_code", None) or "").strip()
+                ]
+                if not funnel_stages:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="HR employee funnel has no hr.* mapped stages",
+                    )
+                funnel_id_out = funnel.id
+                merged_labels = {}
+                merged_order = []
+                for s in funnel_stages:
+                    merged_labels[s.code] = s.label
+                    merged_order.append(s.code)
+                custom_stages = [
+                    {
+                        "code": s.code,
+                        "label": s.label,
+                        "order": s.order,
+                        "id": s.id,
+                        "pe_maps_to_module": s.pe_maps_to_module,
+                        "pe_maps_to_code": s.pe_maps_to_code,
+                    }
+                    for s in funnel_stages
+                ]
+            else:
+                from backend.app.services.recruitment_funnel_resolver import (
+                    RecruitmentFunnelNotFoundError,
+                    RecruitmentModuleNotEnabledError,
+                    resolve_recruitment_funnel,
+                )
 
-                if funnel_stages:
-                    funnel_id_out = funnel.id
-                    merged_labels = {}
-                    merged_order = []
-                    for s in funnel_stages:
-                        merged_labels[s.code] = s.label
-                        merged_order.append(s.code)
-                    custom_stages = [
-                        {"code": s.code, "label": s.label, "order": s.order, "id": s.id}
-                        for s in funnel_stages
-                    ]
+                funnel = None
+                if company_id and str(company_id).strip():
+                    try:
+                        resolved = await resolve_recruitment_funnel(
+                            db,
+                            tenant_id=tenant_id_str,
+                            company_id=str(company_id).strip(),
+                            pipeline_type="lead" if pipeline_type == "lead" else "candidate",
+                        )
+                        funnel = resolved.funnel
+                    except RecruitmentModuleNotEnabledError as exc:
+                        raise HTTPException(status_code=403, detail=str(exc)) from exc
+                    except RecruitmentFunnelNotFoundError as exc:
+                        raise HTTPException(status_code=422, detail=str(exc)) from exc
+                else:
+                    funnel_stmt = (
+                        select(Funnel)
+                        .where(
+                            Funnel.tenant_id.in_([tenant_id_str, "default"]),
+                            Funnel.type == "candidate",
+                            Funnel.is_default == True,
+                        )
+                        .order_by(Funnel.tenant_id.desc())  # tenant's own funnel before default
+                        .limit(1)
+                    )
+                    funnel_result = await db.execute(funnel_stmt)
+                    funnel = funnel_result.scalar_one_or_none()
+
+                if funnel:
+                    stages_stmt = (
+                        select(FunnelStage)
+                        .where(FunnelStage.funnel_id == funnel.id)
+                        .order_by(FunnelStage.order, FunnelStage.code)
+                    )
+                    stages_result = await db.execute(stages_stmt)
+                    funnel_stages = list(stages_result.scalars().all())
+
+                    if funnel_stages:
+                        funnel_id_out = funnel.id
+                        merged_labels = {}
+                        merged_order = []
+                        for s in funnel_stages:
+                            merged_labels[s.code] = s.label
+                            merged_order.append(s.code)
+                        custom_stages = [
+                            {"code": s.code, "label": s.label, "order": s.order, "id": s.id}
+                            for s in funnel_stages
+                        ]
+        except HTTPException:
+            raise
         except (ValueError, Exception):
             pass
 
-    # Fallback: use candidate_stage_dict if no funnel stages
-    if not funnel_id_out and tenant_id_header:
+    # Fallback: use candidate_stage_dict if no funnel stages (recruitment only)
+    if not funnel_id_out and tenant_id_header and pipeline_type != "employee":
         try:
             tenant_id = UUID(tenant_id_header.strip())
             tenant_id_str = str(tenant_id)
@@ -231,8 +293,10 @@ async def stages_meta(
     }
     if funnel_id_out:
         out["funnel_id"] = funnel_id_out
+    if pipeline_type == "employee":
+        out["pipeline_type"] = "employee"
     tid = (tenant_id_header or "").strip()
-    if tid and current_user is not None:
+    if tid and current_user is not None and pipeline_type != "employee":
         out = await apply_handoff_stage_meta_for_user(db, tid, current_user, out)
     return out
 

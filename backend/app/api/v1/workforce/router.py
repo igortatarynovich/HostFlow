@@ -163,6 +163,7 @@ class EmployeeCreate(BaseModel):
     probation_end: Optional[date] = None
     notes: Optional[str] = None
     meta: Optional[dict[str, Any]] = None
+    pipeline_stage: Optional[str] = Field(default=None, max_length=64)
     initial_insurance_zus_registration_type: Optional[str] = Field(default=None, max_length=64)
     initial_insurance_status: Optional[str] = Field(default=None, max_length=32)
     initial_eligibility_status: Optional[str] = Field(default=None, max_length=32)
@@ -1221,6 +1222,7 @@ async def create_employee_endpoint(
         probation_end=payload.probation_end,
         notes=payload.notes,
         meta=payload.meta,
+        pipeline_stage=payload.pipeline_stage,
         initial_insurance_zus_registration_type=payload.initial_insurance_zus_registration_type,
         initial_insurance_status=payload.initial_insurance_status,
         initial_eligibility_status=payload.initial_eligibility_status,

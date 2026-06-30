@@ -715,11 +715,28 @@ async def create_employee(
     probation_end: Optional[date] = None,
     notes: Optional[str] = None,
     meta: Optional[dict[str, Any]] = None,
+    pipeline_stage: Optional[str] = None,
+    explicit_funnel_id: Optional[str] = None,
     initial_insurance_zus_registration_type: Optional[str] = None,
     initial_insurance_status: Optional[str] = None,
     initial_eligibility_status: Optional[str] = None,
 ) -> WorkforceEmployee:
     st = status if status in ALLOWED_STATUS else "onboarding"
+    company_scope = str(company_id or own_company_id or "").strip() or None
+    meta_out = dict(meta or {})
+    if company_scope:
+        from backend.app.services.hr_employee_funnel_assignment import (
+            assign_hr_employee_pipeline_on_create,
+        )
+
+        meta_out = await assign_hr_employee_pipeline_on_create(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_scope,
+            employee_meta=meta_out,
+            explicit_funnel_id=explicit_funnel_id,
+            pipeline_stage=pipeline_stage,
+        )
     row = WorkforceEmployee(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -734,7 +751,7 @@ async def create_employee(
         probation_end=probation_end,
         notes=notes,
         candidate_snapshot=candidate_snapshot,
-        meta=meta,
+        meta=meta_out,
     )
     db.add(row)
     await db.flush()
