@@ -42,7 +42,7 @@ This phase **does not** ship employee funnel runtime, `resolve_hr_funnel`, HR da
 
 | Item | Reason |
 |------|--------|
-| `resolve_hr_funnel` | HR employee pipeline gate — separate milestone |
+| `resolve_hr_funnel` / `resolve_hr_employee_funnel` | HR employee pipeline gate — [`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md) |
 | HR `funnels` / `module_key=hr` rows | Module-owned pipeline pattern deferred |
 | `PePipelineTemplate` / `PeProcessProfile` for HR | No HR pipeline runtime in P0 |
 | HR transition / field / document requirement rules (runtime) | After manifest + HR pipeline ADR |
@@ -119,7 +119,7 @@ Recruitment manifest continues to declare outbound target `hr.received_from_recr
 
 **PASS:** HR operations can resolve **`hr.*`** stages via Process Engine registry and `validate_pe_system_stage` without borrowing recruitment funnel stages or legacy `system_stage` four-bucket semantics.
 
-**Next milestone:** HR employee pipeline (`module_key=hr`, company-scoped funnel, `resolve_hr_funnel`) — separate gate referencing Recruitment P0 template.
+**Next milestone:** HR employee pipeline — **[`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md)** (gate open; `resolve_hr_employee_funnel`, company-scoped `module_key=hr`, `type=employee`).
 
 ---
 

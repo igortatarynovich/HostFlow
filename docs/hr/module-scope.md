@@ -169,7 +169,7 @@ HR-модуль в целом должен давать тенанту отве�
 
 HR owns **`hr.*` system stages** in Process Engine (not recruitment funnel stages or legacy four-bucket `system_stage`). Registration only — no employee funnel / `resolve_hr_funnel` in this phase.
 
-Spec: [`hr-process-manifest-p0.md`](../specs/architecture/hr-process-manifest-p0.md). Recruitment company-scoped funnels: [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md).
+Spec: [`hr-process-manifest-p0.md`](../specs/architecture/hr-process-manifest-p0.md). Employee pipeline gate (not implemented): [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md).
 
 ## Сопровождение
 

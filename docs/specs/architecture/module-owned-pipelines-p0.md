@@ -405,7 +405,7 @@ These items were **deferred by design**. §7 gate is satisfied without them. **H
 | Item | Reason | When |
 |------|--------|------|
 | HR Process Engine manifest (`hr.*` stages) | ✅ P0 shipped — [`hr-process-manifest-p0.md`](hr-process-manifest-p0.md) |
-| HR employee pipeline | Depends on HR manifest — **next** separate gate |
+| HR employee pipeline | Gate open — [`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md) | After HR manifest |
 | Fleet / Services / Finance pipelines | Separate `module_key` values | Separate ADR/gate per module |
 | Removing `system_stage` column | Strangler period | Strangler removal milestone |
 | Removing tenant-wide funnels entirely | Legacy profiles + analytics | After backfill / dashboard migration |
@@ -425,11 +425,11 @@ Register **`hr.*` system stages** in Process Engine — **done**. See **[`hr-pro
 
 Confirms platform canon: **PE evaluator is shared; stage namespaces belong to modules.** No HR employee funnel resolver until separate HR pipeline gate.
 
-**Next authorized HR work:** HR employee pipeline (`module_key=hr`, company-scoped funnel, `resolve_hr_funnel`) — separate gate.
+**Next authorized HR work:** HR employee pipeline — **[`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md)** (gate open).
 
-### 9.2 Then: HR employee pipeline
+### 9.2 HR employee pipeline (gate open)
 
-Company-scoped funnels with `module_key=hr`, resolver `resolve_hr_funnel` — **separate gate** referencing this document as template.
+Company-scoped funnels with `module_key=hr`, `type=employee`, resolver **`resolve_hr_employee_funnel`**, CMS **`employee_pipeline_funnel_id`**. Spec: **[`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md)**. **Not implemented** until §7 checklist in that doc is satisfied.
 
 ### 9.3 Later
 
@@ -455,3 +455,4 @@ Company-scoped funnels with `module_key=hr`, resolver `resolve_hr_funnel` — **
 - 2026-06: M1/M2 hardening — default funnel partial unique indexes, full stage clone on backfill, explicit funnel Forbidden (no fallback), profile funnel gate, M3 resolver wiring (candidate/lead create, `/meta/stages`).
 - 2026-06-30: M4–M6 + CMS picker delivered; **§7 gate closure PASS WITH NOTES** — HR manifest authorized as next work (§9.1).
 - 2026-06-30: **HR Process Manifest P0** shipped — [`hr-process-manifest-p0.md`](hr-process-manifest-p0.md).
+- 2026-06-30: **HR Employee Pipeline P0 gate** spec — [`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md) (architecture only).
