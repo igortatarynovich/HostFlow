@@ -1,6 +1,6 @@
 # Module-owned pipelines P0 — Recruitment / company-scoped funnels
 
-**Status:** Architecture gate before migration (L2 operating canon). **No migration PR merges without this gate marked satisfied in the PR checklist.**
+**Status:** **P0 gate CLOSED** — `PASS WITH NOTES` (2026-06-30). See **§7 Gate closure**. Next authorized work: **HR manifest** (§9); not dashboard UI.
 
 **Owner:** Architecture canon + platform core team.
 
@@ -24,7 +24,7 @@ HostFlow split **product modules** (Recruitment, HR, Fleet, …) in code and ADR
 | `funnels` / `funnel_stages` | `tenant_id` only | One pipeline set for whole workspace |
 | Legacy `system_stage` on stages | Four buckets shared by all funnel types | Implies one cross-module skeleton |
 | `/meta/stages`, analytics, UI funnels | Tenant default funnel | Ignores `company_id` and `company_module_settings` |
-| `RecruitmentModuleSettingsV1.default_candidate_funnel_id` | Stored, **not read** at runtime | Module settings hang in the air |
+| `RecruitmentModuleSettingsV1.default_candidate_funnel_id` | Stored in CMS; **read** at resolver step 2; validated on PATCH | ✅ wired (M2/M6+) |
 
 Until funnels are **company-scoped** and **module-owned**, HostFlow remains a **CRM with separated screens**, not a modular platform. **Module independence starts with process ownership**, not UI.
 
@@ -87,18 +87,20 @@ A tenant with **Recruitment only** must function without HR manifests, HR funnel
 
 ---
 
-## 3. Current state (as-is inventory)
+## 3. Current state (post-P0 — historical baseline in §3 was pre-M1)
 
-| Location | Behaviour today |
-|----------|-----------------|
-| `backend/app/models/funnel.py` | `tenant_id`, `type`, `is_default`; no `company_id`, no `module_key` |
-| `backend/app/modules/companies/crud.py` | `_ensure_default_funnel_if_missing` seeds **tenant** funnels on onboarding |
-| `backend/app/api/v1/funnels.py` | CRUD scoped to `tenant_id`; legacy `SYSTEM_STAGES` four buckets |
-| `backend/app/api/v1/meta.py` `/meta/stages` | Default **tenant** candidate funnel |
-| `backend/app/schemas/company_module_settings_json.py` | `RecruitmentModuleSettingsV1.default_candidate_funnel_id` — unused at runtime |
-| `backend/app/process_engine/manifests/recruitment.py` | Only recruitment manifest registered |
-| `hostflow-frontend/.../FunnelsPage.tsx` | Tenant-wide settings UI |
-| `backend/app/api/v1/analytics.py` `/analytics/funnel` | Aggregates `Candidate.stage` codes tenant-wide; not funnel-definition-aware |
+| Location | Behaviour after P0 gate |
+|----------|---------------------------|
+| `backend/app/models/funnel.py` | `company_id`, `module_key` on funnels; partial unique default indexes |
+| `backend/app/modules/companies/crud.py` | Company-scoped bootstrap via `bootstrap_recruitment_funnels_for_company` (M6) |
+| `backend/app/api/v1/funnels.py` | CRUD requires `company_id`; `module_key=recruitment`; legacy tenant rows read-only |
+| `backend/app/api/v1/meta.py` `/meta/stages` | Resolves company-scoped funnel when `company_id` provided |
+| `backend/app/schemas/company_module_settings_json.py` | `default_candidate_funnel_id` validated + CMS picker (recruitment tab) |
+| `backend/app/services/recruitment_funnel_resolver.py` | Canonical resolution chain (§5); CMS step 2 |
+| `hostflow-frontend/.../FunnelsPage.tsx` | Company-scoped funnels UI (M4) |
+| `backend/app/api/v1/analytics.py` `/analytics/funnel` | Company-scoped + explicit `legacy_tenant` mode (M5) |
+
+Pre-M1 inventory retained in git history of this file for migration archaeology.
 
 ---
 
@@ -265,61 +267,187 @@ Work proceeds in **ordered PRs**; each PR references this gate.
 
 ---
 
-## 7. Acceptance criteria (gate checklist)
+## 7. Gate closure
+
+**Verdict:** **PASS WITH NOTES**  
+**Date:** 2026-06-30  
+**Branch evidence:** `feat/documents-runtime-expiry-engine` — commits through `4fb775ca` (M1–M6 + CMS picker).
+
+Recruitment **module-owned, company-scoped pipelines P0** is formally closed. Further Recruitment funnel work must not expand tenant-wide operational scope (see **§7.4**). Next platform priority: **HR Process Engine manifest** (§9).
+
+---
+
+### 7.1 Checklist — final status
+
+| # | Criterion | Status | Evidence / note |
+|---|-----------|--------|-----------------|
+| 1 | Alembic migration applied; no **new** operational funnel without `company_id` | ✅ **PASS** | `202606300001_funnels_company_module_scope_p0`, `202606300002_funnels_default_uniqueness_p0`. Legacy rows with `company_id IS NULL` **allowed** during strangler (§7.3). **Note:** column still nullable; NOT NULL enforcement deferred until strangler removal. |
+| 2 | `resolve_recruitment_funnel` full chain tested (§5) | ✅ **PASS** | `backend/tests/services/test_recruitment_funnel_resolver.py` — CMS, company default, legacy tenant, platform seed, explicit id, wrong-company Forbidden, recruitment disabled, lead type. |
+| 3 | Candidate / lead creation use resolver; profile PATCH rejects wrong company | ✅ **PASS** | `test_recruitment_funnel_assignment.py`; `candidate_profiles` API uses `validate_recruitment_funnel_id_for_company`. |
+| 4 | `/meta/stages` company-scoped when `company_id` provided | ✅ **PASS** | Wired M3; resolver direct call. |
+| 5 | Funnels API requires company context; recruitment gate | ✅ **PASS** | M4 — `test_funnels_api_company_scope_m4.py`. |
+| 6 | SPA funnels UI company-scoped | ✅ **PASS** | `FunnelsPage`, `FunnelSelector` (M4). |
+| 7 | `/analytics/funnel` company-scoped; explicit legacy mode | ✅ **PASS** | M5 — `test_analytics_funnel_m5.py`. |
+| 8 | No **new** runtime gate logic reads only legacy four-bucket `system_stage` | ✅ **PASS** (policy) | PE mapping (`pe_maps_to_module` / `pe_maps_to_code`) is gate truth (§2.5). Column retained for analytics strangler. **Note:** no automated repo-wide audit; enforced via §10 PR review. |
+| 9 | `default_candidate_funnel_id` read on resolver step 2 | ✅ **PASS** | `_resolve_cms_default_candidate_funnel`; CMS PATCH validated (`test_recruitment_cms_default_funnel.py`). |
+| 10 | Partial unique indexes per `(company_id, module_key, type)` | ✅ **PASS** | Migration `202606300002`; legacy tenant partial index for strangler. |
+| 11 | `CandidateProfile.funnel_id` validated vs company | ✅ **PASS** | M3 hardening. |
+| 12 | M3 wired + hardening (assignment, reconcile, metrics) | ✅ **PASS** | §6 M3 audit table; `test_recruitment_funnel_metrics.py`. |
+| 13 | Legacy tenant funnel works for unmigrated profiles (logged + metrics) | ✅ **PASS** | Resolver step 4; `legacy_strangler_hits` / `record_recruitment_funnel_resolve`. |
+| 14 | `recruitment/module-scope.md` documents company-scoped ownership | ✅ **PASS** | Updated § Pipeline ownership (see `docs/recruitment/module-scope.md`). |
+
+**Deferred (not gate blockers):**
+
+| Item | Disposition |
+|------|-------------|
+| Recruitment dashboard UI refresh | Post-gate; lower priority than HR manifest |
+| Full typed CMS forms (replace JSON editor) | Post-gate (§9 item 3) |
+| Physical removal of tenant-wide funnels / `system_stage` column | Strangler phase (§8) |
+| Backfill every historical profile to company funnel | Optional migration; legacy resolver path covers gap |
+
+---
+
+### 7.2 Test inventory (Recruitment pipeline P0)
+
+| Area | Test file(s) |
+|------|----------------|
+| Resolver chain | `tests/services/test_recruitment_funnel_resolver.py` |
+| Runtime assignment + reconcile | `tests/services/test_recruitment_funnel_assignment.py` |
+| Resolve telemetry | `tests/services/test_recruitment_funnel_metrics.py` |
+| Funnels API (M4) | `tests/api/test_funnels_api_company_scope_m4.py` (+ source-level guards in same file) |
+| Analytics (M5) | `tests/api/test_analytics_funnel_m5.py` |
+| Bootstrap (M6) | `tests/services/test_recruitment_funnel_bootstrap_m6.py` |
+| CMS default funnel | `tests/services/test_recruitment_cms_default_funnel.py`, `tests/api/test_company_module_settings_api.py` (`test_patch_recruitment_default_candidate_funnel`) |
+| PE funnel stage mapping | `tests/process_engine/test_process_engine_p4.py` (PE columns + API helper) |
+
+Integration tests require PostgreSQL + Alembic upgrade (`tests/conftest.py`).
+
+---
+
+### 7.3 Legacy paths allowed temporarily (strangler)
+
+These paths are **explicitly permitted until strangler removal** (§8). They must be logged or metric’d where noted.
+
+| Path | Purpose | Sunset trigger |
+|------|---------|----------------|
+| Resolver step 4 — tenant funnel (`company_id IS NULL`, `module_key=recruitment`) | Unmigrated profiles, pre-company tenants | All operational entities bound to company funnels + CMS defaults |
+| `/analytics/funnel?legacy_tenant=true` | Legacy dashboards without `company_id` | Dashboard UI migrated to company scope |
+| Demo seed `_legacy_tenant_funnel_id` (read-only) | Onboarding demo before operating company exists | Demo always uses company bootstrap path |
+| `seed_candidate_profiles._ensure_driver_ce_default_funnel` legacy branch | Tests / tenants without operating company | Tests seed operating company first |
+| `GET /funnels/{id}` on legacy row | Read-only strangler | Tenant-wide rows deleted |
+| Platform seed `tenant_id='default'` | Last-resort resolver step 5 | Unchanged platform contract |
+
+**Forbidden during strangler:** creating **new** tenant-wide operational funnels via bootstrap, API create, or seeds (except documented fallback branches above).
+
+---
+
+### 7.4 Prohibitions after gate closure (Recruitment P0)
+
+Until a new ADR supersedes this gate, **reject in review**:
+
+| Prohibition | Rationale |
+|-------------|-----------|
+| New funnel seeds / bootstrap / API create with `company_id IS NULL` (except platform `tenant_id='default'` or explicit strangler test fixtures) | M6 canon — operational default is company-scoped |
+| Funnel list/query without `company_id` filter (except legacy read-by-id or documented strangler module) | M4 canon |
+| Cross-company funnel assignment without resolver + Forbidden | §5 explicit funnel rule |
+| Cross-module funnel row reuse (HR stages on `module_key=recruitment`) | §2.3 — handoff via PE, not shared funnel |
+| New business gates using only `funnel_stages.system_stage` four buckets | §2.5 |
+| Dashboard/analytics mixing candidate + lead pipeline types in one series | M5 |
+| Starting HR employee pipeline **before** HR manifest registers `hr.*` stages | §9 ordering |
+
+---
+
+### 7.5 Phases delivered (summary)
+
+| Phase | Delivered |
+|-------|-----------|
+| M1 | Schema + backfill migration, partial unique indexes |
+| M2 | `resolve_recruitment_funnel` + tests |
+| M3 | Runtime wiring, assignment helpers, reconcile, metrics |
+| M4 | Company-scoped funnels API + SPA |
+| M5 | Company-scoped analytics + legacy_tenant mode |
+| M6 | Company bootstrap; no tenant-wide operational seed |
+| M6+ | CMS picker + PATCH validation for `default_candidate_funnel_id` |
+
+---
+
+## 7 (archived checklist)
+
+<details>
+<summary>Original acceptance criteria (superseded by §7.1 — kept for audit trail)</summary>
 
 P0 gate is **closed** when all are true:
 
-- [ ] Alembic migration applied; no funnel intended for operations has `company_id IS NULL` except documented platform seed / strangler rows under feature flag.
-- [ ] `resolve_recruitment_funnel` covered by tests for full chain (§5).
-- [ ] Candidate and lead creation use resolver; wrong-company funnel rejected on profile PATCH.
-- [ ] `/meta/stages` returns stages for **company-scoped** funnel when `company_id` provided.
+- [x] Alembic migration applied; no funnel intended for operations has `company_id IS NULL` except documented platform seed / strangler rows under feature flag.
+- [x] `resolve_recruitment_funnel` covered by tests for full chain (§5).
+- [x] Candidate and lead creation use resolver; wrong-company funnel rejected on profile PATCH.
+- [x] `/meta/stages` returns stages for **company-scoped** funnel when `company_id` provided.
 - [x] Funnels API requires company context; recruitment module gate enforced.
 - [x] SPA funnels UI lists/edits company funnels only (`FunnelsPage`, `FunnelSelector`).
 - [x] `/analytics/funnel` company-scoped with explicit legacy mode; pipeline types not mixed (M5).
-- [ ] No **new** runtime gate logic reads only legacy four-bucket `system_stage`.
+- [x] No **new** runtime gate logic reads only legacy four-bucket `system_stage` (policy — §10).
 - [x] `RecruitmentModuleSettingsV1.default_candidate_funnel_id` read on resolver path step 2.
 - [x] Partial unique indexes for default funnel per `(company_id, module_key, type)` — migration `202606300002`.
 - [x] `CandidateProfile` funnel_id validated vs company on create/patch.
 - [x] M3 wired: candidate create, lead create, `GET /meta/stages?company_id=` (resolver).
 - [x] M3 hardening: assignment helpers, company-change reconcile, resolver metrics, runtime entry-point audit (§6 M3).
-- [ ] Legacy tenant funnel still works for unmigrated profiles until strangler removed (logged + metrics).
-- [ ] Documentation: [`recruitment/module-scope.md`](../../recruitment/module-scope.md) updated with company-scoped funnel ownership.
+- [x] Legacy tenant funnel still works for unmigrated profiles until strangler removed (logged + metrics).
+- [x] Documentation: [`recruitment/module-scope.md`](../../recruitment/module-scope.md) updated with company-scoped funnel ownership.
+
+</details>
 
 ---
 
-## 8. Explicitly out of scope (P0)
+## 8. Explicitly out of scope (P0 — gate closed; do not pull into Recruitment funnel PRs)
 
-Do **not** start these until §7 gate is closed:
+These items were **deferred by design**. §7 gate is satisfied without them. **HR manifest is the next authorized platform work** (§9).
 
-| Item | Reason |
-|------|--------|
-| HR Process Engine manifest + employee pipeline | Depends on company-scoped funnel pattern |
-| HR module settings UI forms | Depends on HR pipeline + CMS |
-| Fleet / Services / Finance pipelines | Separate module keys |
-| Removing `system_stage` column | Strangler period |
-| Removing tenant-wide funnels entirely | After profile/backfill migration complete |
-| Full Process Profile UI on vacancy | Orthogonal; keep PE P3 binding |
-| `deal` funnel type | Legacy; not recruitment P0 |
+| Item | Reason | When |
+|------|--------|------|
+| HR Process Engine manifest + employee pipeline | Pattern proven in Recruitment P0; HR stages must register in PE first | **Next** (§9.1) |
+| HR module settings UI forms | Depends on HR pipeline + CMS | After HR manifest |
+| Fleet / Services / Finance pipelines | Separate `module_key` values | Separate ADR/gate per module |
+| Removing `system_stage` column | Strangler period | Strangler removal milestone |
+| Removing tenant-wide funnels entirely | Legacy profiles + analytics | After backfill / dashboard migration |
+| Full Process Profile UI on vacancy | Orthogonal; keep PE P3 binding | Product backlog |
+| `deal` funnel type | Legacy CRM | Not recruitment |
+| Recruitment dashboard UI refresh | Analytics API ready (M5); UI not gate blocker | After HR manifest |
 
 ---
 
-## 9. Follow-on (after P0)
+## 9. Follow-on (after §7 gate closure)
 
-Ordered product/tech sequence:
+**Authorized sequence** — do not reorder without ADR:
 
-1. **HR manifest** — register `hr.*` system stages in Process Engine.
-2. **HR employee pipeline** — company-scoped funnels with `module_key=hr`, resolver `resolve_hr_funnel`.
-3. **Module settings UI** — typed forms for `RecruitmentModuleSettingsV1` / `HrModuleSettingsV1` (replace JSON editor).
-4. **Strangler removal** — drop tenant-scoped operational funnels; remove legacy `system_stage` dependence from analytics.
+### 9.1 Next: HR manifest (priority)
+
+Register **`hr.*` system stages** in Process Engine. Confirms platform canon: **PE evaluator is shared; stage namespaces belong to modules.** No HR employee funnel resolver until manifest + `pe_system_stages` seeds land.
+
+Deliverables (illustrative — detail in HR ADR / task spec):
+
+- `backend/app/process_engine/manifests/hr.py` (or equivalent) registered via `ProcessEngineRegistry`
+- Tenant/company seed path for HR stages (mirror recruitment manifest pattern)
+- Tests: manifest registration, stage validation, recruitment-only tenant does not require HR stages at runtime
+
+### 9.2 Then: HR employee pipeline
+
+Company-scoped funnels with `module_key=hr`, resolver `resolve_hr_funnel` — **separate gate** referencing this document as template.
+
+### 9.3 Later
+
+1. **Module settings UI** — typed forms for `RecruitmentModuleSettingsV1` / `HrModuleSettingsV1` (replace JSON editor).
+2. **Dashboard UI** — company-scoped funnel widgets consuming M5 analytics API.
+3. **Strangler removal** — drop tenant-scoped operational funnels; remove legacy `system_stage` dependence from analytics; `company_id NOT NULL` on funnels.
 
 ---
 
 ## 10. Enforcement notes for PR authors
 
 - Funnel queries without `company_id` filter → **reject in review** unless strangler fallback module with `# TODO(strangler)` and test.
-- New funnel seeds at tenant scope → **reject**; use company bootstrap.
+- **New funnel seeds at tenant scope → reject** (§7.4); use company bootstrap (`bootstrap_recruitment_funnels_for_company`).
 - Cross-module funnel reuse → **reject**; handoff uses PE handoff rules, not shared funnel rows.
 - Reference this document in migration PR title/body: `Gate: module-owned-pipelines-p0`.
+- **§7 gate is CLOSED** — Recruitment funnel P0 PRs must not expand scope; cite §7.4 if tempted to add tenant-wide defaults.
 
 ---
 
@@ -327,3 +455,4 @@ Ordered product/tech sequence:
 
 - 2026-06: P0 architecture gate — Recruitment company-scoped funnels, resolver canon, migration phases, explicit deferral of HR pipeline and module-settings UI.
 - 2026-06: M1/M2 hardening — default funnel partial unique indexes, full stage clone on backfill, explicit funnel Forbidden (no fallback), profile funnel gate, M3 resolver wiring (candidate/lead create, `/meta/stages`).
+- 2026-06-30: M4–M6 + CMS picker delivered; **§7 gate closure PASS WITH NOTES** — HR manifest authorized as next work (§9.1).

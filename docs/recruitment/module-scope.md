@@ -36,6 +36,22 @@
 - **HR:** handoff кандидата на сотрудника — см. [`ADR-002`](../specs/architecture/ADR-002-modular-recruitment-hr-boundary.md).
 - **Finance:** только **Billing Events** как возможный выход (ADR-004); прямых invoices из Recruitment не проектируем.
 
+## Pipeline ownership (module-owned pipelines P0 — gate closed 2026-06-30)
+
+Recruitment **owns** candidate and lead pipeline definitions. Canonical scope:
+
+| Dimension | Value |
+|-----------|--------|
+| `module_key` | `recruitment` |
+| `funnel.type` | `candidate` \| `lead` (`deal` — legacy CRM, not Recruitment P0) |
+| `company_id` | **Required** for all new operational funnels |
+| Default pointer | `RecruitmentModuleSettingsV1.default_candidate_funnel_id` (company CMS); resolver step 2 |
+| Resolution | Single chain — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md) §5 |
+
+**Runtime entry points** use `recruitment_funnel_assignment` helpers → `resolve_recruitment_funnel`. **Forbidden after P0 gate:** new tenant-wide operational funnels; cross-module funnel rows; gates on legacy `system_stage` alone.
+
+**Temporary strangler:** pre-migration tenant funnels (`company_id IS NULL`) remain readable via resolver step 4 and analytics `legacy_tenant=true` until backfill + dashboard migration. See spec §7.3.
+
 ## Сопровождение
 
 - Иерархия настроек (tenant / company / module settings per company): [`ADR-005`](../specs/architecture/ADR-005-three-level-settings-hierarchy.md). Схема JSON для компании: **`RecruitmentModuleSettingsV1`**; API `GET/PATCH .../module-settings/recruitment`. **Воронки и этапы подбора** — ownership модуля Recruitment, scope **company** (`company_id` + `module_key=recruitment`); gate и миграция — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md).  
