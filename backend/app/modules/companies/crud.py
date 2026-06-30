@@ -703,6 +703,16 @@ async def _bootstrap_default_funnels_for_business_type(
         industry=industry,
     )
 
+    from backend.app.services.hr_employee_funnel_bootstrap import (
+        bootstrap_hr_employee_funnel_for_company,
+    )
+
+    await bootstrap_hr_employee_funnel_for_company(
+        db,
+        tenant=tenant_obj,
+        company=company_obj,
+    )
+
 
 async def bootstrap_tenant_for_own_company_onboarding(
     db: AsyncSession,
