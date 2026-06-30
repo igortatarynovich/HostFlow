@@ -38,7 +38,7 @@
 
 ## Сопровождение
 
-- Иерархия настроек (tenant / company / module settings per company): [`ADR-005`](../specs/architecture/ADR-005-three-level-settings-hierarchy.md). Схема JSON для компании: **`RecruitmentModuleSettingsV1`**; API `GET/PATCH .../module-settings/recruitment`.  
+- Иерархия настроек (tenant / company / module settings per company): [`ADR-005`](../specs/architecture/ADR-005-three-level-settings-hierarchy.md). Схема JSON для компании: **`RecruitmentModuleSettingsV1`**; API `GET/PATCH .../module-settings/recruitment`. **Воронки и этапы подбора** — ownership модуля Recruitment, scope **company** (`company_id` + `module_key=recruitment`); gate и миграция — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md).  
 - Публичные формы (анкета кандидата, отклик на вакансию, intake и т.д.) — **не** собственность только Recruitment: платформенный контур **Forms**, см. [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md) и [`../forms/module-scope.md`](../forms/module-scope.md). Связка **Job Post → Application Form** — [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md).
 - При смене границ обновляйте этот файл, **ADR-004** и каталог маршрутов.
 - Матрица ролей: `docs/specs/architecture/rbac_matrix.md`.

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Optional, TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.base import Base
@@ -25,12 +25,29 @@ class Funnel(Base):
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        index=True,
+        nullable=True,
+    )
+    module_key: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+        index=True,
+        comment="ADR-004 product module owner (e.g. recruitment)",
+    )
     type: Mapped[str] = mapped_column(
         String(32), nullable=False, index=True
     )  # candidate | lead | deal
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    __table_args__ = (
+        Index("ix_funnels_tenant_company_module", "tenant_id", "company_id", "module_key"),
+        Index("ix_funnels_tenant_module_type", "tenant_id", "module_key", "type"),
     )
 
     stages: Mapped[list["FunnelStage"]] = relationship(

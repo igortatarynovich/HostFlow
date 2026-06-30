@@ -93,7 +93,9 @@
 2. **Company Settings** — тип company, юрданные, пользователи/роли company, `enabled_modules`, ответственные, часы работы, оргструктура, брендинг company, visibility.  
 3. **Company Module Settings** — пайплайны, шаблоны, правила конкретного модуля **внутри company**; рекомендуемая таблица `company_module_settings` (`tenant_id`, `company_id`, `module_key`, `settings_json`, `is_enabled`, `configured_at`).
 
-**Текущий код** частично кладёт всё в `tenant.settings`; новые фичи — с company scope и ADR-005. **Приоритет волны** — контур **HR** как первый модуль, доведённый до явного слоя настроек у company (после согласования схемы `settings_json` для `module_key=hr`).
+**Текущий код** частично кладёт всё в `tenant.settings`; новые фичи — с company scope и ADR-005.
+
+**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.**
 
 ---
 
@@ -147,6 +149,7 @@
 - [x] Таблица + API **`company_module_settings`**: `GET/PATCH /api/v1/companies/{company_id}/module-settings/{module_key}` (канонические ключи `recruitment` \| `hr` \| `fleet` \| `services` \| `finance`); список `GET .../module-settings`.
 - [x] Типизированные схемы **`HrModuleSettingsV1`**, **`RecruitmentModuleSettingsV1`**, **`FleetModuleSettingsV1`**, **`ServicesModuleSettingsV1`**, **`FinanceModuleSettingsV1`** (`backend/app/schemas/company_module_settings_json.py`): валидация на PATCH, нормализация на GET для всех пяти ключей.
 - [x] Минимальный UI на карточке компании (вкладки модулей, JSON, `is_enabled`); полноценные формы по полям — в бэклоге.
+- [ ] **[`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md)** — Recruitment: `funnels.company_id` + `module_key`, resolver, runtime wiring (`/meta/stages`, candidate/lead, analytics, funnels UI); gate before HR pipeline.
 - [ ] Единый способ **active company** в запросе (header / session) согласован с фронтом.
 - [ ] Зависимости FastAPI: `company_allows_module(..., "fleet"|"hr"|…)` на соответствующих роутерах.
 - [ ] API админки: PATCH company с `enabled_modules` + валидация ключей.
