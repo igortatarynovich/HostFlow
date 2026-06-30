@@ -24,12 +24,16 @@ from backend.app.models.user import Role
 from backend.app.models.vacancy import Vacancy
 from backend.app.services import billing_restrictions, company_module_settings_service as cms_svc
 from backend.app.services.company_module_access import company_allows_module
+from backend.app.constants.funnel_types import (
+    FUNNEL_TYPE_PATTERN,
+    HR_EMPLOYEE_FUNNEL_TYPE,
+    PLATFORM_SEED_TENANT_ID,
+    RECRUITMENT_MODULE_KEY,
+    is_hr_employee_funnel_type,
+)
 from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_allowed
 
 router = APIRouter(prefix="/funnels", tags=["funnels"])
-
-RECRUITMENT_MODULE_KEY = "recruitment"
-PLATFORM_SEED_TENANT_ID = "default"
 
 
 async def _enforce_company_recruitment_scope(
@@ -329,13 +333,13 @@ class FunnelStageOut(BaseModel):
 
 class FunnelIn(BaseModel):
     company_id: str = Field(..., min_length=1, max_length=36)
-    type: str = Field(..., pattern="^(candidate|lead|deal)$")
+    type: str = Field(..., pattern=FUNNEL_TYPE_PATTERN)
     name: str = Field(..., min_length=1, max_length=255)
     is_default: bool = False
 
 
 class FunnelPatchIn(BaseModel):
-    type: str = Field(..., pattern="^(candidate|lead|deal)$")
+    type: str = Field(..., pattern=FUNNEL_TYPE_PATTERN)
     name: str = Field(..., min_length=1, max_length=255)
     is_default: bool = False
 
@@ -465,6 +469,15 @@ async def create_funnel(
         company_id=company_str,
         current_user=current_user,
     )
+
+    if is_hr_employee_funnel_type(payload.type):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"type={HR_EMPLOYEE_FUNNEL_TYPE} funnels are HR module-owned; "
+                "recruitment funnels API accepts candidate, lead, and deal only"
+            ),
+        )
 
     if payload.is_default:
         unset_stmt = select(Funnel).where(

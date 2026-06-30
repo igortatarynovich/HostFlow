@@ -1,4 +1,4 @@
-"""Universal Funnel model for flexible pipeline stages (candidates, leads, deals)."""
+"""Universal Funnel model for flexible pipeline stages (candidates, leads, deals, HR employees)."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ class Funnel(Base):
     )
     type: Mapped[str] = mapped_column(
         String(32), nullable=False, index=True
-    )  # candidate | lead | deal
+    )  # candidate | lead | deal | employee (HR)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"

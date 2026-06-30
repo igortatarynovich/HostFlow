@@ -23,3 +23,9 @@ def test_funnels_api_legacy_readonly_guard() -> None:
     source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
     assert "Legacy tenant-wide funnels are read-only" in source
     assert "is_legacy_readonly" in source
+
+
+def test_funnels_api_schema_allows_employee_type_constant() -> None:
+    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    assert "FUNNEL_TYPE_PATTERN" in source
+    assert "pattern=FUNNEL_TYPE_PATTERN" in source
