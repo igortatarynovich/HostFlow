@@ -350,14 +350,14 @@ flowchart LR
   R_P0[Recruitment pipeline P0 CLOSED]
   HR_M[HR Process Manifest P0 SHIPPED]
   HR_P[HR Employee Pipeline P0 CLOSED]
-  HO[Handoff runtime gate]
+  HO[HR Handoff Runtime P0 — spec]
   R_P0 --> HR_M
   HR_M --> HR_P
   HR_P --> HO
 ```
 
 - **Recruitment P0** and **HR employee pipeline P0** are parallel module-owned patterns — not merge gates.
-- **Handoff runtime** may reference `hr.received_from_recruitment` only after HR employee pipeline gate closes (or in dedicated handoff gate).
+- **Handoff runtime** gate spec: [`hr-handoff-runtime-p0.md`](hr-handoff-runtime-p0.md) — implementation authorized after that gate checklist.
 
 ---
 

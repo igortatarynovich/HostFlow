@@ -14,7 +14,7 @@
 
 - **Смысл:** финал зоны Recruitment — кандидат готов к передаче в кадры внутри tenant / company scope.
 - **Кто двигает:** рекрутер (при включённом handoff lane) — см. invariants и enforcement в коде.
-- **Эффект на Workforce:** при смене стадии на `ready_for_hr` (из другого кода стадии) вызывается **`handoff_from_candidate`** — идемпотентное появление **`WorkforceEmployee`** (+ далее HR operational context по отдельному контуру).
+- **Эффект на Workforce (PR-5):** смена стадии **одна** больше **не** материализует `WorkforceEmployee`. Канон — **`CandidateHandoff` → `accept_handoff` → `handoff_from_candidate`** (T2). Stage `ready_for_hr` остаётся продуктовым/аналитическим кодом; см. [`hr-handoff-runtime-p0.md`](hr-handoff-runtime-p0.md).
 - **Не путать с:** «готов к передаче клиенту» — это не обязанность этой стадии; она про **internal HR readiness** в смысле ADR-002.
 
 ### A.2 `ready_for_handoff` (универсальная стадия «передача»)
@@ -43,8 +43,9 @@
 
 В коде к **событию передачи** относятся (разные уровни, не смешивать):
 
-1. **Stage-driven internal continuity** — смена стадии кандидата удовлетворяет `should_workforce_handoff_on_stage_change_resolved` → **`handoff_from_candidate`** + запись активности **`workforce.handoff_from_candidate`** (и далее `ensure_hr_operational_context` на handoff / лениво по API).
-2. **Запись `CandidateHandoff`** — явный запрос передачи (agency → client portal, agency → internal HR, и т.д.) с состоянием pending/accepted/rejected; может **создавать или досинхронизировать** Workforce на create/accept в зависимости от `destination` (см. `backend/app/services/handoff.py`).
+1. **Stage-driven internal continuity (deprecated, PR-5)** — `should_workforce_handoff_on_stage_change` всегда `false`; не добавлять новые stage-only пути без ADR.
+2. **Запись `CandidateHandoff` (canonical internal HR)** — явный запрос передачи; для `destination=internal_hr` workforce **не** создаётся на create, только на **`accept_handoff`** → **`handoff_from_candidate`** + `ensure_hr_operational_context` (см. `handoff.py`, `hr_acceptance_orchestrator.py`).
+3. **Client portal `CandidateHandoff`** — отдельные правила блокировки recruitment edits (T3).
 
 Доменная таблица **«HandoffEvent»** как единый лог — **вне scope** этого контракта; при появлении — этот документ обновить.
 
@@ -58,8 +59,8 @@
 
 ### B.3 Тип передачи (классификация для спек)
 
-- **T1 — Internal HR (single-tenant, stage):** только смена стадии + tenant link; запись `CandidateHandoff` **не обязательна**.
-- **T2 — Internal HR (agency record):** `CandidateHandoff` с `destination = internal_hr` + материализация Workforce на create/accept.
+- **T1 — Internal HR (stage-only):** **deprecated (PR-5)** — не использовать в новых фичах.
+- **T2 — Internal HR (agency record):** `CandidateHandoff` с `destination = internal_hr` + материализация Workforce на **`accept_handoff`** (не на create).
 - **T3 — Client portal:** `CandidateHandoff` с client destination + отдельные правила блокировки recruitment edits.
 
 ### B.4 Документы и поля
@@ -72,8 +73,8 @@
 
 ### B.5 Что создаётся автоматически
 
-- При успешном **`handoff_from_candidate`:** строка **`WorkforceEmployee`** (если ещё нет), спутники bundle (как в сервисе), далее при наличии миграций/кода — **`WorkforceHrCase`**, **`DocumentEntityLink`** (`reused_for_hr`).
-- При **`CandidateHandoff` (internal HR):** см. `handoff.py` — workforce на create; на accept — досинхронизация при необходимости.
+- При успешном **`handoff_from_candidate`:** строка **`WorkforceEmployee`** (если ещё нет), спутники bundle (как в сервисе), **`DocumentEntityLink`** (`reused_for_hr`); **`meta.employee_pipeline`** — после закрытия [`hr-handoff-runtime-p0.md`](hr-handoff-runtime-p0.md) gate.
+- При **`CandidateHandoff` (internal HR):** pending на create; workforce + HR checklist на **`accept_handoff`** (PR-4).
 
 ### B.6 Readonly и запреты (forbidden)
 
@@ -90,9 +91,10 @@
 
 ## Связанные файлы кода
 
-- `backend/app/services/workforce_employees.py` — `WORKFORCE_HANDOFF_STAGE_CODES`, `handoff_from_candidate`, `should_workforce_handoff_on_stage_change_resolved`
+- `backend/app/services/workforce_employees.py` — `handoff_from_candidate`, `should_workforce_handoff_on_stage_change` (always false)
 - `backend/app/services/handoff.py` — create/accept `CandidateHandoff`, internal HR vs client portal
-- `backend/app/api/v1/candidates/service.py` — stage change → workforce
+- `backend/app/services/hr_acceptance_orchestrator.py` — accept → `handoff_from_candidate`
+- `backend/app/services/hr_employee_funnel_assignment.py` — `meta.employee_pipeline` (handoff gate)
 - `backend/app/services/workforce_hr_operational_context.py` — HR case + document links
 - `backend/app/api/v1/tenants/router.py` — флаги tenant link (`handoff_to_client`, `workforce_handoff_on_ready_for_handoff_stage`)
 
