@@ -1,25 +1,399 @@
 """CRUD operations for invoices."""
 from __future__ import annotations
 
-import secrets
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import uuid4
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.company import Company
 from backend.app.models.invoice import Invoice, InvoiceItem, Payment, Refund
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.invoice import InvoiceStatus
 
 
-def _generate_invoice_number(tenant_id: str, year: int) -> str:
-    """Generate unique invoice number: INV/{TENANT}/{YEAR}/{SEQ}."""
-    # In production, this should query the database for the last sequence number
-    # For now, use a random suffix
-    seq = secrets.token_hex(4).upper()
-    return f"INV/{tenant_id[:8].upper()}/{year}/{seq}"
+def _invoice_prefix(invoice_kind: str | None, tax_mode: str | None) -> str:
+    kind = str(invoice_kind or "").strip().lower()
+    if kind == "correction":
+        return "KOR"
+    if kind == "proforma":
+        return "PRO"
+    if kind == "invoice":
+        return "INV"
+    if kind == "vat" or str(tax_mode or "").strip().lower() == "standard_vat":
+        return "FV"
+    return "INV"
+
+
+async def _generate_invoice_number(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    issue_date: date,
+    invoice_kind: str | None,
+    tax_mode: str | None,
+) -> str:
+    """Generate tenant-local sequential invoice number with prefix."""
+    prefix = _invoice_prefix(invoice_kind, tax_mode)
+    year = issue_date.year
+    month = issue_date.month
+    like_pattern = f"{prefix}/{year}/{month:02d}/%"
+    count_stmt = select(func.count()).select_from(Invoice).where(
+        Invoice.tenant_id == tenant_id,
+        Invoice.invoice_number.like(like_pattern),
+    )
+    count_result = await session.execute(count_stmt)
+    seq = int(count_result.scalar_one() or 0) + 1
+    return f"{prefix}/{year}/{month:02d}/{seq:04d}"
+
+
+def _as_dict(value: Any) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _normalized_text(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _build_company_legal_address(company: Company | None) -> str | None:
+    if not company:
+        return None
+    extra = _as_dict(getattr(company, "extra", {}) or {})
+    billing = _as_dict(extra.get("billing"))
+    billing_address = _as_dict(billing.get("billing_address"))
+    parts = [
+        _normalized_text(billing_address.get("country") or getattr(company, "country", None) or getattr(company, "country_code", None)),
+        _normalized_text(billing_address.get("city") or getattr(company, "city", None)),
+        _normalized_text(billing_address.get("street") or getattr(company, "address", None)),
+        _normalized_text(billing_address.get("zip")),
+    ]
+    merged = ", ".join(part for part in parts if part)
+    return merged or None
+
+
+def _extract_primary_bank_account(company: Company | None) -> dict | None:
+    if not company:
+        return None
+    extra = _as_dict(getattr(company, "extra", {}) or {})
+    billing = _as_dict(extra.get("billing"))
+    bank_accounts = billing.get("bank_accounts")
+    if not isinstance(bank_accounts, list):
+        return None
+    normalized = [entry for entry in bank_accounts if isinstance(entry, dict)]
+    if not normalized:
+        return None
+    return next((entry for entry in normalized if entry.get("is_primary")), normalized[0])
+
+
+def _company_role(company: Company | None) -> str | None:
+    if not company:
+        return None
+    extra = _as_dict(getattr(company, "extra", {}) or {})
+    role = _normalized_text(extra.get("company_role"))
+    return role.lower() if role else None
+
+
+def _actor_manages_company(company: Company | None, actor_id: str | None) -> bool:
+    actor = _normalized_text(actor_id)
+    if not company or not actor:
+        return False
+    return actor in {
+        _normalized_text(getattr(company, "owner_user_id", None)),
+        _normalized_text(getattr(company, "manager_user_id", None)),
+    }
+
+
+async def _resolve_default_issuer_company_for_actor(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+) -> Company | None:
+    actor = _normalized_text(actor_id)
+    if not actor:
+        return None
+    stmt = select(Company).where(Company.tenant_id == tenant_id)
+    companies = list((await session.execute(stmt)).scalars().all())
+    operating_managed = [
+        company
+        for company in companies
+        if _company_role(company) == "operating" and _actor_manages_company(company, actor)
+    ]
+    if not operating_managed:
+        return None
+    owner_match = next(
+        (
+            company
+            for company in operating_managed
+            if _normalized_text(getattr(company, "owner_user_id", None)) == actor
+        ),
+        None,
+    )
+    return owner_match or operating_managed[0]
+
+
+def _merge_issuer_defaults(
+    *,
+    billing_details: dict,
+    issuer_company: Company | None,
+) -> dict:
+    merged = dict(billing_details or {})
+    if not issuer_company:
+        return merged
+    merged["issuer_company_id"] = str(getattr(issuer_company, "id", "") or "") or merged.get("issuer_company_id")
+    merged.setdefault("issuer_name", _normalized_text(getattr(issuer_company, "legal_name", None) or getattr(issuer_company, "name", None)))
+    merged.setdefault("issuer_tax_id", _normalized_text(getattr(issuer_company, "tax_id", None)))
+    merged.setdefault("issuer_address", _build_company_legal_address(issuer_company))
+    issuer_bank = _extract_primary_bank_account(issuer_company)
+    if issuer_bank:
+        merged.setdefault(
+            "issuer_bank_account",
+            {
+                "bank_name": _normalized_text(issuer_bank.get("bank_name")),
+                "iban": _normalized_text(issuer_bank.get("iban")),
+                "swift_bic": _normalized_text(issuer_bank.get("swift_bic") or issuer_bank.get("swift")),
+                "country": _normalized_text(issuer_bank.get("country")),
+                "label": _normalized_text(issuer_bank.get("label")),
+            },
+        )
+    return merged
+
+
+def _build_own_company_legal_address(own: OwnCompany) -> str | None:
+    extra = _as_dict(getattr(own, "extra", {}) or {})
+    billing = _as_dict(extra.get("billing"))
+    billing_address = _as_dict(billing.get("billing_address"))
+    parts = [
+        _normalized_text(
+            billing_address.get("country") or getattr(own, "country", None) or getattr(own, "country_code", None)
+        ),
+        _normalized_text(billing_address.get("city") or getattr(own, "city", None)),
+        _normalized_text(billing_address.get("street") or getattr(own, "address", None)),
+        _normalized_text(billing_address.get("zip")),
+    ]
+    merged = ", ".join(part for part in parts if part)
+    return merged or None
+
+
+def _extract_primary_bank_from_own(own: OwnCompany) -> dict | None:
+    bd = _as_dict(getattr(own, "bank_details", {}) or {})
+    bank_accounts = bd.get("bank_accounts")
+    if isinstance(bank_accounts, list):
+        normalized = [entry for entry in bank_accounts if isinstance(entry, dict)]
+        if normalized:
+            return next((entry for entry in normalized if entry.get("is_primary")), normalized[0])
+    iban = _normalized_text(bd.get("iban"))
+    if iban:
+        return {
+            "bank_name": _normalized_text(bd.get("bank_name")),
+            "iban": iban,
+            "swift_bic": _normalized_text(bd.get("swift_bic") or bd.get("swift")),
+            "country": _normalized_text(bd.get("country")),
+            "label": _normalized_text(bd.get("label")),
+        }
+    return None
+
+
+def _merge_issuer_defaults_from_own_company(
+    *,
+    billing_details: dict,
+    own_company: OwnCompany,
+) -> dict:
+    merged = dict(billing_details or {})
+    merged["issuer_own_company_id"] = str(getattr(own_company, "id", "") or "")
+    merged.setdefault(
+        "issuer_name",
+        _normalized_text(getattr(own_company, "legal_name", None) or getattr(own_company, "name", None)),
+    )
+    merged.setdefault("issuer_tax_id", _normalized_text(getattr(own_company, "tax_id", None)))
+    addr = _build_own_company_legal_address(own_company)
+    if addr:
+        merged.setdefault("issuer_address", addr)
+    issuer_bank = _extract_primary_bank_from_own(own_company)
+    if issuer_bank:
+        merged.setdefault(
+            "issuer_bank_account",
+            {
+                "bank_name": _normalized_text(issuer_bank.get("bank_name")),
+                "iban": _normalized_text(issuer_bank.get("iban")),
+                "swift_bic": _normalized_text(issuer_bank.get("swift_bic") or issuer_bank.get("swift")),
+                "country": _normalized_text(issuer_bank.get("country")),
+                "label": _normalized_text(issuer_bank.get("label")),
+            },
+        )
+    return merged
+
+
+async def _resolve_issuer_company_for_actor(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    issuer_company_id: str | None,
+    actor_id: str | None,
+) -> Company | None:
+    issuer_id = _normalized_text(issuer_company_id)
+    if not issuer_id:
+        default_issuer = await _resolve_default_issuer_company_for_actor(
+            session,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+        )
+        if default_issuer:
+            return default_issuer
+        if actor_id:
+            raise ValueError("Issuer company must be one of your managed operating companies")
+        return None
+    issuer_company = await session.get(Company, issuer_id)
+    if not issuer_company or str(getattr(issuer_company, "tenant_id", "")) != str(tenant_id):
+        raise ValueError("Issuer company not found")
+    if _company_role(issuer_company) != "operating":
+        raise ValueError("Issuer company must be an operating company")
+    if actor_id and not _actor_manages_company(issuer_company, actor_id):
+        raise ValueError("Issuer company must be one of your managed companies")
+    return issuer_company
+
+
+async def _resolve_invoice_client_company(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str | None,
+) -> Company | None:
+    company_ref = _normalized_text(company_id)
+    if not company_ref:
+        return None
+    client_company = await session.get(Company, company_ref)
+    if not client_company or str(getattr(client_company, "tenant_id", "")) != str(tenant_id):
+        raise ValueError("Client company not found")
+    if _company_role(client_company) == "operating":
+        raise ValueError("Invoice recipient must be a client company, not an operating company")
+    return client_company
+
+
+async def _enforce_correction_contract(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    invoice_id: str | None,
+    company_id: str | None,
+    billing_details: dict,
+) -> dict:
+    details = dict(billing_details or {})
+    invoice_kind = str(details.get("invoice_kind") or "").strip().lower()
+    if invoice_kind != "correction":
+        return details
+
+    correction_of_invoice_id = _normalized_text(details.get("correction_of_invoice_id"))
+    if not correction_of_invoice_id:
+        raise ValueError("Correction invoice must reference the original invoice")
+
+    original_stmt = (
+        select(Invoice)
+        .where(
+            Invoice.tenant_id == str(tenant_id),
+            Invoice.id == correction_of_invoice_id,
+        )
+        .limit(1)
+    )
+    original = (await session.execute(original_stmt)).scalar_one_or_none()
+    if not original:
+        raise ValueError("Original invoice for correction was not found")
+    if invoice_id and str(original.id) == str(invoice_id):
+        raise ValueError("Correction invoice cannot reference itself")
+
+    original_kind = str(_as_dict(original.billing_details).get("invoice_kind") or "").strip().lower()
+    if original_kind == "correction":
+        raise ValueError("Correction invoice cannot target another correction")
+    if str(original.status or "").strip().lower() == InvoiceStatus.draft.value:
+        raise ValueError("Original invoice must be confirmed before correction")
+
+    effective_company_id = _normalized_text(company_id)
+    if effective_company_id and str(original.company_id or "").strip() and str(original.company_id) != effective_company_id:
+        raise ValueError("Correction invoice must use the same client company as original invoice")
+    if not effective_company_id and original.company_id:
+        # Keep correction bound to the same client when payload omitted company_id.
+        details.setdefault("company_id", str(original.company_id))
+
+    original_number = _normalized_text(getattr(original, "invoice_number", None))
+    requested_number = _normalized_text(details.get("correction_of_invoice_number"))
+    if requested_number and original_number and requested_number != original_number:
+        raise ValueError("Correction invoice number reference does not match original invoice number")
+    if original_number and not requested_number:
+        details["correction_of_invoice_number"] = original_number
+    return details
+
+
+def _merge_billing_defaults(
+    *,
+    billing_details: dict | None,
+    client_company: Company | None,
+) -> dict:
+    merged = dict(billing_details or {})
+    if client_company:
+        merged.setdefault("company_name", _normalized_text(getattr(client_company, "legal_name", None) or getattr(client_company, "name", None)))
+        merged.setdefault("tax_id", _normalized_text(getattr(client_company, "tax_id", None)))
+        merged.setdefault("address", _build_company_legal_address(client_company))
+    return merged
+
+
+def _issuer_snapshot_sufficient_for_invoice(billing_details: dict | None) -> bool:
+    """True when issuer block is complete enough to pass invoice billing validation."""
+    details = dict(billing_details or {})
+    bank = _as_dict(details.get("issuer_bank_account"))
+    return bool(
+        _normalized_text(details.get("issuer_name"))
+        and _normalized_text(details.get("issuer_tax_id"))
+        and _normalized_text(details.get("issuer_address"))
+        and _normalized_text(bank.get("iban"))
+    )
+
+
+def _validate_invoice_billing_details(billing_details: dict | None) -> dict:
+    details = dict(billing_details or {})
+    issuer_bank = _as_dict(details.get("issuer_bank_account"))
+    invoice_kind = _normalized_text(details.get("invoice_kind")) or "invoice"
+    required_checks = [
+        ("company_name", "Client legal name is required for invoices"),
+        ("tax_id", "Client tax ID/NIP is required for invoices"),
+        ("address", "Client legal address is required for invoices"),
+        ("issuer_name", "Issuer legal name is required for invoices"),
+        ("issuer_tax_id", "Issuer tax ID/NIP is required for invoices"),
+        ("issuer_address", "Issuer legal address is required for invoices"),
+    ]
+    for key, message in required_checks:
+        if not _normalized_text(details.get(key)):
+            raise ValueError(message)
+    if not _normalized_text(issuer_bank.get("iban")):
+        raise ValueError("Issuer bank account is required for invoices")
+    if invoice_kind == "correction":
+        if not _normalized_text(details.get("correction_of_invoice_id")):
+            raise ValueError("Correction invoice must reference the original invoice")
+        if not _normalized_text(details.get("correction_of_invoice_number")):
+            raise ValueError("Correction invoice must include the original invoice number")
+        if not _normalized_text(details.get("correction_reason")):
+            raise ValueError("Correction invoice reason is required")
+    return details
+
+
+async def _ensure_invoice_number_available(
+    session: AsyncSession,
+    *,
+    invoice_number: str | None,
+    exclude_invoice_id: str | None = None,
+) -> None:
+    normalized = _normalized_text(invoice_number)
+    if not normalized:
+        return
+    stmt = select(Invoice.id).where(Invoice.invoice_number == normalized)
+    if exclude_invoice_id:
+        stmt = stmt.where(Invoice.id != str(exclude_invoice_id))
+    exists = (await session.execute(stmt.limit(1))).scalar_one_or_none()
+    if exists:
+        raise ValueError("Invoice number already exists. Please use a different number.")
 
 
 async def create_invoice(
@@ -35,17 +409,88 @@ async def create_invoice(
         issue_date = date.fromisoformat(issue_date)
     
     tenant_id_str = str(tenant_id)
+    client_company: Company | None = await _resolve_invoice_client_company(
+        session,
+        tenant_id=tenant_id_str,
+        company_id=_normalized_text(payload.get("company_id")),
+    )
+    payload_billing = _as_dict(payload.get("billing_details"))
+    issuer_explicit = _normalized_text(payload_billing.get("issuer_company_id"))
+    preferred_own_id = _normalized_text(payload.get("own_company_id"))
+
+    own_for_issuer: OwnCompany | None = None
+    if not issuer_explicit and preferred_own_id:
+        oc = await session.get(OwnCompany, preferred_own_id)
+        if (
+            oc
+            and str(getattr(oc, "tenant_id", "")) == tenant_id_str
+            and not bool(getattr(oc, "is_archived", False))
+        ):
+            own_for_issuer = oc
+
+    base_billing = _merge_billing_defaults(
+        billing_details=payload_billing,
+        client_company=client_company,
+    )
+    merged_billing_details: dict
+    if own_for_issuer:
+        merged_billing_details = _merge_issuer_defaults_from_own_company(
+            billing_details=base_billing,
+            own_company=own_for_issuer,
+        )
+        if not _issuer_snapshot_sufficient_for_invoice(merged_billing_details):
+            own_for_issuer = None
+
+    if not own_for_issuer:
+        issuer_company = await _resolve_issuer_company_for_actor(
+            session,
+            tenant_id=tenant_id_str,
+            issuer_company_id=issuer_explicit,
+            actor_id=created_by,
+        )
+        merged_billing_details = _merge_issuer_defaults(
+            billing_details=base_billing,
+            issuer_company=issuer_company,
+        )
+    merged_billing_details = await _enforce_correction_contract(
+        session,
+        tenant_id=tenant_id_str,
+        invoice_id=None,
+        company_id=_normalized_text(payload.get("company_id")),
+        billing_details=merged_billing_details,
+    )
+    payload_company_id = _normalized_text(payload.get("company_id")) or _normalized_text(merged_billing_details.get("company_id"))
+    if payload_company_id:
+        payload["company_id"] = payload_company_id
+    if payload_company_id and (not client_company or str(client_company.id) != payload_company_id):
+        client_company = await _resolve_invoice_client_company(
+            session,
+            tenant_id=tenant_id_str,
+            company_id=payload_company_id,
+        )
+        merged_billing_details = _merge_billing_defaults(
+            billing_details=merged_billing_details,
+            client_company=client_company,
+        )
+    billing_details = _validate_invoice_billing_details(merged_billing_details)
     
     # Generate invoice number if not provided
-    invoice_number = payload.get("invoice_number")
+    invoice_number = _normalized_text(payload.get("invoice_number"))
     if not invoice_number:
-        year = issue_date.year if issue_date else now.year
-        invoice_number = _generate_invoice_number(tenant_id_str, year)
+        invoice_number = await _generate_invoice_number(
+            session,
+            tenant_id=tenant_id_str,
+            issue_date=issue_date or now.date(),
+            invoice_kind=_normalized_text(billing_details.get("invoice_kind")),
+            tax_mode=_normalized_text(billing_details.get("tax_mode")),
+        )
+    await _ensure_invoice_number_available(session, invoice_number=invoice_number)
     
     # Create invoice
     invoice = Invoice(
         id=str(uuid4()),
         tenant_id=tenant_id_str,
+        own_company_id=_normalized_text(payload.get("own_company_id")),
         company_id=payload.get("company_id"),
         candidate_id=payload.get("candidate_id"),
         contract_id=payload.get("contract_id"),
@@ -56,7 +501,7 @@ async def create_invoice(
         due_date=date.fromisoformat(payload["due_date"]) if isinstance(payload.get("due_date"), str) else payload.get("due_date"),
         currency=payload.get("currency", "PLN"),
         status=payload.get("status", InvoiceStatus.draft.value),
-        billing_details=payload.get("billing_details"),
+        billing_details=billing_details,
         notes=payload.get("notes"),
         created_by=created_by,
         created_at=now,
@@ -130,13 +575,48 @@ async def get_invoice(
     return result.scalar_one_or_none()
 
 
+async def get_invoice_correction_chain(
+    session: AsyncSession,
+    tenant_id: str,
+    invoice_id: str,
+) -> List[Invoice]:
+    tenant_id_str = str(tenant_id)
+    invoice = await get_invoice(session, tenant_id_str, invoice_id)
+    if not invoice:
+        return []
+
+    correction_of_invoice_id = _normalized_text(_as_dict(invoice.billing_details).get("correction_of_invoice_id"))
+    root_id = correction_of_invoice_id or str(invoice.id)
+
+    stmt = (
+        select(Invoice)
+        .where(Invoice.tenant_id == tenant_id_str)
+        .order_by(Invoice.issue_date.asc(), Invoice.created_at.asc())
+    )
+    rows = list((await session.execute(stmt)).scalars().all())
+
+    related: list[Invoice] = []
+    for row in rows:
+        row_correction_of_id = _normalized_text(_as_dict(row.billing_details).get("correction_of_invoice_id"))
+        if str(row.id) == root_id or row_correction_of_id == root_id:
+            related.append(row)
+
+    if not any(str(x.id) == str(invoice.id) for x in related):
+        related.append(invoice)
+    return related
+
+
 async def list_invoices(
     session: AsyncSession,
     tenant_id: str,
     *,
+    own_company_id: Optional[str] = None,
     company_id: Optional[str] = None,
     candidate_id: Optional[str] = None,
+    service_order_id: Optional[str] = None,
     status: Optional[str] = None,
+    unpaid: Optional[bool] = None,
+    q: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> List[Invoice]:
@@ -144,17 +624,59 @@ async def list_invoices(
     # tenant_id is stored as VARCHAR, convert UUID to string for comparison
     tenant_id_str = str(tenant_id)
     stmt = select(Invoice).where(Invoice.tenant_id == tenant_id_str)
-    
+    if own_company_id:
+        stmt = stmt.where(Invoice.own_company_id == str(own_company_id))
+
+    q_norm = (q or "").strip()
+    if q_norm:
+        like = f"%{q_norm}%"
+        company_ids_for_name = select(Company.id).where(
+            Company.tenant_id == tenant_id_str,
+            Company.name.ilike(like),
+        )
+        stmt = stmt.where(
+            or_(
+                Invoice.invoice_number.ilike(like),
+                Invoice.company_id.in_(company_ids_for_name),
+            )
+        )
+
     if company_id:
         stmt = stmt.where(Invoice.company_id == company_id)
     if candidate_id:
         stmt = stmt.where(Invoice.candidate_id == candidate_id)
+    if service_order_id:
+        stmt = stmt.where(Invoice.service_order_id == service_order_id)
     if status:
         stmt = stmt.where(Invoice.status == status)
+    if unpaid:
+        stmt = stmt.where(
+            Invoice.status.notin_([InvoiceStatus.paid.value, InvoiceStatus.cancelled.value]),
+            Invoice.paid_amount < Invoice.total_amount,
+        )
     
     stmt = stmt.order_by(Invoice.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_invoice_by_service_order(
+    session: AsyncSession,
+    tenant_id: str,
+    service_order_id: str,
+) -> Optional[Invoice]:
+    tenant_id_str = str(tenant_id)
+    stmt = (
+        select(Invoice)
+        .where(
+            Invoice.tenant_id == tenant_id_str,
+            Invoice.service_order_id == service_order_id,
+        )
+        .order_by(Invoice.created_at.desc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def update_invoice(
@@ -162,6 +684,7 @@ async def update_invoice(
     tenant_id: str,
     invoice_id: str,
     payload: dict,
+    actor_id: Optional[str] = None,
 ) -> Optional[Invoice]:
     """Update invoice."""
     tenant_id_str = str(tenant_id)
@@ -169,23 +692,66 @@ async def update_invoice(
     if not invoice:
         return None
     
-    # Don't allow updates to paid invoices
-    if invoice.status == InvoiceStatus.paid.value:
-        raise ValueError("Cannot update paid invoice")
+    if invoice.status != InvoiceStatus.draft.value:
+        raise ValueError("Only draft invoices can be edited. Create a correction invoice instead.")
     
     # Update fields
+    next_billing_details = _as_dict(invoice.billing_details)
     if "issue_date" in payload:
         invoice.issue_date = date.fromisoformat(payload["issue_date"]) if isinstance(payload["issue_date"], str) else payload["issue_date"]
+    if "invoice_number" in payload:
+        requested_invoice_number = _normalized_text(payload["invoice_number"])
+        if requested_invoice_number and requested_invoice_number != invoice.invoice_number:
+            await _ensure_invoice_number_available(
+                session,
+                invoice_number=requested_invoice_number,
+                exclude_invoice_id=invoice.id,
+            )
+            invoice.invoice_number = requested_invoice_number
     if "due_date" in payload:
         invoice.due_date = date.fromisoformat(payload["due_date"]) if isinstance(payload["due_date"], str) else payload["due_date"]
     if "currency" in payload:
         invoice.currency = payload["currency"]
     if "billing_details" in payload:
-        invoice.billing_details = payload["billing_details"]
+        next_billing_details = _as_dict(payload["billing_details"])
+    requested_company_id = (
+        _normalized_text(payload.get("company_id"))
+        if "company_id" in payload
+        else _normalized_text(invoice.company_id)
+    )
+    client_company: Company | None = await _resolve_invoice_client_company(
+        session,
+        tenant_id=tenant_id_str,
+        company_id=requested_company_id,
+    )
+    if "company_id" in payload:
+        invoice.company_id = requested_company_id
+    next_company_id = _normalized_text(invoice.company_id)
     if "notes" in payload:
         invoice.notes = payload["notes"]
     if "status" in payload:
         invoice.status = payload["status"]
+    issuer_company = await _resolve_issuer_company_for_actor(
+        session,
+        tenant_id=tenant_id_str,
+        issuer_company_id=_normalized_text(next_billing_details.get("issuer_company_id")),
+        actor_id=actor_id,
+    )
+    merged_billing_details = _merge_issuer_defaults(
+        billing_details=_merge_billing_defaults(
+            billing_details=next_billing_details,
+            client_company=client_company,
+        ),
+        issuer_company=issuer_company,
+    )
+    merged_billing_details = await _enforce_correction_contract(
+        session,
+        tenant_id=tenant_id_str,
+        invoice_id=invoice.id,
+        company_id=next_company_id,
+        billing_details=merged_billing_details,
+    )
+    invoice.billing_details = _validate_invoice_billing_details(merged_billing_details)
     
     # Update items if provided
     if "items" in payload:
@@ -328,4 +894,3 @@ async def create_refund(
     
     await session.refresh(refund)
     return refund
-

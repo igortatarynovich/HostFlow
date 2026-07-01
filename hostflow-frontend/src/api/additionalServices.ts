@@ -18,6 +18,8 @@ export interface CreateAdditionalServiceInput {
   category?: string | null
   unit?: ServiceUnit
   base_price?: number
+  estimated_cost?: number
+  cost_currency?: string
   currency?: string
   vat_rate?: number
   requires_schedule?: boolean
@@ -31,10 +33,13 @@ export interface CreateAdditionalServiceInput {
 
 export type UpdateAdditionalServiceInput = Partial<CreateAdditionalServiceInput>
 
-export async function listAdditionalServices(includeInactive = false) {
+export async function listAdditionalServices(includeInactive = false, includeMetrics = false) {
+  const params: Record<string, boolean> = {}
+  if (includeInactive) params.include_inactive = true
+  if (includeMetrics) params.include_metrics = true
   const { data } = await api.get<AdditionalService[]>(
     '/services',
-    { params: includeInactive ? { include_inactive: true } : undefined }
+    Object.keys(params).length ? { params } : undefined
   )
   return data
 }
@@ -54,6 +59,11 @@ export interface CreateServiceOrderItemInput {
   service_code?: string
   qty?: number
   unit_price?: number
+  estimated_cost?: number
+  actual_cost?: number
+  cost_currency?: string
+  cost_source?: string
+  cost_status?: string
   vat_rate?: number
   required_documents?: string[]
   result_document_type?: string | null
@@ -76,18 +86,26 @@ export interface ServiceOrderQuery {
   vacancyId?: string
   companyId?: string
   status?: ServiceOrderStatus | ServiceOrderStatus[]
+  /** Substring match on order id or notes (backend caps result count when set). */
+  q?: string
 }
 
 export async function listServiceOrders(params: ServiceOrderQuery = {}) {
-  const query: Record<string, any> = {}
-  if (params.candidateId) query.candidate_id = params.candidateId
-  if (params.vacancyId) query.vacancy_id = params.vacancyId
-  if (params.companyId) query.company_id = params.companyId
-  if (params.status) query.status = params.status
-
-  const { data } = await api.get<AdditionalServiceOrder[]>('/service-orders', {
-    params: Object.keys(query).length ? query : undefined,
-  })
+  const sp = new URLSearchParams()
+  if (params.candidateId) sp.set('candidate_id', params.candidateId)
+  if (params.vacancyId) sp.set('vacancy_id', params.vacancyId)
+  if (params.companyId) sp.set('company_id', params.companyId)
+  if (params.q) sp.set('q', params.q)
+  if (params.status) {
+    const st = params.status
+    if (Array.isArray(st)) {
+      for (const s of st) sp.append('status', s)
+    } else {
+      sp.set('status', st)
+    }
+  }
+  const qs = sp.toString()
+  const { data } = await api.get<AdditionalServiceOrder[]>(`/service-orders${qs ? `?${qs}` : ''}`)
   return data
 }
 

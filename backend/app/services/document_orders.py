@@ -10,16 +10,28 @@ from backend.app.services.document_catalog import normalize_doc_type
 
 ORDERABLE_CODES: set[str] = {"work_permit", "driver_certificate"}
 
+# Keep in sync with owner_summary.READY_STATUSES — evidence uploads must not
+# block ready_for_handoff when files exist but row status lags formal approval.
 READY_ORDER_STATUSES: set[DocumentStatus] = {
     DocumentStatus.approved,
     DocumentStatus.received,
     DocumentStatus.delivered,
     DocumentStatus.completed,
+    DocumentStatus.submitted,
+    DocumentStatus.verified,
+    DocumentStatus.uploaded,
+    DocumentStatus.issued,
+    DocumentStatus.registered,
+    DocumentStatus.active,
+    DocumentStatus.not_required,
 }
 
+# Physical doc rows that satisfy a checklist *required* token (canonical keys).
 SATISFYING_TYPES: Dict[str, set[str]] = {
     "driver_license": {"driver_license", "driver_license_code95"},
     "code95": {"code95", "driver_license_code95"},
+    # Combined slot: driver_license alone is enough; code95 alone is not (see unit tests).
+    "driver_license_code95": {"driver_license", "driver_license_code95"},
 }
 
 
@@ -45,6 +57,22 @@ def _doc_type_of(doc: Any) -> str:
     return normalize_doc_type(str(raw_type or ""))
 
 
+def _last_check_decision(doc: Any, last_check_by_document_id: Mapping[str, Any] | None) -> str:
+    if not last_check_by_document_id:
+        return ""
+    did = getattr(doc, "id", None)
+    if did is None and isinstance(doc, Mapping):
+        did = doc.get("id")
+    if not did:
+        return ""
+    row = last_check_by_document_id.get(str(did))
+    if row is None:
+        return ""
+    if isinstance(row, Mapping):
+        return str(row.get("decision") or "").strip().lower()
+    return str(getattr(row, "decision", "") or "").strip().lower()
+
+
 def _status_is_ready(doc: Any) -> bool:
     status = _extract_status(getattr(doc, "status", None))
     if status is None and isinstance(doc, Mapping):
@@ -52,7 +80,21 @@ def _status_is_ready(doc: Any) -> bool:
     return status in READY_ORDER_STATUSES
 
 
-def has_ready_document(documents: Sequence[Any], doc_type: str) -> bool:
+def _document_ready_for_handoff_gate(doc: Any, last_check_by_document_id: Mapping[str, Any] | None) -> bool:
+    """Parity with owner_summary._effective_status — reviewer decision wins over stale row status."""
+    decision = _last_check_decision(doc, last_check_by_document_id)
+    if decision == "rejected":
+        return False
+    if decision == "approved":
+        return True
+    return _status_is_ready(doc)
+
+
+def has_ready_document(
+    documents: Sequence[Any],
+    doc_type: str,
+    last_check_by_document_id: Mapping[str, Any] | None = None,
+) -> bool:
     canonical = normalize_doc_type(doc_type)
     if not canonical:
         return False
@@ -60,7 +102,7 @@ def has_ready_document(documents: Sequence[Any], doc_type: str) -> bool:
     for doc in _iter_documents(documents):
         if _doc_type_of(doc) not in acceptable:
             continue
-        if _status_is_ready(doc):
+        if _document_ready_for_handoff_gate(doc, last_check_by_document_id):
             return True
     return False
 
@@ -80,10 +122,11 @@ def base_required_types(checklist: Mapping[str, Any]) -> List[str]:
 def missing_base_requirements(
     checklist: Mapping[str, Any],
     documents: Sequence[Any],
+    last_check_by_document_id: Mapping[str, Any] | None = None,
 ) -> List[str]:
     missing: List[str] = []
     for doc_type in base_required_types(checklist):
-        if not has_ready_document(documents, doc_type):
+        if not has_ready_document(documents, doc_type, last_check_by_document_id):
             missing.append(doc_type)
     return missing
 

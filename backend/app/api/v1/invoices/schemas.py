@@ -65,6 +65,7 @@ class InvoiceCreate(BaseModel):
 class InvoiceUpdate(BaseModel):
     """Input schema for updating an invoice."""
 
+    invoice_number: Optional[str] = None
     issue_date: Optional[date] = None
     due_date: Optional[date] = None
     currency: Optional[str] = None
@@ -96,6 +97,11 @@ class InvoiceOut(BaseModel):
     payment_date: Optional[date] = None
     pdf_file_id: Optional[str] = None
     billing_details: Optional[Dict[str, Any]] = None
+    latest_delivery_status: Optional[str] = None
+    latest_delivery_reason: Optional[str] = None
+    latest_delivery_at: Optional[datetime] = None
+    latest_delivery_recipient: Optional[str] = None
+    latest_delivery_subject: Optional[str] = None
     created_by: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime
@@ -103,6 +109,14 @@ class InvoiceOut(BaseModel):
     items: List[InvoiceItemOut] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InvoiceSendRequest(BaseModel):
+    """Optional send composer payload for invoice delivery."""
+
+    recipient_email: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
 
 
 class PaymentCreate(BaseModel):
@@ -173,3 +187,15 @@ class InvoiceSummary(BaseModel):
     overdue_count: int
     overdue_amount: Decimal
 
+
+class InvoiceActivityOut(BaseModel):
+    """Invoice activity timeline entry."""
+
+    id: str
+    tenant_id: str
+    actor_id: Optional[str] = None
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime

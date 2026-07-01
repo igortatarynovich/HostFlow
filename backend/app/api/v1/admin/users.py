@@ -8,6 +8,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.user import (
     RefreshRevokeOut,
+    InviteRevokeOut,
     UserCreate,
     UserCreateInvite,
     UserDetailOut,
@@ -19,10 +20,11 @@ from backend.app.schemas.user import (
     UserRole,
     UserSupervisorUpdate,
     UserCompaniesUpdate,
+    UserOwnCompanyAccessUpdate,
     UserUpdateRole,
     UserAuditOut,
 )
-from backend.app.services import users as users_service
+from backend.app.services import billing_restrictions, users as users_service
 from backend.app.services.users import UserServiceError
 
 router = APIRouter(
@@ -109,6 +111,7 @@ async def create_user(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
     try:
         entry, tmp_password = await users_service.create_user(
             db,
@@ -145,6 +148,7 @@ async def create_invite(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
     try:
         invite, token = await users_service.create_invite(
             db,
@@ -157,6 +161,31 @@ async def create_invite(
             expires_in_hours=payload.expires_in_hours,
         )
         await db.commit()
+
+        try:
+            from backend.app.core.settings import settings
+            from backend.app.services.system_email import send_system_email
+
+            base = (settings.frontend_url or "").strip()
+            link = f"{base}/invite/accept?token={token}" if base else ""
+            exp = invite.expires_at
+            exp_str = exp.strftime("%Y-%m-%d %H:%M") if exp else ""
+            body = (
+                f"Dzień dobry,\n\n"
+                f"Otrzymujesz zaproszenie do dołączenia do HostFlow.\n\n"
+            )
+            if link:
+                body += f"Link do akceptacji (ważny do {exp_str}):\n{link}\n\n"
+            else:
+                body += f"Token (ważny do {exp_str}): {token}\n\n"
+            body += "Pozdrawiamy,\nZespół HostFlow"
+            await send_system_email(
+                to=invite.email,
+                subject="HostFlow – zaproszenie do zespołu",
+                body=body,
+            )
+        except Exception:
+            pass
     except UserServiceError as exc:
         await db.rollback()
         _handle_service_error(exc)
@@ -171,6 +200,33 @@ async def create_invite(
         supervisor_id=invite.supervisor_id,
         company_ids=list(invite.companies or []),
     )
+
+
+@router.delete(
+    "/invite/{invite_id}",
+    response_model=InviteRevokeOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def revoke_invite(
+    invite_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    try:
+        invite = await users_service.revoke_invite(
+            db,
+            tenant_id=tenant_id,
+            actor_id=ctx.sub,
+            invite_id=invite_id,
+        )
+        await db.commit()
+    except UserServiceError as exc:
+        await db.rollback()
+        _handle_service_error(exc)
+    return InviteRevokeOut(revoked=invite.revoked_at is not None, invite_id=invite.id)
 
 
 @router.patch(
@@ -252,6 +308,35 @@ async def update_user_companies(
             actor_id=ctx.sub,
             user_id=user_id,
             company_ids=payload.company_ids,
+        )
+        await db.commit()
+    except UserServiceError as exc:
+        await db.rollback()
+        _handle_service_error(exc)
+    return UserDetailOut(**detail)
+
+
+@router.patch(
+    "/{user_id}/own-company-access",
+    response_model=UserDetailOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def update_user_own_company_access(
+    user_id: str,
+    payload: UserOwnCompanyAccessUpdate,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    try:
+        detail = await users_service.update_user_own_company_access(
+            db,
+            tenant_id=tenant_id,
+            actor_id=ctx.sub,
+            user_id=user_id,
+            allowed_own_company_ids=payload.allowed_own_company_ids,
         )
         await db.commit()
     except UserServiceError as exc:

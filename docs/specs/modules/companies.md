@@ -1,13 +1,16 @@
 # Module: Companies
 
 ## Назначение
-Учёт транспортных компаний (клиентов), их контактов, статуса активности и связанных вакансий.  
-Модуль обеспечивает связь между кандидатами и работодателями, формируя базу активных партнёров tenant.
+Модуль хранит два разных класса компаний tenant:
+- **Operating Company** — собственная компания/профиль tenant, от лица которой совершаются действия, выставляются счета, подписываются договоры, работают RODO/legal templates и branding.
+- **Client Company** — клиент/контрагент tenant, с которым ведётся CRM- и delivery-работа.
+
+Эти классы не должны смешиваться ни в billing, ни в onboarding, ни в subscription limits.
 
 ---
 
 ## Сущности
-- **Company** (`id`, `tenant_id`, `name`, `legal_name`, `tax_id`, `phone`, `email`, `website`, `country_code`, `country`, `city`, `address`, `notes`, `is_archived`, `contacts{}`, `extra{}` — блоки `legal`, `billing`, `operations`, `compliance`, `client_portal`, `integrations`, `contracts[]`, `company_orders[]`)
+- **Company** (`id`, `tenant_id`, `name`, `legal_name`, `tax_id`, `phone`, `email`, `website`, `country_code`, `country`, `city`, `address`, `notes`, `is_archived`, `contacts{}`, `extra{}` — блоки `company_role`, `company_type`, `legal`, `billing`, `operations`, `compliance`, `client_portal`, `integrations`, `contracts[]`, `company_orders[]`)
 - **Vacancy** (см. модуль Vacancies)
 - **Contact** (вложенный объект: имя, должность, телефон, email)
 
@@ -40,11 +43,37 @@
 - `?include_archived=true`
 - `?q=trakt`
 
+### Company role contract
+
+- `extra.company_role = operating`
+  - собственная компания tenant;
+  - участвует в onboarding bootstrap;
+  - может быть `issuer company` в invoicing;
+  - считается в license limit `tenant_licenses.max_companies`.
+- `extra.company_role = client`
+  - клиент/контрагент;
+  - не считается в лимит operating profiles;
+  - не может использоваться как issuer company.
+
+Правило default creation:
+- onboarding создаёт `operating company`;
+- workspace `/app/clients` по умолчанию создаёт `client company`.
+
+### Operating company ownership scope
+
+`Operating company` — это основной профиль подписчика и source-of-truth для действий "от лица компании":
+- issuer data для invoicing (название, NIP/Tax ID, юридический адрес, банковский счет);
+- team ownership (`owner_user_id`, `manager_user_id`) и делегирование доступа;
+- привязка рабочих сущностей tenant (`clients`, `leads`, `candidates`, `vacancies`, `service orders`, `invoices`, `presets/automations`).
+
+Важное правило:
+- отсутствие части реквизитов не блокирует сам CRM, но блокирует полноценное выставление фактур до заполнения обязательных issuer-полей.
+
 ---
 
 ## UI
 - **CompanyList** — таблица всех компаний с фильтрами (статус, страна, активность).  
-- **CompanyCard** — карточка компании: основные сведения + список вакансий.  
+- **CompanyCard** — операционная карточка компании/клиента: primary focus на `contacts`, `orders`, `contracts`, `billing/invoice data`, `activity/communications`; не должна превращаться в dump всех secondary sections.  
 - **CompanyForm** — форма редактирования; блок «Документы (сводка)» **не показывается**.  
 - При архивации компании (`is_archived=true`) — вакансии остаются в текущем статусе, регулирование выполняется вручную по бизнес-правилам.  
 
@@ -70,6 +99,32 @@
 1. Обновляет скалярные поля компании.
 2. Выполняет глубокое слияние (`deep_merge`) текущего `extra` с payload, чтобы не потерять существующие блоки.
 3. При наличии `contacts` в payload обновляет колонку `contacts` и зеркалирует их в `extra.contacts`.
+
+### Operational card priority
+
+Primary sections:
+- `contacts`
+- `company_orders`
+- `contracts`
+- `billing` (как customer invoicing data, не SaaS subscription settings)
+- `activity/communications`
+
+Secondary sections:
+- `legal`
+- `operations`
+- `compliance`
+- `client_portal`
+- `integrations`
+
+Правило:
+- secondary sections допустимы, но не должны занимать первичную рабочую поверхность карточки по умолчанию.
+- для `services` business type карточка компании/клиента становится одной из главных operational surfaces.
+
+### Business-type preset rule
+
+- `agency`: company/client card по умолчанию поддерживает recruiting customer workflow (`vacancies`, `contacts`, `contracts`, `communications`).
+- `employer`: company card по умолчанию ближе к own-company profile и hiring operations; external client-management не должен доминировать.
+- `services`: company/client card обязана быть primary CRM surface с акцентом на `orders`, `billing`, `contracts`, `communications`, `invoice actions`.
 
 ---
 

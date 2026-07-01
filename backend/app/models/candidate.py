@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, date
 from typing import Any, Optional, TYPE_CHECKING
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, String, Text, Integer, event, select, func, cast
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, String, Text, Integer, event, select, func, cast
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,11 +25,19 @@ class Candidate(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
 
     short_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
 
     first_name: Mapped[str] = mapped_column(String, index=True, nullable=False)
     last_name: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    first_name_latin: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    last_name_latin: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     phone_country_code: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
@@ -46,6 +54,16 @@ class Candidate(Base):
         nullable=True,
         default=list,
     )
+    
+    # Теги/метки для организации и фильтрации кандидатов
+    tags: Mapped[Optional[list[str]]] = mapped_column(
+        MutableList.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql")),
+        nullable=True,
+        default=list,
+    )
+    
+    # Избранный кандидат (закладка)
+    is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
 
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     manager: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
@@ -60,6 +78,12 @@ class Candidate(Base):
     vacancy_id: Mapped[Optional[str]] = mapped_column(
         String,
         ForeignKey("vacancies.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    funnel_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnels.id", ondelete="SET NULL"),
         index=True,
         nullable=True,
     )
@@ -201,6 +225,32 @@ class Candidate(Base):
         self._set_extra(data)
 
     @property
+    def city_latin(self) -> Optional[str]:
+        return self._get_personal_data().get("city_latin") or self._get_extra().get("city_latin")
+
+    @city_latin.setter
+    def city_latin(self, value: Optional[str]) -> None:
+        pd = self._get_personal_data()
+        pd["city_latin"] = value
+        self._set_personal_data(pd)
+        data = self._get_extra()
+        data["city_latin"] = value
+        self._set_extra(data)
+
+    @property
+    def address_latin(self) -> Optional[str]:
+        return self._get_personal_data().get("address_latin") or self._get_extra().get("address_latin")
+
+    @address_latin.setter
+    def address_latin(self, value: Optional[str]) -> None:
+        pd = self._get_personal_data()
+        pd["address_latin"] = value
+        self._set_personal_data(pd)
+        data = self._get_extra()
+        data["address_latin"] = value
+        self._set_extra(data)
+
+    @property
     def birth_date(self) -> Optional[date]:
         val = self._get_personal_data().get("birth_date")
         if val is None:
@@ -226,36 +276,40 @@ class Candidate(Base):
 
 @event.listens_for(Candidate, "before_insert")
 def assign_short_id(mapper, connection, target):
-    if not target.short_id:
-        candidates_table = Candidate.__table__
-        filters = []
-        if getattr(target, "tenant_id", None):
-            filters.append(candidates_table.c.tenant_id == target.tenant_id)
+    if target.short_id:
+        return
 
-        dialect = connection.dialect.name
-        max_numeric = 0
+    target.short_id = next_candidate_short_id(connection)
 
-        if dialect.startswith("postgres"):
-            sanitized = func.nullif(
-                func.regexp_replace(candidates_table.c.short_id, r"\D", "", "g"), ""
-            )
-            stmt = select(
-                func.coalesce(func.max(cast(sanitized, Integer)), 0)
-            )
-            if filters:
-                stmt = stmt.where(*filters)
-            result = connection.execute(stmt).scalar()
-            max_numeric = int(result or 0)
-        else:
-            stmt = select(candidates_table.c.short_id)
-            if filters:
-                stmt = stmt.where(*filters)
-            rows = connection.execute(stmt).scalars().all()
-            max_numeric = 0
-            for raw in rows:
-                digits = "".join(ch for ch in (raw or "") if ch.isdigit())
-                if digits:
-                    max_numeric = max(max_numeric, int(digits))
 
-        next_num = max_numeric + 1
-        target.short_id = f"CND{next_num:06d}"
+def _max_short_numeric(connection) -> int:
+    """
+    Return the current max numeric part of candidate short_ids across all tenants.
+    Falls back to in-Python parsing for dialects without regexp_replace (e.g. SQLite).
+    """
+    candidates_table = Candidate.__table__
+    dialect = connection.dialect.name
+
+    if dialect.startswith("postgres"):
+        sanitized = func.nullif(
+            func.regexp_replace(candidates_table.c.short_id, r"\D", "", "g"), ""
+        )
+        stmt = select(func.coalesce(func.max(cast(sanitized, Integer)), 0))
+        result = connection.execute(stmt).scalar()
+        return int(result or 0)
+
+    # Fallback: fetch and parse short_ids manually.
+    stmt = select(candidates_table.c.short_id)
+    rows = connection.execute(stmt).scalars().all()
+    max_numeric = 0
+    for raw in rows:
+        digits = "".join(ch for ch in (raw or "") if ch.isdigit())
+        if digits:
+            max_numeric = max(max_numeric, int(digits))
+    return max_numeric
+
+
+def next_candidate_short_id(connection) -> str:
+    """Generate the next sequential candidate short_id as CND000001, global for all tenants."""
+    next_num = _max_short_numeric(connection) + 1
+    return f"CND{next_num:06d}"

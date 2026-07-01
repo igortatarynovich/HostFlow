@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Any, Iterable, List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 
 try:  # Pydantic v2
     from pydantic import BaseModel, Field, field_validator
@@ -311,7 +311,7 @@ async def update_employment(
 
 @router.delete(
     "/{candidate_id}/employments/{employment_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.manager, Role.recruiter, Role.admin))],
 )
 async def delete_employment(

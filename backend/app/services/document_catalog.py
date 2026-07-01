@@ -82,6 +82,9 @@ def normalize_doc_type(raw: str | None) -> str:
     value = (raw or "").strip().lower()
     if not value:
         return "additional_document"
+    # Primary codes (e.g. "passport") are not listed in ALIASES — only alias → canonical.
+    if value in DOCUMENT_TYPE_DEFAULTS:
+        return value
     return DOCUMENT_TYPE_ALIASES.get(value, "additional_document")
 
 
@@ -201,6 +204,10 @@ def normalize_process_type(
 def prepare_template_documents(
     raw_docs: Iterable[Mapping[str, object]]
 ) -> list[dict[str, object]]:
+    """
+    Prepare template documents, ensuring PESEL is always included and required.
+    PESEL is automatically added if not present in the template.
+    """
     prepared: dict[str, dict[str, object]] = {}
     for item in raw_docs or []:  # type: ignore[arg-type]
         if not isinstance(item, Mapping):
@@ -246,5 +253,21 @@ def prepare_template_documents(
             "meta": meta,
             "remind_days_before": remind_days_int,
         }
+
+    # Ensure PESEL is always included and required (API guard)
+    if "pesel" not in prepared:
+        pesel_defaults = get_doc_type_defaults("pesel")
+        prepared["pesel"] = {
+            "doc_type": "pesel",
+            "kind": pesel_defaults.kind.value,
+            "requested_from": pesel_defaults.requested_from.value,
+            "process_type": pesel_defaults.process_type.value,
+            "required": True,  # Always required
+            "meta": {},
+            "remind_days_before": None,
+        }
+    else:
+        # Ensure PESEL is marked as required even if template doesn't specify it
+        prepared["pesel"]["required"] = True
 
     return list(prepared.values())

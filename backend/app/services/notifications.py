@@ -6,13 +6,15 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
+from backend.app.services.email_delivery import is_email_delivery_mock
+
 WEBHOOK_URL = os.getenv("WEBHOOK_URL") or ""
 WEBHOOK_TIMEOUT = float(os.getenv("WEBHOOK_TIMEOUT") or "3")
 
 
 async def send_webhook(
     event: str, payload: Dict[str, Any], webhook_url: Optional[str] = None
-) -> None:
+) -> Dict[str, Any]:
     """
     Отправляет POST webhook с JSON телом:
     {
@@ -20,12 +22,12 @@ async def send_webhook(
       "payload": { ... },
       "source": "hostflow"
     }
-    Если WEBHOOK_URL не задан — тихо выходим.
-    Ошибки сети не пробрасываем (чтобы не ломать основной поток).
+    Если WEBHOOK_URL не задан — возвращаем skipped.
+    Ошибки сети не пробрасываем (чтобы не ломать основной поток), но возвращаем failed.
     """
     url = (webhook_url or WEBHOOK_URL).strip()
     if not url:
-        return
+        return {"delivery_status": "skipped", "reason": "webhook_not_configured", "http_status": None}
 
     body = {
         "event": event,
@@ -35,12 +37,18 @@ async def send_webhook(
 
     try:
         async with httpx.AsyncClient(timeout=WEBHOOK_TIMEOUT) as client:
-            await client.post(
+            response = await client.post(
                 url, json=body, headers={"Content-Type": "application/json"}
             )
+            if 200 <= response.status_code < 300:
+                return {"delivery_status": "sent", "reason": None, "http_status": response.status_code}
+            return {
+                "delivery_status": "failed",
+                "reason": f"http_{response.status_code}",
+                "http_status": response.status_code,
+            }
     except Exception:
-        # можно залогировать при необходимости
-        return
+        return {"delivery_status": "failed", "reason": "network_error", "http_status": None}
 
 
 # Совместимость со старым кодом: некоторые места импортируют notify(...)
@@ -65,4 +73,6 @@ async def notify(
         payload["template_context"] = template_context
     if channels:
         payload["channels"] = channels
+    if is_email_delivery_mock():
+        return
     await send_webhook("notify", payload)

@@ -4,10 +4,11 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
+from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 # В твоём проекте get_db живёт здесь:
 from backend.app.db.deps import get_db, get_db_with_tenant
 from backend.app.schemas.user import (
@@ -20,6 +21,7 @@ from backend.app.schemas.user import (
 )
 from backend.app.services import users as users_service
 from backend.app.services.users import UserServiceError
+from backend.app.modules.documents.storage import get_uploads_root
 
 # backend/app/api/v1/users.py
 
@@ -27,7 +29,7 @@ from backend.app.services.users import UserServiceError
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 DEV_TENANT_ID = "11111111-1111-1111-1111-111111111111"
-UPLOAD_ROOT = Path(os.environ.get("UPLOAD_DIR") or Path(__file__).resolve().parents[2] / "uploads")
+UPLOAD_ROOT = get_uploads_root()
 AVATAR_ROOT = UPLOAD_ROOT / "avatars"
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -37,20 +39,26 @@ def _tenant_id_from_headers(request: Request) -> str:
     return request.headers.get("X-Tenant-Id", DEV_TENANT_ID)
 
 
-def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
-    token_tenant = (ctx.tenant_id or "").strip()
-    if token_tenant and token_tenant != tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for tenant")
-
-
 @router.get("/managers")
-async def list_managers(request: Request, db: AsyncSession = Depends(get_db)):
+async def list_managers(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    roles: str | None = Query(
+        default=None,
+        description="Comma-separated membership roles (default: owner, administrator, supervisor, recruiter).",
+    ),
+):
     """
     Семантически правильный эндпоинт пользователей-менеджеров.
     Возвращает список словарей: {id, short_id, full_name, email, label}
     """
     tenant_id = _tenant_id_from_headers(request)
-    return await users_service.get_tenant_managers(db, tenant_id)
+    role_list = (
+        [p.strip() for p in roles.split(",") if p.strip()] if roles and roles.strip() else None
+    )
+    return await users_service.get_tenant_managers(
+        db, tenant_id, membership_roles=role_list
+    )
 
 
 @router.get("/me", response_model=UserMeOut)
@@ -60,7 +68,7 @@ async def get_me(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         return await users_service.get_user_me(
             db,
@@ -79,7 +87,7 @@ async def patch_me(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         profile_payload = payload.profile.model_dump(exclude_unset=True) if payload.profile else None
         preferences_payload = payload.preferences.model_dump(exclude_unset=True) if payload.preferences else None
@@ -97,7 +105,7 @@ async def patch_me(
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
-@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def change_self_password(
     payload: UserPasswordChange,
     ctx: UserCtx = Depends(get_current_user),
@@ -105,7 +113,7 @@ async def change_self_password(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         await users_service.change_self_password(
             db,
@@ -129,7 +137,7 @@ async def upload_avatar(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
 
     if file.content_type not in {"image/png", "image/jpeg", "image/webp"}:
         raise HTTPException(status_code=400, detail="Unsupported image format")
@@ -174,7 +182,7 @@ async def get_notification_preferences(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         data = await users_service.get_notification_preferences(
             db,
@@ -194,7 +202,7 @@ async def update_notification_preferences(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         updates = {key: value.model_dump() for key, value in payload.items()}
         data = await users_service.update_notification_preferences(
@@ -217,7 +225,7 @@ async def list_sessions(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         return await users_service.list_user_sessions(
             db,
@@ -235,7 +243,7 @@ async def revoke_sessions(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     try:
         revoked = await users_service.revoke_user_sessions(
             db,

@@ -1,0 +1,76 @@
+name: frontend-static-qa
+
+on:
+  push:
+    paths:
+      - "hostflow-frontend/**"
+      - "shared/crm_app_paths.json"
+      - "shared/crm_app_paths.schema.json"
+      - "scripts/codegen/**"
+      - "hostflow-frontend/scripts/check-foundation-tokens.sh"
+      - "hostflow-frontend/scripts/foundation_tokens_lib.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
+      - ".github/workflows/frontend-static-qa.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
+  pull_request:
+    paths:
+      - "hostflow-frontend/**"
+      - "shared/crm_app_paths.json"
+      - "shared/crm_app_paths.schema.json"
+      - "scripts/codegen/**"
+      - "hostflow-frontend/scripts/check-foundation-tokens.sh"
+      - "hostflow-frontend/scripts/foundation_tokens_lib.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
+      - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
+      - ".github/workflows/frontend-static-qa.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
+
+jobs:
+  qa-static:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hostflow-frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: CRM app paths codegen drift check
+        working-directory: .
+        run: python3 scripts/codegen/generate_crm_app_paths.py --check
+      - name: SPA path literals (backend/app mirror)
+        working-directory: .
+        run: python3 backend/scripts/check_spa_path_literals.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: hostflow-frontend/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Foundation tokens (deprecated in diff)
+        run: npm run foundation:check
+        env:
+          # PR: compare vs target branch. Push: vs main. Override: FOUNDATION_DIFF_BASE.
+          FOUNDATION_DIFF_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+      - name: Coverage gate (Phase 0 #7 — ratchet)
+        run: npm run coverage:check
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: hostflow-frontend/coverage/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Static QA gate
+        run: npm run qa:static
+      - name: Bundle-size budget (Phase 0 #7)
+        run: npm run bundle:check

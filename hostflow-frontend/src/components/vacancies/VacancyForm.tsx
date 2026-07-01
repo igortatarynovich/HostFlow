@@ -4,20 +4,24 @@ import { createPortal } from 'react-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useI18n } from '../../i18n'
 
-import { EMPLOYMENT_TYPES } from '../../api/vacancies'
-import type { EmploymentType } from '../../api/vacancies'
+import { EMPLOYMENT_TYPES, VACANCY_STATUSES, normalizeVacancyStatus } from '../../api/vacancies'
+import type { EmploymentType, VacancyStatus } from '../../api/vacancies'
 
 type Company = { id: string; name?: string }
 
-const STATUS_OPTIONS = ['open', 'paused', 'closed'] as const
+// Phase 2.6.D Stage C — single source of truth for status options.
+// `VACANCY_STATUSES` mirrors the backend enum (`open|on_hold|closed|
+// filled|cancelled`); see `docs/specs/vacancy-statuses.md` §6.
+const STATUS_OPTIONS = VACANCY_STATUSES
 const EMPLOYMENT_ENUM = [...EMPLOYMENT_TYPES] as [EmploymentType, ...EmploymentType[]]
 
 const vacancySchema = z.object({
   company_id: z.string().min(1, 'Компания обязательна'),
   title: z.string().min(1, 'Название обязательно'),
   description: z.string().optional().or(z.literal('')),
-  status: z.enum(STATUS_OPTIONS).default('open'),
+  status: z.enum([...STATUS_OPTIONS] as [VacancyStatus, ...VacancyStatus[]]).default('open'),
   is_open: z.boolean().default(true),
   is_active: z.boolean().default(true),
   is_archived: z.boolean().default(false),
@@ -40,13 +44,14 @@ type Props = {
 }
 
 export default function VacancyForm({ open, title, companies, initial, onClose, onSubmit }: Props) {
+  const { t } = useI18n()
   const defaultValues: FormValues = useMemo(
     () => ({
       company_id: initial.company_id ?? companies[0]?.id ?? '',
       title: initial.title ?? '',
       description: initial.description ?? '',
-      status: (initial.status as FormValues['status']) ?? 'open',
-      is_open: typeof initial.is_open === 'boolean' ? initial.is_open : ((initial.status ?? 'open') === 'open'),
+      status: normalizeVacancyStatus(initial.status),
+      is_open: typeof initial.is_open === 'boolean' ? initial.is_open : (normalizeVacancyStatus(initial.status) === 'open'),
       is_active: typeof initial.is_active === 'boolean' ? initial.is_active : true,
       is_archived: !!initial.is_archived,
       salary_from: initial.salary_from ?? '',
@@ -116,7 +121,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
       <div className="w-full max-w-3xl rounded-xl bg-white shadow-xl overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <div className="font-semibold">{title}</div>
-          <button onClick={onClose} className="btn-ghost" aria-label="Закрыть">
+          <button onClick={onClose} className="btn-secondary btn-sm" aria-label="Закрыть">
             ✕
           </button>
         </div>
@@ -143,7 +148,9 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
             <label className="label" htmlFor="vf-status">Статус</label>
             <select id="vf-status" className="input" {...register('status')}>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {t(`app.vacancies.list.status.${s}`, { defaultValue: s })}
+                </option>
               ))}
             </select>
           </div>
@@ -170,7 +177,12 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
 
           <div>
             <label className="label" htmlFor="vf-currency">Валюта</label>
-            <input id="vf-currency" className="input" {...register('currency')} placeholder="PLN / EUR / USD" />
+            <input
+              id="vf-currency"
+              className="input"
+              {...register('currency')}
+              placeholder={t('app.vacancies.detail.placeholders.currency_codes', { defaultValue: 'PLN / EUR / USD' })}
+            />
           </div>
 
           <div>
@@ -217,7 +229,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
           </div>
 
           <div className="col-span-2 flex justify-end gap-2 pt-3 border-t">
-            <button type="button" onClick={onClose} className="btn-ghost">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Отмена
             </button>
             <button type="submit" className="btn-primary disabled:opacity-60" disabled={isSubmitting}>

@@ -78,3 +78,30 @@ def test_summary_expiring_soon():
     out = compute_owner_summary(ctx, rs, docs)
     assert out["status"] == "expiring_soon"
     assert any(x["type"] == "national_id" for x in out["expiring_soon"])
+    assert out["expiry"]["has_expiring_documents"] is True
+    assert out["expiry"]["all_documents_valid"] is False
+
+
+def test_summary_expired_and_missing_expiry():
+    rs = load_ruleset(RS_PATH)
+    ctx = {
+        "citizenship": "PL",
+        "residency_status": "eu_citizen",
+        "vacancy": {"requires_driver_attestation": False},
+    }
+    docs = [
+        {
+            "type": "national_id",
+            "status": "approved",
+            "expires_at": (date.today() - timedelta(days=1)).isoformat(),
+        },
+        {
+            "type": "code95",
+            "status": "approved",
+        },
+    ]
+    out = compute_owner_summary(ctx, rs, docs)
+    assert out["status"] == "expired"
+    assert out["expiry"]["has_expired_documents"] is True
+    assert out["expiry"]["has_missing_expiry"] is True
+    assert out["expiry"]["all_documents_valid"] is False

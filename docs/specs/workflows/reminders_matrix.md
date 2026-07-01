@@ -1,5 +1,7 @@
 # ⏰ Reminders Escalation Matrix
 
+> **STATUS: SUPERSEDED** by [`activities-sla-matrix.md`](activities-sla-matrix.md). После ADR-012 / Phase 2.1 (2026-05-09) `Reminder` — алиас для `Activity`; SLA-матрица и каналы для всех operational rows (включая бывшие `candidate_tasks` / `communication_planner_events`) живут в каноне `activities-sla-matrix.md`. Сохранено как археология; **не использовать** как источник истины для новых фич.
+
 > Дополнение к `docs/specs/workflows/reminders.md`. Описывает SLA, каналы доставки, получателей и правила дедупликации.
 
 ---

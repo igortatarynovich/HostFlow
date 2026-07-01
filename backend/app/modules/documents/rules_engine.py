@@ -51,6 +51,60 @@ def _is_simple_schema(ruleset: Dict[str, Any]) -> bool:
     )
 
 
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return False
+
+
+def _apply_candidate_document_flags(
+    ctx: Dict[str, Any],
+    required: Set[str],
+    optional: Set[str],
+) -> Set[str]:
+    """
+    Merge ``ctx["documents"]`` boolean flags into the checklist.
+
+    ``medical`` / ``medical_certificate``: the flag means "relevant / in progress"
+    for UX — it must **not** silently promote the doc to **required** (that blocks
+    stages and creates synthetic rows). Hard requirements for ``medical_certificate``
+    must come from ruleset (defaults, vacancy category, overrides).
+
+    ``passport``, ``driver_license``, ``work_permit`` remain hard promotions when set.
+    """
+    added: Set[str] = set()
+    docs = ctx.get("documents") if isinstance(ctx.get("documents"), dict) else {}
+
+    if _truthy(docs.get("medical")):
+        doc_type = "medical_certificate"
+        if doc_type not in required and doc_type not in optional:
+            optional.add(doc_type)
+            added.add(doc_type)
+
+    doc_flag_to_type = {
+        "passport": "passport",
+        "driver_license": "driver_license",
+        "work_permit": "work_permit",
+    }
+    for flag, doc_type in doc_flag_to_type.items():
+        if _truthy(docs.get(flag)):
+            if doc_type not in required:
+                added.add(doc_type)
+            required.add(doc_type)
+            optional.discard(doc_type)
+
+    if _truthy(ctx.get("has_adr")):
+        if "adr" not in required:
+            added.add("adr")
+        required.add("adr")
+        optional.discard("adr")
+    return added
+
+
 # ---------- public API ----------
 
 
@@ -69,6 +123,7 @@ def compute_candidate_checklist(
         # ПРИВОДИМ К set[str]
         required_set: Set[str] = {str(x) for x in ruleset.get("required", [])}
         optional_set: Set[str] = {str(x) for x in ruleset.get("optional", [])}
+        added_by_flags = _apply_candidate_document_flags(ctx, required_set, optional_set)
         return {
             "requiredTypes": sorted(required_set),
             "optionalTypes": sorted(optional_set),
@@ -78,6 +133,7 @@ def compute_candidate_checklist(
                 "removed_by_overrides": [],
                 "added_by_category": [],
                 "added_by_vacancy": [],
+                "added_by_candidate_flags": sorted(added_by_flags),
             },
         }
 
@@ -93,6 +149,7 @@ def compute_candidate_checklist(
     removed_by_overrides: Set[str] = set()
     added_by_category: Set[str] = set()
     added_by_vacancy: Set[str] = set()
+    added_by_flags: Set[str] = set()
 
     # 1) candidate.overrides
     for rule in rs_cand.get("overrides", []) or []:
@@ -143,6 +200,8 @@ def compute_candidate_checklist(
                     added_by_vacancy.add(t)
                 optional.discard(t)
 
+    added_by_flags = _apply_candidate_document_flags(ctx, required, optional)
+
     return {
         "requiredTypes": sorted(required),
         "optionalTypes": sorted(optional),
@@ -152,6 +211,7 @@ def compute_candidate_checklist(
             "removed_by_overrides": sorted(removed_by_overrides),
             "added_by_category": sorted(added_by_category),
             "added_by_vacancy": sorted(added_by_vacancy),
+            "added_by_candidate_flags": sorted(added_by_flags),
         },
     }
 
@@ -169,3 +229,30 @@ def expiring_threshold_for(doc_type: str, ruleset: Dict[str, Any]) -> int:
     if "expiring_soon_days" in per_type:
         return int(per_type["expiring_soon_days"])
     return int(ruleset.get("expiring_soon_default_days", 30))
+
+
+def expiry_required_for(doc_type: str, ruleset: Dict[str, Any]) -> bool:
+    """
+    Whether a document type requires an expiry date for validity evaluation.
+
+  Ruleset ``validity[doc_type]`` may set ``expiry_required`` / ``has_expiry``.
+  Presence in the validity block without an explicit false flag implies tracking.
+    """
+    if _is_simple_schema(ruleset):
+        per_type = ruleset.get(doc_type, {}) or {}
+        if isinstance(per_type, dict):
+            if "expiry_required" in per_type:
+                return _truthy(per_type["expiry_required"])
+            if "has_expiry" in per_type:
+                return _truthy(per_type["has_expiry"])
+        return False
+
+    validity = ruleset.get("validity") or {}
+    per_type = validity.get(doc_type, {}) or {}
+    if not isinstance(per_type, dict):
+        return False
+    if "expiry_required" in per_type:
+        return _truthy(per_type["expiry_required"])
+    if "has_expiry" in per_type:
+        return _truthy(per_type["has_expiry"])
+    return doc_type in validity

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import clsx from "clsx";
 import {
   getDocumentTypes,
@@ -11,8 +11,12 @@ import {
   mockUpload,
   patchDocument,
   checkDocument,
-  listDocuments,
+  listCandidateDocuments,
   orderDocument,
+  exportCandidateBundle,
+  listDocumentTemplates,
+  applyDocumentTemplate,
+  type DocumentTemplate,
 } from "../../api/documents";
 import type {
   Document,
@@ -20,115 +24,71 @@ import type {
   DocumentStatus,
   DocumentRequestedFrom,
   DocumentProcessType,
-  DocumentCheck,
-  DocumentWorkflow,
-  DocumentWorkflowStep,
-  DocumentReminder,
   CandidateDocumentsSummaryResponse,
 } from "../../api/types";
 import type { CreateCandidateDocumentPayload, DocumentPatchPayload, DocumentOrderInput } from "../../api/documents";
 import { usePermissions } from "../../hooks/usePermissions";
 import { docsApi } from "../../api/client";
+import { notifyCandidate } from "../../api/candidates";
 import { useI18n } from "../../i18n";
+import { usePlanLimitModal } from "../../contexts/PlanLimitModalContext";
+import { formatErrorForDisplay } from "../../utils/errorHandling";
+import { getDocumentConfigs, getRequiredDocumentTypeIds, isDefaultProfileWithEmptyDocumentConfig } from "../../utils/profileUtils";
+import { DocumentFieldInput } from "./components/DocumentFieldInput";
+import { DocumentCard } from "./components/DocumentCard";
+import { useDocumentActions } from "./hooks/useDocumentActions";
+import { useDocumentUpload } from "./hooks/useDocumentUpload";
+import { useDocumentPreview } from "./hooks/useDocumentPreview";
+import {
+  DOCUMENT_STATUS_META,
+  READINESS_STATE_META,
+  KIND_LABEL_KEYS,
+  KIND_ORDER,
+  REQUESTED_FROM_LABEL_KEYS,
+  PROCESS_LABEL_KEYS,
+  READY_STATUSES,
+  NEGATIVE_STATUSES,
+  EQUIVALENT_TYPE_GROUPS,
+  STATUS_FROM_RANK,
+  READINESS_TO_STATUS,
+  CREATION_STATUS_OPTIONS,
+  CORE_METADATA_FIELDS,
+  METADATA_LABEL_NS,
+  DRIVER_DEFAULT_ENRICHMENT_CODES,
+  MAX_FILE_MB,
+} from "./constants";
+import { getDocumentFieldsConfig } from "./documentFieldsConfig";
+import {
+  toArray,
+  isTooLarge,
+  formatDate,
+  formatDateTime,
+  dateValue,
+  daysUntil,
+  resolveDocumentUrl,
+  guessPreviewable,
+  detectPreviewMime,
+  filenameFromUrl,
+  isProbablyHtmlBlob,
+  computeTodayIso,
+  normalizeDocTypeCode,
+  resolveDocTypeLabel,
+} from "./documentUtils";
+import {
+  documentMatchesRuntimeFilterSelection,
+  RUNTIME_DOCUMENT_FILTERS,
+  RUNTIME_FILTER_LABEL_KEYS,
+  type RuntimeDocumentFilterSelection,
+} from "../../utils/runtimeDocumentFilters";
+import {
+  extractRuntimeItemsFromSummary,
+  indexRuntimeItemsByType,
+  runtimeBadgeFromRuntime,
+  type RuntimeBadgePresentation,
+} from "../../utils/runtimeBadgePresentation";
+import type { DocType, OrderDraft, MetadataFieldConfig, RequiredState, MetadataState, CoreFields } from "./types";
 
-const MAX_FILE_MB = 25;
-const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
-
-type DocType = {
-  id?: string;
-  code: string;
-  name?: string;
-  required?: boolean;
-  meta_schema?: any;
-  metadata_schema?: Record<string, any> | null;
-  required_files?: Record<string, any> | null;
-  orderable?: boolean | null;
-};
-
-type OrderDraft = {
-  ordered_at: string;
-  requested_from?: string;
-};
-
-type MetadataFieldConfig = {
-  name: string;
-  input: "text" | "textarea" | "number" | "date" | "select" | "multiselect" | "boolean";
-  enumValues?: string[];
-  required: boolean;
-};
-
-const DOCUMENT_STATUS_META: Record<
-  DocumentStatus,
-  { labelKey: string; color: string; order: number }
-> = {
-  missing: { labelKey: "admin.documents.status_labels.missing", color: "bg-gray-100 text-gray-700", order: 0 },
-  requested: { labelKey: "admin.documents.status_labels.requested", color: "bg-blue-50 text-blue-700", order: 1 },
-  in_progress: { labelKey: "admin.documents.status_labels.in_progress", color: "bg-blue-50 text-blue-700", order: 2 },
-  received: { labelKey: "admin.documents.status_labels.received", color: "bg-indigo-50 text-indigo-700", order: 3 },
-  approved: { labelKey: "admin.documents.status_labels.approved", color: "bg-green-50 text-green-700", order: 4 },
-  rejected: { labelKey: "admin.documents.status_labels.rejected", color: "bg-rose-50 text-rose-700", order: 5 },
-  expired: { labelKey: "admin.documents.status_labels.expired", color: "bg-amber-50 text-amber-700", order: 6 },
-};
-
-const READINESS_STATE_META: Record<string, { labelKey: string; className: string }> = {
-  pending: { labelKey: "admin.documents.readiness_labels.pending", className: "bg-gray-100 text-gray-600" },
-  requested: { labelKey: "admin.documents.readiness_labels.requested", className: "bg-blue-50 text-blue-700" },
-  ordered: { labelKey: "admin.documents.readiness_labels.ordered", className: "bg-indigo-50 text-indigo-700" },
-  in_progress: { labelKey: "admin.documents.readiness_labels.in_progress", className: "bg-sky-50 text-sky-700" },
-  awaiting_review: { labelKey: "admin.documents.readiness_labels.awaiting_review", className: "bg-amber-50 text-amber-700" },
-  ready: { labelKey: "admin.documents.readiness_labels.ready", className: "bg-green-50 text-green-700" },
-  problem: { labelKey: "admin.documents.readiness_labels.problem", className: "bg-rose-50 text-rose-700" },
-};
-
-const KIND_LABEL_KEYS: Record<DocumentKind, string> = {
-  driver: "admin.documents.kinds.driver",
-  employer: "admin.documents.kinds.employer",
-  process: "admin.documents.kinds.process",
-};
-
-const KIND_ORDER: DocumentKind[] = ["driver", "employer", "process"];
-
-const REQUESTED_FROM_LABEL_KEYS: Record<DocumentRequestedFrom, string> = {
-  driver: "admin.documents.requested_from.driver",
-  employer: "admin.documents.requested_from.employer",
-  agency: "admin.documents.requested_from.agency",
-};
-
-const PROCESS_LABEL_KEYS: Record<DocumentProcessType, string> = {
-  none: "admin.documents.process_types.none",
-  work_permit: "admin.documents.process_types.work_permit",
-  visa: "admin.documents.process_types.visa",
-  residence_card: "admin.documents.process_types.residence_card",
-  tachograph_card: "admin.documents.process_types.tachograph_card",
-  driver_license_exchange: "admin.documents.process_types.driver_license_exchange",
-  swiadectwo_kierowcy: "admin.documents.process_types.swiadectwo_kierowcy",
-  other: "admin.documents.process_types.other",
-};
-
-const READY_STATUSES = new Set<DocumentStatus>(["approved", "received"]);
-const NEGATIVE_STATUSES = new Set<DocumentStatus>(["rejected", "expired"]);
-const EQUIVALENT_TYPE_GROUPS: string[][] = [
-  ["driver_license", "code95", "driver_license_code95", "eu_driver_license_code95"],
-];
-const EXPIRING_SOON_THRESHOLD_DAYS = 30;
-
-type RequiredState = "ready" | "in_progress" | "problem" | "missing";
-type MetadataState = Record<string, any>;
-
-const CORE_METADATA_FIELDS = new Set([
-  "number",
-  "issued_at",
-  "expires_at",
-  "ordered_at",
-  "valid_from",
-  "valid_to",
-  "reminder_days_before",
-  "requested_from",
-  "owner_id",
-  "comment",
-]);
-
-const METADATA_LABEL_NS = "documents.meta_fields";
+// Constants are now imported from ./constants
 
 const extractMetadataFields = (schema?: Record<string, any> | null): MetadataFieldConfig[] => {
   if (!schema || typeof schema !== "object") return [];
@@ -271,28 +231,7 @@ const buildMetadataPayloadFromState = (
   return payload;
 };
 
-const STATUS_FROM_RANK: Record<number, DocumentStatus> = {
-  0: "missing",
-  1: "requested",
-  2: "in_progress",
-  3: "in_progress",
-  4: "received",
-  5: "received",
-  6: "approved",
-  7: "approved",
-  8: "expired",
-  9: "rejected",
-  10: "expired",
-};
-
-const READINESS_TO_STATUS: Partial<Record<string, DocumentStatus>> = {
-  ready: "approved",
-  ordered: "requested",
-  in_progress: "in_progress",
-  awaiting_review: "in_progress",
-  requested: "requested",
-  problem: "rejected",
-};
+// STATUS_FROM_RANK and READINESS_TO_STATUS are now imported from ./constants
 
 const defaultOrderDraft = (docType: string): OrderDraft => {
   const base: OrderDraft = { ordered_at: computeTodayIso() };
@@ -352,176 +291,31 @@ const primaryStatus = (doc: Document): DocumentStatus => {
 
 
 
-const CREATION_STATUS_OPTIONS: DocumentStatus[] = [
-  "requested",
-  "in_progress",
-  "received",
-  "approved",
-];
+// Constants, types, and utilities are now imported from separate modules
 
-const computeTodayIso = (): string => new Date().toISOString().slice(0, 10);
-
-const REQUIRED_STATUS_META: Record<RequiredState, { labelKey: string; className: string }> = {
-  ready: { labelKey: "admin.documents.readiness_labels.ready", className: "bg-green-100 text-green-700" },
-  in_progress: { labelKey: "admin.documents.readiness_labels.in_progress", className: "bg-blue-100 text-blue-700" },
-  problem: { labelKey: "admin.documents.readiness_labels.problem", className: "bg-rose-100 text-rose-700" },
-  missing: { labelKey: "admin.documents.readiness_labels.pending", className: "bg-gray-100 text-gray-600" },
-};
-
-type CoreFields = {
-  number?: string | null;
-  issue_date?: string | null;
-  expire_date?: string | null;
-  ordered_at?: string | null;
-  valid_from?: string | null;
-  reminder_days_before?: number | null;
-  requested_from?: DocumentRequestedFrom;
-  owner_id?: string | null;
-  comment?: string;
-};
-
-const toArray = <T,>(value: any): T[] => {
-  if (Array.isArray(value)) return value as T[];
-  if (Array.isArray(value?.items)) return value.items as T[];
-  if (Array.isArray(value?.data)) return value.data as T[];
-  return [];
-};
-
-const isTooLarge = (file?: File | null) => !!file && file.size > MAX_FILE_BYTES;
-
-const formatDate = (value?: string | null) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
-  return date.toLocaleDateString();
-};
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString();
-};
-
-const dateValue = (value?: string | null) => {
-  if (!value) return 0;
-  const time = Date.parse(value);
-  return Number.isNaN(time) ? 0 : time;
-};
-
-const daysUntil = (value?: string | null) => {
-  if (!value) return null;
-  const target = Date.parse(value);
-  if (Number.isNaN(target)) return null;
-  const now = new Date();
-  const startOfToday = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  );
-  const diffMs = target - startOfToday;
-  return Math.floor(diffMs / (24 * 60 * 60 * 1000));
-};
-
-const resolveDocumentUrl = (link: string): string => {
-  if (!link) return link;
-  try {
-    return new URL(link).toString();
-  } catch {
-    const base =
-      docsApi?.defaults?.baseURL ||
-      (typeof window !== "undefined" ? window.location.origin : undefined);
-    if (!base) return link;
-    try {
-      return new URL(link, base).toString();
-    } catch {
-      return link;
-    }
-  }
-};
-
-const guessPreviewable = (contentType: string | null | undefined, filename?: string | null) => {
-  const mime = (contentType || "").toLowerCase();
-  if (mime.startsWith("image/") || mime === "application/pdf") return true;
-  if (filename) {
-    const lower = filename.toLowerCase();
-    return lower.endsWith(".pdf") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png");
-  }
-  return false;
-};
-
-const detectPreviewMime = (contentType: string | null | undefined, filename?: string | null) => {
-  const lowerType = (contentType || "").toLowerCase();
-  if (lowerType) return lowerType;
-  if (!filename) return null;
-  const lower = filename.toLowerCase();
-  if (lower.endsWith(".pdf")) return "application/pdf";
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-  return null;
-};
-
-const filenameFromUrl = (value: string | null | undefined): string | null => {
-  if (!value) return null;
-  try {
-    const parsed = new URL(value);
-    const segments = parsed.pathname.split("/");
-    const last = segments[segments.length - 1];
-    return last ? decodeURIComponent(last) : null;
-  } catch {
-    const segments = String(value).split("/");
-    const last = segments[segments.length - 1];
-    return last || null;
-  }
-};
-
-const isProbablyHtmlBlob = async (blob: Blob, contentType?: string | null): Promise<boolean> => {
-  const type = (contentType || blob.type || "").toLowerCase();
-  if (type.includes("html")) return true;
-  if (type.startsWith("text/") && !type.includes("pdf")) {
-    try {
-      const snippet = await blob.slice(0, 256).text();
-      const trimmed = snippet.trim().toLowerCase();
-      if (!trimmed) return false;
-      return trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
-    } catch {
-      return false;
-    }
-  }
-  if (!type || type === "application/octet-stream") {
-    try {
-      const snippet = await blob.slice(0, 256).text();
-      const trimmed = snippet.trim().toLowerCase();
-      if (!trimmed) return false;
-      return trimmed.startsWith("<!doctype") || trimmed.startsWith("<html");
-    } catch {
-      return false;
-    }
-  }
-  return false;
-};
-
-const extractErrorMessages = (err: any): string[] => {
-  const detail = err?.response?.data?.detail ?? err?.response?.data?.message ?? err?.message ?? err;
-  const normalize = (value: any): string => {
-    if (!value) return "Error";
-    if (typeof value === "string") return value;
-    const field = value.field || value.path || value.loc?.join?.(".");
-    const msg = value.msg || value.message || value.error;
-    return field && msg ? `${field}: ${msg}` : String(msg ?? value);
-  };
-  if (Array.isArray(detail)) return detail.map(normalize);
-  if (typeof detail === "object") return [normalize(detail)];
-  return [String(detail)];
-};
+// extractErrorMessages is now imported from utils/errorHandling
 
 type Props = {
   candidateId: string;
   ownerContext?: Record<string, any>;
   onFieldsApplied?: (doc: Document, fields: Record<string, any>) => void;
+  onDocumentsChanged?: () => void;
+  hideHeader?: boolean;
+  candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null;
+  initialType?: string;
+  compactType?: boolean;
 };
 
-export default function CandidateDocuments({ candidateId, ownerContext, onFieldsApplied }: Props) {
+export default function CandidateDocuments({
+  candidateId,
+  ownerContext,
+  onFieldsApplied,
+  onDocumentsChanged,
+  hideHeader,
+  candidateProfile,
+  initialType,
+  compactType = false,
+}: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
   const translateStatus = useCallback(
@@ -545,7 +339,12 @@ export default function CandidateDocuments({ candidateId, ownerContext, onFields
       value ? t(PROCESS_LABEL_KEYS[value], { defaultValue: value }) : null,
     [t],
   );
-  const canManageDocuments = can("documents.manage");
+  // Backend allows document mutations for anyone with candidate access in DOCUMENT_MUTATE_ROLES
+  // (recruiter, supervisor, …). UI used only documents.manage, which also requires the
+  // "documents" module cell to be editable — misconfigured matrices blocked recruiters who
+  // could still edit candidates. Allow uploads when the user can manage the candidate.
+  const canManageDocuments = can("documents.manage") || can("candidates.manage");
+  const planLimitModal = usePlanLimitModal();
 
   const coreFromDocument = useCallback((doc: Document): CoreFields => ({
     number: doc.number ?? "",
@@ -585,12 +384,10 @@ export default function CandidateDocuments({ candidateId, ownerContext, onFields
   const [creationMetadata, setCreationMetadata] = useState<MetadataState>({});
   const [creatingDocument, setCreatingDocument] = useState(false);
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewContentType, setPreviewContentType] = useState<string | null>(null);
+  // Preview state is now handled by useDocumentPreview hook
 
   const [kindFilter, setKindFilter] = useState<DocumentKind | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<DocumentStatus | "all">("all");
+  const [runtimeFilter, setRuntimeFilter] = useState<RuntimeDocumentFilterSelection>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderedFilter, setOrderedFilter] = useState<"all" | "ordered" | "not_ordered">("all");
 
@@ -604,13 +401,19 @@ export default function CandidateDocuments({ candidateId, ownerContext, onFields
   const [expandedDocs, setExpandedDocs] = useState<Record<string, boolean>>({});
   const [orderDrafts, setOrderDrafts] = useState<Record<string, OrderDraft>>({});
   const [orderingTypes, setOrderingTypes] = useState<Record<string, boolean>>({});
-  const [expiringSoonOnly, setExpiringSoonOnly] = useState(false);
   const [passportIncompleteOnly, setPassportIncompleteOnly] = useState(false);
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
 
   const typeByCode = useMemo(() => new Map(docTypes.map((t) => [t.code, t])), [docTypes]);
+  const getDocTypeLabel = useCallback(
+    (typeCode: string, dbName?: string | null) => resolveDocTypeLabel(t, typeCode, dbName),
+    [t]
+  );
   const selectedDocDefinition = useMemo(() => {
     if (!selectedType) return null;
-    return typeByCode.get(selectedType) ?? null;
+    return typeByCode.get(normalizeDocTypeCode(selectedType)) ?? typeByCode.get(selectedType) ?? null;
   }, [selectedType, typeByCode]);
   const selectedRequiredFiles = selectedDocDefinition?.required_files ?? null;
   const metadataRequiredFields = useMemo(() => {
@@ -702,55 +505,289 @@ export default function CandidateDocuments({ candidateId, ownerContext, onFields
     setLoading(true);
     setError(null);
     try {
-      const orderedParam =
-        orderedFilter === "ordered" ? true : orderedFilter === "not_ordered" ? false : undefined;
       const [typesResp, summaryResp, docsResp] = await Promise.all([
         getDocumentTypes(),
         getSummary(candidateId, { context: ownerContext ?? undefined, fillMissing: true }),
-        listDocuments({ candidateId, ordered: orderedParam }),
+        listCandidateDocuments(candidateId),
       ]);
-      const types = toArray<DocType>(typesResp);
-      const localFieldMap = buildFieldMap(types);
-      setDocTypes(types);
+      const allTypes = toArray<DocType>(typesResp);
+      const localFieldMap = buildFieldMap(allTypes);
+      
+      // Фильтруем типы документов по профилю, если профиль задан
+      // (кроме driver_ce_default с пустым document_configs = как без профиля).
+      const profileFilterActive = Boolean(candidateProfile && !isDefaultProfileWithEmptyDocumentConfig(candidateProfile));
+      const profileDocConfigs = profileFilterActive ? getDocumentConfigs(candidateProfile) : [];
+      const profileConfigByTypeCode = new Map<string, (typeof profileDocConfigs)[number]>();
+      let filteredTypes = allTypes;
+      if (profileFilterActive) {
+        const profileDocTypeIds = new Set(profileDocConfigs.map((c) => String(c.document_type_id)));
+        const typeById = new Map(allTypes.map((type) => [String(type.id), type] as const));
+        const typeByCodeLocal = new Map(allTypes.map((type) => [type.code, type] as const));
+
+        // Resolve profile references robustly: profile may store type UUID or type code.
+        profileDocConfigs.forEach((cfg) => {
+          const ref = String(cfg.document_type_id);
+          const normalizedRef = normalizeDocTypeCode(ref);
+          const type =
+            typeById.get(ref) ||
+            typeByCodeLocal.get(normalizedRef) ||
+            typeByCodeLocal.get(ref);
+          if (type) {
+            profileConfigByTypeCode.set(type.code, cfg);
+          }
+        });
+
+        filteredTypes = allTypes.filter((type) => profileConfigByTypeCode.has(type.code));
+
+        // Fallback for legacy mixed refs: direct match by either id or code.
+        if (filteredTypes.length === 0 && profileDocTypeIds.size > 0) {
+          filteredTypes = allTypes.filter((type) => {
+            const normalizedCode = normalizeDocTypeCode(String(type.code));
+            return (
+              profileDocTypeIds.has(String(type.id)) ||
+              profileDocTypeIds.has(String(type.code)) ||
+              profileDocTypeIds.has(normalizedCode)
+            );
+          });
+          filteredTypes.forEach((type) => {
+            const cfg = profileDocConfigs.find(
+              (c) =>
+                String(c.document_type_id) === String(type.id) ||
+                normalizeDocTypeCode(String(c.document_type_id)) === String(type.code) ||
+                String(c.document_type_id) === String(type.code)
+            );
+            if (cfg) profileConfigByTypeCode.set(type.code, cfg);
+          });
+        }
+
+        // Citronex broken default profile: enrich reduced legacy config to full driver set.
+        if (candidateProfile?.code === "driver_ce_default" && filteredTypes.length > 0 && filteredTypes.length <= 6) {
+          const merged = new Map(filteredTypes.map((type) => [type.code, type] as const));
+          DRIVER_DEFAULT_ENRICHMENT_CODES.forEach((code) => {
+            const normalizedCode = normalizeDocTypeCode(code);
+            const type = typeByCodeLocal.get(normalizedCode) || typeByCodeLocal.get(code);
+            if (type) merged.set(type.code, type);
+          });
+          filteredTypes = Array.from(merged.values());
+        }
+
+        // Safety net: never show an empty page due to broken profile references.
+        if (filteredTypes.length === 0 && allTypes.length > 0) {
+          console.warn("[CandidateDocuments] Profile document refs resolved to 0 types; falling back to all document types");
+          filteredTypes = allTypes;
+        }
+      }
+
+      // Ruleset-required types that block the pipeline must stay visible/attachable even when the
+      // candidate profile omits them (e.g. legacy `identity_document` ref resolved to wrong catalog row).
+      const reqSum = summaryResp?.summary?.required;
+      const pipelineBlockingCodes = new Set<string>();
+      if (reqSum && typeof reqSum === "object") {
+        for (const bucket of [reqSum.missing, reqSum.problematic, reqSum.in_progress_types]) {
+          if (!Array.isArray(bucket)) continue;
+          for (const raw of bucket) {
+            const n = normalizeDocTypeCode(String(raw || ""));
+            if (n) pipelineBlockingCodes.add(n);
+          }
+        }
+      }
+      const byNormCode = new Map<string, DocType>();
+      for (const t of allTypes) {
+        byNormCode.set(normalizeDocTypeCode(t.code), t);
+      }
+      let displayTypes = filteredTypes;
+      if (profileFilterActive && allTypes.length > 0 && pipelineBlockingCodes.size > 0) {
+        const merged = new Map(filteredTypes.map((t) => [t.code, t] as const));
+        for (const code of pipelineBlockingCodes) {
+          const hit = byNormCode.get(code);
+          if (hit && !merged.has(hit.code)) merged.set(hit.code, hit);
+        }
+        displayTypes = Array.from(merged.values());
+      }
+
+      setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
-      const summaryDocs = Array.isArray(summaryResp?.documents)
+      const summaryDocsRaw = Array.isArray(summaryResp?.documents)
         ? (summaryResp.documents as Document[])
         : [];
-      const docsList = Array.isArray(docsResp) ? docsResp : [];
-      setDocs(docsList);
+      const docsListRaw = Array.isArray(docsResp) ? docsResp : [];
+      const displayTypeCodes = new Set(displayTypes.map((type) => normalizeDocTypeCode(type.code)));
+      const summaryDocs = profileFilterActive
+        ? summaryDocsRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
+        : summaryDocsRaw;
+      const docsList = profileFilterActive
+        ? docsListRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
+        : docsListRaw;
+      
+      // Объединяем реальные документы и синтетические из summary
+      // summaryDocs содержит все документы включая синтетические (missing) с fillMissing: true
+      // Важно: реальные документы ключуются по id (UUID), а синтетические из summary — по synthetic::<type>.
+      // Без проверки типа получается дубль: один и тот же тип показывается и как реальный файл, и как synthetic.
+      const allDocsMap = new Map<string, Document>();
+      const existingTypeCodes = new Set<string>();
+      
+      // Сначала добавляем реальные документы
+      docsList.forEach((doc) => {
+        allDocsMap.set(doc.id, doc);
+        if (doc.type_code || doc.doc_type) {
+          existingTypeCodes.add(normalizeDocTypeCode(doc.type_code || doc.doc_type));
+        }
+      });
+      
+      // Затем добавляем записи из summary: синтетические — только если нет реального документа этого типа
+      summaryDocs.forEach((doc) => {
+        const typeNorm = normalizeDocTypeCode(doc.type_code || doc.doc_type);
+        const isSynthetic = doc.id.startsWith("synthetic::");
+        if (isSynthetic) {
+          if (typeNorm && existingTypeCodes.has(typeNorm)) {
+            return;
+          }
+          const key = typeNorm
+            ? `synthetic::${typeNorm}`
+            : `synthetic::${doc.type_code || doc.doc_type || "unknown"}`;
+          if (!allDocsMap.has(key)) {
+            allDocsMap.set(key, doc);
+            if (typeNorm) existingTypeCodes.add(typeNorm);
+          }
+        } else if (!allDocsMap.has(doc.id)) {
+          allDocsMap.set(doc.id, doc);
+          if (typeNorm) existingTypeCodes.add(typeNorm);
+        }
+      });
+      
+      // Создаем синтетические документы для всех типов из docTypes, которых еще нет
+      displayTypes.forEach((type) => {
+        const typeCode = type.code;
+        const typeCodeNorm = normalizeDocTypeCode(typeCode);
+        if (!existingTypeCodes.has(typeCodeNorm)) {
+          const syntheticId = `synthetic::${typeCode}::${candidateId}`;
+          const syntheticDoc: Document = {
+            id: syntheticId,
+            tenant_id: summaryResp?.candidate_id || "",
+            candidate_id: candidateId,
+            company_id: null,
+            kind: (type.kind as DocumentKind) || "driver",
+            doc_type: typeCode,
+            type: typeCode,
+            type_code: typeCode,
+            custom_name: null,
+            title: null,
+            owner_type: "candidate",
+            owner_id: candidateId,
+            requested_from: (type.requested_from as DocumentRequestedFrom) || "candidate",
+            process_type: (type.process_type as DocumentProcessType) || "manual",
+            number: null,
+            status: "missing" as DocumentStatus,
+            reminder_days_before: (() => {
+              // Используем alert_days_before_expiry из профиля, если есть
+              if (profileFilterActive) {
+                const docConfig = profileConfigByTypeCode.get(typeCode);
+                if (docConfig?.alert_days_before_expiry) return docConfig.alert_days_before_expiry;
+              }
+              return type.default_expire_in_days || 30;
+            })(),
+            files: [],
+            workflow: null,
+            source: null,
+            external_id: null,
+            verified_at: null,
+            issue_date: null,
+            expire_date: null,
+            issued_at: null,
+            expires_at: null,
+            meta: { synthetic: true, doc_type: typeCode },
+            extra: { synthetic: true, doc_type: typeCode },
+            meta_json: { synthetic: true, doc_type: typeCode },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            reminders: [],
+            version: null,
+            last_check: null,
+            has_files: false,
+            status_rank: 0,
+            readiness_state: null,
+            ordered_at: null,
+            valid_from: null,
+            comment: null,
+            user_comment: null,
+            note: null,
+          };
+          allDocsMap.set(syntheticId, syntheticDoc);
+          existingTypeCodes.add(typeCodeNorm);
+        }
+      });
+      
+      const allDocs = Array.from(allDocsMap.values());
+      setDocs(allDocs);
 
       const coreInitial: Record<string, CoreFields> = {};
       const metadataInitial: Record<string, MetadataState> = {};
-      docsList.forEach((doc) => {
+      allDocs.forEach((doc) => {
         coreInitial[doc.id] = coreFromDocument(doc);
-        metadataInitial[doc.id] = buildMetadataStateFromDoc(doc, localFieldMap.get(doc.doc_type) ?? []);
+        metadataInitial[doc.id] = buildMetadataStateFromDoc(
+          doc,
+          localFieldMap.get(normalizeDocTypeCode(doc.doc_type || doc.type_code || "")) ?? []
+        );
       });
       setCoreEdits(coreInitial);
       setMetadataEdits(metadataInitial);
 
       const defaultType = (() => {
-        if (!types.length) return "";
+        if (!displayTypes.length) return "";
         const readyCodes = new Set(
           summaryDocs
             .filter((doc) => READY_STATUSES.has(doc.status))
-            .map((doc) => doc.type_code)
+            .map((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || ""))
         );
-        const firstRequired = types.find((t) => t.required && !readyCodes.has(t.code));
-        return firstRequired?.code || types[0].code;
+        // Проверяем required из профиля или из типа документа
+        const firstRequired = displayTypes.find((t) => {
+          if (profileFilterActive) {
+            const docConfig = profileConfigByTypeCode.get(t.code);
+            const isRequired = docConfig?.required || t.required;
+            return Boolean(isRequired) && !readyCodes.has(t.code);
+          }
+          return t.required && !readyCodes.has(t.code);
+        });
+        return firstRequired?.code || displayTypes[0].code;
       })();
-      setSelectedType((prev) => prev || defaultType);
+      setSelectedType((prev) => {
+        if (prev) return prev;
+        if (initialType) {
+          const normalized = normalizeDocTypeCode(initialType);
+          const exists = displayTypes.some((t) => t.code === initialType || normalizeDocTypeCode(t.code) === normalized);
+          if (exists) return initialType;
+        }
+        return defaultType;
+      });
     } catch (e: any) {
       const fallback = t("admin.documents.errors.load_failed");
+      if (planLimitModal?.showPlanLimitIfNeeded(e, fallback)) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || fallback;
       setError(String(message));
     } finally {
       setLoading(false);
     }
-  }, [candidateId, ownerContext, orderedFilter, coreFromDocument]);
+  }, [candidateId, ownerContext, coreFromDocument, candidateProfile, planLimitModal, t]);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const templatesList = await listDocumentTemplates(false);
+        setTemplates(templatesList);
+      } catch (e: any) {
+        console.error("[CandidateDocuments] Failed to load templates:", e);
+      }
+    };
+    if (canManageDocuments) {
+      loadTemplates();
+    }
+  }, [canManageDocuments]);
 
   useEffect(() => {
     const handler = (event: ClipboardEvent) => {
@@ -774,23 +811,9 @@ useEffect(() => {
   setAdditionalComment("");
 }, [selectedType]);
 
-  const isExpiringSoonDoc = useCallback(
-    (doc: Document) => {
-      const expiry = doc.expire_date || doc.expires_at;
-      const diff = daysUntil(expiry);
-      return diff !== null && diff >= 0 && diff <= EXPIRING_SOON_THRESHOLD_DAYS;
-    },
-    []
-  );
-
   const isPassportIncompleteDoc = useCallback(
-    (doc: Document) => doc.doc_type === "passport" && !READY_STATUSES.has(primaryStatus(doc)),
+    (doc: Document) => normalizeDocTypeCode(doc.doc_type || doc.type_code || "") === "passport" && !READY_STATUSES.has(primaryStatus(doc)),
     []
-  );
-
-  const expiringSoonSet = useMemo(
-    () => new Set(docs.filter((doc) => isExpiringSoonDoc(doc)).map((doc) => doc.id)),
-    [docs, isExpiringSoonDoc]
   );
 
   const passportIncompleteSet = useMemo(
@@ -798,23 +821,71 @@ useEffect(() => {
     [docs, isPassportIncompleteDoc]
   );
 
+  const UPCOMING_DAYS = 60;
+  const upcomingDeadlines = useMemo(() => {
+    const items: { dateIso: string; label: string; docId: string; docTitle: string; kind: "expiry" | "workflow_step"; stepCode?: string }[] = [];
+    const today = computeTodayIso();
+    const cutoff = new Date(Date.now() + UPCOMING_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    docs.forEach((doc) => {
+      const typeCode = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+      const typeInfo = typeByCode.get(typeCode) ?? typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
+      const title = doc.title || doc.custom_name || getDocTypeLabel(typeCode || doc.doc_type, typeInfo?.name);
+      const expiry = doc.expire_date || doc.expires_at;
+      if (expiry && expiry >= today) {
+        if (expiry <= cutoff) {
+          items.push({ dateIso: expiry, label: title, docId: doc.id, docTitle: title, kind: "expiry" });
+        }
+      }
+      const steps = doc.workflow?.steps ?? [];
+      steps.forEach((step) => {
+        if (step.due_at && !step.completed_at && step.status !== "completed") {
+          const due = step.due_at.slice(0, 10);
+          if (due >= today && due <= cutoff) {
+            items.push({
+              dateIso: due,
+              label: step.title || step.code || "Step",
+              docId: doc.id,
+              docTitle: title,
+              kind: "workflow_step",
+              stepCode: step.code,
+            });
+          }
+        }
+      });
+    });
+    items.sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+    return items.slice(0, 15);
+  }, [docs, typeByCode, getDocTypeLabel]);
+
+  const upcomingDeadlinesByDate = useMemo(() => {
+    const byDate = new Map<string, typeof upcomingDeadlines>();
+    upcomingDeadlines.forEach((item) => {
+      const key = item.dateIso.slice(0, 10);
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key)!.push(item);
+    });
+    return Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [upcomingDeadlines]);
+
   const groupedDocs = useMemo(() => {
     const search = searchQuery.trim().toLowerCase();
     const groups: Record<DocumentKind, Document[]> = { driver: [], employer: [], process: [] };
 
     docs.forEach((doc) => {
       if (kindFilter !== "all" && doc.kind !== kindFilter) return;
-      const statusValue = primaryStatus(doc);
-      if (statusFilter !== "all" && statusValue !== statusFilter) return;
+      if (!documentMatchesRuntimeFilterSelection(doc, runtimeFilter)) return;
+      if (orderedFilter === "ordered" && !doc.ordered_at) return;
+      if (orderedFilter === "not_ordered" && doc.ordered_at) return;
       if (search) {
-        const typeName =
-          (typeByCode.get(doc.doc_type)?.name || typeByCode.get(doc.type_code)?.name || doc.doc_type).toLowerCase();
+        const typeCode = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+        const typeInfo = typeByCode.get(typeCode) ?? typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
+        const typeName = getDocTypeLabel(typeCode || doc.doc_type, typeInfo?.name).toLowerCase();
         const title = (doc.title || doc.custom_name || "").toLowerCase();
-        if (!typeName.includes(search) && !title.includes(search) && !doc.doc_type.toLowerCase().includes(search)) {
+        const rawType = (doc.doc_type || "").toLowerCase();
+        if (!typeName.includes(search) && !title.includes(search) && !rawType.includes(search)) {
           return;
         }
       }
-      if (expiringSoonOnly && !expiringSoonSet.has(doc.id)) return;
       if (passportIncompleteOnly && !passportIncompleteSet.has(doc.id)) return;
       groups[doc.kind].push(doc);
     });
@@ -844,13 +915,14 @@ useEffect(() => {
   }, [
     docs,
     kindFilter,
-    statusFilter,
+    runtimeFilter,
+    orderedFilter,
     searchQuery,
     typeByCode,
-    expiringSoonOnly,
+    getDocTypeLabel,
     passportIncompleteOnly,
-    expiringSoonSet,
     passportIncompleteSet,
+    locale,
   ]);
 
   const statsByKind = useMemo(() => {
@@ -895,6 +967,11 @@ useEffect(() => {
     [orderDrafts]
   );
 
+  const orderableTypes = useMemo(
+    () => docTypes.filter((t) => t.orderable),
+    [docTypes]
+  );
+
   const updateOrderDraftField = useCallback(
     (typeCode: string, field: keyof OrderDraft, value: string) => {
       setOrderDrafts((prev) => ({
@@ -909,6 +986,14 @@ useEffect(() => {
   );
 
   const filteredCount = KIND_ORDER.reduce((acc, kind) => acc + (groupedDocs[kind]?.length ?? 0), 0);
+  
+  const filteredDocs = useMemo(() => {
+    const all: Document[] = [];
+    KIND_ORDER.forEach((kind) => {
+      all.push(...(groupedDocs[kind] ?? []));
+    });
+    return all;
+  }, [groupedDocs]);
 
   const updateDocumentState = useCallback((updated: Document) => {
     setDocs((prev) => {
@@ -1006,25 +1091,21 @@ useEffect(() => {
   }, [summaryResponse, docs]);
 
   const requiredEntries = useMemo(() => {
-    if (!checklist) return [] as Array<{ type: string; label: string; status: RequiredState; documents: Document[] }>;
-    const reqSummary = summary?.required;
-    const readySet = new Set(reqSummary?.ready_types ?? []);
-    const inProgressSet = new Set(reqSummary?.in_progress_types ?? []);
-    const problemSet = new Set(reqSummary?.problematic ?? []);
-    const missingSet = new Set(reqSummary?.missing ?? []);
+    if (!checklist?.requiredTypes?.length) {
+      return [] as Array<{ type: string; label: string; badge: RuntimeBadgePresentation; documents: Document[] }>;
+    }
+    const summaryPayload = (summaryResponse?.summary ?? summaryResponse ?? null) as Record<string, unknown> | null;
+    const runtimeByType = indexRuntimeItemsByType(extractRuntimeItemsFromSummary(summaryPayload));
 
     return checklist.requiredTypes.map((rawType) => {
-      const typeCode = String(rawType);
-      let status: RequiredState = "missing";
-      if (readySet.has(typeCode)) status = "ready";
-      else if (problemSet.has(typeCode)) status = "problem";
-      else if (inProgressSet.has(typeCode)) status = "in_progress";
-      else if (missingSet.has(typeCode)) status = "missing";
-      const label = typeByCode.get(typeCode)?.name || typeCode;
-      const documentsForType = docs.filter((doc) => doc.type_code === typeCode);
-      return { type: typeCode, label, status, documents: documentsForType };
+      const typeCode = normalizeDocTypeCode(String(rawType));
+      const typeInfo = typeByCode.get(typeCode);
+      const label = getDocTypeLabel(typeCode, typeInfo?.name);
+      const badge = runtimeBadgeFromRuntime(runtimeByType.get(typeCode));
+      const documentsForType = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || "") === typeCode);
+      return { type: typeCode, label, badge, documents: documentsForType };
     });
-  }, [checklist, summary, docs, typeByCode]);
+  }, [checklist, summaryResponse, docs, typeByCode, getDocTypeLabel]);
 
 
   const handleOrderType = useCallback(
@@ -1059,18 +1140,38 @@ useEffect(() => {
         updateDocumentState(orderedDoc);
         flash(
           t("admin.documents.notifications.order_success", {
-            values: { name: typeInfo?.name || typeCode },
+            values: { name: getDocTypeLabel(typeCode, typeInfo?.name) },
           }),
         );
         await loadAll();
       } catch (e: any) {
-        const message = extractErrorMessages(e)[0] || t("admin.documents.notifications.order_failed");
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.order_failed"))
+        ) {
+          return;
+        }
+        const message = formatErrorForDisplay(e, {
+          fallback: t("admin.documents.notifications.order_failed"),
+        });
         setError(message);
       } finally {
         setOrderingTypes((prev) => ({ ...prev, [typeCode]: false }));
       }
     },
-    [canManageDocuments, candidateId, ownerContext, orderDraftForType, typeByCode, updateDocumentState, loadAll, flash, updateOrderDraftField]
+    [
+      canManageDocuments,
+      candidateId,
+      ownerContext,
+      orderDraftForType,
+      planLimitModal,
+      typeByCode,
+      updateDocumentState,
+      loadAll,
+      flash,
+      updateOrderDraftField,
+      getDocTypeLabel,
+      t,
+    ]
   );
 
 
@@ -1147,15 +1248,39 @@ useEffect(() => {
       if (!commentValue) {
         throw new Error(t("admin.documents.errors.comment_missing"));
       }
+      // Для additional_document custom_name обязателен - устанавливаем его ПЕРВЫМ
+      base.custom_name = trimmedTitle;
       base.title = trimmedTitle;
       metaPayload.title = trimmedTitle;
       metaPayload.description = desc;
       metaPayload.comment = commentValue;
+      console.log("[buildCreatePayload] additional_document - set custom_name:", trimmedTitle, "base:", base);
     } else if (trimmedTitle) {
       base.title = trimmedTitle;
     }
 
+    // Убеждаемся, что custom_name не перезаписывается undefined/null из restOverrides
     const merged: CreateCandidateDocumentPayload = { ...base, ...restOverrides };
+    // Если custom_name был установлен в base, но перезаписан undefined/null, восстанавливаем его
+    if (selectedType === "additional_document") {
+      if (base.custom_name && !merged.custom_name) {
+        merged.custom_name = base.custom_name;
+      }
+      // Также убеждаемся, что title установлен, если custom_name есть
+      if (merged.custom_name && !merged.title) {
+        merged.title = merged.custom_name;
+      }
+      // Если custom_name все еще отсутствует, но есть title, используем его
+      if (!merged.custom_name && merged.title) {
+        merged.custom_name = merged.title;
+      }
+      console.log("[buildCreatePayload] additional_document merged:", {
+        "base.custom_name": base.custom_name,
+        "merged.custom_name": merged.custom_name,
+        "merged.title": merged.title,
+        "merged.meta_json": merged.meta_json
+      });
+    }
     const metaFields = metadataFieldMap.get(selectedType) ?? [];
     const normalizedMeta = buildMetadataPayloadFromState(metaFields, creationMetadata);
     if (metaFields.length > 0) {
@@ -1183,6 +1308,29 @@ useEffect(() => {
     if (Object.keys(combinedMeta).length > 0) {
       merged.meta_json = combinedMeta;
     }
+    
+    // ФИНАЛЬНАЯ проверка для additional_document - custom_name должен быть установлен
+    if (selectedType === "additional_document" && !merged.custom_name) {
+      // Пробуем найти в meta_json.title
+      if (merged.meta_json?.title) {
+        merged.custom_name = String(merged.meta_json.title).trim();
+        console.warn("[buildCreatePayload] Restored custom_name from meta_json.title:", merged.custom_name);
+      } else {
+        console.error("[buildCreatePayload] CRITICAL ERROR: additional_document has no custom_name in final merged!", {
+          base,
+          merged,
+          combinedMeta
+        });
+        throw new Error("custom_name is required for additional_document but was not set");
+      }
+    }
+    
+    console.log("[buildCreatePayload] Final merged for", selectedType, ":", {
+      custom_name: merged.custom_name,
+      title: merged.title,
+      "meta_json.title": merged.meta_json?.title
+    });
+    
     return merged;
   };
 
@@ -1239,6 +1387,11 @@ useEffect(() => {
     } catch (e: any) {
       if (timer) window.clearInterval(timer);
       setUploadPct(0);
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.upload_failed"))
+      ) {
+        return;
+      }
       const message =
         e?.response?.data?.detail || e?.message || t("admin.documents.notifications.upload_failed");
       setError(String(message));
@@ -1285,6 +1438,11 @@ useEffect(() => {
           : t("admin.documents.notifications.create_success"),
       );
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.create_failed"))
+      ) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || t("admin.documents.notifications.create_failed");
       setError(String(message));
     } finally {
@@ -1303,1773 +1461,754 @@ useEffect(() => {
       flash(t("admin.documents.notifications.delete_success"));
       await loadAll();
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.delete_failed"))
+      ) {
+        return;
+      }
       const message =
         e?.response?.data?.detail || e?.message || t("admin.documents.notifications.delete_failed");
       setError(String(message));
     }
   };
 
-  const updateStatus = async (doc: Document, newStatus: DocumentStatus) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_status"));
-      return;
-    }
-    setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const updated = await patchDocument(doc.id, { status: newStatus } as DocumentPatchPayload);
-      updateDocumentState(updated);
-      flash(t("admin.documents.notifications.status_updated"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.status_failed"));
-    } finally {
-      setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const approveDocument = async (doc: Document) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_approve"));
-      return;
-    }
-    setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const updated = await checkDocument(doc.id, { decision: "approved" });
-      updateDocumentState(updated);
-      flash(t("admin.documents.notifications.approve_success"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.approve_failed"));
-    } finally {
-      setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const createDocumentFromChecklist = async (doc: Document) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_create"));
-      return;
-    }
-    if (!candidateId) return;
-    setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const metaPayload = { ...(doc.meta_json ?? {}) };
-      delete (metaPayload as any).synthetic;
-
-      const created = await createCandidateDocument({
-        owner_id: candidateId,
-        doc_type: doc.type_code,
-        kind: doc.kind,
-        requested_from: doc.requested_from,
-        process_type: doc.process_type,
-        status: "requested",
-        reminder_days_before: doc.reminder_days_before ?? 30,
-        meta_json: metaPayload,
-      });
-      updateDocumentState(created);
-      if (onFieldsApplied) {
-        onFieldsApplied(created, created.meta_json ?? {});
-      }
-      flash(t("admin.documents.notifications.created_from_checklist"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.create_failed"));
-    } finally {
-      setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const startWorkflow = async (doc: Document) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_workflow"));
-      return;
-    }
-    const workflowSource = doc.workflow ? JSON.parse(JSON.stringify(doc.workflow)) : null;
-    if (!workflowSource || !Array.isArray(workflowSource.steps) || !workflowSource.steps.length) {
-      return;
-    }
-    const nowIso = new Date().toISOString();
-    const steps = workflowSource.steps.map((step: any, index: number) => {
-      const status = String(step.status || "").toLowerCase();
-      if (status === "done") {
-        return { ...step, status: "done" };
-      }
-      if (index === 0) {
-        return {
-          ...step,
-          status: "in_progress",
-          completed_at: step.completed_at ?? null,
-          ordered_at: step.ordered_at ?? nowIso,
-        };
-      }
-      return { ...step, status: "pending", completed_at: step.completed_at ?? null };
-    });
-    workflowSource.steps = steps;
-    workflowSource.current_step = steps.find((step: any) => step.status !== "done")?.code ?? null;
-    workflowSource.completed = !workflowSource.current_step;
-
-    const payload: DocumentPatchPayload = {
-      status: doc.status === "missing" ? "requested" : doc.status,
-      workflow: workflowSource,
-    };
-
-    setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const updated = await patchDocument(doc.id, payload);
-      updateDocumentState(updated);
-      flash(t("admin.documents.notifications.workflow_started"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.workflow_failed"));
-    } finally {
-      setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const completeWorkflowStep = async (doc: Document, stepCode: string) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_workflow"));
-      return;
-    }
-    const workflowSource = doc.workflow ? JSON.parse(JSON.stringify(doc.workflow)) : null;
-    if (!workflowSource || !Array.isArray(workflowSource.steps) || !workflowSource.steps.length) {
-      return;
-    }
-    const nowIso = new Date().toISOString();
-    let nextMarked = false;
-    const steps = workflowSource.steps.map((step: any) => {
-      const status = String(step.status || "").toLowerCase();
-      if (step.code === stepCode) {
-        return {
-          ...step,
-          status: "done",
-          completed_at: step.completed_at ?? nowIso,
-        };
-      }
-      if (status === "done") {
-        return { ...step, status: "done" };
-      }
-      if (!nextMarked) {
-        nextMarked = true;
-        const dueInHours =
-          typeof step.due_in_hours === "number" && Number.isFinite(step.due_in_hours)
-            ? step.due_in_hours
-            : null;
-        const dueAt =
-          step.due_at ??
-          (dueInHours != null
-            ? new Date(Date.now() + dueInHours * 60 * 60 * 1000).toISOString()
-            : null);
-        return {
-          ...step,
-          status: "in_progress",
-          completed_at: null,
-          ordered_at: step.ordered_at ?? nowIso,
-          due_at: dueAt,
-        };
-      }
-      return { ...step, status: "pending", completed_at: null };
-    });
-
-    workflowSource.steps = steps;
-    workflowSource.current_step = steps.find((step: any) => step.status !== "done")?.code ?? null;
-    workflowSource.completed = !workflowSource.current_step;
-
-    setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const updated = await patchDocument(doc.id, { workflow: workflowSource });
-      updateDocumentState(updated);
-      flash(t("admin.documents.notifications.workflow_step_marked"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.workflow_failed"));
-    } finally {
-      setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const saveCoreFields = async (doc: Document) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_edit"));
-      return;
-    }
-    const edits = coreEdits[doc.id] ?? {};
-    const payload: DocumentPatchPayload = {};
-
-    if (edits.number !== undefined) {
-      payload.number = edits.number && edits.number.trim() ? edits.number.trim() : null;
-    }
-    if (edits.issue_date !== undefined) {
-      payload.issue_date = edits.issue_date ? String(edits.issue_date).slice(0, 10) : null;
-    }
-    if (edits.expire_date !== undefined) {
-      payload.expire_date = edits.expire_date ? String(edits.expire_date).slice(0, 10) : null;
-    }
-    if (edits.ordered_at !== undefined) {
-      payload.ordered_at = edits.ordered_at ? String(edits.ordered_at).slice(0, 10) : null;
-    }
-    if (edits.valid_from !== undefined) {
-      payload.valid_from = edits.valid_from ? String(edits.valid_from).slice(0, 10) : null;
-    }
-    if (edits.reminder_days_before !== undefined) {
-      payload.reminder_days_before = edits.reminder_days_before ?? null;
-    }
-    if (edits.requested_from) {
-      payload.requested_from = edits.requested_from;
-    }
-    if (edits.owner_id !== undefined) {
-      payload.owner_id = edits.owner_id && edits.owner_id.trim() ? edits.owner_id.trim() : null;
-    }
-
-    const baseMeta: Record<string, any> = { ...(doc.meta_json ?? {}) };
-    let metaChanged = false;
-    if (edits.comment !== undefined) {
-      if (edits.comment && edits.comment.trim()) {
-        baseMeta.comment = edits.comment.trim();
-      } else {
-        delete baseMeta.comment;
-      }
-      metaChanged = true;
-    }
-
-    const metaFields = metadataFieldMap.get(doc.doc_type) ?? [];
-    if (metaFields.length > 0) {
-      const current = buildMetadataPayloadFromState(metaFields, metadataEdits[doc.id]);
-      metaFields.forEach((field) => {
-        const nextValue = current[field.name];
-        const prevValue = baseMeta[field.name];
-        const isEmpty =
-          nextValue === null ||
-          nextValue === undefined ||
-          nextValue === "" ||
-          (Array.isArray(nextValue) && nextValue.length === 0);
-        if (isEmpty) {
-          if (prevValue !== undefined) {
-            delete baseMeta[field.name];
-            metaChanged = true;
-          }
-        } else if (JSON.stringify(prevValue) !== JSON.stringify(nextValue)) {
-          baseMeta[field.name] = nextValue;
-          metaChanged = true;
-        }
-      });
-    }
-    if (metaChanged) {
-      payload.meta_json = baseMeta;
-    }
-
-    if (Object.keys(payload).length === 0) {
-      return;
-    }
-
-    setCoreSaving((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const updated = await patchDocument(doc.id, payload);
-      updateDocumentState(updated);
-      if (onFieldsApplied) {
-        onFieldsApplied(updated, payload.meta_json ?? {});
-      }
-      flash(t("admin.documents.notifications.core_saved"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.core_failed"));
-    } finally {
-      setCoreSaving((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const resetCoreFields = (doc: Document) => {
-    setCoreEdits((prev) => ({
-      ...prev,
-      [doc.id]: coreFromDocument(doc),
-    }));
-    setMetadataEdits((prev) => ({
-      ...prev,
-      [doc.id]: buildMetadataStateFromDoc(doc, metadataFieldMap.get(doc.doc_type) ?? []),
-    }));
-  };
-
-  const rejectDocument = async (doc: Document) => {
-    if (!canManageDocuments) {
-      setError(t("admin.documents.errors.permission_reject"));
-      return;
-    }
-    const reason = window.prompt(t("admin.documents.prompts.reject_reason"), "") ?? undefined;
-    setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
-    try {
-      const payload: { decision: "rejected"; comment?: string } = { decision: "rejected" };
-      if (reason && reason.trim()) payload.comment = reason.trim();
-      const updated = await checkDocument(doc.id, payload);
-      updateDocumentState(updated);
-      flash(t("admin.documents.notifications.reject_success"));
-      await loadAll();
-    } catch (e: any) {
-      const messages = extractErrorMessages(e);
-      setError(messages[0] || t("admin.documents.notifications.reject_failed"));
-    } finally {
-      setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
-    }
-  };
-
-  const [previewRevoker, setPreviewRevoker] = useState<(() => void) | null>(null);
+  // Document preview is now handled by useDocumentPreview hook
+  const { previewUrl, previewOpen, previewContentType, openDoc, closePreview } = useDocumentPreview({ setError });
+  const initialTypeAutoOpenedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (previewRevoker) previewRevoker();
-    };
-  }, [previewRevoker]);
+    initialTypeAutoOpenedRef.current = null;
+  }, [candidateId, initialType]);
 
-  const openDoc = async (doc: Document) => {
-    setError(null);
-    if (previewRevoker) {
-      previewRevoker();
-      setPreviewRevoker(null);
-    }
-    setPreviewContentType(null);
-    let directLink: string | null = null;
-    let directFilename: string | null = null;
-    try {
-      try {
-        const res = await getDocumentFileUrl(doc.id);
-        const rawLink = typeof res === "string" ? res : res?.url;
-        if (rawLink) {
-          const resolved = resolveDocumentUrl(rawLink);
-          if (resolved) {
-            directLink = resolved;
-            directFilename = filenameFromUrl(resolved);
-          }
-        }
-      } catch (fetchLinkError: any) {
-        if (fetchLinkError?.response?.status && fetchLinkError.response.status !== 404) {
-          throw fetchLinkError;
-        }
-      }
+  useEffect(() => {
+    if (!initialType) return;
+    if (initialTypeAutoOpenedRef.current === initialType) return;
 
-      const fileData = await downloadDocumentFile(doc.id);
-      const { blob, filename, contentType } = fileData;
-      const previewable = guessPreviewable(contentType, filename);
-
-      if (!blob || blob.size === 0) {
-        if (directLink) {
-          window.open(directLink, "_blank", "noopener");
-          setPreviewUrl(null);
-          setPreviewOpen(false);
-          setPreviewContentType(null);
-          return;
-        }
-        setError(t("admin.documents.errors.file_fetch_failed"));
-        return;
-      }
-
-      const objectUrl = URL.createObjectURL(blob);
-      const looksLikeHtml = await isProbablyHtmlBlob(blob, contentType);
-      if (looksLikeHtml) {
-        URL.revokeObjectURL(objectUrl);
-        setPreviewRevoker(null);
-        if (directLink) {
-          window.open(directLink, "_blank", "noopener");
-          return;
-        }
-        setError(t("admin.documents.errors.file_missing_remote"));
-        return;
-      }
-
-      if (previewable) {
-        if (previewRevoker) previewRevoker();
-        const lowerType = (contentType || "").toLowerCase();
-        const lowerFilename = (filename || "").toLowerCase();
-        const isPdf = lowerType.includes("pdf") || lowerFilename.endsWith(".pdf");
-        const previewMime = detectPreviewMime(contentType, filename);
-        setPreviewUrl(objectUrl);
-        setPreviewOpen(true);
-        setPreviewContentType(previewMime ?? (isPdf ? "application/pdf" : "image/*"));
-        setPreviewRevoker(() => () => {
-          URL.revokeObjectURL(objectUrl);
-        });
-        return;
-      }
-
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = filename || doc.title || doc.custom_name || directFilename || "document";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-      setPreviewRevoker(null);
-    } catch (e: any) {
-      const message =
-        e?.response?.data?.detail || e?.message || t("admin.documents.errors.file_open_failed");
-      setError(String(message));
-      if (directLink) {
-        window.open(directLink, "_blank", "noopener");
-      }
-    }
-  };
-
-  const renderWorkflow = (doc: Document) => {
-    const workflow = doc.workflow as DocumentWorkflow | undefined;
-    const steps = Array.isArray(workflow?.steps) ? workflow!.steps : [];
-    if (!steps.length) return null;
-    const completed = steps.filter((step) => String(step.status).toLowerCase() === "done").length;
-    const total = steps.length;
-    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const processLabel =
-      translateProcess(workflow?.process_type ?? doc.process_type) ?? doc.process_type;
-    const synthetic = Boolean((doc.meta_json as any)?.synthetic || (doc.meta as any)?.synthetic);
-    const canModify = canManageDocuments && !synthetic;
-    const hasActive = steps.some((step) => String(step.status || "").toLowerCase() === "in_progress");
-    const unfinishedExists = steps.some((step) => String(step.status || "").toLowerCase() !== "done");
-    const canStart = canModify && !hasActive && unfinishedExists;
-    return (
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-          <span className="font-semibold text-gray-700">{t("admin.documents.workflow.title")}</span>
-          <span>{processLabel}</span>
-          <span className="ml-auto text-gray-500">{completed}/{total}</span>
-          {canStart && (
-            <button className="btn-primary btn-xs" onClick={() => startWorkflow(doc)}>
-              {t("admin.documents.actions.order")}
-            </button>
-          )}
-        </div>
-        <div className="h-1.5 rounded bg-gray-200">
-          <div className="h-full rounded bg-blue-500" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="space-y-1">
-          {steps.map((step: DocumentWorkflowStep) => {
-            const rawStatus = String(step.status || "pending").toLowerCase();
-            const isDone = rawStatus === "done";
-            const badge = DOCUMENT_STATUS_META[step.status as DocumentStatus]?.color ?? "bg-gray-100 text-gray-600";
-            const dueAtDate = step.due_at ? new Date(step.due_at) : null;
-            const overdue = Boolean(dueAtDate && dueAtDate.getTime() < Date.now() && !isDone);
-            return (
-              <div key={step.code} className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-gray-700">{step.title || step.code}</span>
-                  <span className={clsx("inline-flex items-center gap-1 rounded-full px-2 py-0.5", badge)}>
-                    {translateStatus(step.status || rawStatus)}
-                  </span>
-                  {step.ordered_at && (
-                    <span className="text-gray-500">
-                      {t("admin.documents.workflow.ordered_at", {
-                        values: { datetime: formatDateTime(step.ordered_at) ?? "" },
-                      })}
-                    </span>
-                  )}
-                  {step.due_at && (
-                    <span className={clsx("text-gray-500", overdue && "text-rose-600 font-semibold")}>
-                      {t("admin.documents.workflow.due_at", {
-                        values: { datetime: formatDateTime(step.due_at) ?? "" },
-                      })}
-                    </span>
-                  )}
-                  {typeof step.due_in_hours === "number" && !Number.isNaN(step.due_in_hours) && (
-                    <span className="text-gray-400">
-                      {t("admin.documents.workflow.due_in_hours", { values: { hours: step.due_in_hours } })}
-                    </span>
-                  )}
-                  {step.completed_at && (
-                    <span className="text-gray-500">
-                      {t("admin.documents.workflow.completed_at", {
-                        values: { datetime: formatDateTime(step.completed_at) ?? "" },
-                      })}
-                    </span>
-                  )}
-                  {overdue && (
-                    <span className="rounded bg-rose-100 px-2 py-0.5 text-rose-700">
-                      {t("admin.documents.badges.overdue")}
-                    </span>
-                  )}
-                  {canModify && !isDone && (
-                    <button
-                      className="btn-ghost btn-xs"
-                      onClick={() => completeWorkflowStep(doc, step.code)}
-                    >
-                      {t("admin.documents.actions.mark_done")}
-                    </button>
-                  )}
-                </div>
-                {step.notes && <div className="mt-1 text-gray-500">{step.notes}</div>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderReminders = (doc: Document) => {
-    const reminders = Array.isArray(doc.reminders) ? doc.reminders : [];
-    if (!reminders.length) return null;
-    return (
-      <div className="flex flex-wrap gap-2 text-[11px] text-gray-600">
-        {reminders.slice(0, 5).map((reminder: DocumentReminder, idx) => (
-          <span
-            key={`${doc.id}-reminder-${idx}`}
-            className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5"
-          >
-            ⏰ {reminder.step_code ? `${reminder.step_code}: ` : ""}{formatDate(reminder.due_at) || ""}
-          </span>
-        ))}
-      </div>
-    );
-  };
-
-  const renderLastCheck = (doc: Document) => {
-    const check = doc.last_check as DocumentCheck | null | undefined;
-    if (!check) return null;
-    const badge = check.decision === "approved" ? "bg-green-50 text-green-700" : "bg-rose-50 text-rose-700";
-    const decisionLabel =
-      check.decision === "approved"
-        ? t("admin.documents.badges.approved")
-        : t("admin.documents.badges.rejected");
-    return (
-      <div className="rounded border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={clsx("inline-flex items-center gap-1 rounded-full px-2 py-0.5", badge)}>
-            {decisionLabel}
-          </span>
-          {check.reviewer_id && (
-            <span className="text-gray-500">
-              {t("admin.documents.labels.reviewer", { values: { reviewer: check.reviewer_id } })}
-            </span>
-          )}
-          {check.created_at && <span className="text-gray-500">{formatDateTime(check.created_at)}</span>}
-        </div>
-        {check.comment && <div className="mt-1 text-gray-600">{check.comment}</div>}
-      </div>
-    );
-  };
-
-  const renderMetadataFieldInput = (
-    field: MetadataFieldConfig,
-    value: any,
-    onChange: (next: any) => void,
-    disabled: boolean
-  ) => {
-    const label = t(`${METADATA_LABEL_NS}.${field.name}`, {
-      defaultValue: field.name.replace(/_/g, " "),
+    const normalizedInitial = normalizeDocTypeCode(initialType);
+    const candidates = docs.filter((doc) => {
+      const docType = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+      if (docType !== normalizedInitial) return false;
+      const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
+      return Boolean(hasFiles);
     });
-    const requiredMark = field.required ? "*" : "";
-    if (field.input === "boolean") {
-      return (
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300"
-            checked={Boolean(value)}
-            onChange={(e) => onChange(e.target.checked)}
-            disabled={disabled}
-          />
-          <span className="text-[11px] font-medium uppercase text-gray-500">
-            {label}
-            {requiredMark && <span className="ml-0.5 text-rose-500">{requiredMark}</span>}
-          </span>
-        </label>
-      );
-    }
-    if (field.input === "multiselect") {
-      return (
-        <div className="rounded border border-gray-200 p-2">
-          <div className="text-[11px] font-semibold uppercase text-gray-500">
-            {label}
-            {requiredMark && <span className="ml-0.5 text-rose-500">{requiredMark}</span>}
-          </div>
-          <div className="mt-1 space-y-1">
-            {(field.enumValues ?? []).map((option) => {
-              const checked = Array.isArray(value) ? value.includes(option) : false;
-              return (
-                <label key={option} className="flex items-center gap-2 text-xs text-gray-600">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300"
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={(e) => {
-                      const next = new Set(Array.isArray(value) ? value : []);
-                      if (e.target.checked) next.add(option);
-                      else next.delete(option);
-                      onChange(Array.from(next));
-                    }}
-                  />
-                  <span>{option}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-    if (field.input === "select") {
-      return (
-        <label className="block text-xs text-gray-600">
-          <div className="text-[11px] font-semibold uppercase text-gray-500">
-            {label}
-            {requiredMark && <span className="ml-0.5 text-rose-500">{requiredMark}</span>}
-          </div>
-          <select
-            className="input input-sm mt-1"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="">{t("admin.documents.forms.select_placeholder", { defaultValue: "Select" })}</option>
-            {(field.enumValues ?? []).map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-      );
-    }
-    if (field.input === "number") {
-      return (
-        <label className="block text-xs text-gray-600">
-          <div className="text-[11px] font-semibold uppercase text-gray-500">
-            {label}
-            {requiredMark && <span className="ml-0.5 text-rose-500">{requiredMark}</span>}
-          </div>
-          <input
-            className="input input-sm mt-1"
-            type="number"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-          />
-        </label>
-      );
-    }
-    if (field.input === "date") {
-      return (
-        <label className="block text-xs text-gray-600">
-          <div className="text-[11px] font-semibold uppercase text-gray-500">
-            {label}
-            {requiredMark && <span className="ml-0.5 text-rose-500">{requiredMark}</span>}
-          </div>
-          <input
-            className="input input-sm mt-1"
-            type="date"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-          />
-        </label>
-      );
-    }
-    return (
-      <label className="block text-xs text-gray-600">
-        <div className="text-[11px] font-semibold uppercase text-gray-500">
-          {label}
-          {requiredMark && <span className="ml-0.5 text-rose-500">{requiredMark}</span>}
-        </div>
-        <input
-          className="input input-sm mt-1"
-          type="text"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-        />
-      </label>
-    );
-  };
+    if (!candidates.length) return;
 
-  const renderDocumentCard = (doc: Document) => {
-    const typeInfo = typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
-    const typeLabel = typeInfo?.name || doc.doc_type;
-    const title = doc.custom_name || doc.title || typeLabel;
-    const statusValue = primaryStatus(doc);
-    const statusMeta =
-      DOCUMENT_STATUS_META[statusValue] ?? {
-        labelKey: statusValue,
-        color: "bg-gray-100 text-gray-600",
-        order: 99,
-      };
-    const metadataFields = metadataFieldMap.get(doc.doc_type) ?? [];
-    const metadataValues = metadataEdits[doc.id] ?? buildMetadataStateFromDoc(doc, metadataFields);
-    const docDefinition = typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
-    const isOrderableDoc = Boolean(docDefinition?.orderable);
-    const statusLabel = translateStatus(statusValue);
-    const selectStatus = statusValue;
-    const synthetic = Boolean((doc.meta_json as any)?.synthetic || (doc.meta as any)?.synthetic);
-    const requirementSources = Array.isArray((doc.meta_json as any)?.checklist_sources)
-      ? (doc.meta_json as any).checklist_sources.map((item: any) => String(item))
-      : [];
-    const readinessState =
-      READY_STATUSES.has(statusValue) || NEGATIVE_STATUSES.has(statusValue)
-        ? ""
-        : doc.readiness_state
-        ? String(doc.readiness_state).toLowerCase()
-        : "";
-    const readinessMeta = readinessState ? READINESS_STATE_META[readinessState] : undefined;
-    const readinessLabel = translateReadiness(readinessState);
-    const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
-    const core = coreEdits[doc.id] ?? coreFromDocument(doc);
-    const requestedFromDate = resolveRequestedFromDate(doc);
-    const isExpiringSoon = isExpiringSoonDoc(doc);
-    const isPassportIncomplete = isPassportIncompleteDoc(doc);
-    const updateCoreField = (field: keyof CoreFields, value: any) => {
+    candidates.sort((a, b) => {
+      const aReady = READY_STATUSES.has(primaryStatus(a));
+      const bReady = READY_STATUSES.has(primaryStatus(b));
+      if (aReady !== bReady) return aReady ? -1 : 1;
+      return dateValue(b.updated_at ?? b.created_at ?? null) - dateValue(a.updated_at ?? a.created_at ?? null);
+    });
+
+    initialTypeAutoOpenedRef.current = initialType;
+    void openDoc(candidates[0]);
+  }, [candidateId, docs, initialType, openDoc]);
+
+  // Функция для получения значения поля из документа
+  const getFieldValue = useCallback((doc: Document, fieldKey: string, metadataValues: MetadataState): any => {
+    // Сначала проверяем редактируемые значения
+    const coreEdit = coreEdits[doc.id];
+    const metaEdit = metadataValues[fieldKey];
+    
+    // Core поля
+    if (fieldKey === "number") {
+      return coreEdit?.number !== undefined ? coreEdit.number : (doc.number ?? "");
+    }
+    if (fieldKey === "issue_date") {
+      return coreEdit?.issue_date !== undefined ? coreEdit.issue_date : (doc.issue_date ?? "");
+    }
+    if (fieldKey === "expire_date") {
+      return coreEdit?.expire_date !== undefined ? coreEdit.expire_date : (doc.expire_date ?? "");
+    }
+    if (fieldKey === "valid_from") {
+      return coreEdit?.valid_from !== undefined ? coreEdit.valid_from : (doc.valid_from ?? "");
+    }
+    if (fieldKey === "ordered_at") {
+      return coreEdit?.ordered_at !== undefined ? coreEdit.ordered_at : (doc.ordered_at ?? "");
+    }
+    
+    // Метаданные - сначала проверяем редактируемые значения, затем из документа
+    if (metaEdit !== undefined) {
+      return metaEdit;
+    }
+    const meta = doc.meta_json ?? doc.meta ?? {};
+    return meta[fieldKey] ?? "";
+  }, [coreEdits]);
+
+  // Document actions are now handled by useDocumentActions hook
+  const {
+    updateStatus,
+    approveDocument,
+    rejectDocument,
+    saveCoreFields,
+    deleteDocumentFile,
+    createDocumentFromChecklist,
+  } = useDocumentActions({
+    candidateId,
+    canManageDocuments,
+    updateDocumentState,
+    loadAll,
+    setError,
+    setStatusUpdating,
+    setCoreSaving,
+    flash,
+    coreEdits,
+    metadataEdits,
+    getFieldValue,
+    coreFromDocument,
+    onFieldsApplied,
+    onDocumentsChanged,
+  });
+
+  // Document upload is now handled by useDocumentUpload hook
+  const { handleReplaceUpload: handleReplaceUploadHook } = useDocumentUpload({
+    canManageDocuments,
+    createDocumentFromChecklist,
+    loadAll,
+    setError,
+    setReplaceUploading,
+    setReplacePct,
+    setReplaceFile,
+    flash,
+  });
+
+  // Функция для обновления значения поля
+  const updateFieldValue = (doc: Document, fieldKey: string, value: any) => {
+    // Core поля
+    if (["number", "issue_date", "expire_date", "valid_from", "ordered_at"].includes(fieldKey)) {
       setCoreEdits((prev) => ({
         ...prev,
-        [doc.id]: { ...(prev[doc.id] ?? core), [field]: value },
+        [doc.id]: { ...(prev[doc.id] ?? coreFromDocument(doc)), [fieldKey]: value },
       }));
-    };
-
-    const expanded = Boolean(expandedDocs[doc.id]);
-    const toggleExpanded = () => {
-      setExpandedDocs((prev) => ({ ...prev, [doc.id]: !prev[doc.id] }));
-    };
-
-    const selectedReplaceFile = replaceFile[doc.id] ?? null;
-    const uploadProgress = replacePct[doc.id] || 0;
-    const isReplacing = Boolean(replaceUploading[doc.id]);
-
-    const handleReplaceUpload = async () => {
-      const nextFile = replaceFile[doc.id];
-      if (!nextFile) return;
-      setReplaceUploading((prev) => ({ ...prev, [doc.id]: true }));
-      setReplacePct((prev) => ({ ...prev, [doc.id]: 0 }));
-      const timer = window.setInterval(() => {
-        setReplacePct((prev) => ({
-          ...prev,
-          [doc.id]: Math.min(90, (prev[doc.id] || 0) + 5),
-        }));
-      }, 150) as unknown as number;
-      try {
-        const presign = await presignUpload(doc.id);
-        const key = presign?.fields?.key || presign?.key || `documents/${doc.id}/original.bin`;
-        await mockUpload({ key, file: nextFile });
-        window.clearInterval(timer);
-        setReplacePct((prev) => ({ ...prev, [doc.id]: 100 }));
-        await loadAll();
-        flash(t("admin.documents.notifications.replace_success"));
-        setReplaceFile((prev) => ({ ...prev, [doc.id]: null }));
-      } catch (e: any) {
-        window.clearInterval(timer);
-        setReplacePct((prev) => ({ ...prev, [doc.id]: 0 }));
-        const message =
-          e?.response?.data?.detail || e?.message || t("admin.documents.notifications.replace_failed");
-        setError(String(message));
-      } finally {
-        setReplaceUploading((prev) => ({ ...prev, [doc.id]: false }));
-        window.setTimeout(() => {
-          setReplacePct((prev) => ({ ...prev, [doc.id]: 0 }));
-        }, 400);
-      }
-    };
-
-    return (
-      <div key={doc.id} className="rounded border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
-          <button
-            type="button"
-            className="btn-ghost btn-xs self-start"
-            onClick={toggleExpanded}
-            aria-expanded={expanded}
-            aria-label={
-              expanded
-                ? t('admin.documents.aria.collapse_document')
-                : t('admin.documents.aria.expand_document')
-            }
-          >
-            {expanded ? "▾" : "▸"}
-          </button>
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-base font-semibold text-gray-800">{title}</span>
-              <span
-              className={clsx(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs",
-                statusMeta.color
-              )}
-            >
-                {statusLabel}
-                {statusUpdating[doc.id] && <span className="text-[10px] text-gray-600">…</span>}
-              </span>
-              {readinessState && (
-                <span
-                  className={clsx(
-                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs",
-                    readinessMeta?.className ?? "bg-gray-100 text-gray-600"
-                  )}
-                >
-                  {readinessLabel ?? doc.readiness_state}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-              <span>{typeLabel}</span>
-              <span>{translateRequestedFrom(doc.requested_from) ?? doc.requested_from}</span>
-              {doc.process_type && doc.process_type !== "none" && (
-                <span>{translateProcess(doc.process_type) ?? doc.process_type}</span>
-              )}
-              {doc.ordered_at && (
-                <span>
-                  {t('admin.documents.labels.ordered_at', { defaultValue: 'Ordered' })} {formatDate(doc.ordered_at)}
-                </span>
-              )}
-              {requestedFromDate && (
-                <span>
-                  {t('admin.documents.labels.requested_from_date', { defaultValue: 'Requested from' })}{" "}
-                  {formatDate(requestedFromDate)}
-                </span>
-              )}
-              {doc.valid_from && (
-                <span>
-                  {t('admin.documents.labels.valid_from', { defaultValue: 'Valid from' })} {formatDate(doc.valid_from)}
-                </span>
-              )}
-              <span
-                className={clsx(
-                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-                  hasFiles ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
-                )}
-              >
-                {hasFiles ? t('admin.documents.badges.files_present') : t('admin.documents.badges.files_missing')}
-              </span>
-              {isExpiringSoon && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
-                  {t('admin.documents.badges.expiring', { values: { days: EXPIRING_SOON_THRESHOLD_DAYS } })}
-                </span>
-              )}
-              {isPassportIncomplete && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
-                  {t('admin.documents.badges.passport_incomplete')}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1 text-xs text-gray-500">
-            {doc.number && <span>{t("admin.documents.labels.number")} {doc.number}</span>}
-            {doc.issue_date && (
-              <span>
-                {t("admin.documents.labels.issue_date")} {formatDate(doc.issue_date)}
-              </span>
-            )}
-            {doc.expire_date && (
-              <span>
-                {t("admin.documents.labels.expire_date")} {formatDate(doc.expire_date)}
-              </span>
-            )}
-            {doc.created_at && (
-              <span>
-                {t("admin.documents.labels.created_at")} {formatDate(doc.created_at)}
-              </span>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button type="button" className="btn-secondary btn-xs" onClick={toggleExpanded}>
-                {expanded ? t("admin.documents.actions.collapse") : t("admin.documents.actions.expand")}
-              </button>
-              <button
-                type="button"
-                className="btn-primary btn-xs"
-                onClick={() => openDoc(doc)}
-                disabled={synthetic}
-              >
-                {t("admin.documents.actions.open")}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {expanded && (
-          <div className="mt-3 space-y-3 border-t border-gray-100 pt-3 text-xs text-gray-600">
-            {synthetic ? (
-              <div className="rounded border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
-                {t("admin.documents.messages.checklist_placeholder")}
-                {requirementSources.length > 0 && (
-                  <span className="ml-1 text-amber-600">
-                    {t("admin.documents.labels.required_sources", {
-                      values: { sources: requirementSources.join(", ") },
-                    })}
-                  </span>
-                )}
-              </div>
-            ) : (
-              requirementSources.length > 0 && (
-                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
-                  {t("admin.documents.labels.required_sources", {
-                    values: { sources: requirementSources.join(", ") },
-                  })}
-                </div>
-              )
-            )}
-
-            <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2">
-              <span>{t("admin.documents.table.status")}</span>
-              <select
-                className="input input-sm"
-                value={selectStatus}
-                onChange={(e) => updateStatus(doc, e.target.value as DocumentStatus)}
-                disabled={!canManageDocuments || statusUpdating[doc.id] || synthetic}
-              >
-                {Object.keys(DOCUMENT_STATUS_META).map((status) => (
-                  <option key={status} value={status}>
-                    {translateStatus(status)}
-                  </option>
-                ))}
-              </select>
-            </label>
-              <button
-                className="btn-primary btn-xs"
-                onClick={() => approveDocument(doc)}
-                disabled={!canManageDocuments || statusUpdating[doc.id] || selectStatus === "approved" || synthetic}
-              >
-                {t("admin.documents.actions.approve")}
-              </button>
-              <button
-                className="btn-ghost btn-xs border border-rose-200 text-rose-600 hover:bg-rose-50"
-                onClick={() => rejectDocument(doc)}
-                disabled={!canManageDocuments || statusUpdating[doc.id] || synthetic}
-              >
-                {t("admin.documents.actions.reject")}
-              </button>
-              {canManageDocuments && !synthetic && (
-                <button
-                  className="btn-danger btn-xs"
-                  onClick={() => doDelete(doc.id)}
-                  disabled={statusUpdating[doc.id]}
-                >
-                  {t("common.actions.delete")}
-                </button>
-              )}
-              {statusUpdating[doc.id] && (
-                <span className="text-[11px] text-gray-500">{t("admin.documents.status.saving")}</span>
-              )}
-            </div>
-
-            {!synthetic ? (
-              <div className="rounded border border-dashed border-gray-300 bg-gray-50 p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="input flex cursor-pointer items-center gap-3">
-                    <span className="truncate text-xs">
-                      {selectedReplaceFile
-                        ? selectedReplaceFile.name
-                        : t("admin.documents.forms.replace_file_placeholder")}
-                    </span>
-                    <span className="btn-secondary btn-xs">{t("admin.documents.actions.choose_file")}</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        const next = e.currentTarget.files?.[0] ?? null;
-                        e.currentTarget.value = "";
-                        if (next && isTooLarge(next)) {
-                          setError(t("admin.documents.errors.file_too_large", { values: { limit: MAX_FILE_MB } }));
-                          return;
-                        }
-                        setError(null);
-                        setReplaceFile((prev) => ({ ...prev, [doc.id]: next }));
-                      }}
-                    />
-                  </label>
-                  <button
-                    className="btn-primary btn-xs"
-                    onClick={handleReplaceUpload}
-                    disabled={!selectedReplaceFile || isReplacing}
-                  >
-                    {isReplacing
-                      ? t("admin.documents.status.uploading_with_progress", { values: { percent: uploadProgress } })
-                      : t("admin.documents.actions.upload_file")}
-                  </button>
-                  <button
-                    className="btn-ghost btn-xs"
-                    onClick={() => setReplaceFile((prev) => ({ ...prev, [doc.id]: null }))}
-                    disabled={!selectedReplaceFile || isReplacing}
-                  >
-                    {t("common.actions.clear")}
-                  </button>
-                </div>
-                {isReplacing && (
-                  <div className="mt-2 h-1.5 rounded bg-gray-200">
-                    <div
-                      className="h-full rounded bg-blue-500 transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              canManageDocuments && (
-                <button
-                  className="btn-primary btn-xs"
-                  onClick={() => createDocumentFromChecklist(doc)}
-                  disabled={statusUpdating[doc.id]}
-                >
-                  {t("admin.documents.actions.create_document")}
-                </button>
-              )
-            )}
-
-            <div className="space-y-2 rounded border border-gray-100 bg-gray-50 p-3">
-              <div className="text-[11px] font-semibold uppercase text-gray-500">
-                {t("admin.documents.forms.core.title")}
-              </div>
-              <div className="grid gap-2 md:grid-cols-3">
-                <label className="block">
-                  <div className="text-[11px] text-gray-500">{t("admin.documents.forms.core.number")}</div>
-                  <input
-                    className="input input-sm mt-1"
-                    type="text"
-                    value={core.number ?? ""}
-                    onChange={(e) => updateCoreField("number", e.target.value)}
-                    disabled={!canManageDocuments || synthetic}
-                  />
-                </label>
-                <label className="block">
-                  <div className="text-[11px] text-gray-500">{t("admin.documents.forms.core.requested_from")}</div>
-                  <select
-                    className="input input-sm mt-1"
-                    value={core.requested_from ?? doc.requested_from}
-                    onChange={(e) => updateCoreField("requested_from", e.target.value as DocumentRequestedFrom)}
-                    disabled={!canManageDocuments || synthetic}
-                  >
-                    {Object.entries(REQUESTED_FROM_LABEL_KEYS).map(([value, key]) => (
-                      <option key={value} value={value}>
-                        {t(key, { defaultValue: value })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="text-[11px] text-gray-500">{t("admin.documents.forms.core.owner")}</div>
-                  <input
-                    className="input input-sm mt-1"
-                    type="text"
-                    value={core.owner_id ?? ""}
-                    onChange={(e) => updateCoreField("owner_id", e.target.value)}
-                    disabled={!canManageDocuments || synthetic}
-                  />
-                </label>
-                {isOrderableDoc && (
-                  <>
-                    <label className="block">
-                      <div className="text-[11px] text-gray-500">{t("admin.documents.forms.ordered_at")}</div>
-                      <input
-                        className="input input-sm mt-1"
-                        type="date"
-                        value={core.ordered_at ? String(core.ordered_at).slice(0, 10) : ""}
-                        onChange={(e) => updateCoreField("ordered_at", e.target.value)}
-                        disabled={!canManageDocuments || synthetic}
-                      />
-                    </label>
-                    <label className="block">
-                      <div className="text-[11px] text-gray-500">{t("admin.documents.forms.valid_from")}</div>
-                      <input
-                        className="input input-sm mt-1"
-                        type="date"
-                        value={core.valid_from ? String(core.valid_from).slice(0, 10) : ""}
-                        onChange={(e) => updateCoreField("valid_from", e.target.value)}
-                        disabled={!canManageDocuments || synthetic}
-                      />
-                    </label>
-                    <label className="block">
-                      <div className="text-[11px] text-gray-500">{t("admin.documents.forms.remind_in_days")}</div>
-                      <input
-                        className="input input-sm mt-1"
-                        type="number"
-                        min={0}
-                        value={
-                          core.reminder_days_before === null || core.reminder_days_before === undefined
-                            ? ""
-                            : core.reminder_days_before
-                        }
-                        onChange={(e) =>
-                          updateCoreField(
-                            "reminder_days_before",
-                            e.target.value === "" ? null : Number(e.target.value)
-                          )
-                        }
-                        disabled={!canManageDocuments || synthetic}
-                      />
-                    </label>
-                  </>
-                )}
-                <label className="block">
-                  <div className="text-[11px] text-gray-500">{t("admin.documents.forms.issue_date")}</div>
-                  <input
-                    className="input input-sm mt-1"
-                    type="date"
-                    value={core.issue_date ? String(core.issue_date).slice(0, 10) : ""}
-                    onChange={(e) => updateCoreField("issue_date", e.target.value)}
-                    disabled={!canManageDocuments || synthetic}
-                  />
-                </label>
-                <label className="block">
-                  <div className="text-[11px] text-gray-500">{t("admin.documents.forms.expire_date")}</div>
-                  <input
-                    className="input input-sm mt-1"
-                    type="date"
-                    value={core.expire_date ? String(core.expire_date).slice(0, 10) : ""}
-                    onChange={(e) => updateCoreField("expire_date", e.target.value)}
-                    disabled={!canManageDocuments || synthetic}
-                  />
-                </label>
-                <label className="md:col-span-3 block">
-                  <div className="text-[11px] text-gray-500">{t("admin.documents.forms.comment_field")}</div>
-                  <textarea
-                    className="input mt-1 h-20"
-                    value={core.comment ?? ""}
-                    onChange={(e) => updateCoreField("comment", e.target.value)}
-                    disabled={!canManageDocuments || synthetic}
-                  />
-                </label>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                className="btn-primary btn-xs"
-                onClick={() => saveCoreFields(doc)}
-                disabled={!canManageDocuments || synthetic || coreSaving[doc.id]}
-              >
-                {coreSaving[doc.id] ? t("admin.documents.status.saving") : t("common.actions.save")}
-              </button>
-              <button
-                className="btn-ghost btn-xs"
-                onClick={() => resetCoreFields(doc)}
-                disabled={coreSaving[doc.id]}
-              >
-                {t("common.actions.reset")}
-              </button>
-            </div>
-          </div>
-          {metadataFields.length > 0 && (
-            <div className="space-y-2 rounded border border-gray-100 bg-white p-3">
-              <div className="text-[11px] font-semibold uppercase text-gray-500">
-                {t("admin.documents.forms.metadata_section")}
-              </div>
-              <div className="grid gap-2 md:grid-cols-3">
-                {metadataFields.map((field) => (
-                  <div key={field.name}>
-                    {renderMetadataFieldInput(
-                      field,
-                      metadataValues[field.name],
-                      (next) =>
-                        setMetadataEdits((prev) => ({
-                          ...prev,
-                          [doc.id]: { ...(prev[doc.id] ?? {}), [field.name]: next },
-                        })),
-                      !canManageDocuments || synthetic
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {renderWorkflow(doc)}
-          {renderReminders(doc)}
-          {renderLastCheck(doc)}
-          </div>
-        )}
-      </div>
-    );
+    } else {
+      // Метаданные
+      setMetadataEdits((prev) => ({
+        ...prev,
+        [doc.id]: { ...(prev[doc.id] ?? {}), [fieldKey]: value },
+      }));
+    }
   };
+
+  // renderDocumentCard is now a component: DocumentCard
 
   const totalDocs = docs.length;
 
+  const [downloadingProfile, setDownloadingProfile] = useState(false);
+  const [notifyingCandidate, setNotifyingCandidate] = useState(false);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [orderModalType, setOrderModalType] = useState<string>("");
+  const [orderModalOrderedAt, setOrderModalOrderedAt] = useState<string>(() => computeTodayIso());
+  const [orderModalRequestedFrom, setOrderModalRequestedFrom] = useState<string>("driver");
+
+  const handleNotifyCandidate = async () => {
+    if (!candidateId || !canManageDocuments) return;
+    setNotifyingCandidate(true);
+    setError(null);
+    try {
+      const result = await notifyCandidate(candidateId);
+      if (result.sent) {
+        flash(t("admin.documents.notifications.notify_candidate_sent", { defaultValue: "Email sent to candidate" }));
+      } else {
+        const reason = result.reason === "no_email"
+          ? t("admin.documents.notifications.notify_candidate_no_email", { defaultValue: "Candidate has no email" })
+          : t("admin.documents.notifications.notify_candidate_failed", { defaultValue: "Failed to send email" });
+        setError(reason);
+      }
+    } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t("admin.documents.errors.notify_failed", { defaultValue: "Failed to notify candidate" }),
+        )
+      ) {
+        return;
+      }
+      const message = e?.response?.data?.detail || e?.message || t("admin.documents.errors.notify_failed", { defaultValue: "Failed to notify candidate" });
+      setError(String(message));
+    } finally {
+      setNotifyingCandidate(false);
+    }
+  };
+
+  const handleDownloadProfile = async () => {
+    if (!candidateId) return;
+    setDownloadingProfile(true);
+    setError(null);
+    try {
+      const blob = await exportCandidateBundle(candidateId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `candidate_${candidateId}_profile.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      flash(t("admin.documents.notifications.profile_downloaded", { defaultValue: "Profile downloaded" }));
+    } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t("admin.documents.errors.download_failed", { defaultValue: "Failed to download profile" }),
+        )
+      ) {
+        return;
+      }
+      const message = e?.response?.data?.detail || e?.message || t("admin.documents.errors.download_failed", { defaultValue: "Failed to download profile" });
+      setError(String(message));
+    } finally {
+      setDownloadingProfile(false);
+    }
+  };
+
+  const openOrderModal = useCallback(() => {
+    const first = orderableTypes[0];
+    setOrderModalType(first?.code ?? "");
+    setOrderModalOrderedAt(orderDraftForType(first?.code ?? "").ordered_at || computeTodayIso());
+    setOrderModalRequestedFrom((orderDraftForType(first?.code ?? "").requested_from as string) || "driver");
+    setOrderModalOpen(true);
+  }, [orderableTypes, orderDraftForType]);
+
+  const handleOrderModalSubmit = useCallback(async () => {
+    if (!orderModalType || !candidateId || !canManageDocuments) return;
+    setOrderingTypes((prev) => ({ ...prev, [orderModalType]: true }));
+    setError(null);
+    try {
+      const payload: DocumentOrderInput = {
+        candidate_id: candidateId,
+        doc_type: orderModalType,
+        ordered_at: orderModalOrderedAt || undefined,
+      };
+      if (orderModalType === "work_permit") {
+        payload.requested_from = orderModalRequestedFrom || undefined;
+      }
+      if (ownerContext && Object.keys(ownerContext).length > 0) {
+        payload.owner_context = ownerContext;
+      }
+      const orderedDoc = await orderDocument(payload);
+      updateDocumentState(orderedDoc);
+      const typeInfo = typeByCode.get(orderModalType);
+      flash(
+        t("admin.documents.notifications.order_success", {
+          values: { name: getDocTypeLabel(orderModalType, typeInfo?.name) },
+        }),
+      );
+      await loadAll();
+      setOrderModalOpen(false);
+    } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.order_failed"))
+      ) {
+        return;
+      }
+      const message = formatErrorForDisplay(e, {
+        fallback: t("admin.documents.notifications.order_failed"),
+      });
+      setError(message);
+    } finally {
+      setOrderingTypes((prev) => ({ ...prev, [orderModalType]: false }));
+    }
+  }, [orderModalType, orderModalOrderedAt, orderModalRequestedFrom, candidateId, canManageDocuments, ownerContext, planLimitModal, typeByCode, updateDocumentState, loadAll, flash, t, getDocTypeLabel]);
+
+  const handleApplyTemplate = async () => {
+    if (!candidateId || !selectedTemplateId || !canManageDocuments) return;
+    setApplyingTemplate(true);
+    setError(null);
+    try {
+      const template = templates.find((t) => t.id === selectedTemplateId);
+      if (!template) {
+        setError(t("admin.documents.errors.template_not_found", { defaultValue: "Template not found" }));
+        return;
+      }
+      const result = await applyDocumentTemplate(candidateId, { template_id: selectedTemplateId });
+      flash(
+        t("admin.documents.notifications.template_applied", {
+          values: { created: result.created, updated: result.updated },
+          defaultValue: `Template applied: ${result.created} created, ${result.updated} updated`,
+        })
+      );
+      setSelectedTemplateId("");
+      await loadAll();
+    } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t("admin.documents.errors.template_apply_failed", { defaultValue: "Failed to apply template" }),
+        )
+      ) {
+        return;
+      }
+      const message = e?.response?.data?.detail || e?.message || t("admin.documents.errors.template_apply_failed", { defaultValue: "Failed to apply template" });
+      setError(String(message));
+    } finally {
+      setApplyingTemplate(false);
+    }
+  };
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="text-lg font-semibold">{t("admin.documents.table.title")}</div>
-          <div className="text-xs text-gray-500">
-            {loading
-              ? t("admin.documents.status.refreshing")
-              : t("admin.documents.table.showing", { values: { filtered: filteredCount, total: totalDocs } })}
+    <div className="space-y-4">
+      {!hideHeader && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+            <span className="text-lg font-semibold">{t("admin.documents.table.title")}</span>
+            {!loading ? (
+              <span className="text-xs tabular-nums text-slate-500">
+                {filteredCount}/{totalDocs}
+              </span>
+            ) : null}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-secondary" onClick={loadAll} disabled={loading}>
-            {loading ? t("admin.documents.status.refreshing") : t("admin.documents.actions.refresh")}
-          </button>
-        </div>
-      </div>
-
-      {error && <div className="rounded border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">{error}</div>}
-      {info && <div className="rounded border border-green-200 bg-green-50 p-2 text-sm text-green-700">{info}</div>}
-
-      {summary && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="space-y-1 rounded border border-gray-200 bg-white p-3 shadow-sm">
-            <div className="text-xs uppercase text-gray-500">{t("admin.documents.table.status")}</div>
-            <div className="text-2xl font-semibold text-gray-800">
-              {summary.status === "no_required"
-                ? t("admin.documents.summary.required_none")
-                : `${summary.percent_ready}%`}
-            </div>
-            <div className="text-xs text-gray-500">
-              {summary.status === "no_required"
-                ? t("admin.documents.summary.required_empty")
-                : t("admin.documents.summary.required_ready", {
-                    values: {
-                      ready: summary.required.ready,
-                      total: summary.required.total,
-                    },
-                  })}
-            </div>
-            {summary.expiring_soon?.length > 0 && (
-              <div className="text-xs text-amber-700">
-                {t("admin.documents.summary.expiring", {
-                  values: {
-                    list: summary.expiring_soon
-                      .slice(0, 2)
-                      .map((entry) => entry.type)
-                      .join(", "),
-                  },
-                })}
-                {summary.expiring_soon.length > 2 ? "…" : ""}
-              </div>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            {templates.length > 0 && canManageDocuments ? (
+              <>
+                <select
+                  className="input max-w-[13rem] min-w-0 flex-1 text-sm sm:flex-none"
+                  aria-label={t("admin.documents.template.select", { defaultValue: "Template" })}
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  disabled={applyingTemplate || loading}
+                >
+                  <option value="">
+                    {t("admin.documents.template.select", { defaultValue: "Select template..." })}
+                  </option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn-primary btn-sm shrink-0"
+                  onClick={handleApplyTemplate}
+                  disabled={!selectedTemplateId || applyingTemplate || loading}
+                >
+                  {applyingTemplate
+                    ? t("admin.documents.status.applying", { defaultValue: "Applying..." })
+                    : t("admin.documents.actions.apply_template", { defaultValue: "Apply template" })}
+                </button>
+              </>
+            ) : null}
+            {canManageDocuments && orderableTypes.length > 0 ? (
+              <button type="button" className="btn-secondary btn-sm shrink-0" onClick={openOrderModal} disabled={loading}>
+                {t("admin.documents.actions.order_document", { defaultValue: "Order document" })}
+              </button>
+            ) : null}
+            {canManageDocuments ? (
+              <button
+                type="button"
+                className="btn-primary btn-sm shrink-0"
+                onClick={handleNotifyCandidate}
+                disabled={notifyingCandidate || loading}
+              >
+                {notifyingCandidate
+                  ? t("admin.documents.status.sending", { defaultValue: "Sending..." })
+                  : t("admin.documents.actions.notify_candidate", { defaultValue: "Notify candidate" })}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn-secondary btn-sm shrink-0"
+              onClick={handleDownloadProfile}
+              disabled={downloadingProfile || loading}
+            >
+              {downloadingProfile
+                ? t("admin.documents.status.downloading", { defaultValue: "Downloading..." })
+                : t("admin.documents.actions.download_profile", { defaultValue: "Download profile" })}
+            </button>
+            <button type="button" className="btn-secondary btn-sm shrink-0" onClick={loadAll} disabled={loading}>
+              {loading ? t("admin.documents.status.refreshing") : t("admin.documents.actions.refresh")}
+            </button>
           </div>
-          {KIND_ORDER.map((kind) => {
-            const stats = statsByKind[kind];
-            const progress = stats.total ? Math.round((stats.ready / stats.total) * 100) : 0;
-            return (
-              <div key={kind} className="space-y-1 rounded border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="text-sm font-semibold text-gray-700">{translateKind(kind)}</div>
-                <div className="h-1.5 rounded bg-gray-200">
-                  <div className="h-full rounded bg-blue-500" style={{ width: `${progress}%` }} />
-                </div>
-                <div className="text-xs text-gray-500">
-                  {t("admin.documents.summary.stats", {
-                    values: {
-                      ready: stats.ready,
-                      total: stats.total,
-                      attention: stats.attention,
-                      negative: stats.negative,
-                    },
-                  })}
-                </div>
-              </div>
-            );
-          })}
         </div>
       )}
 
-      {requiredEntries.length > 0 && (
-        <div className="space-y-3 rounded border border-blue-100 bg-blue-50 p-3 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-blue-900">{t('admin.documents.summary.required_for_vacancy')}</div>
-            <div className="text-xs text-blue-700">
-              {t('admin.documents.summary.required_counts', {
-                values: {
-                  total: summary?.required?.total ?? 0,
-                  ready: summary?.required?.ready ?? 0,
-                  in_progress: summary?.required?.in_progress ?? 0,
-                  problems: summary?.required?.problems ?? (Array.isArray(summary?.required?.problematic) ? summary?.required?.problematic?.length : 0),
-                  missing: summary?.required?.missing_count ?? (Array.isArray(summary?.required?.missing) ? summary?.required?.missing?.length : 0),
-                },
-              })}
-            </div>
-          </div>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {requiredEntries.map((entry) => {
-              const badge = REQUIRED_STATUS_META[entry.status];
-              const typeInfo = typeByCode.get(entry.type);
-              const orderDraft = orderDraftForType(entry.type);
-              const isOrdering = Boolean(orderingTypes[entry.type]);
-              const canOrderType =
-                canManageDocuments && Boolean(typeInfo?.orderable) && entry.documents.length === 0;
+      {error ? (
+        <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-sm text-rose-700">{error}</div>
+      ) : null}
+      {info ? (
+        <div className="rounded border border-green-200 bg-green-50 px-2 py-1.5 text-sm text-green-700">{info}</div>
+      ) : null}
+
+      {!hideHeader && requiredEntries.length > 0 ? (
+        <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          {requiredEntries.map((entry) => (
+            <span
+              key={entry.type}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
+            >
+              <span className="font-medium">{entry.label}</span>
+              <span className={clsx("rounded-full px-1.5 py-0.5 text-[11px] font-semibold", entry.badge.className)}>
+                {t(entry.badge.labelKey, { defaultValue: entry.badge.badge })}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {!hideHeader && upcomingDeadlinesByDate.length > 0 && (
+        <details className="rounded-lg border border-slate-200 bg-white">
+          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50">
+            {t("admin.documents.upcoming_deadlines.title")} ({upcomingDeadlines.length})
+          </summary>
+          <div className="space-y-3 border-t border-slate-100 px-3 py-2">
+            {upcomingDeadlinesByDate.map(([dateIso, dateItems]) => {
+              const dateStr = formatDate(dateIso);
               return (
-                <div key={entry.type} className="rounded border border-white/60 bg-white/90 p-3 text-xs text-gray-700 shadow-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-gray-800">{entry.label}</span>
-                    <span className={clsx("inline-flex items-center rounded-full px-2 py-0.5", badge.className)}>
-                      {t(badge.labelKey, { defaultValue: entry.status })}
-                    </span>
+                <div key={dateIso}>
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    {dateStr}
                   </div>
-                  <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                    {entry.documents.length > 0 ? (
-                      entry.documents.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2">
-                          <span>
-                            {t(
-                              DOCUMENT_STATUS_META[item.status as DocumentStatus]?.labelKey ?? item.status,
-                              { defaultValue: item.status },
-                            )}
-                          </span>
-                          {((item.meta_json as any)?.synthetic || (item.meta as any)?.synthetic) && (
-                            <span className="text-amber-600">{t("admin.documents.badges.draft")}</span>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-gray-500">{t("admin.documents.labels.entry_missing")}</div>
-                    )}
-                  </div>
-                  {canOrderType && (
-                    <div className="mt-3 space-y-2 rounded border border-dashed border-indigo-200 bg-indigo-50/60 p-2 text-[11px] text-indigo-900">
-                      <div className="text-xs font-semibold text-indigo-800">
-                        {t("admin.documents.order_panel.no_data")}
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <label className="block">
-                          <span className="text-[11px] uppercase tracking-wide text-indigo-700">
-                            {t("admin.documents.forms.ordered_at")}
-                          </span>
-                          <input
-                            type="date"
-                            className="input input-sm mt-0.5"
-                            value={orderDraft.ordered_at}
-                            onChange={(e) => updateOrderDraftField(entry.type, "ordered_at", e.target.value)}
-                          />
-                        </label>
-                        {entry.type === "work_permit" && (
-                          <label className="block">
-                            <span className="text-[11px] uppercase tracking-wide text-indigo-700">
-                              {t("admin.documents.forms.requested_from_label")}
-                            </span>
-                            <input
-                              type="date"
-                              className="input input-sm mt-0.5"
-                              value={orderDraft.requested_from ?? ""}
-                              onChange={(e) => updateOrderDraftField(entry.type, "requested_from", e.target.value)}
-                            />
-                          </label>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-primary btn-xs"
-                        onClick={() => handleOrderType(entry.type)}
-                        disabled={isOrdering}
-                      >
-                        {isOrdering
-                          ? t("admin.documents.actions.ordering")
-                          : t("admin.documents.actions.order")}
-                      </button>
-                    </div>
-                  )}
+                  <ul className="space-y-1 text-sm text-slate-600">
+                    {dateItems.map((item, idx) => {
+                      const days = daysUntil(item.dateIso);
+                      const isExpired = days !== null && days < 0;
+                      const subLabel =
+                        item.kind === "workflow_step"
+                          ? t("admin.documents.upcoming_deadlines.step_due", { values: { step: item.label } })
+                          : isExpired
+                            ? t("admin.documents.upcoming_deadlines.expired")
+                            : days !== null
+                              ? t("admin.documents.upcoming_deadlines.expires_in_days", { values: { days } })
+                              : "";
+                      return (
+                        <li key={`${item.docId}-${item.kind}-${item.stepCode ?? ""}-${idx}`} className="flex flex-wrap items-baseline gap-x-2">
+                          <span>{item.docTitle}</span>
+                          {subLabel ? <span className="text-slate-500">{subLabel}</span> : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-        <label className="block">
-          <div className="label">{t("admin.documents.filters.group")}</div>
+      {!hideHeader && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
           <select
-            className="input"
+            className="input max-w-[130px] text-sm"
+            aria-label={t("admin.documents.filters.kind")}
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentKind))}
           >
-            <option value="all">{t("admin.documents.filters.all_groups", { defaultValue: "All" })}</option>
+            <option value="all">{t("admin.documents.filters.all_kinds")}</option>
             {KIND_ORDER.map((kind) => (
               <option key={kind} value={kind}>
                 {translateKind(kind)}
               </option>
             ))}
           </select>
-        </label>
-        <label className="block">
-          <div className="label">{t("admin.documents.filters.status")}</div>
           <select
-            className="input"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value === "all" ? "all" : (e.target.value as DocumentStatus))}
+            className="input max-w-[150px] text-sm"
+            aria-label={t("admin.documents.filters.runtime_status", { defaultValue: "Runtime status" })}
+            value={runtimeFilter}
+            onChange={(e) =>
+              setRuntimeFilter(
+                e.target.value === "all" ? "all" : (e.target.value as RuntimeDocumentFilterSelection),
+              )
+            }
           >
-            <option value="all">{t("admin.documents.filters.any", { defaultValue: "Any" })}</option>
-            {Object.keys(DOCUMENT_STATUS_META).map((value) => (
+            <option value="all">{t("admin.documents.filters.all_statuses")}</option>
+            {RUNTIME_DOCUMENT_FILTERS.map((value) => (
               <option key={value} value={value}>
-                {translateStatus(value)}
+                {t(RUNTIME_FILTER_LABEL_KEYS[value], { defaultValue: value })}
               </option>
             ))}
           </select>
-        </label>
-        <label className="block">
-          <div className="label">{t("admin.documents.filters.ordered")}</div>
           <select
-            className="input"
+            className="input max-w-[120px] text-sm"
+            aria-label={t("admin.documents.filters.ordered")}
             value={orderedFilter}
             onChange={(e) => setOrderedFilter(e.target.value as "all" | "ordered" | "not_ordered")}
           >
-            <option value="all">{t("admin.documents.filters.all", { defaultValue: "All" })}</option>
-            <option value="ordered">{t("admin.documents.filters.ordered_only", { defaultValue: "Ordered only" })}</option>
-            <option value="not_ordered">{t("admin.documents.filters.not_ordered", { defaultValue: "Not ordered" })}</option>
+            <option value="all">{t("admin.documents.filters.all")}</option>
+            <option value="ordered">{t("admin.documents.filters.ordered_only")}</option>
+            <option value="not_ordered">{t("admin.documents.filters.not_ordered")}</option>
           </select>
-        </label>
-        <label className="block lg:col-span-2">
-          <div className="label">{t("admin.documents.filters.search")}</div>
           <input
-            className="input"
+            type="search"
+            className="input min-w-[8rem] flex-1 text-sm"
+            aria-label={t("admin.documents.filters.search")}
+            placeholder={t("admin.documents.filters.search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("admin.documents.filters.search_placeholder")}
           />
-        </label>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={clsx("btn-xs", expiringSoonOnly ? "btn-primary" : "btn-secondary")}
-          onClick={() => setExpiringSoonOnly((prev) => !prev)}
-        >
-          {t("admin.documents.badges.expiring", { values: { days: EXPIRING_SOON_THRESHOLD_DAYS } })}
-        </button>
-        <button
-          type="button"
-          className={clsx("btn-xs", passportIncompleteOnly ? "btn-primary" : "btn-secondary")}
-          onClick={() => setPassportIncompleteOnly((prev) => !prev)}
-        >
-          {t("admin.documents.badges.passport_incomplete")}
-        </button>
-      </div>
-
-      {canManageDocuments && (
-        <div className="space-y-3 rounded border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-gray-700">{t("admin.documents.actions.add_document")}</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <label className="block">
-              <div className="label">{t("admin.documents.forms.type")}</div>
-              <select
-                className="input"
-                value={selectedType}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedType(value);
-                  if (value !== "other") {
-                    setCustomName("");
-                    setCustomKind("driver");
-                    setCustomRequester("driver");
-                    setCustomProcessType("other");
-                  }
-                }}
-              >
-                {docTypes.map((type) => (
-                  <option key={type.code} value={type.code}>
-                    {type.name || type.code}
-                    {type.required ? " *" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedType === "other" ? (
-              <>
-                <label className="block">
-                  <div className="label">{t("admin.documents.forms.custom_title")}</div>
-                  <input
-                    className="input"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder={t("admin.documents.forms.custom_title_placeholder")}
-                  />
-                </label>
-                <label className="block">
-                  <div className="label">{t("admin.documents.forms.category")}</div>
-                  <select
-                    className="input"
-                    value={customKind}
-                    onChange={(e) => {
-                      const value = e.target.value as DocumentKind;
-                      setCustomKind(value);
-                      if (value !== "process") setCustomProcessType("other");
-                    }}
-                  >
-                    {KIND_ORDER.map((kind) => (
-                      <option key={kind} value={kind}>
-                        {t(KIND_LABEL_KEYS[kind], { defaultValue: kind })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t("admin.documents.forms.requested_from")}</div>
-                  <select
-                    className="input"
-                    value={customRequester}
-                    onChange={(e) => setCustomRequester(e.target.value as DocumentRequestedFrom)}
-                  >
-                    {Object.entries(REQUESTED_FROM_LABEL_KEYS).map(([value, labelKey]) => (
-                      <option key={value} value={value}>
-                        {t(labelKey, { defaultValue: value })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {customKind === "process" && (
-                  <label className="block">
-                    <div className="label">{t("admin.documents.forms.process_type")}</div>
-                    <select
-                      className="input"
-                      value={customProcessType}
-                      onChange={(e) => setCustomProcessType(e.target.value as DocumentProcessType)}
-                    >
-                      {Object.entries(PROCESS_LABEL_KEYS).map(([value, labelKey]) => (
-                        <option key={value} value={value}>
-                          {t(labelKey, { defaultValue: value })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </>
-            ) : (
-              <label className="block">
-                <div className="label">
-                  {titleIsRequired
-                    ? t("admin.documents.forms.custom_title")
-                    : t("admin.documents.forms.custom_optional", {
-                        values: { flag: t("admin.documents.forms.optional_hint") },
-                      })}
-                </div>
-                <input
-                  className="input"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t("admin.documents.forms.title_placeholder")}
-                />
-              </label>
-            )}
-          </div>
-          {selectedType === "additional_document" && (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="block">
-                <div className="label">{t("admin.documents.forms.description")}</div>
-                <textarea
-                  className="input min-h-[96px]"
-                  value={additionalDescription}
-                  onChange={(e) => setAdditionalDescription(e.target.value)}
-                  placeholder={t("admin.documents.forms.description_placeholder")}
-                />
-              </label>
-              <label className="block">
-                <div className="label">{t("admin.documents.forms.comment")}</div>
-                <textarea
-                  className="input min-h-[96px]"
-                  value={additionalComment}
-                  onChange={(e) => setAdditionalComment(e.target.value)}
-                  placeholder={t("admin.documents.forms.comment_placeholder")}
-                />
-              </label>
-            </div>
-          )}
-          {scannerRequirements && (
-            <div className="rounded border border-dashed border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900">
-              <div className="text-[11px] font-semibold uppercase text-blue-700">
-                {t("admin.documents.scanner.section_title")}
-              </div>
-              <div className="text-sm font-medium">
-                {scannerRequirements.title}
-              </div>
-              {scannerRequirements.details.length > 0 && (
-                <ul className="mt-1 list-disc pl-4">
-                  {scannerRequirements.details.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          {creationMetadataFields.length > 0 && (
-            <div className="rounded border border-gray-100 bg-white p-3">
-              <div className="text-[11px] font-semibold uppercase text-gray-500">
-                {t("admin.documents.forms.metadata_section")}
-              </div>
-              <div className="mt-2 grid gap-3 md:grid-cols-3">
-                {creationMetadataFields.map((field) => (
-                  <div key={field.name}>
-                    {renderMetadataFieldInput(
-                      field,
-                      creationMetadata[field.name],
-                      (next) =>
-                        setCreationMetadata((prev) => ({
-                          ...prev,
-                          [field.name]: next,
-                        })),
-                      creatingDocument
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {selectedDocDefinition?.orderable && (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              <label className="block">
-                <div className="label">{t("admin.documents.forms.status")}</div>
-                <select
-                  className="input"
-                  value={creationStatus}
-                  onChange={(e) => setCreationStatus(e.target.value as DocumentStatus)}
-                >
-                  {CREATION_STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {t(DOCUMENT_STATUS_META[status]?.labelKey ?? status, { defaultValue: status })}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <div className="label">{t("admin.documents.forms.ordered_at")}</div>
-                <input
-                  className="input"
-                  type="date"
-                  value={creationOrderedAt}
-                  onChange={(e) => setCreationOrderedAt(e.target.value)}
-                />
-              </label>
-              <label className="block">
-                <div className="label">{t("admin.documents.forms.valid_from")}</div>
-                <input
-                  className="input"
-                  type="date"
-                  value={creationValidFrom}
-                  onChange={(e) => setCreationValidFrom(e.target.value)}
-                />
-              </label>
-              <label className="block">
-                <div className="label">{t("admin.documents.forms.remind_in_days")}</div>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  max="365"
-                  placeholder={t("admin.documents.forms.reminder_placeholder")}
-                  value={creationReminderDays}
-                  onChange={(e) => setCreationReminderDays(e.target.value)}
-                />
-              </label>
-            </div>
-          )}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-          <label className="block" onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const dropped = e.dataTransfer?.files?.[0]; if (dropped) { if (isTooLarge(dropped)) { setError(t("admin.documents.errors.file_too_large", { values: { limit: MAX_FILE_MB } })); return; } setError(null); setFile(dropped); } }}>
-            <div className="label">{t("admin.documents.forms.file")}</div>
-            <label className="input flex cursor-pointer items-center justify-between gap-3">
-              <span className="truncate">
-                {file ? file.name : t("admin.documents.forms.file_placeholder")}
-              </span>
-              <span className="btn-secondary btn-sm">{t("admin.documents.actions.choose_file")}</span>
-              <input
-                type="file"
-                className="hidden"
-                  onChange={(e) => {
-                    const next = e.currentTarget.files?.[0] || null;
-                    if (next && isTooLarge(next)) {
-                      setError(t("admin.documents.errors.file_too_large", { values: { limit: MAX_FILE_MB } }));
-                      return;
-                    }
-                    setError(null);
-                    setFile(next);
-                  }}
-                />
-              </label>
-            </label>
-            <div className="flex flex-col gap-2 md:items-end">
-              {selectedDocDefinition?.orderable && (
-                <button
-                  className={clsx(
-                    "btn-secondary",
-                    (creatingDocument || uploading) && "opacity-60 pointer-events-none"
-                  )}
-                  onClick={createDocumentWithoutFile}
-                  disabled={
-                    !selectedType ||
-                    creatingDocument ||
-                    uploading ||
-                    (selectedType === "other" && !customName.trim())
-                  }
-                >
-                  {creatingDocument ? t("admin.documents.status.saving") : t("admin.documents.forms.submit_without_file")}
-                </button>
-              )}
-              <button
-                className={clsx("btn-primary", uploading && "opacity-60 pointer-events-none")}
-                onClick={doUpload}
-                disabled={!file || !selectedType || uploading}
-              >
-                {uploading ? t("admin.documents.status.uploading") : t("admin.documents.forms.upload_file")}
-              </button>
-            </div>
-          </div>
-          {uploading && (
-            <div>
-              <div className="h-2 overflow-hidden rounded bg-gray-200">
-                <div className="h-full bg-blue-500 transition-all" style={{ width: `${uploadPct}%` }} />
-              </div>
-              <div className="mt-1 text-xs text-gray-500">
-                {t("admin.documents.status.uploading_with_progress", { values: { progress: uploadPct } })}
-              </div>
-            </div>
-          )}
+          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={passportIncompleteOnly}
+              onChange={(e) => setPassportIncompleteOnly(e.target.checked)}
+            />
+            {t("admin.documents.filters.passport_incomplete")}
+          </label>
         </div>
       )}
 
-      {loading ? (
-        <div className="text-sm text-gray-500">{t("common.loading")}</div>
+      {loading && docs.length === 0 ? (
+        <div className="text-sm text-slate-500">{t("common.loading")}</div>
       ) : filteredCount === 0 ? (
-        <div className="rounded border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-500">
+        <div className="rounded border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
           {docs.length ? t("admin.documents.filters.no_results") : t("admin.documents.filters.empty")}
         </div>
+      ) : compactType && selectedType ? (
+        (() => {
+          const normalizedSelected = normalizeDocTypeCode(selectedType);
+          const typeDocs = docs
+            .filter((doc) => {
+              const docType = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+              return docType === normalizedSelected;
+            })
+            .filter((doc) => {
+              if (kindFilter !== "all" && doc.kind !== kindFilter) return false;
+              if (!documentMatchesRuntimeFilterSelection(doc, runtimeFilter)) return false;
+              if (orderedFilter === "ordered" && !doc.ordered_at) return false;
+              if (orderedFilter === "not_ordered" && doc.ordered_at) return false;
+              if (passportIncompleteOnly && !passportIncompleteSet.has(doc.id)) return false;
+              if (searchQuery.trim()) {
+                const search = searchQuery.trim().toLowerCase();
+                const typeInfo = typeByCode.get(normalizeDocTypeCode(doc.type_code || doc.doc_type || "")) ?? typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
+                const typeName = getDocTypeLabel(normalizeDocTypeCode(doc.type_code || doc.doc_type || ""), typeInfo?.name).toLowerCase();
+                const title = (doc.title || doc.custom_name || "").toLowerCase();
+                const rawType = (doc.doc_type || "").toLowerCase();
+                if (!typeName.includes(search) && !title.includes(search) && !rawType.includes(search)) return false;
+              }
+              return true;
+            })
+            .sort((a, b) => {
+              const statusA = primaryStatus(a);
+              const statusB = primaryStatus(b);
+              const rankA = DOCUMENT_STATUS_META[statusA]?.order ?? (typeof a.status_rank === "number" ? a.status_rank : 0);
+              const rankB = DOCUMENT_STATUS_META[statusB]?.order ?? (typeof b.status_rank === "number" ? b.status_rank : 0);
+              if (rankA !== rankB) return rankB - rankA;
+              const orderedDiff = dateValue(b.ordered_at ?? null) - dateValue(a.ordered_at ?? null);
+              if (orderedDiff !== 0) return orderedDiff;
+              const expiresDiff = dateValue(a.expire_date ?? a.expires_at ?? null) - dateValue(b.expire_date ?? b.expires_at ?? null);
+              if (expiresDiff !== 0) return expiresDiff;
+              return (a.title || a.custom_name || a.doc_type).localeCompare(
+                b.title || b.custom_name || b.doc_type,
+                locale || undefined
+              );
+            });
+
+          if (typeDocs.length === 0) {
+            return <div className="text-sm text-slate-500">{t("admin.documents.filters.no_results", { defaultValue: "No results." })}</div>;
+          }
+
+          return (
+            <div className="space-y-3">
+              {typeDocs.map((doc) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={doc}
+                  variant="compact"
+                  typeByCode={typeByCode}
+                  metadataFieldMap={metadataFieldMap}
+                  coreEdits={coreEdits}
+                  metadataEdits={metadataEdits}
+                  statusUpdating={statusUpdating}
+                  coreSaving={coreSaving}
+                  replaceFile={replaceFile}
+                  replacePct={replacePct}
+                  replaceUploading={replaceUploading}
+                  expandedDocs={expandedDocs}
+                  canManageDocuments={canManageDocuments}
+                  coreFromDocument={coreFromDocument}
+                  translateStatus={translateStatus}
+                  getFieldValue={getFieldValue}
+                  updateFieldValue={updateFieldValue}
+                  updateStatus={updateStatus}
+                  approveDocument={approveDocument}
+                  rejectDocument={rejectDocument}
+                  saveCoreFields={saveCoreFields}
+                  deleteDocumentFile={deleteDocumentFile}
+                  deleteDocument={doDelete}
+                  openDoc={openDoc}
+                  handleReplaceUpload={handleReplaceUploadHook}
+                  setReplaceFile={setReplaceFile}
+                  setExpandedDocs={setExpandedDocs}
+                  setError={setError}
+                />
+              ))}
+            </div>
+          );
+        })()
       ) : (
         <div className="space-y-4">
           {KIND_ORDER.map((kind) => {
-            const items = groupedDocs[kind] ?? [];
-            if (!items.length) return null;
+            const kindDocs = groupedDocs[kind] ?? [];
+            if (kindDocs.length === 0) return null;
+
+            const kindStats = statsByKind[kind];
+            const kindLabel = translateKind(kind);
+
             return (
-              <section key={kind} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold uppercase text-gray-600">
-                    {translateKind(kind)}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {t("admin.documents.table.items_count", { values: { count: items.length } })}
-                  </div>
+              <div key={kind} className="space-y-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-slate-200 pb-2">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    {kindLabel}
+                    <span className="ml-2 text-sm font-normal text-slate-500">
+                      ({kindStats.ready}/{kindStats.total} {t("admin.documents.counters.ready", { defaultValue: "ready" })})
+                    </span>
+                  </h3>
+                  {kindStats.attention > 0 && (
+                    <span className="text-xs text-amber-600">
+                      {kindStats.attention} {t("admin.documents.counters.need_attention", { defaultValue: "need attention" })}
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-3">
-                  {items.map((doc) => renderDocumentCard(doc))}
+                  {kindDocs.map((doc) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      typeByCode={typeByCode}
+                      metadataFieldMap={metadataFieldMap}
+                      coreEdits={coreEdits}
+                      metadataEdits={metadataEdits}
+                      statusUpdating={statusUpdating}
+                      coreSaving={coreSaving}
+                      replaceFile={replaceFile}
+                      replacePct={replacePct}
+                      replaceUploading={replaceUploading}
+                      expandedDocs={expandedDocs}
+                      canManageDocuments={canManageDocuments}
+                      coreFromDocument={coreFromDocument}
+                      translateStatus={translateStatus}
+                      getFieldValue={getFieldValue}
+                      updateFieldValue={updateFieldValue}
+                      updateStatus={updateStatus}
+                      approveDocument={approveDocument}
+                      rejectDocument={rejectDocument}
+                      saveCoreFields={saveCoreFields}
+                      deleteDocumentFile={deleteDocumentFile}
+                      deleteDocument={doDelete}
+                      openDoc={openDoc}
+                      handleReplaceUpload={handleReplaceUploadHook}
+                      setReplaceFile={setReplaceFile}
+                      setExpandedDocs={setExpandedDocs}
+                      setError={setError}
+                    />
+                  ))}
                 </div>
-              </section>
+              </div>
             );
           })}
         </div>
       )}
 
-      {previewOpen && previewUrl && (
+      {orderModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => {
-            if (previewRevoker) {
-              previewRevoker();
-              setPreviewRevoker(null);
-            }
-            setPreviewOpen(false);
-            setPreviewUrl(null);
-            setPreviewContentType(null);
-          }}
+          onClick={() => setOrderModalOpen(false)}
         >
           <div
-            className="relative h-[90vh] w-full max-w-5xl overflow-hidden rounded bg-white shadow-xl"
+            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              className="absolute right-3 top-3 rounded bg-black/40 px-2 py-1 text-xs text-white hover:bg-black/60"
-              onClick={() => {
-                if (previewRevoker) {
-                  previewRevoker();
-                  setPreviewRevoker(null);
-                }
-                setPreviewOpen(false);
-                setPreviewUrl(null);
-                setPreviewContentType(null);
-              }}
-            >
-              {t("common.actions.close")}
-            </button>
-            <div className="h-full w-full overflow-auto">
+            <div className="mb-3 text-base font-semibold text-slate-900">
+              {t("admin.documents.actions.order_document", { defaultValue: "Order document" })}
+            </div>
+            <div className="space-y-3">
+              <select
+                className="input w-full text-sm"
+                aria-label={t("admin.documents.forms.type", { defaultValue: "Document type" })}
+                value={orderModalType}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setOrderModalType(code);
+                  setOrderModalOrderedAt(orderDraftForType(code).ordered_at || computeTodayIso());
+                  setOrderModalRequestedFrom((orderDraftForType(code).requested_from as string) || "driver");
+                }}
+              >
+                <option value="">{t("admin.documents.template.select", { defaultValue: "Select..." })}</option>
+                {orderableTypes.map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.name || t.code}
+                  </option>
+                ))}
+              </select>
+              <div
+                className={clsx(
+                  "grid gap-3",
+                  orderModalType === "work_permit" ? "sm:grid-cols-2" : "grid-cols-1",
+                )}
+              >
+                <input
+                  type="date"
+                  className="input w-full text-sm"
+                  aria-label={t("admin.documents.forms.ordered_at", { defaultValue: "Ordered at" })}
+                  value={orderModalOrderedAt.slice(0, 10)}
+                  onChange={(e) => setOrderModalOrderedAt(e.target.value || computeTodayIso())}
+                />
+                {orderModalType === "work_permit" ? (
+                  <select
+                    className="input w-full text-sm"
+                    aria-label={t("admin.documents.forms.requested_from", { defaultValue: "Requested from" })}
+                    value={orderModalRequestedFrom}
+                    onChange={(e) => setOrderModalRequestedFrom(e.target.value)}
+                  >
+                    {(["driver", "employer", "agency"] as const).map((val) => (
+                      <option key={val} value={val}>
+                        {translateRequestedFrom(val)}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setOrderModalOpen(false)}
+              >
+                {t("common.actions.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!orderModalType || orderingTypes[orderModalType]}
+                onClick={() => handleOrderModalSubmit()}
+              >
+                {orderingTypes[orderModalType]
+                  ? t("admin.documents.status.ordering", { defaultValue: "Ordering..." })
+                  : t("admin.documents.actions.order_document", { defaultValue: "Order document" })}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewOpen && previewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4"
+          onClick={closePreview}
+          role="presentation"
+        >
+          <div
+            className="flex h-[min(90vh,920px)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("admin.documents.preview.dialog_aria")}
+          >
+            <div className="flex shrink-0 items-center justify-end border-b border-slate-200 bg-slate-50 px-2 py-1.5">
+              <button type="button" className="btn-secondary btn-xs" onClick={closePreview}>
+                {t("common.actions.close")}
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto bg-slate-100">
               {previewContentType?.includes("pdf") || previewUrl.toLowerCase().endsWith(".pdf") ? (
-                <iframe src={previewUrl} className="h-full w-full" />
+                <iframe title={t("admin.documents.preview.iframe_title")} src={previewUrl} className="h-full min-h-[70vh] w-full" />
               ) : (
-                <img src={previewUrl} alt="preview" className="mx-auto block max-h-[85vh] w-auto" />
+                <img
+                  src={previewUrl}
+                  alt=""
+                  className="mx-auto block h-auto max-h-full min-h-0 w-auto max-w-full object-contain"
+                />
               )}
             </div>
           </div>

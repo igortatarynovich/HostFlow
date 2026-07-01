@@ -15,8 +15,22 @@
     "verbatimModuleSyntax": false,
     "moduleDetection": "auto",
     "noEmit": true,
-    "incremental": false,
+    "incremental": true,
     "jsx": "react-jsx",
+
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@api/*": ["./src/api/*"],
+      "@components/*": ["./src/components/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@store/*": ["./src/store/*"],
+      "@i18n/*": ["./src/i18n/*"]
+    },
 
     /* Linting */
     "strict": true,

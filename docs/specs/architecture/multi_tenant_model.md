@@ -8,7 +8,7 @@ HostFlow is designed as a **multi-tenant SaaS ecosystem** that supports three hi
 |-------|---------|--------------|----------|
 | **L0 – Platform Core** | HostFlow HQ | Master level that manages tenants, licenses, and global configuration. | HostFlow platform |
 | **L1 – Tenant (Agency)** | Recruitment or HR agency | Owns its data, manages recruiters and sub-clients (companies). | Work Host, TruckForce |
-| **L2 – Sub‑Client (Company)** | Transport company or business client | Has limited access (client portal) to its candidates, documents, and vacancies. | Citronex, OmegaPil |
+| **L2 – Sub‑Client (Company)** | Transport company or business client | Has limited access (client portal) to its candidates, documents, and vacancies. | Northwind Logistics, OmegaPil |
 | **L3 – User / Candidate** | Individual | Limited account for candidate or employee data access. | Driver profile |
 
 This architecture allows HostFlow to operate simultaneously as:
@@ -46,16 +46,36 @@ ADD COLUMN parent_tenant_id UUID NULL REFERENCES tenants (id);
 
 This allows an agency to have sub‑clients (companies) under its control.
 
+### 2.3 Tenant Links (Handoff Infrastructure)
+
+Table `tenant_links` connects agency tenants to clients (companies or employer tenants):
+
+```sql
+tenant_links (
+  id UUID PK,
+  agency_tenant_id UUID NOT NULL REFERENCES tenants(id),
+  client_company_id UUID NULL REFERENCES companies(id),   -- client as company under agency
+  client_tenant_id UUID NULL REFERENCES tenants(id),     -- client as employer tenant
+  status VARCHAR(32) DEFAULT 'active',
+  features_json JSONB,  -- {"handoff_enabled": false, "contact_policy": {...}}
+  ...
+)
+```
+
+- Exactly one of `client_company_id` or `client_tenant_id` must be set.
+- `features_json.handoff_enabled` — enables handoff workflow for this link (off by default).
+- Handoff is a per-link feature: only clients with `handoff_enabled=true` use the formal handoff flow.
+
 Example hierarchy:
 
 ```
 HostFlow (SUPERADMIN)
  ├── Tenant: Work Host (type: agency)
- │    ├── Company: Citronex (client portal)
+ │    ├── Company: Northwind Logistics (client portal)
  │    └── Company: Poltrakt
  ├── Tenant: TruckForce (type: agency)
  │    └── Company: EuroTrans
- └── Tenant: Citronex (type: company, independent SaaS license)
+ └── Tenant: Northwind Logistics (type: company, independent SaaS license)
 ```
 
 ---
@@ -70,7 +90,9 @@ type ENUM('agency', 'company', 'platform')
 |------|----------|
 | `platform` | HostFlow core platform; manages all tenants and licenses |
 | `agency` | Tenant with internal recruiters and external clients |
-| `company` | Independent SaaS customer with its own HR processes |
+| `company` | Independent SaaS customer (employer); can receive handoff from agencies |
+
+Tenant field `client_portal_enabled` controls whether the client portal is available.
 
 ---
 
@@ -165,7 +187,7 @@ licenses (
 ```bash
 POST /api/v1/platform/tenants
 {
-  "name": "Citronex",
+  "name": "Northwind Logistics",
   "type": "company",
   "plan": "company_basic"
 }

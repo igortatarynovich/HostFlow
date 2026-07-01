@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-import sqlalchemy as sa
+from typing import Tuple
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.app.constants.catalog_utils import (
     as_code_name_list,
     as_country_dial_list,
@@ -12,7 +16,8 @@ from backend.app.constants.catalog_utils import (
 # константы и утилиты справочников
 from backend.app.constants.catalogs import COUNTRIES, LANGUAGES
 from backend.app.db.deps import get_db_with_tenant as get_db
-from fastapi import APIRouter, Depends, Request
+from backend.app.services import users as users_service
+from fastapi import APIRouter, Depends, Query
 
 
 # backend/app/api/v1/catalogs.py
@@ -21,13 +26,6 @@ from fastapi import APIRouter, Depends, Request
 
 
 router = APIRouter()
-
-DEV_TENANT_ID = "11111111-1111-1111-1111-111111111111"
-
-
-def _get_tenant_id_from_request(request: Request) -> str:
-    return request.headers.get("X-Tenant-Id", DEV_TENANT_ID)
-
 
 # ===================== Countries =====================
 @router.get("/catalogs/countries")
@@ -65,58 +63,24 @@ async def list_dial_codes_options():
 # ===================== Managers (через memberships, кросс-СУБД) =====================
 @router.get("/catalogs/managers")
 async def list_managers(
-    request: Request,
-    dep = Depends(get_db),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db),
+    roles: str | None = Query(
+        default=None,
+        description=(
+            "Необязательно: роли membership через запятую "
+            "(например recruiter или recruiter,supervisor). "
+            "По умолчанию — owner, administrator, supervisor, recruiter."
+        ),
+    ),
 ):
     """
-    Менеджеры/рекрутеры доступные в текущем тенанте.
-    Источник: users (role in ['recruiter','supervisor','administrator']).
-    Ответ: [{ id, short_id, full_name, email, label }]
+    Менеджеры/рекрутеры в текущем тенанте (X-Tenant-Id).
+    Источник: user_memberships; только пользователи без deleted_at и с is_active.
     """
-    # get_db may return either an AsyncSession or a tuple (AsyncSession, tenant_id)
-    tenant_from_dep = None
-    db = dep
-    if isinstance(dep, tuple) and len(dep) >= 1:
-        db = dep[0]
-        if len(dep) > 1:
-            tenant_from_dep = dep[1]
-
-    tenant_id_raw = tenant_from_dep or _get_tenant_id_from_request(request)
-    tenant_id = str(tenant_id_raw)
-
-    ALLOWED_ROLES = ["recruiter", "supervisor", "administrator"]
-
-    # Используем Core-таблицу, чтобы не зависеть от определения ORM-модели User
-    users = sa.table(
-        "users",
-        sa.column("id"),
-        sa.column("email"),
-        sa.column("short_id"),
-        sa.column("full_name"),
-        sa.column("tenant_id"),
-        sa.column("deleted_at"),
-        sa.column("role"),
+    db, tenant_uuid = db_tenant
+    role_list = (
+        [p.strip() for p in roles.split(",") if p.strip()] if roles and roles.strip() else None
     )
-
-    stmt = (
-        sa.select(users.c.id, users.c.email, users.c.short_id, users.c.full_name)
-        .where(
-            users.c.tenant_id == tenant_id,
-            users.c.deleted_at.is_(None),
-            sa.cast(users.c.role, sa.String).in_(ALLOWED_ROLES),
-        )
-        .order_by(sa.func.coalesce(users.c.full_name, users.c.email).asc())
+    return await users_service.get_tenant_managers(
+        db, str(tenant_uuid), membership_roles=role_list
     )
-
-    res = (await db.execute(stmt)).all()
-    rows = [
-        {
-            "id": r.id,
-            "short_id": r.short_id,
-            "full_name": r.full_name,
-            "email": r.email,
-            "label": r.full_name or r.email,
-        }
-        for r in res
-    ]
-    return rows

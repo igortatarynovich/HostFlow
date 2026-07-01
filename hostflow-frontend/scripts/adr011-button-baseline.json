@@ -1,0 +1,4 @@
+{
+  "maxMissingBtnOpens": 0,
+  "_comment": "ADR-011 §6–7 ratchet: CI fails if intrinsic <button> opens without btn/btn-* exceed this. Lower only when fixing styling debt."
+}

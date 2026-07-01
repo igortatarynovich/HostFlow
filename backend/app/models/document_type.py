@@ -26,6 +26,7 @@ from .enums import (
     DocumentProcessType,
     DocumentRequestedFrom,
     DocumentDuplicatePolicy,
+    DocumentStatusModel,
 )
 from backend.app.db.base import Base  # единый Base
 
@@ -121,6 +122,14 @@ class DocumentType(Base):
 
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=func.true()
+    )
+
+    # Модель статусов документа (определяет набор допустимых статусов)
+    status_model: Mapped[Optional[DocumentStatusModel]] = mapped_column(
+        Enum(DocumentStatusModel, name="document_status_model_enum", native_enum=False),
+        nullable=True,
+        default=DocumentStatusModel.EVIDENCE,
+        server_default=DocumentStatusModel.EVIDENCE.value,
     )
 
     created_at: Mapped[datetime] = mapped_column(

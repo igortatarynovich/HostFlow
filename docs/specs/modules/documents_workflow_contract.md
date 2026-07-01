@@ -95,9 +95,9 @@
 | Поле | Кто может менять | Ограничения |
 |------|------------------|-------------|
 | `workflow.steps[*].due_at` | `administrator`, `supervisor` | Лог ≥ `now`, audit запись обязательна |
-| `workflow.steps[*].ordered_at` | `administrator`, `recruiter` | Нельзя выставлять в будущем |
-| `workflow.steps[*].completed_at` | `administrator`, `supervisor`, `recruiter` (если assigned) | Не позже `now`, требует комментария |
-| `workflow.steps[*].notes` | `administrator`, `supervisor`, `recruiter` | Макс 1000 символов |
+| `workflow.steps[*].ordered_at` | `administrator`, `recruiter`, `compliance_officer` | Нельзя выставлять в будущем |
+| `workflow.steps[*].completed_at` | `administrator`, `supervisor`, `recruiter`, `compliance_officer` (если assigned / владелец process) | Не позже `now`, требует комментария |
+| `workflow.steps[*].notes` | `administrator`, `supervisor`, `recruiter`, `compliance_officer` | Макс 1000 символов |
 | `workflow.current_step` | Считается автоматически, изменение вручную запрещено | |
 | `workflow.auto_status` | ТОЛЬКО системой (`compute_auto_status`) | Запрещено редактировать вручную |
 

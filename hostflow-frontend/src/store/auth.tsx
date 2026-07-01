@@ -1,13 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
+import { useLocation } from 'react-router-dom'
+import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
+import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
 import { api, setToken, settings as tenantSettings } from '../api/client'
 import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
+import { bindUserContext } from '../lib/observability'
+import { useI18n, type LocaleCode } from '../i18n'
+import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 const IMPERSONATION_BACKUP_KEY = 'hf:platform-session-backup'
 export const LOGIN_NOTICE_STORAGE_KEY = 'hf:last-login-notice'
-type LoginNotice = 'expired'
+export type LoginNotice = 'expired' | 'invite_accepted' | 'password_reset_success'
 
-const rememberLoginNotice = (code: LoginNotice) => {
+export const rememberLoginNotice = (code: LoginNotice) => {
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.setItem(LOGIN_NOTICE_STORAGE_KEY, code)
@@ -16,12 +22,26 @@ const rememberLoginNotice = (code: LoginNotice) => {
   }
 }
 
-const clearLoginNotice = () => {
+export const clearLoginNotice = () => {
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.removeItem(LOGIN_NOTICE_STORAGE_KEY)
   } catch {
     /* ignore storage errors */
+  }
+}
+
+export const consumeLoginNotice = (): LoginNotice | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = (window.sessionStorage.getItem(LOGIN_NOTICE_STORAGE_KEY) || '').trim()
+    clearLoginNotice()
+    if (raw === 'expired' || raw === 'invite_accepted' || raw === 'password_reset_success') {
+      return raw
+    }
+    return null
+  } catch {
+    return null
   }
 }
 
@@ -36,6 +56,13 @@ const extractStatus = (error: unknown): number | undefined => {
   return undefined
 }
 
+const isPublicAuthPath = (path: string): boolean =>
+  path.startsWith('/public') ||
+  path.startsWith('/signup') ||
+  path.startsWith('/forgot-password') ||
+  path.startsWith('/reset-password') ||
+  path.startsWith('/invite/accept')
+
 type AuthCtx = {
   me: WhoAmI | null
   preferences: UserPreferences | null
@@ -44,7 +71,7 @@ type AuthCtx = {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
-  refresh: () => Promise<void>
+  refresh: (opts?: { force?: boolean }) => Promise<void>
   updateProfile: (update: Partial<WhoAmI>) => void
   updatePreferences: (prefs: UserPreferences) => void
   updateSecurity: (summary: UserSecuritySummary) => void
@@ -56,6 +83,8 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null)
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const { setLocale } = useI18n()
+  const location = useLocation()
   const [me, setMe] = useState<WhoAmI | null>(null)
   const [loading, setLoading] = useState(true)
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
@@ -78,7 +107,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     root.classList.toggle('dark', forceDark)
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { force?: boolean }) => {
+    // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
+    const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
+    if (!opts?.force && isPublicAuthPath(path)) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const [{ data: whoami }, meEnvelope] = await Promise.all([
@@ -90,7 +125,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const computedFullName = profile.first_name || profile.last_name
         ? `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim()
         : null
-      const effectiveRole = whoami.role || profile.role || null
+      const jwtRole = whoami.role ?? null
+      const profileRole = profile.role ?? null
+      const effectiveRole =
+        isPlatformSuperadminRole(jwtRole) || isPlatformSuperadminRole(profileRole)
+          ? 'superadmin'
+          : jwtRole || profileRole || null
       const effectiveTenantId = whoami.tenant_id || profile.tenant_id || null
       const resolvedTenantId = effectiveTenantId ?? whoami.tenant_id ?? profile.tenant_id ?? ''
       const merged: WhoAmI = {
@@ -110,30 +150,60 @@ export function AuthProvider({ children }: PropsWithChildren) {
         avatar_url: profile.avatar_url ?? whoami.avatar_url,
         preferences: meEnvelope.preferences,
         security: meEnvelope.security,
+        is_solo_admin: meEnvelope.is_solo_admin ?? false,
       }
 
       setMe(merged)
       if (resolvedTenantId) {
-        tenantSettings.set(String(resolvedTenantId))
+        const isPlatformSuperadmin = isPlatformSuperadminRole(effectiveRole)
+        const storedTenantId = String(tenantSettings.get() || '').trim()
+        // Keep explicit cross-tenant context for platform superadmin instead of
+        // snapping back to JWT tenant on each refresh.
+        const shouldKeepStoredTenant =
+          isPlatformSuperadmin &&
+          storedTenantId.length > 0 &&
+          storedTenantId !== String(resolvedTenantId)
+        tenantSettings.set(shouldKeepStoredTenant ? storedTenantId : String(resolvedTenantId))
       }
       setPreferences(meEnvelope.preferences)
       setSecurity(meEnvelope.security)
+      const preferredLocale = String(meEnvelope.preferences?.ui?.locale || '').trim().toLowerCase()
+      const shortLocale = preferredLocale.split('-')[0]
+      if (shortLocale === 'ru' || shortLocale === 'en' || shortLocale === 'pl') {
+        setLocale(shortLocale as LocaleCode)
+      }
       applyTheme(meEnvelope.preferences?.ui?.theme)
       clearLoginNotice()
+      try {
+        bindUserContext({
+          userId: merged.sub ? String(merged.sub) : null,
+          tenantId: resolvedTenantId ? String(resolvedTenantId) : null,
+          email: merged.email ?? null,
+        })
+      } catch {
+        // observability must never break auth
+      }
     } catch (err) {
+      const status = extractStatus(err)
       console.warn('[Auth] refresh failed', err)
-      if (extractStatus(err) === 401) {
+      if (status === 401) {
         rememberLoginNotice('expired')
         setToken(null)
+        setMe(null)
+        setPreferences(null)
+        setSecurity(null)
+        setSessionId(null)
+      } else if (status !== 502 && status !== 503) {
+        // 502/503: keep session (temporary server/gateway error); other errors: clear
+        setMe(null)
+        setPreferences(null)
+        setSecurity(null)
+        setSessionId(null)
       }
-      setMe(null)
-      setPreferences(null)
-      setSecurity(null)
-      setSessionId(null)
     } finally {
       setLoading(false)
     }
-  }, [applyTheme])
+  }, [applyTheme, setLocale])
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -146,7 +216,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (tenantFromLogin) {
         tenantSettings.set(String(tenantFromLogin))
       }
-      await refresh() // обновит me в общем контексте
+      await refresh({ force: true }) // обновит me в общем контексте даже на /signup
       clearLoginNotice()
     } catch (err) {
       setToken(null)
@@ -155,6 +225,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [refresh])
 
   const logout = useCallback(() => {
+    invalidateBillingSubscriptionCache()
+    invalidateBillingQuotaHeadroomCache()
     setToken(null)
     setMe(null)
     setPreferences(null)
@@ -208,7 +280,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [refresh])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    const path = location.pathname || ''
+    if (isPublicAuthPath(path)) {
+      setLoading(false)
+      return
+    }
+    if (!me) {
+      void refresh()
+    }
+  }, [location.pathname, me, refresh])
 
   const updateProfile = useCallback((update: Partial<WhoAmI>) => {
     setMe((prev) => (prev ? { ...prev, ...update } : prev))

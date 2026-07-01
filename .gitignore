@@ -16,3 +16,37 @@ emsdk/
 opencv/
 opencv_contrib/
 .venv/
+.venv312/
+.venv-ci/
+node_modules/
+docs/manual-checklist/_artifacts/
+backend/uploads/
+backend/app/uploads/
+ad_id
+form_id
+leadgen_id
+opt.code-workspace
+
+# Local backups and generated reports (do not commit)
+backups/
+hostflow-frontend/i18n-hardcode-report.json
+
+# Phase 0 #7 — coverage artifacts. Baselines (*-baseline) ARE tracked.
+backend/coverage.xml
+backend/.coverage
+backend/.coverage.*
+backend/htmlcov/
+hostflow-frontend/coverage/
+
+# Local SQLite databases (dev/runtime; keep fixtures like backend/app/db/sqlite.db tracked if needed)
+/app.db
+/backend/app.db
+/dev.db
+/backend/dev.db
+/backend/dev.test.db
+
+# PII samples (real candidate documents — NEVER commit)
+/samples/
+
+# Playwright / local e2e output (regenerated on each run)
+test-results/

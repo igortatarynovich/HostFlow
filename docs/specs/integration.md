@@ -19,6 +19,8 @@
   - просматривать лог лидов, reroute/assign вручную, следить за SLA (лиды без обработки > N часов).
 - **Ретрай:** `POST /api/v1/admin/meta-leads/leads/retry` перезапускает пайплайн для существующих лидов (использует ту же нормализацию и Graph‑обогащение). Скрипт `scripts/retry_meta_leads.py` предоставляет CLI-обёртку для массового прогона.
 - **Правила:**  
+  - **POST** `/api/v1/leads/meta/webhook`: сначала тенант по `page_id` из события и строке `meta_lead_credentials` (владелец Page Access Token и app secret), иначе fallback на `webhook_verify_token` в query; при дубликате только verify token в `meta_lead_settings` приоритет у не‑legacy тенанта. Чтобы Poltrakt шёл в Focus, перенесите credentials на Focus и держите один владелец токена (см. `scripts/meta_poltrakt_to_focus_personnel.sql`).  
+  - **Платформа (только API):** **superadmin** в bootstrap-тенанте (`11111111-…`) в UI/API по умолчанию видит и меняет Meta в контексте **Focus Personnel** (канонический UUID `FOCUS_PERSONNEL_TENANT_ID`). Это **не копирует** уже сохранённые строки в БД: чтобы перенести креды и verify token **с суперадмина на Focus**, один раз выполните SQL `scripts/migrate_superadmin_meta_connection_to_focus.sql` (бэкап перед запуском). Переменная `META_LEADS_OPERATIONAL_TENANT_ID` — другой UUID; `off` / `disable` / `none` / `false` / `0` отключают ремап. Обычные администраторы клиентских тенантов не затрагиваются.  
   - Идемпотентная обработка по `leadgen_id`/`event_id`.  
   - При отключённом `auto_create` лиды переходят в `needs_routing` и требуют ручного действия.  
   - Маскировка PII в UI включена по умолчанию; доступ к полным данным только у `administrator`.  

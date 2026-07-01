@@ -1,279 +1,80 @@
 // src/pages/Companies.tsx
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api } from '../api/client'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { api, getOnboardingStatus, getOwnCompany, patchOwnCompany } from '../api/client'
+import { recordTtvStepCompleted } from '../api/analytics'
 import type { Company, CompanyReadiness } from '../api/types'
+import { listAdminUsers } from '../api/users'
+import type { AdminUser } from '../api/types'
 import { useI18n } from '../i18n'
+import {
+  listDocumentPolicies,
+  createDocumentPolicy,
+  updateDocumentPolicy,
+  deleteDocumentPolicy,
+  type DocumentPolicy,
+  type DocumentPolicyCreate,
+  type DocumentPolicyScope,
+} from '../api/documents/policies'
+import { getDocumentTypes, type DocType } from '../api/documents/catalog'
+import {
+  ENABLE_READINESS,
+  READINESS_STATE_META,
+  FIN_STATUS_LABELS,
+  CURRENCY_OPTIONS,
+  FIN_STATUS_OPTIONS,
+  CONTACT_ROLE_OPTIONS,
+  WORK_MODE_OPTIONS,
+  TRAILER_TYPE_KEYS,
+  type StatusTone,
+} from '../modules/companies/constants'
+import type {
+  AnyRecord,
+  AddressForm,
+  RepresentativeForm,
+  ContactForm,
+  BankAccountForm,
+  PortalUserForm,
+  WebhookForm,
+  ContractForm,
+  OrderForm,
+  EInvoiceForm,
+  CompanyDetailForm,
+  ContactInfo,
+} from '../modules/companies/types'
+import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { servicesWorkspacePath } from '../modules/services/utils'
+import {
+  asRecord,
+  asArray,
+  mergeRecords,
+  extractAddress,
+  normalizeNumberString,
+  normalizeStringArray,
+  addressToPayload,
+  normalizeContacts,
+  normalizeContactRole,
+  combinePhone,
+} from '../modules/companies/utils'
+import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock'
+import { CompanyReceivablesOverview } from '../components/companies/CompanyReceivablesOverview'
+import { CompanyServiceOrdersPanel } from '../components/companies/CompanyServiceOrdersPanel'
+import { CompanyIntakeLinksPanel } from '../components/companies/CompanyIntakeLinksPanel'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { listVacancies } from '../api/vacancies'
+import { listTenantLinks, getContactPolicy, type TenantLink } from '../api/tenantLinks'
+import { AddClientModal } from '../components/clients/AddClientModal'
+import { ClientAccessPanel } from '../components/clients/ClientAccessPanel'
+import { ClientLeadOriginPanel } from '../components/clients/ClientLeadOriginPanel'
+import { useCurrentTenantId } from '../contexts/CurrentTenant'
+import { useAuth } from '../store/useAuth'
+import { useToast } from '../components/Toast'
 
-const ENABLE_READINESS = true; // readiness API enabled
-
-
-type AnyRecord = Record<string, any>
-
-function asRecord(value: unknown): AnyRecord {
-  if (!value) return {}
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-      return {}
-    }
-    try {
-      const parsed = JSON.parse(trimmed)
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as AnyRecord) : {}
-    } catch (err) {
-      console.warn('[Companies] failed to parse JSON record', err)
-      return {}
-    }
-  }
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    return value as AnyRecord
-  }
-  return {}
-}
-
-function asArray<T = any>(value: unknown): T[] {
-  if (!value) return []
-  if (Array.isArray(value)) return value as T[]
-  if (typeof value === 'object') return Object.values(value as AnyRecord) as T[]
-  return []
-}
-
-function mergeRecords(...records: Array<AnyRecord | null | undefined>): AnyRecord {
-  const result: AnyRecord = {}
-  for (const rec of records) {
-    if (!rec) continue
-    for (const [key, value] of Object.entries(rec)) {
-      if (value !== undefined) {
-        result[key] = value
-      }
-    }
-  }
-  return result
-}
-
-type StatusTone = 'info' | 'success' | 'warning' | 'danger'
-
-const READINESS_STATE_META: Record<string, { labelKey: string; tone: StatusTone }> = {
-  ready: { labelKey: 'app.companies.readiness.states.ready', tone: 'success' },
-  legal_missing: { labelKey: 'app.companies.readiness.states.legal_missing', tone: 'warning' },
-  contact_missing: { labelKey: 'app.companies.readiness.states.contact_missing', tone: 'warning' },
-  bank_missing: { labelKey: 'app.companies.readiness.states.bank_missing', tone: 'warning' },
-  billing_invalid: { labelKey: 'app.companies.readiness.states.billing_invalid', tone: 'warning' },
-  compliance_expired: { labelKey: 'app.companies.readiness.states.compliance_expired', tone: 'danger' },
-}
-
-const FIN_STATUS_LABELS: Record<string, string> = {
-  pending: 'app.companies.readiness.fin_status.pending',
-  pass: 'app.companies.readiness.fin_status.pass',
-  fail: 'app.companies.readiness.fin_status.fail',
-  manual_review: 'app.companies.readiness.fin_status.manual_review',
-}
-
-const CURRENCY_OPTIONS = ['PLN', 'EUR', 'USD', 'GBP'];
-const FIN_STATUS_OPTIONS = ['pending', 'pass', 'fail', 'manual_review'];
-const CONTACT_ROLE_OPTIONS = ['OWNER', 'ACC', 'HR', 'FM', 'OPS', 'LEGAL', 'DISPATCH', 'SALES', 'SUPPORT', 'CEO'];
-const CONTACT_ROLE_SET = new Set(CONTACT_ROLE_OPTIONS);
-const CONTACT_ROLE_ALIASES: Record<string, string> = {
-  ACCOUNTING: 'ACC',
-  ACCOUNTANT: 'ACC',
-  ACCOUNTS: 'ACC',
-  MAIN: 'OWNER',
-  OPERATIONS: 'OPS',
-  OPERATION: 'OPS',
-  DISPATCHER: 'DISPATCH',
-  CUSTOMER_SUPPORT: 'SUPPORT',
-  CUSTOMER_SERVICE: 'SUPPORT',
-  SUPPORT_TEAM: 'SUPPORT',
-  SALES_MANAGER: 'SALES',
-  SALES_TEAM: 'SALES',
-  FINANCE: 'FM',
-  FINANCIAL: 'FM',
-  FINANCIAL_MANAGER: 'FM',
-  FINANCE_MANAGER: 'FM',
-};
-const WORK_MODE_OPTIONS = ['UOP', 'B2B', 'LEASE'];
-const TRAILER_TYPE_KEYS = ['mega', 'standard', 'frigo', 'container'];
-
-type AddressForm = {
-  country?: string;
-  city?: string;
-  street?: string;
-  zip?: string;
-  house?: string;
-  apartment?: string;
-  region?: string;
-};
-
-interface RepresentativeForm {
-  full_name: string;
-  role?: string;
-  email?: string;
-  phone?: string;
-}
-
-interface ContactForm {
-  role: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  is_primary: boolean;
-  is_portal_user: boolean;
-}
-
-interface BankAccountForm {
-  bank_name: string;
-  iban: string;
-  swift_bic: string;
-  country: string;
-  label: string;
-  is_primary: boolean;
-}
-
-interface PortalUserForm {
-  full_name: string;
-  email: string;
-  role: string;
-}
-
-interface WebhookForm {
-  event: string;
-  target: string;
-}
-
-interface ContractForm {
-  title: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
-  reference: string;
-  code: string;
-}
-
-interface OrderForm {
-  title: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
-  required_drivers: string;
-  hired_drivers: string;
-  client_reference: string;
-  code: string;
-}
-
-interface EInvoiceForm {
-  participant_id: string;
-  scheme: string;
-}
-
-interface CompanyDetailForm {
-  base: {
-    name: string;
-    legal_name: string;
-    tax_id: string;
-    phone: string;
-    email: string;
-    website: string;
-    notes: string;
-    is_archived: boolean;
-    country_code: string;
-    city: string;
-    address: string;
-  };
-  legal: {
-    reg_no: string;
-    vat_eu: string;
-    established_at: string;
-    transport_license_number: string;
-    insurance_policy_no: string;
-    registered_address: AddressForm;
-    operational_address: AddressForm;
-    authorized_representatives: RepresentativeForm[];
-  };
-  billing: {
-    default_currency: string;
-    payment_terms_days: string;
-    invoice_email: string;
-    billing_address: AddressForm;
-    einvoice_peppol: EInvoiceForm;
-    bank_accounts: BankAccountForm[];
-  };
-  contacts: ContactForm[];
-  operations: {
-    fleet_tractors: string;
-    fleet_intl_perc: string;
-    fleet_local_perc: string;
-    drivers_total: string;
-    has_adr_operations: boolean;
-    work_modes: string[];
-    trailer_types: Record<string, string>;
-    lanes: { origins: string[]; destinations: string[] };
-    cargo_types: string[];
-    languages: string[];
-    preferred_nationalities: string[];
-  };
-  compliance: {
-    fin_check_status: string;
-    aml_required: boolean;
-    iso9001: boolean;
-    doc_valid_until: string;
-    last_compliance_check_at: string;
-  };
-  portal: {
-    enabled: boolean;
-    url: string;
-    last_sync_at: string;
-    portal_roles: PortalUserForm[];
-    permissions: string;
-  };
-  integrations: {
-    provider_ids: string[];
-    webhooks: WebhookForm[];
-    branding: { logo_url: string; primary_color: string };
-  };
-  contracts: ContractForm[];
-  orders: OrderForm[];
-  rawExtra: AnyRecord;
-}
-
-function extractAddress(raw: unknown): AddressForm {
-  const data = asRecord(raw)
-  return {
-    country: (data.country ?? '') as string,
-    city: (data.city ?? '') as string,
-    street: (data.street ?? data.address ?? '') as string,
-    zip: (data.zip ?? '') as string,
-    house: (data.house ?? data.number ?? '') as string,
-    apartment: (data.apartment ?? data.ap ?? '') as string,
-    region: (data.region ?? '') as string,
-  }
-}
-
-function normalizeNumberString(value: unknown): string {
-  if (value === null || value === undefined) return ''
-  const num = Number(value)
-  if (Number.isNaN(num)) return ''
-  return String(num)
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return asArray(value)
-    .map((item) => (item === null || item === undefined ? '' : String(item)))
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-}
-
-function addressToPayload(address: AddressForm): AnyRecord | null {
-  const cleaned: AnyRecord = {}
-  if (address.country) cleaned.country = address.country
-  if (address.city) cleaned.city = address.city
-  if (address.street) cleaned.street = address.street
-  if (address.zip) cleaned.zip = address.zip
-  if (address.house) cleaned.house = address.house
-  if (address.apartment) cleaned.apartment = address.apartment
-  if (address.region) cleaned.region = address.region
-  return Object.keys(cleaned).length ? cleaned : null
-}
-
+// Helper functions used only in this file
 function parseBoolean(value: unknown, fallback = false): boolean {
   if (typeof value === 'boolean') return value
   if (typeof value === 'number') return value !== 0
@@ -298,108 +99,159 @@ function pruneEmpty(obj: AnyRecord): AnyRecord {
   return result
 }
 
-interface ContactInfo {
-  role?: string
-  full_name?: string
-  email?: string
-  phone?: string
-  is_primary?: boolean
-  is_portal_user?: boolean
+function normalizeCompanyKind(value: unknown): 'client' | 'counterparty' {
+  const raw = String(value ?? '').trim().toLowerCase()
+  if (raw === 'counterparty') return 'counterparty'
+  return 'client'
 }
 
-function normalizeContactRole(value?: string | null): string | undefined {
-  if (value === null || value === undefined) return undefined
-  const normalized = String(value).trim().toUpperCase()
-  if (!normalized) return undefined
-  const canonical = normalized.replace(/[\s-]+/g, '_')
-  if (CONTACT_ROLE_SET.has(canonical)) return canonical
-  if (CONTACT_ROLE_SET.has(normalized)) return normalized
-  const alias = CONTACT_ROLE_ALIASES[canonical] ?? CONTACT_ROLE_ALIASES[normalized]
-  if (alias && CONTACT_ROLE_SET.has(alias)) return alias
-  return undefined
+function normalizeOperatingCompanyType(value: unknown): 'agency' | 'employer' | 'services' {
+  const raw = String(value ?? '').trim().toLowerCase()
+  if (raw === 'employer') return 'employer'
+  if (raw === 'services') return 'services'
+  return 'agency'
 }
 
-function combinePhone(data: AnyRecord): string {
-  const parts: string[] = []
-  const prefixRaw = data.phone_prefix ?? data.phone_code
-  if (prefixRaw) {
-    const prefix = String(prefixRaw)
-    parts.push(prefix.startsWith('+') ? prefix : `+${prefix}`)
-  }
-  if (data.phone_local) {
-    parts.push(String(data.phone_local))
-  }
-  if (!parts.length && data.phone) {
-    parts.push(String(data.phone))
-  }
-  return parts.join(' ').trim()
+function getCompanyRoleFromAny(company: AnyRecord): 'operating' | 'client' {
+  const extra = asRecord(company?.extra)
+  const raw =
+    extra.company_role ??
+    extra.role ??
+    extra.entity_role
+  return String(raw ?? '').trim().toLowerCase() === 'operating' ? 'operating' : 'client'
 }
 
-function normalizeContacts(raw: unknown): ContactInfo[] {
-  if (!raw) return []
-  if (Array.isArray(raw)) {
-    return (raw as unknown[]).map((item, idx) => {
-      const data = asRecord(item)
-      const combinedPhone = combinePhone(data)
-      const roleHint =
-        (typeof data.role === 'string' && data.role) ||
-        (typeof data.type === 'string' && data.type) ||
-        (typeof data.position === 'string' && data.position) ||
-        undefined
-      const normalizedRole = normalizeContactRole(roleHint)
-      const roleHintLower = roleHint ? String(roleHint).trim().toLowerCase() : ''
-      const isPrimary =
-        data.is_primary !== undefined ? Boolean(data.is_primary) : roleHintLower === 'main' || idx === 0
-      return {
-        role: normalizedRole,
-        full_name: data.full_name ?? data.name ?? undefined,
-        email: data.email ?? undefined,
-        phone: combinedPhone || (data.phone ? String(data.phone) : undefined),
-        is_primary: isPrimary,
-        is_portal_user: data.is_portal_user ?? undefined,
-      }
-    })
-  }
-  const obj = asRecord(raw)
-  return Object.entries(obj).map(([key, value], idx) => {
-    const data = asRecord(value)
-    const combinedPhone = combinePhone(data)
-    const preferredRole =
-      (typeof data.role === 'string' && data.role.trim()) ||
-      (typeof data.type === 'string' && data.type.trim()) ||
-      (typeof data.position === 'string' && data.position.trim()) ||
-      key
-    const roleHintValue = preferredRole ?? key
-    const normalizedRole = normalizeContactRole(roleHintValue)
-    const roleHintLower = String(roleHintValue ?? '').trim().toLowerCase()
-    const isPrimary =
-      data.is_primary !== undefined ? Boolean(data.is_primary) : roleHintLower === 'main' || idx === 0
-    return {
-      role: normalizedRole,
-      full_name: data.full_name ?? data.name ?? undefined,
-      email: data.email ?? undefined,
-      phone: combinedPhone || (data.phone ? String(data.phone) : undefined),
-      is_primary: isPrimary,
-      is_portal_user: data.is_portal_user ?? undefined,
-    }
-  })
+function ownCompanyToCompany(own: AnyRecord): Company {
+  const extra = asRecord(own?.extra)
+  const businessType = normalizeOperatingCompanyType(extra.business_type)
+  return {
+    id: String(own?.id || '') as any,
+    name: String(own?.name || '').trim(),
+    legal_name: (own?.legal_name as string | null | undefined) ?? null,
+    tax_id: (own?.tax_id as string | null | undefined) ?? null,
+    phone: (own?.phone as string | null | undefined) ?? null,
+    email: (own?.email as string | null | undefined) ?? null,
+    website: (own?.website as string | null | undefined) ?? null,
+    notes: (own?.notes as string | null | undefined) ?? null,
+    is_archived: Boolean(own?.is_archived),
+    country_code: (own?.country_code as string | null | undefined) ?? null,
+    country: (own?.country as string | null | undefined) ?? null,
+    city: (own?.city as string | null | undefined) ?? null,
+    address: (own?.address as string | null | undefined) ?? null,
+    contacts: asRecord(own?.contacts),
+    extra: {
+      ...extra,
+      company_role: 'operating',
+      company_kind: 'counterparty',
+      company_type: businessType,
+    },
+    created_at: (own?.created_at as string | null | undefined) ?? null,
+    updated_at: (own?.updated_at as string | null | undefined) ?? null,
+  } as Company
 }
+
+function getCompanyKindFromAny(company: AnyRecord): 'client' | 'counterparty' {
+  const extra = asRecord(company?.extra)
+  const raw =
+    extra.company_kind ??
+    extra.company_type ??
+    extra.kind ??
+    extra.entity_type ??
+    extra.segment ??
+    extra.role
+  return normalizeCompanyKind(raw)
+}
+
+/** Client pipeline (Party CRM) — codes match API `client_stage`; labels from `app.companies.client_stage.*`. */
+const CLIENT_PIPELINE_STAGE_CODES = [
+  'new_lead',
+  'contacted',
+  'qualified',
+  'offer_sent',
+  'negotiation',
+  'contract_signed',
+  'active',
+  'lost',
+] as const
+
+function formatPartyBusinessRoleCell(
+  tr: (key: string, opts?: { defaultValue?: string }) => string,
+  raw: string | null | undefined,
+): string {
+  if (!raw) return '—'
+  const defaults: Record<string, string> = {
+    employer: 'Employer',
+    service_client: 'Service client',
+    both: 'Employer + client',
+  }
+  return tr(`app.companies.party.roles.${raw}`, { defaultValue: defaults[raw] ?? raw })
+}
+
+function formatClientStageCell(
+  tr: (key: string, opts?: { defaultValue?: string }) => string,
+  raw: string | null | undefined,
+): string {
+  if (!raw) return '—'
+  return tr(`app.companies.client_stage.${raw}`, { defaultValue: raw.replace(/_/g, ' ') })
+}
+
+const CLIENT_WORKSPACE_TABS = ['overview', 'orders', 'invoices', 'activity', 'profile'] as const
+type ClientWorkspaceTab = (typeof CLIENT_WORKSPACE_TABS)[number]
 
 export default function Companies(){
   const { t } = useI18n()
+  const { me } = useAuth()
+  const { notify } = useToast()
+  const currentTenantId = useCurrentTenantId()
+  const tenantIdForLinks = (currentTenantId ?? (me as { tenant_id?: string } | null)?.tenant_id ?? '').trim()
+  const planLimitModal = usePlanLimitModal()
+  const location = useLocation()
   const untitledNameRef = useRef(t('app.companies.detail.defaults.untitled'))
   useEffect(() => {
     untitledNameRef.current = t('app.companies.detail.defaults.untitled')
   }, [t])
   // router
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const handleCreateCompany = useCallback(() => {
-    navigate('/app/clients/new')
+  const isOperatingProfileRoute = location.pathname.startsWith(CRM_APP_PATHS.myCompany)
+  const listBasePath = isOperatingProfileRoute
+    ? CRM_APP_PATHS.myCompany
+    : CRM_APP_PATHS.clientsDirectory
+  const sectionFocus = String(searchParams.get('section') || '').trim().toLowerCase()
+  const showExtendedSections = String(searchParams.get('extended') || '').trim() === '1'
+  const toggleExtendedSections = useCallback(() => {
+    const next = new URLSearchParams(searchParams)
+    if (showExtendedSections) next.delete('extended')
+    else next.set('extended', '1')
+    navigate(`${location.pathname}?${next.toString()}`, { replace: true })
+  }, [location.pathname, navigate, searchParams, showExtendedSections])
+  const handleCreateClientCompany = useCallback(() => {
+    setAddClientOpen(true)
+  }, [])
+  const handleCreateOperatingCompany = useCallback(() => {
+    navigate(CRM_APP_PATHS.onboardingCompany)
   }, [navigate])
+
+  const rawClientWorkspaceTab = String(searchParams.get('ctab') || 'overview').trim().toLowerCase()
+  const clientWorkspaceTab: ClientWorkspaceTab = CLIENT_WORKSPACE_TABS.includes(rawClientWorkspaceTab as ClientWorkspaceTab)
+    ? (rawClientWorkspaceTab as ClientWorkspaceTab)
+    : 'overview'
+
+  const navigateClientWorkspaceTab = useCallback(
+    (next: ClientWorkspaceTab) => {
+      const nextParams = new URLSearchParams(searchParams)
+      if (next === 'overview') nextParams.delete('ctab')
+      else nextParams.set('ctab', next)
+      const q = nextParams.toString()
+      navigate(q ? `${location.pathname}?${q}` : location.pathname, { replace: true })
+    },
+    [navigate, location.pathname, searchParams],
+  )
 
   // list state
   const [items, setItems] = useState<Company[]>([])
+  const [companyUsers, setCompanyUsers] = useState<AdminUser[]>([])
 
   // detail state
   const [current, setCurrent] = useState<Company | null>(null)
@@ -408,6 +260,17 @@ export default function Companies(){
   const [readinessError, setReadinessError] = useState<string | null>(null)
   const [readinessUnavailable, setReadinessUnavailable] = useState(false)
 
+  // company vacancies (from API)
+  const [companyVacanciesFromApi, setCompanyVacanciesFromApi] = useState<any[]>([])
+  const [companyVacanciesLoading, setCompanyVacanciesLoading] = useState(false)
+  // document policies state
+  const [documentPolicies, setDocumentPolicies] = useState<DocumentPolicy[]>([])
+  const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
+  const [policiesLoading, setPoliciesLoading] = useState(false)
+  const [policiesError, setPoliciesError] = useState<FriendlyErrorInfo | null>(null)
+  const [editingPolicy, setEditingPolicy] = useState<DocumentPolicy | null>(null)
+  const [newPolicyMode, setNewPolicyMode] = useState(false)
+
   // ui state
   const [loading, setLoading] = useState(false)
   const [detailForm, setDetailForm] = useState<CompanyDetailForm | null>(null)
@@ -415,11 +278,41 @@ export default function Companies(){
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [clientAccessLink, setClientAccessLink] = useState<TenantLink | null>(null)
+  const [clientAccessLoading, setClientAccessLoading] = useState(false)
+  const [addClientOpen, setAddClientOpen] = useState(false)
+  const [tenantLinksByCompanyId, setTenantLinksByCompanyId] = useState<Map<string, TenantLink>>(new Map())
 
   // list filters/sort
   const [query, setQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  const [companyKindFilter, setCompanyKindFilter] = useState<'all' | 'client' | 'counterparty'>('all')
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'city_asc' | 'city_desc'>('name_asc')
+  const [partyRoleListFilter, setPartyRoleListFilter] = useState<'all' | 'employer' | 'service_client' | 'both' | 'unset'>(
+    'all',
+  )
+  const [clientStageListFilter, setClientStageListFilter] = useState<string>('all')
+  const [ownerListFilter, setOwnerListFilter] = useState<string>('all')
+
+  const ownerUserLabelMap = useMemo(() => {
+    const m = new Map<string, string>()
+    companyUsers.forEach((u) => {
+      const id = u.user_id
+      if (!id) return
+      const label = (u.full_name || '').trim() || u.email || id.slice(0, 8)
+      m.set(id, label)
+    })
+    return m
+  }, [companyUsers])
+
+  const clientPipelineStageOptions = useMemo(
+    () =>
+      CLIENT_PIPELINE_STAGE_CODES.map((code) => ({
+        value: code,
+        label: t(`app.companies.client_stage.${code}`),
+      })),
+    [t],
+  )
 
   const updateField = useCallback(
     <K extends keyof CompanyDetailForm, F extends keyof CompanyDetailForm[K]>(
@@ -460,7 +353,24 @@ export default function Companies(){
 
   const filteredItems = useMemo(() => {
     let arr: any[] = Array.isArray(items) ? items : []
+    arr = arr.filter((it: any) => getCompanyRoleFromAny(it) !== 'operating')
     if (!showArchived) arr = arr.filter((it:any) => !it.is_archived)
+    if (companyKindFilter !== 'all') {
+      arr = arr.filter((it: any) => getCompanyKindFromAny(it) === companyKindFilter)
+    }
+    if (partyRoleListFilter !== 'all') {
+      if (partyRoleListFilter === 'unset') {
+        arr = arr.filter((it: any) => !it.party_business_roles)
+      } else {
+        arr = arr.filter((it: any) => String(it.party_business_roles || '') === partyRoleListFilter)
+      }
+    }
+    if (clientStageListFilter !== 'all') {
+      arr = arr.filter((it: any) => String(it.client_stage || '') === clientStageListFilter)
+    }
+    if (ownerListFilter !== 'all') {
+      arr = arr.filter((it: any) => String(it.owner_user_id || '') === ownerListFilter)
+    }
     if (query.trim()){
       const q = query.trim().toLowerCase()
       arr = arr.filter((it:any) => (
@@ -473,7 +383,16 @@ export default function Companies(){
     if (sortBy === 'city_asc') arr = [...arr].sort((a,b)=> get(a,'city').localeCompare(get(b,'city')))
     if (sortBy === 'city_desc') arr = [...arr].sort((a,b)=> get(b,'city').localeCompare(get(a,'city')))
     return arr
-  }, [items, showArchived, query, sortBy])
+  }, [
+    items,
+    showArchived,
+    companyKindFilter,
+    partyRoleListFilter,
+    clientStageListFilter,
+    ownerListFilter,
+    query,
+    sortBy,
+  ])
 
   const currentAny: AnyRecord | null = current ? (current as unknown as AnyRecord) : null
 
@@ -613,10 +532,27 @@ export default function Companies(){
     [extraData]
   )
 
-  const companyVacancies = useMemo(
-    () => asArray(extraData.company_vacancies ?? extraData.vacancies ?? extraData.open_vacancies).map((item) => asRecord(item)),
-    [extraData]
-  )
+  const loadCompanyVacancies = useCallback(async (companyId: string) => {
+    if (!companyId) return
+    setCompanyVacanciesLoading(true)
+    try {
+      const list = await listVacancies({ company_id: companyId, limit: 100 })
+      setCompanyVacanciesFromApi(Array.isArray(list) ? list : (list as any)?.items ?? [])
+    } catch {
+      setCompanyVacanciesFromApi([])
+    } finally {
+      setCompanyVacanciesLoading(false)
+    }
+  }, [])
+
+  const companyVacancies = useMemo(() => {
+    if (companyVacanciesFromApi.length > 0) {
+      return companyVacanciesFromApi.map((item) => asRecord(item))
+    }
+    return asArray(extraData.company_vacancies ?? extraData.vacancies ?? extraData.open_vacancies).map((item) =>
+      asRecord(item)
+    )
+  }, [companyVacanciesFromApi, extraData])
 
   const vacancyAnalytics = useMemo(() => {
     if (!companyVacancies.length) {
@@ -680,9 +616,19 @@ export default function Companies(){
 
   const buildDetailForm = useCallback((): CompanyDetailForm | null => {
     if (!currentAny) return null
-    const base = {
+    const base: CompanyDetailForm['base'] = {
       name: (currentAny.name as string) ?? '',
+      owner_user_id: (currentAny.owner_user_id as string) ?? '',
+      manager_user_id: (currentAny.manager_user_id as string) ?? '',
       legal_name: (currentAny.legal_name as string) ?? '',
+      company_kind: normalizeCompanyKind(
+        extraData.company_kind ??
+          extraData.company_type ??
+          extraData.kind ??
+          extraData.entity_type ??
+          extraData.segment ??
+          extraData.role
+      ),
       tax_id: (currentAny.tax_id as string) ?? '',
       phone: (currentAny.phone as string) ?? '',
       email: (currentAny.email as string) ?? '',
@@ -692,6 +638,14 @@ export default function Companies(){
       country_code: (currentAny.country_code ?? currentAny.country ?? '') as string,
       city: (currentAny.city as string) ?? '',
       address: (currentAny.address as string) ?? '',
+      party_entity_type: currentAny.party_entity_type === 'person' ? 'person' : 'company',
+      party_business_roles: (['employer', 'service_client', 'both'].includes(
+        String(currentAny.party_business_roles || ''),
+      )
+        ? (currentAny.party_business_roles as CompanyDetailForm['base']['party_business_roles'])
+        : ''),
+      client_stage: (currentAny.client_stage as string) ?? '',
+      client_source: (currentAny.client_source as string) ?? '',
     }
 
     const legal: CompanyDetailForm['legal'] = {
@@ -787,6 +741,7 @@ export default function Companies(){
 
     const trailersRecord = operationsBlock.trailers ?? {}
 
+    const customFieldsBlock = operationsBlock.custom_fields ?? {}
     const operations: CompanyDetailForm['operations'] = {
       fleet_tractors: normalizeNumberString(
         operationsBlock.fleet_tractors ?? operationsBlock.tractors ?? operationsBlock.fleet?.tractors
@@ -820,6 +775,16 @@ export default function Companies(){
       languages: normalizeStringArray(operationsBlock.languages),
       preferred_nationalities: normalizeStringArray(
         operationsBlock.preferred_nationalities ?? operationsBlock.preferredNationalities
+      ),
+      team_size: normalizeNumberString(operationsBlock.team_size ?? operationsBlock.teamSize ?? ''),
+      roles: (operationsBlock.roles ?? operationsBlock.role ?? '') as string,
+      tech_stack: (operationsBlock.tech_stack ?? operationsBlock.techStack ?? '') as string,
+      custom_fields: ['capacity', 'equipment', 'certifications', 'regions'].reduce<Record<string, string>>(
+        (acc, key) => {
+          acc[key] = String(customFieldsBlock[key] ?? '')
+          return acc
+        },
+        {}
       ),
     }
 
@@ -932,6 +897,8 @@ export default function Companies(){
     const orders: OrderForm[] = ordersList.length
       ? ordersList.map((order) => {
           const data = asRecord(order)
+          const orderTypeId = (data.order_type_id ?? 'transport') as string
+          const customFields = (data.custom_fields ?? {}) as Record<string, string | number>
           return {
             title: (data.title ?? data.name ?? '') as string,
             status: (data.status ?? '') as string,
@@ -945,6 +912,8 @@ export default function Companies(){
             ),
             client_reference: (data.client_reference ?? '') as string,
             code: (data.code ?? '') as string,
+            order_type_id: orderTypeId,
+            custom_fields: Object.keys(customFields).length ? customFields : undefined,
           }
         })
       : [
@@ -957,6 +926,8 @@ export default function Companies(){
             hired_drivers: '',
             client_reference: '',
             code: '',
+            order_type_id: 'transport' as const,
+            custom_fields: undefined,
           },
         ]
 
@@ -966,6 +937,8 @@ export default function Companies(){
     } catch {
       rawExtra = asRecord(extraData)
     }
+    rawExtra.operational_profile_type =
+      (rawExtra.operational_profile_type as string) || (extraData.operational_profile_type as string) || 'transport'
 
     return {
       base,
@@ -1086,37 +1059,43 @@ export default function Companies(){
         bank_accounts: bankAccountsPayload,
       })
 
-      const operationsPayload = pruneEmpty({
-        fleet_tractors: detailForm.operations.fleet_tractors
-          ? Number(detailForm.operations.fleet_tractors)
-          : undefined,
-        fleet_intl_perc: detailForm.operations.fleet_intl_perc
-          ? Number(detailForm.operations.fleet_intl_perc)
-          : undefined,
-        fleet_local_perc: detailForm.operations.fleet_local_perc
-          ? Number(detailForm.operations.fleet_local_perc)
-          : undefined,
-        drivers_total: detailForm.operations.drivers_total
-          ? Number(detailForm.operations.drivers_total)
-          : undefined,
-        has_adr_operations: detailForm.operations.has_adr_operations || undefined,
-        work_modes: detailForm.operations.work_modes,
-        trailers: pruneEmpty(
+      const profileType = detailForm.rawExtra?.operational_profile_type ?? 'transport'
+      const ops = detailForm.operations
+      const baseOps: AnyRecord = {
+        fleet_tractors: ops.fleet_tractors ? Number(ops.fleet_tractors) : undefined,
+        fleet_intl_perc: ops.fleet_intl_perc ? Number(ops.fleet_intl_perc) : undefined,
+        fleet_local_perc: ops.fleet_local_perc ? Number(ops.fleet_local_perc) : undefined,
+        drivers_total: ops.drivers_total ? Number(ops.drivers_total) : undefined,
+        has_adr_operations: ops.has_adr_operations || undefined,
+        work_modes: ops.work_modes?.length ? ops.work_modes : undefined,
+        trailer_types: pruneEmpty(
           Object.fromEntries(
-            Object.entries(detailForm.operations.trailer_types).map(([key, value]) => [
+            Object.entries(ops.trailer_types || {}).map(([key, value]) => [
               key,
               value ? Number(value) : undefined,
             ])
           )
         ),
         lanes: pruneEmpty({
-          origins: detailForm.operations.lanes.origins,
-          destinations: detailForm.operations.lanes.destinations,
+          origins: ops.lanes?.origins,
+          destinations: ops.lanes?.destinations,
         }),
-        cargo_types: detailForm.operations.cargo_types,
-        languages: detailForm.operations.languages,
-        preferred_nationalities: detailForm.operations.preferred_nationalities,
-      })
+        cargo_types: ops.cargo_types?.length ? ops.cargo_types : undefined,
+        languages: ops.languages?.length ? ops.languages : undefined,
+        preferred_nationalities: ops.preferred_nationalities?.length ? ops.preferred_nationalities : undefined,
+      }
+      if (profileType === 'office') {
+        baseOps.team_size = ops.team_size ? Number(ops.team_size) : undefined
+        baseOps.roles = ops.roles?.trim() || undefined
+        baseOps.tech_stack = ops.tech_stack?.trim() || undefined
+      }
+      if (profileType === 'custom') {
+        const cf = Object.fromEntries(
+          Object.entries(ops.custom_fields || {}).filter(([, v]) => v != null && String(v).trim())
+        )
+        if (Object.keys(cf).length > 0) baseOps.custom_fields = cf
+      }
+      const operationsPayload = pruneEmpty(baseOps)
 
       const compliancePayload = pruneEmpty({
         fin_check_status: detailForm.compliance.fin_check_status || undefined,
@@ -1184,21 +1163,29 @@ export default function Companies(){
 
       const ordersPayload = detailForm.orders
         .filter((order) => order.title || order.status)
-        .map((order) =>
-          pruneEmpty({
+        .map((order) => {
+          const base: AnyRecord = {
             title: order.title || undefined,
             code: order.code || undefined,
             status: order.status || undefined,
             starts_at: order.starts_at || undefined,
             ends_at: order.ends_at || undefined,
-            required_drivers: order.required_drivers ? Number(order.required_drivers) : undefined,
-            hired_drivers: order.hired_drivers ? Number(order.hired_drivers) : undefined,
             client_reference: order.client_reference || undefined,
-          })
-        )
+            order_type_id: order.order_type_id || 'transport',
+          }
+          if (order.order_type_id === 'transport') {
+            base.required_drivers = order.required_drivers ? Number(order.required_drivers) : undefined
+            base.hired_drivers = order.hired_drivers ? Number(order.hired_drivers) : undefined
+          }
+          if (order.custom_fields && Object.keys(order.custom_fields).length > 0) {
+            base.custom_fields = order.custom_fields
+          }
+          return pruneEmpty(base)
+        })
 
       const extraPayload: AnyRecord = {
         ...detailForm.rawExtra,
+        company_kind: detailForm.base.company_kind,
         legal: legalPayload,
         billing: billingPayload,
         operations: operationsPayload,
@@ -1226,6 +1213,8 @@ export default function Companies(){
 
       const payload: AnyRecord = {
         name: detailForm.base.name?.trim() || detailForm.base.name || '',
+        owner_user_id: normalizeString(detailForm.base.owner_user_id),
+        manager_user_id: normalizeString(detailForm.base.manager_user_id),
         legal_name: normalizeString(detailForm.base.legal_name),
         tax_id: normalizeString(detailForm.base.tax_id),
         phone: normalizeString(detailForm.base.phone),
@@ -1235,6 +1224,12 @@ export default function Companies(){
         country_code: normalizeString(detailForm.base.country_code),
         city: normalizeString(detailForm.base.city),
         address: normalizeString(detailForm.base.address),
+        party_entity_type: detailForm.base.party_entity_type,
+        party_business_roles: detailForm.base.party_business_roles
+          ? detailForm.base.party_business_roles
+          : null,
+        client_stage: detailForm.base.client_stage?.trim() ? detailForm.base.client_stage.trim() : null,
+        client_source: detailForm.base.client_source?.trim() ? detailForm.base.client_source.trim() : null,
       }
 
       Object.keys(payload).forEach((key) => {
@@ -1248,12 +1243,34 @@ export default function Companies(){
       payload.contacts = contactsPayload
       payload.extra = extraPayload
 
-      await api.put(`/companies/${currentAny.id}`, payload)
+      if (isOperatingProfileRoute) {
+        const ownPayload: AnyRecord = {
+          name: payload.name,
+          legal_name: payload.legal_name,
+          tax_id: payload.tax_id,
+          phone: payload.phone,
+          email: payload.email,
+          website: payload.website,
+          notes: payload.notes,
+          country_code: payload.country_code,
+          city: payload.city,
+          address: payload.address,
+          is_archived: payload.is_archived,
+          contacts: payload.contacts,
+          extra: payload.extra,
+        }
+        await patchOwnCompany(String(currentAny.id), ownPayload)
+      } else {
+        await api.put(`/companies/${currentAny.id}`, payload)
+      }
       await loadOne(currentAny.id as string)
       setIsDirty(false)
       setSaveSuccess(true)
     } catch (err: any) {
       console.error('[Companies] save failed', err)
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.companies.messages.save_error'))) {
+        return
+      }
       const detail = err?.response?.data?.detail
       let message = err?.message || t('app.companies.messages.save_error')
       if (typeof detail === 'string') {
@@ -1273,7 +1290,7 @@ export default function Companies(){
     } finally {
       setSaving(false)
     }
-  }, [currentAny, detailForm, loadOne, t])
+  }, [currentAny, detailForm, isOperatingProfileRoute, loadOne, planLimitModal, t])
 
   const setContactField = useCallback(
     (index: number, patch: Partial<ContactForm>) => {
@@ -1471,6 +1488,19 @@ export default function Companies(){
     [updateFormState]
   )
 
+  const setOrderCustomField = useCallback(
+    (index: number, key: string, value: string | number) => {
+      updateFormState('orders', (prev) => {
+        const next = [...prev]
+        const ord = next[index]
+        const cf = { ...(ord.custom_fields ?? {}), [key]: value }
+        next[index] = { ...ord, custom_fields: cf }
+        return next
+      })
+    },
+    [updateFormState]
+  )
+
   const addOrder = useCallback(() => {
     updateFormState('orders', (prev) => [
       ...prev,
@@ -1483,6 +1513,8 @@ export default function Companies(){
         hired_drivers: '',
         client_reference: '',
         code: '',
+        order_type_id: 'transport' as const,
+        custom_fields: undefined,
       },
     ])
   }, [updateFormState])
@@ -1503,6 +1535,8 @@ export default function Companies(){
                 hired_drivers: '',
                 client_reference: '',
                 code: '',
+                order_type_id: 'transport' as const,
+                custom_fields: undefined,
               },
             ]
       })
@@ -1521,7 +1555,38 @@ export default function Companies(){
     ]
   }, [readiness, t])
   // -------- data fetching
+  const loadDocumentPolicies = useCallback(async (companyId: string | null) => {
+    if (!companyId) {
+      setDocumentPolicies([])
+      return
+    }
+    setPoliciesLoading(true)
+    setPoliciesError(null)
+    try {
+      const [policies, types] = await Promise.all([
+        listDocumentPolicies({ scope: 'CLIENT', scope_id: companyId }),
+        getDocumentTypes(),
+      ])
+      setDocumentPolicies(policies)
+      setDocumentTypes(types)
+    } catch (err: any) {
+      console.error('[Companies] failed to load document policies', err)
+      const fb = t('app.companies.errors.policies_load_failed', { defaultValue: 'Failed to load document policies' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+      }
+    } finally {
+      setPoliciesLoading(false)
+    }
+  }, [planLimitModal, t])
+
   const loadReadiness = useCallback(async (companyId: string) => {
+    if (isOperatingProfileRoute) {
+      setReadiness(null)
+      setReadinessUnavailable(true)
+      setReadinessError(null)
+      return
+    }
     if (!companyId) return
     setReadinessLoading(true)
     setReadinessError(null)
@@ -1541,12 +1606,14 @@ export default function Companies(){
     } finally {
       setReadinessLoading(false)
     }
-  }, [])
+  }, [isOperatingProfileRoute])
 
   async function loadList(){
     setLoading(true)
     try{
-      const { data } = await api.get('/companies/')
+      const { data } = await api.get('/companies/', {
+        params: { include_service_metrics: true, include_recruitment_metrics: true },
+      })
       const arr = Array.isArray(data) ? data : (data?.items || [])
       setItems(arr)
     } finally { setLoading(false) }
@@ -1557,12 +1624,34 @@ export default function Companies(){
     setReadiness(null)
     setReadinessUnavailable(false)
     setReadinessError(null)
+    setCompanyVacanciesFromApi([])
     try{
-      const { data } = await api.get(`/companies/${companyId}`)
+      if (isOperatingProfileRoute) {
+        const own = await getOwnCompany(companyId)
+        setCurrent(ownCompanyToCompany(asRecord(own)))
+        setReadiness(null)
+        setReadinessUnavailable(true)
+        setReadinessError(null)
+        return
+      }
+      const { data } = await api.get(`/companies/${companyId}`, {
+        params: { include_service_metrics: true, include_recruitment_metrics: true },
+      })
+      const role = getCompanyRoleFromAny(asRecord(data))
+      if (isOperatingProfileRoute && role !== 'operating') {
+        navigate(`${CRM_APP_PATHS.agencyClients}/${companyId}`, { replace: true })
+        return
+      }
+      if (!isOperatingProfileRoute && role === 'operating') {
+        navigate(`${CRM_APP_PATHS.myCompany}/${companyId}`, { replace: true })
+        return
+      }
       setCurrent(data)
       if (ENABLE_READINESS) {
         void loadReadiness(companyId)
       }
+      void loadDocumentPolicies(companyId)
+      void loadCompanyVacancies(companyId)
     } finally { setLoading(false) }
   }
 
@@ -1573,29 +1662,142 @@ export default function Companies(){
     } else if (!id) {
       void loadList()
     }
-  }, [id])
+  }, [id, isOperatingProfileRoute, navigate])
 
-  // auto-create draft on /companies/new and redirect to the real id
   useEffect(() => {
+    if (isOperatingProfileRoute || !id || id === 'new' || !tenantIdForLinks) {
+      setClientAccessLink(null)
+      return
+    }
     let cancelled = false
-    async function createDraft() {
+    ;(async () => {
+      setClientAccessLoading(true)
       try {
-        const { data } = await api.post('/companies/', {
-          name: untitledNameRef.current,
-        })
+        const links = await listTenantLinks(tenantIdForLinks)
         if (cancelled) return
-        navigate(`/app/clients/${data.id}`, { replace: true })
-      } catch (err) {
-        console.error('[Companies] failed to create draft', err)
+        const match = links.find(
+          (link) =>
+            String(link.client_company_id || '').trim() === String(id).trim() ||
+            String(link.handoff_include_company_id || '').trim() === String(id).trim(),
+        )
+        setClientAccessLink(match || null)
+      } catch {
+        if (!cancelled) {
+          setClientAccessLink(null)
+        }
+      } finally {
+        if (!cancelled) setClientAccessLoading(false)
       }
-    }
-    if (id === 'new') {
-      void createDraft()
-    }
+    })()
     return () => {
       cancelled = true
     }
-  }, [id, navigate])
+  }, [id, isOperatingProfileRoute, tenantIdForLinks])
+
+  useEffect(() => {
+    if (isOperatingProfileRoute || !tenantIdForLinks) {
+      setTenantLinksByCompanyId(new Map())
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const links = await listTenantLinks(tenantIdForLinks)
+        if (cancelled) return
+        const map = new Map<string, TenantLink>()
+        for (const link of links) {
+          const companyKey = String(link.client_company_id || '').trim()
+          if (companyKey) map.set(companyKey, link)
+        }
+        setTenantLinksByCompanyId(map)
+      } catch {
+        if (!cancelled) setTenantLinksByCompanyId(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isOperatingProfileRoute, tenantIdForLinks])
+
+  useEffect(() => {
+    if (isOperatingProfileRoute || id) return
+    if (searchParams.get('add') === '1') {
+      setAddClientOpen(true)
+      const next = new URLSearchParams(searchParams)
+      next.delete('add')
+      const q = next.toString()
+      navigate(q ? `${location.pathname}?${q}` : location.pathname, { replace: true })
+    }
+  }, [id, isOperatingProfileRoute, location.pathname, navigate, searchParams])
+
+  useEffect(() => {
+    if (!isOperatingProfileRoute && id === 'new') {
+      navigate(`${CRM_APP_PATHS.clientsDirectory}?add=1`, { replace: true })
+    }
+  }, [id, isOperatingProfileRoute, navigate])
+
+  const handleClientCreated = useCallback(
+    async (link: TenantLink) => {
+      setAddClientOpen(false)
+      notify({
+        title: t('app.clients.created_dynamic', {
+          defaultValue: '{entity} added',
+          values: { entity: link.company_name || t('app.nav.items.clients') },
+        }),
+        variant: 'success',
+      })
+      try {
+        const status = await getOnboardingStatus()
+        if (!status.steps.first_client_created) {
+          void recordTtvStepCompleted({
+            event: 'ttv_step',
+            action: 'completed',
+            step_key: 'first_client_created',
+          })
+        }
+      } catch {
+        // ignore onboarding/TTV errors
+      }
+      if (tenantIdForLinks) {
+        try {
+          const links = await listTenantLinks(tenantIdForLinks)
+          const map = new Map<string, TenantLink>()
+          for (const row of links) {
+            const companyKey = String(row.client_company_id || '').trim()
+            if (companyKey) map.set(companyKey, row)
+          }
+          setTenantLinksByCompanyId(map)
+        } catch {
+          // ignore list refresh errors
+        }
+      }
+      const companyId = String(link.client_company_id || link.handoff_include_company_id || '').trim()
+      if (companyId) {
+        navigate(`${CRM_APP_PATHS.agencyClients}/${companyId}`)
+        return
+      }
+      void loadList()
+    },
+    [loadList, navigate, notify, t, tenantIdForLinks],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await listAdminUsers()
+        if (!cancelled) {
+          setCompanyUsers(Array.isArray(data) ? data.filter((user) => user.user_id && user.status !== 'invited') : [])
+        }
+      } catch (err) {
+        console.error('[Companies] failed to load tenant users', err)
+        if (!cancelled) setCompanyUsers([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // build detail form whenever current changes
   useEffect(() => {
@@ -1611,6 +1813,33 @@ export default function Companies(){
       setDetailForm(null)
     }
   }, [id, currentAny, buildDetailForm])
+
+  useEffect(() => {
+    if (!id || id === 'new' || !detailForm || !sectionFocus || !current) return
+    const sectionToNodeId: Record<string, string> = {
+      legal: 'section-legal',
+      billing: 'section-billing',
+      bank_accounts: 'section-bank-accounts',
+      branding: 'section-branding',
+    }
+    const nodeId = sectionToNodeId[sectionFocus]
+    if (!nodeId) return
+
+    if (getCompanyRoleFromAny(asRecord(current)) !== 'operating') {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('ctab', 'profile')
+      const q = nextParams.toString()
+      navigate(`${location.pathname}?${q}`, { replace: true })
+    }
+
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(nodeId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 120)
+    return () => window.clearTimeout(timer)
+  }, [id, detailForm, sectionFocus, current, searchParams, navigate, location.pathname])
 
 
   const pageContent = useMemo(() => {
@@ -1667,49 +1896,128 @@ export default function Companies(){
 
     if (!detailForm) {
       return (
-        <div className="h-full w-full flex flex-col space-y-4">
-          <div className="text-xs text-gray-500 mb-1">
-            <Link className="hover:underline" to="/app/clients">{t('app.companies.actions.back_to_list')}</Link>
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+          <div className="mb-0 text-xs text-slate-500">
+            <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
           </div>
-          <div className="card p-4 text-sm text-gray-500">{t('common.loading')}</div>
+          <div className="card p-4 text-sm text-slate-500">{t('common.loading')}</div>
         </div>
       )
     }
 
     const locationLine = [detailForm.base.country_code, detailForm.base.city].filter(Boolean).join(', ')
 
-    const companyKpis = [
-      {
-        key: 'candidates_total',
-        label: t('app.companies.detail.kpis.candidates_total'),
-        value: currentAny?.candidates_total ?? 0,
-        hint: t('app.companies.detail.kpis.candidates_total_hint'),
-      },
-      {
-        key: 'candidates_pipeline',
-        label: t('app.companies.detail.kpis.candidates_pipeline'),
-        value: currentAny?.candidates_pipeline ?? 0,
-        hint: t('app.companies.detail.kpis.candidates_pipeline_hint'),
-      },
-      {
-        key: 'candidates_docs',
-        label: t('app.companies.detail.kpis.candidates_docs'),
-        value: currentAny?.candidates_docs ?? 0,
-        hint: t('app.companies.detail.kpis.candidates_docs_hint'),
-      },
-      {
-        key: 'vacancies',
-        label: t('app.companies.detail.kpis.vacancies_active'),
-        value: currentAny?.vacancies_active ?? 0,
-        hint: t('app.companies.detail.kpis.vacancies_active_hint'),
-      },
-      {
-        key: 'services',
-        label: t('app.companies.detail.kpis.services_blocking'),
-        value: currentAny?.services_blocking ?? 0,
-        hint: t('app.companies.detail.kpis.services_blocking_hint'),
-      },
-    ]
+    const isOperatingCompany = getCompanyRoleFromAny(currentAny ?? {}) === 'operating'
+    const showClientProfileEditor =
+      isOperatingCompany ||
+      (Boolean(id && id !== 'new') && !isOperatingCompany && clientWorkspaceTab === 'profile')
+
+    const clientContactsCount = detailForm.contacts.filter((contact) =>
+      Boolean(((contact.full_name || contact.email || contact.phone) ?? '').trim()),
+    ).length
+    const clientOrdersCount = detailForm.orders.filter((order) =>
+      Boolean(((order.title || order.client_reference || order.status) ?? '').trim()),
+    ).length
+    const clientContractsCount = detailForm.contracts.filter((contract) =>
+      Boolean(((contract.title || contract.reference || contract.status) ?? '').trim()),
+    ).length
+
+    const operatingCompanyType = normalizeOperatingCompanyType(
+      detailForm.rawExtra?.company_type ?? detailForm.rawExtra?.company_kind,
+    )
+
+    const companyKpis = isOperatingCompany
+      ? [
+          {
+            key: 'company_type',
+            label: t('app.my_company.company_type', { defaultValue: 'Company type' }),
+            value: operatingCompanyType,
+            hint: t('app.my_company.company_type_hint', { defaultValue: 'Defines funnels, presets and analytics for this workspace' }),
+          },
+          {
+            key: 'bank_accounts',
+            label: t('app.companies.detail.kpis.bank_accounts', { defaultValue: 'Bank accounts' }),
+            value: detailForm.billing.bank_accounts.filter((account) => Boolean((account.iban || '').trim())).length,
+            hint: t('app.companies.detail.kpis.bank_accounts_hint', { defaultValue: 'Configured payout accounts for invoices' }),
+          },
+          {
+            key: 'invoice_email',
+            label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
+            value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
+            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Sender/finance mailbox used for invoices' }),
+          },
+        ]
+      : [
+          {
+            key: 'contacts_total',
+            label: t('app.companies.detail.kpis.contacts_total', { defaultValue: 'Contacts' }),
+            value: clientContactsCount,
+            hint: t('app.companies.detail.kpis.contacts_total_hint', { defaultValue: 'Client contact persons and channels' }),
+          },
+          {
+            key: 'contracts_total',
+            label: t('app.companies.detail.kpis.contracts_total', { defaultValue: 'Contracts' }),
+            value: clientContractsCount,
+            hint: t('app.companies.detail.kpis.contracts_total_hint', { defaultValue: 'Signed contracts and upcoming renewals' }),
+          },
+          {
+            key: 'orders_total',
+            label: t('app.companies.detail.kpis.orders_total', { defaultValue: 'Orders' }),
+            value: clientOrdersCount,
+            hint: t('app.companies.detail.kpis.orders_total_hint', { defaultValue: 'Active and historical service orders' }),
+          },
+          {
+            key: 'invoice_email',
+            label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
+            value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
+            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Recipient address used for invoice delivery' }),
+          },
+          {
+            key: 'recruitment_vacancies',
+            label: t('app.companies.detail.kpis.recruitment_vacancies', { defaultValue: 'Active vacancies' }),
+            value:
+              currentAny?.recruitment_vacancies_active != null
+                ? String(currentAny.recruitment_vacancies_active)
+                : '—',
+            hint: t('app.companies.detail.kpis.recruitment_vacancies_hint', {
+              defaultValue: 'Open roles tied to this client (employer / both)',
+            }),
+          },
+          {
+            key: 'recruitment_candidates',
+            label: t('app.companies.detail.kpis.recruitment_candidates', { defaultValue: 'Candidates in funnel' }),
+            value:
+              currentAny?.recruitment_candidates_total != null
+                ? String(currentAny.recruitment_candidates_total)
+                : '—',
+            hint: t('app.companies.detail.kpis.recruitment_candidates_hint', {
+              defaultValue: 'Candidates on this client’s vacancies (same scope as Candidates list)',
+            }),
+          },
+          {
+            key: 'service_orders_live',
+            label: t('app.companies.detail.kpis.service_orders_live', { defaultValue: 'Service orders (active)' }),
+            value:
+              currentAny?.service_active_orders != null ? String(currentAny.service_active_orders) : '—',
+            hint: t('app.companies.detail.kpis.service_orders_live_hint', {
+              defaultValue: 'Non-completed service orders for this party',
+            }),
+          },
+          {
+            key: 'service_revenue',
+            label: t('app.companies.detail.kpis.service_revenue', { defaultValue: 'Completed revenue' }),
+            value:
+              currentAny?.service_revenue_completed != null
+                ? Number(currentAny.service_revenue_completed).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : '—',
+            hint: t('app.companies.detail.kpis.service_revenue_hint', {
+              defaultValue: 'Sum of completed service order totals',
+            }),
+          },
+        ]
 
     const numeric = (value: string | number | null | undefined) => {
       if (value === null || value === undefined) return 0
@@ -1735,6 +2043,9 @@ export default function Companies(){
         return aTime - bTime
       })[0]
 
+    const hasTransportOrders = detailForm.orders.some(
+      (o) => (numeric(o.required_drivers) || numeric(o.hired_drivers)) > 0
+    )
     const driverStats = detailForm.orders.reduce(
       (acc, order) => {
         acc.required += numeric(order.required_drivers)
@@ -1751,17 +2062,17 @@ export default function Companies(){
         title: t('app.companies.detail.overview.primary_contact.title'),
         content: primaryContactEntry ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-slate-900">
               {primaryContactEntry.full_name || t('common.labels.not_available')}
             </p>
             {primaryContactEntry.role && (
-              <p className="text-xs uppercase tracking-wide text-gray-500">{primaryContactEntry.role}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{primaryContactEntry.role}</p>
             )}
             {primaryContactEntry.phone && <p>{primaryContactEntry.phone}</p>}
             {primaryContactEntry.email && <p>{primaryContactEntry.email}</p>}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{t('app.companies.detail.overview.primary_contact.empty')}</p>
+          <p className="text-sm text-slate-500">{t('app.companies.detail.overview.primary_contact.empty')}</p>
         ),
       },
       {
@@ -1769,27 +2080,27 @@ export default function Companies(){
         title: t('app.companies.detail.overview.finance_contact.title'),
         content: financeContactEntry ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-slate-900">
               {financeContactEntry.full_name || t('common.labels.not_available')}
             </p>
             {financeContactEntry.role && (
-              <p className="text-xs uppercase tracking-wide text-gray-500">{financeContactEntry.role}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{financeContactEntry.role}</p>
             )}
             {financeContactEntry.phone && <p>{financeContactEntry.phone}</p>}
             {financeContactEntry.email && <p>{financeContactEntry.email}</p>}
             {invoiceEmail && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {t('app.companies.detail.overview.finance_contact.invoice_label', { values: { email: invoiceEmail } })}
               </p>
             )}
           </div>
         ) : invoiceEmail ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">{invoiceEmail}</p>
-            <p className="text-xs text-gray-500">{t('app.companies.detail.overview.finance_contact.invoice_only')}</p>
+            <p className="text-base font-semibold text-slate-900">{invoiceEmail}</p>
+            <p className="text-xs text-slate-500">{t('app.companies.detail.overview.finance_contact.invoice_only')}</p>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{t('app.companies.detail.overview.finance_contact.empty')}</p>
+          <p className="text-sm text-slate-500">{t('app.companies.detail.overview.finance_contact.empty')}</p>
         ),
       },
       {
@@ -1797,53 +2108,126 @@ export default function Companies(){
         title: t('app.companies.detail.overview.contracts.title'),
         content: upcomingContract ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-slate-900">
               {upcomingContract.contract.title || t('common.labels.unnamed')}
             </p>
             {upcomingContract.contract.status && (
-              <p className="text-xs uppercase tracking-wide text-gray-500">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
                 {upcomingContract.contract.status}
               </p>
             )}
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-600">
               {t('app.companies.detail.overview.contracts.due', {
                 values: { date: fmtDate(upcomingContract.dueDate) },
               })}
             </p>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{t('app.companies.detail.overview.contracts.empty')}</p>
+          <p className="text-sm text-slate-500">{t('app.companies.detail.overview.contracts.empty')}</p>
         ),
       },
-      {
-        key: 'driver_slots',
-        title: t('app.companies.detail.overview.driver_slots.title'),
-        content:
-          detailForm.orders.length > 0 ? (
-            <div className="space-y-1">
-              <p className="text-3xl font-semibold text-gray-900">{openDriverSlots}</p>
-              <p className="text-sm text-gray-600">
-                {t('app.companies.detail.overview.driver_slots.subtitle')}
-              </p>
-              <p className="text-xs text-gray-500">
-                {t('app.companies.detail.overview.driver_slots.assigned', {
-                  values: { hired: driverStats.hired, required: driverStats.required },
-                })}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">{t('app.companies.detail.overview.driver_slots.empty')}</p>
-          ),
-      },
+      ...(isOperatingCompany
+        ? [
+            {
+              key: 'invoice_workspace',
+              title: t('app.companies.detail.overview.invoice_workspace.title', { defaultValue: 'Invoicing workspace' }),
+              content: (
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-600">
+                    {t('app.companies.detail.overview.invoice_workspace.subtitle', {
+                      defaultValue: 'Create and manage invoices issued from this operating profile.',
+                    })}
+                  </p>
+                  <Link to={CRM_APP_PATHS.invoices} className="text-sm text-brand-600 hover:underline">
+                    {t('app.my_company.open_invoices', { defaultValue: 'Open invoices' })}
+                  </Link>
+                </div>
+              ),
+            },
+          ]
+        : [
+            {
+              key: 'orders_workspace',
+              title: t('app.companies.detail.overview.orders_workspace.title', { defaultValue: 'Orders workspace' }),
+              content: clientOrdersCount > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-2xl font-semibold text-slate-900">{clientOrdersCount}</p>
+                  <p className="text-xs text-slate-500">
+                    {t('app.companies.detail.overview.orders_workspace.subtitle', {
+                      defaultValue: 'Orders, contracts and invoices are managed in this card.',
+                    })}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-sm text-brand-600 hover:underline"
+                    onClick={() => navigateClientWorkspaceTab('orders')}
+                  >
+                    {t('app.companies.detail.overview.orders_workspace.link', { defaultValue: 'Open orders section' })}
+                  </button>
+                  <div>
+                    <Link
+                      to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
+                      className="text-sm text-brand-600 hover:underline"
+                    >
+                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-500">
+                    {t('app.companies.detail.overview.orders_workspace.empty', {
+                      defaultValue: 'No orders yet. Add order details below and issue first invoice.',
+                    })}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-sm text-brand-600 hover:underline"
+                    onClick={() => navigateClientWorkspaceTab('orders')}
+                  >
+                    {t('app.companies.detail.overview.orders_workspace.link', { defaultValue: 'Open orders section' })}
+                  </button>
+                </div>
+              ),
+            },
+            {
+              key: 'receivables',
+              title: t('app.companies.detail.overview.receivables.title'),
+              content:
+                currentAny?.id && String(currentAny.id) !== 'new' ? (
+                  <CompanyReceivablesOverview companyId={String(currentAny.id)} />
+                ) : (
+                  <p className="text-sm text-slate-500">{t('app.companies.detail.overview.receivables.empty')}</p>
+                ),
+            },
+          ]),
+      ...(hasTransportOrders
+        ? [
+            {
+              key: 'driver_slots',
+              title: t('app.companies.detail.overview.driver_slots.title'),
+              content: (
+                <div className="space-y-1">
+                  <p className="text-2xl font-semibold text-slate-900">{openDriverSlots}</p>
+                  <p className="text-xs text-slate-500">
+                    {t('app.companies.detail.overview.driver_slots.assigned', {
+                      values: { hired: driverStats.hired, required: driverStats.required },
+                    })}
+                  </p>
+                </div>
+              ),
+            },
+          ]
+        : []),
     ]
 
     return (
-      <div className="h-full w-full flex flex-col space-y-4 pb-12">
-        <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+      <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0 pb-0">
+        <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="text-xs text-white/80">
-                <Link className="hover:underline" to="/app/clients">{t('app.companies.actions.back_to_list')}</Link>
+                <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
               </div>
               <h1 className="text-3xl font-semibold">
                 {detailForm.base.name || t('app.companies.detail.header.fallback_name')}
@@ -1852,9 +2236,44 @@ export default function Companies(){
                 <div className="text-sm text-white/80">{detailForm.base.legal_name}</div>
               )}
               {locationLine && <div className="text-sm text-white/70">{locationLine}</div>}
+              {!isOperatingCompany && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="rounded-full border border-white/35 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/95">
+                    {formatPartyBusinessRoleCell(t, detailForm.base.party_business_roles)}
+                  </span>
+                  <span className="rounded-full border border-white/35 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/95">
+                    {formatClientStageCell(t, detailForm.base.client_stage)}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2 text-sm text-white/80">
               <div className="flex flex-wrap gap-2">
+                {isOperatingCompany ? (
+                  <>
+                    <Link
+                      to={CRM_APP_PATHS.invoiceNew}
+                      className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                    >
+                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                    </Link>
+                    <Link
+                      to={CRM_APP_PATHS.settingsBilling}
+                      className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
+                    >
+                      {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
+                      className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                    >
+                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                    </Link>
+                  </>
+                )}
                 <button
                   className="btn-primary bg-white text-brand-700 hover:bg-white/90"
                   type="button"
@@ -1864,7 +2283,7 @@ export default function Companies(){
                   {saving ? t('common.saving') : t('common.actions.save')}
                 </button>
                 <button
-                  className="btn-ghost bg-white/10 text-white hover:bg-white/20"
+                  className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
                   type="button"
                   onClick={handleResetDetail}
                   disabled={saving || !isDirty}
@@ -1876,7 +2295,9 @@ export default function Companies(){
               {saveError && <div className="max-w-md text-rose-50">{saveError}</div>}
             </div>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div
+            className={`mt-6 grid gap-3 sm:grid-cols-2 ${isOperatingCompany ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+          >
             {companyKpis.map((card) => (
               <div key={card.key} className="rounded-2xl border border-white/30 bg-white/10 p-4">
                 <div className="text-sm text-white/80">{card.label}</div>
@@ -1887,109 +2308,370 @@ export default function Companies(){
           </div>
         </section>
 
-        <SectionCard
-          title={t('app.companies.detail.overview.title')}
-          description={t('app.companies.detail.overview.subtitle')}
-        >
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {overviewCards.map((card) => (
-              <div
-                key={card.key}
-                className="rounded-2xl border border-gray-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{card.title}</p>
-                <div className="mt-2 text-sm text-gray-600">{card.content}</div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SectionCard title={t('app.companies.detail.widgets.vacancies.title')} description={t('app.companies.detail.widgets.vacancies.subtitle')}>
-            <div className="flex items-baseline justify-between">
-              <p className="text-sm text-gray-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
-              <p className="text-3xl font-semibold text-gray-900">{vacancyAnalytics.total}</p>
-            </div>
-            {vacancyAnalytics.statusRows.length ? (
-              <ul className="divide-y divide-gray-100 text-sm text-gray-700">
-                {vacancyAnalytics.statusRows.map((row) => (
-                  <li key={row.status} className="flex items-center justify-between py-2">
-                    <span>{humanizeStatus(row.status) || t('app.companies.detail.widgets.vacancies.status_unknown')}</span>
-                    <span className="font-semibold">{row.count}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
-            )}
-            {vacancyAnalytics.latest.length > 0 && (
-              <div className="rounded-2xl bg-slate-50/60 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {t('app.companies.detail.widgets.vacancies.latest_title')}
-                </div>
-                <ul className="mt-2 space-y-2 text-sm">
-                  {vacancyAnalytics.latest.map((vacancy, index) => (
-                    <li key={(vacancy.id as string) ?? (vacancy.code as string) ?? `vacancy-${index}`} className="rounded-xl border border-gray-100 bg-white/80 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-gray-900">{(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}</span>
-                        <span className="text-xs text-gray-500">
-                          {fmtDateTime((vacancy.updated_at as string | undefined) ?? (vacancy.created_at as string | undefined))}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        {t('app.companies.detail.widgets.vacancies.status_label', {
-                          values: {
-                            status:
-                              humanizeStatus((vacancy.status as string | undefined) ?? (vacancy.stage as string | undefined)) ||
-                              t('app.companies.detail.widgets.vacancies.status_unknown'),
-                          },
-                        })}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard title={t('app.companies.detail.widgets.blockers.title')} description={t('app.companies.detail.widgets.blockers.subtitle')}>
-            {blockingOrders.length ? (
-              <ul className="space-y-3 text-sm">
-                {blockingOrders.map((entry) => (
-                  <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-900">{entry.title}</span>
-                      <span className="text-xs text-gray-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {entry.reasons.map((reason) => (
-                        <span
-                          key={`${entry.key}-${reason}`}
-                          className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
-                        >
-                          {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      {entry.updatedAt ? fmtDateTime(entry.updatedAt) : t('common.labels.not_available')}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-500">{t('app.companies.detail.widgets.blockers.empty')}</p>
-            )}
-          </SectionCard>
+        <div className="px-4 pt-3">
+          <PageBreadcrumb />
         </div>
 
-        {ENABLE_READINESS && (
+        {!isOperatingCompany && id && id !== 'new' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+              {CLIENT_WORKSPACE_TABS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    clientWorkspaceTab === key
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                  onClick={() => navigateClientWorkspaceTab(key)}
+                >
+                  {t(`app.companies.detail.workspace.tabs.${key}`)}
+                </button>
+              ))}
+            </div>
+
+            {clientWorkspaceTab === 'overview' && (
+              <>
+                <ClientLeadOriginPanel companyExtra={asRecord(currentAny ?? {}).extra as Record<string, unknown> | undefined} />
+
+                <SectionCard
+                  title={t('app.clients.settings', { defaultValue: 'Access settings' })}
+                  description={t('app.clients.settings_desc', {
+                    defaultValue: 'Handoff, client portal, and contact attempt rules for this client.',
+                  })}
+                >
+                  {tenantIdForLinks && id ? (
+                    <ClientAccessPanel
+                      tenantId={tenantIdForLinks}
+                      companyId={id}
+                      link={clientAccessLink}
+                      loading={clientAccessLoading}
+                      onLinkUpdated={(next) => {
+                        setClientAccessLink(next)
+                        if (next?.client_company_id) {
+                          setTenantLinksByCompanyId((prev) => {
+                            const map = new Map(prev)
+                            map.set(next.client_company_id as string, next)
+                            return map
+                          })
+                        }
+                      }}
+                      onNotify={notify}
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-500">{t('common.loading')}</p>
+                  )}
+                </SectionCard>
+
+                <SectionCard
+                  title={t('app.companies.detail.overview.title')}
+                  description={t('app.companies.detail.overview.subtitle')}
+                >
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {overviewCards.map((card) => (
+                      <div
+                        key={card.key}
+                        className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
+                        <div className="mt-2 text-sm text-slate-600">{card.content}</div>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <SectionCard
+                    title={t('app.companies.detail.widgets.vacancies.title')}
+                    description={t('app.companies.detail.widgets.vacancies.subtitle')}
+                  >
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
+                      <p className="text-3xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
+                    </div>
+                    {vacancyAnalytics.statusRows.length ? (
+                      <ul className="divide-y divide-slate-100 text-sm text-slate-700">
+                        {vacancyAnalytics.statusRows.map((row) => (
+                          <li key={row.status} className="flex items-center justify-between py-2">
+                            <span>{humanizeStatus(row.status) || t('app.companies.detail.widgets.vacancies.status_unknown')}</span>
+                            <span className="font-semibold">{row.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
+                    )}
+                    {vacancyAnalytics.latest.length > 0 && (
+                      <div className="rounded-2xl bg-slate-50/60 p-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {t('app.companies.detail.widgets.vacancies.latest_title')}
+                        </div>
+                        <ul className="mt-2 space-y-2 text-sm">
+                          {vacancyAnalytics.latest.map((vacancy, index) => {
+                            const vacId = (vacancy.id as string) ?? (vacancy.code as string)
+                            return (
+                              <li key={vacId ?? `vacancy-${index}`} className="rounded-xl border border-slate-100 bg-white/80 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Link
+                                    to={
+                                      vacId
+                                        ? `${CRM_APP_PATHS.vacancies}/${vacId}`
+                                        : CRM_APP_PATHS.vacancies
+                                    }
+                                    className="font-semibold text-slate-900 hover:text-brand-600 hover:underline"
+                                  >
+                                    {(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}
+                                  </Link>
+                                  <span className="text-xs text-slate-500">
+                                    {fmtDateTime((vacancy.updated_at as string | undefined) ?? (vacancy.created_at as string | undefined))}
+                                  </span>
+                                </div>
+                                <div className="mt-1 flex items-center justify-between gap-2">
+                                  <span className="text-xs text-slate-500">
+                                    {t('app.companies.detail.widgets.vacancies.status_label', {
+                                      values: {
+                                        status:
+                                          humanizeStatus((vacancy.status as string | undefined) ?? (vacancy.stage as string | undefined)) ||
+                                          t('app.companies.detail.widgets.vacancies.status_unknown'),
+                                      },
+                                    })}
+                                  </span>
+                                  {vacId && (
+                                    <Link
+                                      to={`${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${vacId}`}
+                                      className="text-xs font-medium text-brand-600 hover:underline"
+                                    >
+                                      {t('app.companies.detail.widgets.vacancies.pipeline_link', { defaultValue: 'Пайплайн' })}
+                                    </Link>
+                                  )}
+                                </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </SectionCard>
+
+                  {blockingOrders.length > 0 && (
+                    <SectionCard
+                      title={t('app.companies.detail.widgets.blockers.title')}
+                      description={t('app.companies.detail.widgets.blockers.subtitle')}
+                      collapsible
+                      defaultOpen={true}
+                    >
+                      <ul className="space-y-3 text-sm">
+                        {blockingOrders.map((entry) => (
+                          <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-slate-900">{entry.title}</span>
+                              <span className="text-xs text-slate-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {entry.reasons.map((reason) => (
+                                <span
+                                  key={`${entry.key}-${reason}`}
+                                  className="inline-flex items-center rounded-md bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
+                                >
+                                  {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {entry.updatedAt ? fmtDateTime(entry.updatedAt) : t('common.labels.not_available')}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </SectionCard>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                  <button
+                    type="button"
+                    className="font-medium text-brand-600 hover:underline"
+                    onClick={() => navigateClientWorkspaceTab('profile')}
+                  >
+                    {t('app.companies.detail.workspace.open_profile')}
+                  </button>
+                  <span className="text-slate-500"> — {t('app.companies.detail.workspace.open_profile_hint')}</span>
+                </div>
+              </>
+            )}
+
+            {clientWorkspaceTab === 'orders' && (
+              <div id="section-orders" className="space-y-4">
+                <section className="card p-4">
+                  <CompanyServiceOrdersPanel companyId={String(currentAny?.id ?? '')} />
+                </section>
+                <SectionCard
+                  title={t('app.companies.detail.sections.orders.title')}
+                  description={t('app.companies.detail.workspace.orders.crm_subtitle')}
+                  collapsible
+                  defaultOpen={true}
+                >
+                  <div className="space-y-4">
+                    {detailForm.orders.map((order, index) => {
+                      const orderTypeId = (order.order_type_id ?? 'transport') as string
+                      const orderType = ORDER_TYPE_OPTIONS.find((o) => o.id === orderTypeId) ?? ORDER_TYPE_OPTIONS[0]
+                      const isTransport = orderTypeId === 'transport'
+                      const customFields = order.custom_fields ?? {}
+                      return (
+                        <div key={`order-${index}`} className="rounded-lg border border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+                            <TextField
+                              label={t('app.companies.detail.fields.name')}
+                              value={order.title}
+                              onChange={(value) => setOrderField(index, { title: value })}
+                            />
+                            <div>
+                              <label className="label">{t('app.companies.detail.sections.order_type', { defaultValue: 'Тип заявки' })}</label>
+                              <select
+                                className="input w-full"
+                                value={orderTypeId}
+                                onChange={(e) => setOrderField(index, { order_type_id: e.target.value as string })}
+                              >
+                                {ORDER_TYPE_OPTIONS.map((opt) => (
+                                  <option key={opt.id} value={opt.id}>
+                                    {t(opt.labelKey)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <TextField
+                              label={t('app.companies.detail.fields.status')}
+                              value={order.status}
+                              onChange={(value) => setOrderField(index, { status: value })}
+                            />
+                            <TextField
+                              label={t('app.companies.detail.fields.date_start')}
+                              value={order.starts_at}
+                              onChange={(value) => setOrderField(index, { starts_at: value })}
+                              placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
+                            />
+                            <TextField
+                              label={t('app.companies.detail.fields.date_end')}
+                              value={order.ends_at}
+                              onChange={(value) => setOrderField(index, { ends_at: value })}
+                              placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
+                            />
+                            <div className="flex items-end gap-2">
+                              <TextField
+                                label={t('app.companies.detail.fields.reference')}
+                                value={order.client_reference}
+                                onChange={(value) => setOrderField(index, { client_reference: value })}
+                              />
+                              <button className="btn-danger shrink-0" type="button" onClick={() => removeOrder(index)}>
+                                {t('common.actions.delete')}
+                              </button>
+                            </div>
+                          </div>
+                          {isTransport && (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              <TextField
+                                label={t('app.companies.detail.fields.required_drivers')}
+                                value={order.required_drivers}
+                                onChange={(value) => setOrderField(index, { required_drivers: value })}
+                                type="number"
+                              />
+                              <TextField
+                                label={t('app.companies.detail.fields.hired_drivers')}
+                                value={order.hired_drivers}
+                                onChange={(value) => setOrderField(index, { hired_drivers: value })}
+                                type="number"
+                              />
+                            </div>
+                          )}
+                          {!isTransport && orderType.schema.length > 0 && (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                              {orderType.schema.map((field) => (
+                                <TextField
+                                  key={field.key}
+                                  label={t(field.labelKey)}
+                                  value={String(customFields[field.key] ?? '')}
+                                  onChange={(value) =>
+                                    setOrderCustomField(index, field.key, field.type === 'number' ? (Number(value) || 0) : value)
+                                  }
+                                  type={field.type === 'number' ? 'number' : 'text'}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                    <button className="btn-secondary" type="button" onClick={addOrder}>
+                      {t('app.companies.detail.actions.add_order')}
+                    </button>
+                  </div>
+                </SectionCard>
+              </div>
+            )}
+
+            {clientWorkspaceTab === 'invoices' && (
+              <section className="card p-4">
+                <ClientInvoicesBlock
+                  companyId={currentAny?.id ?? ''}
+                  companyName={detailForm.base.name || t('app.companies.detail.defaults.untitled')}
+                />
+              </section>
+            )}
+
+            {clientWorkspaceTab === 'activity' && (
+              <SectionCard
+                title={t('app.companies.detail.workspace.activity.title')}
+                description={t('app.companies.detail.workspace.activity.subtitle')}
+              >
+                <div className="space-y-4 text-sm text-slate-600">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t('app.companies.detail.workspace.activity.created')}
+                      </p>
+                      <p className="mt-1">{fmtDateTime(currentAny?.created_at as string | undefined)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t('app.companies.detail.workspace.activity.updated')}
+                      </p>
+                      <p className="mt-1">{fmtDateTime(currentAny?.updated_at as string | undefined)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      className="btn-secondary btn-sm"
+                      to={`${CRM_APP_PATHS.invoices}?company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
+                    >
+                      {t('app.companies.detail.workspace.activity.link_invoices')}
+                    </Link>
+                    <Link
+                      className="btn-secondary btn-sm"
+                      to={servicesWorkspacePath('orders', { companyId: String(currentAny?.id ?? '') })}
+                    >
+                      {t('app.companies.detail.workspace.activity.link_services')}
+                    </Link>
+                    <Link
+                      className="btn-secondary btn-sm"
+                      to={`${CRM_APP_PATHS.vacancies}?company=${encodeURIComponent(String(currentAny?.id ?? ''))}&page=1`}
+                    >
+                      {t('app.companies.detail.workspace.activity.link_vacancies')}
+                    </Link>
+                  </div>
+                </div>
+              </SectionCard>
+            )}
+          </div>
+        )}
+
+        {ENABLE_READINESS && showExtendedSections && !isOperatingCompany && (
           <SectionCard title={t('app.companies.readiness.title')}>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="space-y-2 text-sm text-gray-600">
+              <div className="space-y-2 text-sm text-slate-600">
                 <p>{t('app.companies.readiness.description')}</p>
                 {readinessUnavailable && (
-                  <p className="text-gray-500">{t('app.companies.readiness.unavailable')}</p>
+                  <p className="text-slate-500">{t('app.companies.readiness.unavailable')}</p>
                 )}
                 {readinessError && (
                   <p className="text-rose-600">
@@ -2018,7 +2700,20 @@ export default function Companies(){
           </SectionCard>
         )}
 
+        {showClientProfileEditor && (
+        <>
         <SectionCard title={t('app.companies.detail.sections.base.title')}>
+          <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            {isOperatingCompany
+              ? t('app.my_company.compact_hint', {
+                  defaultValue:
+                    'Operating profile: only company type, invoice/legal data and bank/payment details. Leads, ads, team, clients and candidates belong to this company.',
+                })
+              : t('app.companies.detail.compact_hint', {
+                  defaultValue:
+                    'Только базовые данные для фактуры, договора и контактов. Дополнительные поля скрыты в расширенных разделах.',
+                })}
+          </div>
           <FieldGrid cols={2}>
             <TextField
               label={t('app.companies.detail.fields.name')}
@@ -2030,6 +2725,33 @@ export default function Companies(){
               value={detailForm.base.legal_name}
               onChange={(value) => updateField('base', 'legal_name', value)}
             />
+            {isOperatingCompany ? (
+              <SelectField
+                label={t('app.my_company.company_type', { defaultValue: 'Company type' })}
+                value={normalizeOperatingCompanyType(detailForm.rawExtra?.company_type ?? detailForm.rawExtra?.company_kind)}
+                onChange={(value) =>
+                  updateFormState('rawExtra', (prev) => ({
+                    ...prev,
+                    company_type: normalizeOperatingCompanyType(value),
+                  }))
+                }
+                options={[
+                  { value: 'agency', label: t('app.onboarding.company_type.agency', { defaultValue: 'Agency' }) },
+                  { value: 'employer', label: t('app.onboarding.company_type.employer', { defaultValue: 'Employer' }) },
+                  { value: 'services', label: t('app.onboarding.company_type.services', { defaultValue: 'Services' }) },
+                ]}
+              />
+            ) : (
+              <SelectField
+                label={t('app.companies.detail.fields.company_kind', { defaultValue: 'Company type' })}
+                value={detailForm.base.company_kind}
+                onChange={(value) => updateField('base', 'company_kind', normalizeCompanyKind(value))}
+                options={[
+                  { value: 'client', label: t('app.companies.list.kind_client', { defaultValue: 'Client' }) },
+                  { value: 'counterparty', label: t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' }) },
+                ]}
+              />
+            )}
             <TextField
               label={t('app.companies.detail.fields.tax_id')}
               value={detailForm.base.tax_id}
@@ -2051,202 +2773,91 @@ export default function Companies(){
               value={detailForm.base.website}
               onChange={(value) => updateField('base', 'website', value)}
             />
-            <TextField
-              label={t('app.companies.detail.fields.country_code')}
-              value={detailForm.base.country_code}
-              onChange={(value) => updateField('base', 'country_code', value.toUpperCase())}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.city')}
-              value={detailForm.base.city}
-              onChange={(value) => updateField('base', 'city', value)}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.address')}
-              value={detailForm.base.address}
-              onChange={(value) => updateField('base', 'address', value)}
-            />
-            <CheckboxField
-              label={t('app.companies.detail.fields.archived')}
-              checked={detailForm.base.is_archived}
-              onChange={(value) => updateField('base', 'is_archived', value)}
-            />
           </FieldGrid>
           <TextareaField
-            label={t('app.companies.detail.fields.notes')}
+            label={t('app.companies.detail.fields.notes', { defaultValue: 'Описание компании' })}
             value={detailForm.base.notes}
             onChange={(value) => updateField('base', 'notes', value)}
             rows={4}
           />
+          {!isOperatingCompany && (
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <p className="mb-3 text-sm font-semibold text-slate-800">
+                {t('app.companies.detail.sections.party_crm.title', { defaultValue: 'Party & client pipeline' })}
+              </p>
+              <p className="mb-3 text-xs text-slate-500">
+                {t('app.companies.detail.sections.party_crm.hint', {
+                  defaultValue: 'Recruiting vs service revenue: one Party record; roles and client stage drive CRM views.',
+                })}
+              </p>
+              <FieldGrid cols={2}>
+                <SelectField
+                  label={t('app.companies.detail.fields.party_entity_type', { defaultValue: 'Entity type' })}
+                  value={detailForm.base.party_entity_type}
+                  onChange={(value) => updateField('base', 'party_entity_type', value as 'company' | 'person')}
+                  options={[
+                    { value: 'company', label: t('app.companies.party.entity.company', { defaultValue: 'Company' }) },
+                    { value: 'person', label: t('app.companies.party.entity.person', { defaultValue: 'Person' }) },
+                  ]}
+                />
+                <SelectField
+                  label={t('app.companies.detail.fields.party_business_roles', { defaultValue: 'Business roles' })}
+                  value={detailForm.base.party_business_roles || ''}
+                  onChange={(value) =>
+                    updateField(
+                      'base',
+                      'party_business_roles',
+                      (value || '') as CompanyDetailForm['base']['party_business_roles'],
+                    )
+                  }
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'employer', label: t('app.companies.party.roles.employer', { defaultValue: 'Employer' }) },
+                    {
+                      value: 'service_client',
+                      label: t('app.companies.party.roles.service_client', { defaultValue: 'Service client' }),
+                    },
+                    { value: 'both', label: t('app.companies.party.roles.both', { defaultValue: 'Both' }) },
+                  ]}
+                />
+                <SelectField
+                  label={t('app.companies.detail.fields.client_stage', { defaultValue: 'Client stage' })}
+                  value={detailForm.base.client_stage || ''}
+                  onChange={(value) => updateField('base', 'client_stage', value)}
+                  options={[
+                    { value: '', label: '—' },
+                    ...clientPipelineStageOptions.map((o) => ({ value: o.value, label: o.label })),
+                  ]}
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.client_source', { defaultValue: 'Acquisition source' })}
+                  value={detailForm.base.client_source}
+                  onChange={(value) => updateField('base', 'client_source', value)}
+                  placeholder={t('app.companies.detail.placeholders.client_source', {
+                    defaultValue: 'ads, referral, manual…',
+                  })}
+                />
+              </FieldGrid>
+            </div>
+          )}
         </SectionCard>
 
-        <SectionCard title={t('app.companies.detail.sections.legal.title')}>
-          <FieldGrid cols={3}>
-            <TextField
-              label={t('app.companies.detail.fields.reg_no')}
-              value={detailForm.legal.reg_no}
-              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, reg_no: value }))}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.vat_eu')}
-              value={detailForm.legal.vat_eu}
-              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, vat_eu: value }))}
-              mono
-            />
-            <TextField
-              label={t('app.companies.detail.fields.established_at')}
-              value={detailForm.legal.established_at}
-              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, established_at: value }))}
-              placeholder="YYYY-MM-DD"
-            />
-            <TextField
-              label={t('app.companies.detail.fields.transport_license')}
-              value={detailForm.legal.transport_license_number}
-              onChange={(value) =>
-                updateFormState('legal', (prev) => ({ ...prev, transport_license_number: value }))
-              }
-            />
-            <TextField
-              label={t('app.companies.detail.fields.insurance_policy')}
-              value={detailForm.legal.insurance_policy_no}
-              onChange={(value) =>
-                updateFormState('legal', (prev) => ({ ...prev, insurance_policy_no: value }))
-              }
-            />
-          </FieldGrid>
+        {!isOperatingCompany && (
+          <SectionCard
+            title={t('app.companies.detail.sections.advanced_toggle.title', { defaultValue: 'Расширенные разделы' })}
+            description={t('app.companies.detail.sections.advanced_toggle.description', {
+              defaultValue: 'Operations, compliance, portal, integrations, document policies и system fields.',
+            })}
+          >
+            <button className="btn-secondary" type="button" onClick={toggleExtendedSections}>
+              {showExtendedSections
+                ? t('app.companies.detail.sections.advanced_toggle.hide', { defaultValue: 'Скрыть расширенные разделы' })
+                : t('app.companies.detail.sections.advanced_toggle.show', { defaultValue: 'Показать расширенные разделы' })}
+            </button>
+          </SectionCard>
+        )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.registered_address')}</div>
-              <TextField
-                label={t('app.companies.detail.fields.country')}
-                value={detailForm.legal.registered_address.country ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, country: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.city')}
-                value={detailForm.legal.registered_address.city ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, city: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.street')}
-                value={detailForm.legal.registered_address.street ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, street: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.zip')}
-                value={detailForm.legal.registered_address.zip ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, zip: value },
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.operational_address')}</div>
-              <TextField
-                label={t('app.companies.detail.fields.country')}
-                value={detailForm.legal.operational_address.country ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, country: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.city')}
-                value={detailForm.legal.operational_address.city ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, city: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.street')}
-                value={detailForm.legal.operational_address.street ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, street: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.zip')}
-                value={detailForm.legal.operational_address.zip ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, zip: value },
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t('app.companies.detail.groups.representatives')}
-              </div>
-              <button className="btn-ghost" type="button" onClick={addRepresentative}>
-                {t('app.companies.detail.actions.add_representative')}
-              </button>
-            </div>
-            <div className="space-y-3">
-              {detailForm.legal.authorized_representatives.map((rep, index) => (
-                <div key={`representative-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                  <TextField
-                    label={t('app.companies.detail.fields.full_name')}
-                    value={rep.full_name}
-                    onChange={(value) => setRepresentativeField(index, { full_name: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.role')}
-                    value={rep.role ?? ''}
-                    onChange={(value) => setRepresentativeField(index, { role: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.email')}
-                    value={rep.email ?? ''}
-                    onChange={(value) => setRepresentativeField(index, { email: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.phone')}
-                    value={rep.phone ?? ''}
-                    onChange={(value) => setRepresentativeField(index, { phone: value })}
-                  />
-                  <div className="flex items-end">
-                    <button className="btn-ghost" type="button" onClick={() => removeRepresentative(index)}>
-                      {t('common.actions.delete')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </SectionCard>
-
+        <div id="section-billing">
         <SectionCard title={t('app.companies.detail.sections.billing.title')}>
           <FieldGrid cols={3}>
             <SelectField
@@ -2333,7 +2944,7 @@ export default function Companies(){
               }
             />
           </FieldGrid>
-          <div className="space-y-3">
+          <div id="section-bank-accounts" className="space-y-3">
             {detailForm.billing.bank_accounts.map((account, index) => (
               <div key={`bank-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-6">
                 <TextField
@@ -2369,19 +2980,20 @@ export default function Companies(){
                     checked={account.is_primary}
                     onChange={(value) => setBankAccountField(index, { is_primary: value })}
                   />
-                  <button className="btn-ghost" type="button" onClick={() => removeBankAccount(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeBankAccount(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addBankAccount}>
+            <button className="btn-secondary" type="button" onClick={addBankAccount}>
               {t('app.companies.detail.actions.add_bank_account')}
             </button>
           </div>
         </SectionCard>
+        </div>
 
-        <SectionCard title={t('app.companies.detail.sections.contacts.title')}>
+        {!isOperatingCompany && <SectionCard title={t('app.companies.detail.sections.contacts.title')}>
           <div className="space-y-3">
             {detailForm.contacts.map((contact, index) => (
               <div key={`contact-${index}`} className="grid grid-cols-1 gap-2 lg:grid-cols-6">
@@ -2419,23 +3031,199 @@ export default function Companies(){
                   />
                 </div>
                 <div className="flex items-end">
-                  <button className="btn-ghost" type="button" onClick={() => removeContact(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeContact(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addContact}>
+            <button className="btn-secondary" type="button" onClick={addContact}>
               {t('app.companies.detail.actions.add_contact')}
             </button>
           </div>
-        </SectionCard>
+        </SectionCard>}
 
+        {!isOperatingCompany && <div id="section-legal">
+        <SectionCard title={t('app.companies.detail.sections.legal.title')} collapsible defaultOpen={sectionFocus === 'legal'}>
+          <FieldGrid cols={3}>
+            <TextField
+              label={t('app.companies.detail.fields.reg_no')}
+              value={detailForm.legal.reg_no}
+              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, reg_no: value }))}
+            />
+            <TextField
+              label={t('app.companies.detail.fields.vat_eu')}
+              value={detailForm.legal.vat_eu}
+              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, vat_eu: value }))}
+              mono
+            />
+            <TextField
+              label={t('app.companies.detail.fields.established_at')}
+              value={detailForm.legal.established_at}
+              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, established_at: value }))}
+              placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
+            />
+            {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'transport' && (
+              <>
+                <TextField
+                  label={t('app.companies.detail.fields.transport_license')}
+                  value={detailForm.legal.transport_license_number}
+                  onChange={(value) =>
+                    updateFormState('legal', (prev) => ({ ...prev, transport_license_number: value }))
+                  }
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.insurance_policy')}
+                  value={detailForm.legal.insurance_policy_no}
+                  onChange={(value) =>
+                    updateFormState('legal', (prev) => ({ ...prev, insurance_policy_no: value }))
+                  }
+                />
+              </>
+            )}
+          </FieldGrid>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.registered_address')}</div>
+              <TextField
+                label={t('app.companies.detail.fields.country')}
+                value={detailForm.legal.registered_address.country ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, country: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.city')}
+                value={detailForm.legal.registered_address.city ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, city: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.street')}
+                value={detailForm.legal.registered_address.street ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, street: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.zip')}
+                value={detailForm.legal.registered_address.zip ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, zip: value },
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.operational_address')}</div>
+              <TextField
+                label={t('app.companies.detail.fields.country')}
+                value={detailForm.legal.operational_address.country ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, country: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.city')}
+                value={detailForm.legal.operational_address.city ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, city: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.street')}
+                value={detailForm.legal.operational_address.street ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, street: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.zip')}
+                value={detailForm.legal.operational_address.zip ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, zip: value },
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.companies.detail.groups.representatives')}
+              </div>
+              <button className="btn-secondary" type="button" onClick={addRepresentative}>
+                {t('app.companies.detail.actions.add_representative')}
+              </button>
+            </div>
+            <div className="space-y-3">
+              {detailForm.legal.authorized_representatives.map((rep, index) => (
+                <div key={`representative-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                  <TextField
+                    label={t('app.companies.detail.fields.full_name')}
+                    value={rep.full_name}
+                    onChange={(value) => setRepresentativeField(index, { full_name: value })}
+                  />
+                  <TextField
+                    label={t('app.companies.detail.fields.role')}
+                    value={rep.role ?? ''}
+                    onChange={(value) => setRepresentativeField(index, { role: value })}
+                  />
+                  <TextField
+                    label={t('app.companies.detail.fields.email')}
+                    value={rep.email ?? ''}
+                    onChange={(value) => setRepresentativeField(index, { email: value })}
+                  />
+                  <TextField
+                    label={t('app.companies.detail.fields.phone')}
+                    value={rep.phone ?? ''}
+                    onChange={(value) => setRepresentativeField(index, { phone: value })}
+                  />
+                  <div className="flex items-end">
+                    <button className="btn-danger" type="button" onClick={() => removeRepresentative(index)}>
+                      {t('common.actions.delete')}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+        </div>}
+
+        {!isOperatingCompany && showExtendedSections && (detailForm.rawExtra?.operational_profile_type ?? 'transport') !== 'none' && (
         <SectionCard
           title={t('app.companies.detail.sections.operations.title')}
           collapsible
           defaultOpen={false}
         >
+          {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'transport' && (
+            <>
           <FieldGrid cols={3}>
             <TextField
               label={t('app.companies.detail.fields.fleet_tractors')}
@@ -2477,7 +3265,7 @@ export default function Companies(){
           </FieldGrid>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.trailer_types')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.trailer_types')}</div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {TRAILER_TYPE_KEYS.map((key) => (
                   <TextField
@@ -2496,7 +3284,7 @@ export default function Companies(){
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.lanes')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.lanes')}</div>
               <ArrayInputField
                 label={t('app.companies.detail.fields.lanes_origins')}
                 values={detailForm.operations.lanes.origins}
@@ -2506,7 +3294,7 @@ export default function Companies(){
                     lanes: { ...prev.lanes, origins: values },
                   }))
                 }
-                placeholder="PL"
+                placeholder={t('app.companies.detail.placeholders.country_code_pl', { defaultValue: 'PL' })}
               />
               <ArrayInputField
                 label={t('app.companies.detail.fields.lanes_destinations')}
@@ -2517,7 +3305,7 @@ export default function Companies(){
                     lanes: { ...prev.lanes, destinations: values },
                   }))
                 }
-                placeholder="FR"
+                placeholder={t('app.companies.detail.placeholders.country_code_fr', { defaultValue: 'FR' })}
               />
             </div>
           </div>
@@ -2525,13 +3313,13 @@ export default function Companies(){
             label={t('app.companies.detail.fields.cargo_types')}
             values={detailForm.operations.cargo_types}
             onChange={(values) => updateFormState('operations', (prev) => ({ ...prev, cargo_types: values }))}
-            placeholder="ADR"
+            placeholder={t('app.companies.detail.placeholders.cargo_type_adr', { defaultValue: 'ADR' })}
           />
           <ArrayInputField
             label={t('app.companies.detail.fields.languages')}
             values={detailForm.operations.languages}
             onChange={(values) => updateFormState('operations', (prev) => ({ ...prev, languages: values }))}
-            placeholder="pl"
+            placeholder={t('app.companies.detail.placeholders.language_pl', { defaultValue: 'pl' })}
           />
           <ArrayInputField
             label={t('app.companies.detail.fields.preferred_nationalities')}
@@ -2539,124 +3327,191 @@ export default function Companies(){
             onChange={(values) =>
               updateFormState('operations', (prev) => ({ ...prev, preferred_nationalities: values }))
             }
-            placeholder="PL"
+            placeholder={t('app.companies.detail.placeholders.country_code_pl', { defaultValue: 'PL' })}
           />
-        </SectionCard>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <SectionCard
-            title={t('app.companies.detail.sections.compliance.title')}
-            collapsible
-            defaultOpen={false}
-          >
+            </>
+          )}
+          {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'office' && (
             <FieldGrid cols={3}>
-              <SelectField
-                label={t('app.companies.detail.fields.fin_check_status')}
-                value={detailForm.compliance.fin_check_status}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, fin_check_status: value }))}
-                options={FIN_STATUS_OPTIONS.map((status) => {
-                  const statusKey = FIN_STATUS_LABELS[status]
-                  return {
-                    value: status,
-                    label: statusKey ? t(statusKey) : status,
-                  }
-                })}
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.office_fields.team_size')}
+                value={detailForm.operations.team_size}
+                onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, team_size: value }))}
+                type="number"
               />
-              <CheckboxField
-                label={t('app.companies.detail.fields.aml_required')}
-                checked={detailForm.compliance.aml_required}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, aml_required: value }))}
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.office_fields.roles')}
+                value={detailForm.operations.roles}
+                onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, roles: value }))}
+                placeholder={t('app.companies.detail.placeholders.roles_example', { defaultValue: 'developer, manager, …' })}
               />
-              <CheckboxField
-                label={t('app.companies.detail.fields.iso9001')}
-                checked={detailForm.compliance.iso9001}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, iso9001: value }))}
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.office_fields.tech_stack')}
+                value={detailForm.operations.tech_stack}
+                onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, tech_stack: value }))}
+                placeholder={t('app.companies.detail.placeholders.tech_stack_example', { defaultValue: 'React, Node.js, …' })}
               />
             </FieldGrid>
+          )}
+          {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'custom' && (
             <FieldGrid cols={2}>
               <TextField
-                label={t('app.companies.detail.fields.docs_valid_until')}
-                value={detailForm.compliance.doc_valid_until}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, doc_valid_until: value }))}
-                placeholder="YYYY-MM-DD"
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.capacity')}
+                value={detailForm.operations.custom_fields?.capacity ?? ''}
+                onChange={(value) =>
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), capacity: value },
+                  }))
+                }
               />
               <TextField
-                label={t('app.companies.detail.fields.last_check')}
-                value={detailForm.compliance.last_compliance_check_at}
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.equipment')}
+                value={detailForm.operations.custom_fields?.equipment ?? ''}
                 onChange={(value) =>
-                  updateFormState('compliance', (prev) => ({ ...prev, last_compliance_check_at: value }))
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), equipment: value },
+                  }))
                 }
-                placeholder="2025-01-01T00:00:00Z"
+              />
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.certifications')}
+                value={detailForm.operations.custom_fields?.certifications ?? ''}
+                onChange={(value) =>
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), certifications: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.regions')}
+                value={detailForm.operations.custom_fields?.regions ?? ''}
+                onChange={(value) =>
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), regions: value },
+                  }))
+                }
               />
             </FieldGrid>
-          </SectionCard>
+          )}
+        </SectionCard>
+        )}
 
-          <SectionCard
-            title={t('app.companies.detail.sections.portal.title')}
-            collapsible
-            defaultOpen={false}
-          >
-            <CheckboxField
-              label={t('app.companies.detail.fields.portal_enabled')}
-              checked={detailForm.portal.enabled}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, enabled: value }))}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.url')}
-              value={detailForm.portal.url}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, url: value }))}
-              placeholder="https://portal.example.com"
-            />
-            <TextField
-              label={t('app.companies.detail.fields.last_sync')}
-              value={detailForm.portal.last_sync_at}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, last_sync_at: value }))}
-              placeholder="2025-01-01T00:00:00Z"
-            />
-            <div className="space-y-3">
-              {detailForm.portal.portal_roles.map((user, index) => (
-                <div key={`portal-user-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                  <TextField
-                    label={t('app.companies.detail.fields.full_name')}
-                    value={user.full_name}
-                    onChange={(value) => setPortalUserField(index, { full_name: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.email')}
-                    value={user.email}
-                    onChange={(value) => setPortalUserField(index, { email: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.role')}
-                    value={user.role}
-                    onChange={(value) => setPortalUserField(index, { role: value })}
-                  />
-                  <div className="flex items-end">
-                    <button className="btn-ghost" type="button" onClick={() => removePortalUser(index)}>
-                      {t('common.actions.delete')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button className="btn-ghost" type="button" onClick={addPortalUser}>
-                {t('app.companies.detail.actions.add_portal_user')}
-              </button>
-            </div>
-            <TextareaField
-              label={t('app.companies.detail.fields.permissions')}
-              value={detailForm.portal.permissions}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, permissions: value }))}
-              rows={6}
-              placeholder='{"contracts": {"view": true}}'
-            />
-          </SectionCard>
-        </div>
-
-        <SectionCard
-          title={t('app.companies.detail.sections.integrations.title')}
+        {!isOperatingCompany && showExtendedSections && <SectionCard
+          title={t('app.companies.detail.sections.advanced.title', { defaultValue: 'Расширенные настройки' })}
+          description={t('app.companies.detail.sections.advanced.description', { defaultValue: 'Комплаенс, портал клиента, интеграции' })}
           collapsible
-          defaultOpen={false}
+          defaultOpen={sectionFocus === 'branding'}
         >
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.compliance.title')}</h3>
+              <FieldGrid cols={3}>
+                <SelectField
+                  label={t('app.companies.detail.fields.fin_check_status')}
+                  value={detailForm.compliance.fin_check_status}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, fin_check_status: value }))}
+                  options={FIN_STATUS_OPTIONS.map((status) => {
+                    const statusKey = FIN_STATUS_LABELS[status]
+                    return {
+                      value: status,
+                      label: statusKey ? t(statusKey) : status,
+                    }
+                  })}
+                />
+                <CheckboxField
+                  label={t('app.companies.detail.fields.aml_required')}
+                  checked={detailForm.compliance.aml_required}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, aml_required: value }))}
+                />
+                <CheckboxField
+                  label={t('app.companies.detail.fields.iso9001')}
+                  checked={detailForm.compliance.iso9001}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, iso9001: value }))}
+                />
+              </FieldGrid>
+              <FieldGrid cols={2} className="mt-3">
+                <TextField
+                  label={t('app.companies.detail.fields.docs_valid_until')}
+                  value={detailForm.compliance.doc_valid_until}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, doc_valid_until: value }))}
+                  placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.last_check')}
+                  value={detailForm.compliance.last_compliance_check_at}
+                  onChange={(value) =>
+                    updateFormState('compliance', (prev) => ({ ...prev, last_compliance_check_at: value }))
+                  }
+                  placeholder={t('app.companies.detail.placeholders.iso_datetime', { defaultValue: '2025-01-01T00:00:00Z' })}
+                />
+              </FieldGrid>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.portal.title')}</h3>
+              <div className="space-y-3">
+                <CheckboxField
+                  label={t('app.companies.detail.fields.portal_enabled')}
+                  checked={detailForm.portal.enabled}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, enabled: value }))}
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.url')}
+                  value={detailForm.portal.url}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, url: value }))}
+                  placeholder="https://portal.example.com"
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.last_sync')}
+                  value={detailForm.portal.last_sync_at}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, last_sync_at: value }))}
+                  placeholder={t('app.companies.detail.placeholders.iso_datetime', { defaultValue: '2025-01-01T00:00:00Z' })}
+                />
+                <div className="space-y-3">
+                  {detailForm.portal.portal_roles.map((user, index) => (
+                    <div key={`portal-user-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                      <TextField
+                        label={t('app.companies.detail.fields.full_name')}
+                        value={user.full_name}
+                        onChange={(value) => setPortalUserField(index, { full_name: value })}
+                      />
+                      <TextField
+                        label={t('app.companies.detail.fields.email')}
+                        value={user.email}
+                        onChange={(value) => setPortalUserField(index, { email: value })}
+                      />
+                      <TextField
+                        label={t('app.companies.detail.fields.role')}
+                        value={user.role}
+                        onChange={(value) => setPortalUserField(index, { role: value })}
+                      />
+                      <div className="flex items-end">
+                        <button className="btn-danger" type="button" onClick={() => removePortalUser(index)}>
+                          {t('common.actions.delete')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button className="btn-secondary" type="button" onClick={addPortalUser}>
+                    {t('app.companies.detail.actions.add_portal_user')}
+                  </button>
+                </div>
+                <TextareaField
+                  label={t('app.companies.detail.fields.permissions')}
+                  value={detailForm.portal.permissions}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, permissions: value }))}
+                  rows={4}
+                  placeholder={t('app.companies.detail.placeholders.permissions_json', { defaultValue: '{"contracts": {"view": true}}' })}
+                />
+              </div>
+            </div>
+
+            <div id="section-branding" className="pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.integrations.title')}</h3>
           <ArrayInputField
             label={t('app.companies.detail.fields.provider_ids')}
             values={detailForm.integrations.provider_ids}
@@ -2683,7 +3538,7 @@ export default function Companies(){
                   branding: { ...prev.branding, primary_color: value },
                 }))
               }
-              placeholder="#004b8d"
+              placeholder={t('app.companies.detail.placeholders.hex_color', { defaultValue: '#004b8d' })}
             />
           </FieldGrid>
           <div className="space-y-3">
@@ -2701,19 +3556,21 @@ export default function Companies(){
                   placeholder="https://api.example.com/hooks"
                 />
                 <div className="flex items-end">
-                  <button className="btn-ghost" type="button" onClick={() => removeWebhook(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeWebhook(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addWebhook}>
+            <button className="btn-secondary" type="button" onClick={addWebhook}>
               {t('app.companies.detail.actions.add_webhook')}
             </button>
           </div>
-        </SectionCard>
+            </div>
+          </div>
+        </SectionCard>}
 
-        <SectionCard
+        {!isOperatingCompany && <SectionCard
           title={t('app.companies.detail.sections.contracts.title')}
           collapsible
           defaultOpen={false}
@@ -2747,83 +3604,196 @@ export default function Companies(){
                   onChange={(value) => setContractField(index, { reference: value })}
                 />
                 <div className="flex items-end">
-                  <button className="btn-ghost" type="button" onClick={() => removeContract(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeContract(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addContract}>
+            <button className="btn-secondary" type="button" onClick={addContract}>
               {t('app.companies.detail.actions.add_contract')}
             </button>
           </div>
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard
-          title={t('app.companies.detail.sections.orders.title')}
+        {!isOperatingCompany && showExtendedSections && <SectionCard
+          title={t('app.companies.detail.sections.document_policies.title', { defaultValue: 'Document Policies' })}
+          description={t('app.companies.detail.sections.document_policies.description', { defaultValue: 'Configure document requirements for this client' })}
           collapsible
           defaultOpen={false}
         >
-          <div className="space-y-3">
-            {detailForm.orders.map((order, index) => (
-              <div key={`order-${index}`} className="grid grid-cols-1 gap-2 lg:grid-cols-7">
-                <TextField
-                  label={t('app.companies.detail.fields.name')}
-                  value={order.title}
-                  onChange={(value) => setOrderField(index, { title: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.status')}
-                  value={order.status}
-                  onChange={(value) => setOrderField(index, { status: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.date_start')}
-                  value={order.starts_at}
-                  onChange={(value) => setOrderField(index, { starts_at: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.date_end')}
-                  value={order.ends_at}
-                  onChange={(value) => setOrderField(index, { ends_at: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.required_drivers')}
-                  value={order.required_drivers}
-                  onChange={(value) => setOrderField(index, { required_drivers: value })}
-                  type="number"
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.hired_drivers')}
-                  value={order.hired_drivers}
-                  onChange={(value) => setOrderField(index, { hired_drivers: value })}
-                  type="number"
-                />
-                <div className="flex items-end gap-2">
-                  <TextField
-                    label={t('app.companies.detail.fields.reference')}
-                    value={order.client_reference}
-                    onChange={(value) => setOrderField(index, { client_reference: value })}
-                  />
-                  <button className="btn-ghost" type="button" onClick={() => removeOrder(index)}>
-                    {t('common.actions.delete')}
-                  </button>
-                </div>
+          {policiesError && (
+            <ErrorRecoveryBanner
+              info={policiesError}
+              onRetry={() => void loadDocumentPolicies(current?.id ?? null)}
+              retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+              {...friendlyErrorBannerSecondary(
+                policiesError,
+                CRM_APP_PATHS.documents,
+                t('app.nav.items.documents', { defaultValue: 'Documents' }),
+              )}
+              compact
+            />
+          )}
+          {policiesLoading ? (
+            <div className="text-sm text-slate-500">{t('common.loading')}</div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-600">
+                  {t('app.companies.detail.sections.document_policies.count', {
+                    values: { count: documentPolicies.length },
+                    defaultValue: `${documentPolicies.length} policy(ies) configured`,
+                  })}
+                </p>
+                <button
+                  className="btn-primary text-sm"
+                  type="button"
+                  onClick={() => {
+                    setNewPolicyMode(true)
+                    setEditingPolicy(null)
+                  }}
+                >
+                  {t('app.companies.detail.actions.add_policy', { defaultValue: 'Add Policy' })}
+                </button>
               </div>
-            ))}
-            <button className="btn-ghost" type="button" onClick={addOrder}>
-              {t('app.companies.detail.actions.add_order')}
-            </button>
-          </div>
-        </SectionCard>
+              {newPolicyMode && (
+                <PolicyForm
+                  documentTypes={documentTypes}
+                  onSave={async (payload) => {
+                    if (!current?.id) return
+                    try {
+                      setPoliciesError(null)
+                      await createDocumentPolicy({
+                        ...payload,
+                        scope: 'CLIENT',
+                        scope_id: current.id,
+                      })
+                      await loadDocumentPolicies(current.id)
+                      setNewPolicyMode(false)
+                    } catch (err: any) {
+                      const fb = t('app.companies.errors.policy_create_failed', { defaultValue: 'Failed to create policy' })
+                      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+                        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+                      }
+                    }
+                  }}
+                  onCancel={() => setNewPolicyMode(false)}
+                  t={t}
+                />
+              )}
+              {editingPolicy && (
+                <PolicyForm
+                  documentTypes={documentTypes}
+                  policy={editingPolicy}
+                  onSave={async (payload) => {
+                    if (!current?.id) return
+                    try {
+                      setPoliciesError(null)
+                      await updateDocumentPolicy(editingPolicy.id, {
+                        ...payload,
+                        scope: editingPolicy.scope,
+                        scope_id: editingPolicy.scope_id,
+                      })
+                      await loadDocumentPolicies(current.id)
+                      setEditingPolicy(null)
+                    } catch (err: any) {
+                      const fb = t('app.companies.errors.policy_update_failed', { defaultValue: 'Failed to update policy' })
+                      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+                        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+                      }
+                    }
+                  }}
+                  onCancel={() => setEditingPolicy(null)}
+                  t={t}
+                />
+              )}
+              {!newPolicyMode && !editingPolicy && documentPolicies.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  {t('app.companies.detail.sections.document_policies.empty', { defaultValue: 'No document policies configured. Click "Add Policy" to create one.' })}
+                </p>
+              ) : null}
+              {!newPolicyMode && !editingPolicy && documentPolicies.length > 0 && (
+                <div className="space-y-3">
+                  {documentPolicies.map((policy) => {
+                    const docType = documentTypes.find((dt) => (dt.id || dt.code) === policy.document_type_id)
+                    const docTypeName = docType?.name || docType?.code || policy.document_type_id
+                    return (
+                      <div key={policy.id} className="rounded-lg border border-slate-200 bg-white p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">{docTypeName}</span>
+                              {policy.required && (
+                                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                  {t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
+                                </span>
+                              )}
+                              {!policy.enabled && (
+                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                  {t('app.companies.detail.sections.document_policies.disabled', { defaultValue: 'Disabled' })}
+                                </span>
+                              )}
+                            </div>
+                            {policy.alert_days_before_expiry && (
+                              <p className="text-xs text-slate-500">
+                                {t('app.companies.detail.sections.document_policies.alert_days', {
+                                  values: { days: policy.alert_days_before_expiry },
+                                  defaultValue: `Alert ${policy.alert_days_before_expiry} days before expiry`,
+                                })}
+                              </p>
+                            )}
+                            {policy.notes && (
+                              <p className="text-xs text-slate-500">{policy.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="btn-secondary text-sm"
+                              type="button"
+                              onClick={() => setEditingPolicy(policy)}
+                            >
+                              {t('common.actions.edit')}
+                            </button>
+                            <button
+                              className="btn-danger btn-sm"
+                              type="button"
+                              onClick={async () => {
+                                if (!current?.id || !confirm(t('app.companies.detail.actions.delete_confirm', { defaultValue: 'Delete this policy?' }))) return
+                                try {
+                                  setPoliciesError(null)
+                                  await deleteDocumentPolicy(policy.id)
+                                  await loadDocumentPolicies(current.id)
+                                } catch (err: any) {
+                                  const fb = t('app.companies.errors.policy_delete_failed', { defaultValue: 'Failed to delete policy' })
+                                  if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+                                    setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+                                  }
+                                }
+                              }}
+                            >
+                              {t('common.actions.delete')}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </SectionCard>}
 
-        <SectionCard title={t('app.companies.detail.sections.system.title')}>
+        {!isOperatingCompany && showExtendedSections && <SectionCard title={t('app.companies.detail.sections.system.title')}>
           <FieldGrid cols={3}>
             <InfoItem label={t('app.companies.detail.fields.id')} value={(currentAny?.id as string | undefined) || '—'} mono />
             <InfoItem label={t('app.companies.detail.fields.created_at')} value={fmtDateTime(currentAny?.created_at as string | undefined)} />
             <InfoItem label={t('app.companies.detail.fields.updated_at')} value={fmtDateTime(currentAny?.updated_at as string | undefined)} />
           </FieldGrid>
-        </SectionCard>
+        </SectionCard>}
+        </>
+        )}
 
       </div>
     )
@@ -2835,7 +3805,22 @@ export default function Companies(){
       void loadList()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, detailForm, isDirty, saving, saveError, saveSuccess, readiness, readinessLoading, readinessUnavailable, readinessError, t])
+  }, [
+    id,
+    current,
+    detailForm,
+    isDirty,
+    saving,
+    saveError,
+    saveSuccess,
+    readiness,
+    readinessLoading,
+    readinessUnavailable,
+    readinessError,
+    t,
+    clientWorkspaceTab,
+    navigateClientWorkspaceTab,
+  ])
 
   useEffect(() => {
     const built = buildDetailForm()
@@ -2881,7 +3866,9 @@ export default function Companies(){
       }
     } catch (err){
       console.error(err)
-      alert(t('app.companies.messages.archive_error'))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.companies.messages.archive_error'))) {
+        alert(t('app.companies.messages.archive_error'))
+      }
     } finally {
       setLoading(false)
     }
@@ -2931,15 +3918,24 @@ export default function Companies(){
   ]
 
   const companyHero = (
-    <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+    <section className="rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-none">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <p className="text-2xl font-semibold">{t('app.companies.list.title')}</p>
+          <p className="text-2xl font-semibold">
+            {isOperatingProfileRoute
+              ? t('app.companies.list.title')
+              : t('app.companies.list.clients_title', { defaultValue: 'Clients' })}
+          </p>
           <p className="text-sm text-white/80">{t('app.companies.list.insights.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={handleCreateCompany}>
-            {t('app.companies.actions.new')}
+          {isOperatingProfileRoute ? (
+            <button className="btn-secondary border-white/60 bg-white/10 text-white hover:bg-white/20" onClick={handleCreateOperatingCompany}>
+              {t('app.companies.actions.new_operating_company', { defaultValue: 'Create my company' })}
+            </button>
+          ) : null}
+          <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={handleCreateClientCompany}>
+            {t('app.companies.actions.new_client_company', { defaultValue: 'Add client company' })}
           </button>
         </div>
       </div>
@@ -2957,11 +3953,17 @@ export default function Companies(){
 
   // ----- list view (без :id)
   const listView = (
-    <div className="h-full w-full flex flex-col space-y-4">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       {companyHero}
 
-      <section className="app-surface space-y-4 p-6">
-        <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_auto]">
+      <div className="px-3 pt-2">
+        <PageBreadcrumb />
+      </div>
+
+      {!isOperatingProfileRoute ? <CompanyIntakeLinksPanel /> : null}
+
+      <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
+        <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_minmax(170px,200px)_auto]">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.companies.list.search_label')}
@@ -2984,22 +3986,95 @@ export default function Companies(){
               <option value="city_desc">{t('app.companies.list.sort_options.city_desc')}</option>
             </select>
           </label>
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.kind_label', { defaultValue: 'Company type' })}
+            </span>
+            <select className="input" value={companyKindFilter} onChange={(e) => setCompanyKindFilter((e.target.value as any) || 'all')}>
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              <option value="client">{t('app.companies.list.kind_client', { defaultValue: 'Client' })}</option>
+              <option value="counterparty">{t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })}</option>
+            </select>
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
             {t('app.companies.list.show_archived')}
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.filters.party_role', { defaultValue: 'Party role' })}
+            </span>
+            <select
+              className="input"
+              value={partyRoleListFilter}
+              onChange={(e) => setPartyRoleListFilter(e.target.value as typeof partyRoleListFilter)}
+            >
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              <option value="unset">{t('app.companies.list.filters.party_role_unset', { defaultValue: 'Not set' })}</option>
+              <option value="employer">{t('app.companies.party.roles.employer', { defaultValue: 'Employer' })}</option>
+              <option value="service_client">{t('app.companies.party.roles.service_client', { defaultValue: 'Service client' })}</option>
+              <option value="both">{t('app.companies.party.roles.both', { defaultValue: 'Both' })}</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.filters.client_stage', { defaultValue: 'Client stage' })}
+            </span>
+            <select
+              className="input"
+              value={clientStageListFilter}
+              onChange={(e) => setClientStageListFilter(e.target.value)}
+            >
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              {clientPipelineStageOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.filters.owner', { defaultValue: 'Owner' })}
+            </span>
+            <select className="input" value={ownerListFilter} onChange={(e) => setOwnerListFilter(e.target.value)}>
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              {companyUsers
+                .filter((u) => u.user_id && u.status !== 'invited')
+                .map((u) => (
+                  <option key={u.user_id!} value={u.user_id!}>
+                    {(u.full_name || '').trim() || u.email}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span>
             {t('app.companies.list.insights.visible_hint', { values: { count: filteredItems.length } })}
           </span>
-          {(query || showArchived || sortBy !== 'name_asc') && (
+          <span>
+            {t('app.companies.list.client_only_hint', { defaultValue: 'This workspace shows client companies only.' })}
+          </span>
+          {(query ||
+            showArchived ||
+            companyKindFilter !== 'all' ||
+            sortBy !== 'name_asc' ||
+            partyRoleListFilter !== 'all' ||
+            clientStageListFilter !== 'all' ||
+            ownerListFilter !== 'all') && (
             <button
-              className="btn-ghost"
+              className="btn-secondary"
               onClick={() => {
                 setQuery('')
                 setShowArchived(false)
+                setCompanyKindFilter('all')
                 setSortBy('name_asc')
+                setPartyRoleListFilter('all')
+                setClientStageListFilter('all')
+                setOwnerListFilter('all')
               }}
             >
               {t('app.companies.list.reset')}
@@ -3010,53 +4085,151 @@ export default function Companies(){
 
       <section className="app-surface overflow-hidden">
         <table className="min-w-full text-sm">
-          <thead className="bg-white/80 text-left text-xs uppercase tracking-wide text-gray-500">
+          <thead className="bg-slate-50/90 text-left">
             <tr>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.name')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.legal_name')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.country')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.city')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.archived')}</th>
-              <th className="px-4 py-3 w-1">{t('app.companies.list.table.headers.actions')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.name')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.clients.access_column', { defaultValue: 'Access' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.legal_name')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.kind', { defaultValue: 'Type' })}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.party_role', { defaultValue: 'Party role' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.stage', { defaultValue: 'Stage' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.owner', { defaultValue: 'Owner' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.active_orders', { defaultValue: 'Active orders' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.revenue', { defaultValue: 'Revenue (completed)' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.recruitment_vacancies', { defaultValue: 'Active vacancies' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.recruitment_candidates', { defaultValue: 'Candidates' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.country')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.city')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.archived')}</th>
+              <th className="w-1 border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td className="px-4 py-6 text-center text-gray-500" colSpan={6}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={15}>
                   {t('app.companies.list.table.loading')}
                 </td>
               </tr>
             )}
             {!loading &&
-              filteredItems.map((it) => (
-                <tr key={(it as any).id} className="border-t border-gray-100 hover:bg-gray-50/70 transition">
-                  <td className="px-4 py-3 font-medium text-brand-700">
-                    <Link className="hover:underline" to={`/app/clients/${(it as any).id}`}>
+              filteredItems.map((it) => {
+                const rowId = String((it as any).id)
+                const accessLink = tenantLinksByCompanyId.get(rowId)
+                const contactPolicy = accessLink ? getContactPolicy(accessLink) : null
+                return (
+                <tr key={rowId} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
+                  <td className="border-r border-slate-200 px-4 py-3 font-medium text-brand-700">
+                    <Link
+                      className="hover:underline"
+                      to={`${CRM_APP_PATHS.agencyClients}/${rowId}`}
+                    >
                       {(it as any).name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{(it as any).legal_name || '—'}</td>
-                  <td className="px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
-                  <td className="px-4 py-3">{(it as any).city || '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {!accessLink ? (
+                      <span className="badge bg-amber-50 text-amber-800">
+                        {t('app.clients.access_needs_setup', { defaultValue: 'Needs setup' })}
+                      </span>
+                    ) : contactPolicy?.enabled ? (
+                      <span className="badge bg-emerald-50 text-emerald-800">
+                        {t('app.clients.access_contact_on', { defaultValue: 'Contact tracking' })}
+                      </span>
+                    ) : (
+                      <span className="badge bg-slate-100 text-slate-700">
+                        {t('app.clients.access_ready', { defaultValue: 'Configured' })}
+                      </span>
+                    )}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).legal_name || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {getCompanyKindFromAny(it) === 'counterparty'
+                      ? t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })
+                      : t('app.companies.list.kind_client', { defaultValue: 'Client' })}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {formatPartyBusinessRoleCell(t, (it as any).party_business_roles)}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {formatClientStageCell(t, (it as any).client_stage)}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {(it as any).owner_user_id
+                      ? ownerUserLabelMap.get(String((it as any).owner_user_id)) ||
+                        String((it as any).owner_user_id).slice(0, 8)
+                      : '—'}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    {(it as any).service_active_orders != null ? Number((it as any).service_active_orders) : '—'}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    {(it as any).service_revenue_completed != null
+                      ? Number((it as any).service_revenue_completed).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : '—'}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    <Link
+                      className="font-medium text-brand-700 hover:underline"
+                      to={`${CRM_APP_PATHS.vacancies}?company=${(it as any).id}`}
+                    >
+                      {(it as any).recruitment_vacancies_active != null
+                        ? Number((it as any).recruitment_vacancies_active)
+                        : '—'}
+                    </Link>
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.candidates}>
+                      {(it as any).recruitment_candidates_total != null
+                        ? Number((it as any).recruitment_candidates_total)
+                        : '—'}
+                    </Link>
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).city || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-3">
                     {(it as any).is_archived ? t('common.words.yes') : t('common.words.no')}
                   </td>
                   <td className="px-4 py-3 space-x-2 text-right">
-                    <button className="btn-ghost" onClick={() => navigate(`/app/clients/${(it as any).id}`)}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigate(`${CRM_APP_PATHS.agencyClients}/${(it as any).id}`)}
+                    >
                       {t('app.companies.list.table.actions.edit')}
                     </button>
-                    <button className="btn-ghost" onClick={() => toggleArchive(it)}>
+                    <button
+                      className={(it as any).is_archived ? 'btn-secondary' : 'btn-danger'}
+                      onClick={() => toggleArchive(it)}
+                    >
                       {(it as any).is_archived
                         ? t('app.companies.list.table.actions.restore')
                         : t('app.companies.list.table.actions.archive')}
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
             {!loading && filteredItems.length === 0 && (
               <tr>
-                <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={15}>
                   {t('app.companies.list.table.empty')}
                 </td>
               </tr>
@@ -3068,7 +4241,27 @@ export default function Companies(){
   )
 
   /// единая точка возврата — порядок хуков стабилен
-  return id ? (pageContent ?? <div className="card p-4">{t('common.loading')}</div>) : listView;
+  const addClientModal =
+    addClientOpen && tenantIdForLinks ? (
+      <AddClientModal
+        tenantId={tenantIdForLinks}
+        onClose={() => setAddClientOpen(false)}
+        onCreated={(link) => void handleClientCreated(link)}
+        onError={(msg) => notify({ title: msg, variant: 'error' })}
+      />
+    ) : null
+
+  return id ? (
+    <>
+      {pageContent ?? <div className="card p-4">{t('common.loading')}</div>}
+      {addClientModal}
+    </>
+  ) : (
+    <>
+      {listView}
+      {addClientModal}
+    </>
+  );
   }
 
 // ----- Presentation helpers -----
@@ -3095,8 +4288,8 @@ function SectionCard({
     <section className="card p-4">
       <header className="flex flex-col gap-1 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-          {description && <p className="text-sm text-gray-500">{description}</p>}
+          <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+          {description && <p className="text-sm text-slate-500">{description}</p>}
         </div>
         {collapsible && (
           <button
@@ -3114,17 +4307,18 @@ function SectionCard({
   )
 }
 
-function FieldGrid({ cols = 2, children }: { cols?: 1 | 2 | 3; children: React.ReactNode }) {
-  if (cols === 1) return <div className="space-y-3">{children}</div>
-  if (cols === 3) return <div className="grid grid-cols-1 gap-4 md:grid-cols-3">{children}</div>
-  return <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{children}</div>
+function FieldGrid({ cols = 2, children, className }: { cols?: 1 | 2 | 3; children: React.ReactNode; className?: string }) {
+  const extra = className ? ` ${className}` : ''
+  if (cols === 1) return <div className={`space-y-3${extra}`}>{children}</div>
+  if (cols === 3) return <div className={`grid grid-cols-1 gap-4 md:grid-cols-3${extra}`}>{children}</div>
+  return <div className={`grid grid-cols-1 gap-4 md:grid-cols-2${extra}`}>{children}</div>
 }
 
 function InfoItem({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
-      <div className={["text-sm text-gray-900", mono ? "font-mono break-all" : ""].filter(Boolean).join(" ")}>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={["text-sm text-slate-900", mono ? "font-mono break-all" : ""].filter(Boolean).join(" ")}>
         {value ?? '—'}
       </div>
     </div>
@@ -3140,7 +4334,7 @@ const STATUS_TONE_CLASS: Record<StatusTone, string> = {
 
 function StatusBadge({ tone = 'info', children }: { tone?: StatusTone; children: React.ReactNode }) {
   return (
-    <span className={['inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
+    <span className={['inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
       {children}
     </span>
   )
@@ -3156,8 +4350,8 @@ function IndicatorList({ items }: { items: Array<{ label: string; ok: boolean | 
             ? 'bg-emerald-500'
             : item.ok === false
               ? 'bg-rose-500'
-              : 'bg-gray-300'
-        const textClass = item.ok === false ? 'text-rose-700' : 'text-gray-700'
+              : 'bg-slate-300'
+        const textClass = item.ok === false ? 'text-rose-700' : 'text-slate-700'
         return (
           <li key={item.label} className={['flex items-center gap-2 text-sm', textClass].join(' ')}>
             <span className={['h-2.5 w-2.5 rounded-full', toneClass].join(' ')} />
@@ -3192,7 +4386,7 @@ function TextField({
   mono,
 }: {
   label: string;
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
@@ -3200,11 +4394,11 @@ function TextField({
 }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <input
         className={['input', mono ? 'font-mono' : ''].filter(Boolean).join(' ')}
         type={type}
-        value={value}
+        value={value ?? ''}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -3227,7 +4421,7 @@ function TextareaField({
 }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <textarea
         className="input min-h-[80px]"
         rows={rows}
@@ -3245,12 +4439,12 @@ function CheckboxField({
   onChange,
 }: {
   label: string | React.ReactNode;
-  checked: boolean;
+  checked: boolean | undefined;
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+      <input type="checkbox" checked={Boolean(checked)} onChange={(event) => onChange(event.target.checked)} />
       <span>{label}</span>
     </label>
   )
@@ -3265,7 +4459,7 @@ function SelectField({
   allowEmpty = true,
 }: {
   label: string;
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   options: Array<string | SelectOption>;
   placeholder?: string;
@@ -3276,10 +4470,10 @@ function SelectField({
   )
   return (
     <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <select
         className="input"
-        value={value}
+        value={value ?? ''}
         onChange={(event) => onChange(event.target.value)}
       >
         {allowEmpty && <option value="">{placeholder ?? '—'}</option>}
@@ -3313,7 +4507,7 @@ function MultiCheckboxField({
   }
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="flex flex-wrap gap-3">
         {options.map((option) => (
           <CheckboxField
@@ -3352,7 +4546,7 @@ function ArrayInputField({
   }
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="space-y-2">
         {values.map((value, index) => (
           <div key={`${label}-${index}`} className="flex items-center gap-2">
@@ -3362,14 +4556,110 @@ function ArrayInputField({
               placeholder={placeholder}
               onChange={(event) => handleChange(index, event.target.value)}
             />
-            <button className="btn-ghost" onClick={() => handleRemove(index)} type="button">
+            <button className="btn-danger" onClick={() => handleRemove(index)} type="button">
               {t('common.actions.delete')}
             </button>
           </div>
         ))}
-        <button className="btn-ghost" type="button" onClick={handleAdd}>
+        <button className="btn-secondary" type="button" onClick={handleAdd}>
           {t('common.actions.add')}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function PolicyForm({
+  documentTypes,
+  policy,
+  onSave,
+  onCancel,
+  t,
+}: {
+  documentTypes: DocType[];
+  policy?: DocumentPolicy | null;
+  onSave: (payload: Omit<DocumentPolicyCreate, 'scope' | 'scope_id'>) => Promise<void>;
+  onCancel: () => void;
+  t: (key: string, opts?: { defaultValue?: string; values?: Record<string, any> }) => string;
+}) {
+  const [documentTypeId, setDocumentTypeId] = useState(policy?.document_type_id || '')
+  const [enabled, setEnabled] = useState(policy?.enabled ?? true)
+  const [required, setRequired] = useState(policy?.required ?? false)
+  const [alertDays, setAlertDays] = useState(policy?.alert_days_before_expiry?.toString() || '')
+  const [notes, setNotes] = useState(policy?.notes || '')
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">
+        {policy
+          ? t('app.companies.detail.sections.document_policies.edit_policy', { defaultValue: 'Edit Policy' })
+          : t('app.companies.detail.sections.document_policies.create_policy', { defaultValue: 'Create Policy' })}
+      </h3>
+      <div className="space-y-3">
+        <label className="block">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.companies.detail.sections.document_policies.document_type', { defaultValue: 'Document Type' })}
+          </div>
+          <select
+            className="input w-full"
+            value={documentTypeId}
+            onChange={(e) => setDocumentTypeId(e.target.value)}
+            disabled={!!policy}
+          >
+            <option value="">{t('app.companies.detail.sections.document_policies.select_document_type', { defaultValue: 'Select document type...' })}</option>
+            {documentTypes.map((dt) => (
+              <option key={dt.id || dt.code} value={dt.id || dt.code || ''}>
+                {dt.name || dt.code || dt.id}
+              </option>
+            ))}
+          </select>
+        </label>
+        <CheckboxField
+          label={t('app.companies.detail.sections.document_policies.enabled', { defaultValue: 'Enabled' })}
+          checked={enabled}
+          onChange={setEnabled}
+        />
+        <CheckboxField
+          label={t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
+          checked={required}
+          onChange={setRequired}
+        />
+        <TextField
+          label={t('app.companies.detail.sections.document_policies.alert_days_label', { defaultValue: 'Alert Days Before Expiry' })}
+          type="number"
+          value={alertDays}
+          onChange={setAlertDays}
+          placeholder="30"
+        />
+        <TextareaField
+          label={t('app.companies.detail.sections.document_policies.notes', { defaultValue: 'Notes' })}
+          value={notes}
+          onChange={setNotes}
+          placeholder={t('app.companies.detail.sections.document_policies.notes_placeholder', { defaultValue: 'Internal notes...' })}
+          rows={3}
+        />
+        <div className="flex items-center gap-2">
+          <button
+            className="btn-primary text-sm"
+            type="button"
+            onClick={async () => {
+              if (!documentTypeId) return
+              await onSave({
+                document_type_id: documentTypeId,
+                enabled,
+                required,
+                alert_days_before_expiry: alertDays ? parseInt(alertDays, 10) : null,
+                notes: notes || null,
+              })
+            }}
+            disabled={!documentTypeId}
+          >
+            {t('common.actions.save')}
+          </button>
+          <button className="btn-secondary text-sm" type="button" onClick={onCancel}>
+            {t('common.actions.cancel')}
+          </button>
+        </div>
       </div>
     </div>
   )

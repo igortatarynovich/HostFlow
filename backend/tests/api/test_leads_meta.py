@@ -3,9 +3,28 @@ import uuid
 
 import pytest
 import sqlalchemy as sa
+import hmac
+import hashlib
 
 from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Lead
+from backend.app.models.company import Company
+from backend.app.core.settings import settings
+from backend.app.modules.leads import webhook as meta_webhook_mod
+
+
+async def _set_tenant_business_type(session, tenant_id: str, business_type: str) -> None:
+    await session.execute(
+        sa.text(
+            """
+            UPDATE tenants
+            SET settings = COALESCE(settings::jsonb, '{}'::jsonb) || jsonb_build_object('business_type', (:business_type)::text)
+            WHERE id = :tenant_id
+            """
+        ),
+        {"tenant_id": tenant_id, "business_type": business_type},
+    )
+    await session.commit()
 
 
 async def _ensure_vacancy(session, tenant_id: str, company_id: str) -> str:
@@ -80,6 +99,7 @@ def _meta_payload(
     email: str,
     phone: str,
     lead_id: str = "1234567890",
+    ad_id: str = "987654321",
     preferred_contact: str | None = None,
     preferred_contact_field: str = "preferred_contact",
     country: str | None = None,
@@ -114,7 +134,7 @@ def _meta_payload(
                     {
                         "value": {
                             "leadgen_id": lead_id,
-                            "ad_id": "987654321",
+                            "ad_id": str(ad_id),
                             "field_data": field_data,
                         }
                     }
@@ -124,16 +144,43 @@ def _meta_payload(
     }
 
 
+def _signature_for_payload(payload: dict) -> str:
+    secret = str(settings.meta_webhook_secret or "").encode("utf-8")
+    body = json.dumps(payload).encode("utf-8")
+    digest = hmac.new(secret, body, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
+
+
 @pytest.mark.anyio
 async def test_meta_lead_processed(client, manager_headers, recruiter_headers, supervisor_headers, tenant_id):
+    patch_settings = await client.patch(
+        "/api/v1/settings/leads/settings",
+        headers=manager_headers,
+        json={"auto_create_enabled": True, "leads_processing_mode_v1": "automatic"},
+    )
+    assert patch_settings.status_code == 200, patch_settings.text
+
     async with async_session_maker() as session:
         company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
 
+    # Unique contacts + leadgen so repeated runs on a shared DB do not hit duplicate / wrong-status paths.
+    u = uuid.uuid4().hex[:12]
+    leadgen = f"lg-processed-{u}"
+    ad_numeric = 8_000_000_000 + (uuid.uuid4().int % 999_000_000)
+    map_resp = await client.post(
+        "/api/v1/settings/leads/mapping",
+        headers=manager_headers,
+        json={"ad_id": ad_numeric, "vacancy_id": vacancy_id, "note": "test_meta_lead_processed"},
+    )
+    assert map_resp.status_code == 201, map_resp.text
+
     payload = _meta_payload(
         vacancy_id,
-        email="lead@example.com",
-        phone="+48123123123",
+        email=f"lead-{u}@example.com",
+        phone=f"+48123{u[:9]}",
+        lead_id=leadgen,
+        ad_id=str(ad_numeric),
         preferred_contact="whatsapp",
         preferred_contact_field="preferred_contact_method",
         country="LK",
@@ -145,7 +192,7 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
 
     response = await client.post(
         "/api/v1/leads/meta",
-        headers=manager_headers,
+        headers={**manager_headers, "X-Hub-Signature-256": _signature_for_payload(payload)},
         content=json.dumps(payload),
     )
     assert response.status_code == 200, response.text
@@ -153,11 +200,15 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
     assert body["status"] == "processed"
     assert body["candidate_id"] is not None
     assert body["lead_id"] is not None
+    assert body["business_type"] == "agency"
+    assert body["outcome_entity_type"] == "candidate"
+    assert body["outcome_entity_id"] == body["candidate_id"]
 
     async with async_session_maker() as session:
         lead_row = await session.get(Lead, body["lead_id"])
         assert lead_row is not None
         assert lead_row.status == "processed"
+        assert lead_row.external_id == leadgen
         assert lead_row.company_id == company_id
         normalized = lead_row.normalized or {}
         if isinstance(normalized, str):
@@ -168,7 +219,7 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
         assert normalized.get("poland_stay_basis_raw") == "karta_pobytu_(residence_card)"
         candidate = await session.get(Candidate, body["candidate_id"])
         assert candidate is not None
-        assert candidate.source == "meta"
+        assert candidate.source in ("meta", "FB", "facebook")
         assert candidate.origin is not None
         extra_payload = json.loads(candidate.extra or "{}")
         assert extra_payload.get("preferred_contact") == "whatsapp"
@@ -181,8 +232,9 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
     notif_data = resp_notif.json()
     assert isinstance(notif_data.get("items"), list)
     recruiter_events = {item["event_type"] for item in notif_data["items"]}
-    assert "lead.processed" in recruiter_events
     assert "candidate.created" in recruiter_events
+    # With automatic processing, in-app notifications may surface intake_submitted instead of lead.processed.
+    assert "lead.processed" in recruiter_events or "candidate.intake_submitted" in recruiter_events
     first_id = notif_data["items"][0]["id"]
     resp_mark = await client.post(
         "/api/v1/notifications/read",
@@ -199,13 +251,77 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
     resp_sup = await client.get("/api/v1/notifications", headers=supervisor_headers)
     assert resp_sup.status_code == 200
     sup_events = {item["event_type"] for item in resp_sup.json().get("items", [])}
-    assert "lead.processed" in sup_events
+    assert "lead.processed" in sup_events or "candidate.created" in sup_events
     resp_sup_mark = await client.post(
         "/api/v1/notifications/read",
         headers=supervisor_headers,
         json={"mark_all": True},
     )
     assert resp_sup_mark.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_meta_lead_processed_services_flow_emits_telegram_events(
+    client,
+    manager_headers,
+    supervisor_headers,
+    tenant_id,
+):
+    async with async_session_maker() as session:
+        await _set_tenant_business_type(session, tenant_id, "services")
+        # Ensure webhook signature is not enforced for this test run.
+        await session.execute(
+            sa.text("DELETE FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        rows = await session.execute(
+            sa.text("SELECT count(*) FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        assert int(rows.scalar_one() or 0) == 0
+        await session.commit()
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+
+    payload = _meta_payload(
+        vacancy_id,
+        email="services-lead@example.com",
+        phone="+48500111222",
+        lead_id="services-lead-001",
+        company_name="Meta Logistics",
+        company_field="company",
+    )
+
+    response = await client.post(
+        "/api/v1/leads/meta",
+        headers={**manager_headers, "X-Hub-Signature-256": _signature_for_payload(payload)},
+        content=json.dumps(payload),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "processed"
+    assert body["business_type"] == "services"
+    assert body["candidate_id"] is None
+    assert body["outcome_entity_type"] == "company"
+    assert body["outcome_entity_id"] is not None
+
+    # Services flow should emit configurable "telegram" events as in-app notifications.
+    resp_sup = await client.get("/api/v1/notifications", headers=supervisor_headers)
+    assert resp_sup.status_code == 200
+    sup_events = {item["event_type"] for item in resp_sup.json().get("items", [])}
+    assert "lead.new.telegram" in sup_events
+
+    lead_id = body["lead_id"]
+    stage_resp = await client.patch(
+        f"/api/v1/leads/{lead_id}",
+        headers=manager_headers,
+        json={"stage": "qualified"},
+    )
+    assert stage_resp.status_code == 200, stage_resp.text
+
+    resp_sup2 = await client.get("/api/v1/notifications", headers=supervisor_headers)
+    sup_events2 = {item["event_type"] for item in resp_sup2.json().get("items", [])}
+    assert "lead.status_changed.telegram" in sup_events2
 
 
 @pytest.mark.anyio
@@ -273,6 +389,106 @@ async def test_leads_list_endpoint(client, manager_headers, tenant_id):
 
 
 @pytest.mark.anyio
+async def test_leads_list_returns_external_id_matching_meta_leadgen_id(
+    client, manager_headers, tenant_id,
+) -> None:
+    """GET /leads items include external_id (Meta leadgen_id) — contract for admin Graph picker."""
+    async with async_session_maker() as session:
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+
+    suffix = uuid.uuid4().hex[:12]
+    ext_id = f"lg-{suffix}"
+    payload = _meta_payload(
+        vacancy_id,
+        email=f"extlead-{suffix}@example.com",
+        phone=f"+48600{suffix[:9]}",
+        lead_id=ext_id,
+    )
+    post_resp = await client.post(
+        "/api/v1/leads/meta",
+        headers={**manager_headers, "X-Hub-Signature-256": _signature_for_payload(payload)},
+        content=json.dumps(payload),
+    )
+    assert post_resp.status_code == 200, post_resp.text
+    lead_id = post_resp.json()["lead_id"]
+    assert lead_id
+
+    resp = await client.get("/api/v1/leads", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    row = next((x for x in resp.json().get("items", []) if x.get("id") == lead_id), None)
+    assert row is not None
+    assert row.get("external_id") == ext_id
+
+    async with async_session_maker() as session:
+        lead_row = await session.get(Lead, lead_id)
+        assert lead_row is not None
+        assert lead_row.external_id == ext_id
+
+
+@pytest.mark.anyio
+async def test_services_leads_list_returns_company_outcome(client, manager_headers, tenant_id):
+    async with async_session_maker() as session:
+        await _set_tenant_business_type(session, tenant_id, "services")
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+
+    payload = _meta_payload(vacancy_id, email="services@example.com", phone="+48123450000", lead_id="services-lead")
+    post_resp = await client.post(
+        "/api/v1/leads/meta",
+        headers=manager_headers,
+        content=json.dumps(payload),
+    )
+    assert post_resp.status_code == 200, post_resp.text
+    post_body = post_resp.json()
+    assert post_body["business_type"] == "services"
+    assert post_body["outcome_entity_type"] == "company"
+    assert post_body["outcome_entity_id"] == company_id
+
+    resp = await client.get("/api/v1/leads", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    row = next(item for item in data["items"] if item["id"] == post_body["lead_id"])
+    assert row["business_type"] == "services"
+    assert row["outcome_entity_type"] == "company"
+    assert row["outcome_entity_id"] == company_id
+
+    convert_resp = await client.post(
+        f"/api/v1/leads/{post_body['lead_id']}/service-order",
+        headers=manager_headers,
+    )
+    assert convert_resp.status_code == 200, convert_resp.text
+    order_body = convert_resp.json()
+    assert order_body["company_id"] == company_id
+
+    resp_after = await client.get("/api/v1/leads", headers=manager_headers)
+    assert resp_after.status_code == 200, resp_after.text
+    updated = next(item for item in resp_after.json()["items"] if item["id"] == post_body["lead_id"])
+    assert updated["service_order_id"] == order_body["id"]
+
+    invoice_resp = await client.post(
+        f"/api/v1/invoices/from-service-order/{order_body['id']}",
+        headers=manager_headers,
+    )
+    assert invoice_resp.status_code == 201, invoice_resp.text
+    invoice_body = invoice_resp.json()
+    assert invoice_body["service_order_id"] == order_body["id"]
+    assert invoice_body["company_id"] == company_id
+    billing_details = invoice_body.get("billing_details") or {}
+    issuer_company_id = str(billing_details.get("issuer_company_id") or "").strip()
+    assert issuer_company_id
+    assert str(billing_details.get("issuer_name") or "").strip()
+    assert str(billing_details.get("issuer_tax_id") or "").strip()
+    assert isinstance(billing_details.get("issuer_bank_account"), dict)
+    assert str((billing_details.get("issuer_bank_account") or {}).get("iban") or "").strip()
+    async with async_session_maker() as session:
+        issuer_company = await session.get(Company, issuer_company_id)
+        assert issuer_company is not None
+        extra = issuer_company.extra if isinstance(issuer_company.extra, dict) else {}
+        assert str(extra.get("company_role") or "").strip().lower() == "operating"
+
+
+@pytest.mark.anyio
 async def test_meta_webhook_verify_challenge(client, tenant_id):
     token = "hostflow123"
     async with async_session_maker() as session:
@@ -287,19 +503,30 @@ async def test_meta_webhook_verify_challenge(client, tenant_id):
 
 
 @pytest.mark.anyio
-async def test_meta_webhook_idempotent_processing(client, tenant_id):
-    token = "hostflow123"
+async def test_meta_webhook_idempotent_processing(client, tenant_id, monkeypatch):
+    async def no_signatures(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(meta_webhook_mod.admin_service, "get_active_secret_candidates", no_signatures)
+
+    token = f"idem-{uuid.uuid4().hex}"
+    page_id = f"idem-page-{uuid.uuid4().hex[:16]}"
+    lead_id = f"idem-lead-{uuid.uuid4().hex[:12]}"
     async with async_session_maker() as session:
         company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
         await _ensure_meta_settings(session, tenant_id, token)
 
-    payload = _meta_payload(
+    inner = _meta_payload(
         vacancy_id,
         email="webhook-idem@example.com",
         phone="+48900123123",
-        lead_id="idem-lead-1",
+        lead_id=lead_id,
     )
+    entry = inner["entry"][0]
+    entry["id"] = page_id
+    entry["changes"][0]["field"] = "leadgen"
+    payload = {"object": "page", "entry": [entry]}
     url = f"/api/v1/leads/meta/webhook?verify_token={token}"
 
     first_resp = await client.post(

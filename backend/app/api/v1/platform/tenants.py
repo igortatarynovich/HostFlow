@@ -16,6 +16,7 @@ from backend.app.auth.deps import (
 from backend.app.auth.jwt_tools import encode as encode_jwt
 from backend.app.db.deps import get_db
 from backend.app.api.v1.platform import schemas as platform_schemas
+from backend.app.api.v1.settings.billing import sync_subscription_license_addon_v1
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.models.tenant import (
     Tenant,
@@ -41,6 +42,19 @@ def _serialize_tenant(
     license_entry: TenantLicense | None,
     usage: dict[str, float],
 ) -> platform_schemas.PlatformTenantOut:
+    settings_obj = tenant.settings if isinstance(tenant.settings, dict) else {}
+
+    def _hosts(key: str) -> list[str]:
+        raw = settings_obj.get(key)
+        if not isinstance(raw, list):
+            return []
+        out: list[str] = []
+        for item in raw:
+            host = str(item or "").strip()
+            if host:
+                out.append(host)
+        return out
+
     license_model = (
         platform_schemas.TenantLicenseOut.model_validate(license_entry)
         if license_entry
@@ -66,7 +80,28 @@ def _serialize_tenant(
         updated_at=tenant.updated_at,
         license=license_model,
         usage=usage_model,
+        public_domain=str(settings_obj.get("public_domain") or "").strip() or None,
+        custom_domain=str(settings_obj.get("custom_domain") or "").strip() or None,
+        legal_domain=str(settings_obj.get("legal_domain") or "").strip() or None,
+        public_hosts=_hosts("public_hosts"),
+        domains=_hosts("domains"),
+        legal_hosts=_hosts("legal_hosts"),
     )
+
+
+def _normalize_host_list(raw: list[str] | None) -> list[str]:
+    if raw is None:
+        return []
+    out: list[str] = []
+    for item in raw:
+        v = str(item or "").strip().lower()
+        if not v:
+            continue
+        if ":" in v:
+            v = v.split(":", 1)[0].strip()
+        if v and v not in out:
+            out.append(v)
+    return out
 
 
 def _convert_uuid(value: UUID | None) -> str | None:
@@ -166,6 +201,56 @@ async def get_platform_tenant(
 
 
 @router.post(
+    "/{tenant_id}/founder-pricing/enroll",
+    response_model=platform_schemas.PlatformFounderEnrollOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def platform_enroll_founder_pricing(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.PlatformFounderEnrollOut:
+    from backend.app.services import founder_pricing
+
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    license_entry = await tenant_service.get_tenant_license(db, str(tenant_id))
+    raw_plan = str(getattr(license_entry, "plan", None) or "").strip().lower()
+    mapped_plan = founder_pricing.license_plan_for_founder_eligibility(raw_plan)
+    if mapped_plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Founder pricing requires a Team/Business-class license plan (internal team/pro or supported legacy plan codes).",
+        )
+
+    st = dict(tenant.settings or {})
+    fp = (st.get("billing") or {}).get("founder_pricing_v1")
+    already = isinstance(fp, dict) and bool(fp.get("enrolled")) and not bool(fp.get("revoked"))
+    if already:
+        used = await founder_pricing.count_active_founder_enrollments(db)
+        return platform_schemas.PlatformFounderEnrollOut(
+            enrolled=True,
+            founder_slots_used=used,
+            founder_slots_max=founder_pricing.FOUNDER_MAX_SLOTS,
+        )
+
+    ok = await founder_pricing.try_enroll_if_slot_available(db, tenant, plan_code=mapped_plan)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot enroll: founder slots full or founder pricing was revoked for this tenant",
+        )
+    await db.commit()
+    await db.refresh(tenant)
+    used = await founder_pricing.count_active_founder_enrollments(db)
+    return platform_schemas.PlatformFounderEnrollOut(
+        enrolled=True,
+        founder_slots_used=used,
+        founder_slots_max=founder_pricing.FOUNDER_MAX_SLOTS,
+    )
+
+
+@router.post(
     "",
     response_model=platform_schemas.PlatformTenantOut,
     status_code=status.HTTP_201_CREATED,
@@ -190,6 +275,11 @@ async def create_platform_tenant(
             raise HTTPException(status_code=422, detail="Invalid slug") from exc
         if key == "slug_exists":
             raise HTTPException(status_code=409, detail="Slug already in use") from exc
+        if key == "integrity_conflict":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Tenant conflicts with an existing record (name, slug, or other unique field).",
+            ) from exc
         raise
     usage = await tenant_service.get_usage_snapshot(db, tenant.id)
 
@@ -247,6 +337,124 @@ async def update_platform_tenant_modules(
     return platform_schemas.TenantModuleSettings(**modules)
 
 
+@router.get(
+    "/{tenant_id}/module-matrix",
+    response_model=platform_schemas.TenantRoleModuleMatrix,
+    dependencies=[Depends(require_superadmin())],
+)
+async def get_platform_tenant_module_matrix(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantRoleModuleMatrix:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    return platform_schemas.TenantRoleModuleMatrix.model_validate(matrix)
+
+
+@router.patch(
+    "/{tenant_id}/module-matrix",
+    response_model=platform_schemas.TenantRoleModuleMatrix,
+    dependencies=[Depends(require_superadmin())],
+)
+async def update_platform_tenant_module_matrix(
+    tenant_id: UUID,
+    payload: platform_schemas.TenantRoleModuleMatrixPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantRoleModuleMatrix:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    else:
+        matrix = await tenant_service.update_role_module_matrix(
+            db,
+            tenant,
+            updates,  # type: ignore[arg-type]
+            actor_id=ctx.sub,
+        )
+    return platform_schemas.TenantRoleModuleMatrix.model_validate(matrix)
+
+
+@router.get(
+    "/{tenant_id}/module-overrides/users",
+    response_model=List[UserOut],
+    dependencies=[Depends(require_superadmin())],
+)
+async def list_platform_tenant_override_users(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> List[UserOut]:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    members_raw = await users_service.list_users(db, str(tenant_id))
+    return [UserOut(**entry) for entry in members_raw if entry.get("user_id")]
+
+
+@router.get(
+    "/{tenant_id}/module-overrides",
+    response_model=platform_schemas.TenantUserModuleOverrides,
+    dependencies=[Depends(require_superadmin())],
+)
+async def get_platform_tenant_user_module_overrides(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantUserModuleOverrides:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    members_raw = await users_service.list_users(db, str(tenant_id))
+    allowed_user_ids = {str(entry.get("user_id") or "").strip() for entry in members_raw}
+    allowed_user_ids.discard("")
+    overrides = tenant_service.get_user_module_overrides_snapshot(
+        tenant,
+        allowed_user_ids=allowed_user_ids,
+    )
+    return platform_schemas.TenantUserModuleOverrides(users=overrides)
+
+
+@router.patch(
+    "/{tenant_id}/module-overrides",
+    response_model=platform_schemas.TenantUserModuleOverrides,
+    dependencies=[Depends(require_superadmin())],
+)
+async def update_platform_tenant_user_module_overrides(
+    tenant_id: UUID,
+    payload: platform_schemas.TenantUserModuleOverridesPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantUserModuleOverrides:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    members_raw = await users_service.list_users(db, str(tenant_id))
+    allowed_user_ids = {str(entry.get("user_id") or "").strip() for entry in members_raw}
+    allowed_user_ids.discard("")
+    updates = payload.model_dump(exclude_unset=True).get("users", {})
+    try:
+        if not updates:
+            overrides = tenant_service.get_user_module_overrides_snapshot(
+                tenant,
+                allowed_user_ids=allowed_user_ids,
+            )
+        else:
+            overrides = await tenant_service.update_user_module_overrides(
+                db,
+                tenant,
+                updates,  # type: ignore[arg-type]
+                actor_id=ctx.sub,
+                allowed_user_ids=allowed_user_ids,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return platform_schemas.TenantUserModuleOverrides(users=overrides)
+
+
 @router.patch(
     "/{tenant_id}",
     response_model=platform_schemas.PlatformTenantOut,
@@ -269,6 +477,67 @@ async def patch_platform_tenant(
     if updates:
         tenant = await tenant_service.update_tenant(db, tenant, updates)
     return _serialize_tenant(tenant, license_entry, usage)
+
+
+@router.get(
+    "/{tenant_id}/legal-host-settings",
+    response_model=platform_schemas.TenantLegalHostSettingsOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def get_tenant_legal_host_settings(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantLegalHostSettingsOut:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    st = tenant.settings if isinstance(tenant.settings, dict) else {}
+    return platform_schemas.TenantLegalHostSettingsOut(
+        public_domain=str(st.get("public_domain") or "").strip() or None,
+        custom_domain=str(st.get("custom_domain") or "").strip() or None,
+        legal_domain=str(st.get("legal_domain") or "").strip() or None,
+        public_hosts=_normalize_host_list(st.get("public_hosts") if isinstance(st.get("public_hosts"), list) else []),
+        domains=_normalize_host_list(st.get("domains") if isinstance(st.get("domains"), list) else []),
+        legal_hosts=_normalize_host_list(st.get("legal_hosts") if isinstance(st.get("legal_hosts"), list) else []),
+    )
+
+
+@router.patch(
+    "/{tenant_id}/legal-host-settings",
+    response_model=platform_schemas.TenantLegalHostSettingsOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def patch_tenant_legal_host_settings(
+    tenant_id: UUID,
+    payload: platform_schemas.TenantLegalHostSettingsPatch,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantLegalHostSettingsOut:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    st = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
+    updates = payload.model_dump(exclude_unset=True)
+    if "public_domain" in updates:
+        st["public_domain"] = (str(updates["public_domain"] or "").strip().lower() or None)
+    if "custom_domain" in updates:
+        st["custom_domain"] = (str(updates["custom_domain"] or "").strip().lower() or None)
+    if "legal_domain" in updates:
+        st["legal_domain"] = (str(updates["legal_domain"] or "").strip().lower() or None)
+    if "public_hosts" in updates:
+        st["public_hosts"] = _normalize_host_list(updates["public_hosts"])
+    if "domains" in updates:
+        st["domains"] = _normalize_host_list(updates["domains"])
+    if "legal_hosts" in updates:
+        st["legal_hosts"] = _normalize_host_list(updates["legal_hosts"])
+    tenant = await tenant_service.update_tenant(db, tenant, {"settings": st})
+    return platform_schemas.TenantLegalHostSettingsOut(
+        public_domain=str(st.get("public_domain") or "").strip() or None,
+        custom_domain=str(st.get("custom_domain") or "").strip() or None,
+        legal_domain=str(st.get("legal_domain") or "").strip() or None,
+        public_hosts=_normalize_host_list(st.get("public_hosts") if isinstance(st.get("public_hosts"), list) else []),
+        domains=_normalize_host_list(st.get("domains") if isinstance(st.get("domains"), list) else []),
+        legal_hosts=_normalize_host_list(st.get("legal_hosts") if isinstance(st.get("legal_hosts"), list) else []),
+    )
 
 
 @router.post(
@@ -489,7 +758,16 @@ async def update_license(
             tenant_id=str(tenant_id),
             payload=changes,
             actor_id=ctx.sub,
+            audit_source="platform",
         )
+        await sync_subscription_license_addon_v1(
+            db,
+            tenant_id=str(tenant_id),
+            license_row=license_entry,
+        )
+        tenant_data = await tenant_service.get_tenant_with_details(db, str(tenant_id))
+        if tenant_data:
+            tenant, license_entry, usage = tenant_data
     return _serialize_tenant(tenant, license_entry, usage)
 
 

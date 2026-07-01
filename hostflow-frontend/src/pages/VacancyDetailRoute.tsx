@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listCompanies } from '../api/client'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import VacancyDetail from './VacancyDetail'
 
 export default function VacancyDetailRoute() {
@@ -26,5 +27,11 @@ export default function VacancyDetailRoute() {
     return () => { cancelled = true }
   }, [])
 
-  return <VacancyDetail item={undefined as any} onBack={() => navigate('/app/vacancies')} companiesMap={companiesMap} />
+  return (
+    <VacancyDetail
+      item={undefined as any}
+      onBack={() => navigate(CRM_APP_PATHS.vacancies)}
+      companiesMap={companiesMap}
+    />
+  )
 }

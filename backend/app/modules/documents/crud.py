@@ -35,7 +35,14 @@ from backend.app.services.ruleset_versioning import (
     compute_ruleset_signature,
     normalize_ruleset_payload,
 )
+from backend.app.services.own_company_doc_scope import documents_scope_clause
+from backend.app.services.tenant_quota import (
+    ensure_tenant_document_quota,
+    ensure_tenant_storage_bytes_fits,
+    sum_file_entries_bytes,
+)
 from backend.app.models import (
+    Candidate,
     Document,
     DocumentCheck,
     DocumentRulesetDiff,
@@ -74,6 +81,43 @@ def _clone_dict(data: Mapping[str, Any] | None) -> Dict[str, Any]:
 
 def _tid(value: Any) -> str:
     return str(value)
+
+
+def _norm_ruleset_oc(own_company_id: Optional[str]) -> Optional[str]:
+    s = str(own_company_id or "").strip()
+    return s or None
+
+
+def ruleset_version_scope_where(own_company_id: Optional[str]):
+    """Match one ruleset chain: global (NULL) or a specific own_company_id."""
+    oc = _norm_ruleset_oc(own_company_id)
+    if oc:
+        return DocumentRulesetVersion.own_company_id == oc
+    return DocumentRulesetVersion.own_company_id.is_(None)
+
+
+def ruleset_version_same_scope_clause(version_row: DocumentRulesetVersion):
+    oc = _norm_ruleset_oc(getattr(version_row, "own_company_id", None))
+    if oc is None:
+        return DocumentRulesetVersion.own_company_id.is_(None)
+    return DocumentRulesetVersion.own_company_id == oc
+
+
+def ruleset_version_visible_for_scope(
+    record: DocumentRulesetVersion, active_oc: Optional[str]
+) -> bool:
+    row_oc = _norm_ruleset_oc(getattr(record, "own_company_id", None))
+    if row_oc is None:
+        return True
+    return _norm_ruleset_oc(active_oc) == row_oc
+
+
+def ruleset_versions_share_scope(
+    a: DocumentRulesetVersion, b: DocumentRulesetVersion
+) -> bool:
+    return _norm_ruleset_oc(getattr(a, "own_company_id", None)) == _norm_ruleset_oc(
+        getattr(b, "own_company_id", None)
+    )
 
 
 def _as_date(value: Any) -> Optional[date]:
@@ -270,6 +314,7 @@ async def list_document_types(
 async def create_document(session: AsyncSession, payload: Dict[str, Any]) -> Document:
     tenant_id = _tid(payload["tenant_id"])
     candidate_id = _tid(payload["candidate_id"])
+    await ensure_tenant_document_quota(session, tenant_id)
 
     doc_type = normalize_doc_type(
         payload.get("doc_type")
@@ -288,7 +333,7 @@ async def create_document(session: AsyncSession, payload: Dict[str, Any]) -> Doc
 
     custom_name = (payload.get("custom_name") or "").strip() or None
     if defaults.requires_custom_name and not custom_name:
-        raise ValueError("custom_name is required for doc_type 'other'")
+        raise ValueError(f"custom_name is required for doc_type '{doc_type}'")
 
     number = (payload.get("number") or "").strip() or None
     issue_date: Optional[date] = payload.get("issue_date") or payload.get("issued_at")
@@ -303,6 +348,12 @@ async def create_document(session: AsyncSession, payload: Dict[str, Any]) -> Doc
     await ensure_document_type(session, tenant_id, doc_type)
 
     files_payload = _normalize_files(payload.get("files"))
+    await ensure_tenant_storage_bytes_fits(
+        session,
+        tenant_id,
+        previous_doc_attribution_bytes=0,
+        next_doc_attribution_bytes=sum_file_entries_bytes(files_payload),
+    )
 
     meta_payload: Dict[str, Any] = {}
     if isinstance(payload.get("meta"), dict):
@@ -347,9 +398,13 @@ async def create_document(session: AsyncSession, payload: Dict[str, Any]) -> Doc
         workflow_payload = dict(workflow_payload)
         workflow_payload["auto_status"] = status_final.value
 
+    own_co_raw = payload.get("own_company_id")
+    own_co = str(own_co_raw).strip() if own_co_raw else None
+
     doc = Document(
         tenant_id=tenant_id,
         candidate_id=candidate_id,
+        own_company_id=own_co or None,
         company_id=_tid(payload.get("company_id")) if payload.get("company_id") else None,
         owner_type="candidate",
         owner_id=_tid(payload.get("owner_id") or candidate_id),
@@ -480,6 +535,14 @@ async def update_document(
 
     if "files" in payload and payload["files"] is not None:
         files = _normalize_files(payload["files"])
+        prev_b = sum_file_entries_bytes(doc.files)
+        next_b = sum_file_entries_bytes(files)
+        await ensure_tenant_storage_bytes_fits(
+            session,
+            tenant_id,
+            previous_doc_attribution_bytes=prev_b,
+            next_doc_attribution_bytes=next_b,
+        )
         doc.files = files or None
         changes["files"] = doc.files
 
@@ -591,16 +654,24 @@ async def list_candidate_documents(
     include_deleted: bool = False,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
+    allowed_tenant_ids: Optional[Iterable[str]] = None,
+    active_own_company_id: Optional[str] = None,
 ) -> List[Document]:
-    tenant_id_s = _tid(tenant_id)
+    tenant_ids = {_tid(tenant_id)}
+    if allowed_tenant_ids:
+        tenant_ids.update({_tid(tid) for tid in allowed_tenant_ids if tid})
     stmt = (
         select(Document)
         .where(
-            Document.tenant_id == tenant_id_s,
+            Document.tenant_id.in_(tenant_ids),
             Document.candidate_id == _tid(candidate_id),
         )
         .order_by(Document.created_at.desc())
     )
+    if active_own_company_id:
+        scope = documents_scope_clause(active_own_company_id)
+        if scope is not None:
+            stmt = stmt.join(Candidate, Candidate.id == Document.candidate_id).where(scope)
     if not include_deleted:
         stmt = stmt.where(Document.deleted_at.is_(None))
     if status:
@@ -701,11 +772,16 @@ async def get_last_document_checks_map(
 
 
 async def get_latest_ruleset_version(
-    session: AsyncSession, tenant_id: str, *, include_inactive: bool = False
+    session: AsyncSession,
+    tenant_id: str,
+    *,
+    own_company_id: Optional[str] = None,
+    include_inactive: bool = False,
 ) -> Optional[DocumentRulesetVersion]:
     tenant_id_s = _tid(tenant_id)
     stmt = select(DocumentRulesetVersion).where(
-        DocumentRulesetVersion.tenant_id == tenant_id_s
+        DocumentRulesetVersion.tenant_id == tenant_id_s,
+        ruleset_version_scope_where(own_company_id),
     )
     if not include_inactive:
         stmt = stmt.where(DocumentRulesetVersion.is_active.is_(True))
@@ -713,17 +789,71 @@ async def get_latest_ruleset_version(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def ruleset_write_scope_own_company_id(
+    session: AsyncSession, tenant_id: str, own_company_id: Optional[str]
+) -> Optional[str]:
+    """
+    Mutations that should stay compatible with legacy single-chain tenants: until an
+    explicit scoped version row exists for ``own_company_id``, append to the global
+    (NULL) chain. Forked chains start with ``POST /ruleset/versions`` (or similar).
+    """
+    oc = _norm_ruleset_oc(own_company_id)
+    if not oc:
+        return None
+    stmt = (
+        select(DocumentRulesetVersion.id)
+        .where(
+            DocumentRulesetVersion.tenant_id == _tid(tenant_id),
+            DocumentRulesetVersion.own_company_id == oc,
+        )
+        .limit(1)
+    )
+    if (await session.execute(stmt)).scalar_one_or_none():
+        return oc
+    return None
+
+
+async def get_effective_latest_ruleset_version(
+    session: AsyncSession,
+    tenant_id: str,
+    *,
+    own_company_id: Optional[str] = None,
+    include_inactive: bool = False,
+) -> Optional[DocumentRulesetVersion]:
+    """
+    Prefer latest ruleset for ``own_company_id``; fall back to tenant-global (NULL) chain.
+    """
+    oc = _norm_ruleset_oc(own_company_id)
+    if oc:
+        row = await get_latest_ruleset_version(
+            session,
+            tenant_id,
+            own_company_id=oc,
+            include_inactive=include_inactive,
+        )
+        if row:
+            return row
+    return await get_latest_ruleset_version(
+        session,
+        tenant_id,
+        own_company_id=None,
+        include_inactive=include_inactive,
+    )
+
+
 async def list_ruleset_versions(
     session: AsyncSession,
     tenant_id: str,
     *,
+    own_company_id: Optional[str] = None,
     status: Optional[str] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
 ) -> List[DocumentRulesetVersion]:
     tenant_id_s = _tid(tenant_id)
     stmt = select(DocumentRulesetVersion).where(
-        DocumentRulesetVersion.tenant_id == tenant_id_s
+        DocumentRulesetVersion.tenant_id == tenant_id_s,
+        ruleset_version_scope_where(own_company_id),
     )
     if status == "active":
         stmt = stmt.where(DocumentRulesetVersion.is_active.is_(True))
@@ -747,11 +877,16 @@ async def create_ruleset_version(
     activate: bool = True,
     origin_version_id: Optional[str] = None,
     rollback_comment: Optional[str] = None,
+    own_company_id: Optional[str] = None,
 ) -> DocumentRulesetVersion:
     tenant_id_s = _tid(tenant_id)
+    scope_oc = _norm_ruleset_oc(own_company_id)
     last_version_stmt = (
         select(DocumentRulesetVersion)
-        .where(DocumentRulesetVersion.tenant_id == tenant_id_s)
+        .where(
+            DocumentRulesetVersion.tenant_id == tenant_id_s,
+            ruleset_version_scope_where(scope_oc),
+        )
         .order_by(DocumentRulesetVersion.version.desc())
         .limit(1)
     )
@@ -760,11 +895,13 @@ async def create_ruleset_version(
     new_version = current_max + 1
 
     if activate:
+        scope_filter = ruleset_version_scope_where(scope_oc)
         await session.execute(
             update(DocumentRulesetVersion)
             .where(
                 DocumentRulesetVersion.tenant_id == tenant_id_s,
                 DocumentRulesetVersion.is_active.is_(True),
+                scope_filter,
             )
             .values(is_active=False)
         )
@@ -778,6 +915,7 @@ async def create_ruleset_version(
     )
     record = DocumentRulesetVersion(
         tenant_id=tenant_id_s,
+        own_company_id=scope_oc,
         version=new_version,
         json_data=payload,
         comment=comment,
@@ -812,8 +950,11 @@ async def ensure_ruleset_seed(
     *,
     created_by: Optional[str] = None,
     comment: Optional[str] = None,
+    own_company_id: Optional[str] = None,
 ) -> DocumentRulesetVersion:
-    existing = await get_latest_ruleset_version(session, tenant_id)
+    existing = await get_effective_latest_ruleset_version(
+        session, tenant_id, own_company_id=own_company_id
+    )
     if existing:
         return existing
     return await create_ruleset_version(
@@ -823,6 +964,7 @@ async def ensure_ruleset_seed(
         created_by=created_by,
         comment=comment or "Seed ruleset",
         activate=True,
+        own_company_id=None,
     )
 
 
@@ -842,7 +984,11 @@ async def get_ruleset_version_by_id(
 
 
 async def get_previous_ruleset_version(
-    session: AsyncSession, tenant_id: str, version: int
+    session: AsyncSession,
+    tenant_id: str,
+    version: int,
+    *,
+    own_company_id: Optional[str] = None,
 ) -> Optional[DocumentRulesetVersion]:
     tenant_id_s = _tid(tenant_id)
     stmt = (
@@ -850,6 +996,7 @@ async def get_previous_ruleset_version(
         .where(
             DocumentRulesetVersion.tenant_id == tenant_id_s,
             DocumentRulesetVersion.version < int(version),
+            ruleset_version_scope_where(own_company_id),
         )
         .order_by(DocumentRulesetVersion.version.desc())
         .limit(1)
@@ -872,10 +1019,12 @@ async def activate_ruleset_version(
     target = (await session.execute(stmt)).scalar_one_or_none()
     if not target:
         return None
+    scope_filter = ruleset_version_same_scope_clause(target)
     await session.execute(
         update(DocumentRulesetVersion)
         .where(
             DocumentRulesetVersion.tenant_id == tenant_id_s,
+            scope_filter,
         )
         .values(is_active=False)
     )
@@ -940,14 +1089,23 @@ async def list_ruleset_usage(
     session: AsyncSession,
     tenant_id: str,
     *,
+    own_company_id: Optional[str] = None,
     used_in: Optional[str] = None,
     since: Optional[datetime] = None,
     until: Optional[datetime] = None,
     limit: Optional[int] = None,
 ) -> List[DocumentRulesetUsage]:
     tenant_id_s = _tid(tenant_id)
-    stmt = select(DocumentRulesetUsage).where(
-        DocumentRulesetUsage.tenant_id == tenant_id_s
+    stmt = (
+        select(DocumentRulesetUsage)
+        .join(
+            DocumentRulesetVersion,
+            DocumentRulesetVersion.id == DocumentRulesetUsage.ruleset_version_id,
+        )
+        .where(
+            DocumentRulesetUsage.tenant_id == tenant_id_s,
+            ruleset_version_scope_where(own_company_id),
+        )
     )
     if used_in:
         stmt = stmt.where(DocumentRulesetUsage.used_in == used_in)

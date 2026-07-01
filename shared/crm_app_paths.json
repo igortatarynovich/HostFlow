@@ -1,0 +1,290 @@
+{
+  "$schema": "./crm_app_paths.schema.json",
+  "schema_version": 1,
+  "paths": {
+    "appShellPrefix": "/app",
+    "overview": "/app/overview",
+    "analytics": "/app/analytics",
+    "analyticsLeadConversionFunnel": "/app/analytics/lead-conversion",
+    "work": "/app/work",
+    "onboarding": "/app/onboarding/",
+    "onboardingCompany": "/app/onboarding/company",
+    "onboardingGettingStarted": "/app/onboarding/getting-started",
+    "onboardingWizard": "/app/onboarding/wizard",
+    "clientsDirectory": "/app/clients/directory",
+    "agencyClients": "/app/clients",
+    "clientsLinkBase": "/app/clients/link",
+    "hr": "/app/hr",
+    "hrInbox": "/app/hr/inbox",
+    "hrTasks": "/app/hr/tasks",
+    "hrCompliance": "/app/hr/compliance",
+    "hrDocuments": "/app/hr/documents",
+    "hrDocumentsMissing": "/app/hr/documents/missing",
+    "hrDocumentsExpiring": "/app/hr/documents/expiring",
+    "hrDocumentsVerification": "/app/hr/documents/verification",
+    "hrZusWorkspace": "/app/hr/zus-workspace",
+    "hrHandoffs": "/app/hr/handoffs",
+    "hrEmployees": "/app/hr/employees",
+    "candidates": "/app/candidates",
+    "candidatesNoNextActionPage": "/app/candidates/no-next-action",
+    "candidateNew": "/app/candidates/new",
+    "pipeline": "/app/pipeline",
+    "vacancies": "/app/vacancies",
+    "vacancyNew": "/app/vacancies/new",
+    "leads": "/app/leads",
+    "leadsDistribution": "/app/leads/distribution",
+    "leadsDistributionRules": "/app/leads/distribution/rules",
+    "services": "/app/services",
+    "invoices": "/app/invoices",
+    "invoiceNew": "/app/invoices/new",
+    "orders": "/app/orders",
+    "documents": "/app/documents",
+    "procesowani": "/app/procesowani",
+    "tasks": "/app/work/tasks",
+    "workCalendar": "/app/work/calendar",
+    "automations": "/app/automations",
+    "automationAreaPrefix": "/app/automation",
+    "automationRules": "/app/automation-rules",
+    "automationLog": "/app/automation-log",
+    "inbox": "/app/inbox",
+    "inboxMessagesScoped": "/app/inbox?channel=messages",
+    "inboxEmailScoped": "/app/inbox?channel=email",
+    "inboxThreadsBase": "/app/inbox/threads",
+    "calendar": "/app/calendar",
+    "messages": "/app/messages",
+    "email": "/app/email",
+    "fleet": "/app/fleet",
+    "fleetVehicles": "/app/fleet/vehicles",
+    "fleetTrailers": "/app/fleet/trailers",
+    "fleetDrivers": "/app/fleet/drivers",
+    "fleetCounterparties": "/app/fleet/counterparties",
+    "fleetAssignments": "/app/fleet/assignments",
+    "fleetOperatingLines": "/app/fleet/operating-lines",
+    "fleetHrBridge": "/app/fleet/hr-bridge",
+    "fleetRotation": "/app/fleet/rotation",
+    "fleetCalendar": "/app/fleet/calendar",
+    "fleetTelematics": "/app/fleet/telematics",
+    "fleetTachograph": "/app/fleet/tachograph",
+    "fleetViolations": "/app/fleet/violations",
+    "fleetPayroll": "/app/fleet/payroll",
+    "fleetReports": "/app/fleet/reports",
+    "fleetReconciliation": "/app/fleet/reconciliation",
+    "fleetSettings": "/app/fleet/settings",
+    "setupCommunications": "/app/setup/communications",
+    "slaIncidents": "/app/sla-incidents",
+    "notificationAlerts": "/app/notifications/alerts",
+    "communicationsCommandAudit": "/app/communications/command-audit",
+    "communicationsThreadsBase": "/app/communications/threads",
+    "communicationsLegacyHub": "/app/communications",
+    "profile": "/app/profile",
+    "myCompany": "/app/my-company",
+    "myAvailability": "/app/my-availability",
+    "teamAvailability": "/app/team-availability",
+    "timeOff": "/app/time-off",
+    "clientNew": "/app/clients/new",
+    "companiesOperatingBilling": "/app/my-company?section=billing",
+    "settings": "/app/settings",
+    "settingsUsers": "/app/settings/users",
+    "settingsBilling": "/app/settings/billing",
+    "settingsBillingPlan": "/app/settings/billing/plan",
+    "settingsLegal": "/app/settings/legal",
+    "settingsCompanyAccess": "/app/settings/company-access",
+    "settingsFunnels": "/app/settings/funnels",
+    "settingsEmail": "/app/settings/email",
+    "settingsTenantLinks": "/app/settings/tenant-links",
+    "settingsIntegrations": "/app/settings/integrations",
+    "settingsIntegrationsMeta": "/app/settings/integrations/meta",
+    "settingsIntegrationsGoogle": "/app/settings/integrations/google",
+    "settingsIntegrationsMessengerFacebook": "/app/settings/integrations/messenger/messenger",
+    "settingsIntegrationsMessengerInstagram": "/app/settings/integrations/messenger/instagram",
+    "settingsIntegrationsMessengerTelegram": "/app/settings/integrations/messenger/telegram",
+    "settingsIntegrationsMessengerViber": "/app/settings/integrations/messenger/viber",
+    "settingsIntegrationsMessengerWhatsapp": "/app/settings/integrations/messenger/whatsapp",
+    "settingsIntegrationsWebhook": "/app/settings/integrations/webhook",
+    "settingsAudit": "/app/settings/audit",
+    "settingsCommunications": "/app/settings/communications",
+    "settingsCommunicationsMessengers": "/app/settings/communications/messengers",
+    "settingsCommunicationsQueue": "/app/settings/communications/queue",
+    "settingsCommunicationsSla": "/app/settings/communications/sla",
+    "settingsTeam": "/app/settings/team",
+    "settingsRiskIntel": "/app/settings/risk-intel",
+    "settingsHiringPipelineGates": "/app/settings/hiring-pipeline-gates",
+    "settingsTransferPolicy": "/app/settings/transfer-policy",
+    "settingsRuleset": "/app/settings/ruleset",
+    "settingsDocs": "/app/settings/docs",
+    "settingsMergeTemplates": "/app/settings/document-merge-templates",
+    "settingsTenants": "/app/settings/tenants",
+    "settingsLeads": "/app/settings/leads",
+    "settingsMessageTemplates": "/app/settings/message-templates",
+    "settingsLeadForms": "/app/settings/lead-forms",
+    "settingsTtvReport": "/app/settings/ttv-report",
+    "settingsCandidateProfiles": "/app/settings/candidate-profiles",
+    "settingsCustomFields": "/app/settings/custom-fields",
+    "companiesLegacy": "/app/companies",
+    "doProcesowaniaLegacy": "/app/do-procesowania",
+    "plannerLegacy": "/app/planner",
+    "remindersLegacy": "/app/reminders",
+    "activitiesLegacy": "/app/activities"
+  },
+  "path_comments": {
+    "inboxMessagesScoped": "Inbox with messages channel selected (legacy top-level /app/messages redirects here).",
+    "messages": "Legacy: top-level /app/messages — redirects into Inbox with channel=messages.",
+    "communicationsLegacyHub": "Legacy aggregate URL kept for redirects/bookmarks.",
+    "settingsLeads": "Legacy aliased Meta / lead-source admin (canonical: settingsIntegrationsMeta).",
+    "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
+    "plannerLegacy": "Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity).",
+    "settingsIntegrationsMessengerFacebook": "Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”).",
+    "hrInbox": "Internal HR inbox (handoffs); uses /api/v1/hr/* only.",
+    "hrTasks": "HR lane reminder tasks; uses /api/v1/hr/tasks.",
+    "hrCompliance": "HR compliance document queues; uses /api/v1/hr/documents/*.",
+    "hrZusWorkspace": "ZUS operational workspace; uses /api/v1/workforce/zus-workspace/*.",
+    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell."
+  },
+  "drilldown_hrefs": {
+    "vacanciesOpen": "/app/vacancies?status=open",
+    "ordersOpen": "/app/orders?status=open",
+    "invoicesOverdueUnpaid": "/app/invoices?queue=overdue_unpaid",
+    "tasksOverdueReminders": "/app/work/tasks?tab=tasks&t_status=active&t_due_bucket=overdue",
+    "tasksLeadsSlaNudges": "/app/work/tasks?tab=tasks&t_status=active&t_entity=lead",
+    "tasksCandidateOverdueNextAction": "/app/work/tasks?tab=tasks&t_status=active&t_entity=candidate",
+    "leadsNeedsRouting": "/app/leads?status=needs_routing",
+    "leadsFailed": "/app/leads?status=failed",
+    "leadsProcessedNoNextAction": "/app/leads?status=processed&next_action=no_next_action",
+    "leadsProcessedStuck": "/app/leads?status=processed&next_action=stuck",
+    "candidatesDraftIntakeDebug": "/app/candidates?debug=1",
+    "candidatesQueueNoNextAction": "/app/candidates?queue=no_next_action",
+    "candidatesStageEmploymentPending": "/app/candidates?qv=ready_for_handoff"
+  },
+  "drilldown_comments": {
+    "candidatesQueueNoNextAction": "Main candidates list with no-next-action queue (see CandidatesListGate).",
+    "candidatesStageEmploymentPending": "Candidates list — ready for handoff quick view (recruitment queue before HR)."
+  },
+  "python_only_paths": {
+    "settingsBillingCheckoutSuccess": "/app/settings/billing?checkout=success",
+    "settingsBillingCheckoutCancel": "/app/settings/billing?checkout=cancel"
+  },
+  "python_exports": {
+    "constants": [
+      {
+        "name": "APP_PREFIX",
+        "literal": "/app"
+      },
+      {
+        "name": "LEADS",
+        "path_key": "leads"
+      },
+      {
+        "name": "TASKS",
+        "path_key": "tasks"
+      },
+      {
+        "name": "CANDIDATES",
+        "path_key": "candidates"
+      },
+      {
+        "name": "CANDIDATES_NO_NEXT_ACTION_PAGE",
+        "path_key": "candidatesNoNextActionPage"
+      },
+      {
+        "name": "CLIENTS",
+        "path_key": "agencyClients"
+      },
+      {
+        "name": "VACANCIES",
+        "path_key": "vacancies"
+      },
+      {
+        "name": "SETTINGS_BILLING",
+        "path_key": "settingsBilling"
+      },
+      {
+        "name": "SETTINGS_BILLING_CHECKOUT_SUCCESS",
+        "path_key": "settingsBillingCheckoutSuccess"
+      },
+      {
+        "name": "SETTINGS_BILLING_CHECKOUT_CANCEL",
+        "path_key": "settingsBillingCheckoutCancel"
+      },
+      {
+        "name": "SETTINGS_INTEGRATIONS",
+        "path_key": "settingsIntegrations"
+      },
+      {
+        "name": "SETTINGS_EMAIL",
+        "path_key": "settingsEmail"
+      },
+      {
+        "name": "SETTINGS_INTEGRATIONS_META",
+        "path_key": "settingsIntegrationsMeta"
+      },
+      {
+        "name": "OVERVIEW",
+        "path_key": "overview"
+      },
+      {
+        "name": "MESSAGES_LEGACY",
+        "path_key": "messages"
+      },
+      {
+        "name": "EMAIL_LEGACY",
+        "path_key": "email"
+      },
+      {
+        "name": "INBOX_MESSAGES_SCOPED",
+        "path_key": "inboxMessagesScoped"
+      },
+      {
+        "name": "INBOX_EMAIL_SCOPED",
+        "path_key": "inboxEmailScoped"
+      },
+      {
+        "name": "INBOX_THREADS_BASE",
+        "path_key": "inboxThreadsBase"
+      }
+    ],
+    "functions": [
+      {
+        "name": "spa_candidate",
+        "params": [
+          "candidate_id: str"
+        ],
+        "body": "return f\"{CANDIDATES}/{candidate_id}\""
+      },
+      {
+        "name": "spa_candidate_documents",
+        "params": [
+          "candidate_id: str"
+        ],
+        "body": "return f\"{CANDIDATES}/{candidate_id}/documents\""
+      },
+      {
+        "name": "spa_client",
+        "params": [
+          "company_id: str"
+        ],
+        "body": "return f\"{CLIENTS}/{company_id}\""
+      },
+      {
+        "name": "spa_lead",
+        "params": [
+          "lead_id: str"
+        ],
+        "body": "return f\"{LEADS}/{lead_id}\""
+      },
+      {
+        "name": "spa_vacancy",
+        "params": [
+          "vacancy_id: str"
+        ],
+        "body": "return f\"{VACANCIES}/{vacancy_id}\""
+      },
+      {
+        "name": "spa_inbox_thread",
+        "params": [
+          "thread_id: str"
+        ],
+        "body": "return f\"{INBOX_THREADS_BASE}/{thread_id}\""
+      }
+    ]
+  }
+}

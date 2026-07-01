@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.public.intake import _load_candidate_by_token  # type: ignore
+from backend.app.api.public.intake import _load_candidate_by_token, _save_public_document_upload  # type: ignore
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.db.session import async_session_maker
+from backend.app.models.candidate import Candidate
+from backend.app.models.scan import ScanSession
 from backend.app.schemas.scanner import (
     ScanSessionCreatePublic,
     ScanSessionSchema,
@@ -24,6 +28,10 @@ from backend.app.services.scanner import (
     upload_scan_page,
 )
 from backend.app.services.scanner_presets import list_presets
+from backend.app.services.candidate_telegram_notifications import (
+    send_candidate_documents_progress_telegram,
+    sync_candidate_ready_for_handoff_gate,
+)
 
 router = APIRouter(prefix="/public/scan-sessions", tags=["public-scan"])
 meta_router = APIRouter(prefix="/public/scan", tags=["public-scan"])
@@ -171,3 +179,90 @@ async def process_public_scan_session(
         await db.commit()
         return ScanSessionSchema(**serialize_scan_session(session))
 
+
+@router.post("/{session_id}/pdf", response_model=ScanSessionSchema)
+async def upload_public_scan_pdf(
+    session_id: str,
+    file: UploadFile = File(...),
+    meta: str | None = Form(None),
+) -> ScanSessionSchema:
+    async with async_session_maker() as db:
+        from sqlalchemy import text
+        result = await db.execute(
+            text("SELECT tenant_id FROM scan_sessions WHERE id = :session_id"),
+            {"session_id": session_id},
+        )
+        row = result.first()
+        if not row:
+            raise HTTPException(status_code=404, detail="scan_session_not_found")
+        tenant_id = UUID(row[0])
+        try:
+            await db.execute(
+                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+                {"tenant_id": str(tenant_id)},
+            )
+        except Exception:
+            pass
+
+        session = await get_scan_session_by_id(db, session_id=session_id, for_update=True)
+        if session.attached_at:
+            raise HTTPException(status_code=409, detail="session_already_attached")
+        candidate = await db.scalar(
+            select(Candidate)
+            .where(
+                Candidate.id == session.candidate_id,
+                Candidate.tenant_id == str(tenant_id),
+                Candidate.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+        if not candidate:
+            raise HTTPException(status_code=404, detail="candidate_not_found")
+
+        meta_payload = {}
+        if meta:
+            try:
+                parsed = json.loads(meta)
+                if isinstance(parsed, dict):
+                    meta_payload = parsed
+            except Exception:
+                raise HTTPException(status_code=422, detail="invalid_meta_json")
+
+        doc_type_hint = str(meta_payload.get("doc_type") or session.document_type or "").strip() or "other"
+        user_comment_raw = meta_payload.get("user_comment")
+        user_comment = str(user_comment_raw).strip() if isinstance(user_comment_raw, str) else None
+
+        await _save_public_document_upload(
+            db,
+            candidate,
+            doc_type_hint,
+            upload_file=file,
+            storage_key=None,
+            user_comment=user_comment,
+        )
+        session.attached_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(session)
+
+        try:
+            await send_candidate_documents_progress_telegram(
+                db,
+                tenant_id=str(tenant_id),
+                candidate=candidate,
+                source_doc_type=doc_type_hint,
+            )
+        except Exception:
+            pass
+        try:
+            promoted = await sync_candidate_ready_for_handoff_gate(
+                db,
+                tenant_id=str(tenant_id),
+                candidate=candidate,
+                source="public_scan_upload",
+            )
+            if promoted:
+                await db.commit()
+        except Exception:
+            pass
+
+        return ScanSessionSchema(**serialize_scan_session(session))

@@ -10,6 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from backend.app.models.reminder import Reminder, ReminderStatus
+from backend.app.services.candidate_workforce_lock import (
+    SKIP_SOURCE_REMINDER_EXPIRY,
+    is_candidate_locked_by_workforce,
+    observe_skipped_system_candidate_mutation_due_to_workforce_lock,
+)
 from backend.app.services.pipeline_sync import sync_candidate_links
 from backend.app.services.document_catalog import get_doc_type_defaults
 from backend.app.services.document_workflow import iter_workflow_step_deadlines
@@ -31,6 +36,18 @@ EXPIRY_LOOKAHEAD_DAYS = 60
 
 REMINDER_TYPE_DOCUMENT_EXPIRY = "document_expiry"
 REMINDER_TYPE_DOCUMENT_WORKFLOW_STEP = "document_workflow_step"
+_DOCUMENT_WORKFLOW_TERMINAL_STATUSES = frozenset(
+    {
+        "approved",
+        "completed",
+        "delivered",
+        "received",
+        "verified",
+        "issued",
+        "registered",
+        "active",
+    }
+)
 
 
 def _now_utc() -> datetime:
@@ -152,13 +169,13 @@ async def cancel_entity_reminders(
             Reminder.tenant_id == tenant_id,
             Reminder.entity_type == entity_type,
             Reminder.entity_id == entity_id,
-            Reminder.status != ReminderStatus.cancelled,
+            Reminder.status.notin_([ReminderStatus.cancelled, ReminderStatus.done]),
         )
     )
     now = _now_utc()
     for reminder in rows.scalars():
-        reminder.status = ReminderStatus.cancelled
-        reminder.cancelled_at = now
+        reminder.status = ReminderStatus.done
+        reminder.completed_at = now
 
 
 async def cancel_document_step_reminders(
@@ -171,13 +188,13 @@ async def cancel_document_step_reminders(
             Reminder.tenant_id == tenant_id,
             Reminder.entity_type == "document_step",
             Reminder.entity_id.like(f"{document_id}:%"),
-            Reminder.status != ReminderStatus.cancelled,
+            Reminder.status.notin_([ReminderStatus.cancelled, ReminderStatus.done]),
         )
     )
     now = _now_utc()
     for reminder in rows.scalars():
-        reminder.status = ReminderStatus.cancelled
-        reminder.cancelled_at = now
+        reminder.status = ReminderStatus.done
+        reminder.completed_at = now
 
 
 async def schedule_document_expiry_reminders(
@@ -206,9 +223,9 @@ async def schedule_document_expiry_reminders(
         expires_at = getattr(document, "expires_at", None)
     if expires_at is None:
         for reminder in existing.values():
-            if reminder.status != ReminderStatus.cancelled:
-                reminder.status = ReminderStatus.cancelled
-                reminder.cancelled_at = _now_utc()
+            if reminder.status not in (ReminderStatus.cancelled, ReminderStatus.done):
+                reminder.status = ReminderStatus.done
+                reminder.completed_at = _now_utc()
         await _schedule_workflow_step_reminders(db, tenant_id, document)
         return
 
@@ -318,9 +335,9 @@ async def schedule_document_expiry_reminders(
             )
 
     for reminder in existing.values():
-        if reminder.status != ReminderStatus.cancelled:
-            reminder.status = ReminderStatus.cancelled
-            reminder.cancelled_at = now
+        if reminder.status not in (ReminderStatus.cancelled, ReminderStatus.done):
+            reminder.status = ReminderStatus.done
+            reminder.completed_at = now
 
     await _schedule_workflow_step_reminders(db, tenant_id, document)
 
@@ -347,6 +364,17 @@ async def _schedule_workflow_step_reminders(
     }
 
     now = _now_utc()
+    raw_status = getattr(document, "status", None)
+    doc_status = (
+        str(getattr(raw_status, "value", raw_status) or "").strip().lower()
+    )
+    if doc_status in _DOCUMENT_WORKFLOW_TERMINAL_STATUSES:
+        for reminder in existing.values():
+            if reminder.status not in (ReminderStatus.cancelled, ReminderStatus.done):
+                reminder.status = ReminderStatus.done
+                reminder.completed_at = now
+        return
+
     doc_type = getattr(document, "type", None) or getattr(document, "doc_type", "document")
     workflow_payload = getattr(document, "workflow", {}) or {}
     steps_payload = workflow_payload.get("steps") if isinstance(workflow_payload, dict) else None
@@ -390,9 +418,9 @@ async def _schedule_workflow_step_reminders(
             )
 
     for reminder in existing.values():
-        if reminder.status != ReminderStatus.cancelled:
-            reminder.status = ReminderStatus.cancelled
-            reminder.cancelled_at = now
+        if reminder.status not in (ReminderStatus.cancelled, ReminderStatus.done):
+            reminder.status = ReminderStatus.done
+            reminder.completed_at = now
 
 
 async def run_expiry_notifications(
@@ -551,26 +579,38 @@ async def run_expiry_notifications(
         text = "\n".join(text_lines)
 
         if offset_hours == 0 and getattr(cand, "stage", None) != "docs_wait":
-            try:
-                await db.execute(
-                    update(Candidate)
-                    .where(Candidate.id == cand.id)
-                    .values(stage="docs_wait", updated_at=datetime.utcnow())
+            wf_locked = await is_candidate_locked_by_workforce(
+                db, tenant_id=str(tenant_id), candidate_id=str(cand.id)
+            )
+            if wf_locked:
+                await observe_skipped_system_candidate_mutation_due_to_workforce_lock(
+                    db,
+                    tenant_id=str(tenant_id),
+                    candidate_id=str(cand.id),
+                    source=SKIP_SOURCE_REMINDER_EXPIRY,
+                    intended_transition="Candidate.stage -> docs_wait (document expiry reminder)",
                 )
-                await db.commit()
-                cand.stage = "docs_wait"
+            else:
                 try:
-                    await sync_candidate_links(
-                        db=db,
-                        tenant_id=UUID(tenant_id),
-                        candidate_id=UUID(cand.id),
-                        candidate_stage="docs_wait",
+                    await db.execute(
+                        update(Candidate)
+                        .where(Candidate.id == cand.id)
+                        .values(stage="docs_wait", updated_at=datetime.utcnow())
                     )
+                    await db.commit()
+                    cand.stage = "docs_wait"
+                    try:
+                        await sync_candidate_links(
+                            db=db,
+                            tenant_id=UUID(tenant_id),
+                            candidate_id=UUID(cand.id),
+                            candidate_stage="docs_wait",
+                        )
+                    except Exception:
+                        # не валим процесс напоминаний из-за ошибок синка
+                        pass
                 except Exception:
-                    # не валим процесс напоминаний из-за ошибок синка
-                    pass
-            except Exception:
-                await db.rollback()
+                    await db.rollback()
 
         # кому слать: менеджеру и самому кандидату, если у него есть email
         targets = []

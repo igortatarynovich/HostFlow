@@ -12,8 +12,9 @@ Responsibilities:
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import json
+import re
 from sqlalchemy import (
     select,
     update,
@@ -31,13 +32,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.risk_intel import RiskIntelEntityShadow
 from backend.app.models.candidate_stage_history import CandidateStageHistory
+from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.models.contact_attempt import ContactAttempt
 from backend.app.models.user import User
 from backend.app.models.company import Company
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.document import Document
+from backend.app.models.tenant import TenantLink
 from backend.app.models.enums import DocumentStatus
 from backend.app.services.tenant_visibility import TenantVisibility
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
+from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 
 
 __all__ = [
@@ -47,6 +54,7 @@ __all__ = [
     "list_candidates",
     "delete_candidate",
     "count_candidates",
+    "count_candidates_insights",
     "fetch_candidates_with_labels",
     "get_candidate_with_labels",
     "count_by_stage",
@@ -243,12 +251,13 @@ async def get_candidate(
     tenant_id: str,
     candidate_id: str,
     visibility: TenantVisibility | None = None,
+    is_client_tenant: bool = False,
 ) -> Optional[Candidate]:
     """Retrieve a single candidate by ID within tenant and not deleted."""
     q = await db.execute(
         select(Candidate).where(
             Candidate.id == candidate_id,
-            _candidate_scope_clause(tenant_id, visibility),
+            _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client_tenant),
             Candidate.deleted_at.is_(None),
         )
     )
@@ -343,34 +352,175 @@ def _to_list(value: Any) -> list[str]:
     return [x for x in (i.strip() for i in items) if x]
 
 
-def _candidate_scope_clause(tenant_id: str, visibility: TenantVisibility | None):
+def _candidate_scope_clause(
+    tenant_id: str,
+    visibility: TenantVisibility | None,
+    is_client_tenant: bool = False,
+):
+    """
+    Scope: agency sees own candidates + shared + handoffs.
+    Client (company) tenant sees:
+    1) candidates with handoff to them (pending or accepted);
+    2) candidates whose vacancy belongs to client's companies (TenantLink.handoff_include_company_id when client_tenant_id = tenant, or TenantLink.client_company_id when company.tenant_id = tenant);
+    3) candidates that belong to the client tenant (Candidate.tenant_id == tenant_id).
+    For a client with own tenant to see the full list of candidates by their vacancies, at least one
+    tenant_link row must have client_tenant_id = tenant and handoff_include_company_id = company
+    (whose vacancies are "the client's"). Otherwise include_company_subq is empty and only handoff/own-tenant candidates appear.
+    """
+    # Client path: see handoff + candidates on linked vacancies/companies + own-tenant
+    # Companies whose vacancies the client sees:
+    #   (1) handoff_include_company_id when TenantLink.client_tenant_id = tenant (explicitly linked companies),
+    #   (2) ALL companies whose Company.tenant_id == tenant_id (companies owned by this client tenant).
+    include_company_subq = select(TenantLink.handoff_include_company_id).where(
+        TenantLink.client_tenant_id == tenant_id,
+        TenantLink.handoff_include_company_id.isnot(None),
+    )
+    # Previously we relied on TenantLink.client_company_id to determine "owned" companies,
+    # which meant that companies created inside the client tenant but not wired via TenantLink
+    # were silently excluded from the client's scope (and from analytics).
+    # This led to situations like Citronex seeing only part of the candidates they should see.
+    # Now we treat *all* companies whose Company.tenant_id == tenant_id as owned by this client
+    # tenant, independent of TenantLink rows.
+    client_owned_company_subq = select(Company.id).where(Company.tenant_id == tenant_id)
+    handoff_to_client = exists().where(
+        CandidateHandoff.candidate_id == Candidate.id,
+    ).where(
+        or_(
+            CandidateHandoff.client_tenant_id == tenant_id,
+            CandidateHandoff.client_company_id.in_(include_company_subq),
+        ),
+    )
+
+    if is_client_tenant:
+        vacancies_for_client = select(Vacancy.id).where(
+            or_(
+                Vacancy.company_id.in_(include_company_subq),
+                Vacancy.company_id.in_(client_owned_company_subq),
+            ),
+        )
+        candidate_for_client_vacancy = Candidate.vacancy_id.in_(vacancies_for_client)
+        company_for_client = or_(
+            Candidate.company_id.in_(include_company_subq),
+            Candidate.company_id.in_(client_owned_company_subq),
+            Candidate.company_id.is_(None),
+        )
+        candidate_in_client_tenant = Candidate.tenant_id == tenant_id
+        vacancy_ok = or_(candidate_for_client_vacancy, Candidate.vacancy_id.is_(None))
+        candidates_on_client_vacancies = and_(vacancy_ok, company_for_client)
+        return or_(handoff_to_client, candidates_on_client_vacancies, candidate_in_client_tenant)
+
+    # Agency path: own candidates + shared + linked client tenants/companies + handoffs
     clauses = [Candidate.tenant_id == tenant_id]
+
+    # 1) Кандидаты клиентских tenant'ов, связанных через TenantLink.agency_tenant_id
+    linked_client_tenants = select(TenantLink.client_tenant_id).where(
+        TenantLink.agency_tenant_id == tenant_id,
+        TenantLink.client_tenant_id.isnot(None),
+        TenantLink.status == "active",
+    )
+    clauses.append(Candidate.tenant_id.in_(linked_client_tenants))
+
+    # 2) Кандидаты по компаниям, связанным через TenantLink.client_company_id
+    linked_client_companies = select(TenantLink.client_company_id).where(
+        TenantLink.agency_tenant_id == tenant_id,
+        TenantLink.client_company_id.isnot(None),
+        TenantLink.status == "active",
+    )
+    clauses.append(Candidate.company_id.in_(linked_client_companies))
+
+    # 3) Кандидаты, для которых есть handoff от этого агентства
+    handoff_from_agency = exists().where(
+        CandidateHandoff.candidate_id == Candidate.id,
+    ).where(
+        CandidateHandoff.agency_tenant_id == tenant_id,
+    )
+    clauses.append(handoff_from_agency)
+
+    # 4) Shared visibility (TenantVisibility): добавляем к скоупу, чтобы
+    # шэринг вакансий/компаний продолжал работать как раньше.
     if visibility:
-        shared_ids = tuple(visibility.shared_vacancy_ids)
-        if shared_ids:
-            clauses.append(Candidate.vacancy_id.in_(shared_ids))
+        shared_vacancies = tuple(visibility.shared_vacancy_ids)
+        shared_companies = tuple(visibility.shared_company_ids)
+        extra_clauses = []
+        if shared_vacancies:
+            extra_clauses.append(Candidate.vacancy_id.in_(shared_vacancies))
+        if shared_companies:
+            extra_clauses.append(Candidate.company_id.in_(shared_companies))
+        if extra_clauses:
+            clauses.append(or_(*extra_clauses))
+
     return or_(*clauses)
 
 
 def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: TenantVisibility | None = None):
-    conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility)]
+    is_client = bool(filters.get("is_client_tenant"))
+    conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client)]
 
-    q = (filters.get("q") or "").strip().lower()
-    if q:
+    q_raw = (filters.get("q") or "").strip()
+    q = q_raw.lower()
+    if len(q) >= 2:
         like = f"%{q}%"
-        conds.append(
-            or_(
-                func.lower(Candidate.first_name).like(like),
-                func.lower(Candidate.last_name).like(like),
-                func.lower(Candidate.email).like(like),
-                func.lower(Candidate.phone).like(like),
-                func.lower(Candidate.short_id).like(like),
+        full_name = func.lower(
+            func.concat(
+                func.coalesce(Candidate.first_name, ""),
+                " ",
+                func.coalesce(Candidate.last_name, ""),
             )
         )
+        full_name_reverse = func.lower(
+            func.concat(
+                func.coalesce(Candidate.last_name, ""),
+                " ",
+                func.coalesce(Candidate.first_name, ""),
+            )
+        )
+        q_clauses = [
+            func.lower(func.coalesce(Candidate.first_name, "")).like(like),
+            func.lower(func.coalesce(Candidate.last_name, "")).like(like),
+            full_name.like(like),
+            full_name_reverse.like(like),
+            func.lower(func.coalesce(Candidate.email, "")).like(like),
+            func.lower(func.coalesce(Candidate.phone, "")).like(like),
+            func.lower(func.coalesce(Candidate.short_id, "")).like(like),
+        ]
+        # WhatsApp / copy-paste: spaces in phone; DB often stores compact — match ignoring whitespace.
+        q_no_ws = re.sub(r"\s+", "", q)
+        if q_no_ws:
+            phone_squash = func.regexp_replace(
+                func.lower(func.coalesce(Candidate.phone, "")),
+                r"\s",
+                "",
+                "g",
+            )
+            q_clauses.append(phone_squash.like(f"%{q_no_ws}%"))
+        # Also compare digit-only strings so "+48 123 …" matches "+48123…" in DB.
+        q_digits = "".join(ch for ch in q_raw if ch.isdigit())
+        if len(q_digits) >= 7:
+            phone_digits = func.regexp_replace(
+                func.coalesce(Candidate.phone, ""),
+                "[^0-9]",
+                "",
+                "g",
+            )
+            q_clauses.append(phone_digits.like(f"%{q_digits}%"))
+
+        conds.append(or_(*q_clauses))
 
     manager = filters.get("manager")
     if manager:
-        conds.append(Candidate.manager == manager)
+        # Phase 2.6.G-5 Stage D — while ``Candidate.manager`` is the
+        # primary filter column (UI ``?manager=<user>``), the canonical
+        # ownership column is ``Candidate.recruiter_id``. Until Stage F
+        # swaps the UI filter to ``?recruiter_id=`` we OR across both so
+        # legacy rows (where bulk-set-manager wrote only to ``manager``)
+        # and new rows (written through ``record_candidate_reassignment``
+        # which mirrors into both) are both visible to the same filter.
+        conds.append(or_(Candidate.manager == manager, Candidate.recruiter_id == manager))
+
+    if filters.get("recruiter_unassigned"):
+        term_sl = func.lower(func.coalesce(Candidate.stage, ""))
+        conds.append(Candidate.recruiter_id.is_(None))
+        conds.append(~term_sl.in_(("employed", "rejected", "declined", "probation_ok")))
 
     # --- stage filters (robust to single value, CSV, or list) ---
     stages_acc: list[str] = []
@@ -388,6 +538,15 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     if stages_norm:
         conds.append(Candidate.stage.in_(stages_norm))
 
+    # Row-level application/business state (``Candidate.status``) — separate from funnel ``Candidate.stage``.
+    cand_status_acc: list[str] = []
+    cand_status_acc += _to_list(filters.get("candidate_statuses"))
+    cand_status_acc += _to_list(filters.get("candidate_status"))
+    seen_cs: set[str] = set()
+    cand_status_norm = [s for s in cand_status_acc if s and not (s in seen_cs or seen_cs.add(s))]
+    if cand_status_norm:
+        conds.append(Candidate.status.in_(cand_status_norm))
+
     dt_from: Optional[datetime] = filters.get("dt_from")
     dt_to: Optional[datetime] = filters.get("dt_to")
     if dt_from:
@@ -400,16 +559,25 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
         conds.append(Candidate.company_id == company_id)
 
     vacancy_id = filters.get("vacancy_id")
-    if vacancy_id:
+    vacancy_ids = filters.get("vacancy_ids")
+    if vacancy_ids and isinstance(vacancy_ids, list) and len(vacancy_ids) > 0:
+        conds.append(Candidate.vacancy_id.in_(vacancy_ids))
+    elif vacancy_id:
         conds.append(Candidate.vacancy_id == vacancy_id)
 
+    # For client tenant, scope clause already restricts to handoff + linked companies/vacancies.
+    # Do not apply ACL company/vacancy filter here: client's vacancies live in agency tenant so
+    # ACL would have empty vacancy_ids and would wrongly restrict by company_id only, hiding
+    # handoff candidates whose company_id may be unset or different.
     allowed_company_ids = _to_list(filters.get("allowed_company_ids"))
     allowed_vacancy_ids = _to_list(filters.get("allowed_vacancy_ids"))
     allowed_manager_ids = _to_list(filters.get("allowed_manager_ids"))
-    if allowed_company_ids or allowed_vacancy_ids or allowed_manager_ids:
+    if not is_client and (allowed_company_ids or allowed_vacancy_ids or allowed_manager_ids):
         acl_conditions = []
         if allowed_manager_ids:
-            acl_conditions.append(Candidate.manager.in_(allowed_manager_ids))
+            acl_conditions.append(
+                or_(Candidate.manager.in_(allowed_manager_ids), Candidate.recruiter_id.in_(allowed_manager_ids)),
+            )
         if allowed_company_ids:
             acl_conditions.append(Candidate.company_id.in_(allowed_company_ids))
         if allowed_vacancy_ids:
@@ -438,6 +606,61 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
         else:
             conds.append(~ordered_exists)
 
+    # Handoff status filter (none | pending | accepted | returned)
+    # Map UI "pending" to DB status "pending_review"
+    # Match handoffs where current tenant is agency OR client (incl. handoff_include_company_id)
+    handoff_status = str(filters.get("handoff_status") or "").strip().lower()
+    if handoff_status in {"none", "pending", "accepted", "returned"}:
+        inc_subq = select(TenantLink.handoff_include_company_id).where(
+            TenantLink.client_tenant_id == tenant_id,
+            TenantLink.handoff_include_company_id.isnot(None),
+        )
+        handoff_for_tenant = (
+            exists()
+            .where(CandidateHandoff.candidate_id == Candidate.id)
+            .where(
+                or_(
+                    CandidateHandoff.agency_tenant_id == tenant_id,
+                    CandidateHandoff.client_tenant_id == tenant_id,
+                    CandidateHandoff.client_company_id.in_(inc_subq),
+                )
+            )
+        )
+        if handoff_status == "none":
+            conds.append(~handoff_for_tenant)
+        else:
+            db_status = "pending_review" if handoff_status == "pending" else handoff_status
+            conds.append(handoff_for_tenant.where(CandidateHandoff.status == db_status))
+
+    # Contact attempts filter (none | some | limit_reached for 3+)
+    contact_attempts = str(filters.get("contact_attempts") or "").strip().lower()
+    if contact_attempts in {"none", "some", "limit_reached"}:
+        attempt_count = (
+            select(func.count())
+            .select_from(ContactAttempt)
+            .where(ContactAttempt.candidate_id == Candidate.id)
+            .scalar_subquery()
+        )
+        if contact_attempts == "none":
+            conds.append(attempt_count == 0)
+        elif contact_attempts == "some":
+            conds.append(attempt_count > 0)
+        else:  # limit_reached
+            conds.append(attempt_count >= 3)
+
+    # Processor filter (accepted handoff assigned_to_user_id)
+    processor_id = filters.get("processor_id")
+    if processor_id:
+        proc_id_str = str(processor_id).strip()
+        if proc_id_str:
+            processor_handoff_exists = (
+                exists()
+                .where(CandidateHandoff.candidate_id == Candidate.id)
+                .where(CandidateHandoff.status == "accepted")
+                .where(CandidateHandoff.assigned_to_user_id == proc_id_str)
+            )
+            conds.append(processor_handoff_exists)
+
     status_reason_codes = _to_list(filters.get("status_reason"))
     if status_reason_codes:
         reason_clauses = []
@@ -458,6 +681,59 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
         if reason_clauses:
             conds.append(or_(*reason_clauses))
 
+    # Фильтр по тегам (аналогично status_reason)
+    tags_list = _to_list(filters.get("tags"))
+    if tags_list:
+        tag_clauses = []
+        for idx, tag in enumerate(tags_list):
+            if not tag:
+                continue
+            if _HAS_JSONB:
+                bind = bindparam(
+                    f"tag_{idx}",
+                    value=[tag],
+                    type_=JSONB,
+                )
+                tag_clauses.append(
+                    cast(Candidate.tags, JSONB).op("@>")(bind)
+                )
+            else:  # fallback (e.g. SQLite dev env)
+                tag_clauses.append(Candidate.tags.like(f'%"{tag}"%'))
+        if tag_clauses:
+            conds.append(or_(*tag_clauses))
+
+    is_favorite = filters.get("is_favorite")
+    if is_favorite is not None:
+        conds.append(Candidate.is_favorite == is_favorite)
+
+    own_company_id = str(filters.get("own_company_id") or "").strip()
+    if own_company_id:
+        conds.append(Candidate.own_company_id == own_company_id)
+
+    intake_application_kind = str(filters.get("intake_application_kind") or "").strip().lower()
+    if intake_application_kind in ("client", "candidate"):
+        ak_expr = func.lower(func.coalesce(Candidate.intake_state["application_kind"].as_string(), ""))
+        if intake_application_kind == "client":
+            conds.append(ak_expr == "client")
+        else:
+            conds.append(ak_expr != "client")
+
+    ris = filters.get("risk_intel_shadow")
+    if isinstance(ris, dict):
+        bts = ris.get("bucket_start")
+        if bts is not None:
+            from backend.app.services.risk_intel_v1 import _shadow_bands_at_least
+
+            min_b = str(ris.get("min_band") or "high").strip().lower()
+            bands = _shadow_bands_at_least(min_b) or ["high", "critical"]
+            shadow_sq = select(RiskIntelEntityShadow.entity_id).where(
+                RiskIntelEntityShadow.tenant_id == tenant_id,
+                RiskIntelEntityShadow.entity_type == "candidate",
+                RiskIntelEntityShadow.bucket_start == bts,
+                RiskIntelEntityShadow.band.in_(bands),
+            )
+            conds.append(Candidate.id.in_(shadow_sq))
+
     return conds
 
 
@@ -471,6 +747,213 @@ async def count_candidates(
     base_query = select(Candidate).where(and_(*conds))
     res = await db.execute(select(func.count()).select_from(base_query.subquery()))
     return int(res.scalar_one() or 0)
+
+
+async def count_candidates_insights(
+    db: AsyncSession,
+    tenant_id: str,
+    filters: Dict[str, Any],
+    visibility: TenantVisibility | None = None,
+) -> dict[str, int]:
+    """
+    Single-query aggregates for list UI: same filter scope as list/count_candidates.
+    Mirrors frontend insight cards + docs readiness semantics from fetch_candidates_with_labels.
+    """
+    conds = _build_conditions(tenant_id, filters, visibility)
+
+    def _doc_exists(*extra_conditions):
+        return (
+            exists()
+            .where(Document.candidate_id == Candidate.id)
+            .where(Document.tenant_id == Candidate.tenant_id)
+            .where(Document.deleted_at.is_(None))
+            .where(*extra_conditions)
+        )
+
+    ready_exists = _doc_exists(Document.status.in_(READY_STATUSES))
+    problem_exists = _doc_exists(Document.status.in_(PROBLEM_STATUSES))
+    awaiting_exists = _doc_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
+    in_progress_exists = _doc_exists(Document.status.in_(IN_PROGRESS_STATUSES))
+    ordered_exists = _doc_exists(
+        or_(
+            Document.ordered_at.isnot(None),
+            Document.status.in_(ORDERED_STATUSES),
+        )
+    )
+
+    readiness_expr = case(
+        (problem_exists, literal("problem")),
+        (ready_exists, literal("ready")),
+        (awaiting_exists, literal("awaiting_review")),
+        (in_progress_exists, literal("in_progress")),
+        (ordered_exists, literal("ordered")),
+        else_=literal("pending"),
+    )
+
+    stage_lower = func.lower(func.coalesce(Candidate.stage, ""))
+    status_lower = func.lower(func.coalesce(Candidate.status, ""))
+    _pc_t = tuple(PIPELINE_COMPLETED_STAGE_CODES)
+    ops_active = sql_candidate_active_operational_pipeline(Candidate.stage, Candidate.status)
+    is_new_stage = or_(
+        stage_lower == literal("new"),
+        stage_lower.like("new_%"),
+        stage_lower.like("%new%"),
+    )
+
+    new_cnt = case((is_new_stage, 1), else_=0)
+    docs_ready = case((readiness_expr == literal("ready"), 1), else_=0)
+    docs_attention = case(
+        (
+            or_(
+                readiness_expr == literal("in_progress"),
+                readiness_expr == literal("awaiting_review"),
+                readiness_expr == literal("problem"),
+            ),
+            1,
+        ),
+        else_=0,
+    )
+    docs_ordered = case((ordered_exists, 1), else_=0)
+    # Same scope as list quick view `docs_incomplete`: any row whose docs readiness is not `ready`.
+    docs_incomplete = case((readiness_expr != literal("ready"), 1), else_=0)
+    # `extra` is JSON text; match common serializations of candidate_ops.mode = in_work.
+    extra_in_work = or_(
+        Candidate.extra.like('%"mode": "in_work"%'),
+        Candidate.extra.like('%"mode":"in_work"%'),
+    )
+    ops_in_work = case((extra_in_work, 1), else_=0)
+
+    # --- Work hub / recruiting dashboard (action-first aggregates; same ACL scope) ---
+    now_utc = datetime.now(timezone.utc)
+    start_day_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    thresh_24h = now_utc - timedelta(hours=24)
+
+    bn_no_contact = case((and_(ops_active, stage_lower.in_(("new", "no_answer"))), 1), else_=0)
+    bn_docs_wait = case((and_(ops_active, stage_lower == literal("docs_wait")), 1), else_=0)
+    bn_interview_pending = case(
+        (and_(ops_active, stage_lower.in_(("contacted", "questionnaire_submitted"))), 1),
+        else_=0,
+    )
+    term_unassign = or_(stage_lower.in_(_pc_t), status_lower.in_(_pc_t))
+    unassigned_recruiter = case((and_(Candidate.recruiter_id.is_(None), ~term_unassign), 1), else_=0)
+
+    in_snap_new = stage_lower.in_(("new", "no_answer"))
+    in_snap_docs = stage_lower.in_(("docs_wait", "docs_got"))
+    in_snap_interview = stage_lower.in_(("contacted", "questionnaire_submitted"))
+    snap_terminal = or_(
+        stage_lower.in_(("rejected", "declined", "probation_ok")),
+        status_lower.in_(("rejected", "declined", "probation_ok")),
+    )
+    snap_new = case((and_(ops_active, in_snap_new), 1), else_=0)
+    snap_docs = case((and_(ops_active, in_snap_docs), 1), else_=0)
+    snap_interview = case((and_(ops_active, in_snap_interview), 1), else_=0)
+    snap_hired = case(
+        (
+            and_(
+                ops_active,
+                or_(stage_lower == literal("employed"), status_lower == literal("employed")),
+            ),
+            1,
+        ),
+        else_=0,
+    )
+    snap_onboarding = case(
+        (
+            and_(
+                ops_active,
+                ~snap_terminal,
+                stage_lower != literal("employed"),
+                status_lower != literal("employed"),
+                ~in_snap_new,
+                ~in_snap_docs,
+                ~in_snap_interview,
+                func.length(func.trim(func.coalesce(Candidate.stage, ""))) > 0,
+            ),
+            1,
+        ),
+        else_=0,
+    )
+
+    created_today_cnt = case((Candidate.created_at >= start_day_utc, 1), else_=0)
+    stale_no_contact_24h = case(
+        (
+            and_(
+                ops_active,
+                stage_lower.in_(("new", "no_answer")),
+                Candidate.created_at < thresh_24h,
+            ),
+            1,
+        ),
+        else_=0,
+    )
+
+    stmt = (
+        select(
+            func.count().label("total"),
+            func.coalesce(func.sum(new_cnt), 0).label("new_count"),
+            func.coalesce(func.sum(docs_ready), 0).label("docs_ready"),
+            func.coalesce(func.sum(docs_attention), 0).label("docs_attention"),
+            func.coalesce(func.sum(docs_ordered), 0).label("docs_ordered"),
+            func.coalesce(func.sum(docs_incomplete), 0).label("docs_incomplete"),
+            func.coalesce(func.sum(ops_in_work), 0).label("ops_in_work"),
+            func.coalesce(func.sum(bn_no_contact), 0).label("bottleneck_no_contact"),
+            func.coalesce(func.sum(bn_docs_wait), 0).label("bottleneck_docs_wait"),
+            func.coalesce(func.sum(bn_interview_pending), 0).label("bottleneck_interview_pending"),
+            func.coalesce(func.sum(snap_new), 0).label("snap_new"),
+            func.coalesce(func.sum(snap_docs), 0).label("snap_docs"),
+            func.coalesce(func.sum(snap_interview), 0).label("snap_interview"),
+            func.coalesce(func.sum(snap_onboarding), 0).label("snap_onboarding"),
+            func.coalesce(func.sum(snap_hired), 0).label("snap_hired"),
+            func.coalesce(func.sum(created_today_cnt), 0).label("created_today"),
+            func.coalesce(func.sum(stale_no_contact_24h), 0).label("stale_no_contact_24h"),
+            func.coalesce(func.sum(unassigned_recruiter), 0).label("unassigned_recruiter"),
+        )
+        .select_from(Candidate)
+        .where(and_(*conds))
+    )
+    row = await db.execute(stmt)
+    r = row.one()
+
+    oldest_lead_days: int | None = None
+    try:
+        funnel_cond = and_(
+            *conds,
+            stage_lower.in_(("new", "no_answer", "docs_wait", "contacted", "questionnaire_submitted")),
+        )
+        min_created_res = await db.execute(select(func.min(Candidate.created_at)).where(funnel_cond))
+        min_created = min_created_res.scalar_one_or_none()
+        if min_created is not None:
+            mc = min_created
+            if getattr(mc, "tzinfo", None) is None:
+                mc = mc.replace(tzinfo=timezone.utc)
+            delta = now_utc - mc
+            oldest_lead_days = max(0, int(delta.total_seconds() // 86400))
+    except Exception:
+        oldest_lead_days = None
+
+    out: dict[str, Any] = {
+        "total": int(r.total or 0),
+        "new_count": int(r.new_count or 0),
+        "docs_ready": int(r.docs_ready or 0),
+        "docs_attention": int(r.docs_attention or 0),
+        "docs_ordered": int(r.docs_ordered or 0),
+        "docs_incomplete": int(r.docs_incomplete or 0),
+        "ops_in_work": int(r.ops_in_work or 0),
+        "bottleneck_no_contact": int(r.bottleneck_no_contact or 0),
+        "bottleneck_docs_wait": int(r.bottleneck_docs_wait or 0),
+        "bottleneck_interview_pending": int(r.bottleneck_interview_pending or 0),
+        "snap_new": int(r.snap_new or 0),
+        "snap_docs": int(r.snap_docs or 0),
+        "snap_interview": int(r.snap_interview or 0),
+        "snap_onboarding": int(r.snap_onboarding or 0),
+        "snap_hired": int(r.snap_hired or 0),
+        "created_today": int(r.created_today or 0),
+        "stale_no_contact_24h": int(r.stale_no_contact_24h or 0),
+        "unassigned_recruiter": int(r.unassigned_recruiter or 0),
+    }
+    if oldest_lead_days is not None:
+        out["oldest_lead_days"] = oldest_lead_days
+    return out
 
 
 async def fetch_candidates_with_labels(
@@ -640,6 +1123,7 @@ async def get_candidate_with_labels(
     tenant_id: str,
     candidate_id: str,
     visibility: TenantVisibility | None = None,
+    is_client_tenant: bool = False,
 ) -> Optional[
     Tuple[
         Candidate,
@@ -691,7 +1175,7 @@ async def get_candidate_with_labels(
         .join(recruiter_alias, recruiter_alias.id == Candidate.recruiter_id, isouter=True)
         .where(
             Candidate.id == candidate_id,
-            _candidate_scope_clause(tenant_id, visibility),
+            _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client_tenant),
             Candidate.deleted_at.is_(None),
         )
         .limit(1)
@@ -713,6 +1197,91 @@ async def count_by_stage(
         .group_by(Candidate.stage)
     )
     return { (k or ""): int(v or 0) for k, v in rows.all() }
+
+
+_ASSIGNEE_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.I,
+)
+
+
+async def distinct_candidate_list_facets(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    visibility: TenantVisibility | None,
+    filters: Dict[str, Any],
+) -> tuple[list[str], list[str], list[str], list[str]]:
+    """Distinct stage/status/vacancy/assignee values for list scope (tenant + ACL), ignoring funnel-only filters.
+
+    Excludes narrow list filters (stages, q, vacancy, …) so the UI can offer column filter options grounded in the
+    full tenant-visible dataset, not only the current page.
+    """
+    minimal: Dict[str, Any] = {"is_client_tenant": bool(filters.get("is_client_tenant"))}
+    for key in ("allowed_company_ids", "allowed_vacancy_ids", "allowed_manager_ids"):
+        if key in filters and filters[key] is not None:
+            minimal[key] = filters[key]
+    conds = _build_conditions(tenant_id, minimal, visibility)
+    base_where = and_(*conds)
+
+    stage_rows = await db.execute(
+        select(Candidate.stage)
+        .where(
+            base_where,
+            Candidate.stage.isnot(None),
+            func.length(func.trim(Candidate.stage)) > 0,
+        )
+        .distinct()
+    )
+    stages = sorted({str(s or "").strip() for (s,) in stage_rows.all() if (s or "").strip()})
+
+    status_rows = await db.execute(
+        select(Candidate.status)
+        .where(
+            base_where,
+            Candidate.status.isnot(None),
+            func.length(func.trim(Candidate.status)) > 0,
+        )
+        .distinct()
+    )
+    statuses = sorted({str(s or "").strip() for (s,) in status_rows.all() if (s or "").strip()})
+
+    vac_rows = await db.execute(
+        select(Candidate.vacancy_id)
+        .where(
+            base_where,
+            Candidate.vacancy_id.isnot(None),
+            func.length(func.trim(Candidate.vacancy_id)) > 0,
+        )
+        .distinct()
+    )
+    vacancy_ids = sorted({str(v or "").strip() for (v,) in vac_rows.all() if (v or "").strip()})
+
+    rid_rows = await db.execute(
+        select(Candidate.recruiter_id)
+        .where(
+            base_where,
+            Candidate.recruiter_id.isnot(None),
+            func.length(func.trim(Candidate.recruiter_id)) > 0,
+        )
+        .distinct()
+    )
+    mgr_rows = await db.execute(
+        select(Candidate.manager)
+        .where(
+            base_where,
+            Candidate.manager.isnot(None),
+            func.length(func.trim(Candidate.manager)) > 0,
+        )
+        .distinct()
+    )
+    assignee_ids: set[str] = set()
+    for (val,) in list(rid_rows.all()) + list(mgr_rows.all()):
+        s = str(val or "").strip()
+        if s and _ASSIGNEE_UUID_RE.match(s):
+            assignee_ids.add(s)
+    assignee_sorted = sorted(assignee_ids)
+    return stages, statuses, vacancy_ids, assignee_sorted
 
 
 async def count_by_manager(

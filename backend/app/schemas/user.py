@@ -12,6 +12,9 @@ class UserRole(str, Enum):
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
+    client_processor = "client_processor"
+    compliance_officer = "compliance_officer"
+    hr_officer = "hr_officer"
     viewer = "viewer"
 
 
@@ -55,6 +58,10 @@ class UserOut(BaseModel):
 class UserDetailOut(UserOut):
     companies: list[dict[str, str | bool]] = Field(default_factory=list)
     recruiters: list[dict[str, str | None]] = Field(default_factory=list)
+    allowed_own_company_ids: list[str] | None = Field(
+        default=None,
+        description="Subset of own-company UUIDs this user may use; null/omitted = no ACL.",
+    )
 
 
 class UserSupervisorUpdate(BaseModel):
@@ -62,6 +69,13 @@ class UserSupervisorUpdate(BaseModel):
 
 class UserCompaniesUpdate(BaseModel):
     company_ids: Sequence[str] = Field(default_factory=list)
+
+
+class UserOwnCompanyAccessUpdate(BaseModel):
+    allowed_own_company_ids: list[str] = Field(
+        default_factory=list,
+        description="Empty list clears ACL (user may use any tenant own-company).",
+    )
 
 
 class UserInviteOut(BaseModel):
@@ -143,13 +157,18 @@ class AdminPasswordChange(BaseModel):
 
 
 class UserPasswordResetOut(BaseModel):
-    temporary_password: str = Field(..., min_length=8, max_length=256)
+    temporary_password: str = Field(default="", max_length=256)
     revoked_sessions: int = Field(default=0, ge=0)
 
 
 class UserDeleteOut(BaseModel):
     deleted: bool = True
     revoked_sessions: int = Field(default=0, ge=0)
+
+
+class InviteRevokeOut(BaseModel):
+    revoked: bool = True
+    invite_id: str
 
 
 class UIPreferences(BaseModel):
@@ -239,6 +258,10 @@ class UserMeOut(BaseModel):
     profile: UserProfileOut
     preferences: UserPreferencesOut
     security: UserSecuritySummary
+    # G-6 Stage 2e — Work Hub `admin_solo` vs `admin_team`: true when this user
+    # is an owner-class role and the tenant has exactly one active, non-deleted
+    # member (computed server-side; see `users_service.get_user_me`).
+    is_solo_admin: bool = False
 
 
 class UserMePatch(BaseModel):

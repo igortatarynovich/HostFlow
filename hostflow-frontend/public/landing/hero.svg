@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none" aria-hidden="true">
+  <rect width="800" height="500" rx="16" fill="#f1f5f9"/>
+  <rect x="0" y="0" width="800" height="44" fill="#0f172a" opacity="0.92"/>
+  <circle cx="28" cy="22" r="6" fill="#94a3b8"/>
+  <rect x="48" y="16" width="120" height="12" rx="3" fill="#475569"/>
+  <rect x="620" y="14" width="140" height="16" rx="4" fill="#1e3a5f"/>
+  <rect x="24" y="60" width="160" height="416" rx="8" fill="#e2e8f0"/>
+  <rect x="40" y="80" width="128" height="8" rx="2" fill="#cbd5e1"/>
+  <rect x="40" y="100" width="100" height="8" rx="2" fill="#94a3b8"/>
+  <rect x="40" y="124" width="128" height="8" rx="2" fill="#cbd5e1"/>
+  <rect x="40" y="144" width="90" height="8" rx="2" fill="#94a3b8"/>
+  <rect x="200" y="60" width="576" height="416" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <text x="220" y="96" fill="#64748b" font-family="system-ui,sans-serif" font-size="11" font-weight="600">Pipeline</text>
+  <g transform="translate(220 112)">
+    <rect width="120" height="340" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+    <rect x="10" y="14" width="100" height="36" rx="4" fill="#fff" stroke="#cbd5e1"/>
+    <rect x="10" y="58" width="100" height="36" rx="4" fill="#fff" stroke="#cbd5e1"/>
+    <rect x="10" y="102" width="100" height="36" rx="4" fill="#ecfdf5" stroke="#34d399"/>
+    <rect x="140" y="0" width="120" height="340" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+    <rect x="150" y="14" width="100" height="36" rx="4" fill="#fff" stroke="#cbd5e1"/>
+    <rect x="150" y="58" width="100" height="36" rx="4" fill="#eff6ff" stroke="#3b82f6"/>
+    <rect x="280" y="0" width="120" height="340" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+    <rect x="290" y="14" width="100" height="36" rx="4" fill="#fff" stroke="#cbd5e1"/>
+    <rect x="420" y="0" width="120" height="340" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+    <rect x="430" y="14" width="100" height="36" rx="4" fill="#fef3c7" stroke="#f59e0b"/>
+  </g>
+</svg>

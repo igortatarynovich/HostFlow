@@ -1,0 +1,16 @@
+# REF-3.1 allowlist (repo-relative paths)
+# Allowed infra/core
+backend/app/services/reference_service_facade.py
+backend/app/services/document_applicability_resolver.py
+backend/app/services/document_type_runtime_resolver.py
+backend/app/services/document_reference_sync.py
+
+# Temporary compatibility (must be removed by milestone)
+backend/app/services/hr_expected_documents_resolver.py
+backend/app/services/hr_review_document_resolution.py
+backend/app/services/status_transitions.py
+backend/app/services/handoff_snapshot.py
+backend/app/api/v1/candidates/service.py
+
+# Tests are allowed
+backend/tests/

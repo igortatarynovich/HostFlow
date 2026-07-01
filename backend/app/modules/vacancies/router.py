@@ -12,7 +12,7 @@ from backend.app.modules.vacancies.service import (
     list_vacancies_service,
     update_vacancy_service,
 )
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
@@ -98,7 +98,7 @@ async def patch_vacancy(
 
 @router.delete(
     "/{vacancy_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(AuthRole.administrator))],
 )
 async def archive_vacancy(

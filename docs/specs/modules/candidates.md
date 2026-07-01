@@ -82,6 +82,12 @@
 - Канбан-пайплайн и карточка стадий доступны рекрутёру только для кандидатов из его ACL (компания, вакансия или `manager_id`), остальные кандидаты не отображаются.
 - Поле "Рекрутёр" отображает `recruiter_id` (подписанное по ФИО/short_id) и автоматически обновляется при смене вакансии.
 
+### Business-type preset rule
+
+- `agency` и `employer` получают candidate-first navigation и candidate pipeline по умолчанию.
+- `services` не должен открывать `CandidatesPage` или `CandidateCard` как primary CRM workspace по умолчанию.
+- Для `services` candidate workflows допустимы только как explicit optional capability, а не как first-value surface после onboarding.
+
 ---
 
 ## Автоназначение рекрутёра

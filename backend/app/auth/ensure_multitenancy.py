@@ -82,7 +82,7 @@ async def ensure_auth_multitenancy() -> None:
             INSERT OR IGNORE INTO tenants (id, name)
             VALUES (?, ?)
             """,
-            (DEFAULT_TENANT_ID, "Default Tenant"),
+            (DEFAULT_TENANT_ID, "Superadmin"),
         )
 
         # Ensure new columns exist for legacy databases

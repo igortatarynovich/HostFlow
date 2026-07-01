@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class TenantBase(BaseModel):
@@ -35,6 +35,10 @@ class TenantUpdate(BaseModel):
 class TenantOut(TenantBase):
     id: UUID
     api_key: str
+    type: str = "agency"
+    status: str = "active"
+    client_portal_enabled: bool = True
+    status_sharing_allowed: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -57,3 +61,89 @@ class ApiKeyResetOut(BaseModel):
     api_key: str
     tenant_id: UUID
     rotated_at: datetime
+
+
+class TenantLinkOut(BaseModel):
+    id: str
+    agency_tenant_id: str
+    client_company_id: Optional[str] = None
+    client_tenant_id: Optional[str] = None
+    status: str
+    features_json: Optional[Dict[str, Any]] = None
+
+    class Config:
+        from_attributes = True
+
+    @computed_field
+    @property
+    def handoff_enabled(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_enabled", False))
+
+
+class TenantLinkWithCompanyOut(BaseModel):
+    """TenantLinkOut with company_name for display."""
+    id: str
+    agency_tenant_id: str
+    client_company_id: Optional[str] = None
+    client_tenant_id: Optional[str] = None
+    handoff_include_company_id: Optional[str] = None
+    status: str
+    features_json: Optional[Dict[str, Any]] = None
+    company_name: Optional[str] = None
+    portal_token: Optional[str] = None
+    portal_expires_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def handoff_enabled(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_enabled", False))
+
+    @computed_field
+    @property
+    def see_vacancies(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("see_vacancies", False))
+
+    @computed_field
+    @property
+    def see_reduced_profiles(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("see_reduced_profiles", False))
+
+
+class TenantLinkCreate(BaseModel):
+    """Create client link. Either link to existing company/tenant or create by display_name."""
+    display_name: Optional[str] = Field(default=None, max_length=255)
+    client_company_id: Optional[UUID] = None
+    client_tenant_id: Optional[UUID] = None
+    handoff_include_company_id: Optional[UUID] = None
+    handoff_enabled: bool = False
+    see_vacancies: bool = False
+    see_reduced_profiles: bool = False
+
+
+class TenantLinkUpdate(BaseModel):
+    handoff_enabled: Optional[bool] = None
+    handoff_to_client: Optional[bool] = None
+    handoff_to_internal_hr: Optional[bool] = None
+    workforce_handoff_on_ready_for_handoff_stage: Optional[bool] = None
+    contact_policy: Optional[Dict[str, Any]] = None
+    see_vacancies: Optional[bool] = None
+    see_reduced_profiles: Optional[bool] = None
+
+
+class CompanySearchOut(BaseModel):
+    """Company in another tenant (employer) for linking as client."""
+    id: UUID
+    name: str
+    tenant_id: str
+    website: Optional[str] = None
+
+
+class PortalLinkOut(BaseModel):
+    """Generated portal URL and token for client link."""
+    url: str
+    token: str
+    expires_at: Optional[datetime] = None

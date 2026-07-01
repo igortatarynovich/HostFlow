@@ -18,6 +18,8 @@ except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
         return _wrapper
 from datetime import date, datetime
 
+from backend.app.api.v1.reminders_v2 import ReminderOut
+
 class CandidateCreate(BaseModel):
     first_name: str
     last_name: str
@@ -28,6 +30,8 @@ class CandidateCreate(BaseModel):
     address: Optional[str] = None
     birth_date: Optional[date] = None
     languages: Optional[Union[List[str], str]] = None
+    tags: Optional[List[str]] = None
+    is_favorite: Optional[bool] = None
     stage: Optional[str] = None
     status: Optional[str] = None
     status_reason: Optional[List[str]] = None
@@ -103,6 +107,8 @@ class CandidateUpdate(BaseModel):
     address: Optional[str] = None
     birth_date: Optional[date] = None
     languages: Optional[Union[List[str], str, None]] = None
+    tags: Optional[List[str]] = None
+    is_favorite: Optional[bool] = None
     stage: Optional[str] = None
     status: Optional[str] = None
     status_reason: Optional[List[str]] = None
@@ -176,10 +182,13 @@ class CandidateOut(BaseModel):
     short_id: Optional[str] = None
     first_name: str
     last_name: str
+    first_name_latin: Optional[str] = None
+    last_name_latin: Optional[str] = None
     phone: Optional[str] = None           # raw number
     phone_display: Optional[str] = None   # pretty +XX NNN
     phone_country_code: Optional[str] = None
     languages: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
     stage: Optional[str] = None
     status_reason: List[str] = Field(default_factory=list)
     email: Optional[str] = None
@@ -191,9 +200,20 @@ class CandidateOut(BaseModel):
     vacancy_title: Optional[str] = None
     manager_short: Optional[str] = None
     manager_name: Optional[str] = None
+    # Phase 2.6.G-5 Stage F — canonical owner columns exposed on the wire
+    # alongside the legacy ``manager*`` fields. The runtime payload built
+    # by ``_serialize_candidate_row`` has always carried them (joined from
+    # ``users`` via ``Candidate.recruiter_id``); declaring them on the
+    # Pydantic schema makes the OpenAPI contract match reality so the
+    # generated TypeScript types stop falling back to ``any``/``unknown``.
+    recruiter_id: Optional[str] = None
+    recruiter_name: Optional[str] = None
+    recruiter_short: Optional[str] = None
     country_code: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
+    city_latin: Optional[str] = None
+    address_latin: Optional[str] = None
     birth_date: Optional[date] = None
     extra: Dict[str, Any] = Field(default_factory=dict)
     docs_progress: Dict[str, Any] = Field(default_factory=dict)
@@ -229,6 +249,8 @@ class CandidateOut(BaseModel):
         vacancy_title: Optional[str] = None,
         manager_short: Optional[str] = None,
         manager_name: Optional[str] = None,
+        recruiter_short: Optional[str] = None,
+        recruiter_name: Optional[str] = None,
     ) -> "CandidateOut":
         # normalize languages from model (list[str] | comma-separated str | None)
         langs = getattr(c, "languages", None)
@@ -239,6 +261,14 @@ class CandidateOut(BaseModel):
             languages = [p.strip() for p in s.split(",") if p.strip()] if s else []
         else:
             languages = []
+
+        # Normalize tags from model
+        tags: List[str] = getattr(c, "tags", []) or []
+        if not isinstance(tags, list):
+            tags = []
+        
+        # Get is_favorite from model
+        is_favorite: bool = getattr(c, "is_favorite", False) or False
 
         # optional UUID-like fields rendered as str or None
         def _str_or_none(v: Any) -> Optional[str]:
@@ -290,10 +320,14 @@ class CandidateOut(BaseModel):
             short_id=getattr(c, "short_id", None),
             first_name=str(getattr(c, "first_name", "")),
             last_name=str(getattr(c, "last_name", "")),
+            first_name_latin=getattr(c, "first_name_latin", None),
+            last_name_latin=getattr(c, "last_name_latin", None),
             phone=getattr(c, "phone", None),
             phone_display=getattr(c, "phone_display", None) if hasattr(c, "phone_display") else None,
             phone_country_code=getattr(c, "phone_country_code", None),
             languages=languages,
+            tags=tags,
+            is_favorite=is_favorite,
             stage=getattr(c, "stage", None),
             email=getattr(c, "email", None),
             note=getattr(c, "note", None),
@@ -304,9 +338,18 @@ class CandidateOut(BaseModel):
             vacancy_title=vacancy_title,
             manager_short=manager_short,
             manager_name=manager_name,
+            # Phase 2.6.G-5 Stage F — always mirror the canonical
+            # recruiter_id from the model onto the wire. ``manager`` column
+            # is still populated (shadow-write per Stage D) but downstream
+            # consumers should prefer ``recruiter_id`` going forward.
+            recruiter_id=_str_or_none(getattr(c, "recruiter_id", None)),
+            recruiter_name=recruiter_name,
+            recruiter_short=recruiter_short,
             country_code=country_code_val,
             city=city_val,
             address=address_val,
+            city_latin=getattr(c, "city_latin", None),
+            address_latin=getattr(c, "address_latin", None),
             birth_date=birth_date_val,
             extra=extra_dict,
             docs_progress=cls._as_dict(getattr(c, "docs_progress", None)),
@@ -319,3 +362,130 @@ class CandidateOut(BaseModel):
             intake_experience=intake_experience,
             intake_agreements=intake_agreements,
         )
+
+
+class CandidateTimelineEventOut(BaseModel):
+    at: datetime
+    kind: str
+    source: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CandidateTimelineResponse(BaseModel):
+    items: List[CandidateTimelineEventOut] = Field(default_factory=list)
+
+
+class CandidateChangeLogItemOut(BaseModel):
+    at: datetime
+    actor_id: Optional[str] = None
+    actor_name: Optional[str] = None
+    action: str
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CandidateChangeLogResponse(BaseModel):
+    items: List[CandidateChangeLogItemOut] = Field(default_factory=list)
+
+
+# --- Work panel aggregate (R1.5 Phase D) ------------------------------------
+
+
+class CandidateWorkPanelProfileOut(BaseModel):
+    contact_policy_enabled: bool = False
+    contact_attempt_count: int = 0
+    risk_score: Optional[float] = None
+    risk_band: Optional[str] = None
+    risk_drivers: List[str] = Field(default_factory=list)
+    risk_updated_at: Optional[str] = None
+    risk_version: Optional[str] = None
+
+
+class CandidateWorkPanelCommsOut(BaseModel):
+    messages_relative_url: str
+    email_relative_url: str
+    documents_relative_url: str
+
+
+class CandidateWorkPanelDocumentsSummaryOut(BaseModel):
+    """Subset of documents owner summary for list work-panel (readiness metrics only)."""
+
+    percent_ready: int = 0
+    status: Optional[str] = None
+    missing: List[str] = Field(default_factory=list)
+    problematic: List[str] = Field(default_factory=list)
+    ready_types: List[str] = Field(default_factory=list)
+    in_progress_types: List[str] = Field(default_factory=list)
+    expiring_soon: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class CandidateWorkPanelLinkedDocumentOut(BaseModel):
+    document_id: Optional[str] = None
+    document_type_code: Optional[str] = None
+    status: Optional[str] = None
+
+
+class CandidateWorkPanelRequirementRowOut(BaseModel):
+    requirement_code: str
+    public_name: Optional[str] = None
+    fulfilled: bool = False
+    evaluation_status: Optional[str] = None
+    evidence_variant_code: Optional[str] = None
+    evidence_status: Optional[str] = None
+    linked_document: Optional[CandidateWorkPanelLinkedDocumentOut] = None
+
+
+class CandidateWorkPanelRequirementsSummaryOut(BaseModel):
+    all_fulfilled: bool = False
+    pipeline_blockers: Dict[str, Any] = Field(default_factory=dict)
+    items: List[CandidateWorkPanelRequirementRowOut] = Field(default_factory=list)
+
+
+class CandidateWorkPanelPipelineOverrideOut(BaseModel):
+    id: str
+    doc_type_code: Optional[str] = None
+    requirement_code: Optional[str] = None
+    status: str
+    requested_scope: str
+    granted_scope: Optional[str] = None
+    reason: str
+    review_note: Optional[str] = None
+    requested_by_user_id: Optional[str] = None
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class CandidateWorkPanelPipelineOverridesOut(BaseModel):
+    items: List[CandidateWorkPanelPipelineOverrideOut] = Field(default_factory=list)
+
+
+class CandidateWorkPanelResponse(BaseModel):
+    profile: CandidateWorkPanelProfileOut
+    reminders: List[ReminderOut]
+    timeline: CandidateTimelineResponse
+    comms: CandidateWorkPanelCommsOut
+    documents_summary: Optional[CandidateWorkPanelDocumentsSummaryOut] = None
+    requirements_summary: Optional[CandidateWorkPanelRequirementsSummaryOut] = None
+    pipeline_overrides: Optional[CandidateWorkPanelPipelineOverridesOut] = None
+
+
+# --- Recruitment applications (intent layer read model) ----------------------
+
+
+class RecruitmentApplicationOut(BaseModel):
+    """One row of ``recruitment_applications`` for recruiter UI (read-only)."""
+
+    id: str
+    candidate_id: str
+    lead_id: Optional[str] = None
+    vacancy_id: Optional[str] = None
+    source: str = "meta"
+    recruiter_id: Optional[str] = None
+    applied_at: datetime
+    status: str = "applied"
+    application_cycle: Optional[str] = None
+    meta: Dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {"from_attributes": False}

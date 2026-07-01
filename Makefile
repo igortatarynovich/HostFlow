@@ -4,12 +4,15 @@
 ifneq (,$(wildcard .env))
 include .env
 endif
+ifneq (,$(wildcard backend/.env))
+include backend/.env
+endif
 export ASYNC_DATABASE_URL SYNC_DATABASE_URL ALEMBIC_DATABASE_URL DATABASE_URL TENANT_ID
 
-# ---- Paths / tools ----
-VENV        ?= .venv312
+# ---- Paths / tools (canonical .venv at repo root; legacy .venv312 only if .venv missing) ----
+# Old rule "use .venv312 when .venv has no alembic" picked a broken .venv312 over a fresh .venv.
+VENV        := $(if $(wildcard .venv/bin/python),.venv,$(if $(wildcard .venv312/bin/python),.venv312,.venv))
 PY          := $(VENV)/bin/python
-PIP         := $(VENV)/bin/pip
 UVICORN     := $(VENV)/bin/uvicorn
 ALEMBIC     := $(VENV)/bin/alembic
 
@@ -28,8 +31,11 @@ help:
 	@echo ""
 	@echo "HostFlow commands:"
 	@echo "  make up             - run API (uvicorn --reload)"
-	@echo "  make install        - create venv and install deps"
+	@echo "  make install        - create .venv (or use existing), ensure pip, install backend/requirements.txt (PEP 668)"
+	@echo "  make test           - pytest with project .venv (ARGS=...); DB host db→127.0.0.1 if DNS fails (see tests/conftest.py)"
+	@echo "  make test-search    - shortcut: global search API tests only"
 	@echo "  make upg            - alembic upgrade head"
+	@echo "  make ensure-automation-schema - ensure automation_rules table exists (dev fallback)"
 	@echo "  make mig msg=...    - alembic autogenerate revision"
 	@echo "  make down           - alembic downgrade -1"
 	@echo "  make seed-demo      - seed demo data (5 companies, 5 vacancies, 25 candidates)"
@@ -37,17 +43,38 @@ help:
 	@echo "  make curl-list      - GET /api/v1/candidates (needs TOKEN)"
 	@echo "  make curl-create    - POST /api/v1/candidates (needs TOKEN)"
 	@echo "  make get-token      - print JWT for admin@hostflow.dev / admin"
+	@echo "  make check-meta-oauth-env - verify META_LEADS_* + FRONTEND_URL for Facebook Login (no DB)"
+	@echo "  make check-spa-paths - fail on stray /app/... URL literals in backend/app"
+	@echo "  make codegen-crm-app-paths - regenerate TS/Python from shared/crm_app_paths.json"
+	@echo "  make check-codegen-crm-paths - fail if generated files drift from manifest"
+	@echo "  make paths-qa - codegen + SPA literals + frontend route static checks (needs npm in hostflow-frontend)"
+	@echo "  make docs-lint - documentation governance lint (forbidden filenames, broken md links, archive contract, ADR superseded chain, workflow linkage)"
+	@echo "  make docs-lint-strict - same as docs-lint but ignores baseline (zero tolerance)"
+	@echo "  make docs-lint-baseline - rewrite scripts/docs/governance_baseline.txt with current violations (use sparingly)"
 	@echo ""
+
+# ---- Tests (need: make install, DB reachable) ----
+.PHONY: test
+test:
+	@test -x "$(PY)" || (echo "Run 'make install' first (PEP 668: do not use system pip)." && exit 1)
+	@"$(PY)" -m pytest -c backend/pytest.ini backend/$(if $(strip $(ARGS)),$(ARGS),tests/) -v
+
+.PHONY: test-search
+test-search:
+	@$(MAKE) test ARGS=tests/api/test_global_search.py
 
 # ---- Deps ----
 .PHONY: install
 install:
-	@test -x "$(PY)" || python3 -m venv $(VENV)
-	$(PIP) install --upgrade pip
-	@if [ -f requirements.txt ]; then \
-		$(PIP) install -r requirements.txt; \
+	@test -x "$(PY)" || python3 -m venv "$(VENV)"
+	@"$(PY)" -m ensurepip --upgrade 2>/dev/null || true
+	@"$(PY)" -m pip install --upgrade pip
+	@if [ -f backend/requirements.txt ]; then \
+		"$(PY)" -m pip install -r backend/requirements.txt; \
+	elif [ -f requirements.txt ]; then \
+		"$(PY)" -m pip install -r requirements.txt; \
 	else \
-		$(PIP) install "fastapi>=0.110" "uvicorn[standard]" "sqlalchemy>=2.0" \
+		"$(PY)" -m pip install "fastapi>=0.110" "uvicorn[standard]" "sqlalchemy>=2.0" \
 		               asyncpg psycopg2-binary greenlet "pydantic[email]" \
 		               "passlib[bcrypt]" "python-jose[cryptography]" \
 		               email-validator alembic faker; \
@@ -69,11 +96,16 @@ mig:
 
 .PHONY: upg
 upg:
-	$(ALEMBIC) upgrade heads
+	@echo "[make upg] Using venv: $(VENV), DB: $$(echo $(SYNC_DATABASE_URL) | sed 's/:[^:@]*@/:***@/')"
+	$(ALEMBIC) -c alembic.ini upgrade head
 
 .PHONY: down
 down:
 	$(ALEMBIC) downgrade -1
+
+.PHONY: ensure-automation-schema
+ensure-automation-schema:
+	$(PY) -c "from backend.app.services.ensure_automation_rules_schema import ensure_automation_rules_schema; ensure_automation_rules_schema(); print('automation_rules schema ensured')"
 
 # ---- Seed demo data ----
 # Скрипт читает SYNC_DATABASE_URL из окружения
@@ -86,6 +118,40 @@ seed: upg
 seed-demo: upg
 	@echo "[seed-demo] Using DB: $(SYNC_DATABASE_URL)"
 	$(PY) backend/scripts/seed_demo.py
+
+# ---- Static checks (no venv deps) ----
+.PHONY: check-meta-oauth-env
+check-meta-oauth-env:
+	@python3 scripts/check_meta_oauth_env.py
+
+.PHONY: check-spa-paths
+check-spa-paths:
+	python3 backend/scripts/check_spa_path_literals.py
+
+.PHONY: codegen-crm-app-paths
+codegen-crm-app-paths:
+	python3 scripts/codegen/generate_crm_app_paths.py
+
+.PHONY: check-codegen-crm-paths
+check-codegen-crm-paths:
+	python3 scripts/codegen/generate_crm_app_paths.py --check
+
+.PHONY: paths-qa
+paths-qa:
+	npm run paths:qa
+
+# ---- Docs governance ----
+.PHONY: docs-lint
+docs-lint:
+	python3 scripts/docs/check_doc_governance.py
+
+.PHONY: docs-lint-strict
+docs-lint-strict:
+	python3 scripts/docs/check_doc_governance.py --strict --check-orphans
+
+.PHONY: docs-lint-baseline
+docs-lint-baseline:
+	python3 scripts/docs/check_doc_governance.py --init-baseline
 
 # ---- Utils ----
 .PHONY: env-print

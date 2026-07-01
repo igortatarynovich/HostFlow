@@ -202,6 +202,7 @@ if PYDANTIC_V2:
         tenant_id: str
         candidate_id: str
         company_id: Optional[str] = None
+        own_company_id: Optional[str] = None
         kind: str
         doc_type: str
         type: str
@@ -238,6 +239,9 @@ if PYDANTIC_V2:
         reminders: List[DocumentReminderOut] = Field(default_factory=list)
         version: Optional[int] = None
         last_check: Optional[DocumentCheckOut] = None
+        document_runtime: Optional[Dict[str, Any]] = None
+        responsible_user_id: Optional[str] = None
+        responsible_name: Optional[str] = None
 
 else:
 
@@ -250,6 +254,7 @@ else:
         tenant_id: str
         candidate_id: str
         company_id: Optional[str] = None
+        own_company_id: Optional[str] = None
         kind: str
         doc_type: str
         type: str
@@ -286,6 +291,9 @@ else:
         reminders: List[DocumentReminderOut] = Field(default_factory=list)
         version: Optional[int] = None
         last_check: Optional[DocumentCheckOut] = None
+        document_runtime: Optional[Dict[str, Any]] = None
+        responsible_user_id: Optional[str] = None
+        responsible_name: Optional[str] = None
 
 
 class DocumentWithChecksOut(DocumentOut):
@@ -299,6 +307,7 @@ DocumentListOut = List[DocumentOut]
 class RulesetVersionOut(BaseModel):
     id: str
     tenant_id: str
+    own_company_id: Optional[str] = None
     version: int
     ruleset: Dict[str, Any]
     comment: Optional[str] = None

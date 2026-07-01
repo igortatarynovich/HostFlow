@@ -68,7 +68,6 @@ export const http = axios.create({
   headers: {
     'X-Tenant-Id': TENANT_ID,
     'Accept': 'application/json',
-    'Content-Type': 'application/json',
   },
   timeout: 20000,
 })
@@ -78,6 +77,11 @@ http.interceptors.request.use((config) => {
   const token = getAccessToken()
   config.headers = config.headers ?? {}
 
+  // Critical: let browser set correct boundary for FormData
+  if (config.data instanceof FormData) {
+    delete (config.headers as any)['Content-Type']
+  }
+
   if (token) {
     (config.headers as any)['Authorization'] = `Bearer ${token}`
   } else {
@@ -85,8 +89,8 @@ http.interceptors.request.use((config) => {
     delete (config.headers as any)['Authorization']
   }
 
-  // гарантируем актуальный арендатор
-  (config.headers as any)['X-Tenant-Id'] = TENANT_ID
+  // читаем tenant из localStorage на каждый запрос (смена workspace без перезагрузки)
+  ;(config.headers as any)['X-Tenant-Id'] = resolveTenantId()
 
   return config
 })

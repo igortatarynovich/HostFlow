@@ -1,4 +1,6 @@
-import type { Option } from '../components/controls/Select'
+import type { ComboboxOption } from '../components/ui/comboboxShared'
+
+export type Option = ComboboxOption
 
 const COUNTRY_CODES: string[] = [
   'AE','AF','AL','AM','AO','AR','AT','AU','AZ','BA','BD','BE','BF','BG','BH','BI','BJ','BO','BR','BT','BW','BY',

@@ -39,12 +39,28 @@ def _has_index(conn, table: str, name: str) -> bool:
     return any(idx["name"] == name for idx in insp.get_indexes(table))
 
 
-def _drop_usage_view() -> None:
-    op.execute(sa.text("DROP VIEW IF EXISTS tenant_usage"))
+def _drop_usage_relation(conn) -> None:
+    """Remove legacy tenant_usage whether it was created as a table or a view."""
+    if conn.dialect.name != "postgresql":
+        return
+    kind = conn.execute(
+        sa.text(
+            """
+            SELECT c.relkind
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relname = 'tenant_usage'
+            """
+        )
+    ).scalar()
+    if kind == "v":
+        op.execute(sa.text("DROP VIEW IF EXISTS public.tenant_usage CASCADE"))
+    elif kind == "r":
+        op.execute(sa.text("DROP TABLE IF EXISTS public.tenant_usage CASCADE"))
 
 
 def _create_usage_view() -> None:
-    _drop_usage_view()
+    _drop_usage_relation(op.get_bind())
     op.execute(
         sa.text(
             """
@@ -197,7 +213,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    _drop_usage_view()
+    _drop_usage_relation(op.get_bind())
     inspector = sa.inspect(op.get_bind())
     if inspector.has_table("tenant_licenses"):
         op.drop_index("ix_tenant_licenses_tenant_id", table_name="tenant_licenses")

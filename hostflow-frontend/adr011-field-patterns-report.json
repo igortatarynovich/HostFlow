@@ -1,0 +1,7 @@
+{
+  "generated_at": "2026-05-07T18:27:07.573Z",
+  "note": "Intrinsic input/textarea/select (TS AST). Excludes hidden/checkbox/radio/file inputs. Missing word input or textarea in opening tag.",
+  "total_eligible_field_opens": 790,
+  "opens_missing_field_token": 0,
+  "files": []
+}

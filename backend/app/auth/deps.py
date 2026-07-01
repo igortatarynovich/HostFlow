@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Iterable, Iterator
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 import jwt  # PyJWT
 from fastapi import Depends, HTTPException
@@ -22,6 +22,9 @@ class Role(str, Enum):
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
+    client_processor = "client_processor"  # Handoff: accepts/processes candidates from agency
+    compliance_officer = "compliance_officer"  # Process documents (work permit, residence card, tacho, etc.)
+    hr_officer = "hr_officer"  # HR / people workspace (employees, isolated from recruitment)
     viewer = "viewer"
     admin = administrator
     owner = administrator
@@ -43,6 +46,13 @@ ROLE_ALIASES = {
     "viewer": Role.viewer.value,
     "client": Role.client_manager.value,
     "client_manager": Role.client_manager.value,
+    "client_processor": Role.client_processor.value,
+    "processor": Role.client_processor.value,
+    "compliance_officer": Role.compliance_officer.value,
+    "compliance": Role.compliance_officer.value,
+    "docs_officer": Role.compliance_officer.value,
+    "hr_officer": Role.hr_officer.value,
+    "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
 
@@ -62,22 +72,10 @@ class UserCtx:
     raw: Dict[str, Any]
 
 
-async def get_current_user(
-    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
-) -> UserCtx:
-    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
-
-    token = cred.credentials
-    try:
-        data = jwt.decode(token, key=_secret(), algorithms=[ALGO])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     sub = str(data.get("sub") or "").strip()
     email = str(data.get("email") or "").strip()
 
-    # Normalize role: accept either a single "role" claim or first value from "roles" list; default to "user"
     raw_role: str | None = None
     if "role" in data and data.get("role") is not None:
         raw_role = str(data.get("role"))
@@ -91,7 +89,7 @@ async def get_current_user(
     tenant_id = str(data.get("tenant_id") or "").strip()
 
     if not sub or not email:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise ValueError("missing sub/email")
 
     supervisor_id_val = data.get("supervisor_id")
     if supervisor_id_val is not None:
@@ -107,6 +105,55 @@ async def get_current_user(
         supervisor_id=supervisor_id,
         raw=data,
     )
+
+
+async def get_current_user(
+    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> UserCtx:
+    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+
+    token = cred.credentials
+    try:
+        data = jwt.decode(token, key=_secret(), algorithms=[ALGO])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    try:
+        user = _user_ctx_from_decoded_jwt(data)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    try:
+        from backend.app.security.runtime_context import set_security_actor_id
+
+        set_security_actor_id(str(user.sub))
+    except Exception:
+        pass
+    return user
+
+
+async def get_current_user_optional(
+    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> Optional[UserCtx]:
+    """Same JWT validation as get_current_user, but missing Authorization yields None (no 401)."""
+    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
+        return None
+    try:
+        data = jwt.decode(cred.credentials, key=_secret(), algorithms=[ALGO])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        user = _user_ctx_from_decoded_jwt(data)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        from backend.app.security.runtime_context import set_security_actor_id
+
+        set_security_actor_id(str(user.sub))
+    except Exception:
+        pass
+    return user
 
 
 def _flatten_allowed(items: Iterable[object]) -> Iterator[object]:

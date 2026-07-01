@@ -49,6 +49,15 @@ export async function createUserInvite(payload: {
   return data as UserInvite
 }
 
+export async function revokeUserInvite(inviteId: string, opts?: { tenantId?: string }): Promise<{ revoked: boolean; invite_id: string }> {
+  const client = resolveClient(opts?.tenantId)
+  const { data } = await client.delete(`/admin/users/invite/${inviteId}`)
+  return {
+    revoked: Boolean(data?.revoked),
+    invite_id: String(data?.invite_id || inviteId),
+  }
+}
+
 export async function createTenantUser(payload: {
   email: string
   role: UserRole
@@ -133,13 +142,78 @@ export async function changeSelfPassword(payload: { current_password: string; ne
 export async function resetUserPassword(
   userId: string,
   opts?: { tenantId?: string },
-): Promise<{ temporary_password: string; revoked_sessions: number }> {
+): Promise<{ revoked_sessions: number }> {
   const client = resolveClient(opts?.tenantId)
   const { data } = await client.post(`/admin/users/${userId}/password/reset`)
   return {
-    temporary_password: String(data?.temporary_password ?? ''),
     revoked_sessions: Number(data?.revoked_sessions ?? 0),
   }
+}
+
+export async function requestPasswordReset(
+  email: string,
+  turnstileToken?: string | null,
+): Promise<{ ok: boolean; message: string }> {
+  const body: Record<string, unknown> = { email }
+  if (turnstileToken) body.turnstile_token = turnstileToken
+  const { data } = await api.post('/auth/password/request-reset', body)
+  return data as { ok: boolean; message: string }
+}
+
+export type PublicAuthConfig = {
+  turnstile_enabled: boolean
+  turnstile_sitekey: string | null
+}
+
+export async function fetchPublicAuthConfig(): Promise<PublicAuthConfig> {
+  try {
+    const { data } = await api.get('/auth/public-config')
+    return {
+      turnstile_enabled: Boolean(data?.turnstile_enabled),
+      turnstile_sitekey: typeof data?.turnstile_sitekey === 'string' ? data.turnstile_sitekey : null,
+    }
+  } catch {
+    return { turnstile_enabled: false, turnstile_sitekey: null }
+  }
+}
+
+export async function registerSelfService(payload: {
+  email: string
+  password: string
+  workspace_name: string
+  full_name?: string
+  plan_code?: string
+  accept_terms: boolean
+  accept_privacy: boolean
+  turnstile_token?: string | null
+}): Promise<{
+  ok: boolean
+  user: { id: string; email: string; role: string; tenant_id: string; full_name?: string | null }
+  tenant: {
+    id: string
+    name: string
+    slug: string
+    workspace_label?: string | null
+    status?: string | null
+    trial_ends_at?: string | null
+    trial_days?: number | null
+  }
+  meta?: {
+    welcome_email_sent?: boolean
+  }
+}> {
+  const { data } = await api.post('/auth/register', payload)
+  return data
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<{ ok: boolean; message: string }> {
+  const { data } = await api.post('/auth/password/reset-with-token', { token, new_password: newPassword })
+  return data as { ok: boolean; message: string }
+}
+
+export async function acceptInvite(payload: { token: string; password: string; full_name?: string; short_id?: string }): Promise<unknown> {
+  const { data } = await api.post('/auth/invite/accept', payload)
+  return data
 }
 
 export async function changeUserPasswordAdmin(

@@ -43,7 +43,7 @@ export default function PhoneInput({
           placeholder="Поиск страны/кода…"
         />
       </div>
-      <div className="w-10 grid place-items-center text-gray-400">—</div>
+      <div className="w-10 grid place-items-center text-slate-400">—</div>
       <input
         className="input flex-1"
         placeholder="номер"

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -19,7 +20,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    scan_status_enum = sa.Enum(
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute(
+            """
+            DO $$
+            BEGIN
+                CREATE TYPE document_scan_status_enum AS ENUM (
+                    'pending', 'in_progress', 'uploaded', 'completed', 'expired', 'cancelled'
+                );
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END$$;
+            """
+        )
+    scan_status_enum = postgresql.ENUM(
         "pending",
         "in_progress",
         "uploaded",
@@ -27,8 +42,8 @@ def upgrade() -> None:
         "expired",
         "cancelled",
         name="document_scan_status_enum",
+        create_type=False,
     )
-    scan_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "document_scan_sessions",

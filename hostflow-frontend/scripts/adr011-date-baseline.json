@@ -1,0 +1,4 @@
+{
+  "maxNonHelperHits": 0,
+  "_comment": "ADR-011 §9 ratchet: CI fails if direct toLocale* hits (outside known helpers) exceed this. Lower only when reducing debt."
+}

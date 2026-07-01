@@ -186,6 +186,38 @@ async def test_owner_can_create_user_without_password(client: AsyncClient) -> No
 
 
 @pytest.mark.anyio
+async def test_owner_can_revoke_pending_invite(client: AsyncClient) -> None:
+    owner_headers = await _headers_for("administrator")
+    data = await _init_data()
+    email = f"invite-revoke+{uuid.uuid4().hex[:6]}@hostflow.dev"
+
+    create_resp = await client.post(
+        f"{ADMIN_USERS_PREFIX}/invite",
+        headers=owner_headers,
+        json={
+            "email": email,
+            "role": "recruiter",
+            "supervisor_id": data["admin_id"],
+        },
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    invite_id = create_resp.json()["id"]
+
+    revoke_resp = await client.delete(
+        f"{ADMIN_USERS_PREFIX}/invite/{invite_id}",
+        headers=owner_headers,
+    )
+    assert revoke_resp.status_code == 200, revoke_resp.text
+    revoke_payload = revoke_resp.json()
+    assert revoke_payload["revoked"] is True
+    assert revoke_payload["invite_id"] == invite_id
+
+    list_resp = await client.get(ADMIN_USERS_PREFIX, headers=owner_headers)
+    assert list_resp.status_code == 200, list_resp.text
+    assert all((item.get("invite_id") != invite_id) for item in list_resp.json())
+
+
+@pytest.mark.anyio
 async def test_owner_can_reset_change_and_delete_user(client: AsyncClient) -> None:
     owner_headers = await _headers_for("administrator")
     new_email = f"reset+{uuid.uuid4().hex[:6]}@hostflow.dev"

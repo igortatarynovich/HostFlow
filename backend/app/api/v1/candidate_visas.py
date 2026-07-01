@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Dict, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -177,7 +177,7 @@ async def update_visa(
 
 @router.delete(
     "/{candidate_id}/visas/{visa_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.manager, Role.admin))],
 )
 async def delete_visa(

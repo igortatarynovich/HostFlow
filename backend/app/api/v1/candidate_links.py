@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import Role, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
+from backend.app.services.handoff import is_client_tenant, can_client_edit
+from backend.app.services.recruitment_handoff_write_guard import require_agency_recruitment_write_allowed
 
 router = APIRouter(prefix="/candidate-links", tags=["candidate-links"])
 
@@ -46,14 +48,28 @@ async def set_links(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
     row = await db.execute(
         select(Candidate).where(
-            Candidate.id == str(candidate_id), Candidate.tenant_id == str(tenant_id)
+            Candidate.id == str(candidate_id), Candidate.tenant_id == tenant_id_str
         )
     )
     c = row.scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")
+
+    # Vacancy/company links are recruitment dossier mutations — no privileged bypass:
+    # re-linking after handoff would break audit / intent of a transferred candidate.
+    if await is_client_tenant(db, tenant_id_str):
+        if not await can_client_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit links: no accepted handoff")
+    else:
+        await require_agency_recruitment_write_allowed(
+            db,
+            agency_tenant_id=tenant_id_str,
+            candidate_id=str(candidate_id),
+            bypass=None,
+        )
 
     vals = {}
     if payload.company_id is not None:

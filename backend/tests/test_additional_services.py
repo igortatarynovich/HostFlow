@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.main import app
 
 BASE_URL = "http://testserver"
-TENANT_ID = "00000000-0000-0000-0000-000000000001"
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
 
 ADMIN_EMAIL = "biuro@work-host.com"
 ADMIN_PASS = "Host123!"
@@ -98,6 +98,8 @@ async def test_additional_services_end_to_end():
                     "category": "medical",
                     "unit": "person",
                     "base_price": 320.0,
+                    "estimated_cost": 180.0,
+                    "cost_currency": "PLN",
                     "vat_rate": 8.0,
                     "requires_schedule": True,
                     "requires_candidate": True,
@@ -120,6 +122,7 @@ async def test_additional_services_end_to_end():
                             "service_id": service_id,
                             "qty": 1,
                             "unit_price": 320,
+                            "estimated_cost": 190,
                             "vat_rate": 8,
                         }
                     ],
@@ -131,6 +134,8 @@ async def test_additional_services_end_to_end():
             assert order_body["status"] == "draft"
             assert len(order_body["items"]) == 1
             item_id = order_body["items"][0]["id"]
+            assert float(order_body["items"][0]["estimated_cost"]) == pytest.approx(190.0)
+            assert order_body["items"][0]["cost_status"] == "estimated"
 
             schedule_resp = await client.post(
                 f"/api/v1/service-items/{item_id}/schedule",
@@ -148,10 +153,10 @@ async def test_additional_services_end_to_end():
             status_resp = await client.patch(
                 f"/api/v1/service-orders/{order_id}",
                 headers=headers,
-                json={"status": "approved"},
+                json={"status": "confirmed"},
             )
             assert status_resp.status_code == 200, status_resp.text
-            assert status_resp.json()["status"] == "approved"
+            assert status_resp.json()["status"] == "confirmed"
 
             deliver_resp = await client.post(
                 f"/api/v1/service-items/{item_id}/deliver",
@@ -162,7 +167,7 @@ async def test_additional_services_end_to_end():
                         "document_type": "medical",
                         "status": "approved",
                         "issued_at": "2025-01-11",
-                        "expires_at": "2026-01-11",
+                            "expires_at": "2027-01-11",
                         "extra": {"provider": "Medicover"},
                     },
                     "attachments": [
@@ -191,6 +196,16 @@ async def test_additional_services_end_to_end():
             summary = summary_resp.json()
             assert summary["missing_documents"] == {}
 
+            analytics_resp = await client.get(
+                "/api/v1/analytics/services-overview",
+                headers=headers,
+            )
+            assert analytics_resp.status_code == 200, analytics_resp.text
+            analytics_body = analytics_resp.json()
+            assert float(analytics_body["totals"]["revenue"]) >= 320.0
+            assert float(analytics_body["totals"]["estimated_cost"]) >= 190.0
+            assert analytics_body["data_quality"]["estimated_items"] >= 1
+
             docs_resp = await client.get(
                 "/api/v1/documents",
                 headers=headers,
@@ -208,6 +223,36 @@ async def test_additional_services_end_to_end():
             )
             assert candidate_orders.status_code == 200, candidate_orders.text
             assert candidate_orders.json(), "Candidate orders list must not be empty"
+
+            catalog_metrics = await client.get(
+                "/api/v1/services",
+                headers=headers,
+                params={"include_metrics": "true"},
+            )
+            assert catalog_metrics.status_code == 200, catalog_metrics.text
+            cat_body = catalog_metrics.json()
+            svc_metrics = next((s for s in cat_body if s["id"] == service_id), None)
+            assert svc_metrics is not None
+            assert int(svc_metrics["metrics_orders_count"]) >= 1
+            assert float(svc_metrics["metrics_revenue_completed"]) == pytest.approx(0.0)
+
+            completed_order = await client.patch(
+                f"/api/v1/service-orders/{order_id}",
+                headers=headers,
+                json={"status": "completed"},
+            )
+            assert completed_order.status_code == 200, completed_order.text
+
+            catalog_metrics2 = await client.get(
+                "/api/v1/services",
+                headers=headers,
+                params={"include_metrics": "true"},
+            )
+            assert catalog_metrics2.status_code == 200, catalog_metrics2.text
+            svc_metrics2 = next((s for s in catalog_metrics2.json() if s["id"] == service_id), None)
+            assert svc_metrics2 is not None
+            assert int(svc_metrics2["metrics_orders_count"]) >= 1
+            assert float(svc_metrics2["metrics_revenue_completed"]) >= 320.0
 
             error_resp = await client.post(
                 "/api/v1/service-orders",

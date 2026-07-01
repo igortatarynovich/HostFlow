@@ -4,6 +4,11 @@ from datetime import date, datetime
 from typing import Any, ClassVar, Dict, List, Literal, Optional, Set
 from uuid import UUID, uuid4
 
+CompanyTypeLiteral = Literal["agency", "employer", "services"]
+CompanyRoleLiteral = Literal["operating", "client"]
+PartyEntityTypeLiteral = Literal["company", "person"]
+PartyBusinessRolesLiteral = Literal["employer", "service_client", "both"]
+
 try:
     from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
@@ -45,6 +50,12 @@ except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
 
 
 class CompanyMutableFields(BaseModel):
+    owner_user_id: Optional[UUID] = None
+    manager_user_id: Optional[UUID] = None
+    party_entity_type: PartyEntityTypeLiteral = "company"
+    party_business_roles: Optional[PartyBusinessRolesLiteral] = None
+    client_stage: Optional[str] = Field(None, max_length=32)
+    client_source: Optional[str] = Field(None, max_length=64)
     name: Optional[str] = Field(None, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     tax_id: Optional[str] = Field(None, max_length=64)
@@ -70,6 +81,14 @@ class CompanyMutableFields(BaseModel):
 
 class CompanyCreate(CompanyMutableFields):
     name: str = Field(..., max_length=255)
+    company_type: Optional[CompanyTypeLiteral] = Field(
+        None,
+        description="For onboarding: agency, employer, or services. Sets tenant bootstrap profile when creating first company.",
+    )
+    company_role: Optional[CompanyRoleLiteral] = Field(
+        None,
+        description="Operating = tenant's own managed company/profile. Client = customer/counterparty company.",
+    )
 
 
 class CompanyUpdate(CompanyMutableFields):
@@ -84,10 +103,18 @@ class CompanyBase(CompanyMutableFields):
 class CompanyOut(CompanyBase):
     id: UUID
     tenant_id: UUID
+    owner_user_id: Optional[UUID] = None
+    manager_user_id: Optional[UUID] = None
     contacts: dict[str, Any] = Field(default_factory=dict)
     extra: dict[str, Any] = Field(default_factory=dict)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    # Populated when list endpoint is called with include_service_metrics=true
+    service_active_orders: Optional[int] = None
+    service_revenue_completed: Optional[float] = None
+    # Populated when list/get is called with include_recruitment_metrics=true
+    recruitment_vacancies_active: Optional[int] = None
+    recruitment_candidates_total: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -257,6 +284,7 @@ class Contact(BaseModel):
 
 
 class OperationsProfile(BaseModel):
+    # Transport
     fleet_tractors: Optional[int] = Field(None, ge=0)
     fleet_intl_perc: Optional[int] = Field(None, ge=0, le=100)
     fleet_local_perc: Optional[int] = Field(None, ge=0, le=100)
@@ -268,6 +296,12 @@ class OperationsProfile(BaseModel):
     cargo_types: List[str] = Field(default_factory=list)
     languages: List[str] = Field(default_factory=list)
     preferred_nationalities: List[str] = Field(default_factory=list)
+    # Office / IT
+    team_size: Optional[int] = Field(None, ge=0)
+    roles: Optional[str] = Field(None, max_length=512)
+    tech_stack: Optional[str] = Field(None, max_length=512)
+    # Custom (generic key-value)
+    custom_fields: Optional[Dict[str, Any]] = Field(None)
 
 
 class ComplianceProfile(BaseModel):
@@ -332,6 +366,8 @@ class OrderRecord(BaseModel):
     hired_drivers: Optional[int] = Field(None, ge=0)
     client_reference: Optional[str] = Field(None, max_length=128)
     code: Optional[str] = Field(None, max_length=64)
+    order_type_id: Optional[str] = Field("transport", max_length=64)
+    custom_fields: Optional[Dict[str, Any]] = Field(None)
 
 
 class CompanyProfile(BaseModel):

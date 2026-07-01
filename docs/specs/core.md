@@ -1,12 +1,12 @@
 # HostFlow — Living Spec (Core Canon)
 
-**Основные модули:** [Candidates](modules/candidates.md) · [Documents](modules/documents.md) · [Vacancies](modules/vacancies.md) · [Companies](modules/companies.md) · [Leads](modules/leads.md) · [Public Intake / Candidate Portal](../platform/webhooks.md)
+**Основные модули:** [Candidates](modules/candidates.md) · [Documents](modules/documents.md) · [Vacancies](modules/vacancies.md) · [Companies](modules/companies.md) · [Leads](modules/leads.md) · [Public Intake / Candidate Portal](platform/webhooks.md)
 
 ---
 
 ## North Star
 - HostFlow — мульти-тенант HR/ATS для транспорта. Платформа объединяет агентства, клиентские компании и кандидатов (водителей).
-- Система должна обслуживать агентство HostFlow и white-label клиентов вроде Citronex: один суперадмин управляет тенантами и лицензиями, у каждого тенанта — собственные рекрутёры, ACL и правила документов.
+- Система должна обслуживать агентство HostFlow и white-label клиентов вроде Northwind Logistics: один суперадмин управляет тенантами и лицензиями, у каждого тенанта — собственные рекрутёры, ACL и правила документов.
 - Кандидат всегда имеет единое рабочее место: публичная анкета + чек-лист документов + таймлайн статусов. Никаких сторонних файловых рассылок.
 
 ---
@@ -17,8 +17,8 @@
 - **PostgreSQL 16** с включённым RLS. Каждая таблица содержит `tenant_id`, контекст выставляется middleware `SET LOCAL app.tenant_id`.
 - **FastAPI + SQLAlchemy 2.x + Alembic.** Миграции лежат в `backend/alembic/versions`, формат `YYYYMMDDHHMM_<slug>.py`.
 - **Документы**: модели `document_types`, `documents`, `document_attachments`, `document_checks`, `scan_sessions`, `scan_pages`. См. `docs/spec-documents.md`.
-- **Публичные API**: `/api/v1/public/apply/{token}` (анкета и документы), `/api/v1/public/scan-sessions` (камерные сессии), `/api/v1/public/status/{token}` (шаринг для клиента).
-- **Обработка изображений**: сервис `scanner.py` использует Python+OpenCV внутри backend-контейнера (opencv-python-headless). Браузерный wasm-сканер исключён; камера → upload → серверная обработка.
+- **Публичные API**: `/api/v1/public/apply/{token}` (анкета и документы), `/api/v1/public/status/{token}` (шаринг для клиента). Публичные **`/public/scan`** и **`/api/v1/public/scan-sessions`** сняты с продуктового контура (см. **`docs/SSOT.md`**); захват документов — через загрузку файлов в анкете; отдельный LLM/vision-пайплайн — позже.
+- **Обработка изображений (legacy)**: пакет `backend/app/scanner` (OpenCV) остаётся в репозитории для возможного переиспользования; HTTP-маршруты сканера не монтируются. Таблицы `scan_sessions` / `scan_pages` могут сохраняться в БД до отдельной миграции очистки.
 
 ### Frontend
 - **React + Vite + TypeScript + Tailwind**. Структура feature-based (см. `src/pages`, `src/modules`).
@@ -54,7 +54,7 @@
 ### Создание клиента / пользователей
 1. **Суперадмин** через Platform Control Center вызывает `POST /api/v1/platform/tenants` (или CLI `make tenant:create`). Указывает тип (`agency` или `company`), план, лимиты.
 2. В Tenant Admin Console создаёт компании (`companies`), вакансии и локальных админов.
-3. **Пользователи клиента Citronex** создаются из Tenant Admin Console или API `/api/v1/settings/users`: указываем email, роль (`client_manager`, `viewer`, и т.д.). Приглашения отправляются почтой, пароль задаётся по ссылке.
+3. **Пользователи клиента Northwind Logistics** создаются из Tenant Admin Console или API `/api/v1/settings/users`: указываем email, роль (`client_manager`, `viewer`, и т.д.). Приглашения отправляются почтой, пароль задаётся по ссылке.
 4. ACL к компаниям и вакансиям выдаётся админу/супервизору через `/api/v1/admin/companies/{id}/access`.
 5. Лимиты лицензии и usage тенанта проверяются через `/api/v1/settings/team` (см. `docs/specs/modules/tenants.md`), запросы на доп. места отправляются из того же раздела.
 
@@ -67,7 +67,7 @@ RLS и middleware блокируют любые запросы вне текущ
 | Модуль | Основная таблица / модель | Ключевые API | UI / панели | Примечания |
 |--------|---------------------------|--------------|-------------|------------|
 | Candidates | `candidates`, `candidate_status_history` | `/api/v1/candidates*` | CandidatesTable, CandidateCard | Статусы, причины отказа, ACL по компаниям |
-| Documents | `documents`, `document_types`, `scan_sessions` | `/api/v1/documents*`, `/api/v1/scanner*`, `/api/v1/public/scan-sessions*` | DocumentsTab, checklist на портале | Ruleset per tenant, напоминания, timeline |
+| Documents | `documents`, `document_types`, `scan_sessions` (legacy) | `/api/v1/documents*` | DocumentsTab, checklist на портале | Ruleset per tenant, напоминания, timeline; публичный камерный поток снят |
 | Vacancies | `vacancies` | `/api/v1/vacancies*` | VacanciesList, VacancyDetail | Привязка к компаниям, экспорт |
 | Companies | `companies`, `company_access` | `/api/v1/companies*` | Companies page, Client portal | ACL выдаётся администраторами/супервизорами |
 | Leads | `leads`, `lead_sources`, `lead_imports` | `/api/v1/leads*`, webhooks | Leads board, Supervisor dashboard | Webhook создаёт кандидата или лидер |
@@ -111,9 +111,8 @@ RLS и middleware блокируют любые запросы вне текущ
 - Сервер генерирует чек-лист, портал показывает те же коды, используя локализацию.
 
 ### Захват
-- Мастер загрузки документов в портале: радио “Есть документ?” → загрузить файл → серверная обработка → статус.
-- Если документ требует фотозахвата, рекрутер создаёт `scan_session`. Пользователь открывает `/public/scan-sessions/{id}`: камера, подсказки, сервер режет контур OpenCV и сохраняет `scan_pages`.
-- Фронтенд больше не использует `opencv.js`/wasm — CSP упрощён, нет COOP/COEP.
+- Мастер загрузки документов в портале: радио “Есть документ?” → загрузить файл → статус. Команда Telegram **`/scan`** выдаёт ссылку на **`/public/apply/{token}?mode=documents`** (не отдельную страницу камеры).
+- Ранее планировались `scan_session` + публичная камера; продуктовый UI и API сессий отключены до нового решения (например LLM-based capture). См. **`docs/SSOT.md`**.
 
 ---
 

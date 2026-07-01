@@ -1,0 +1,4 @@
+{
+  "maxMissingFieldOpens": 0,
+  "_comment": "ADR-011 §7 ratchet: CI fails if eligible input/textarea/select opens without input/textarea class token exceed this. Lower only when reducing debt."
+}

@@ -1,13 +1,24 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
 import { useAuth } from '../../store/useAuth'
+import { useI18n } from '../../i18n'
+import type { LocaleCode } from '../../i18n'
 import { patchUserMe } from '../../api/users'
 import type { UserSavedView } from '../../api/types'
 import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT } from '../../api/client'
+import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { useCurrentTenantId } from '../../contexts/CurrentTenant'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
-const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 text-gray-800 bg-white hover:bg-gray-100 active:bg-gray-200 transition-colors cursor-pointer";
+const secondaryBtn = 'btn-secondary'
+const NEXT_PAGE_GLYPH = '\u2192'
 
 const API_BASE: string = resolveApiBase().replace(/\/+$/, '')
 const API_BASE_WITH_SLASH = `${API_BASE}/`
@@ -34,7 +45,7 @@ function sanitizeTenant(raw: string | null | undefined): string | null {
   return first
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(tenantOverride?: string | null) {
   const token =
     (safeStorageGet('access_token') ||
       safeStorageGet('accessToken') ||
@@ -42,6 +53,7 @@ function getAuthHeaders() {
       '') as string
 
   const candidates = [
+    sanitizeTenant(tenantOverride ?? null),
     sanitizeTenant(((import.meta as any).env?.VITE_TENANT_ID as string) ?? null),
     sanitizeTenant(safeStorageGet('X-Tenant-Id')),
     sanitizeTenant(safeStorageGet('x-tenant-id')),
@@ -57,7 +69,7 @@ function getAuthHeaders() {
   return headers
 }
 
-async function getJSON<T = any>(path: string, params?: Record<string, any>): Promise<T> {
+async function getJSON<T = any>(path: string, params?: Record<string, any>, tenantOverride?: string | null): Promise<T> {
   const cleanPath = path.startsWith('/') ? path.slice(1) : path
   const url = new URL(cleanPath, API_BASE_URL)
   if (params) {
@@ -67,29 +79,61 @@ async function getJSON<T = any>(path: string, params?: Record<string, any>): Pro
   }
   const res = await fetch(url.toString(), {
     credentials: 'include',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(tenantOverride),
   })
   if (!res.ok) {
-    let detail = await res.text()
-    try { const j = JSON.parse(detail); detail = j.detail || detail } catch {}
-    throw new Error(detail || `HTTP ${res.status}`)
+    const raw = await res.text()
+    let detail: unknown = raw
+    try {
+      const j = JSON.parse(raw)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        detail = (j as { detail: unknown }).detail
+      }
+    } catch {
+      /* keep raw text */
+    }
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object'
+          ? JSON.stringify(detail)
+          : `HTTP ${res.status}`
+    const err = new Error(message) as Error & { response?: { status: number; data: { detail: unknown } } }
+    err.response = { status: res.status, data: { detail } }
+    throw err
   }
   return res.json()
 }
 
-async function patchJSON<T = any>(path: string, body: Record<string, any>): Promise<T> {
+async function patchJSON<T = any>(path: string, body: Record<string, any>, tenantOverride?: string | null): Promise<T> {
   const cleanPath = path.startsWith('/') ? path.slice(1) : path
   const url = new URL(cleanPath, API_BASE_URL).toString()
   const res = await fetch(url, {
     method: 'PATCH',
     credentials: 'include',
-    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    headers: { ...getAuthHeaders(tenantOverride), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   if (!res.ok) {
-    let detail = await res.text()
-    try { const j = JSON.parse(detail); detail = (j as any).detail || detail } catch {}
-    throw new Error(detail || `HTTP ${res.status}`)
+    const raw = await res.text()
+    let detail: unknown = raw
+    try {
+      const j = JSON.parse(raw)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        detail = (j as { detail: unknown }).detail
+      }
+    } catch {
+      /* keep raw text */
+    }
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object'
+          ? JSON.stringify(detail)
+          : `HTTP ${res.status}`
+    const err = new Error(message) as Error & { response?: { status: number; data: { detail: unknown } } }
+    err.response = { status: res.status, data: { detail } }
+    throw err
   }
   return res.json()
 }
@@ -101,9 +145,19 @@ type Vacancy = {
   status?: string
   company_id?: string
   company_name?: string
+  candidate_count?: number
+  headcount_target?: number | null
+  candidate_profile_name?: string | null
+  last_candidate_activity_at?: string | null
   created_at?: string
   updated_at?: string
   is_archived?: boolean
+}
+
+const DATE_FNS_LOCALES: Record<LocaleCode, typeof enUS> = {
+  en: enUS,
+  pl: plFns,
+  ru: ruFns,
 }
 
 type ListResponse = {
@@ -113,32 +167,27 @@ type ListResponse = {
   offset: number
 }
 
-const STATUSES = [
-  { value: '', label: 'Все' },
-  { value: 'open', label: 'Открыта' },
-  { value: 'on_hold', label: 'На паузе' },
-  { value: 'closed', label: 'Закрыта' },
-  { value: 'archived', label: 'В архиве' },
-]
-
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Открыта',
-  on_hold: 'На паузе',
-  closed: 'Закрыта',
-  archived: 'В архиве',
-}
-
-function StatusBadge({ value, archived }: { value?: string; archived?: boolean }) {
-  const v = archived ? 'archived' : (value || '')
-  const label = STATUS_LABELS[v] || '—'
+function StatusBadge({ value, archived, label }: { value?: string; archived?: boolean; label: string }) {
+  const v = archived ? 'archived' : (value || '').toLowerCase()
+  // Phase 2.6.D Stage C — `filled` and `cancelled` are canonical
+  // terminal codes (`docs/specs/vacancy-statuses.md`). `filled`
+  // celebrates a successful hire (success-blue), `cancelled` is a
+  // soft negative (ghost) — distinct from `closed` which is a generic
+  // shutdown. Legacy `paused` is normalized at the API boundary but
+  // we still recognise it here as defence-in-depth for the rollout
+  // window before the Stage B alembic backfill runs.
   const badgeClass = archived
     ? 'badge badge-ghost'
     : v === 'open'
     ? 'badge badge-success'
-    : v === 'on_hold'
+    : v === 'on_hold' || v === 'paused'
     ? 'badge badge-warning'
     : v === 'closed'
     ? 'badge badge-error'
+    : v === 'filled'
+    ? 'badge badge-info'
+    : v === 'cancelled'
+    ? 'badge badge-ghost'
     : 'badge'
   return <span className={badgeClass}>{label}</span>
 }
@@ -160,8 +209,12 @@ function SortHeader({
   const active = sort === field
   const arrow = !active ? '' : (dir === 'asc' ? '▲' : '▼')
   return (
-    <button type="button" className="px-4 py-3 text-left w-full select-none hover:underline" onClick={()=>onSort(field)}>
-      <span className="inline-flex items-center gap-1">{children}{active && <span>{arrow}</span>}</span>
+    <button
+      type="button"
+      className="w-full px-4 py-3 text-left text-xs font-semibold text-slate-600 transition hover:text-slate-900"
+      onClick={() => onSort(field)}
+    >
+      <span className="inline-flex items-center gap-1.5">{children}{active && <span>{arrow}</span>}</span>
     </button>
   )
 }
@@ -182,13 +235,53 @@ function toCSV(rows: any[], headers: { key: string; label: string }[]) {
 export default function VacancyList() {
   const [search, setSearch] = useSearchParams()
   const navigate = useNavigate()
-  const { preferences, updatePreferences } = useAuth()
+  const { me, preferences, updatePreferences } = useAuth()
+  const currentTenantId = useCurrentTenantId()
+  const effectiveTenantId = (currentTenantId || '').trim() || null
+  const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
+  const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
 
   const [data, setData] = useState<ListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
+  const statusOptions = useMemo(
+    () => [
+      { value: '', label: t('app.vacancies.list.status.all') },
+      { value: 'open', label: t('app.vacancies.list.status.open') },
+      { value: 'on_hold', label: t('app.vacancies.list.status.on_hold') },
+      { value: 'closed', label: t('app.vacancies.list.status.closed') },
+      // Phase 2.6.D Stage C — surface the new canonical terminals
+      // alongside `closed`. `archived` stays at the bottom because
+      // it's an orthogonal boolean (soft-delete) rather than a
+      // status, and is rendered last to match the badge ordering
+      // operators are used to.
+      { value: 'filled', label: t('app.vacancies.list.status.filled') },
+      { value: 'cancelled', label: t('app.vacancies.list.status.cancelled') },
+      { value: 'archived', label: t('app.vacancies.list.status.archived') },
+    ],
+    [t]
+  )
+  const statusLabelMap = useMemo(
+    () => ({
+      open: t('app.vacancies.list.status.open'),
+      on_hold: t('app.vacancies.list.status.on_hold'),
+      closed: t('app.vacancies.list.status.closed'),
+      filled: t('app.vacancies.list.status.filled'),
+      cancelled: t('app.vacancies.list.status.cancelled'),
+      archived: t('app.vacancies.list.status.archived'),
+    }),
+    [t]
+  )
+  const statusLabel = useCallback(
+    (value?: string, archived?: boolean) => {
+      const key = archived ? 'archived' : (value || '')
+      return statusLabelMap[key as keyof typeof statusLabelMap] || t('common.labels.not_available')
+    },
+    [statusLabelMap, t]
+  )
 
   // Search hotkey (Cmd/Ctrl + K)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -209,8 +302,24 @@ export default function VacancyList() {
 
   // columns visibility
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
-  const [visibleCols, setVisibleCols] = useState<{title:boolean; company:boolean; status:boolean; updated:boolean}>({
-    title: true, company: true, status: true, updated: true,
+  const [visibleCols, setVisibleCols] = useState<{
+    title: boolean
+    company: boolean
+    status: boolean
+    updated: boolean
+    candidates: boolean
+    headcount: boolean
+    profile: boolean
+    lastActivity: boolean
+  }>({
+    title: true,
+    company: true,
+    status: true,
+    updated: true,
+    candidates: true,
+    headcount: true,
+    profile: false,
+    lastActivity: true,
   })
 
   const allSelected = useMemo(()=> selected.length > 0 && selected.length === (data.items?.length || 0), [selected, data.items])
@@ -237,7 +346,7 @@ export default function VacancyList() {
     const p: Record<string, string | number> = { limit, offset, order_by: sort, desc: dir === 'desc' ? 1 : 0 }
     if (q) p.q = q
     if (status) p.status = status
-    if (company) p.company = company
+    if (company) p.company_id = company
     if ((status || '').toLowerCase() === 'archived') {
       p.include_archived = 1
     }
@@ -245,6 +354,8 @@ export default function VacancyList() {
   }, [q, status, company, sort, dir, limit, offset])
 
   useEffect(() => {
+    const role = String(me?.role || '').trim().toLowerCase()
+    if (role === 'superadmin') return
     const defaultCompanyId = preferences?.defaults?.company_id
     if (defaultCompanyId && !company) {
       const next = new URLSearchParams(search)
@@ -252,13 +363,13 @@ export default function VacancyList() {
       next.set('page', '1')
       setSearch(next, { replace: true })
     }
-  }, [preferences?.defaults?.company_id, company, search, setSearch])
+  }, [me?.role, preferences?.defaults?.company_id, company, search, setSearch])
 
   // load
   useEffect(() => {
     setLoading(true)
     setError(null)
-    getJSON<ListResponse | Vacancy[]>('/vacancies/', params)
+    getJSON<ListResponse | Vacancy[]>('/vacancies/', params, effectiveTenantId)
       .then((data) => {
         if (Array.isArray(data)) {
           setData({ items: data, total: data.length, limit, offset })
@@ -273,15 +384,26 @@ export default function VacancyList() {
       })
       .catch((err: any) => {
         console.error('[vacancies/list] failed', err)
-        setError(err?.message === 'HTTP 401' || /Unauthorized|Missing Authorization/i.test(err?.message || '')
-          ? 'Неавторизовано: войдите в систему и повторите.'
-          : (err?.message || 'Не удалось загрузить вакансии'))
+        const unauthorized =
+          err?.message === 'HTTP 401' || /Unauthorized|Missing Authorization/i.test(err?.message || '')
+        if (unauthorized) {
+          setError({
+            title: t('app.vacancies.list.errors.unauthorized'),
+            hint: t('app.common.retry_hint'),
+          })
+        } else if (
+          planLimitModal?.showPlanLimitIfNeeded(err, t('app.vacancies.list.errors.load_failed'))
+        ) {
+          setError(null)
+        } else {
+          setError(getFriendlyErrorInfo(err, t('app.vacancies.list.errors.load_failed'), t))
+        }
       })
       .finally(() => {
         setLoading(false)
         setSelected([])
       })
-  }, [params, refreshTick])
+  }, [params, refreshTick, planLimitModal, t, effectiveTenantId])
 
 
   // client-side сортировка (fallback)
@@ -292,13 +414,20 @@ export default function VacancyList() {
       if (key === 'company_name') return (v.company_name || '').toLowerCase()
       if (key === 'status') return (v.is_archived ? 'archived' : (v.status || ''))
       if (key === 'updated_at' || key === 'created_at') return v[key as 'updated_at' | 'created_at'] || ''
+      if (key === 'candidate_count') return Number(v.candidate_count ?? 0)
+      if (key === 'headcount_target') return Number(v.headcount_target ?? 0)
+      if (key === 'last_candidate_activity_at') return v.last_candidate_activity_at || ''
+      if (key === 'candidate_profile_name') return (v.candidate_profile_name || '').toLowerCase()
       return (v as any)[key] ?? ''
     }
     arr.sort((a,b) => {
       const av = get(a, sort)
       const bv = get(b, sort)
       if (av === bv) return 0
-      return (av > bv ? 1 : -1) * (dir === 'asc' ? 1 : -1)
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return av === bv ? 0 : (av > bv ? 1 : -1) * (dir === 'asc' ? 1 : -1)
+      }
+      return (String(av) > String(bv) ? 1 : -1) * (dir === 'asc' ? 1 : -1)
     })
     return arr
   }, [data.items, sort, dir])
@@ -330,7 +459,13 @@ export default function VacancyList() {
       next.set('dir', currentDir === 'asc' ? 'desc' : 'asc')
     } else {
       next.set('sort', field)
-      next.set('dir', field === 'created_at' || field === 'updated_at' ? 'desc' : 'asc')
+      const descDefault =
+        field === 'created_at' ||
+        field === 'updated_at' ||
+        field === 'last_candidate_activity_at' ||
+        field === 'candidate_count' ||
+        field === 'headcount_target'
+      next.set('dir', descDefault ? 'desc' : 'asc')
     }
     setSearch(next, { replace: true })
   }
@@ -348,16 +483,27 @@ export default function VacancyList() {
 
   const exportCSV = () => {
     const headers = [
-      { key: 'title', label: 'Название' },
-      { key: 'company_name', label: 'Компания' },
-      { key: 'status', label: 'Статус' },
-      { key: 'updated_at', label: 'Обновлена' },
-      { key: 'created_at', label: 'Создана' },
+      { key: 'title', label: t('app.vacancies.list.col_title') },
+      { key: 'company_name', label: t('app.vacancies.list.col_company') },
+      { key: 'status', label: t('app.vacancies.list.col_status') },
+      { key: 'candidate_count', label: t('app.vacancies.list.col_candidates') },
+      { key: 'headcount_target', label: t('app.vacancies.list.col_headcount') },
+      { key: 'candidate_profile_name', label: t('app.vacancies.list.col_profile') },
+      { key: 'last_candidate_activity_at', label: t('app.vacancies.list.col_last_activity') },
+      { key: 'updated_at', label: t('app.vacancies.list.col_updated') },
+      { key: 'created_at', label: t('app.vacancies.list.col_created') },
     ]
     const rows = items.map(v => ({
-      title: v.title || '(без названия)',
+      title: v.title || t('app.vacancies.list.untitled'),
       company_name: v.company_name || '',
-      status: v.is_archived ? 'В архиве' : (STATUS_LABELS[v.status || ''] || ''),
+      status: statusLabel(v.status, v.is_archived),
+      candidate_count: String(v.candidate_count ?? 0),
+      headcount_target:
+        v.headcount_target != null && v.headcount_target > 0 ? String(v.headcount_target) : '',
+      candidate_profile_name: v.candidate_profile_name || '',
+      last_candidate_activity_at: v.last_candidate_activity_at
+        ? new Date(v.last_candidate_activity_at).toLocaleString()
+        : '',
       updated_at: v.updated_at ? new Date(v.updated_at).toLocaleString() : '',
       created_at: v.created_at ? new Date(v.created_at).toLocaleString() : '',
     }))
@@ -371,12 +517,18 @@ export default function VacancyList() {
     URL.revokeObjectURL(url)
   }
 
-  const bulkSetStatus = async (status: 'open'|'on_hold'|'closed') => {
+  const bulkSetStatus = async (status: 'open'|'on_hold'|'closed'|'filled'|'cancelled') => {
     if (selected.length === 0) return
     // optimistic UI
     setData(prev => ({...prev, items: (prev.items || []).map(v => selected.includes(v.id) ? {...v, status, is_archived: false} : v)}))
     try{
-      await Promise.allSettled(selected.map(id => patchJSON(`/vacancies/${id}`, { status })))
+      await Promise.allSettled(
+        selected.map((id) => {
+          const row = (data.items || []).find((v) => v.id === id)
+          const tenantForRow = String(row?.tenant_id || '').trim() || effectiveTenantId
+          return patchJSON(`/vacancies/${id}`, { status }, tenantForRow)
+        }),
+      )
     } catch (_){}
     setSelected([])
     refresh()
@@ -386,13 +538,19 @@ export default function VacancyList() {
     if (selected.length === 0) return
     setData(prev => ({...prev, items: (prev.items || []).map(v => selected.includes(v.id) ? {...v, is_archived: true} : v)}))
     try{
-      await Promise.allSettled(selected.map(id => patchJSON(`/vacancies/${id}`, { is_archived: true })))
+      await Promise.allSettled(
+        selected.map((id) => {
+          const row = (data.items || []).find((v) => v.id === id)
+          const tenantForRow = String(row?.tenant_id || '').trim() || effectiveTenantId
+          return patchJSON(`/vacancies/${id}`, { is_archived: true }, tenantForRow)
+        }),
+      )
     } catch(_){}
     setSelected([])
     refresh()
   }
 
-  const toggleCol = (k: keyof typeof visibleCols) => setVisibleCols(s => ({ ...s, [k]: !s[k] }))
+  const toggleCol = (k: keyof typeof visibleCols) => setVisibleCols((s) => ({ ...s, [k]: !s[k] }))
 
   const syncVacancyViews = useCallback(async (next: UserSavedView[]) => {
     try {
@@ -411,7 +569,7 @@ export default function VacancyList() {
   }, [candidateViews, updatePreferences])
 
   const saveView = () => {
-    const name = window.prompt('Название вида:')?.trim()
+    const name = window.prompt(t('app.vacancies.list.view_name_prompt'))?.trim()
     if (!name) return
     const filters = { q, company, status, sort, dir }
     const newView: UserSavedView = {
@@ -461,23 +619,100 @@ export default function VacancyList() {
   }
 
   const resetDisabled = !q && !company && !status
+  const visibleColumnCount =
+    (visibleCols.title ? 1 : 0) +
+    (visibleCols.company ? 1 : 0) +
+    (visibleCols.status ? 1 : 0) +
+    (visibleCols.updated ? 1 : 0) +
+    (visibleCols.candidates ? 1 : 0) +
+    (visibleCols.headcount ? 1 : 0) +
+    (visibleCols.profile ? 1 : 0) +
+    (visibleCols.lastActivity ? 1 : 0)
+  const tableColSpan = visibleColumnCount + 2
+
+  const pageStatusMix = useMemo(() => {
+    const arr = items
+    const open = arr.filter((v) => !v.is_archived && (v.status || '').toLowerCase() === 'open').length
+    const on_hold = arr.filter((v) => !v.is_archived && (v.status || '').toLowerCase() === 'on_hold').length
+    const closed = arr.filter((v) => !v.is_archived && (v.status || '').toLowerCase() === 'closed').length
+    const archived = arr.filter((v) => v.is_archived).length
+    return { open, on_hold, closed, archived }
+  }, [items])
+
+  const formatLastCandidateActivity = useCallback(
+    (iso: string | null | undefined) => {
+      if (!iso) return '—'
+      try {
+        return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: dateFnsLocale })
+      } catch {
+        return '—'
+      }
+    },
+    [dateFnsLocale]
+  )
+
+  const vacancyHero = (
+    <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-2xl font-semibold">{t('app.nav.items.vacancies')}</p>
+          </div>
+          <p className="text-sm text-white/80">{t('app.vacancies.list.subtitle')}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            className="btn-primary bg-white text-brand-700 hover:bg-white/90"
+            onClick={() => navigate(CRM_APP_PATHS.vacancyNew)}
+          >
+            {t('app.vacancies.list.new_vacancy')}
+          </button>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-white/70">{t('app.vacancies.list.insights.page_mix_caption')}</p>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.matching_total')}</div>
+          <div className="text-3xl font-semibold">{data.total}</div>
+        </div>
+        <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.open')}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.open}</div>
+        </div>
+        <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.on_hold')}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.on_hold}</div>
+        </div>
+        <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.closed')}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.closed}</div>
+        </div>
+        <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.archived')}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.archived}</div>
+        </div>
+      </div>
+    </section>
+  )
 
   return (
-    <>
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="h-full w-full flex flex-col space-y-4">
+      {vacancyHero}
+
+      <section className="app-surface space-y-4 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <form onSubmit={onSearch} className="flex flex-1 flex-col gap-3">
+        <form onSubmit={onSearch} className="flex flex-1 flex-col gap-3">
             <div className="flex flex-wrap gap-2">
-              <input name="q" ref={searchRef} defaultValue={q} placeholder="Поиск… (⌘K)" className="input w-72 flex-1 min-w-[220px]" />
-              <input name="company" defaultValue={company} placeholder="Компания…" className="input w-56" />
+              <input name="q" ref={searchRef} defaultValue={q} placeholder={t('app.vacancies.list.search_placeholder')} className="input w-72 flex-1 min-w-[220px]" />
+              <input name="company" defaultValue={company} placeholder={t('app.vacancies.list.company_placeholder')} className="input w-56" />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                {STATUSES.map((s) => (
+                {statusOptions.map((s) => (
                   <button
                     key={s.value || 'all'}
                     type="button"
-                    className={`rounded-full border px-3 py-1 text-sm transition ${status === s.value ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800'}`}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${status === s.value ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'}`}
                     onClick={() => {
                       const next = new URLSearchParams(search)
                       if (!s.value) {
@@ -494,73 +729,75 @@ export default function VacancyList() {
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <button type="submit" className={secondaryBtn}>Применить</button>
+                <button type="submit" className={secondaryBtn}>{t('common.actions.apply')}</button>
                 <button
                   type="button"
                   className={secondaryBtn}
                   onClick={resetFilters}
                   disabled={resetDisabled}
-                  title="Очистить поля фильтров"
+                  title={t('app.vacancies.list.reset_filters_title')}
                 >
-                  Сбросить
+                  {t('common.actions.reset')}
                 </button>
               </div>
             </div>
           </form>
-
-          <div className="flex items-center gap-2 self-end lg:self-start">
+          <div className="flex items-center gap-2">
             <button
               className={secondaryBtn}
               onClick={refresh}
               disabled={loading}
-              title="Обновить список вакансий"
+              title={t('app.vacancies.list.refresh_title')}
             >
-              {loading ? 'Обновление…' : 'Обновить'}
+              {loading ? t('common.loading') : t('common.actions.refresh')}
             </button>
             <button
               className={secondaryBtn}
               onClick={exportCSV}
-              title="Выгрузить таблицу в CSV"
-            >Экспорт CSV</button>
+              title={t('app.vacancies.list.export_csv_title')}
+            >{t('app.vacancies.list.export_csv')}</button>
             <div className="relative" ref={actionsMenuRef}>
               <button
                 type="button"
                 className={secondaryBtn}
                 onClick={() => setActionsMenuOpen((prev) => !prev)}
-                title="Дополнительные действия"
+                title={t('common.actions.more')}
               >
                 ⋯
               </button>
               {actionsMenuOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-gray-200 bg-white p-3 shadow-lg">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Колонки</div>
+                <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('app.vacancies.list.columns')}</div>
                   <div className="mt-2 space-y-1">
-                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.title} onChange={()=>toggleCol('title')} /> Название</label>
-                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.company} onChange={()=>toggleCol('company')} /> Компания</label>
-                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.status} onChange={()=>toggleCol('status')} /> Статус</label>
-                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.updated} onChange={()=>toggleCol('updated')} /> Обновлена</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.title} onChange={()=>toggleCol('title')} /> {t('app.vacancies.list.col_title')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.company} onChange={()=>toggleCol('company')} /> {t('app.vacancies.list.col_company')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.status} onChange={()=>toggleCol('status')} /> {t('app.vacancies.list.col_status')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.updated} onChange={()=>toggleCol('updated')} /> {t('app.vacancies.list.col_updated')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.candidates} onChange={()=>toggleCol('candidates')} /> {t('app.vacancies.list.col_candidates')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.headcount} onChange={()=>toggleCol('headcount')} /> {t('app.vacancies.list.col_headcount')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.profile} onChange={()=>toggleCol('profile')} /> {t('app.vacancies.list.col_profile')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.lastActivity} onChange={()=>toggleCol('lastActivity')} /> {t('app.vacancies.list.col_last_activity')}</label>
                   </div>
-                  <button type="button" className="btn-primary mt-3 w-full" onClick={() => { setActionsMenuOpen(false); saveView() }}>Сохранить как вид</button>
+                  <button type="button" className="btn-primary mt-3 w-full" onClick={() => { setActionsMenuOpen(false); saveView() }}>{t('app.vacancies.list.save_view')}</button>
                 </div>
               )}
             </div>
-            <button className={primaryBtn} onClick={()=>navigate('/app/vacancies/new')}>Новая вакансия</button>
           </div>
         </div>
-      </div>
+      </section>
 
       {selected.length > 0 && (
-        <div className="card p-2 mb-2 flex flex-wrap items-center gap-2 text-sm">
-          <div>Выбрано: <span className="font-medium">{selected.length}</span></div>
+        <div className="app-surface mb-2 flex flex-wrap items-center gap-2 p-3 text-sm">
+          <div>{t('app.vacancies.list.bulk_selected', { values: { count: selected.length } })}</div>
           <div className="flex items-center gap-1">
-            <span className="text-gray-500">Перевести в статус:</span>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('open')}>Открыта</button>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('on_hold')}>На паузе</button>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('closed')}>Закрыта</button>
+            <span className="text-slate-500">{t('app.vacancies.list.bulk_set_status')}</span>
+            <button className={secondaryBtn} onClick={()=>bulkSetStatus('open')}>{t('app.vacancies.list.status.open')}</button>
+            <button className={secondaryBtn} onClick={()=>bulkSetStatus('on_hold')}>{t('app.vacancies.list.status.on_hold')}</button>
+            <button className={secondaryBtn} onClick={()=>bulkSetStatus('closed')}>{t('app.vacancies.list.status.closed')}</button>
           </div>
           <div className="flex-1" />
-          <button className={secondaryBtn} onClick={bulkArchive}>В архив</button>
-          <button className="btn-ghost" onClick={()=>setSelected([])}>Снять выделение</button>
+          <button className={secondaryBtn} onClick={bulkArchive}>{t('app.vacancies.list.bulk_archive')}</button>
+          <button className="btn-secondary" onClick={()=>setSelected([])}>{t('app.vacancies.list.bulk_clear_selection')}</button>
         </div>
       )}
 
@@ -568,9 +805,9 @@ export default function VacancyList() {
       {views.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-2">
           {views.map((v) => (
-            <div key={v.id} className="inline-flex items-center gap-2 card px-2 py-1 text-sm">
-              <button className="hover:underline" onClick={()=>applyView(v)}>{v.name || 'Без названия'}</button>
-              <button className="text-gray-400 hover:text-red-500" onClick={()=>removeView(v.id)} title="Удалить">×</button>
+            <div key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm shadow-sm">
+              <button className="hover:underline" onClick={()=>applyView(v)}>{v.name || t('app.vacancies.list.untitled')}</button>
+              <button className="text-slate-400 hover:text-red-500" onClick={()=>removeView(v.id)} title={t('app.vacancies.list.delete_view')}>×</button>
             </div>
           ))}
         </div>
@@ -578,80 +815,135 @@ export default function VacancyList() {
 
       {error && (
         <div className="mb-3">
-          <div className="alert alert-error"><span>{error}</span></div>
+          <ErrorRecoveryBanner
+            info={error}
+            onRetry={() => refresh()}
+            retryLabel={t('common.actions.retry')}
+            {...friendlyErrorBannerSecondary(
+              error,
+              CRM_APP_PATHS.vacancies,
+              t('app.nav.items.vacancies', { defaultValue: 'Vacancies' }),
+            )}
+            compact
+          />
         </div>
       )}
 
       {loading ? (
-        <div className="text-sm text-gray-500">Загружаем список вакансий…</div>
+        <div className="text-sm text-slate-500">{t('app.vacancies.list.loading')}</div>
       ) : (
-        <div className="card w-full overflow-auto">
-          <table className="min-w-full text-sm table-auto">
-            <thead>
-              <tr className="bg-gray-50 text-left">
-                <th className="px-4 py-3 w-1">
+        <section className="app-surface overflow-hidden">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50/90 text-left">
+              <tr>
+                <th className="w-1 border-b border-r border-slate-200 px-4 py-3">
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} />
                 </th>
                 {visibleCols.title && (
-                  <th><SortHeader field="title" sort={sort} dir={dir} onSort={setSort}>Название</SortHeader></th>
+                  <th className="border-b border-r border-slate-200"><SortHeader field="title" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_title')}</SortHeader></th>
                 )}
                 {visibleCols.company && (
-                  <th><SortHeader field="company_name" sort={sort} dir={dir} onSort={setSort}>Компания</SortHeader></th>
+                  <th className="border-b border-r border-slate-200"><SortHeader field="company_name" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_company')}</SortHeader></th>
                 )}
                 {visibleCols.status && (
-                  <th><SortHeader field="status" sort={sort} dir={dir} onSort={setSort}>Статус</SortHeader></th>
+                  <th className="border-b border-r border-slate-200"><SortHeader field="status" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_status')}</SortHeader></th>
+                )}
+                {visibleCols.candidates && (
+                  <th className="border-b border-r border-slate-200"><SortHeader field="candidate_count" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_candidates')}</SortHeader></th>
+                )}
+                {visibleCols.headcount && (
+                  <th className="border-b border-r border-slate-200">
+                    <SortHeader field="headcount_target" sort={sort} dir={dir} onSort={setSort}>
+                      {t('app.vacancies.list.col_headcount')}
+                    </SortHeader>
+                  </th>
+                )}
+                {visibleCols.profile && (
+                  <th className="border-b border-r border-slate-200"><SortHeader field="candidate_profile_name" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_profile')}</SortHeader></th>
+                )}
+                {visibleCols.lastActivity && (
+                  <th className="border-b border-r border-slate-200"><SortHeader field="last_candidate_activity_at" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_last_activity')}</SortHeader></th>
                 )}
                 {visibleCols.updated && (
-                  <th><SortHeader field="updated_at" sort={sort} dir={dir} onSort={setSort}>Обновлена</SortHeader></th>
+                  <th className="border-b border-r border-slate-200"><SortHeader field="updated_at" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_updated')}</SortHeader></th>
                 )}
-                <th className="px-4 py-3 w-1">Действия</th>
+                <th className="w-1 border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.vacancies.list.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 && (
                 <tr>
-                  <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>Вакансии не найдены</td>
+                  <td className="px-4 py-8 text-center text-slate-500" colSpan={tableColSpan}>{t('app.vacancies.list.not_found')}</td>
                 </tr>
               )}
               {items.map((v) => (
-                <tr key={v.id} className="border-t">
-                  <td className="px-4 py-3">
+                <tr key={v.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
+                  <td className="border-r border-slate-200 px-4 py-3">
                     <input type="checkbox" checked={selected.includes(v.id)} onChange={()=>toggleOne(v.id)} />
                   </td>
                   {visibleCols.title && (
-                    <td className="px-4 py-3 font-medium">
-                      <Link className="hover:underline" to={`/app/vacancies/${v.id}`}>
-                        {v.title || '(без названия)'}
+                    <td className="border-r border-slate-200 px-4 py-3 font-medium">
+                      <Link className="hover:underline" to={`${CRM_APP_PATHS.vacancies}/${v.id}`}>
+                        {v.title || t('app.vacancies.list.untitled')}
                       </Link>
                     </td>
                   )}
                   {visibleCols.company && (
-                    <td className="px-4 py-3">{v.company_name || '—'}</td>
+                    <td className="border-r border-slate-200 px-4 py-3">{v.company_name || '—'}</td>
                   )}
                   {visibleCols.status && (
-                    <td className="px-4 py-3"><StatusBadge value={v.is_archived ? 'archived' : (v.status || '')} /></td>
+                    <td className="border-r border-slate-200 px-4 py-3"><StatusBadge value={v.status || ''} archived={v.is_archived} label={statusLabel(v.status, v.is_archived)} /></td>
+                  )}
+                  {visibleCols.candidates && (
+                    <td className="border-r border-slate-200 px-4 py-3 tabular-nums">
+                      <Link
+                        className="font-medium text-brand-700 hover:underline"
+                        to={`${CRM_APP_PATHS.vacancies}/${v.id}/candidates`}
+                      >
+                        {v.candidate_count ?? 0}
+                      </Link>
+                    </td>
+                  )}
+                  {visibleCols.headcount && (
+                    <td className="border-r border-slate-200 px-4 py-3 tabular-nums text-slate-700">
+                      {v.headcount_target != null && v.headcount_target > 0 ? (
+                        <span title={t('app.vacancies.list.headcount_title')}>
+                          {v.candidate_count ?? 0}/{v.headcount_target}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                  )}
+                  {visibleCols.profile && (
+                    <td className="border-r border-slate-200 px-4 py-3 text-slate-600">{v.candidate_profile_name || '—'}</td>
+                  )}
+                  {visibleCols.lastActivity && (
+                    <td className="border-r border-slate-200 px-4 py-3 text-slate-600">{formatLastCandidateActivity(v.last_candidate_activity_at)}</td>
                   )}
                   {visibleCols.updated && (
-                    <td className="px-4 py-3">{v.updated_at ? new Date(v.updated_at).toLocaleDateString() : (v.created_at ? new Date(v.created_at).toLocaleDateString() : '—')}</td>
+                    <td className="border-r border-slate-200 px-4 py-3">{v.updated_at ? new Date(v.updated_at).toLocaleDateString() : (v.created_at ? new Date(v.created_at).toLocaleDateString() : '—')}</td>
                   )}
                   <td className="px-4 py-3">
-                    <Link className="btn-ghost btn-sm hover:bg-gray-100 focus:ring-2 focus:ring-blue-200" to={`/app/vacancies/${v.id}`}>Открыть</Link>
+                    <Link className="btn-secondary btn-sm" to={`${CRM_APP_PATHS.vacancies}/${v.id}`}>
+                      {t('app.vacancies.list.open')}
+                    </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
       )}
 
       <div className="flex items-center justify-between mt-3">
-        <div className="text-gray-500">Всего: {data.total}</div>
+        <div className="text-slate-500">{t('app.vacancies.list.total', { values: { total: data.total } })}</div>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => goPage(Math.max(1, page - 1))} disabled={page <= 1} className="btn btn-sm">←</button>
-          <span className="px-2 text-sm text-gray-600">Стр. {page} / {Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))}</span>
-          <button type="button" onClick={() => goPage(Math.min(Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))), page + 1))} disabled={page >= Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))} className="btn btn-sm">→</button>
+          <button type="button" onClick={() => goPage(Math.max(1, page - 1))} disabled={page <= 1} className="btn-secondary btn-sm">←</button>
+          <span className="px-2 text-sm text-slate-600">{t('app.vacancies.list.page', { values: { page, total: Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))) } })}</span>
+          <button type="button" onClick={() => goPage(Math.min(Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))), page + 1))} disabled={page >= Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))} className="btn-secondary btn-sm">{NEXT_PAGE_GLYPH}</button>
         </div>
       </div>
-    </>
+    </div>
   )
 }

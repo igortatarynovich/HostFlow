@@ -18,10 +18,12 @@ except Exception:  # pragma: no cover - pydantic<2 fallback
     ConfigDict = None  # type: ignore[assignment]
     PYDANTIC_V2 = False
     from pydantic import root_validator  # type: ignore
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, require_roles
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
@@ -59,12 +61,75 @@ from backend.app.services.document_workflow import (
     STATUS_ORDER,
 )
 from backend.app.observability.metrics import refresh_documents_overdue_metrics
+from backend.app.services import candidate_notifications
+from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services import reminders as reminders_service
 from backend.app.services.audit import log_activity
 from backend.app.modules.documents import crud as documents_crud
+from backend.app.services.tenant_quota import (
+    ensure_tenant_document_quota,
+    ensure_tenant_storage_bytes_fits,
+    sum_file_entries_bytes,
+)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger("backend.app.api.documents")
+
+
+def _resolved_document_own_company_id(cand: Candidate, active_own_company_id: Optional[str]) -> Optional[str]:
+    c = str(getattr(cand, "own_company_id", None) or "").strip()
+    if c:
+        return c
+    a = str(active_own_company_id or "").strip()
+    return a or None
+
+
+def _ensure_candidate_own_company_scope(cand: Candidate, own_company_id: Optional[str]) -> None:
+    if not own_company_id:
+        return
+    c = str(getattr(cand, "own_company_id", None) or "").strip()
+    if c and c != str(own_company_id).strip():
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+
+def _documents_scope_clause(own_company_id: Optional[str]):
+    if not own_company_id:
+        return None
+    oc = str(own_company_id).strip()
+    return or_(
+        Document.own_company_id == oc,
+        and_(Document.own_company_id.is_(None), Candidate.own_company_id == oc),
+        and_(Document.own_company_id.is_(None), Candidate.own_company_id.is_(None)),
+    )
+
+
+def _ensure_document_own_company_matches(
+    doc: Document,
+    cand: Candidate,
+    active_own_company_id: Optional[str],
+) -> None:
+    if not active_own_company_id:
+        return
+    oc = str(active_own_company_id).strip()
+    doc_oc = str(getattr(doc, "own_company_id", None) or "").strip()
+    cand_oc = str(getattr(cand, "own_company_id", None) or "").strip()
+    effective = doc_oc or cand_oc
+    if not effective:
+        return
+    if effective != oc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+
+async def _candidate_for_document_scope(
+    db: AsyncSession, tenant_id: UUID, candidate_id: str
+) -> Optional[Candidate]:
+    return await db.scalar(
+        select(Candidate).where(
+            Candidate.id == str(candidate_id),
+            Candidate.tenant_id == str(tenant_id),
+            Candidate.deleted_at.is_(None),
+        )
+    )
 
 
 def _now_utc() -> datetime:
@@ -659,12 +724,18 @@ async def list_documents(
     status: Optional[str] = Query(None),
     ordered: Optional[bool] = Query(None),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[DocumentOut]:
     db, tenant_id = db_tenant
     stmt = select(Document).where(
         Document.tenant_id == str(tenant_id),
         Document.deleted_at.is_(None),
     )
+    if active_own_company_id:
+        stmt = stmt.join(Candidate, Document.candidate_id == Candidate.id)
+        scope = _documents_scope_clause(active_own_company_id)
+        if scope is not None:
+            stmt = stmt.where(scope)
     if candidate_id:
         stmt = stmt.where(Document.candidate_id == str(candidate_id))
     current_type = doc_type or key
@@ -690,7 +761,7 @@ async def list_documents(
 
 
 @router.post(
-    "/documents/order",
+    "/order",
     response_model=DocumentOut,
     status_code=201,
     dependencies=[Depends(require_roles(Role.recruiter, Role.manager, Role.admin))],
@@ -698,6 +769,7 @@ async def list_documents(
 async def order_document(
     payload: DocumentOrderPayload,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     db, tenant_id = db_tenant
     candidate = await db.scalar(
@@ -709,6 +781,7 @@ async def order_document(
     )
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    _ensure_candidate_own_company_scope(candidate, active_own_company_id)
 
     doc_type = normalize_doc_type(payload.doc_type)
     defaults = get_doc_type_defaults(doc_type)
@@ -783,6 +856,9 @@ async def order_document(
         "ordered_at": ordered_at,
         "owner_id": str(payload.candidate_id),
     }
+    resolved_oc = _resolved_document_own_company_id(candidate, active_own_company_id)
+    if resolved_oc:
+        create_payload["own_company_id"] = resolved_oc
     if meta_payload:
         create_payload["meta"] = meta_payload
 
@@ -793,6 +869,19 @@ async def order_document(
 
     _mark_workflow_ordered(doc, ordered_at)
     await reminders_service.schedule_document_expiry_reminders(db, str(tenant_id), doc)
+    from backend.app.api.public.intake import _ensure_status_share_token
+
+    _ensure_status_share_token(candidate)
+    base_url = (settings.frontend_url or "").strip().rstrip("/") or "https://hostflow.cc"
+    status_token = getattr(candidate, "status_share_token", None) or getattr(candidate, "intake_token", None)
+    status_url = f"{base_url}/public/status/{status_token}" if status_token else None
+    await candidate_notifications.send_document_requested_email_to_candidate(
+        db,
+        tenant_id=str(tenant_id),
+        candidate=candidate,
+        doc_type=doc_type,
+        status_url=status_url,
+    )
     await db.commit()
     await db.refresh(doc)
     return _row_to_out(doc)
@@ -806,8 +895,15 @@ async def order_document(
 async def create_document(
     payload: DocumentIn,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     db, tenant_id = db_tenant
+    candidate = await _candidate_for_document_scope(db, tenant_id, str(payload.candidate_id))
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    _ensure_candidate_own_company_scope(candidate, active_own_company_id)
+    resolved_oc = _resolved_document_own_company_id(candidate, active_own_company_id)
+
     defaults = get_doc_type_defaults(payload.doc_type)
     doc_type = defaults.doc_type
     kind = _kind_or_422(payload.kind, defaults.kind)
@@ -848,10 +944,18 @@ async def create_document(
     )
 
     await documents_crud.ensure_document_type(db, str(tenant_id), doc_type)
+    await ensure_tenant_document_quota(db, str(tenant_id))
+    await ensure_tenant_storage_bytes_fits(
+        db,
+        str(tenant_id),
+        previous_doc_attribution_bytes=0,
+        next_doc_attribution_bytes=sum_file_entries_bytes(files_payload),
+    )
     obj = Document(
         id=str(uuid4()),
         tenant_id=str(tenant_id),
         candidate_id=str(payload.candidate_id),
+        own_company_id=resolved_oc,
         company_id=str(payload.company_id) if payload.company_id else None,
         owner_type="candidate",
         owner_id=str(payload.owner_id or payload.candidate_id),
@@ -973,6 +1077,7 @@ async def update_document(
     doc_id: UUID,
     payload: DocumentPatch,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     db, tenant_id = db_tenant
     res = await db.execute(
@@ -985,6 +1090,11 @@ async def update_document(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Document not found")
+    cand = await _candidate_for_document_scope(db, tenant_id, str(obj.candidate_id))
+    if not cand:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _ensure_document_own_company_matches(obj, cand, active_own_company_id)
+    old_status_value = _enum_to_str(getattr(obj, "status", None))
 
     defaults = get_doc_type_defaults(obj.doc_type)
     process_type_before = obj.process_type
@@ -1172,6 +1282,25 @@ async def update_document(
     await reminders_service.schedule_document_expiry_reminders(db, str(tenant_id), obj)
     await db.commit()
     await db.refresh(obj)
+    try:
+        new_status_value = _enum_to_str(getattr(obj, "status", None))
+        if new_status_value and old_status_value != new_status_value and getattr(obj, "candidate_id", None):
+            candidate = await db.get(Candidate, str(obj.candidate_id))
+            if candidate and str(getattr(candidate, "tenant_id", "")) == str(tenant_id):
+                await candidate_tg_notifications.send_candidate_document_status_changed_telegram(
+                    db,
+                    tenant_id=str(tenant_id),
+                    candidate=candidate,
+                    document_type=str(getattr(obj, "doc_type", "") or ""),
+                    old_status=old_status_value,
+                    new_status=new_status_value,
+                )
+    except Exception:
+        logger.exception(
+            "documents.update_document telegram notification failed tenant=%s doc=%s",
+            str(tenant_id),
+            str(doc_id),
+        )
     await refresh_documents_overdue_metrics(db, str(tenant_id))
     return _row_to_out(obj)
 
@@ -1184,6 +1313,7 @@ async def update_document(
 async def delete_document(
     doc_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     db, tenant_id = db_tenant
     res = await db.execute(
@@ -1196,6 +1326,10 @@ async def delete_document(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Document not found")
+    cand = await _candidate_for_document_scope(db, tenant_id, str(obj.candidate_id))
+    if not cand:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _ensure_document_own_company_matches(obj, cand, active_own_company_id)
 
     now = _now_utc()
     await db.execute(
@@ -1227,19 +1361,25 @@ class ExpiringDoc(BaseModel):
 async def list_expiring(
     within_days: int = Query(30, ge=1, le=365),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[ExpiringDoc]:
     db, tenant_id = db_tenant
     today = date.today()
     limit_date = today + timedelta(days=within_days)
 
-    res = await db.execute(
-        select(Document).where(
-            Document.tenant_id == str(tenant_id),
-            Document.deleted_at.is_(None),
-            Document.expires_at.is_not(None),
-            Document.expires_at <= limit_date,
-        )
+    stmt = select(Document).where(
+        Document.tenant_id == str(tenant_id),
+        Document.deleted_at.is_(None),
+        Document.expires_at.is_not(None),
+        Document.expires_at <= limit_date,
     )
+    if active_own_company_id:
+        stmt = stmt.join(Candidate, Document.candidate_id == Candidate.id)
+        scope = _documents_scope_clause(active_own_company_id)
+        if scope is not None:
+            stmt = stmt.where(scope)
+
+    res = await db.execute(stmt)
     rows = res.scalars().all()
     out: List[ExpiringDoc] = []
     for r in rows:
@@ -1291,6 +1431,7 @@ async def get_document_template(
 async def get_document_detail(
     doc_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     db, tenant_id = db_tenant
     res = await db.execute(
@@ -1303,7 +1444,13 @@ async def get_document_detail(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Document not found")
+    cand = await _candidate_for_document_scope(db, tenant_id, str(obj.candidate_id))
+    if not cand:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _ensure_document_own_company_matches(obj, cand, active_own_company_id)
     return _row_to_out(obj)
+
+
 def _status_or_422(value: Optional[str]) -> DocumentStatus:
     try:
         return normalize_status(value)

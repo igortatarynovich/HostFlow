@@ -1,6 +1,8 @@
 
 # Reminders — Workflow Specification
 
+> **STATUS: SUPERSEDED** by [`activities.md`](activities.md) (canon workflow) and [`../architecture/activity-notification-operating-layer.md`](../architecture/activity-notification-operating-layer.md) (canon model). After ADR-012 / Phase 2.1 (2026-05-09) `Reminder` is no longer a separate domain concept — it's an alias for `Activity` (см. ADR-012 §D3). `candidate_tasks` и `communication_planner_events` поглощены той же `activities`-таблицей. Сохранено как археология: фактическая логика SLA / каналов / эскалаций живёт в [`activities-sla-matrix.md`](activities-sla-matrix.md), а CRUD — на `/api/v1/activities`. **Не использовать как источник истины** для новых фич; обновляйте canon-документы.
+
 Этот документ описывает работу подсистемы напоминаний HostFlow. Она отвечает за создание, хранение, обновление и доставку уведомлений пользователям о событиях, сроках документов, задачах и других бизнес-событиях.
 
 ---
@@ -14,7 +16,7 @@
 | Тип | Описание | Пример источника |
 |------|-----------|------------------|
 | **Document Expiry** | Срок действия документа кандидата подходит к концу. | `document_expiry.md` |
-| **Candidate Follow-up** | Менеджеру нужно связаться с кандидатом через N дней после последнего контакта. | `candidate_pipeline.md` |
+| **Candidate Follow-up** | Менеджеру нужно связаться с кандидатом через N дней после последнего контакта. | канон: `../architecture/recruitment-domain-model.md` + `../architecture/ADR-002-modular-recruitment-hr-boundary.md` |
 | **Vacancy Activation** | Напоминание активировать или закрыть вакансию после проверки. | Vacancy lifecycle |
 | **Custom / Manual** | Создано пользователем вручную (например, “Перезвонить кандидату завтра”). | UI → кнопка “Создать напоминание” |
 | **Process Step Due** | Подходит срок следующего шага процессного документа (заказать, подать, забрать). | Documents workflow |

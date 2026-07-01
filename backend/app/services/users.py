@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import sqlalchemy as sa
 from sqlalchemy import distinct, exists, func, select
@@ -20,10 +20,13 @@ from backend.app.models.catalogs import (
     user_short_expr,
 )
 from backend.app.models.invite import UserInvite
+from backend.app.models.tenant import TenantLicense
 from backend.app.models.session import UserSession
 from backend.app.models.user import Role, User
+from backend.app.models.own_company import OwnCompany
 from backend.app.services.audit import log_activity
 from backend.app.services.auth import generate_token, hash_token, revoke_refresh_tokens
+from backend.app.services.tenant_limits import get_tenant_limits
 
 user_memberships = sa.table(
     "user_memberships",
@@ -53,6 +56,13 @@ ROLE_ALIAS = {
     "user": Role.viewer.value,
     "client": Role.client_manager.value,
     "client_manager": Role.client_manager.value,
+    "client_processor": Role.client_processor.value,
+    "processor": Role.client_processor.value,
+    "compliance_officer": Role.compliance_officer.value,
+    "compliance": Role.compliance_officer.value,
+    "docs_officer": Role.compliance_officer.value,
+    "hr_officer": Role.hr_officer.value,
+    "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
 
@@ -61,6 +71,8 @@ DEFAULT_NOTIFICATION_EVENTS = {
     "candidate.stage_changed": {"enabled": True, "mode": "immediate"},
     "documents.deadline": {"enabled": True, "mode": "immediate"},
     "mentions.direct": {"enabled": True, "mode": "immediate"},
+    "lead.new.telegram": {"enabled": True, "mode": "immediate"},
+    "lead.status_changed.telegram": {"enabled": True, "mode": "immediate"},
 }
 
 DEFAULT_UI_PREFERENCES = {
@@ -78,8 +90,8 @@ DEFAULT_SAVED_VIEWS = {
 
 
 class UserServiceError(Exception):
-    def __init__(self, detail: str, status_code: int = 400):
-        super().__init__(detail)
+    def __init__(self, detail: Union[str, Dict[str, Any]], status_code: int = 400):
+        super().__init__(detail if isinstance(detail, str) else str(detail))
         self.detail = detail
         self.status_code = status_code
 
@@ -95,6 +107,198 @@ def _normalize_role(role: str) -> str:
     return value
 
 
+async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
+    stmt = select(TenantLicense.id).where(TenantLicense.tenant_id == tenant_id).limit(1)
+    return (await db.execute(stmt)).scalar_one_or_none() is not None
+
+
+def _quota_attr_for_tenant_role(role: str) -> Optional[str]:
+    mapping = {
+        Role.recruiter.value: "max_recruiters",
+        Role.compliance_officer.value: "max_recruiters",
+        Role.hr_officer.value: "max_recruiters",
+        Role.supervisor.value: "max_supervisors",
+        Role.client_manager.value: "max_client_managers",
+        Role.client_processor.value: "max_client_managers",
+        Role.viewer.value: "max_viewers",
+    }
+    return mapping.get(role)
+
+
+async def _get_membership_role_for_tenant(
+    db: AsyncSession, tenant_id: str, user_id: str
+) -> Optional[str]:
+    stmt = (
+        select(user_memberships.c.role)
+        .where(user_memberships.c.tenant_id == tenant_id)
+        .where(user_memberships.c.user_id == user_id)
+        .limit(1)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def _count_active_users_in_tenant_role(
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    exclude_user_id: Optional[str] = None,
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(user_memberships)
+        .join(User, User.id == user_memberships.c.user_id)
+        .where(user_memberships.c.tenant_id == tenant_id)
+        .where(user_memberships.c.role == role)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    if exclude_user_id:
+        stmt = stmt.where(User.id != exclude_user_id)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _count_pending_invites_for_role(
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    exclude_invite_email: Optional[str] = None,
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(UserInvite)
+        .where(UserInvite.tenant_id == tenant_id)
+        .where(UserInvite.role == role)
+        .where(UserInvite.revoked_at.is_(None))
+        .where(UserInvite.accepted_at.is_(None))
+    )
+    if exclude_invite_email:
+        em = exclude_invite_email.strip().lower()
+        stmt = stmt.where(func.lower(UserInvite.email) != em)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _ensure_role_seat_available_for_invite_or_user_add(
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    exclude_invite_email: Optional[str] = None,
+) -> None:
+    """Hard seat gate when TenantLicense exists (§2.2 / §2.16)."""
+    if not await _tenant_row_has_license(db, tenant_id):
+        return
+    attr = _quota_attr_for_tenant_role(role)
+    if not attr:
+        return
+    limits = await get_tenant_limits(db, tenant_id)
+    limit = int(getattr(limits, attr))
+    if limit <= 0:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": 0,
+            },
+            403,
+        )
+    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
+    pending = await _count_pending_invites_for_role(
+        db, tenant_id, role, exclude_invite_email=exclude_invite_email
+    )
+    total = active + pending
+    if total >= limit:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": total,
+            },
+            403,
+        )
+
+
+async def _ensure_role_change_respects_seat_cap(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    user_id: str,
+    old_role: Optional[str],
+    new_role: str,
+) -> None:
+    if old_role == new_role:
+        return
+    if not await _tenant_row_has_license(db, tenant_id):
+        return
+    attr = _quota_attr_for_tenant_role(new_role)
+    if not attr:
+        return
+    limits = await get_tenant_limits(db, tenant_id)
+    limit = int(getattr(limits, attr))
+    if limit <= 0:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": new_role,
+                "limit": limit,
+                "current": 0,
+            },
+            403,
+        )
+    active = await _count_active_users_in_tenant_role(
+        db, tenant_id, new_role, exclude_user_id=user_id
+    )
+    pending = await _count_pending_invites_for_role(db, tenant_id, new_role)
+    if active + pending >= limit:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": new_role,
+                "limit": limit,
+                "current": active + pending,
+            },
+            403,
+        )
+
+
+async def _ensure_invite_accept_seat_still_valid(
+    db: AsyncSession, tenant_id: str, role: str
+) -> None:
+    """Blocks accept if license was tightened below current commitments."""
+    if not await _tenant_row_has_license(db, tenant_id):
+        return
+    attr = _quota_attr_for_tenant_role(role)
+    if not attr:
+        return
+    limits = await get_tenant_limits(db, tenant_id)
+    limit = int(getattr(limits, attr))
+    if limit <= 0:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": 0,
+            },
+            403,
+        )
+    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
+    pending = await _count_pending_invites_for_role(db, tenant_id, role)
+    if active + pending > limit:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": active + pending,
+            },
+            403,
+        )
+
+
 def _apply_global_role(user: User, tenant_role: str) -> None:
     mapping = {
         Role.viewer.value: Role.viewer,
@@ -102,6 +306,9 @@ def _apply_global_role(user: User, tenant_role: str) -> None:
         Role.supervisor.value: Role.supervisor,
         Role.administrator.value: Role.administrator,
         Role.client_manager.value: Role.client_manager,
+        Role.client_processor.value: Role.client_processor,
+        Role.compliance_officer.value: Role.compliance_officer,
+        Role.hr_officer.value: Role.hr_officer,
         Role.superadmin.value: Role.superadmin,
     }
     user.role = mapping.get(tenant_role, Role.viewer)
@@ -139,7 +346,8 @@ async def _load_user(
     if not user:
         raise UserServiceError("User not found", 404)
     if user.tenant_id and user.tenant_id != tenant_id:
-        raise UserServiceError("User belongs to another tenant", 403)
+        if not await _get_membership_role_for_tenant(db, tenant_id, user_id):
+            raise UserServiceError("User belongs to another tenant", 403)
     return user
 
 
@@ -311,7 +519,6 @@ async def list_users(
                 membership.c.tenant_id == tenant_id,
             ),
         )
-        .where(sa.or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)))
         .order_by(User.created_at.asc())
     )
 
@@ -446,6 +653,8 @@ async def create_invite(
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
+    await _ensure_role_seat_available_for_invite_or_user_add(db, tenant_id, normalized_role)
+
     existing_invite_stmt = (
         select(UserInvite)
         .where(UserInvite.tenant_id == tenant_id)
@@ -476,8 +685,7 @@ async def create_invite(
         )
 
     if user:
-        if user.tenant_id and user.tenant_id != tenant_id:
-            raise UserServiceError("User belongs to another tenant", 409)
+        cross_tenant = bool(user.tenant_id and user.tenant_id != tenant_id)
         membership_stmt = (
             select(user_memberships.c.role)
             .where(user_memberships.c.user_id == user.id)
@@ -487,11 +695,16 @@ async def create_invite(
         if membership_role and user.is_active:
             raise UserServiceError("User already active in tenant", 409)
         invited_user_id = user.id
-        if user.tenant_id is None:
-            user.tenant_id = tenant_id
-        user.supervisor_id = supervisor_ref.id if supervisor_ref else None
-        _apply_global_role(user, normalized_role)
-        user.is_active = False
+        if cross_tenant:
+            # Same email already in another workspace: invite adds membership only;
+            # do not clear password session by deactivating or overwriting home tenant.
+            user.supervisor_id = supervisor_ref.id if supervisor_ref else None
+        else:
+            if user.tenant_id is None:
+                user.tenant_id = tenant_id
+            user.supervisor_id = supervisor_ref.id if supervisor_ref else None
+            _apply_global_role(user, normalized_role)
+            user.is_active = False
         await _replace_company_access(
             db,
             tenant_id=tenant_id,
@@ -544,6 +757,48 @@ async def create_invite(
     return invite, raw_token
 
 
+async def revoke_invite(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+    invite_id: str,
+) -> UserInvite:
+    invite = await db.get(UserInvite, invite_id)
+    if not invite or invite.tenant_id != tenant_id:
+        raise UserServiceError("Invite not found", 404)
+    if invite.accepted_at is not None:
+        raise UserServiceError("Invite already accepted", 409)
+    if invite.revoked_at is not None:
+        return invite
+
+    invite.revoked_at = _now()
+    await db.flush()
+
+    await record_user_audit(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        target_user_id=invite.invited_user_id,
+        action="user.invite_revoked",
+        payload={
+            "invite_id": invite.id,
+            "email": invite.email,
+            "role": invite.role,
+        },
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="user.invite_revoked",
+        target_type="user",
+        target_id=invite.invited_user_id,
+        payload={"invite_id": invite.id, "email": invite.email},
+    )
+    return invite
+
+
 async def create_user(
     db: AsyncSession,
     *,
@@ -564,6 +819,23 @@ async def create_user(
     stmt = select(User).where(func.lower(User.email) == normalized_email)
     user = (await db.execute(stmt)).scalar_one_or_none()
 
+    prev_membership: Optional[str] = None
+    if user:
+        prev_membership = await _get_membership_role_for_tenant(db, tenant_id, user.id)
+    idempotent_active = bool(
+        user
+        and user.tenant_id == tenant_id
+        and user.is_active
+        and prev_membership == normalized_role
+    )
+    if not idempotent_active:
+        await _ensure_role_seat_available_for_invite_or_user_add(
+            db,
+            tenant_id,
+            normalized_role,
+            exclude_invite_email=normalized_email,
+        )
+
     generated_password: Optional[str] = None
     supervisor_ref: Optional[User] = None
 
@@ -578,10 +850,9 @@ async def create_user(
             db, tenant_id=tenant_id, supervisor_id=supervisor_id
         )
 
+    cross_tenant = False
     if user:
-        if user.tenant_id and user.tenant_id != tenant_id:
-            raise UserServiceError("User belongs to another tenant", 409)
-
+        cross_tenant = bool(user.tenant_id and user.tenant_id != tenant_id)
         if password:
             user.password_hash = hash_password(password)
         elif not user.password_hash:
@@ -590,10 +861,11 @@ async def create_user(
 
         user.full_name = full_name or user.full_name
         user.short_id = short_id or user.short_id
-        user.tenant_id = tenant_id
         user.supervisor_id = supervisor_ref.id if supervisor_ref else None
         user.is_active = True
         user.revive()
+        if not cross_tenant:
+            user.tenant_id = tenant_id
     else:
         generated_password = password or _generate_password()
         hashed = hash_password(generated_password)
@@ -609,7 +881,8 @@ async def create_user(
         )
         db.add(user)
 
-    _apply_global_role(user, normalized_role)
+    if not cross_tenant:
+        _apply_global_role(user, normalized_role)
     await db.flush()
 
     await _replace_company_access(
@@ -661,6 +934,14 @@ async def change_user_role(
 ) -> Dict[str, Any]:
     normalized_role = _normalize_role(role)
     user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
+    prev_membership = await _get_membership_role_for_tenant(db, tenant_id, user_id)
+    await _ensure_role_change_respects_seat_cap(
+        db,
+        tenant_id,
+        user_id=user_id,
+        old_role=prev_membership,
+        new_role=normalized_role,
+    )
 
     _apply_global_role(user, normalized_role)
     user.updated_at = _now()
@@ -771,6 +1052,92 @@ async def update_user_companies(
     return await get_user_detail(db, tenant_id=tenant_id, user_id=user_id)
 
 
+async def update_user_own_company_access(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+    user_id: str,
+    allowed_own_company_ids: Sequence[str],
+) -> Dict[str, Any]:
+    """Restrict user to a subset of tenant own-companies (empty list clears ACL)."""
+    user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
+    normalized = sorted({str(x).strip() for x in allowed_own_company_ids if x and str(x).strip()})
+
+    prefs = dict(user.preferences or {})
+    prev_allowed = prefs.get("allowed_own_company_ids")
+    prev_active = str(prefs.get("active_own_company_id") or "").strip() or None
+
+    if not normalized:
+        prefs.pop("allowed_own_company_ids", None)
+        allowed_set: set[str] | None = None
+    else:
+        cnt_row = await db.execute(
+            select(func.count())
+            .select_from(OwnCompany)
+            .where(
+                OwnCompany.tenant_id == tenant_id,
+                OwnCompany.is_archived.is_(False),
+                OwnCompany.id.in_(normalized),
+            )
+        )
+        found = int(cnt_row.scalar_one() or 0)
+        if found != len(normalized):
+            raise UserServiceError("One or more own company ids are invalid or archived", 422)
+        prefs["allowed_own_company_ids"] = list(normalized)
+        allowed_set = set(normalized)
+
+    if allowed_set:
+        active = str(prefs.get("active_own_company_id") or "").strip()
+        if active and active not in allowed_set:
+            first_row = await db.execute(
+                select(OwnCompany.id)
+                .where(
+                    OwnCompany.tenant_id == tenant_id,
+                    OwnCompany.is_archived.is_(False),
+                    OwnCompany.id.in_(allowed_set),
+                )
+                .order_by(OwnCompany.created_at.asc())
+                .limit(1)
+            )
+            first = first_row.scalar_one_or_none()
+            if first:
+                prefs["active_own_company_id"] = str(first)
+            else:
+                prefs.pop("active_own_company_id", None)
+
+    user.preferences = prefs
+    user.updated_at = _now()
+    await db.flush()
+
+    await record_user_audit(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        target_user_id=user_id,
+        action="user.own_company_access_updated",
+        payload={
+            "allowed_own_company_ids": normalized if normalized else None,
+            "previous_allowed": prev_allowed,
+            "active_own_company_id": prefs.get("active_own_company_id"),
+            "previous_active": prev_active,
+        },
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="user.own_company_access_updated",
+        target_type="user",
+        target_id=user_id,
+        payload={
+            "allowed_own_company_ids": normalized if normalized else None,
+            "previous_active": prev_active,
+        },
+    )
+    return await get_user_detail(db, tenant_id=tenant_id, user_id=user_id)
+
+
 async def set_user_active(
     db: AsyncSession,
     *,
@@ -861,13 +1228,12 @@ async def reset_user_password(
     actor_id: str | None,
     user_id: str,
     revoke_sessions: bool = True,
+    send_email: bool = True,
 ) -> Tuple[str, int]:
     user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
-    password = _generate_password()
-    user.password_hash = hash_password(password)
+    user.password_hash = hash_password(secrets.token_urlsafe(32))
     user.updated_at = _now()
     await db.flush()
-
     revoked = 0
     if revoke_sessions:
         revoked = await revoke_user_sessions(
@@ -876,6 +1242,41 @@ async def reset_user_password(
             user_id=user.id,
             actor_id=actor_id,
         )
+
+    if send_email and user.email:
+        try:
+            from backend.app.core.settings import settings
+            from backend.app.services.system_email import send_system_email
+
+            raw_token, token_hash = generate_token("pwreset")
+            expires_at = _now() + timedelta(hours=24)
+            from backend.app.models.password_reset_token import PasswordResetToken
+
+            prt = PasswordResetToken(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=expires_at,
+            )
+            db.add(prt)
+            await db.flush()
+
+            base = (settings.frontend_url or "").strip()
+            link = f"{base}/reset-password?token={raw_token}" if base else ""
+            body = (
+                f"Dzień dobry,\n\n"
+                f"Administrator zresetował Twoje hasło do HostFlow.\n\n"
+                f"Kliknij link, aby ustawić nowe hasło (ważny 24h):\n{link}\n\n"
+                if link
+                else f"Token do ustawienia hasła (ważny 24h): {raw_token}\n\n"
+            )
+            body += "Pozdrawiamy,\nZespół HostFlow"
+            await send_system_email(
+                to=user.email,
+                subject="HostFlow – ustaw nowe hasło",
+                body=body,
+            )
+        except Exception:
+            pass
 
     await record_user_audit(
         db,
@@ -894,7 +1295,86 @@ async def reset_user_password(
         target_id=user.id,
         payload={"revoked_sessions": revoked},
     )
-    return password, revoked
+    return "", revoked
+
+
+async def request_password_reset(db: AsyncSession, *, email: str) -> bool:
+    """Create password reset token and send email. Returns True if email sent (user exists)."""
+    from backend.app.models.password_reset_token import PasswordResetToken
+
+    email = (email or "").strip().lower()
+    if not email or "@" not in email:
+        return False
+    stmt = select(User).where(func.lower(User.email) == email)
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    if not user or user.deleted_at:
+        return True
+
+    raw_token, token_hash = generate_token("pwreset")
+    expires_at = _now() + timedelta(hours=24)
+    prt = PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+    db.add(prt)
+    await db.flush()
+
+    try:
+        from backend.app.core.settings import settings
+        from backend.app.services.system_email import send_system_email
+
+        base = (settings.frontend_url or "").strip()
+        link = f"{base}/reset-password?token={raw_token}" if base else ""
+        body = (
+            f"Dzień dobry,\n\n"
+            f"Otrzymałeś prośbę o zresetowanie hasła do HostFlow.\n\n"
+            f"Kliknij link, aby ustawić nowe hasło (ważny 24h):\n{link}\n\n"
+            if link
+            else f"Token (ważny 24h): {raw_token}\n\n"
+        )
+        body += "Jeśli to nie Ty, zignoruj tę wiadomość.\n\nPozdrawiamy,\nZespół HostFlow"
+        await send_system_email(
+            to=user.email,
+            subject="HostFlow – reset hasła",
+            body=body,
+        )
+        return True
+    except Exception:
+        return False
+
+
+async def reset_password_with_token(
+    db: AsyncSession, *, token: str, new_password: str
+) -> bool:
+    """Verify token and set new password. Returns True on success."""
+    from backend.app.models.password_reset_token import PasswordResetToken
+
+    raw = (token or "").strip()
+    if not raw or len(raw) < 16:
+        return False
+    token_hash = hash_token(raw)
+    now = _now()
+
+    stmt = (
+        select(PasswordResetToken)
+        .where(PasswordResetToken.token_hash == token_hash)
+        .where(PasswordResetToken.used_at.is_(None))
+    )
+    prt = (await db.execute(stmt)).scalar_one_or_none()
+    if not prt:
+        return False
+    exp = prt.expires_at
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < now:
+        return False
+
+    user = await db.get(User, prt.user_id)
+    if not user or user.deleted_at:
+        return False
+
+    user.password_hash = hash_password(new_password)
+    user.updated_at = now
+    prt.used_at = now
+    await db.flush()
+    return True
 
 
 async def delete_user(
@@ -997,6 +1477,80 @@ async def list_user_audit(
     return list(result.scalars().all())
 
 
+async def list_tenant_audit(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    limit: int = 200,
+    offset: int = 0,
+) -> Tuple[List[Dict[str, Any]], int]:
+    """List audit entries for the tenant with optional filters. Returns (items, total)."""
+    stmt = (
+        select(UserAuditLog)
+        .where(UserAuditLog.tenant_id == tenant_id)
+        .order_by(UserAuditLog.created_at.desc())
+    )
+    count_stmt = (
+        select(func.count())
+        .select_from(UserAuditLog)
+        .where(UserAuditLog.tenant_id == tenant_id)
+    )
+    if user_id:
+        stmt = stmt.where(UserAuditLog.user_id == user_id)
+        count_stmt = count_stmt.where(UserAuditLog.user_id == user_id)
+    if action:
+        stmt = stmt.where(UserAuditLog.action == action)
+        count_stmt = count_stmt.where(UserAuditLog.action == action)
+    if date_from:
+        stmt = stmt.where(UserAuditLog.created_at >= date_from)
+        count_stmt = count_stmt.where(UserAuditLog.created_at >= date_from)
+    if date_to:
+        stmt = stmt.where(UserAuditLog.created_at <= date_to)
+        count_stmt = count_stmt.where(UserAuditLog.created_at <= date_to)
+
+    total = (await db.execute(count_stmt)).scalar() or 0
+    stmt = stmt.offset(offset).limit(limit)
+    result = await db.execute(stmt)
+    logs = list(result.scalars().all())
+
+    user_ids = {log.actor_id for log in logs if log.actor_id}
+    user_ids.update({log.user_id for log in logs if log.user_id})
+    user_ids.discard(None)
+    users_map: Dict[str, Dict] = {}
+    if user_ids:
+        users_rows = await db.execute(
+            select(User.id, User.full_name, User.email, User.short_id)
+            .where(User.id.in_(user_ids))
+        )
+        for row in users_rows.all():
+            users_map[row.id] = {
+                "full_name": row.full_name,
+                "email": row.email,
+                "short_id": row.short_id,
+            }
+
+    items = []
+    for log in logs:
+        actor = users_map.get(log.actor_id or "", {}) if log.actor_id else {}
+        user = users_map.get(log.user_id or "", {}) if log.user_id else {}
+        items.append({
+            "id": log.id,
+            "tenant_id": log.tenant_id,
+            "user_id": log.user_id,
+            "user_label": (user.get("full_name") or user.get("email") or log.user_id or ""),
+            "actor_id": log.actor_id,
+            "actor_label": (actor.get("full_name") or actor.get("email") or log.actor_id or "—"),
+            "action": log.action,
+            "payload": log.payload,
+            "created_at": log.created_at,
+        })
+    return items, int(total)
+
+
 async def get_user_detail(
     db: AsyncSession,
     *,
@@ -1031,6 +1585,14 @@ async def get_user_detail(
                     "status": _status_for_user(recruiter),
                 }
             )
+
+    raw_prefs = user.preferences or {}
+    raw_al = raw_prefs.get("allowed_own_company_ids") if isinstance(raw_prefs, dict) else None
+    if isinstance(raw_al, (list, tuple)):
+        ids = [str(x).strip() for x in raw_al if x is not None and str(x).strip()]
+        entry["allowed_own_company_ids"] = ids if ids else None
+    else:
+        entry["allowed_own_company_ids"] = None
     return entry
 
 
@@ -1070,16 +1632,19 @@ async def accept_invite(
             raise UserServiceError("Invite expired", 410)
 
     tenant_id = invite.tenant_id
+    await _ensure_invite_accept_seat_still_valid(db, tenant_id, invite.role)
     supervisor_candidate_id = invite.supervisor_id
 
     user: User | None = None
     if invite.invited_user_id:
-        user = await _load_user(db, tenant_id=tenant_id, user_id=invite.invited_user_id)
+        user = (
+            await db.execute(select(User).where(User.id == invite.invited_user_id))
+        ).scalar_one_or_none()
+        if not user:
+            raise UserServiceError("User not found", 404)
     else:
         existing_stmt = select(User).where(func.lower(User.email) == invite.email.lower())
         user = (await db.execute(existing_stmt)).scalar_one_or_none()
-        if user and user.tenant_id and user.tenant_id != tenant_id:
-            raise UserServiceError("User belongs to another tenant", 409)
         if user is None:
             user = User(
                 email=invite.email,
@@ -1173,10 +1738,31 @@ async def accept_invite(
     return detail
 
 
-async def get_tenant_managers(db: AsyncSession, tenant_id: str) -> List[Dict]:
+# Роли membership в БД для «операционных» менеджеров (owner хранится отдельно от administrator).
+_MEMBERSHIP_ROLES_MANAGER_CATALOG = (
+    Role.supervisor.value,
+    Role.administrator.value,
+    Role.recruiter.value,
+    "owner",
+)
+
+
+async def get_tenant_managers(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    membership_roles: Optional[Sequence[str]] = None,
+) -> List[Dict]:
     label_expr = user_label_expr()
     full_expr = user_full_name_expr()
     short_expr = user_short_expr()
+
+    if membership_roles is not None:
+        role_tuple = tuple(membership_roles)
+        if len(role_tuple) == 0:
+            return []
+    else:
+        role_tuple = _MEMBERSHIP_ROLES_MANAGER_CATALOG
 
     stmt = (
         select(
@@ -1189,11 +1775,9 @@ async def get_tenant_managers(db: AsyncSession, tenant_id: str) -> List[Dict]:
         .select_from(User)
         .join(user_memberships, user_memberships.c.user_id == User.id)
         .where(user_memberships.c.tenant_id == tenant_id)
-        .where(
-            user_memberships.c.role.in_(
-                [Role.supervisor.value, Role.administrator.value]
-            )
-        )
+        .where(user_memberships.c.role.in_(role_tuple))
+        .where(User.deleted_at.is_(None))
+        .where(User.is_active.is_(True))
         .order_by(full_expr.asc())
     )
 
@@ -1306,12 +1890,17 @@ def _ensure_preferences_structure(preferences: dict[str, Any] | None) -> dict[st
             )
         saved_views[module] = cleaned
 
-    return {
+    result: dict[str, Any] = {
         "ui": ui_prefs,
         "notifications": notifications,
         "defaults": defaults,
         "saved_views": saved_views,
     }
+    # Preserve multi-workspace keys not managed by structured UI blocks (§2.4 ACL / switcher).
+    for key in ("active_own_company_id", "allowed_own_company_ids"):
+        if key in base:
+            result[key] = base[key]
+    return result
 
 
 def _extract_profile_dict(user: User) -> Dict[str, Any]:
@@ -1379,6 +1968,43 @@ async def _build_security_summary(
     }
 
 
+async def _count_active_tenant_members(db: AsyncSession, tenant_id: str) -> int:
+    """Users with a membership row in this tenant, active and not soft-deleted.
+
+    Falls back to ``User.tenant_id`` count when no membership rows exist yet
+    (legacy / partially migrated tenants) so solo-operator detection still works.
+    """
+    membership = user_memberships.alias("um")
+    stmt = (
+        select(func.count())
+        .select_from(User)
+        .join(
+            membership,
+            sa.and_(
+                membership.c.user_id == User.id,
+                membership.c.tenant_id == tenant_id,
+            ),
+        )
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    n = int((await db.execute(stmt)).scalar_one() or 0)
+    if n > 0:
+        return n
+    stmt_fb = (
+        select(func.count())
+        .select_from(User)
+        .where(User.tenant_id == tenant_id)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    return int((await db.execute(stmt_fb)).scalar_one() or 0)
+
+
+def _is_owner_class_role(role: Role) -> bool:
+    return role in (Role.administrator, Role.superadmin)
+
+
 async def get_user_me(
     db: AsyncSession,
     *,
@@ -1389,7 +2015,14 @@ async def get_user_me(
     preferences = _ensure_preferences_structure(user.preferences)
     profile = _extract_profile_dict(user)
     security = await _build_security_summary(db, tenant_id=tenant_id, user=user)
-    return {"profile": profile, "preferences": preferences, "security": security}
+    member_count = await _count_active_tenant_members(db, tenant_id)
+    is_solo_admin = bool(_is_owner_class_role(user.role) and member_count == 1)
+    return {
+        "profile": profile,
+        "preferences": preferences,
+        "security": security,
+        "is_solo_admin": is_solo_admin,
+    }
 
 
 async def patch_user_me(

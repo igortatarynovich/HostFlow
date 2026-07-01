@@ -6,10 +6,16 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import Company
+from backend.app.models.tenant import Tenant, TenantLink, TenantType
+from backend.app.models.user import Role as UserRole, User
+from backend.app.services.operating_company_slots import get_operating_company_slots
+from backend.app.services.tenant_links import ensure_client_company_tenant_link
+
+from .funnel_presets import normalize_industry
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
@@ -25,6 +31,15 @@ from .schemas import (
 
 
 # --- helpers ---------------------------------------------------------------
+
+
+class OperatingCompanyLimitReached(ValueError):
+    def __init__(self, *, included_limit: int, extra_slots: int, effective_limit: int, used: int) -> None:
+        super().__init__("Operating company limit reached for current subscription")
+        self.included_limit = int(included_limit)
+        self.extra_slots = int(extra_slots)
+        self.effective_limit = int(effective_limit)
+        self.used = int(used)
 
 def _extract_session(db_like) -> AsyncSession:
     """
@@ -49,6 +64,32 @@ def _tenant_id_from_session(db_like) -> str:
     return str(tenant_id) if tenant_id is not None else ""
 
 
+async def _validate_company_user(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str | None,
+    allowed_roles: set[str] | None = None,
+) -> str | None:
+    normalized = str(user_id or "").strip()
+    if not normalized:
+        return None
+    user = (
+        await session.execute(select(User).where(User.id == normalized).limit(1))
+    ).scalar_one_or_none()
+    if user is None:
+        raise ValueError("Company owner/manager user not found")
+    if user.tenant_id and str(user.tenant_id) != tenant_id:
+        raise ValueError("Company owner/manager must belong to current tenant")
+    if not bool(getattr(user, "is_active", True)) or getattr(user, "deleted_at", None):
+        raise ValueError("Company owner/manager must be active")
+    if allowed_roles:
+        role_value = str(getattr(getattr(user, "role", None), "value", getattr(user, "role", ""))).strip().lower()
+        if role_value not in allowed_roles:
+            raise ValueError("Company owner must have elevated role")
+    return normalized
+
+
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -57,6 +98,18 @@ def _ensure_dict(value: Any) -> Dict[str, Any]:
     if isinstance(value, dict):
         return dict(value)
     return {}
+
+
+def _normalize_company_role(value: Any, *, default: str = "client") -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"operating", "client"}:
+        return normalized
+    return default
+
+
+def _company_role_from_company(company: Company) -> str:
+    extra = _ensure_dict(getattr(company, "extra", None))
+    return _normalize_company_role(extra.get("company_role"), default="client")
 
 
 def _deep_merge(base: Dict[str, Any], extra: Dict[str, Any]) -> Dict[str, Any]:
@@ -231,7 +284,7 @@ def _serialize_operations_section(raw: Any) -> Optional[Dict[str, Any]]:
             else:
                 data.pop(key, None)
 
-    trailer_types = _ensure_dict(data.get("trailer_types"))
+    trailer_types = _ensure_dict(data.get("trailer_types") or data.get("trailers"))
     data["trailer_types"] = {
         str(name): _to_int(count)
         for name, count in trailer_types.items()
@@ -431,6 +484,16 @@ def _apply_extra_patch(current: Dict[str, Any], patch: Dict[str, Any]) -> Dict[s
         else:
             extra.pop("company_orders", None)
 
+    # Preserve top-level metadata keys (for example company_role/company_type)
+    # that are not represented by structured profile sections above.
+    for key, value in patch.items():
+        if key in PROFILE_SECTIONS:
+            continue
+        if value in (None, "", [], {}):
+            extra.pop(key, None)
+            continue
+        extra[key] = deepcopy(value)
+
     return extra
 
 
@@ -521,6 +584,202 @@ def _sync_contacts_extra(company: Company) -> None:
         extra.pop("contacts", None)
     company.contacts = contacts_map
     company.extra = extra
+
+
+def _onboarding_module_profile(company_type: str | None) -> Dict[str, bool]:
+    normalized = str(company_type or "").strip().lower()
+    # Keep defaults permissive for agency; tailor focused presets for employer/services.
+    profiles: Dict[str, Dict[str, bool]] = {
+        "agency": {
+            "candidates": True,
+            "companies": True,
+            "vacancies": True,
+            "documents": True,
+            "leads": True,
+            "services": True,
+            "client_portal": True,
+        },
+        "employer": {
+            "candidates": True,
+            "companies": True,
+            "vacancies": True,
+            "documents": True,
+            "leads": False,
+            "services": False,
+            "client_portal": False,
+        },
+        "services": {
+            "candidates": False,
+            "companies": True,
+            "vacancies": False,
+            "documents": True,
+            "leads": True,
+            "services": True,
+            "client_portal": False,
+        },
+    }
+    profile = dict(profiles.get(normalized) or profiles["agency"])
+    if profile.get("candidates") or profile.get("leads"):
+        profile["recruitment"] = True
+    return profile
+
+
+def _bootstrap_tenant_settings_for_company_type(
+    tenant_settings: Any,
+    *,
+    company_type: str | None,
+) -> Dict[str, Any]:
+    settings_payload = _ensure_dict(tenant_settings)
+    settings_payload["business_type"] = str(company_type or "agency").strip().lower() or "agency"
+    modules_payload = _ensure_dict(settings_payload.get("modules"))
+    modules_payload.update(_onboarding_module_profile(company_type))
+    settings_payload["modules"] = modules_payload
+    return settings_payload
+
+
+def _tenant_industry_from_settings(settings: Any) -> str | None:
+    if not isinstance(settings, dict):
+        return None
+    ob = settings.get("onboarding")
+    if isinstance(ob, dict):
+        raw = ob.get("industry")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    return None
+
+
+def _coalesce_industry(*candidates: str | None) -> str | None:
+    for c in candidates:
+        if c is None:
+            continue
+        s = str(c).strip()
+        if not s:
+            continue
+        n = normalize_industry(s)
+        if n:
+            return s.strip()
+    return None
+
+
+async def _bootstrap_default_funnels_for_business_type(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+    company_type: str | None,
+    modules: Dict[str, bool] | None,
+    industry: str | None = None,
+    tenant: Tenant | None = None,
+    company: Company | None = None,
+) -> None:
+    from backend.app.services.recruitment_funnel_bootstrap import (
+        bootstrap_recruitment_funnels_for_company,
+    )
+
+    tenant_obj = tenant
+    if tenant_obj is None:
+        tenant_obj = (
+            await db.execute(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+        ).scalar_one_or_none()
+    if tenant_obj is None:
+        return
+
+    company_obj = company
+    if company_obj is None:
+        company_obj = (
+            await db.execute(
+                select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
+            )
+        ).scalar_one_or_none()
+    if company_obj is None:
+        return
+
+    await bootstrap_recruitment_funnels_for_company(
+        db,
+        tenant=tenant_obj,
+        company=company_obj,
+        company_type=company_type,
+        tenant_modules=modules,
+        industry=industry,
+    )
+
+    from backend.app.services.hr_employee_funnel_bootstrap import (
+        bootstrap_hr_employee_funnel_for_company,
+    )
+
+    await bootstrap_hr_employee_funnel_for_company(
+        db,
+        tenant=tenant_obj,
+        company=company_obj,
+    )
+
+
+async def bootstrap_tenant_for_own_company_onboarding(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_type: str | None,
+    industry: str | None = None,
+    team_size: str | None = None,
+    workspace_name: str | None = None,
+    workspace_count: int | None = None,
+    working_hours_preset: str | None = None,
+    actor_user_id: str | None = None,
+) -> None:
+    """
+    When the first OwnCompany is created (no legacy operating Company yet), align tenant type,
+    module profile, business_type in settings, optional onboarding metadata.
+    Recruitment funnels are bootstrapped when the first operating Company is created.
+    Optionally seeds the creating user's `working_hours_v1` from `working_hours_preset` when empty.
+    """
+    normalized = str(company_type or "").strip().lower()
+    if normalized not in ("agency", "employer", "services"):
+        normalized = "agency"
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+    ).scalar_one_or_none()
+    if tenant is None:
+        return
+
+    if normalized == "employer":
+        tenant.type = TenantType.company
+    else:
+        tenant.type = TenantType.agency
+
+    settings_payload = _bootstrap_tenant_settings_for_company_type(
+        tenant.settings,
+        company_type=normalized,
+    )
+    onboarding_prev = _ensure_dict(settings_payload.get("onboarding"))
+    onboarding_patch: Dict[str, Any] = {}
+    if industry is not None and str(industry).strip():
+        onboarding_patch["industry"] = str(industry).strip()
+    if team_size is not None and str(team_size).strip():
+        onboarding_patch["team_size"] = str(team_size).strip()
+    if workspace_name is not None and str(workspace_name).strip():
+        onboarding_patch["workspace_name"] = str(workspace_name).strip()
+    if workspace_count is not None:
+        try:
+            onboarding_patch["workspace_count"] = int(workspace_count)
+        except (TypeError, ValueError):
+            pass
+    if working_hours_preset is not None and str(working_hours_preset).strip():
+        onboarding_patch["working_hours_preset"] = str(working_hours_preset).strip()
+    if onboarding_patch:
+        merged_onboarding = {**onboarding_prev, **onboarding_patch}
+        settings_payload["onboarding"] = merged_onboarding
+
+    tenant.settings = settings_payload
+    db.add(tenant)
+    await db.flush()
+    aid = str(actor_user_id or "").strip()
+    whp = str(working_hours_preset or "").strip()
+    if aid and whp:
+        from backend.app.services.working_hours_presets import apply_working_hours_preset_to_user_if_empty
+
+        await apply_working_hours_preset_to_user_if_empty(db, user_id=aid, preset=whp)
+    await db.flush()
 
 
 async def update_company_extra_section(
@@ -805,10 +1064,57 @@ async def list_companies(
     q: Optional[str] = None,
     include_archived: bool = False,
     allowed_company_ids: set[str] | None = None,
+    *,
+    party_business_roles: Optional[str] = None,
+    client_stage: Optional[str] = None,
+    owner_user_id: Optional[str] = None,
+    client_source: Optional[str] = None,
 ) -> List[Company]:
     tenant_id = _tenant_id_from_session(db)
 
-    stmt = select(Company).where(Company.tenant_id == tenant_id)
+    # For client tenant: include companies linked via TenantLink (handoff_include_company_id)
+    # For agency tenant: include companies from all linked client tenants
+    # Same logic as in candidates scope
+    from backend.app.services.handoff import is_client_tenant_for_list
+    is_client = await is_client_tenant_for_list(db, tenant_id)
+    
+    if is_client:
+        # Companies linked via TenantLink.handoff_include_company_id when client_tenant_id = tenant
+        include_company_subq = select(TenantLink.handoff_include_company_id).where(
+            TenantLink.client_tenant_id == tenant_id,
+            TenantLink.handoff_include_company_id.isnot(None),
+        )
+        # Companies owned by client tenant (company.tenant_id = tenant)
+        client_owned_companies = select(Company.id).where(Company.tenant_id == tenant_id)
+        # Combine: linked companies OR owned companies
+        stmt = select(Company).where(
+            or_(
+                Company.id.in_(include_company_subq),
+                Company.id.in_(client_owned_companies),
+            )
+        )
+    else:
+        # For agency: include own companies + companies from linked client tenants + linked companies directly
+        # Get companies from linked client tenants via TenantLink
+        linked_client_tenants_subq = select(TenantLink.client_tenant_id).where(
+            TenantLink.agency_tenant_id == tenant_id,
+            TenantLink.client_tenant_id.isnot(None),
+        )
+        linked_companies_subq = select(TenantLink.client_company_id).where(
+            TenantLink.agency_tenant_id == tenant_id,
+            TenantLink.client_company_id.isnot(None),
+        )
+        companies_from_linked_tenants = select(Company.id).where(
+            Company.tenant_id.in_(linked_client_tenants_subq)
+        )
+        # Own companies OR companies from linked client tenants OR directly linked companies
+        stmt = select(Company).where(
+            or_(
+                Company.tenant_id == tenant_id,
+                Company.id.in_(companies_from_linked_tenants),
+                Company.id.in_(linked_companies_subq),
+            )
+        )
 
     if not include_archived:
         stmt = stmt.where(Company.is_archived.is_(False))
@@ -828,6 +1134,17 @@ async def list_companies(
             )
         )
 
+    if party_business_roles:
+        stmt = stmt.where(Company.party_business_roles == party_business_roles)
+    if client_stage:
+        stmt = stmt.where(Company.client_stage == client_stage)
+    if owner_user_id:
+        stmt = stmt.where(Company.owner_user_id == owner_user_id)
+    if client_source:
+        stmt = stmt.where(Company.client_source == client_source)
+
+    stmt = stmt.order_by(Company.name.asc())
+
     result = await _extract_session(db).execute(stmt)
     companies = cast(List[Company], result.scalars().all())
     for company in companies:
@@ -838,10 +1155,38 @@ async def list_companies(
 async def get_company(db: AsyncSession, company_id: UUID) -> Optional[Company]:
     tenant_id = _tenant_id_from_session(db)
 
-    stmt = select(Company).where(
-        Company.tenant_id == tenant_id,
-        Company.id == str(company_id),  # id хранится как String(36)
-    )
+    # For agency: also allow access to companies from linked client tenants
+    from backend.app.services.handoff import is_client_tenant_for_list
+    is_client = await is_client_tenant_for_list(db, tenant_id)
+    
+    if is_client:
+        # Client tenant: only own companies
+        stmt = select(Company).where(
+            Company.tenant_id == tenant_id,
+            Company.id == str(company_id),
+        )
+    else:
+        # Agency: own companies OR companies from linked client tenants OR directly linked companies
+        linked_client_tenants_subq = select(TenantLink.client_tenant_id).where(
+            TenantLink.agency_tenant_id == tenant_id,
+            TenantLink.client_tenant_id.isnot(None),
+        )
+        linked_companies_subq = select(TenantLink.client_company_id).where(
+            TenantLink.agency_tenant_id == tenant_id,
+            TenantLink.client_company_id.isnot(None),
+        )
+        companies_from_linked_tenants = select(Company.id).where(
+            Company.tenant_id.in_(linked_client_tenants_subq)
+        )
+        stmt = select(Company).where(
+            Company.id == str(company_id),
+        ).where(
+            or_(
+                Company.tenant_id == tenant_id,
+                Company.id.in_(companies_from_linked_tenants),
+                Company.id.in_(linked_companies_subq),
+            )
+        )
 
     result = await _extract_session(db).execute(stmt)
     company = result.scalars().first()
@@ -850,18 +1195,51 @@ async def get_company(db: AsyncSession, company_id: UUID) -> Optional[Company]:
     return company
 
 
-async def create_company(db: AsyncSession, data) -> Company:
+async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = None) -> Company:
     """
     Создать компанию в пределах текущего tenant.
     Генерируем id сами (uuid4), т.к. в модели/БД нет дефолта.
-    Также приводим tenant_id к str для SQLite.
+    Если это первая компания и передан company_type (agency|employer|services),
+    выставляем Tenant.type + bootstrap settings/modules.
     """
     session = _extract_session(db)
     tenant_id = _tenant_id_from_session(session)
 
     payload = data.model_dump(exclude_unset=True)
+    company_type = payload.pop("company_type", None)  # not a Company field
+    owner_user_id_raw = payload.pop("owner_user_id", None)
+    manager_user_id_raw = payload.pop("manager_user_id", None)
+
+    # Count companies before create to know if this is the first
+    count_result = await session.execute(
+        select(func.count()).select_from(Company).where(Company.tenant_id == tenant_id)
+    )
+    company_count_before = int(count_result.scalar_one() or 0)
+    company_role = _normalize_company_role(
+        payload.pop("company_role", None),
+        default="operating" if company_count_before == 0 else "client",
+    )
+    # First company in a tenant is always the operating profile.
+    if company_count_before == 0:
+        company_role = "operating"
+
     payload.setdefault("id", str(uuid4()))
     payload["tenant_id"] = tenant_id
+    owner_user_id = await _validate_company_user(
+        session,
+        tenant_id=tenant_id,
+        user_id=str(owner_user_id_raw) if owner_user_id_raw else actor_user_id,
+        allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},
+    )
+    manager_user_id = await _validate_company_user(
+        session,
+        tenant_id=tenant_id,
+        user_id=str(manager_user_id_raw) if manager_user_id_raw else owner_user_id,
+    )
+    payload["owner_user_id"] = owner_user_id
+    payload["manager_user_id"] = manager_user_id
+    if company_role == "operating" and (not owner_user_id or not manager_user_id):
+        raise ValueError("Operating company must have explicit owner and manager")
 
     contacts_raw = payload.pop("contacts", None)
     normalized_contacts = (
@@ -871,6 +1249,9 @@ async def create_company(db: AsyncSession, data) -> Company:
     )
 
     extra_payload = _ensure_dict(payload.pop("extra", None))
+    extra_payload["company_role"] = company_role
+    if company_type in ("agency", "employer", "services"):
+        extra_payload["company_type"] = company_type
     extra_normalized = _apply_extra_patch({}, extra_payload)
     if normalized_contacts:
         extra_normalized = _deep_merge(extra_normalized, {"contacts": normalized_contacts})
@@ -878,9 +1259,64 @@ async def create_company(db: AsyncSession, data) -> Company:
     payload["contacts"] = normalized_contacts
     payload["extra"] = extra_normalized
 
+    if company_role == "operating":
+        slots = await get_operating_company_slots(session, tenant_id)
+        if slots.effective_limit > 0 and slots.used >= slots.effective_limit:
+            raise OperatingCompanyLimitReached(
+                included_limit=slots.included_limit,
+                extra_slots=slots.extra_slots,
+                effective_limit=slots.effective_limit,
+                used=slots.used,
+            )
+
     obj = Company(**payload)
     _sync_contacts_extra(obj)
     session.add(obj)
+    await session.flush()
+
+    if company_role == "operating" and company_type in ("agency", "employer", "services"):
+        tenant = (
+            await session.execute(
+                select(Tenant).where(Tenant.id == tenant_id).limit(1)
+            )
+        ).scalar_one_or_none()
+        if tenant is not None:
+            if company_count_before == 0:
+                if company_type == "employer":
+                    tenant_type = TenantType.company
+                else:
+                    # "services" keeps full workspace behavior (same as agency tenant type).
+                    tenant_type = TenantType.agency
+                tenant.type = tenant_type
+                tenant.settings = _bootstrap_tenant_settings_for_company_type(
+                    tenant.settings,
+                    company_type=company_type,
+                )
+                session.add(tenant)
+            tenant_modules = _ensure_dict(tenant.settings.get("modules")) if isinstance(tenant.settings, dict) else {}
+            ind_raw = extra_normalized.get("industry")
+            industry_eff = _coalesce_industry(
+                ind_raw if isinstance(ind_raw, str) else None,
+                _tenant_industry_from_settings(tenant.settings),
+            )
+            await _bootstrap_default_funnels_for_business_type(
+                session,
+                tenant_id=tenant_id,
+                company_id=str(obj.id),
+                company_type=company_type,
+                modules=tenant_modules,
+                industry=industry_eff,
+                tenant=tenant,
+                company=obj,
+            )
+
+    if company_role == "client":
+        await ensure_client_company_tenant_link(
+            session,
+            agency_tenant_id=tenant_id,
+            client_company_id=str(obj.id),
+        )
+
     await session.commit()
     await session.refresh(obj)
     return obj
@@ -895,6 +1331,10 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
     payload = data.model_dump(exclude_unset=True)
     payload.pop("tenant_id", None)
     payload.pop("id", None)
+    owner_user_id_present = "owner_user_id" in payload
+    manager_user_id_present = "manager_user_id" in payload
+    owner_user_id_raw = payload.pop("owner_user_id", None)
+    manager_user_id_raw = payload.pop("manager_user_id", None)
 
     contacts_patch = payload.pop("contacts", None)
     extra_patch = payload.pop("extra", None)
@@ -920,8 +1360,66 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
 
     for field, value in payload.items():
         setattr(company, field, value)
+    if owner_user_id_present:
+        company.owner_user_id = await _validate_company_user(
+            session,
+            tenant_id=_tenant_id_from_session(session),
+            user_id=str(owner_user_id_raw) if owner_user_id_raw else None,
+            allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},
+        )
+    if manager_user_id_present:
+        company.manager_user_id = await _validate_company_user(
+            session,
+            tenant_id=_tenant_id_from_session(session),
+            user_id=str(manager_user_id_raw) if manager_user_id_raw else (company.owner_user_id if owner_user_id_present else None),
+        )
 
     company.updated_at = _now_utc()
+
+    # Keep tenant.business_type in sync when operating company type changes.
+    # Without this, Leads/Onboarding may use stale tenant.settings and show wrong actions.
+    try:
+        tenant_id = _tenant_id_from_session(session)
+        company_role = updated_extra.get("company_role")
+        company_type = updated_extra.get("company_type")
+        if company_role == "operating" and company_type in ("agency", "employer", "services"):
+            tenant = (
+                await session.execute(
+                    select(Tenant).where(Tenant.id == tenant_id).limit(1)
+                )
+            ).scalar_one_or_none()
+            if tenant is not None:
+                if company_type == "employer":
+                    tenant_type = TenantType.company
+                else:
+                    # "services" keeps full workspace behavior (same as agency tenant type).
+                    tenant_type = TenantType.agency
+                tenant.type = tenant_type
+                tenant.settings = _bootstrap_tenant_settings_for_company_type(
+                    tenant.settings,
+                    company_type=company_type,
+                )
+                session.add(tenant)
+
+                tenant_modules = _ensure_dict(tenant.settings.get("modules")) if isinstance(tenant.settings, dict) else {}
+                ind_raw = updated_extra.get("industry")
+                industry_eff = _coalesce_industry(
+                    ind_raw if isinstance(ind_raw, str) else None,
+                    _tenant_industry_from_settings(tenant.settings),
+                )
+                await _bootstrap_default_funnels_for_business_type(
+                    session,
+                    tenant_id=tenant_id,
+                    company_id=str(company.id),
+                    company_type=company_type,
+                    modules=tenant_modules,
+                    industry=industry_eff,
+                    tenant=tenant,
+                    company=company,
+                )
+    except Exception:
+        # Best-effort: company update should not fail due to tenant bootstrap sync.
+        pass
 
     session.add(company)
     await session.commit()

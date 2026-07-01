@@ -1,10 +1,12 @@
 // src/pages/CandidateCard.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import type { RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import type { InputHTMLAttributes } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { api } from '../api/client'
+import { IconBuilding } from '@tabler/icons-react'
+import { recordPerfMeasurement } from '../api/analytics'
+import { api, completeActivity, completeReminder, createActivity, createReminder, listReminders, snoozeActivity, snoozeReminder } from '../api/client'
 import { listCandidateEmployments, createCandidateEmployment, updateCandidateEmployment, deleteCandidateEmployment } from '../api/candidateEmployments'
 import type {
   Candidate,
@@ -16,27 +18,140 @@ import type {
   UUID,
   Vacancy,
 } from '../api/types'
+import type { ReminderRecord } from '../api/types'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS, pl, ru } from 'date-fns/locale'
 import { createDeleteRequest } from '../api/deletionRequests'
-import StageTag from '../components/StageTag'
+import { sendRodo } from '../api/legalDocuments'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
+import { exportCandidateBundle } from '../api/documents'
+import { createCandidateUploadLink, type CandidateUploadLinkResponse } from '../api/candidates'
+import { useCandidateNextAction } from '../components/candidate/useCandidateNextAction'
+import {
+  approveCandidatePipelineOverride,
+  createCandidatePipelineOverride,
+  listCandidatePipelineOverrides,
+  rejectCandidatePipelineOverride,
+  type CandidatePipelineOverride,
+} from '../api/candidatePipelineOverrides'
+import { getVacancy } from '../api/vacancies'
+import {
+  getCandidateProfile,
+  listCandidateProfiles,
+  type CandidateProfile,
+} from '../api/candidate_profiles'
+
+const DEFAULT_PROFILE_CODE = 'driver_ce_default'
+
+function translateDocTypeLabel(t: TranslateFn, docCode: string): string {
+  const key = `admin.documents.types.${docCode}`
+  const out = t(key)
+  return out === key ? docCode : out
+}
+
+function translateCandidateFieldKey(t: TranslateFn, fieldKey: string, label: string): string {
+  const key = `app.candidate_card.fields.${fieldKey}`
+  const out = t(key)
+  return out === key ? label || fieldKey : out
+}
+
+type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
+import { getFunnel } from '../api/funnels'
+import { validateRequiredFields } from '../utils/profileUtils'
+import { getCardSectionOrder, isCardSectionVisible } from '../utils/fieldLayoutUtils'
+import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayout'
+import { buildInboxHubPath } from '../utils/inboxDeepLinks'
+import { isCandidateRecruiterIdCanonEnabled } from '../utils/featureFlags'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
-import { useI18n } from '../i18n'
+import { servicesWorkspacePath } from '../modules/services/utils'
+import { useI18n, type TranslateFn } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
-import { translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import { isCandidateOperationallyTerminal, isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
+import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import { scoreMissingHintForStage } from '../utils/candidateMissingDataHints'
+import {
+  contactAttemptPipelineBlocksForward,
+  docsIssuesPresent,
+  docsPipelineBlocksForwardResolved,
+  hiringPipelineGatesFromApi,
+  pipelineRelaxedTypesFromOverrides,
+  pipelineRelaxedRequirementsFromOverrides,
+  relaxDocBlockers,
+  relaxRequirementBlockers,
+  vacancyPipelineBlocksForward,
+} from '../utils/candidateStageDocPolicy'
+import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
+import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { useToast } from '../components/Toast'
+import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { getFriendlyErrorInfo } from '../utils/friendlyError'
+import CandidateHeader from '../components/candidate/CandidateHeader'
+import CandidateApplicationsSection from '../components/candidate/CandidateApplicationsSection'
+import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
+import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
+import { CandidateWorkforceTerminationSection } from '../components/candidate/CandidateWorkforceTerminationSection'
+import CandidatePersonalSection from '../components/candidate/CandidatePersonalSection'
+import CandidateStatusSection from '../components/candidate/CandidateStatusSection'
+import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
+import CandidateCustomFieldsSection from '../components/candidate/CandidateCustomFieldsSection'
+import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
+import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
+import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
+import CandidateStageDecisionPanel from '../components/candidate/CandidateStageDecisionPanel'
+import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
+// CandidateCard layout: Info (top) / Control (right) / Content (main)
+// Documents are rendered as a single compact panel inside the rail.
+import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
+import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
+import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import CandidateRequirementsChecklist from '../components/candidate/CandidateRequirementsChecklist'
+import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
+import RecruitmentDossierChecklist from '../components/candidate/RecruitmentDossierChecklist'
+import { useTransferReadiness } from '../components/candidate/useTransferReadiness'
+import { useRecruitmentPackage } from '../components/candidate/useRecruitmentPackage'
+import {
+  RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY,
+  RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY,
+  readConfirmedRecruitmentBlocks,
+  readRecruitmentConfirmFingerprints,
+} from '../components/hr/recruitmentDossierConfirm'
+import RailPrimaryStepFrame from '../components/candidate/RailPrimaryStepFrame'
+import { railHasUrgentReminder, resolveRailPrimaryFocus } from '../utils/railPrimaryFocus'
+import { createHandoff, getAvailableClients, getHandoffStatus, type AvailableClientOut, type HandoffStatusResponse } from '../api/handoffs'
+import { listTenantLinks, resolvePrimaryHandoffDestination, type TenantLink } from '../api/tenantLinks'
+import { isPostRecruitmentStageCode, isRecruitmentTerminalStageCode } from '../constants/recruitmentStageBoundary'
+import { deriveDocsMeta } from '../modules/candidates/utils'
+import {
+  ADDRESS_KEYS,
+  UUID_RE,
+  CREATE_FIELDS,
+  PATCH_AFTER_CREATE_FIELDS,
+  MAX_EMPLOYMENTS,
+  SERVICE_ORDER_STATUSES,
+  SERVICE_ITEM_STATUSES,
+  POLAND_BASIS_VALUES,
+} from '../modules/candidate-card/constants'
+import type { PreferredContact, Option, AddressFields, CandidateNote, StageHistoryEntry } from '../modules/candidate-card/types'
+import {
+  createLocalId,
+  ccToFlag,
+  makeAddress,
+  isUuidLike,
+  formatDateTime,
+  parseJSONSafe,
+  splitFullName,
+  formatAmount,
+  mapResidencyStatusToPolandBasis,
+} from '../modules/candidate-card/utils'
+import { formatDateSafe } from '../modules/candidates/candidateUtils'
 
-type Tab = 'personal' | 'docs' | 'services'
-type PreferredContact = 'viber' | 'whatsapp' | 'telegram' | 'phone' | ''
-type Option = { value: string; label: string; extra?: any }
-type AddressFields = {
-  country: string;
-  city: string;
-  street: string;
-  house: string;
-  apt: string;
-  zip: string;
-};
 type EmploymentEntry =
   NonNullable<CandidateExtra['employment_history']> extends Array<infer Item>
     ? Item
@@ -58,40 +173,6 @@ type EmploymentSnapshot = {
   end_date: string;
 }
 
-type CandidateNote = { id: string; text: string; visibility: 'internal'|'client'|'candidate'; author_id: string; created_at: string }
-type StageHistoryEntry = {
-  id: string;
-  from_code: string | null;
-  to_code: string | null;
-  at: string | null;
-  actor: string | null;
-  reason: string | null;
-}
-
-const ADDRESS_KEYS: Array<keyof AddressFields> = ['country', 'city', 'street', 'house', 'apt', 'zip']
-const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-const CREATE_FIELDS = new Set(['first_name', 'last_name', 'email', 'phone', 'phone_country_code', 'languages', 'stage', 'manager_id', 'company_id', 'vacancy_id', 'status_reason'])
-const PATCH_AFTER_CREATE_FIELDS = new Set(['address', 'city', 'country_code', 'birth_date', 'note', 'extra', 'status_reason'])
-const MAX_EMPLOYMENTS = 3
-const SERVICE_ORDER_STATUSES: ServiceOrderStatus[] = [
-  'draft',
-  'quoted',
-  'approved',
-  'scheduled',
-  'in_progress',
-  'delivered',
-  'cancelled',
-  'refunded',
-]
-const SERVICE_ITEM_STATUSES: ServiceItemStatus[] = ['pending', 'scheduled', 'in_progress', 'delivered', 'cancelled']
-
-const createLocalId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
 const makeEmploymentRow = (seed?: Partial<EmploymentRow>): EmploymentRow => ({
   id: seed?.id,
   localId: seed?.localId ?? createLocalId(),
@@ -103,19 +184,7 @@ const makeEmploymentRow = (seed?: Partial<EmploymentRow>): EmploymentRow => ({
 })
 
 /* ----------------------------- helpers ----------------------------- */
-const ccToFlag = (cc: string) =>
-  cc.replace(/./g, ch => String.fromCodePoint(127397 + ch.toUpperCase().charCodeAt(0)))
-
-const makeAddress = (value?: Partial<AddressFields> | null): AddressFields => {
-  const base: AddressFields = { country: '', city: '', street: '', house: '', apt: '', zip: '' }
-  if (!value || typeof value !== 'object') return { ...base }
-  const next: AddressFields = { ...base }
-  for (const key of ADDRESS_KEYS) {
-    const val = (value as any)[key]
-    next[key] = val != null ? String(val) : ''
-  }
-  return next
-}
+// ccToFlag, makeAddress are now imported from modules/candidate-card/utils
 
 const sanitizeEmploymentEntry = (value: any): EmploymentEntry => {
   const entry: CandidateEmploymentEntry = {
@@ -154,16 +223,35 @@ const sanitizeEmploymentHistory = (value: any): EmploymentEntry[] => {
   return []
 }
 
-const splitFullName = (value?: string | null): { first: string; last: string } => {
-  if (!value || typeof value !== 'string') return { first: '', last: '' }
-  const parts = value
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-  if (parts.length === 0) return { first: '', last: '' }
-  if (parts.length === 1) return { first: parts[0], last: '' }
-  return { first: parts.shift() || '', last: parts.join(' ') }
+const CANDIDATE_OVERRIDE_KEYS = new Set([
+  'first_name',
+  'last_name',
+  'email',
+  'phone',
+  'phone_country_code',
+  'languages',
+  'country_code',
+  'city',
+  'birth_date',
+  'address',
+  'personal_data',
+  'contacts',
+])
+
+function stripCandidateOverrideFields(payload: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (CANDIDATE_OVERRIDE_KEYS.has(key)) continue
+    out[key] = value
+  }
+  return out
 }
+
+function getCandidateOverrideFields(payload: Record<string, any>): string[] {
+  return Object.keys(payload || {}).filter((key) => CANDIDATE_OVERRIDE_KEYS.has(key))
+}
+
+// splitFullName is now imported from modules/candidate-card/utils
 
 const employmentSnapshot = (row: EmploymentRow): EmploymentSnapshot => ({
   employer_name: row.employer_name.trim(),
@@ -190,6 +278,17 @@ const employmentPayloadFromSnapshot = (snapshot: EmploymentSnapshot) => ({
   start_date: snapshot.start_date,
   end_date: snapshot.end_date || null,
 })
+
+const employmentRowsFingerprint = (rows: EmploymentRow[]): string => {
+  const normalized = (rows || [])
+    .map((row) => ({
+      id: row.id || null,
+      localId: row.localId,
+      snapshot: employmentSnapshot(row),
+    }))
+    .filter(({ snapshot }) => employmentRowHasData(snapshot))
+  return JSON.stringify(normalized)
+}
 
 const candidateEmploymentToRow = (record: CandidateEmploymentRecord): EmploymentRow => makeEmploymentRow({
   id: record.id,
@@ -226,6 +325,9 @@ const sanitizeExtra = (extra?: Partial<CandidateExtra> | null, fallback?: Candid
     experience_ce_total: null,
     in_poland: null,
     poland_stay_basis: '',
+    current_location: null,
+    frigo_experience: null,
+    has_adr: null,
     preferred_contact: '',
     first_contact_at: '',
     employment_history: [],
@@ -296,7 +398,36 @@ const sanitizeExtra = (extra?: Partial<CandidateExtra> | null, fallback?: Candid
   } else {
     result.eu_routes = null
   }
+  result.current_location = merged.current_location ? String(merged.current_location) : null
+  if (merged.frigo_experience === true || merged.frigo_experience === false) {
+    result.frigo_experience = merged.frigo_experience
+  } else {
+    result.frigo_experience = null
+  }
+  if (merged.has_adr === true || merged.has_adr === false) {
+    result.has_adr = merged.has_adr
+  } else {
+    result.has_adr = null
+  }
+  const wt = (merged as { workforce_termination?: unknown }).workforce_termination
+  if (wt && typeof wt === 'object' && !Array.isArray(wt)) {
+    ;(result as CandidateExtra).workforce_termination = { ...(wt as Record<string, unknown>) } as NonNullable<
+      CandidateExtra['workforce_termination']
+    >
+  }
   delete (result as any).documents
+  const confirmedBlocksRaw = (extra as any)?.[RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]
+    ?? (fallback as any)?.[RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]
+  if (Array.isArray(confirmedBlocksRaw)) {
+    result[RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY] = confirmedBlocksRaw
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+  }
+  const confirmFingerprintsRaw = (extra as any)?.[RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY]
+    ?? (fallback as any)?.[RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY]
+  if (confirmFingerprintsRaw && typeof confirmFingerprintsRaw === 'object' && !Array.isArray(confirmFingerprintsRaw)) {
+    result[RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY] = { ...confirmFingerprintsRaw }
+  }
   return result as CandidateExtra
 }
 
@@ -336,31 +467,7 @@ const normalizeLanguages = (value: any, fallback: string[] = []): string[] => {
   return [...fallback]
 }
 
-const currencyFmt = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' })
-const formatAmount = (value: number | null | undefined) => {
-  if (value == null || Number.isNaN(value)) return '-'
-  try {
-    return currencyFmt.format(value)
-  } catch {
-    return value.toFixed(2)
-  }
-}
-
-const isUuidLike = (value: unknown): value is string =>
-  typeof value === 'string' && UUID_RE.test(value)
-
-const POLAND_BASIS_VALUES = ['', 'visa_d', 'visa_c', 'karta_pobytu', 'eu_citizen', 'other']
-
-const mapResidencyStatusToPolandBasis = (value?: string): string => {
-  if (!value) return ''
-  const normalized = value.toLowerCase()
-  if (normalized === 'eu_citizen') return 'eu_citizen'
-  if (normalized === 'visa_c') return 'visa_c'
-  if (normalized === 'visa_d' || normalized === 'visa') return 'visa_d'
-  if (normalized === 'card' || normalized === 'karta_pobytu') return 'karta_pobytu'
-  if (normalized === 'other' || normalized === 'none') return 'other'
-  return ''
-}
+// formatAmount, isUuidLike, mapResidencyStatusToPolandBasis, POLAND_BASIS_VALUES are now imported from modules/candidate-card
 const TRAILER_TYPE_KEYS = [
   'mega',
   'standard',
@@ -392,6 +499,7 @@ const createEmptyCandidate = (stage?: string | null): Candidate => {
     email: '',
     phone: '',
     languages: [],
+    tags: [],
     stage: stage || '',
     manager: '',
     short_id: null,
@@ -404,26 +512,7 @@ const createEmptyCandidate = (stage?: string | null): Candidate => {
   } as Candidate
 }
 
-const formatDateTime = (value?: string | null): string => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString()
-}
-
-const parseJSONSafe = <T,>(value: unknown, fallback: T): T => {
-  if (value == null) return fallback
-  if (typeof value === 'object') return value as T
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value)
-      return (parsed ?? fallback) as T
-    } catch {
-      return fallback
-    }
-  }
-  return fallback
-}
+// formatDateTime, parseJSONSafe are now imported from modules/candidate-card/utils
 
 function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   const previous = prev ?? null
@@ -461,6 +550,9 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   if (!extraFallback.preferred_contact && typeof intakeContacts?.preferred_messenger === 'string') {
     extraFallback.preferred_contact = intakeContacts.preferred_messenger
   }
+  if (!extraFallback.preferred_contact && typeof contactsData?.preferred_messenger === 'string') {
+    extraFallback.preferred_contact = contactsData.preferred_messenger
+  }
   if (!extraFallback.phone_prefix && intakePhoneCode.startsWith('+')) {
     extraFallback.phone_prefix = intakePhoneCode
   }
@@ -481,6 +573,10 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   if (!extraFallback.poland_stay_basis && intakeResidencyBasis) {
     extraFallback.poland_stay_basis = intakeResidencyBasis
   }
+  if (!extraFallback.poland_stay_basis && typeof personalData?.residency_status === 'string') {
+    const mapped = mapResidencyStatusToPolandBasis(personalData.residency_status)
+    if (mapped) extraFallback.poland_stay_basis = mapped
+  }
   if ((!extraFallback.trailer_types || extraFallback.trailer_types.length === 0) && Array.isArray(intakeExperience?.trailer_types)) {
     extraFallback.trailer_types = intakeExperience.trailer_types.map((item: any) => String(item)).filter(Boolean)
   }
@@ -498,6 +594,9 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   if (!mergedExtra.preferred_contact && typeof intakeContacts?.preferred_messenger === 'string') {
     mergedExtra.preferred_contact = intakeContacts.preferred_messenger
   }
+  if (!mergedExtra.preferred_contact && typeof contactsData?.preferred_messenger === 'string') {
+    mergedExtra.preferred_contact = contactsData.preferred_messenger
+  }
   if (!mergedExtra.citizenship) {
     if (typeof personalData?.citizenship === 'string') {
       mergedExtra.citizenship = personalData.citizenship
@@ -507,6 +606,10 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   }
   if (!mergedExtra.poland_stay_basis && intakeResidencyBasis) {
     mergedExtra.poland_stay_basis = intakeResidencyBasis
+  }
+  if (!mergedExtra.poland_stay_basis && typeof personalData?.residency_status === 'string') {
+    const mapped = mapResidencyStatusToPolandBasis(personalData.residency_status)
+    if (mapped) mergedExtra.poland_stay_basis = mapped
   }
   if (!mergedExtra.phone_prefix && intakePhoneCode.startsWith('+')) {
     mergedExtra.phone_prefix = intakePhoneCode
@@ -552,8 +655,10 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
         : []
 
   const managerId =
-    (raw?.manager_id && isUuidLike(raw.manager_id) && String(raw.manager_id))
+    (raw?.recruiter_id && isUuidLike(raw.recruiter_id) && String(raw.recruiter_id))
+    || (raw?.manager_id && isUuidLike(raw.manager_id) && String(raw.manager_id))
     || (isUuidLike(raw?.manager) ? String(raw.manager) : undefined)
+    || ((previous as any)?.recruiter_id && isUuidLike((previous as any).recruiter_id) && String((previous as any).recruiter_id))
     || (isUuidLike((previous as any)?.manager_id) ? String((previous as any).manager_id) : undefined)
     || (isUuidLike(previous?.manager) ? String(previous?.manager) : null)
 
@@ -562,14 +667,16 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     (managerId ? (raw?.manager_name ?? previous?.manager_name ?? null) : null) ??
     (typeof raw?.manager === 'string' && !isUuidLike(raw.manager) ? raw.manager : previous?.manager_name ?? null)
 
+  // When API returns masked candidate, do not use previous/cache for PII (no substitution of cached name/email/phone)
+  const isMasked = raw?.masked === true
   const result: Candidate = {
     ...(previous ?? {} as Candidate),
     ...raw,
     id: String(raw?.id ?? previous?.id ?? ''),
-    first_name: raw?.first_name ?? previous?.first_name ?? intakeNameParts.first ?? '',
-    last_name: raw?.last_name ?? previous?.last_name ?? intakeNameParts.last ?? '',
-    email: raw?.email ?? previous?.email ?? intakeEmail ?? '',
-    phone: raw?.phone ?? previous?.phone ?? intakePhone ?? '',
+    first_name: isMasked ? (raw?.first_name ?? '') : (raw?.first_name ?? previous?.first_name ?? intakeNameParts.first ?? ''),
+    last_name: isMasked ? (raw?.last_name ?? '') : (raw?.last_name ?? previous?.last_name ?? intakeNameParts.last ?? ''),
+    email: isMasked ? (raw?.email ?? '') : (raw?.email ?? previous?.email ?? intakeEmail ?? ''),
+    phone: isMasked ? (raw?.phone ?? '') : (raw?.phone ?? previous?.phone ?? intakePhone ?? ''),
     stage: raw?.stage ?? previous?.stage ?? '',
     manager: managerId ?? '',
     manager_name: managerDisplayName ?? null,
@@ -578,11 +685,12 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     company_name: raw?.company_name ?? previous?.company_name ?? '',
     vacancy_name: raw?.vacancy_name ?? previous?.vacancy_name ?? '',
     short_id: raw?.short_id ?? previous?.short_id ?? null,
-    phone_country_code:
-      raw?.phone_country_code ??
-      previous?.phone_country_code ??
-      (intakePhoneCode || ''),
+    phone_country_code: isMasked
+      ? (raw?.phone_country_code ?? '')
+      : (raw?.phone_country_code ?? previous?.phone_country_code ?? (intakePhoneCode || '')),
     languages,
+    tags: Array.isArray(raw?.tags) ? raw.tags.filter((t: any) => t && String(t).trim()).map((t: any) => String(t).trim()) : (Array.isArray(previous?.tags) ? previous.tags : []),
+    is_favorite: typeof raw?.is_favorite === 'boolean' ? raw.is_favorite : (previous?.is_favorite ?? false),
     docs_progress: docsProgress,
     status_reason: statusReason,
     extra: mergedExtra,
@@ -594,6 +702,9 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     intake_contacts: intakeContacts,
     intake_personal: intakePersonal,
     intake_experience: intakeExperience,
+    masked: raw?.masked ?? previous?.masked ?? false,
+    can_edit: raw?.can_edit ?? previous?.can_edit ?? true,
+    permissions: raw?.permissions ?? previous?.permissions,
     intake_agreements: intakeAgreements,
   } as Candidate
 
@@ -616,235 +727,216 @@ const toArray = (value: any) =>
         ? value.data
         : []
 
-function useClickOutside<T extends HTMLElement>(onOutside: () => void) {
-  const ref = useRef<T | null>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      const el = ref.current
-      if (!el) return
-      if (!el.contains(e.target as Node)) onOutside()
-    }
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') onOutside()
-    }
-    document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', onEsc)
-    return () => {
-      document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', onEsc)
-    }
-  }, [onOutside])
-  return ref
-}
-
-/* ---------- searchable select ---------- */
-function SearchableSelect({
-  options,
-  value,
-  onChange,
-  placeholder,
-  className,
-  searchPlaceholder,
-  noResultsLabel,
-}: {
-  options: Option[];
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  className?: string;
-  searchPlaceholder?: string;
-  noResultsLabel?: string;
-}) {
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const current = useMemo(() => options.find(o => o.value === value)?.label || '', [options, value])
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return options
-    return options.filter((option: Option) => option.label.toLowerCase().includes(s) || option.value.toLowerCase().includes(s))
-  }, [q, options])
-  const close = () => setOpen(false)
-  const boxRef = useClickOutside<HTMLDivElement>(close)
-
-  return (
-    <div className={clsx('relative', className)} ref={boxRef}>
-      <button
-        type="button"
-        className="input w-full text-left"
-        onClick={() => { setOpen(o => !o); setQ('') }}
-      >
-        {current || (placeholder || '— select —')}
-      </button>
-      {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-xl border bg-white shadow-xl">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input"
-              placeholder={searchPlaceholder || 'Search…'}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
-          </div>
-          <div className="max-h-64 overflow-auto">
-            {filtered.length === 0 && <div className="px-3 py-2 text-gray-500">{noResultsLabel || 'No matches'}</div>}
-            {filtered.map((o: Option) => (
-              <button
-                key={o.value}
-                type="button"
-                className={clsx('w-full px-3 py-2 text-left hover:bg-gray-50', o.value === value && 'bg-gray-50')}
-                onClick={() => { onChange(o.value); close() }}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ---------- checkbox multiselect ---------- */
-function CheckboxMultiSelect({
-  options,
-  values,
-  onChange,
-  placeholder,
-  className,
-  searchPlaceholder,
-  noResultsLabel,
-  multiSelectedLabel,
-}: {
-  options: Option[];
-  values: string[];
-  onChange: (vals: string[]) => void;
-  placeholder?: string;
-  className?: string;
-  searchPlaceholder?: string;
-  noResultsLabel?: string;
-  multiSelectedLabel?: (count: number) => string;
-}) {
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const boxRef = useClickOutside<HTMLDivElement>(() => setOpen(false))
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return options
-    return options.filter((option: Option) => option.label.toLowerCase().includes(s) || option.value.toLowerCase().includes(s))
-  }, [q, options])
-  const toggle = (v: string) => {
-    const set = new Set(values)
-    set.has(v) ? set.delete(v) : set.add(v)
-    onChange(Array.from(set))
-  }
-  const caption = values.length === 0
-    ? (placeholder || 'Not selected')
-    : (values.length <= 3
-        ? values
-            .map((v) => {
-              const found = options.find((option: Option) => option.value === v)
-              return found?.label || v
-            })
-            .join(', ')
-        : multiSelectedLabel
-          ? multiSelectedLabel(values.length)
-          : `${values.length} selected`)
-
-  return (
-    <div className={clsx('relative', className)} ref={boxRef}>
-      <button type="button" className="input w-full text-left" onClick={() => { setOpen(o=>!o); setQ('') }}>
-        {caption}
-      </button>
-      {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-xl border bg-white shadow-xl">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input"
-              placeholder={searchPlaceholder || 'Search…'}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
-          </div>
-          <div className="max-h-72 overflow-auto">
-            {filtered.length === 0 && <div className="px-3 py-2 text-gray-500">{noResultsLabel || 'No matches'}</div>}
-            {filtered.map((o: Option) => {
-              const checked = values.includes(o.value)
-              return (
-                <label
-                  key={o.value}
-                  className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => toggle(o.value)}
-                >
-                  <input type="checkbox" readOnly checked={checked} />
-                  <span>{o.label}</span>
-                </label>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* --------------------------------- инпуты --------------------------------- */
-type InputProps = InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string; containerClassName?: string }
-const Input = (props: InputProps) => {
-  const { label, hint, className, containerClassName, ...rest } = props
-  const isReadOnly = rest.readOnly || rest.disabled
-  return (
-    <label className={clsx('block', containerClassName)}>
-      {label && <div className="label">{label}</div>}
-      <input
-        {...rest}
-        className={clsx(
-          'input',
-          isReadOnly && 'bg-gray-100 text-gray-600 cursor-not-allowed',
-          className,
-        )}
-      />
-      {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
-    </label>
-  )
-}
-
-const Checkbox = ({ label, checked, onChange }:{
-  label: string; checked?: boolean; onChange?: (v:boolean)=>void
-}) => (
-  <label className="flex items-center gap-2">
-    <input type="checkbox" checked={!!checked} onChange={e=>onChange?.(e.currentTarget.checked)} />
-    <span>{label}</span>
-  </label>
-)
 
 /* ------------------------------- основная страница ------------------------------- */
 export default function CandidateCard(){
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const unknownErrorLabel = t('common.errors.unknown')
   const { id } = useParams<{id: UUID | 'new'}>()
+  const location = useLocation()
   const isNew = id === 'new'
   const nav = useNavigate()
-  const { can } = usePermissions()
+  const { can, role: permissionsRole, isClientTenant, tenantId } = usePermissions()
+  const { gates: hiringGatesApi } = useHiringPipelineGates()
+  const hiringGatesRuntime = useMemo(() => hiringPipelineGatesFromApi(hiringGatesApi), [hiringGatesApi])
   const canRequestDelete = can('candidates.requestDelete')
   const canDeleteDirect = can('admin.deletionQueue') || can('admin.users')
+  const { notify } = useToast()
+  const planLimitModal = usePlanLimitModal()
 
   const meta = useMetaStages()
-  const stageOptions = useMemo(() => (meta?.order || meta?.codes || []), [meta])
+  const originPath = useMemo(() => {
+    const originFromState = (location.state as any)?.originPath
+    if (
+      typeof originFromState === 'string' &&
+      originFromState.startsWith(`${CRM_APP_PATHS.appShellPrefix}/`)
+    ) {
+      return originFromState
+    }
+    return CRM_APP_PATHS.candidates
+  }, [location.state])
+  const [isHandoffEnabledForCurrentCompany, setIsHandoffEnabledForCurrentCompany] = useState(false)
+  const [companyHandoffLink, setCompanyHandoffLink] = useState<TenantLink | null>(null)
+  const [model, setModel] = useState<Candidate | null>(null)
+  const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
+  const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
+  useEffect(() => {
+    if (isClientTenant) {
+      setIsHandoffEnabledForCurrentCompany(false)
+      setCompanyHandoffLink(null)
+      return
+    }
+    const companyId = String(model?.company_id || '').trim()
+    const agencyTenantId = String(tenantId || '').trim()
+    if (!agencyTenantId || !companyId) {
+      setIsHandoffEnabledForCurrentCompany(false)
+      setCompanyHandoffLink(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const links = await listTenantLinks(agencyTenantId)
+        if (cancelled) return
+        const matched =
+          links.find(
+            (link) =>
+              String(link.client_company_id || '').trim() === companyId ||
+              String(link.handoff_include_company_id || '').trim() === companyId,
+          ) || null
+        setCompanyHandoffLink(matched)
+        setIsHandoffEnabledForCurrentCompany(Boolean(matched?.handoff_enabled))
+      } catch {
+        if (!cancelled) {
+          setIsHandoffEnabledForCurrentCompany(false)
+          setCompanyHandoffLink(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isClientTenant, tenantId, model?.company_id])
+  
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const { effectiveLayout, layoutFromApi } = useEffectiveCandidateLayout({
+    enabled: !isNew,
+    candidateId: model?.id ? String(model.id) : null,
+    candidateProfileId: candidateProfile?.id ?? null,
+  })
+  const registryMainSectionOrder = useMemo(
+    () => getCardSectionOrder(effectiveLayout) ?? (['basic', 'personal', 'experience'] as const),
+    [effectiveLayout],
+  )
+  const registrySectionsBeforeStatus = useMemo(() => {
+    const personalIdx = registryMainSectionOrder.indexOf('personal')
+    const prefix =
+      personalIdx >= 0
+        ? registryMainSectionOrder.slice(0, personalIdx + 1)
+        : registryMainSectionOrder
+    return prefix.filter((code): code is 'basic' | 'personal' => code === 'basic' || code === 'personal')
+  }, [registryMainSectionOrder])
+  const registrySectionsAfterStatus = useMemo(
+    () => registryMainSectionOrder.filter((code): code is 'experience' => code === 'experience'),
+    [registryMainSectionOrder],
+  )
+  const registrySectionVisible = useCallback(
+    (code: 'basic' | 'personal' | 'experience') => {
+      if (!layoutFromApi || !effectiveLayout) return true
+      return isCardSectionVisible(code, effectiveLayout)
+    },
+    [layoutFromApi, effectiveLayout],
+  )
+  const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
+
+  useEffect(() => {
+    if (!candidateProfile?.funnel_id) {
+      setProfileFunnelStages([])
+      return
+    }
+    getFunnel(candidateProfile.funnel_id)
+      .then((f) => setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label }))))
+      .catch(() => setProfileFunnelStages([]))
+  }, [candidateProfile?.funnel_id])
+
+  // Полный список этапов профиля (без фильтра по роли)
+  const profileStageCodes = useMemo(() => {
+    let codes: string[] = []
+    if (profileFunnelStages.length > 0) {
+      codes = profileFunnelStages.map((s) => s.code)
+    } else if (candidateProfile?.config?.stage_configs && Array.isArray(candidateProfile.config.stage_configs)) {
+      const profileStages = candidateProfile.config.stage_configs
+        .filter((stage: any) => stage.active !== false)
+        .map((stage: any) => stage.stage_code)
+        .filter(Boolean)
+      if (profileStages.length > 0) {
+        codes = profileStages
+      }
+    }
+    if (!codes.length) {
+      codes = meta?.order || meta?.codes || []
+    }
+    return codes
+  }, [candidateProfile, meta, profileFunnelStages])
+
+  // Ограничиваем список для селекта с учетом роли клиента
+  const stageOptions = useMemo(() => {
+    const codes = profileStageCodes
+    if (!meta?.meta) return codes
+    if (isClientTenant) {
+      return codes.filter((code) => meta.meta?.[code]?.visible_for_client)
+    }
+    if (isHandoffEnabledForCurrentCompany) {
+      return codes.filter((code) => {
+        const stageMeta = meta.meta?.[code]
+        if (stageMeta?.visible_for_agency) return true
+        const canonical = canonicalStageKey(code, null) || String(code).trim().toLowerCase()
+        if (canonical === 'handoff_returned') return true
+        return isPipelineCompletedCanonicalStage(canonical)
+      })
+    }
+    return codes
+  }, [profileStageCodes, meta, isClientTenant, isHandoffEnabledForCurrentCompany])
+
+  const existingStageCodesSet = useMemo(
+    () => new Set((profileStageCodes || []).map((code) => String(code).trim()).filter(Boolean)),
+    [profileStageCodes],
+  )
+
+  const timelineStageHistory = useMemo(
+    () =>
+      stageHistory.filter((entry) => {
+        const fromCode = String(entry?.from_code || '').trim()
+        const toCode = String(entry?.to_code || '').trim()
+        if (toCode && existingStageCodesSet.has(toCode)) return true
+        if (fromCode && existingStageCodesSet.has(fromCode)) return true
+        return false
+      }),
+    [stageHistory, existingStageCodesSet],
+  )
+
   const stageLabelIntl = useCallback((code: string) => {
-    const fallback = meta?.labels?.[code] || code
+    const funnelStage = profileFunnelStages.find((s) => s.code === code)
+    let profileLabel: string | null = null
+    if (candidateProfile?.config?.stage_configs) {
+      const profileStage = candidateProfile.config.stage_configs.find(
+        (s: any) => s.stage_code === code
+      )
+      if (profileStage?.stage_label) profileLabel = String(profileStage.stage_label)
+    }
+    const fallback = profileLabel || funnelStage?.label || meta?.labels?.[code] || code
+    // IMPORTANT: always translate via canonical stage key; do not render Polish labels directly.
     return translateStageLabel(t, code, fallback)
-  }, [meta?.labels, t])
+  }, [candidateProfile, meta?.labels, profileFunnelStages, t])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
-  const [tab, setTab] = useState<Tab>('personal')
-  const [model, setModel] = useState<Candidate | null>(null)
+  const [downloadingBundle, setDownloadingBundle] = useState(false)
+  const [uploadLinkBusy, setUploadLinkBusy] = useState(false)
+  const [uploadLink, setUploadLink] = useState<CandidateUploadLinkResponse | null>(null)
+  const [, setUploadLinkCopied] = useState(false)
+  const HEADER_STORAGE_KEY = 'hf:candidate:headerExpanded'
+  const [headerExpanded, setHeaderExpanded] = useState(() => {
+    try {
+      return window.localStorage.getItem(HEADER_STORAGE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const [deleteRequestLoading, setDeleteRequestLoading] = useState(false)
   const [deleteRequestMessage, setDeleteRequestMessage] = useState<string | null>(null)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
+  const [candidateEditPhase, setCandidateEditPhase] = useState<CandidateEditPhase>('idle')
+  const [candidateOverrideReason, setCandidateOverrideReason] = useState('')
+  const [activityModalOpen, setActivityModalOpen] = useState(false)
+
+  useEffect(() => {
+    setCandidateEditPhase('idle')
+    setCandidateOverrideReason('')
+    setActivityModalOpen(false)
+  }, [id])
 
   // каталоги
   const [countries, setCountries] = useState<Option[]>([])
@@ -856,22 +948,329 @@ export default function CandidateCard(){
   const [notesLoading, setNotesLoading] = useState(false)
   const [newNote, setNewNote] = useState('')
   const [noteSending, setNoteSending] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyError, setHistoryError] = useState<string | null>(null)
-  const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
-  const [historyInfo, setHistoryInfo] = useState<string | null>(null)
+  const [rodoSentTrigger, setRodoSentTrigger] = useState(0)
+  /** Bumped to open contact-attempt register modal from stage panel (“Contact candidate”). */
+  const [contactAttemptOpenSignal, setContactAttemptOpenSignal] = useState(0)
+
+  const lastSavedPayloadRef = useRef<string | null>(null)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedEmploymentRowsRef = useRef<string | null>(null)
+  const employmentAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([])
   const [employmentBaseline, setEmploymentBaseline] = useState<Record<string, EmploymentSnapshot>>({})
   const [employmentLoading, setEmploymentLoading] = useState(false)
   const [employmentError, setEmploymentError] = useState<string | null>(null)
+  const modelRef = useRef<Candidate | null>(null)
+  const employmentRowsRef = useRef<EmploymentRow[]>([])
+  const routeIdRef = useRef<string | null>(null)
+  const candidateEditPhaseRef = useRef<CandidateEditPhase>('idle')
+  const candidateOverrideReasonRef = useRef('')
+  candidateEditPhaseRef.current = candidateEditPhase
+  candidateOverrideReasonRef.current = candidateOverrideReason
+  modelRef.current = model
+  employmentRowsRef.current = employmentRows
+  if (id !== routeIdRef.current) {
+    routeIdRef.current = id ?? null
+    lastSavedPayloadRef.current = null
+    lastSavedEmploymentRowsRef.current = null
+    if (employmentAutoSaveTimerRef.current) {
+      clearTimeout(employmentAutoSaveTimerRef.current)
+      employmentAutoSaveTimerRef.current = null
+    }
+  }
+  const [reminders, setReminders] = useState<ReminderRecord[]>([])
+  const [remindersLoading, setRemindersLoading] = useState(false)
+  const [remindersError, setRemindersError] = useState<FriendlyErrorInfo | null>(null)
+  // G-8 stage 1b: tick bumped after mutations that change the next-action
+  // signal (reminder create/complete/snooze, handoff create, contact attempt).
+  // Stage transitions are picked up automatically via the `candidate-updated`
+  // window event the hook listens to.
+  const [nextActionTick, setNextActionTick] = useState(0)
+  const bumpNextActionTick = useCallback(() => {
+    setNextActionTick((n) => n + 1)
+  }, [])
+  const {
+    data: nextActionDto,
+    loading: nextActionLoading,
+    error: nextActionError,
+  } = useCandidateNextAction(model?.id ?? null, nextActionTick)
+  const [reminderBusy, setReminderBusy] = useState<string | null>(null)
+  const [reminderTitle, setReminderTitle] = useState('')
+  const [reminderDueAt, setReminderDueAt] = useState(() => {
+    const dt = new Date(Date.now() + 60 * 60 * 1000)
+    return dt.toISOString().slice(0, 16)
+  })
+  const [reminderOffset, setReminderOffset] = useState(15)
+  const [timelineReminders, setTimelineReminders] = useState<ReminderRecord[]>([])
+  const [timelineRemindersLoading, setTimelineRemindersLoading] = useState(false)
+  const [timelineStageHistoryLoading, setTimelineStageHistoryLoading] = useState(false)
+  const [timelineError, setTimelineError] = useState<FriendlyErrorInfo | null>(null)
+  const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[]; inProgress: string[] }>({
+    missing: [],
+    problematic: [],
+    inProgress: [],
+  })
+  const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
+  const [requirementBlockers, setRequirementBlockers] = useState<{
+    missing: string[]
+    problematic: string[]
+    inProgress: string[]
+  }>({
+    missing: [],
+    problematic: [],
+    inProgress: [],
+  })
+  const [requirementBlockersLoading, setRequirementBlockersLoading] = useState(false)
+  const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
+  const [docsSummarySnapshot, setDocsSummarySnapshot] = useState<Record<string, unknown> | null>(null)
+  const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
+  const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
+  const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
+  const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
+  const docsVerifyTaskSignatureRef = useRef<string | null>(null)
+
+  const isAutoDocsVerifyReminder = useCallback((r: ReminderRecord | null | undefined) => {
+    if (!r || r.status === 'done' || r.status === 'cancelled') return false
+    const type = String(r.type || '').toLowerCase()
+    const title = String(r.title || '').toLowerCase()
+    const description = String(r.description || '').toLowerCase()
+    return type === 'document_review'
+      || title.includes('verify uploaded documents')
+      || description.includes('[auto:docs_verify]')
+  }, [])
+  const [handoffStatus, setHandoffStatus] = useState<HandoffStatusResponse | null>(null)
+  const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
+  const [handoffLoading, setHandoffLoading] = useState(false)
+  const [handoffModalOpen, setHandoffModalOpen] = useState(false)
+  const [handoffSubmitting, setHandoffSubmitting] = useState(false)
+  const [handoffClientLinkId, setHandoffClientLinkId] = useState('')
+  const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
+
+  const nextAction = useMemo(() => {
+    const parseTs = (value?: string | null): number => {
+      if (!value) return 0
+      const ts = Date.parse(String(value))
+      return Number.isNaN(ts) ? 0 : ts
+    }
+    const active = (reminders || []).filter((r) => r && r.status !== 'done' && r.status !== 'cancelled')
+    if (!active.length) return null
+    const now = Date.now()
+    active.sort((a, b) => {
+      const aDue = parseTs(a.due_at)
+      const bDue = parseTs(b.due_at)
+      const aOver = a.status === 'overdue' || (aDue > 0 && aDue < now)
+      const bOver = b.status === 'overdue' || (bDue > 0 && bDue < now)
+      if (aOver !== bOver) return aOver ? -1 : 1
+      if (aDue !== bDue) return (aDue || Number.MAX_SAFE_INTEGER) - (bDue || Number.MAX_SAFE_INTEGER)
+      return String(a.id).localeCompare(String(b.id))
+    })
+    return active[0] ?? null
+  }, [reminders])
+
+  const nextActionDueLabel = useMemo(() => {
+    if (!nextAction?.due_at) return '—'
+    try {
+      return new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(nextAction.due_at))
+    } catch {
+      return String(nextAction.due_at)
+    }
+  }, [locale, nextAction?.due_at])
+
+  const docsMetaSummary = useMemo(() => {
+    try {
+      return deriveDocsMeta(model as any)
+    } catch {
+      return null
+    }
+  }, [model])
+
+  const docsCountsSummary = useMemo(() => {
+    const p = sanitizeDocsProgress((model as any)?.docs_progress)
+    const total = Number(p.total ?? p.count ?? 0) || 0
+    const ready = Number(p.ready ?? p.verified ?? p.approved ?? 0) || 0
+    const problem = Number(p.problem ?? p.invalid ?? p.expired ?? p.overdue ?? 0) || 0
+    const inProgress = Number(p.in_progress ?? p.submitted ?? p.pending_validation ?? 0) || 0
+    return { total, ready, problem, inProgress }
+  }, [model])
+
+  const docsPctSummary = useMemo(() => {
+    const total = docsCountsSummary.total || 0
+    if (!total) return 0
+    return Math.max(0, Math.min(100, Math.round((docsCountsSummary.ready / total) * 100)))
+  }, [docsCountsSummary.ready, docsCountsSummary.total])
+
+  const isRodoStageBlockedError = useCallback((err: any): boolean => {
+    const status = Number(err?.response?.status || 0)
+    const detailRaw = err?.response?.data?.detail
+    const detail = String(detailRaw || '').trim().toLowerCase()
+    if (status !== 409) return false
+    return detail.includes('rodo must be sent') || detail.includes('contact/screening stage')
+  }, [])
+
+  const parseHandoffDocsIncomplete = useCallback((err: any): { missingTypes: string[] } | null => {
+    const detailRaw = err?.response?.data?.detail
+    const toMissing = (val: any): string[] =>
+      Array.isArray(val) ? val.map((x) => String(x || '').trim()).filter(Boolean) : []
+
+    if (detailRaw && typeof detailRaw === 'object') {
+      const code = String((detailRaw as any).code || '').trim()
+      if (code === 'handoff_docs_incomplete') {
+        return { missingTypes: toMissing((detailRaw as any).missing_types) }
+      }
+    }
+
+    if (typeof detailRaw === 'string') {
+      const trimmed = detailRaw.trim()
+      if (trimmed.includes('handoff_docs_incomplete')) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          if (parsed && typeof parsed === 'object' && String((parsed as any).code || '') === 'handoff_docs_incomplete') {
+            return { missingTypes: toMissing((parsed as any).missing_types) }
+          }
+        } catch {
+          return { missingTypes: [] }
+        }
+      }
+    }
+    return null
+  }, [])
+
+  // Функция для загрузки профиля из вакансии
+  const loadProfileFromVacancy = useCallback(async (vacancyId: string | null) => {
+    if (!vacancyId) {
+      setCandidateProfile(null)
+      return
+    }
+
+    try {
+      setProfileLoading(true)
+      let vacancy: any = null
+      try {
+        vacancy = await getVacancy(vacancyId)
+      } catch (vacancyErr: any) {
+        const status = Number(vacancyErr?.response?.status || 0)
+        // Client can legitimately get 404/403 for agency vacancy.
+        // Keep card usable and fallback to default candidate profile.
+        if (status === 404 || status === 403) {
+          try {
+            const profiles = await listCandidateProfiles()
+            const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+            setCandidateProfile(defaultProfile ?? null)
+          } catch {
+            setCandidateProfile(null)
+          }
+          return
+        }
+        throw vacancyErr
+      }
+      if (!vacancy?.candidate_profile_id) {
+        try {
+          const profiles = await listCandidateProfiles()
+          const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+          setCandidateProfile(defaultProfile ?? null)
+        } catch {
+          setCandidateProfile(null)
+        }
+        return
+      }
+      const profileId = vacancy.candidate_profile_id
+      if (profile404Ref.current.has(profileId)) {
+        const profiles = await listCandidateProfiles()
+        const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+        if (defaultProfile) setCandidateProfile(defaultProfile)
+        else setCandidateProfile(null)
+        return
+      }
+      if (profilePendingRef.current.has(profileId)) {
+        return
+      }
+      profilePendingRef.current.add(profileId)
+      try {
+        const profile = await getCandidateProfile(profileId)
+        if (!profile.is_active) {
+          console.warn('[CandidateCard] Profile is inactive', profile.id)
+          notify({
+            title: t('app.candidate_card.messages.profile_inactive', {
+              values: { name: profile.name },
+            }),
+            variant: 'warning',
+          })
+        }
+        setCandidateProfile(profile)
+      } catch (profileErr: any) {
+        const status = profileErr?.response?.status
+        const useDefaultByDefault = status === 404 || status === 403
+        if (useDefaultByDefault) {
+          profile404Ref.current.add(profileId)
+          try {
+            const profiles = await listCandidateProfiles()
+            const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+            if (defaultProfile) {
+              setCandidateProfile(defaultProfile)
+              if (!profile404ToastShownRef.current.has(profileId)) {
+                profile404ToastShownRef.current.add(profileId)
+                notify({
+                  title: t('app.candidate_card.messages.profile_fallback_default'),
+                  variant: 'warning',
+                })
+              }
+              return
+            }
+          } catch (_) {
+            /* ignore */
+          }
+          if (!profile404ToastShownRef.current.has(profileId)) {
+            profile404ToastShownRef.current.add(profileId)
+            notify({
+              title: t('app.candidate_card.messages.profile_not_found'),
+              variant: 'warning',
+            })
+          }
+        } else {
+          console.error('[CandidateCard] Failed to load profile', profileErr)
+        }
+        setCandidateProfile(null)
+      } finally {
+        profilePendingRef.current.delete(profileId)
+      }
+    } catch (err) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        setCandidateProfile(null)
+        return
+      }
+      console.error('[CandidateCard] Failed to load vacancy or profile', err)
+      setCandidateProfile(null)
+    } finally {
+      setProfileLoading(false)
+    }
+  }, [notify, planLimitModal, t, unknownErrorLabel])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HEADER_STORAGE_KEY, headerExpanded ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [headerExpanded])
   const basicRef = useRef<HTMLDivElement | null>(null)
   const personalRef = useRef<HTMLDivElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
   const experienceRef = useRef<HTMLDivElement | null>(null)
+  const customFieldsRef = useRef<HTMLDivElement | null>(null)
   const employerRef = useRef<HTMLDivElement | null>(null)
   const notesRef = useRef<HTMLDivElement | null>(null)
   const employmentInitRef = useRef(false)
+  /** Profile IDs that returned 404 — skip refetch, use default profile. */
+  const profile404Ref = useRef<Set<string>>(new Set())
+  /** Profile IDs currently being fetched — avoid duplicate GET requests. */
+  const profilePendingRef = useRef<Set<string>>(new Set())
+  /** Profile IDs we already showed 404 toast for this mount — avoid spam. */
+  const profile404ToastShownRef = useRef<Set<string>>(new Set())
   const dialCodeIndex = useMemo(() => {
     return dialCodes
       .map((opt) => {
@@ -976,7 +1375,7 @@ export default function CandidateCard(){
     [t]
   )
 
-  // загрузка каталогов (один раз)
+  // загрузка каталогов (с локализацией названий стран и языков)
   useEffect(() => {
     (async () => {
       try{
@@ -984,21 +1383,27 @@ export default function CandidateCard(){
           api.get('/catalogs/countries'),
           api.get('/catalogs/languages'),
           api.get('/catalogs/dial-codes'),
-          api.get('/catalogs/managers').catch(()=>({ data: [] })),
+          api.get('/catalogs/managers', { params: { roles: 'recruiter' } }).catch(()=>({ data: [] })),
           api.get('/vacancies/').catch(()=>({ data: [] })),
         ])
 
-        // countries / languages
-        const countriesArr: Option[] = toArray(c.data).map((x: any) => ({
-          value: String(x.code ?? x.id ?? ''),
-          label: String(x.name ?? x.label ?? x.code ?? ''),
-        })).filter((o: Option) => o.value && o.label)
+        // countries / languages — localized via Intl.DisplayNames
+        const countriesArr: Option[] = toArray(c.data)
+          .map((x: any) => {
+            const code = String(x.code ?? x.id ?? '')
+            return { value: code, label: getRegionDisplayName(code, locale) || code }
+          })
+          .filter((o: Option) => o.value && o.label)
+          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
         setCountries(countriesArr)
-        setLanguages(
-          toArray(l.data)
-            .map((x: any) => ({ value: String(x.code ?? x.id ?? ''), label: String(x.name ?? x.label ?? x.code ?? '') }))
-            .filter((o: Option) => o.value && o.label)
-        )
+        const langsArr: Option[] = toArray(l.data)
+          .map((x: any) => {
+            const code = String(x.code ?? x.id ?? '')
+            return { value: code, label: getLanguageDisplayName(code, locale) || code }
+          })
+          .filter((o: Option) => o.value && o.label)
+          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
+        setLanguages(langsArr)
 
         // dial-codes: поддерживаем и [{country,dial_code}], и {CC:"+XXX"}
         const dcMap = new Map<string,string>()
@@ -1025,7 +1430,7 @@ export default function CandidateCard(){
             } as Option
           })
           .filter((o: Option) => !!o.extra?.prefix)
-          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, 'ru'))
+          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
         setDialCodes(dcList)
 
         // managers
@@ -1060,7 +1465,7 @@ export default function CandidateCard(){
         // no-op
       }
     })()
-  }, [])
+  }, [locale])
 
   useEffect(() => {
     if (!model?.manager) return
@@ -1089,6 +1494,29 @@ export default function CandidateCard(){
   }, [model?.vacancy_id, model?.vacancy_name, model?.company_id, model?.company_name, t])
 
   useEffect(() => {
+    const loadReminders = async () => {
+      if (!model?.id) return
+      setRemindersLoading(true)
+      setRemindersError(null)
+      try {
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        setReminders(items.slice(0, 5))
+      } catch (err: unknown) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.load'))) return
+        setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load'), t))
+      } finally {
+        setRemindersLoading(false)
+      }
+    }
+    void loadReminders()
+  }, [model?.id, planLimitModal, t])
+
+  useEffect(() => {
     if (!isNew) return
     const nextStage = meta?.order?.[0] || meta?.codes?.[0]
     if (!nextStage) return
@@ -1101,23 +1529,86 @@ export default function CandidateCard(){
 
   // загрузка кандидата / инициализация нового
   useEffect(() => {
-    (async () => {
+    let cancelled = false
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0
+
+    void (async () => {
       setLoading(true)
-      try{
+      let outcome: 'ok' | 'not_found' | 'error' = 'ok'
+      try {
         if (isNew) {
           const defaultStage = meta?.order?.[0] || meta?.codes?.[0] || 'new'
           setModel(createEmptyCandidate(defaultStage))
         } else {
-          const { data } = await api.get(`/candidates/${id}`)
-          const normalized = normalizeCandidate(data, model)
-          setModel(normalized)
+          if (!id) return
+          const cached = getCachedCandidate(id)
+          if (cached) {
+            setModel(normalizeCandidate(cached, model))
+          }
+          try {
+            const { data } = await api.get(`/candidates/${id}`)
+            if (cancelled) return
+            const normalized = normalizeCandidate(data, model)
+            setModel(normalized)
+            setCachedCandidate(id, normalized)
+
+            // Load candidate profile from vacancy
+            if (normalized.vacancy_id) {
+              await loadProfileFromVacancy(String(normalized.vacancy_id))
+            } else {
+              setCandidateProfile(null)
+            }
+          } catch (err: any) {
+            if (cancelled) return
+            if (err?.response?.status === 404) {
+              outcome = 'not_found'
+              nav(CRM_APP_PATHS.candidates)
+              return
+            }
+            outcome = 'error'
+            throw err
+          }
+        }
+      } catch (loadErr: unknown) {
+        if (!cancelled) {
+          if (!planLimitModal?.showPlanLimitIfNeeded(loadErr, unknownErrorLabel)) {
+            console.error('[CandidateCard] candidate load failed', loadErr)
+          }
+          outcome = 'error'
         }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          if (typeof performance !== 'undefined') {
+            const elapsed = Math.max(0, performance.now() - t0)
+            void recordPerfMeasurement({
+              metricKey: 'candidate.card.open',
+              durationMs: Math.round(elapsed),
+              route:
+                typeof window !== 'undefined'
+                  ? window.location.pathname
+                  : CRM_APP_PATHS.candidates,
+              meta: { candidateId: String(id), isNew, outcome },
+            })
+          }
+        }
       }
     })()
+
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew])
+  }, [id, isNew, loadProfileFromVacancy, nav, planLimitModal, unknownErrorLabel])
+
+  // Отслеживаем изменение вакансии и перезагружаем профиль
+  useEffect(() => {
+    if (model?.vacancy_id) {
+      void loadProfileFromVacancy(String(model.vacancy_id))
+    } else {
+      setCandidateProfile(null)
+    }
+  }, [model?.vacancy_id, loadProfileFromVacancy])
 
   const applyEmploymentRecords = useCallback((records: CandidateEmploymentRecord[]) => {
     const nextRows = records.map(candidateEmploymentToRow)
@@ -1129,6 +1620,7 @@ export default function CandidateCard(){
       }
     })
     setEmploymentBaseline(baseline)
+    lastSavedEmploymentRowsRef.current = employmentRowsFingerprint(nextRows)
   }, [])
 
   const reloadCandidateEmployments = useCallback(async (candidateId: string, opts: { withSpinner?: boolean } = {}) => {
@@ -1139,16 +1631,14 @@ export default function CandidateCard(){
       const records = await listCandidateEmployments(candidateId)
       applyEmploymentRecords(records)
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.errors.employment.load_failed'))) return
       console.error('[CandidateCard] employment list error', err)
-      const r = err?.response?.data
-      const detail = typeof r?.detail === 'string'
-        ? r.detail
-        : (r ? JSON.stringify(r) : err?.message || t('app.candidate_card.errors.employment.load_failed'))
-      setEmploymentError(detail)
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.errors.employment.load_failed') })
+      setEmploymentError(errorMessage)
     } finally {
       if (opts.withSpinner !== false) setEmploymentLoading(false)
     }
-  }, [applyEmploymentRecords, t])
+  }, [applyEmploymentRecords, planLimitModal, t])
 
   const syncEmploymentRows = useCallback(async (candidateId: string) => {
     if (!candidateId) return
@@ -1244,10 +1734,15 @@ export default function CandidateCard(){
       extraForPayload.preferred_contact = null
     }
 
+    const tags = Array.isArray(m.tags) ? m.tags.filter((t: any) => t && String(t).trim()).map((t: any) => String(t).trim()) : []
+    const isFavorite = typeof m.is_favorite === 'boolean' ? m.is_favorite : false
+
     const payload: Record<string, any> = {
       first_name: (m.first_name || '').trim(),
       last_name: (m.last_name || '').trim(),
       languages,
+      tags,
+      is_favorite: isFavorite,
       extra: extraForPayload,
       docs_progress: docsState,
     }
@@ -1287,12 +1782,29 @@ export default function CandidateCard(){
     if (m.vacancy_id) payload.vacancy_id = String(m.vacancy_id)
     if (m.company_id) payload.company_id = String(m.company_id)
 
+    // Phase 2.6.G-5 Stage F — canonical assignee field on the PATCH body
+    // is ``recruiter_id``. During the transition we keep ``manager`` /
+    // ``manager_id`` alongside so (a) a Stage-F-disabled build can still
+    // roll back, and (b) older backends that don't yet accept
+    // ``recruiter_id`` in ``patch_candidate.allowed_fields`` still
+    // receive the assignment via the legacy key. Both columns are kept
+    // in lock-step by the backend shadow-write (Stage D).
     const managerFromSelect = isUuidLike(m.manager) ? String(m.manager) : undefined
     const managerFromModel = (m as any).manager_id && isUuidLike((m as any).manager_id) ? String((m as any).manager_id) : undefined
-    const managerId = managerFromSelect || managerFromModel
-    if (managerId) {
-      payload.manager = managerId
-      payload.manager_id = managerId
+    const recruiterFromModel = (m as any).recruiter_id && isUuidLike((m as any).recruiter_id)
+      ? String((m as any).recruiter_id)
+      : undefined
+    // Manual selection in the UI must override any existing assignee on the model.
+    const assigneeId = managerFromSelect || recruiterFromModel || managerFromModel
+    if (assigneeId) {
+      if (isCandidateRecruiterIdCanonEnabled()) {
+        payload.recruiter_id = assigneeId
+      }
+      // Legacy keys are kept unconditionally so rollback (flag OFF) stays
+      // harmless and so that any older deployed backend still resolves
+      // the assignee.
+      payload.manager = assigneeId
+      payload.manager_id = assigneeId
     }
 
     const noteRaw = typeof m.note === 'string' ? m.note : ''
@@ -1324,15 +1836,159 @@ export default function CandidateCard(){
       payload,
       extraForState: extraData,
       docsProgressForState: docsState,
-      managerId: managerId ?? null,
+      managerId: assigneeId ?? null,
       noteForState: typeof m.note === 'string' ? m.note : (m.note ?? ''),
       statusReasonForState: stageReasonOptions.length > 0 ? statusReasonList : (Array.isArray(m.status_reason) ? m.status_reason : []),
     }
   }
 
+  const computeAutosaveFingerprint = (m: Candidate | null, phase: CandidateEditPhase, reason: string) => {
+    if (!m) return ''
+    const { payload } = buildCandidatePayload(m, meta?.reason_choices ?? {})
+    const stripped = stripCandidateOverrideFields(payload)
+    const ov = getCandidateOverrideFields(payload)
+    if (phase === 'editing' && ov.length > 0 && reason.trim()) {
+      return JSON.stringify({ payload, override_reason: reason.trim() })
+    }
+    return JSON.stringify(stripped)
+  }
+
+  const AUTO_SAVE_DELAY_MS = 1500
+
+  useEffect(() => {
+    if (isNew || !model?.id || model.id !== id) return
+    const fingerprint = computeAutosaveFingerprint(model, candidateEditPhase, candidateOverrideReason)
+    if (lastSavedPayloadRef.current === null) {
+      lastSavedPayloadRef.current = fingerprint
+      return
+    }
+    if (lastSavedPayloadRef.current === fingerprint) return
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(async () => {
+      autoSaveTimerRef.current = null
+      const m = modelRef.current
+      if (!m?.id) return
+      const phase = candidateEditPhaseRef.current
+      const reason = candidateOverrideReasonRef.current
+      const { payload: p } = buildCandidatePayload(m, meta?.reason_choices ?? {})
+      const overrideKeys = getCandidateOverrideFields(p)
+      const currentStage = String(p.stage || m.stage || '').trim()
+      const reasonOptions = (meta?.reason_choices?.[currentStage] ?? [])
+      const reasonCodes = Array.isArray(p.status_reason) ? p.status_reason : []
+      if (reasonOptions.length > 0 && reasonCodes.length === 0) {
+        return
+      }
+
+      if (phase === 'editing' && overrideKeys.length > 0) {
+        const trimmed = reason.trim()
+        if (!trimmed) return
+        const nextFp = computeAutosaveFingerprint(m, phase, trimmed)
+        if (lastSavedPayloadRef.current === nextFp) return
+        try {
+          await api.patch(`/candidates/${m.id}`, { ...p, override_reason: trimmed })
+          lastSavedPayloadRef.current = nextFp
+          setRodoSentTrigger((x) => x + 1)
+          setSavedOk(true)
+          setTimeout(() => setSavedOk(false), 1500)
+          try {
+            window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: m.id } }))
+            localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: m.id, timestamp: Date.now() }))
+          } catch {
+            /* ignore */
+          }
+        } catch (err: any) {
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+            const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+            notify({ title: errorMessage, variant: 'error' })
+          }
+        }
+        return
+      }
+
+      const pAuto = stripCandidateOverrideFields(p)
+      if (Object.keys(pAuto).length === 0) {
+        return
+      }
+      const serializedAuto = JSON.stringify(pAuto)
+      if (lastSavedPayloadRef.current === serializedAuto) {
+        return
+      }
+      try {
+        await api.patch(`/candidates/${m.id}`, pAuto)
+        lastSavedPayloadRef.current = serializedAuto
+        setRodoSentTrigger((x) => x + 1)
+        setSavedOk(true)
+        setTimeout(() => setSavedOk(false), 1500)
+        try {
+          window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: m.id } }))
+          localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: m.id, timestamp: Date.now() }))
+        } catch {
+          /* ignore */
+        }
+      } catch (err: any) {
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+          const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+          notify({ title: errorMessage, variant: 'error' })
+        }
+      }
+    }, AUTO_SAVE_DELAY_MS)
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+    }
+  }, [
+    model,
+    isNew,
+    id,
+    meta?.reason_choices,
+    notify,
+    planLimitModal,
+    unknownErrorLabel,
+    candidateEditPhase,
+    candidateOverrideReason,
+  ])
+
+  const EMPLOYMENT_AUTO_SAVE_DELAY_MS = 1500
+  useEffect(() => {
+    if (isNew || !model?.id) return
+    const validationError = validateEmploymentRows(employmentRows)
+    if (validationError) return
+    const fingerprint = employmentRowsFingerprint(employmentRows)
+    if (lastSavedEmploymentRowsRef.current === null) {
+      lastSavedEmploymentRowsRef.current = fingerprint
+      return
+    }
+    if (lastSavedEmploymentRowsRef.current === fingerprint) return
+    if (employmentAutoSaveTimerRef.current) {
+      clearTimeout(employmentAutoSaveTimerRef.current)
+    }
+    const candidateId = String(model.id)
+    employmentAutoSaveTimerRef.current = setTimeout(async () => {
+      employmentAutoSaveTimerRef.current = null
+      try {
+        await syncEmploymentRows(candidateId)
+        lastSavedEmploymentRowsRef.current = employmentRowsFingerprint(employmentRowsRef.current)
+        setSavedOk(true)
+        setTimeout(() => setSavedOk(false), 1200)
+      } catch {
+        // Validation/API errors are surfaced by syncEmploymentRows.
+      }
+    }, EMPLOYMENT_AUTO_SAVE_DELAY_MS)
+    return () => {
+      if (employmentAutoSaveTimerRef.current) {
+        clearTimeout(employmentAutoSaveTimerRef.current)
+        employmentAutoSaveTimerRef.current = null
+      }
+    }
+  }, [employmentRows, isNew, model?.id, syncEmploymentRows, validateEmploymentRows])
+
   const fetchCandidate = useCallback(async (candidateId: string, prev?: Candidate | null) => {
     const { data } = await api.get(`/candidates/${candidateId}`)
-    return normalizeCandidate(data, prev || model)
+    const normalized = normalizeCandidate(data, prev || model)
+    setCachedCandidate(candidateId, normalized)
+    return normalized
   }, [model])
 
   const fetchNotes = useCallback(async (candidateId: string) => {
@@ -1345,86 +2001,262 @@ export default function CandidateCard(){
     }
   }, [])
 
-  const loadStageHistory = useCallback(async (candidateId: string) => {
-    setHistoryLoading(true)
-    setHistoryError(null)
-    setHistoryInfo(null)
-    try{
+  const loadStageHistoryQuiet = useCallback(async (candidateId: string) => {
+    try {
       const { data } = await api.get(`/candidates/${candidateId}/stage-history`)
       const entries = Array.isArray(data) ? data : []
-      const normalized: StageHistoryEntry[] = entries.map((item: any, idx: number) => ({
-        id: String(item?.id ?? `${item?.to_code ?? 'stage'}-${item?.at ?? idx}`),
-        from_code: item?.from_code ?? null,
-        to_code: item?.to_code ?? null,
-        at: item?.at ?? null,
-        actor: item?.actor ?? item?.actor_name ?? null,
-        reason: item?.reason ?? null,
-      }))
-      setStageHistory(normalized)
-      if (!normalized.length) {
-        setHistoryInfo(t('app.candidate_card.history.empty'))
-      }
-    } catch (err: any) {
-      console.error('[CandidateCard] stage history error', err)
-      const r = err?.response?.data
-      const status = err?.response?.status
-      if (status === 404) {
-        setStageHistory([])
-        setHistoryInfo(t('app.candidate_card.history.unavailable'))
-        setHistoryError(null)
-      } else {
-        const detail = typeof r?.detail === 'string'
-          ? r.detail
-          : (r ? JSON.stringify(r) : err?.message || unknownErrorLabel)
-        setHistoryError(detail)
-      }
-    } finally {
-      setHistoryLoading(false)
-    }
-  }, [t, unknownErrorLabel])
-
-  const openHistoryModal = useCallback(() => {
-    if (!model?.id) return
-    setHistoryOpen(true)
-    void loadStageHistory(String(model.id))
-  }, [model?.id, loadStageHistory])
-
-  const closeHistoryModal = useCallback(() => {
-    setHistoryOpen(false)
-    setHistoryError(null)
-    setHistoryInfo(null)
-  }, [])
-
-  const reloadStageHistory = useCallback(() => {
-    if (!model?.id) return
-    void loadStageHistory(String(model.id))
-  }, [model?.id, loadStageHistory])
-
-  const handleScrollTo = useCallback((ref: RefObject<HTMLDivElement>) => {
-    return () => {
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const last = entries.length ? entries[entries.length - 1] : null
+      setStageSinceAt(last?.at ? String(last.at) : null)
+    } catch {
+      setStageSinceAt(null)
     }
   }, [])
 
-  const candidateTitle = useMemo(() => {
-    if (!model) return ''
-    const parts = [model.first_name, model.last_name]
-      .map((part) => (typeof part === 'string' ? part.trim() : ''))
-      .filter((part) => part.length > 0)
-    return parts.length ? parts.join(' ') : t('app.candidate_card.header.new_label')
-  }, [model?.first_name, model?.last_name, t])
+  const loadStageHistoryForTimeline = useCallback(
+    async (candidateId: string) => {
+      setTimelineStageHistoryLoading(true)
+      setTimelineError(null)
+      try {
+        const { data } = await api.get(`/candidates/${candidateId}/stage-history`)
+        const entries = Array.isArray(data) ? data : []
+        const normalized: StageHistoryEntry[] = entries.map((item: any, idx: number) => ({
+          id: String(item?.id ?? `${item?.to_code ?? 'stage'}-${item?.at ?? idx}`),
+          from_code: item?.from_code ?? null,
+          to_code: item?.to_code ?? null,
+          at: item?.at ?? null,
+          actor: item?.actor ?? item?.actor_name ?? null,
+          reason: item?.reason ?? null,
+        }))
+        setStageHistory(normalized)
+      } catch (err: any) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) return
+        setTimelineError(getFriendlyErrorInfo(err, unknownErrorLabel, t))
+      } finally {
+        setTimelineStageHistoryLoading(false)
+      }
+    },
+    [planLimitModal, unknownErrorLabel, t],
+  )
 
-  const sectionNavItems = useMemo(() => {
-    const items = [
-      { key: 'basic', label: t('app.candidate_card.nav.basic'), emoji: '👤', ref: basicRef },
-      ...(!isNew ? [{ key: 'notes', label: t('app.candidate_card.nav.notes'), emoji: '🗒️', ref: notesRef }] : []),
-      { key: 'personal', label: t('app.candidate_card.nav.personal'), emoji: '🧍', ref: personalRef },
-      { key: 'status', label: t('app.candidate_card.nav.status'), emoji: '🛂', ref: statusRef },
-      { key: 'experience', label: t('app.candidate_card.nav.experience'), emoji: '🧾', ref: experienceRef },
-      { key: 'employer', label: t('app.candidate_card.nav.employer'), emoji: '🏢', ref: employerRef },
-    ]
-    return items
-  }, [isNew, t])
+  const loadTimelineReminders = useCallback(
+    async (candidateId: string) => {
+      setTimelineRemindersLoading(true)
+      setTimelineError(null)
+      try {
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: candidateId,
+          status: ['pending', 'new', 'overdue', 'done', 'cancelled'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        setTimelineReminders(items)
+      } catch (err: any) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+          setTimelineReminders([])
+          return
+        }
+        setTimelineError(getFriendlyErrorInfo(err, unknownErrorLabel, t))
+        setTimelineReminders([])
+      } finally {
+        setTimelineRemindersLoading(false)
+      }
+    },
+    [planLimitModal, unknownErrorLabel, t],
+  )
+
+  const onStageChangePersist = useCallback(
+    async (stage: string, statusReason: string[]) => {
+      if (isNew || !model?.id) return
+      const mayClose =
+        model.permissions?.can_close_recruitment !== false && isRecruitmentTerminalStageCode(stage)
+      if (model.can_edit === false && !mayClose) return
+      const revertStageOptimistic = async () => {
+        try {
+          const refreshed = await fetchCandidate(String(model.id), model)
+          setModel(refreshed)
+        } catch {
+          /* ignore */
+        }
+      }
+      const persistStage = async () => {
+        await api.patch(`/candidates/${model.id}`, { stage, status_reason: statusReason })
+        setRodoSentTrigger((x) => x + 1)
+        const m = modelRef.current
+        if (m) {
+          const merged = { ...m, stage, status_reason: statusReason } as Candidate
+          lastSavedPayloadRef.current = computeAutosaveFingerprint(
+            merged,
+            candidateEditPhaseRef.current,
+            candidateOverrideReasonRef.current,
+          )
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
+          localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: model.id, timestamp: Date.now() }))
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        await persistStage()
+      } catch (err: any) {
+        if (isRodoStageBlockedError(err)) {
+          const shouldSendRodo = window.confirm(t('app.candidate_card.messages.rodo_stage_blocked_confirm'))
+          if (shouldSendRodo) {
+            try {
+              await sendRodo(model.id)
+              setRodoSentTrigger((x) => x + 1)
+              await persistStage()
+              notify({
+                title: t('app.candidate_card.messages.rodo_sent_retry_success'),
+                variant: 'success',
+              })
+              return
+            } catch (retryErr: any) {
+              if (!planLimitModal?.showPlanLimitIfNeeded(retryErr, t('app.candidate_card.messages.rodo_send_or_retry_failed'))) {
+                const retryMessage = formatErrorForDisplay(retryErr, {
+                  fallback: t('app.candidate_card.messages.rodo_send_or_retry_failed'),
+                })
+                notify({ title: retryMessage, variant: 'error' })
+              }
+              await revertStageOptimistic()
+              return
+            }
+          }
+          notify({
+            title: t('app.candidate_card.messages.rodo_stage_blocked'),
+            variant: 'error',
+          })
+          await revertStageOptimistic()
+          return
+        }
+        if (Number(err?.response?.status || 0) === 403) {
+          const detailRaw = err?.response?.data?.detail
+          const detail = typeof detailRaw === 'string' ? detailRaw : ''
+          if (
+            detail === 'candidate_readonly' ||
+            detail.includes('Recruitment locked') ||
+            detail.includes('Cannot edit') ||
+            detail.includes('Stage change not allowed')
+          ) {
+            notify({
+              title: t('app.api_errors.access_denied_title'),
+              description: detail || t('app.api_errors.access_denied_hint'),
+              variant: 'error',
+            })
+            await revertStageOptimistic()
+            return
+          }
+        }
+        if (Number(err?.response?.status || 0) === 409) {
+          const d = err?.response?.data?.detail
+          if (d && typeof d === 'object') {
+            const code = String((d as any).code || '')
+            if (code === 'stage_blocked_by_risk_gate') {
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_risk_gate.title'),
+                description:
+                  typeof (d as any).message === 'string' && (d as any).message
+                    ? String((d as any).message)
+                    : t('app.candidate_card.stage_blocked_by_risk_gate.description'),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (code === 'stage_blocked_by_documents' || code === 'stage_blocked_by_requirements') {
+              const missing = Array.isArray((d as any).missing_requirements)
+                ? (d as any).missing_requirements
+                : Array.isArray((d as any).missing_types)
+                  ? (d as any).missing_types
+                  : []
+              const problematic = Array.isArray((d as any).problematic_requirements)
+                ? (d as any).problematic_requirements
+                : Array.isArray((d as any).problematic_types)
+                  ? (d as any).problematic_types
+                  : []
+              const inProgress = Array.isArray((d as any).pending_review_requirements)
+                ? (d as any).pending_review_requirements
+                : Array.isArray((d as any).in_progress_types)
+                  ? (d as any).in_progress_types
+                  : []
+              const firstHit = [missing[0], problematic[0], inProgress[0]].find(Boolean)
+              const labelForBlocker = (raw: string) => {
+                const codeKey = String(raw || '').trim()
+                if (!codeKey) return ''
+                if (code === 'stage_blocked_by_requirements' || showRequirementsChecklist) {
+                  return t(`app.candidate_card.requirements_checklist.requirements.${codeKey}`, {
+                    defaultValue: codeKey.replace(/_/g, ' '),
+                  })
+                }
+                return codeKey
+              }
+              const docHint = firstHit
+                ? labelForBlocker(String(firstHit))
+                : typeof (d as any).message === 'string'
+                  ? String((d as any).message)
+                  : ''
+              notify({
+                title:
+                  code === 'stage_blocked_by_requirements'
+                    ? t('app.candidate_card.stage_blocked_by_requirements.title', {
+                        defaultValue: 'Blocked by requirements',
+                      })
+                    : t('app.candidate_card.stage_blocked_by_docs.title'),
+                description: docHint || t('app.candidate_card.stage_blocked_by_docs.description_generic'),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (code === 'stage_blocked_by_vacancy') {
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_vacancy.title'),
+                description:
+                  typeof (d as any).message === 'string' && (d as any).message
+                    ? String((d as any).message)
+                    : t('app.candidate_card.stage_blocked_by_vacancy.description'),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (code === 'stage_blocked_by_contact_attempt') {
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_contact_attempt.title'),
+                description:
+                  typeof (d as any).message === 'string' && (d as any).message
+                    ? String((d as any).message)
+                    : t('app.candidate_card.stage_blocked_by_contact_attempt.description'),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+          }
+        }
+        const handoffDocs = parseHandoffDocsIncomplete(err)
+        if (handoffDocs) {
+          const missingLabels = handoffDocs.missingTypes.length > 0
+            ? handoffDocs.missingTypes.map((docCode) => translateDocTypeLabel(t, docCode)).join(', ')
+            : ''
+          notify({
+            title: t('app.candidate_card.messages.handoff_docs_incomplete'),
+            description: missingLabels || undefined,
+            variant: 'error',
+          })
+          await revertStageOptimistic()
+          return
+        }
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+          const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+          notify({ title: errorMessage, variant: 'error' })
+        }
+        await revertStageOptimistic()
+      }
+    },
+    [isNew, model?.id, model, fetchCandidate, notify, planLimitModal, unknownErrorLabel, meta?.reason_choices, isRodoStageBlockedError, parseHandoffDocsIncomplete, t]
+  )
 
   const isMetaLead = useMemo(() => {
     const source = (model?.origin && (model.origin as any)?.source) || model?.source || ''
@@ -1441,20 +2273,82 @@ export default function CandidateCard(){
       setNewNote('')
       await fetchNotes(String(model.id))
       setSavedOk(true); setTimeout(()=>setSavedOk(false), 1500)
+      notify({ title: t('app.candidate_card.messages.note_added'), variant: 'success' })
     } catch (err:any) {
-      const r = err?.response?.data
-      const detail = typeof r?.detail === 'string' ? r.detail : (r ? JSON.stringify(r) : err?.message || unknownErrorLabel)
-      alert(t('app.candidate_card.messages.note_add_failed', { values: { detail } }))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        throw err
+      }
+      const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+      notify({ title: t('app.candidate_card.messages.note_add_failed', { values: { detail: errorMessage } }), variant: 'error' })
       throw err
     } finally {
       setNoteSending(false)
     }
-  }, [model?.id, newNote, fetchNotes, t, unknownErrorLabel])
+  }, [model?.id, newNote, fetchNotes, planLimitModal, t, unknownErrorLabel, notify])
   useEffect(() => {
     if (isNew) { setNotes([]); return }
     if (!id || typeof id !== 'string') return
     void fetchNotes(id)
   }, [id, isNew, fetchNotes])
+
+  // Определяем extra и setExtra до их использования в save и других функциях
+  const extra = useMemo<CandidateExtra>(
+    () => sanitizeExtra(model?.extra as CandidateExtra | undefined),
+    [model?.extra]
+  )
+  const docsOwnerContext = useMemo(
+    () => ({ citizenship: String(extra?.citizenship || '') }),
+    [extra?.citizenship],
+  )
+  const setExtra = (patch: Partial<CandidateExtra>) =>
+    setModel(m => {
+      if (!m) return m
+      const current = sanitizeExtra(m.extra as CandidateExtra | undefined)
+      const merged = sanitizeExtra(patch, current)
+      return {
+        ...m,
+        extra: merged,
+        phone_country_code: merged.phone_prefix || '',
+      }
+    })
+
+  const getOverrideFieldLabel = useCallback((raw: string) => {
+    const key = String(raw || '').trim().toLowerCase()
+    switch (key) {
+      case 'first_name': return t('app.candidate_card.fields.first_name')
+      case 'last_name': return t('app.candidate_card.fields.last_name')
+      case 'email':
+      case 'contacts.email': return t('app.candidate_card.fields.email')
+      case 'phone':
+      case 'contacts.phone':
+      case 'contacts.phone_country_code': return t('app.candidate_card.fields.phone')
+      case 'languages':
+      case 'personal.languages': return t('app.candidate_card.fields.languages')
+      case 'country_code':
+      case 'personal.country_code': return t('app.candidate_card.fields.country_code')
+      case 'city':
+      case 'personal.city': return t('app.candidate_card.fields.address.city')
+      case 'birth_date':
+      case 'personal.birth_date': return t('app.candidate_card.fields.birth_date')
+      case 'address':
+      case 'personal.address': return t('app.candidate_card.sections.personal.address_current')
+      case 'personal_data': return t('app.candidate_card.sections.personal.title')
+      case 'contacts': return t('app.candidate_card.sections.basic.title')
+      case 'contacts.preferred_messenger': return t('app.candidate_card.fields.preferred_contact')
+      case 'personal.citizenship': return t('app.candidate_card.fields.citizenship')
+      case 'personal.current_location': return t('app.candidate_card.fields.current_location')
+      case 'personal.residency_status': return t('app.candidate_card.fields.residency_status')
+      case 'personal.in_poland': return t('app.candidate_card.fields.in_poland')
+      case 'experience.years_ce':
+      case 'experience.intl_experience':
+      case 'experience.trailer_types[]':
+      case 'experience.route_types[]':
+      case 'employments[]':
+        return t('app.candidate_card.sections.experience.title')
+      default:
+        return raw
+    }
+  }, [t])
 
   const save = useCallback(async () => {
     if (!model) return
@@ -1473,18 +2367,63 @@ export default function CandidateCard(){
       const stageForValidation = payload.stage || model.stage || ''
       const requiresReason = Boolean(meta?.reason_choices?.[stageForValidation]?.length)
       if (requiresReason && (!statusReasonForState || statusReasonForState.length === 0)) {
-        alert(t('app.candidate_card.messages.stage_reason_required'))
+        notify({ title: t('app.candidate_card.messages.stage_reason_required'), variant: 'error' })
+        setSaving(false)
+        return
+      }
+
+      // Валидация poland_stay_basis при current_location = in_poland
+      if (extra.current_location === 'in_poland' && !extra.poland_stay_basis) {
+        notify({
+          title: t('app.candidate_card.validation.poland_basis_required'),
+          variant: 'error',
+        })
+        setSaving(false)
+        return
+      }
+      // Валидация обязательных полей из профиля
+      const missingFields = validateRequiredFields(candidateProfile, model, extra)
+      if (missingFields.length > 0) {
+        const fieldLabels = missingFields
+          .map((f) => translateCandidateFieldKey(t, f.fieldKey, f.label))
+          .join(', ')
+        notify({
+          title: t('app.candidate_card.messages.required_fields_missing', {
+            values: { fields: fieldLabels },
+          }),
+          variant: 'error',
+        })
         setSaving(false)
         return
       }
       if (isNew) {
         const { data } = await api.post('/candidates', createPayload)
         const createdId = data?.id
-        if (createdId && Object.keys(patchAfterCreate).length > 0) {
-          await api.patch(`/candidates/${createdId}`, patchAfterCreate)
+        const notifyPartialAfterCreate = (err: unknown) => {
+          notify({
+            title: t('app.candidate_card.messages.partial_save_after_create'),
+            description: formatErrorForDisplay(err, { fallback: unknownErrorLabel }),
+            variant: 'warning',
+          })
         }
+        if (createdId && Object.keys(patchAfterCreate).length > 0) {
+          try {
+            await api.patch(`/candidates/${createdId}`, patchAfterCreate)
+          } catch (patchErr: unknown) {
+            if (!planLimitModal?.showPlanLimitIfNeeded(patchErr, t('app.candidate_card.messages.partial_save_after_create'))) {
+              notifyPartialAfterCreate(patchErr)
+            }
+          }
+        }
+        setRodoSentTrigger((x) => x + 1)
         if (createdId) {
-          await syncEmploymentRows(String(createdId))
+          try {
+            await syncEmploymentRows(String(createdId))
+          } catch (empErr: unknown) {
+            if (!planLimitModal?.showPlanLimitIfNeeded(empErr, t('app.candidate_card.messages.partial_save_after_create'))) {
+              notifyPartialAfterCreate(empErr)
+            }
+          }
         }
         const targetId = createdId || model.id
         const refreshed = targetId ? await fetchCandidate(String(targetId), model) : normalizeCandidate({
@@ -1497,45 +2436,183 @@ export default function CandidateCard(){
         }, model)
         setModel(refreshed)
         setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
+        notify({ title: t('app.candidate_card.messages.saved'), variant: 'success' })
+        // Уведомляем страницу списка кандидатов об обновлении
+        try {
+          const updatedId = createdId || model.id
+          if (updatedId) {
+            window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: String(updatedId) } }))
+            // Также используем localStorage для кросс-вкладок
+            localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: String(updatedId), timestamp: Date.now() }))
+          }
+        } catch {
+          /* ignore */
+        }
         if (createdId) {
-          nav(`/app/candidates/${createdId}`, { replace: true })
+          nav(`${CRM_APP_PATHS.candidates}/${createdId}`, { replace: true })
         }
       } else {
         if (model.id) {
           await syncEmploymentRows(String(model.id))
         }
-        const { data } = await api.patch(`/candidates/${model.id}`, payload)
+        const overrideFields = getCandidateOverrideFields(payload)
+        const overrideReason = candidateOverrideReason.trim()
+        if (overrideFields.length > 0 && candidateEditPhase !== 'editing') {
+          const fieldLabels = overrideFields.map((f) => getOverrideFieldLabel(f)).filter(Boolean)
+          notify({
+            title: t('app.candidate_card.messages.override_mode_required'),
+            description: fieldLabels.join(', '),
+            variant: 'error',
+          })
+          setSaving(false)
+          return
+        }
+        if (overrideFields.length > 0 && !overrideReason) {
+          notify({
+            title: t('app.candidate_card.messages.override_reason_missing'),
+            variant: 'error',
+          })
+          setSaving(false)
+          return
+        }
+        let patchResponse: any = null
+        try {
+          patchResponse = await api.patch(`/candidates/${model.id}`, overrideFields.length > 0
+            ? {
+                ...payload,
+                override_reason: overrideReason,
+              }
+            : payload)
+        } catch (err: any) {
+          if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+            setSaving(false)
+            throw err
+          }
+          const detail = err?.response?.data?.detail
+          const code = typeof detail === 'object' && detail ? String((detail as any).code || '') : ''
+          if (code === 'override_reason_required') {
+            const fields = Array.isArray((detail as any).fields) ? (detail as any).fields : []
+            const fieldLabels = fields.map((f: string) => getOverrideFieldLabel(f)).filter(Boolean)
+            notify({
+              title: t('app.candidate_card.messages.override_reason_missing'),
+              description: fieldLabels.join(', '),
+              variant: 'error',
+            })
+            setSaving(false)
+            return
+          }
+          const handoffDocs = parseHandoffDocsIncomplete(err)
+          if (handoffDocs) {
+            const missingLabels = handoffDocs.missingTypes.length > 0
+              ? handoffDocs.missingTypes.map((docCode) => translateDocTypeLabel(t, docCode)).join(', ')
+              : ''
+            notify({
+              title: t('app.candidate_card.messages.handoff_docs_incomplete'),
+              description: missingLabels || undefined,
+              variant: 'error',
+            })
+            setSaving(false)
+            return
+          }
+          throw err
+        }
+        const { data } = patchResponse
+        setRodoSentTrigger((x) => x + 1)
         const refreshed = await fetchCandidate(String(data?.id ?? model.id), model)
         setModel(refreshed)
+        lastSavedPayloadRef.current = computeAutosaveFingerprint(
+          refreshed,
+          candidateEditPhaseRef.current,
+          candidateOverrideReasonRef.current,
+        )
         setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
+        notify({ title: t('app.candidate_card.messages.saved'), variant: 'success' })
+        // Уведомляем страницу списка кандидатов об обновлении
+        try {
+          window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
+          // Также используем localStorage для кросс-вкладок
+          localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: model.id, timestamp: Date.now() }))
+        } catch {
+          /* ignore */
+        }
       }
     } catch (err: any) {
-      const r = err?.response?.data
-      const detail = (typeof r?.detail === 'string')
-        ? r.detail
-        : (Array.isArray(r?.detail) ? JSON.stringify(r.detail) : (r ? JSON.stringify(r) : err?.message || unknownErrorLabel))
-      alert(t('app.candidate_card.messages.save_failed', { values: { detail } }))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        throw err
+      }
+      const handoffDocs = parseHandoffDocsIncomplete(err)
+      if (handoffDocs) {
+        const missingLabels = handoffDocs.missingTypes.length > 0
+          ? handoffDocs.missingTypes.map((docCode) => translateDocTypeLabel(t, docCode)).join(', ')
+          : ''
+        notify({
+          title: t('app.candidate_card.messages.handoff_docs_incomplete'),
+          description: missingLabels || undefined,
+          variant: 'error',
+        })
+      } else {
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        notify({ title: t('app.candidate_card.messages.save_failed', { values: { detail: errorMessage } }), variant: 'error' })
+      }
       throw err
     } finally {
       setSaving(false)
     }
-  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel])
+  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, planLimitModal, t, unknownErrorLabel, notify, candidateProfile, extra, candidateEditPhase, candidateOverrideReason, getOverrideFieldLabel, parseHandoffDocsIncomplete])
 
-  const extra = useMemo<CandidateExtra>(
-    () => sanitizeExtra(model?.extra as CandidateExtra | undefined),
-    [model?.extra]
-  )
-  const setExtra = (patch: Partial<CandidateExtra>) =>
-    setModel(m => {
-      if (!m) return m
-      const current = sanitizeExtra(m.extra as CandidateExtra | undefined)
-      const merged = sanitizeExtra(patch, current)
-      return {
-        ...m,
-        extra: merged,
-        phone_country_code: merged.phone_prefix || '',
+  const downloadBundle = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      setDownloadingBundle(true)
+      const blob = await exportCandidateBundle(String(model.id))
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `candidate_${model.id}_bundle.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+      notify({ title: t('app.candidate_card.messages.export_success'), variant: 'success' })
+    } catch (err: any) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.export_failed'))) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.export_failed') })
+        notify({ title: errorMessage, variant: 'error' })
       }
-    })
+    } finally {
+      setDownloadingBundle(false)
+    }
+  }, [model?.id, planLimitModal, t, notify])
+
+  const generateUploadLink = useCallback(async (opts?: { copyToClipboard?: boolean; notifyOnReady?: boolean }) => {
+    if (!model?.id) return
+    const copyToClipboard = opts?.copyToClipboard ?? true
+    const notifyOnReady = opts?.notifyOnReady ?? true
+    try {
+      setUploadLinkBusy(true)
+      const data = await createCandidateUploadLink(String(model.id))
+      setUploadLink(data)
+      setDocsSummaryRefreshTrigger((x) => x + 1)
+      const linkPath = data.documents_url || data.apply_url
+      const absoluteUrl = new URL(linkPath, window.location.origin).toString()
+      if (copyToClipboard && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(absoluteUrl)
+        setUploadLinkCopied(true)
+        window.setTimeout(() => setUploadLinkCopied(false), 2000)
+        if (notifyOnReady) {
+          notify({ title: t('app.candidate_card.actions.upload_link_copied'), variant: 'success' })
+        }
+      } else if (notifyOnReady) {
+        notify({ title: t('app.candidate_card.actions.upload_link_ready'), description: absoluteUrl, variant: 'info' })
+      }
+    } catch (err: any) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.upload_link_failed'))) {
+        const detail = err?.response?.data?.detail || err?.message || t('app.candidate_card.messages.upload_link_failed')
+        notify({ title: t('app.candidate_card.messages.upload_link_failed'), description: detail, variant: 'error' })
+      }
+    } finally {
+      setUploadLinkBusy(false)
+    }
+  }, [model?.id, notify, planLimitModal, t])
+
   useEffect(() => {
     if (!model?.phone) return
     const detection = detectPhoneParts(model.phone)
@@ -1628,34 +2705,6 @@ export default function CandidateCard(){
     setEmploymentRows(rows => rows.filter(row => row.localId !== localId))
   }, [])
 
-  const firstContactChecked = Boolean(extra.first_contact_at)
-  const firstContactDisplay = formatDateTime(extra.first_contact_at)
-  const handleFirstContactToggle = useCallback((checked: boolean) => {
-    if (checked) {
-      if (!extra.first_contact_at) {
-        setExtra({ first_contact_at: new Date().toISOString() })
-      }
-      setModel((prev) => {
-        if (!prev) return prev
-        if (prev.stage === 'contacted') return prev
-        return { ...prev, stage: 'contacted' }
-      })
-    } else {
-      setExtra({ first_contact_at: '' })
-    }
-  }, [extra.first_contact_at, setExtra, setModel])
-
-  const inPolandValue = extra.in_poland === null || typeof extra.in_poland === 'undefined'
-    ? ''
-    : (extra.in_poland ? 'yes' : 'no')
-  const handleInPolandChange = useCallback((value: string) => {
-    if (value === '') {
-      setExtra({ in_poland: null })
-      return
-    }
-    setExtra({ in_poland: value === 'yes' })
-  }, [setExtra])
-
   const handleExperienceChange = useCallback((field: 'experience_eu_years' | 'experience_non_eu_years', raw: string) => {
     let numeric: number | null = null
     if (raw.trim() !== '') {
@@ -1687,7 +2736,7 @@ export default function CandidateCard(){
     return Number.isFinite(sum) ? Number(sum.toFixed(2)) : ''
   })()
 
-  const createdAtDisplay = formatDateTime(model?.created_at)
+  const createdAtDisplay = formatDateTime(model?.created_at, locale)
   const resolveStageLabel = useCallback(
     (code: string | null | undefined) => {
       if (!code) return ''
@@ -1697,20 +2746,6 @@ export default function CandidateCard(){
     [meta, t]
   )
 
-  // красивый телефон для шапки (код + номер), но не пишем в model.phone
-  const phoneDisplay = useMemo(() => {
-    const prefix = (extra?.phone_prefix || '').trim()
-    const number = (model?.phone || '').trim()
-    if (prefix && number) return `${prefix} ${number}`
-    return number || prefix || ''
-  }, [extra?.phone_prefix, model?.phone])
-
-  // tel: без пробелов/скобок/дефисов
-  const telHref = useMemo(() => {
-    const raw = `${(extra?.phone_prefix || '')}${(model?.phone || '')}`
-    const digits = raw.replace(/[\s()-]/g, '')
-    return digits ? `tel:${digits}` : undefined
-  }, [extra?.phone_prefix, model?.phone])
   const handlePhoneInputChange = useCallback((value: string) => {
     const detection = detectPhoneParts(value)
     const nextValue = detection ? detection.number : value
@@ -1773,861 +2808,2231 @@ export default function CandidateCard(){
       await createDeleteRequest(model.id, reason)
       setDeleteRequestMessage(t('app.candidate_card.messages.delete_request_sent'))
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.delete_request_failed'))) return
       console.error('[CandidateCard] delete request error', err)
-      const detail = err?.response?.data?.detail
-      setDeleteRequestError(detail || t('app.candidate_card.messages.delete_request_failed'))
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_request_failed') })
+      setDeleteRequestError(errorMessage)
     } finally {
       setDeleteRequestLoading(false)
     }
-  }, [model])
+  }, [model, planLimitModal, t])
 
-if (loading || !model) return <div className="h-full w-full text-gray-500">{t('common.loading')}</div>
+  const handleCreateReminder = useCallback(async () => {
+    if (!model?.id || !reminderTitle || !reminderDueAt) return
+    try {
+      const due = new Date(reminderDueAt)
+      const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
+      await createActivity({
+        title: reminderTitle,
+        description: '',
+        type: 'custom',
+        entity_type: 'candidate',
+        entity_id: model.id,
+        due_at: due.toISOString(),
+        remind_at: remindAt.toISOString(),
+        priority: 'normal',
+        source: 'manual',
+      })
+      setReminderTitle('')
+      setReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
+      const res = await listReminders({
+        entityType: 'candidate',
+        entityId: model.id,
+        status: ['pending', 'new', 'overdue'],
+      })
+      const items = Array.isArray(res?.items) ? res.items : []
+      setReminders(items.slice(0, 5))
+      void loadTimelineReminders(String(model.id))
+      bumpNextActionTick()
+      notify({ title: t('app.reminders.messages.created'), variant: 'success' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) return
+      const info = getFriendlyErrorInfo(err, t('app.reminders.errors.create'), t)
+      setRemindersError(info)
+      notify({
+        title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+        variant: 'error',
+      })
+    }
+  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
+
+  const handleDocsNextActionCreate = useCallback(() => {
+    const masked = model?.masked === true
+    const terminal = isCandidateOperationallyTerminal({
+      stage: model?.stage,
+      row_status: model?.row_status,
+      status: model?.status,
+    })
+    const stage = String(model?.stage || '').trim().toLowerCase()
+    const early = new Set(['new', 'no_answer', 'contacted', 'questionnaire_submitted'])
+    const useRequirements =
+      !masked &&
+      (terminal ||
+        ['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage) ||
+        (Boolean(stage) && !early.has(stage)))
+    const blockers = useRequirements ? requirementBlockers : docsBlockers
+    const needsVerification = blockers.inProgress.length > 0
+    const needsRequest = blockers.missing.length > 0 || blockers.problematic.length > 0
+
+    const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+    if (needsVerification) {
+      setReminderTitle(t('app.candidate_card.next_action.docs_verify_title'))
+      setReminderDueAt(dt)
+      return
+    }
+    setReminderTitle(t('app.candidate_card.next_action.docs_request_title'))
+    setReminderDueAt(dt)
+    if (needsRequest) {
+      void generateUploadLink({ copyToClipboard: false, notifyOnReady: false })
+    }
+  }, [
+    docsBlockers,
+    requirementBlockers,
+    generateUploadLink,
+    model?.masked,
+    model?.stage,
+    model?.row_status,
+    model?.status,
+    t,
+  ])
+
+  useEffect(() => {
+    if (!model?.id || docsBlockersLoading) return
+    const pending = [...(docsBlockers.inProgress || [])].filter(Boolean).sort()
+    if (!pending.length) return
+    const signature = `${String(model.id)}::${pending.join('|')}`
+    if (docsVerifyTaskSignatureRef.current === signature) return
+
+    const hasActiveVerify = (reminders || []).some(isAutoDocsVerifyReminder)
+    if (hasActiveVerify) {
+      docsVerifyTaskSignatureRef.current = signature
+      return
+    }
+
+    docsVerifyTaskSignatureRef.current = signature
+    const dueIso = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    void (async () => {
+      try {
+        await createActivity({
+          title: t('app.candidate_card.next_action.docs_verify_title'),
+          description: `[AUTO:DOCS_VERIFY] ${t('app.candidate_card.next_action.docs_verify_description')}`,
+          type: 'document_review',
+          entity_type: 'candidate',
+          entity_id: model.id,
+          due_at: dueIso,
+          remind_at: dueIso,
+          priority: 'high',
+          source: 'documents_upload',
+        })
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        setReminders(items.slice(0, 5))
+        void loadTimelineReminders(String(model.id))
+      } catch {
+        // Best-effort automation; user-facing docs flow should not break.
+      }
+    })()
+  }, [docsBlockers.inProgress, docsBlockersLoading, isAutoDocsVerifyReminder, model?.id, reminders, t, loadTimelineReminders])
+
+  useEffect(() => {
+    if (!model?.id || docsBlockersLoading) return
+    const pending = [...(docsBlockers.inProgress || [])].filter(Boolean)
+    if (pending.length > 0) return
+
+    docsVerifyTaskSignatureRef.current = null
+
+    void (async () => {
+      try {
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        const verifyTasks = items.filter(isAutoDocsVerifyReminder)
+        if (!verifyTasks.length) return
+        for (const task of verifyTasks) {
+          if (task?.id) await completeActivity(String(task.id))
+        }
+        const refreshed = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const nextItems = Array.isArray(refreshed?.items) ? refreshed.items : []
+        setReminders(nextItems.slice(0, 5))
+        void loadTimelineReminders(String(model.id))
+        bumpNextActionTick()
+      } catch {
+        // Best-effort; manual complete remains available.
+      }
+    })()
+  }, [
+    bumpNextActionTick,
+    docsBlockers.inProgress,
+    docsBlockersLoading,
+    isAutoDocsVerifyReminder,
+    loadTimelineReminders,
+    model?.id,
+  ])
+
+  const overrideReasonOptions = useMemo(
+    () => [
+      t('app.candidate_card.override_reasons.data_correction'),
+      t('app.candidate_card.override_reasons.docs_fix'),
+      t('app.candidate_card.override_reasons.pipeline_fix'),
+      t('app.candidate_card.override_reasons.manager_request'),
+      t('app.candidate_card.override_reasons.legal_compliance'),
+      t('app.candidate_card.override_reasons.other'),
+    ],
+    [t],
+  )
+
+  const scrollToCandidateData = useCallback(() => {
+    const el = basicRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const scrollToEmployerData = useCallback(() => {
+    const el = employerRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const scrollToPersonalData = useCallback(() => {
+    const el = personalRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const toggleCandidateEditMode = useCallback(() => {
+    setCandidateEditPhase((phase) => {
+      if (phase === 'editing' || phase === 'picking_reason') {
+        return 'idle'
+      }
+      window.setTimeout(() => scrollToCandidateData(), 40)
+      return 'picking_reason'
+    })
+  }, [scrollToCandidateData])
+
+  const confirmOverrideReasonStartEdit = useCallback(() => {
+    if (!candidateOverrideReason.trim()) {
+      notify({
+        title: t('app.candidate_card.messages.override_reason_missing'),
+        variant: 'error',
+      })
+      return
+    }
+    setCandidateEditPhase('editing')
+  }, [candidateOverrideReason, notify, t])
+
+  const handleFavoriteToggle = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      const newFavoriteValue = !model.is_favorite
+      await api.patch(`/candidates/${model.id}`, { is_favorite: newFavoriteValue })
+      setModel((prev) => {
+        if (!prev) return prev
+        return { ...prev, is_favorite: newFavoriteValue }
+      })
+      // Уведомляем страницу списка кандидатов об обновлении
+      try {
+        window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
+        localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: model.id, timestamp: Date.now() }))
+      } catch {
+        /* ignore */
+      }
+    } catch (err: any) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        notify({ title: t('app.candidate_card.messages.favorite_toggle_failed', { values: { detail: errorMessage } }), variant: 'error' })
+      }
+    }
+  }, [model?.id, model?.is_favorite, planLimitModal, t, unknownErrorLabel, notify])
+
+  const handleAttemptCreated = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      const refreshed = await fetchCandidate(String(model.id), model)
+      setModel(refreshed)
+    } catch {
+      /* ignore, toast handled by child */
+    }
+    // Contact attempts and handoff submissions both flow through here and
+    // both shift the next-action recommendation (e.g. 'no_contact_attempt'
+    // → 'idle' or 'handoff_pending_client_decision').
+    bumpNextActionTick()
+  }, [model?.id, model, fetchCandidate, bumpNextActionTick])
+
+  const refreshHandoffMeta = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      setHandoffLoading(true)
+      const [statusResp, clientsResp] = await Promise.all([
+        getHandoffStatus(model.id as UUID, (model.company_id as UUID) || undefined),
+        getAvailableClients(),
+      ])
+      setHandoffStatus(statusResp)
+      setHandoffClients(clientsResp)
+    } catch {
+      setHandoffStatus(null)
+      setHandoffClients([])
+    } finally {
+      setHandoffLoading(false)
+    }
+  }, [model?.company_id, model?.id])
+
+  useEffect(() => {
+    if (isNew || !model?.id) {
+      setHandoffStatus(null)
+      setHandoffClients([])
+      setHandoffClientLinkId('')
+      setHandoffModalOpen(false)
+      return
+    }
+    void refreshHandoffMeta()
+  }, [isNew, model?.id, refreshHandoffMeta])
+
+  const primaryHandoffDestination = useMemo(
+    () => resolvePrimaryHandoffDestination(companyHandoffLink),
+    [companyHandoffLink],
+  )
+
+  const handoffClientsForCompany = useMemo(() => {
+    const cid = String(model?.company_id || '').trim()
+    if (!cid) return handoffClients
+    return handoffClients.filter((c) => String(c.client_company_id || '').trim() === cid)
+  }, [handoffClients, model?.company_id])
+
+  const showAgencyHandoffHeader = useMemo(() => {
+    const masked = model?.masked === true
+    if (isNew || masked || isClientTenant) return false
+    if (!can('candidates.manage')) return false
+    if (!isHandoffEnabledForCurrentCompany || !primaryHandoffDestination) return false
+    if (primaryHandoffDestination === 'internal_hr') {
+      return Boolean(String(model?.company_id || '').trim())
+    }
+    return handoffClientsForCompany.length > 0
+  }, [
+    can,
+    handoffClientsForCompany.length,
+    isClientTenant,
+    isHandoffEnabledForCurrentCompany,
+    isNew,
+    model?.company_id,
+    model?.masked,
+    primaryHandoffDestination,
+  ])
+
+  const handleHandoffCreate = useCallback(async () => {
+    if (!model?.id || !primaryHandoffDestination) return
+    try {
+      setHandoffSubmitting(true)
+      if (primaryHandoffDestination === 'internal_hr') {
+        const cid = String(model.company_id || '').trim()
+        if (!cid) return
+        await createHandoff(model.id as UUID, { client_company_id: cid, destination: 'internal_hr' })
+      } else {
+        if (!handoffClientLinkId) return
+        const selectedClient = handoffClients.find((x) => x.link_id === handoffClientLinkId) || null
+        if (!selectedClient) return
+        const payload = selectedClient.client_company_id
+          ? { client_company_id: selectedClient.client_company_id, destination: 'client_portal' as const }
+          : selectedClient.client_tenant_id
+            ? { client_tenant_id: selectedClient.client_tenant_id, destination: 'client_portal' as const }
+            : null
+        if (!payload) return
+        await createHandoff(model.id as UUID, payload)
+      }
+      setHandoffModalOpen(false)
+      setHandoffClientLinkId('')
+      await refreshHandoffMeta()
+      await handleAttemptCreated()
+      notify({
+        title:
+          primaryHandoffDestination === 'internal_hr'
+            ? t('app.candidate_card.handoff.created_internal')
+            : t('app.candidate_card.handoff.created'),
+        variant: 'success',
+      })
+    } catch (e: any) {
+      const transferLabel =
+        primaryHandoffDestination === 'internal_hr'
+          ? t('app.candidate_card.handoff.transfer_internal_hr_btn')
+          : t('app.candidate_card.handoff.transfer_client_btn')
+      if (!planLimitModal?.showPlanLimitIfNeeded(e, transferLabel)) {
+        notify({
+          title: e?.response?.data?.detail || e?.message || t('app.common.messages.unexpected'),
+          variant: 'error',
+        })
+      }
+    } finally {
+      setHandoffSubmitting(false)
+    }
+  }, [
+    handoffClientLinkId,
+    handoffClients,
+    handleAttemptCreated,
+    model?.company_id,
+    model?.id,
+    notify,
+    planLimitModal,
+    primaryHandoffDestination,
+    refreshHandoffMeta,
+    t,
+  ])
+
+  useEffect(() => {
+    if (!handoffModalOpen || primaryHandoffDestination !== 'client_portal') return
+    if (handoffClientLinkId) return
+    const first = handoffClientsForCompany[0]
+    if (first) setHandoffClientLinkId(first.link_id)
+  }, [handoffModalOpen, primaryHandoffDestination, handoffClientsForCompany, handoffClientLinkId])
+
+  const handleReminderComplete = useCallback(async (id: string) => {
+    try {
+      setReminderBusy(id)
+      await completeActivity(id)
+      const res = await listReminders({
+        entityType: 'candidate',
+        entityId: model?.id || '',
+        status: ['pending', 'new', 'overdue'],
+      })
+      const items = Array.isArray(res?.items) ? res.items : []
+      setReminders(items.slice(0, 5))
+      if (model?.id) void loadTimelineReminders(String(model.id))
+      bumpNextActionTick()
+      notify({ title: t('app.reminders.messages.completed'), variant: 'success' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.complete'))) return
+      const info = getFriendlyErrorInfo(err, t('app.reminders.errors.complete'), t)
+      setRemindersError(info)
+      notify({
+        title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+        variant: 'error',
+      })
+    } finally {
+      setReminderBusy((prev) => (prev === id ? null : prev))
+    }
+  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
+
+  const handleReminderSnooze = useCallback(async (id: string, minutes: number) => {
+    try {
+      setReminderBusy(id)
+      await snoozeActivity(id, { minutes })
+      const res = await listReminders({
+        entityType: 'candidate',
+        entityId: model?.id || '',
+        status: ['pending', 'new', 'overdue'],
+      })
+      const items = Array.isArray(res?.items) ? res.items : []
+      setReminders(items.slice(0, 5))
+      if (model?.id) void loadTimelineReminders(String(model.id))
+      bumpNextActionTick()
+      notify({ title: t('app.reminders.messages.snoozed'), variant: 'success' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.snooze'))) return
+      const info = getFriendlyErrorInfo(err, t('app.reminders.errors.snooze'), t)
+      setRemindersError(info)
+      notify({
+        title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+        variant: 'error',
+      })
+    } finally {
+      setReminderBusy((prev) => (prev === id ? null : prev))
+    }
+  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
+
+  const handleDelete = useCallback(async () => {
+    if (!model?.id) return
+    if (!window.confirm(t('app.candidate_card.confirm.delete'))) return
+    try {
+      await api.delete(`/candidates/${model.id}`)
+      notify({ title: t('app.candidate_card.messages.deleted'), variant: 'success' })
+      nav(CRM_APP_PATHS.candidates, { state: { returnFromCandidateId: model?.id } })
+    } catch (err: any) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.delete_failed'))) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_failed') })
+        notify({ title: errorMessage, variant: 'error' })
+      }
+    }
+  }, [model?.id, nav, planLimitModal, t, notify])
+
+  const handleGenerateShortId = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      const { data } = await api.patch(`/candidates/${model.id}`, { extra: {} })
+      setModel((m) => normalizeCandidate(data, m || model))
+      setSavedOk(true)
+      setTimeout(() => setSavedOk(false), 2000)
+      notify({ title: t('app.candidate_card.messages.short_id_generated'), variant: 'success' })
+    } catch (err: any) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.short_id_failed'))) {
+        notify({ title: t('app.candidate_card.messages.short_id_failed'), variant: 'error' })
+      }
+    }
+  }, [model, planLimitModal, t, notify])
+
+  const isMasked = model?.masked === true
+  // Use the same role source as the rest of the app (memberships[].role can override me.role).
+  const canRequestPipelineOverride = useMemo(() => {
+    if (!model?.id) return false
+    if (isClientTenant) return false
+    return can('candidates.manage') || can('documents.manage') || can('candidates.pipeline')
+  }, [model?.id, isClientTenant, can])
+
+  const canApprovePipelineOverride = useMemo(() => {
+    if (!model?.id || isMasked) return false
+    if (isClientTenant) return false
+    return permissionsRole === 'supervisor' || permissionsRole === 'administrator'
+  }, [model?.id, isMasked, isClientTenant, permissionsRole])
+
+  const bumpPipelineAndDocsRefresh = useCallback(() => {
+    setDocsSummaryRefreshTrigger((x) => x + 1)
+  }, [])
+
+  const handleCreatePipelineOverride = useCallback(
+    async (input: {
+      doc_type_code?: string
+      requirement_code?: string
+      reason: string
+      requested_scope: 'pipeline' | 'both'
+    }) => {
+      if (!model?.id) return
+      setPipelineOverrideBusy(true)
+      try {
+        await createCandidatePipelineOverride(String(model.id), input)
+        notify({
+          title: t('app.candidate_card.pipeline_override.requested'),
+          variant: 'success',
+        })
+        bumpPipelineAndDocsRefresh()
+      } catch (err: any) {
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))) {
+          notify({
+            title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+            variant: 'error',
+          })
+        }
+      } finally {
+        setPipelineOverrideBusy(false)
+      }
+    },
+    [model?.id, notify, planLimitModal, t, bumpPipelineAndDocsRefresh],
+  )
+
+  const handleApprovePipelineOverride = useCallback(
+    async (overrideId: string, granted: 'pipeline' | 'both') => {
+      if (!model?.id) return
+      setPipelineOverrideBusy(true)
+      try {
+        await approveCandidatePipelineOverride(String(model.id), overrideId, { granted_scope: granted })
+        notify({
+          title: t('app.candidate_card.pipeline_override.approved'),
+          variant: 'success',
+        })
+        bumpPipelineAndDocsRefresh()
+      } catch (err: any) {
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))) {
+          notify({
+            title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+            variant: 'error',
+          })
+        }
+      } finally {
+        setPipelineOverrideBusy(false)
+      }
+    },
+    [model?.id, notify, planLimitModal, t, bumpPipelineAndDocsRefresh],
+  )
+
+  const handleRejectPipelineOverride = useCallback(
+    async (overrideId: string) => {
+      if (!model?.id) return
+      setPipelineOverrideBusy(true)
+      try {
+        await rejectCandidatePipelineOverride(String(model.id), overrideId, {})
+        notify({
+          title: t('app.candidate_card.pipeline_override.rejected'),
+          variant: 'success',
+        })
+        bumpPipelineAndDocsRefresh()
+      } catch (err: any) {
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))) {
+          notify({
+            title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+            variant: 'error',
+          })
+        }
+      } finally {
+        setPipelineOverrideBusy(false)
+      }
+    },
+    [model?.id, notify, planLimitModal, t, bumpPipelineAndDocsRefresh],
+  )
+
+  const candidateDataReadOnly = !isNew && candidateEditPhase !== 'editing'
+  const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
+  const handoffReadonlySummary = useMemo(() => {
+    if (!handoffActiveBlock || handoffLoading) return null
+    const pending = handoffStatus?.pending
+    const accepted = handoffStatus?.accepted
+    const row = pending || accepted
+    if (!row) return null
+    const dest = String(row.destination || 'client_portal').toLowerCase() === 'internal_hr' ? 'internal_hr' : 'client'
+    const dateRaw = row.requested_at
+    const date = dateRaw ? formatDateTime(dateRaw, locale) || dateRaw : '—'
+    if (pending) {
+      return dest === 'internal_hr'
+        ? t('app.candidate_card.handoff.readonly_pending_internal', { values: { date } })
+        : t('app.candidate_card.handoff.readonly_pending_client', { values: { date } })
+    }
+    return dest === 'internal_hr'
+      ? t('app.candidate_card.handoff.readonly_accepted_internal', { values: { date } })
+      : t('app.candidate_card.handoff.readonly_accepted_client', { values: { date } })
+  }, [handoffActiveBlock, handoffLoading, handoffStatus, locale, t])
+
+  const handoffPrimaryActionLabel = useMemo(() => {
+    if (!primaryHandoffDestination) return t('app.candidate_card.handoff.transfer_btn')
+    return primaryHandoffDestination === 'internal_hr'
+      ? t('app.candidate_card.handoff.transfer_internal_hr_btn')
+      : t('app.candidate_card.handoff.transfer_client_btn')
+  }, [primaryHandoffDestination, t])
+
+  // Pipedrive-style indicator: show how long candidate is in current stage.
+  // Best-effort: uses stage history and loads quietly (does not block UI).
+  useEffect(() => {
+    if (!model?.id) {
+      setStageSinceAt(null)
+      return
+    }
+    void loadStageHistoryQuiet(String(model.id))
+  }, [loadStageHistoryQuiet, model?.id, model?.stage])
+
+  useEffect(() => {
+    if (isNew || !model?.id) return
+    void loadTimelineReminders(String(model.id))
+    void loadStageHistoryForTimeline(String(model.id))
+  }, [isNew, model?.id, model?.stage, loadTimelineReminders, loadStageHistoryForTimeline])
+
+  const openDocsDrawer = useCallback((typeCode?: string) => {
+    setDocsDrawerType(typeCode)
+    setDocsDrawerOpen(true)
+  }, [])
+
+  const closeDocsDrawer = useCallback(() => {
+    setDocsDrawerOpen(false)
+    // Next docs summary poll should reflect any changes done in the drawer.
+    setDocsSummaryRefreshTrigger((x) => x + 1)
+    const currentId = modelRef.current?.id
+    if (currentId && location.pathname.includes('/documents')) {
+      nav(`${CRM_APP_PATHS.candidates}/${currentId}`)
+    }
+  }, [location.pathname, nav])
+
+  // If user navigated directly to `/app/candidates/:id/documents`,
+  // open the documents drawer automatically.
+  useEffect(() => {
+    if (isMasked) return
+    if (!model?.id) return
+    if (!location.pathname.includes('/documents')) return
+
+    const sp = new URLSearchParams(location.search || '')
+    const type = sp.get('type') || undefined
+    openDocsDrawer(type)
+  }, [isMasked, location.pathname, location.search, model?.id, openDocsDrawer])
+
+  useEffect(() => {
+    if (!model?.id || model.masked === true) {
+      setPipelineOverrides([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const items = await listCandidatePipelineOverrides(String(model.id))
+        if (!cancelled) setPipelineOverrides(items)
+      } catch (err: unknown) {
+        if (!cancelled) {
+          void planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))
+          setPipelineOverrides([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [model?.id, model?.masked, docsSummaryRefreshTrigger, planLimitModal, t])
+
+  const {
+    stageJourneyStagesPipeline,
+    stageJourneyStagesDisplay,
+    stageOutcomeStages,
+    stageJourneyDisplayStage,
+    stageJourneyOutcomeStage,
+    stageJourneySignals,
+  } = useMemo(() => {
+    const codesForDisplay = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
+    const codesForPipeline = isClientTenant
+      ? stageOptions
+      : profileFunnelStages.length > 0
+        ? profileFunnelStages.map((s) => s.code)
+        : profileStageCodes
+
+    const uniqDisplay = Array.from(new Set((codesForDisplay || []).filter(Boolean)))
+    const journeyOrder = [
+      'processing_by_client',
+      'docs_submitted_permit',
+      'ready_for_handoff',
+      'ready_for_hr',
+    ]
+    const allowedJourneyStages = new Set(journeyOrder)
+    const journeyOrderRank = new Map(journeyOrder.map((code, idx) => [code, idx] as const))
+
+    function buildOrderedStages(
+      codesInput: string[],
+      narrowForClientFacingStrip: boolean,
+      stripPostRecruitment: boolean,
+    ) {
+      const uniq = Array.from(new Set((codesInput || []).filter(Boolean)))
+      const main: Array<{ code: string; label: string }> = []
+      uniq.forEach((raw) => {
+        const code = String(raw)
+        const label = stageLabelIntl(code)
+        const canonical = canonicalStageKey(code, label) || ''
+
+        if (canonical === 'no_answer') return
+        if (canonical === 'questionnaire_submitted') return
+        if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
+          return
+        }
+        if (stripPostRecruitment && isPostRecruitmentStageCode(canonical)) return
+        if (narrowForClientFacingStrip && isClientTenant && !allowedJourneyStages.has(canonical)) return
+        main.push({ code, label })
+      })
+      if (narrowForClientFacingStrip && isClientTenant) {
+        return [...main].sort((a, b) => {
+          const aCanonical = canonicalStageKey(a.code, a.label) || ''
+          const bCanonical = canonicalStageKey(b.code, b.label) || ''
+          const aRank = journeyOrderRank.get(aCanonical)
+          const bRank = journeyOrderRank.get(bCanonical)
+          if (aRank === undefined && bRank === undefined) return 0
+          if (aRank === undefined) return 1
+          if (bRank === undefined) return -1
+          return aRank - bRank
+        })
+      }
+      return main
+    }
+
+    const stripRecruitmentBoundary = !isClientTenant
+    const orderedPipeline = buildOrderedStages(codesForPipeline, false, stripRecruitmentBoundary)
+    const orderedDisplay = buildOrderedStages(codesForDisplay, true, stripRecruitmentBoundary)
+
+    const currentCode = String(model?.stage || '')
+    const currentCanonical = canonicalStageKey(currentCode, null) || ''
+    const journeySignals: Array<{ key: string; label: string }> = []
+
+    if (currentCanonical === 'no_answer') {
+      journeySignals.push({ key: 'no_answer', label: translateStageLabel(t, 'no_answer', 'no_answer') })
+    }
+    const intakeSubmitted = Boolean((model as any)?.intake_submitted_at || (model as any)?.intake_status === 'submitted')
+    if (currentCanonical === 'questionnaire_submitted' || intakeSubmitted) {
+      journeySignals.push({ key: 'questionnaire_submitted', label: translateStageLabel(t, 'questionnaire_submitted', 'questionnaire_submitted') })
+    }
+
+    let displayStage = currentCode || null
+    if (currentCanonical === 'no_answer' || currentCanonical === 'questionnaire_submitted') {
+      const contacted =
+        uniqDisplay.find((c) => (canonicalStageKey(String(c), null) || '') === 'contacted') || 'contacted'
+      displayStage = String(contacted)
+    }
+
+    const outcomeStage = null
+    const outcomeStages = ['rejected', 'declined']
+      .filter((code) => uniqDisplay.includes(code) || profileStageCodes.includes(code))
+      .map((code) => ({ code, label: stageLabelIntl(code) }))
+
+    return {
+      stageJourneyStagesPipeline: orderedPipeline,
+      stageJourneyStagesDisplay: orderedDisplay,
+      stageOutcomeStages: outcomeStages,
+      stageJourneyDisplayStage: displayStage,
+      stageJourneyOutcomeStage: outcomeStage,
+      stageJourneySignals: journeySignals,
+    }
+  }, [
+    profileFunnelStages,
+    profileStageCodes,
+    stageLabelIntl,
+    stageOptions,
+    model?.stage,
+    (model as any)?.intake_status,
+    (model as any)?.intake_submitted_at,
+    t,
+    isClientTenant,
+  ])
+
+  const canCloseRecruitment = useMemo(
+    () => model?.permissions?.can_close_recruitment !== false && can('candidates.pipeline'),
+    [model?.permissions?.can_close_recruitment, can],
+  )
+
+  const operationallyTerminal = useMemo(
+    () =>
+      isCandidateOperationallyTerminal({
+        stage: model?.stage,
+        row_status: model?.row_status,
+        status: model?.status,
+      }),
+    [model?.stage, model?.row_status, model?.status],
+  )
+
+  /** Align doc policy with journey display (e.g. no_answer maps to contacted for gating). */
+  const effectiveStageForDocPolicy = useMemo(() => {
+    const stored =
+      canonicalStageKey(model?.stage ?? null, null) || String(model?.stage || '').trim().toLowerCase() || null
+    if (
+      isCandidateOperationallyTerminal({
+        stage: model?.stage,
+        row_status: model?.row_status,
+        status: model?.status,
+      })
+    )
+      return stored
+    return String(stageJourneyDisplayStage || model?.stage || '').trim() || null
+  }, [stageJourneyDisplayStage, model?.stage, model?.row_status, model?.status])
+
+  const pipelineRelaxedTypes = useMemo(
+    () => pipelineRelaxedTypesFromOverrides(pipelineOverrides),
+    [pipelineOverrides],
+  )
+
+  const pipelineRelaxedRequirements = useMemo(
+    () => pipelineRelaxedRequirementsFromOverrides(pipelineOverrides),
+    [pipelineOverrides],
+  )
+
+  const showRequirementsChecklist = useMemo(() => {
+    if (isMasked) return false
+    if (operationallyTerminal) return true
+    const stage = String(effectiveStageForDocPolicy || '').trim().toLowerCase()
+    if (['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage)) return true
+    const early = new Set(['new', 'no_answer', 'contacted', 'questionnaire_submitted'])
+    if (!stage || early.has(stage)) return false
+    return true
+  }, [effectiveStageForDocPolicy, isMasked, operationallyTerminal])
+
+  const activePipelineBlockers = showRequirementsChecklist ? requirementBlockers : docsBlockers
+  const activePipelineBlockersLoading = showRequirementsChecklist
+    ? requirementBlockersLoading
+    : docsBlockersLoading
+
+  const effectiveDocsBlockersForPipeline = useMemo(
+    () =>
+      showRequirementsChecklist
+        ? relaxRequirementBlockers(activePipelineBlockers, pipelineRelaxedRequirements)
+        : relaxDocBlockers(activePipelineBlockers, pipelineRelaxedTypes),
+    [
+      activePipelineBlockers,
+      pipelineRelaxedRequirements,
+      pipelineRelaxedTypes,
+      showRequirementsChecklist,
+    ],
+  )
+
+  const docsIssuesPresentValue = useMemo(
+    () => docsIssuesPresent(activePipelineBlockers, activePipelineBlockersLoading),
+    [activePipelineBlockers, activePipelineBlockersLoading],
+  )
+
+  const docsNeedsVerification = activePipelineBlockers.inProgress.length > 0
+  const docsNeedsRequest =
+    activePipelineBlockers.missing.length > 0 || activePipelineBlockers.problematic.length > 0
+
+  const docPipelineResolved = useMemo(
+    () =>
+      docsPipelineBlocksForwardResolved(
+        effectiveStageForDocPolicy,
+        effectiveDocsBlockersForPipeline,
+        activePipelineBlockersLoading,
+        hiringGatesRuntime,
+      ),
+    [
+      effectiveStageForDocPolicy,
+      effectiveDocsBlockersForPipeline,
+      activePipelineBlockersLoading,
+      hiringGatesRuntime,
+    ],
+  )
+  const docsPipelineBlockingValue = docPipelineResolved.hard
+  const docsPipelineSoftWarnValue = docPipelineResolved.softWarnOnly
+
+  /** Stored stage only — do not use journey display remap (e.g. no_answer → contacted). */
+  const vacancyPipelineBlockingValue = useMemo(
+    () => vacancyPipelineBlocksForward(model?.stage ?? null, model?.vacancy_id ?? null, hiringGatesRuntime),
+    [model?.stage, model?.vacancy_id, hiringGatesRuntime],
+  )
+
+  const contactAttemptPipelineBlockingValue = useMemo(
+    () =>
+      contactAttemptPipelineBlocksForward(
+        model?.stage ?? null,
+        model?.contact_policy_enabled === true,
+        Number(model?.contact_attempt_count ?? 0),
+        hiringGatesRuntime,
+      ),
+    [model?.stage, model?.contact_policy_enabled, model?.contact_attempt_count, hiringGatesRuntime],
+  )
+
+  /**
+   * While contact policy is on and the stored stage is still in the contact-attempt gate (e.g. `new`),
+   * show attempts (+ RODO) at the top of the rail — same scope as the pipeline gate, not after docs/notes.
+   * After leaving those stages (contacted, declined, etc.), the block is omitted.
+   */
+  const showContactAttemptsPriorityRail = useMemo(() => {
+    if (!model?.id || isMasked || isNew || operationallyTerminal) return false
+    if (model.contact_policy_enabled !== true) return false
+    const raw = String(model?.stage ?? '').trim()
+    if (!raw) return false
+    const code = canonicalStageKey(raw, null) || raw.toLowerCase()
+    return hiringGatesRuntime.contactAttemptGateStages.has(code)
+  }, [
+    model?.id,
+    model?.stage,
+    model?.contact_policy_enabled,
+    isMasked,
+    isNew,
+    hiringGatesRuntime,
+    operationallyTerminal,
+  ])
+
+  /** One highlighted block in the work rail — overdue reminder first, then same order as forward stage gates. */
+  const railPrimaryFocus = useMemo(() => {
+    if (!model?.id || isNew) return null
+    if (operationallyTerminal) return null
+    const now = Date.now()
+    if (isMasked) {
+      if (railHasUrgentReminder(reminders, now)) return 'next_action'
+      if (vacancyPipelineBlockingValue) return 'vacancy'
+      return null
+    }
+    return resolveRailPrimaryFocus({
+      hasUrgentReminder: railHasUrgentReminder(reminders, now),
+      docsHardBlocking: docsPipelineBlockingValue,
+      docsSoftOnly: Boolean(docsPipelineSoftWarnValue && !docsPipelineBlockingValue),
+      contactAttemptBlocking: contactAttemptPipelineBlockingValue,
+      contactPriorityRailVisible: showContactAttemptsPriorityRail && !isMasked,
+      vacancyBlocking: vacancyPipelineBlockingValue,
+    })
+  }, [
+    model?.id,
+    isNew,
+    isMasked,
+    reminders,
+    docsPipelineBlockingValue,
+    docsPipelineSoftWarnValue,
+    contactAttemptPipelineBlockingValue,
+    showContactAttemptsPriorityRail,
+    vacancyPipelineBlockingValue,
+    operationallyTerminal,
+  ])
+
+  /**
+   * Waiver rail only when documents can block the pipeline or there is override state to show.
+   * At early stages (e.g. New) recruiters do not need an empty waiver panel.
+   */
+  const showPipelineWaiverSection = useMemo(() => {
+    if (!model?.id || isClientTenant) return false
+    if (pipelineOverrides.length > 0) return true
+    if (!docsPipelineBlockingValue && !docsPipelineSoftWarnValue) return false
+    if (!can('candidates.pipeline')) return false
+    return (
+      canApprovePipelineOverride || can('candidates.manage') || can('documents.manage')
+    )
+  }, [
+    model?.id,
+    isClientTenant,
+    pipelineOverrides.length,
+    canApprovePipelineOverride,
+    can,
+    docsPipelineBlockingValue,
+    docsPipelineSoftWarnValue,
+  ])
+
+  const pipelineWaiverReadOnlyCard = useMemo(
+    () =>
+      operationallyTerminal ||
+      (showPipelineWaiverSection &&
+        !canRequestPipelineOverride &&
+        (can('candidates.manage') || can('documents.manage')) &&
+        model?.can_edit === false),
+    [
+      operationallyTerminal,
+      showPipelineWaiverSection,
+      canRequestPipelineOverride,
+      can,
+      model?.can_edit,
+    ],
+  )
+
+  /** Canonical stage for operational hints (next action) — prefer stored stage when pipeline is finished. */
+  const canonicalStageForOps = useMemo(() => {
+    const term = isCandidateOperationallyTerminal({
+      stage: model?.stage,
+      row_status: model?.row_status,
+      status: model?.status,
+    })
+    const stored =
+      canonicalStageKey(model?.stage ?? null, null) || String(model?.stage || '').trim().toLowerCase() || ''
+    if (term) {
+      if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
+      const rs = String(model?.row_status ?? model?.status ?? '').trim().toLowerCase()
+      if (rs && isPipelineCompletedCanonicalStage(rs)) return rs
+      return stored || rs || null
+    }
+    if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
+    const raw = String(stageJourneyDisplayStage || model?.stage || '').trim()
+    if (!raw) return null
+    return canonicalStageKey(raw, null) || raw.toLowerCase()
+  }, [stageJourneyDisplayStage, model?.stage, model?.row_status, model?.status])
+
+  const canViewHrEmployee = can('workforce.view')
+  const showTransferReadinessReport = useMemo(() => {
+    const stage = String(canonicalStageForOps || '').trim().toLowerCase()
+    return ['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage)
+  }, [canonicalStageForOps])
+  const showOpenInHrLink = useMemo(() => {
+    const stage = String(canonicalStageForOps || model?.stage || '').trim().toLowerCase()
+    return canViewHrEmployee && stage === 'processing_by_hr'
+  }, [canonicalStageForOps, canViewHrEmployee, model?.stage])
+  const dossierContactsReady = useMemo(() => {
+    const phone = String(model?.phone || extra?.phone || '').trim()
+    const email = String(model?.email || extra?.email || '').trim()
+    const address = String(extra?.address || '').trim()
+    return Boolean(phone && email && address)
+  }, [extra?.address, extra?.email, extra?.phone, model?.email, model?.phone])
+  const dossierExperienceReady = useMemo(() => {
+    const exp = extra?.experience
+    if (typeof exp === 'string' && exp.trim()) return true
+    if (Array.isArray(employmentHistory) && employmentHistory.length > 0) return true
+    return Boolean(extra?.experience_eu_years)
+  }, [employmentHistory, extra?.experience, extra?.experience_eu_years])
+
+  const confirmedRecruitmentBlocks = useMemo(
+    () => readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined),
+    [extra],
+  )
+  const recruitmentConfirmFingerprints = useMemo(
+    () => readRecruitmentConfirmFingerprints(extra as Record<string, unknown> | undefined),
+    [extra],
+  )
+
+  const recruitmentPackageRefreshKey = useMemo(
+    () =>
+      [
+        docsSummaryRefreshTrigger,
+        model?.phone,
+        model?.email,
+        extra?.address,
+        dossierContactsReady,
+        dossierExperienceReady,
+        effectiveDocsBlockersForPipeline.missing.join('|'),
+        effectiveDocsBlockersForPipeline.problematic.join('|'),
+        effectiveDocsBlockersForPipeline.inProgress.join('|'),
+        confirmedRecruitmentBlocks.join('|'),
+      ].join('\0'),
+    [
+      docsSummaryRefreshTrigger,
+      model?.phone,
+      model?.email,
+      extra?.address,
+      dossierContactsReady,
+      dossierExperienceReady,
+      effectiveDocsBlockersForPipeline.missing,
+      effectiveDocsBlockersForPipeline.problematic,
+      effectiveDocsBlockersForPipeline.inProgress,
+      confirmedRecruitmentBlocks,
+    ],
+  )
+  const { report: transferReport, loading: transferReportLoading, reload: reloadTransferReport } =
+    useTransferReadiness(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
+  const { pkg: recruitmentPkg, loading: recruitmentPkgLoading, reload: reloadRecruitmentPkg } =
+    useRecruitmentPackage(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
+
+  const handleDocumentsChanged = useCallback(() => {
+    setDocsSummaryRefreshTrigger((x) => x + 1)
+    docsVerifyTaskSignatureRef.current = null
+  }, [])
+
+  const transferReadinessGateActive = showTransferReadinessReport && !handoffActiveBlock
+
+  const recruitmentHandoffReady = Boolean(transferReport?.transfer_allowed)
+  const recruitmentHandoffCreateReady = Boolean(transferReport?.handoff_create_allowed)
+
+  const recruitmentHandoffBlockedReason = useMemo(() => {
+    if (!transferReadinessGateActive || recruitmentHandoffReady) return null
+    if (transferReportLoading) {
+      return t('app.candidate_card.transfer_readiness.checking', {
+        defaultValue: 'Checking transfer readiness…',
+      })
+    }
+    const reasons = transferReport?.blocking_reasons || []
+    if (reasons.length > 0) {
+      return reasons.map((r) => r.message).filter(Boolean).join(' · ')
+    }
+    return t('app.candidate_card.transfer_readiness.blocked_generic', {
+      defaultValue: 'Transfer is blocked. See Transfer readiness report below.',
+    })
+  }, [transferReadinessGateActive, recruitmentHandoffReady, transferReport, transferReportLoading, t])
+
+  const notifyRecruitmentPackageBlocked = useCallback(() => {
+    notify({
+      title: t('app.candidate_card.transfer_readiness.stage_blocked_title', {
+        defaultValue: 'Cannot move to «Ready for handoff»',
+      }),
+      description:
+        recruitmentHandoffBlockedReason ||
+        t('app.candidate_card.transfer_readiness.blocked_generic', {
+          defaultValue: 'Transfer is blocked. See Transfer readiness report below.',
+        }),
+      variant: 'warning',
+    })
+    document.getElementById('section-transfer-readiness')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [notify, recruitmentHandoffBlockedReason, t])
+
+  const isReadyForHandoffStageCode = useCallback((stageCode: string) => {
+    const canonical = canonicalStageKey(stageCode, null) || String(stageCode || '').trim().toLowerCase()
+    return canonical === 'ready_for_handoff'
+  }, [])
+
+  const recruitmentPackageBlocksStage = useCallback(
+    (nextStage: string) => {
+      if (!transferReadinessGateActive) return false
+      if (!isReadyForHandoffStageCode(nextStage)) return false
+      if (transferReportLoading) return false
+      return !recruitmentHandoffReady
+    },
+    [isReadyForHandoffStageCode, recruitmentHandoffReady, transferReadinessGateActive, transferReportLoading],
+  )
+
+  const [recruitmentConfirmBusy, setRecruitmentConfirmBusy] = useState(false)
+
+  const handleConfirmRecruitmentBlock = useCallback(
+    async (blockKey: string, fingerprint = '') => {
+      if (!model?.id || model.can_edit === false) return
+      const key = String(blockKey || '').trim()
+      if (!key) return
+      const prev = readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined)
+      if (prev.includes(key)) {
+        const stored = readRecruitmentConfirmFingerprints(extra as Record<string, unknown> | undefined)
+        const fp = String(fingerprint || '').trim()
+        if (!fp || stored[key] === fp) return
+      }
+      const nextConfirmed = Array.from(new Set([...prev, key]))
+      const prevFingerprints = readRecruitmentConfirmFingerprints(extra as Record<string, unknown> | undefined)
+      const nextFingerprints = { ...prevFingerprints }
+      const fp = String(fingerprint || '').trim()
+      if (fp) nextFingerprints[key] = fp
+      const nextExtra = {
+        ...(extra || {}),
+        [RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]: nextConfirmed,
+        [RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY]: nextFingerprints,
+      }
+      try {
+        setRecruitmentConfirmBusy(true)
+        await api.patch(`/candidates/${model.id}`, { extra: nextExtra })
+        setExtra(nextExtra)
+        setDocsSummaryRefreshTrigger((x) => x + 1)
+        await reloadTransferReport()
+        await reloadRecruitmentPkg()
+        notify({
+          title: t('app.candidate_card.dossier_checklist.confirmed_toast', {
+            defaultValue: 'Block confirmed',
+          }),
+          variant: 'success',
+        })
+      } catch (err: unknown) {
+        notify({
+          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+          variant: 'error',
+        })
+      } finally {
+        setRecruitmentConfirmBusy(false)
+      }
+    },
+    [extra, model?.can_edit, model?.id, notify, reloadRecruitmentPkg, reloadTransferReport, t],
+  )
+
+  const employerDataMissingForHint = useMemo(() => {
+    const stage = canonicalStageForOps || ''
+    if (
+      isCandidateOperationallyTerminal({
+        stage: model?.stage,
+        row_status: model?.row_status,
+        status: model?.status,
+      }) ||
+      isPipelineCompletedCanonicalStage(stage)
+    )
+      return false
+    const companyId = String(model?.company_id || '').trim()
+    const vacancyId = String(model?.vacancy_id || '').trim()
+    return !companyId && !vacancyId
+  }, [canonicalStageForOps, model?.company_id, model?.vacancy_id, model?.stage, model?.row_status, model?.status])
+
+  const missingDataHints = useMemo(() => {
+    if (!model?.id || isMasked) return []
+    const hints: Array<{ id: string; label: string; ctaLabel?: string; onClick?: () => void; score: number }> = []
+    const firstName = String(model?.first_name || '').trim()
+    const lastName = String(model?.last_name || '').trim()
+    const email = String(model?.email || '').trim()
+    const phone = String(model?.phone || '').trim()
+    const companyId = String(model?.company_id || '').trim()
+    const vacancyId = String(model?.vacancy_id || '').trim()
+    const citizenship = String((extra as any)?.citizenship || '').trim()
+    const languagesValue = (extra as any)?.languages
+    const hasLanguages =
+      Array.isArray(model?.languages)
+        ? model.languages.length > 0
+        : Array.isArray(languagesValue)
+          ? languagesValue.length > 0
+          : false
+    const stage = String(canonicalStageForOps || '').trim().toLowerCase()
+    const isEarlyStage = !stage || ['new', 'no_answer', 'contacted', 'questionnaire_submitted'].includes(stage)
+    const isDocsStage = ['docs_wait', 'docs_got', 'ready_for_handoff'].includes(stage)
+
+    if (!firstName || !lastName) {
+      hints.push({
+        id: 'name',
+        label: t('app.candidate_card.next_action.missing_data.name', {
+          defaultValue: 'Candidate first and last name',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_profile', {
+          defaultValue: 'Open profile',
+        }),
+        onClick: scrollToCandidateData,
+        score: scoreMissingHintForStage('name', canonicalStageForOps),
+      })
+    }
+    if (!email && !phone) {
+      hints.push({
+        id: 'contact',
+        label: t('app.candidate_card.next_action.missing_data.contact', {
+          defaultValue: 'At least one contact channel (phone or email)',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_profile', {
+          defaultValue: 'Open profile',
+        }),
+        onClick: scrollToCandidateData,
+        score: scoreMissingHintForStage('contact', canonicalStageForOps),
+      })
+    }
+    if (!companyId && !vacancyId) {
+      hints.push({
+        id: 'employer',
+        label: t('app.candidate_card.next_action.missing_data.employer', {
+          defaultValue: 'Employer context (company or vacancy)',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.open_employer_fields', {
+          defaultValue: 'Open employer fields',
+        }),
+        onClick: scrollToEmployerData,
+        score: scoreMissingHintForStage('employer', canonicalStageForOps),
+      })
+    }
+    // Documents and relocation flows need citizenship to suggest the right checklist.
+    if (!citizenship && isDocsStage) {
+      hints.push({
+        id: 'citizenship',
+        label: t('app.candidate_card.next_action.missing_data.citizenship', {
+          defaultValue: 'Citizenship / residency context',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_personal', {
+          defaultValue: 'Open personal',
+        }),
+        onClick: scrollToPersonalData,
+        score: scoreMissingHintForStage('citizenship', canonicalStageForOps),
+      })
+    }
+    if (!hasLanguages && (isEarlyStage || isDocsStage)) {
+      hints.push({
+        id: 'languages',
+        label: t('app.candidate_card.next_action.missing_data.languages', {
+          defaultValue: 'Languages',
+        }),
+        ctaLabel: t('app.candidate_card.next_action.missing_data.open_personal', {
+          defaultValue: 'Open personal',
+        }),
+        onClick: scrollToPersonalData,
+        score: scoreMissingHintForStage('languages', canonicalStageForOps),
+      })
+    }
+    // Keep UI lightweight: only the two most relevant hints for current stage.
+    return hints
+      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+      .slice(0, 2)
+      .map(({ score: _score, ...rest }) => rest)
+  }, [
+    model?.id,
+    model?.first_name,
+    model?.last_name,
+    model?.email,
+    model?.phone,
+    model?.company_id,
+    model?.vacancy_id,
+    model?.languages,
+    extra,
+    canonicalStageForOps,
+    isMasked,
+    scrollToCandidateData,
+    scrollToEmployerData,
+    scrollToPersonalData,
+    t,
+    scoreMissingHintForStage,
+  ])
+
+  /** Same ordering as `CandidateStageDecisionPanel` pipeline list — for resolved operational hints. */
+  const nextPipelineStageCodeForOps = useMemo(() => {
+    const main = stageJourneyStagesPipeline || []
+    const outcomes = stageOutcomeStages || []
+    const pipelineSteps = [...main, ...outcomes]
+    const candidates = [model?.stage, stageJourneyDisplayStage, stageJourneyOutcomeStage].filter(Boolean).map(String)
+    const currentCode =
+      candidates.find((c) => pipelineSteps.some((s) => s.code === c)) ?? candidates[0] ?? null
+    if (!currentCode) return null
+    const idx = pipelineSteps.findIndex((s) => s.code === currentCode)
+    if (idx < 0 || idx >= pipelineSteps.length - 1) return null
+    return pipelineSteps[idx + 1]?.code ?? null
+  }, [stageJourneyStagesPipeline, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, model?.stage])
+
+  const pipelineWaiverBadgeCounts = useMemo(() => {
+    let pending = 0
+    let approved = 0
+    for (const o of pipelineOverrides) {
+      const s = String(o.status || '').toLowerCase()
+      if (s === 'pending') pending += 1
+      else if (s === 'approved') approved += 1
+    }
+    return { pending, approved }
+  }, [pipelineOverrides])
+
+  const completedStageCodes = useMemo(() => {
+    const set = new Set<string>()
+    stageHistory.forEach((h) => {
+      if (h.from_code) set.add(String(h.from_code))
+      if (h.to_code) set.add(String(h.to_code))
+    })
+    return set
+  }, [stageHistory])
+
+  const handleStageJourneyChange = useCallback(async (nextStage: string) => {
+    const terminalClose = isRecruitmentTerminalStageCode(nextStage)
+    // Documents + data gates: blockers stop forward movement in the current journey order.
+    if (!terminalClose && Array.isArray(stageJourneyStagesPipeline)) {
+      const steps = [...(stageJourneyStagesPipeline || []), ...(stageOutcomeStages || [])]
+      const curCode = stageJourneyDisplayStage || model?.stage
+      const curIdx = steps.findIndex((s) => s.code === curCode)
+      const nextIdx = steps.findIndex((s) => s.code === nextStage)
+      const isForward = curIdx >= 0 && nextIdx > curIdx
+      if (isForward) {
+        if (docsPipelineBlockingValue) {
+          const firstMissing =
+            effectiveDocsBlockersForPipeline.missing[0] ||
+            effectiveDocsBlockersForPipeline.problematic[0] ||
+            effectiveDocsBlockersForPipeline.inProgress[0]
+          notify({
+            title: t('app.candidate_card.stage_blocked_by_docs.title'),
+            description: firstMissing
+              ? t('app.candidate_card.stage_blocked_by_docs.missing_type_detail', { values: { label: firstMissing } })
+              : t('app.candidate_card.stage_blocked_by_docs.description_generic'),
+            variant: 'info',
+          })
+          return
+        }
+        if (contactAttemptPipelineBlockingValue) {
+          notify({
+            title: t('app.candidate_card.stage_blocked_by_contact_attempt.title'),
+            description: t('app.candidate_card.stage_blocked_by_contact_attempt.description'),
+            variant: 'info',
+          })
+          return
+        }
+        if (vacancyPipelineBlockingValue) {
+          notify({
+            title: t('app.candidate_card.stage_blocked_by_vacancy.title'),
+            description: t('app.candidate_card.stage_blocked_by_vacancy.description'),
+            variant: 'info',
+          })
+          return
+        }
+      }
+    }
+
+    if (recruitmentPackageBlocksStage(nextStage)) {
+      notifyRecruitmentPackageBlocked()
+      return
+    }
+
+    if (!model?.stage) {
+      await onStageChangePersist(nextStage, model?.status_reason || [])
+      setModel((m) => (m ? { ...m, stage: nextStage } : m))
+      return
+    }
+    if (nextStage === model.stage) return
+    await onStageChangePersist(nextStage, model?.status_reason || [])
+    setModel((m) => (m ? { ...m, stage: nextStage } : m))
+  }, [
+    model?.stage,
+    model?.status_reason,
+    model?.id,
+    onStageChangePersist,
+    docsPipelineBlockingValue,
+    vacancyPipelineBlockingValue,
+    contactAttemptPipelineBlockingValue,
+    effectiveDocsBlockersForPipeline.missing,
+    effectiveDocsBlockersForPipeline.problematic,
+    effectiveDocsBlockersForPipeline.inProgress,
+    stageJourneyStagesPipeline,
+    stageOutcomeStages,
+    stageJourneyDisplayStage,
+    notify,
+    t,
+    recruitmentPackageBlocksStage,
+    notifyRecruitmentPackageBlocked,
+  ])
+
+  /** Same forward-move gates as the journey panel, applied to the stage dropdown in basic info. */
+  const persistStageWithClientGates = useCallback(
+    async (nextStage: string, statusReason: string[]) => {
+      if (!model?.id) return
+      const terminalClose = isRecruitmentTerminalStageCode(nextStage)
+      const mayClose = model.permissions?.can_close_recruitment !== false && terminalClose
+      if (model.can_edit === false && !mayClose) return
+      const revertBasicStageUi = async () => {
+        try {
+          const refreshed = await fetchCandidate(String(model.id), model)
+          setModel(refreshed)
+        } catch {
+          /* ignore */
+        }
+      }
+      if (!terminalClose && Array.isArray(stageJourneyStagesPipeline) && stageJourneyStagesPipeline.length > 0) {
+        const steps = [...(stageJourneyStagesPipeline || []), ...(stageOutcomeStages || [])]
+        const curCode = model?.stage
+        const curIdx = steps.findIndex((s) => s.code === curCode)
+        const nextIdx = steps.findIndex((s) => s.code === nextStage)
+        const isForward = curIdx >= 0 && nextIdx > curIdx
+        if (isForward) {
+          if (docsPipelineBlockingValue) {
+            const firstMissing =
+              effectiveDocsBlockersForPipeline.missing[0] ||
+              effectiveDocsBlockersForPipeline.problematic[0] ||
+              effectiveDocsBlockersForPipeline.inProgress[0]
+            notify({
+              title: t('app.candidate_card.stage_blocked_by_docs.title'),
+              description: firstMissing
+                ? t('app.candidate_card.stage_blocked_by_docs.missing_type_detail', { values: { label: firstMissing } })
+                : t('app.candidate_card.stage_blocked_by_docs.description_generic'),
+              variant: 'info',
+            })
+            await revertBasicStageUi()
+            return
+          }
+          if (contactAttemptPipelineBlockingValue) {
+            notify({
+              title: t('app.candidate_card.stage_blocked_by_contact_attempt.title'),
+              description: t('app.candidate_card.stage_blocked_by_contact_attempt.description'),
+              variant: 'info',
+            })
+            await revertBasicStageUi()
+            return
+          }
+          if (vacancyPipelineBlockingValue) {
+            notify({
+              title: t('app.candidate_card.stage_blocked_by_vacancy.title'),
+              description: t('app.candidate_card.stage_blocked_by_vacancy.description'),
+              variant: 'info',
+            })
+            await revertBasicStageUi()
+            return
+          }
+        }
+      }
+      if (recruitmentPackageBlocksStage(nextStage)) {
+        notifyRecruitmentPackageBlocked()
+        await revertBasicStageUi()
+        return
+      }
+      await onStageChangePersist(nextStage, statusReason)
+    },
+    [
+      model?.id,
+      model?.can_edit,
+      model?.stage,
+      model,
+      stageJourneyStagesPipeline,
+      stageOutcomeStages,
+      docsPipelineBlockingValue,
+      contactAttemptPipelineBlockingValue,
+      vacancyPipelineBlockingValue,
+      effectiveDocsBlockersForPipeline.missing,
+      effectiveDocsBlockersForPipeline.problematic,
+      effectiveDocsBlockersForPipeline.inProgress,
+      onStageChangePersist,
+      fetchCandidate,
+      notify,
+      t,
+      recruitmentPackageBlocksStage,
+      notifyRecruitmentPackageBlocked,
+    ],
+  )
+
+  if (loading || !model) {
+    return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
+  }
 
   return (
-    <div className="h-full min-h-0 w-full flex flex-col gap-4">
-      {/* Header */}
-      <div className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
-            <div className="text-xs text-white/80">
-              <Link className="hover:underline text-white" to="/app/candidates">{t('app.candidate_card.header.back')}</Link>
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-0">
+      <CandidateHeader
+        candidate={model}
+        isNew={isNew}
+        isMasked={isMasked}
+        canEdit={model.can_edit !== false}
+        saving={saving}
+        canDeleteDirect={canDeleteDirect}
+        canRequestDelete={canRequestDelete}
+        deleteRequestLoading={deleteRequestLoading}
+        deleteRequestMessage={deleteRequestMessage}
+        deleteRequestError={deleteRequestError}
+        savedOk={savedOk}
+        headerExpanded={headerExpanded}
+        onHeaderExpandedChange={setHeaderExpanded}
+        onSave={save}
+        onDelete={handleDelete}
+        onEditToggle={toggleCandidateEditMode}
+        editMode={candidateEditPhase !== 'idle'}
+        onOpenHandoff={
+          showAgencyHandoffHeader && !handoffActiveBlock
+            ? () => {
+                if (transferReadinessGateActive && !recruitmentHandoffCreateReady) {
+                  notifyRecruitmentPackageBlocked()
+                  return
+                }
+                setHandoffModalOpen(true)
+              }
+            : undefined
+        }
+        handoffReadonlyText={showAgencyHandoffHeader ? handoffReadonlySummary : null}
+        handoffDisabled={
+          handoffLoading || (transferReadinessGateActive && !recruitmentHandoffCreateReady)
+        }
+        handoffDisabledTitle={recruitmentHandoffBlockedReason}
+        handoffLabel={handoffPrimaryActionLabel}
+        onDeleteRequest={handleDeleteRequest}
+        onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
+        backPath={originPath}
+        backLabel={
+          originPath.startsWith(CRM_APP_PATHS.procesowani)
+            ? t('app.candidate_card.header.back_to_procesowani')
+            : undefined
+        }
+        onFavoriteToggle={handleFavoriteToggle}
+        candidateProfile={candidateProfile}
+        profileLoading={profileLoading}
+        stageSinceAt={stageSinceAt}
+        pipelineWaiverPendingCount={pipelineWaiverBadgeCounts.pending}
+        pipelineWaiverApprovedCount={pipelineWaiverBadgeCounts.approved}
+        onOpenActivity={!isNew && model?.id ? () => setActivityModalOpen(true) : undefined}
+        nextAction={nextActionDto}
+        nextActionLoading={nextActionLoading}
+        nextActionError={nextActionError}
+        focusContent={!isNew && model?.id ? (
+          <div className="grid gap-2">
+            <CandidateStageDecisionPanel
+              locale={locale}
+              stageSinceAt={stageSinceAt}
+              stageJourneyStages={stageJourneyStagesPipeline}
+              journeyPanelStages={stageJourneyStagesDisplay}
+              stageOutcomeStages={stageOutcomeStages}
+              stageJourneyDisplayStage={stageJourneyDisplayStage}
+              stageJourneyOutcomeStage={stageJourneyOutcomeStage}
+              stageJourneySignals={stageJourneySignals}
+              completedStageCodes={completedStageCodes}
+              currentStageCode={model.stage}
+              candidateRowStatus={model.row_status}
+              candidateStatus={model.status}
+              stageLabelIntl={stageLabelIntl}
+              docsBlockers={effectiveDocsBlockersForPipeline}
+              blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+              docsPipelineBlocking={docsPipelineBlockingValue}
+              docsPipelineSoftWarn={docsPipelineSoftWarnValue}
+              vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+              contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
+              canEdit={model.can_edit !== false}
+              canCloseRecruitment={canCloseRecruitment}
+              onMoveStage={handleStageJourneyChange}
+              onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
+            />
+          </div>
+        ) : null}
+      />
+
+      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <PageBreadcrumb />
+          {!isNew && model?.id ? (
+            <CandidateOpenInHrLink candidateId={String(model.id)} enabled={showOpenInHrLink} />
+          ) : null}
+        </div>
+      </div>
+
+      <div className="card p-3">
+        <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
+            <div className="space-y-4 lg:pr-6">
+                  {registrySectionsBeforeStatus.map((sectionCode) => {
+                    if (!registrySectionVisible(sectionCode)) return null
+                    if (sectionCode === 'basic') {
+                      if (isMasked) return null
+                      return (
+                        <CandidateBasicSection
+                          key="basic"
+                          candidate={model}
+                          extra={extra}
+                          isNew={isNew}
+                          locale={locale}
+                          basicRef={basicRef}
+                          stageOptions={stageOptions}
+                          profileStageCodes={profileStageCodes}
+                          meta={meta ?? undefined}
+                          dialCodes={dialCodes}
+                          managers={managers}
+                          preferredContactOptions={preferredContactOptions}
+                          selectTexts={selectTexts}
+                          createdAtDisplay={createdAtDisplay}
+                          isMetaLead={isMetaLead}
+                          onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                          onExtraChange={setExtra}
+                          onPhoneInputChange={handlePhoneInputChange}
+                          onGenerateShortId={handleGenerateShortId}
+                          candidateProfile={candidateProfile}
+                          effectiveLayout={effectiveLayout}
+                          stageLabelIntl={stageLabelIntl}
+                          candidateDataReadOnly={candidateDataReadOnly}
+                          canEdit={model.can_edit !== false}
+                          canCloseRecruitment={canCloseRecruitment}
+                          onStageChangePersist={persistStageWithClientGates}
+                          embedded
+                        />
+                      )
+                    }
+                    if (sectionCode === 'personal') {
+                      if (isMasked) return null
+                      return (
+                        <CandidatePersonalSection
+                          key="personal"
+                          candidate={model}
+                          extra={extra}
+                          personalRef={personalRef}
+                          countries={countries}
+                          languages={languages}
+                          selectTexts={selectTexts}
+                          onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                          onExtraChange={setExtra}
+                          onAddressFieldChange={setAddressField}
+                          candidateProfile={candidateProfile}
+                          effectiveLayout={effectiveLayout}
+                          candidateDataReadOnly={candidateDataReadOnly}
+                          embedded
+                        />
+                      )
+                    }
+                    return null
+                  })}
+
+                  {/* Статус и соответствие требованиям (на всю ширину) */}
+                  <div className="space-y-4">
+                    <CandidateStatusSection
+                      extra={extra}
+                      statusRef={statusRef}
+                      polandBasisOptions={polandBasisOptions}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                      candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
+                      candidateDataReadOnly={candidateDataReadOnly}
+                      embedded
+                    />
+
+                    <CandidateWorkforceTerminationSection extra={extra} />
+
+                    <CandidateCustomFieldsSection
+                      extra={extra}
+                      customFieldsRef={customFieldsRef}
+                      candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                    />
+                  </div>
+
+                  {registrySectionsAfterStatus.map((sectionCode) => {
+                    if (!registrySectionVisible(sectionCode)) return null
+                    return (
+                      <CandidateExperienceSection
+                        key="experience"
+                        extra={extra}
+                        experienceRef={experienceRef}
+                        experienceTotalDisplay={experienceTotalDisplay}
+                        trailerTypeOptions={trailerTypeOptions}
+                        routeTypeOptions={routeTypeOptions}
+                        employmentHistory={employmentHistory}
+                        employmentLoading={employmentLoading}
+                        employmentError={employmentError}
+                        selectTexts={selectTexts}
+                        onExtraChange={setExtra}
+                        onExperienceChange={handleExperienceChange}
+                        onAddEmploymentRow={addEmploymentRow}
+                        onUpdateEmploymentHistory={updateEmploymentHistory}
+                        onRemoveEmploymentRow={removeEmploymentRow}
+                        candidateProfile={candidateProfile}
+                        effectiveLayout={effectiveLayout}
+                        candidateDataReadOnly={candidateDataReadOnly}
+                        embedded
+                      />
+                    )
+                  })}
+
+                  {/* Работодатель и вакансия */}
+                  {!isMasked && (
+                    <section
+                      ref={employerRef}
+                      id="section-employer"
+                      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
+                    >
+                      <div className="flex items-center gap-3">
+                        <IconBuilding size={22} className="text-slate-600" />
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-900">
+                            {t('app.candidate_card.sections.employer.title')}
+                          </h2>
+                          <p className="text-sm text-slate-500">
+                            {t('app.candidate_card.sections.employer.description')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <label className="block md:col-span-2">
+                          <div className="label">{t('app.candidate_card.fields.vacancy')}</div>
+                          <SearchableSelect
+                            options={vacancyOpts}
+                            value={(model.vacancy_id as string) || ''}
+                            onChange={async (v) => {
+                              if (!v) {
+                                setModel((m) => {
+                                  if (!m) return m
+                                  return {
+                                    ...m,
+                                    vacancy_id: null,
+                                    vacancy_name: '',
+                                    company_id: null,
+                                    company_name: '',
+                                  }
+                                })
+                                setCandidateProfile(null)
+                                return
+                              }
+                              const opt = vacancyOpts.find((o) => o.value === v)
+                              const company_id = opt?.extra?.company_id || null
+                              const company_name = opt?.extra?.company_name || model.company_name || ''
+                              const vacancy_label = opt?.label || ''
+                              setModel((m) => {
+                                if (!m) return m
+                                return {
+                                  ...m,
+                                  vacancy_id: v as any,
+                                  vacancy_name: vacancy_label,
+                                  company_id,
+                                  company_name: company_name || m.company_name || '',
+                                }
+                              })
+                              // Загружаем профиль из новой вакансии
+                              await loadProfileFromVacancy(v)
+                            }}
+                            placeholder={selectTexts.empty}
+                            searchPlaceholder={selectTexts.search}
+                            noResultsLabel={selectTexts.noResults}
+                          />
+                          <p className="mt-1 text-xs text-slate-500">
+                            {t('app.candidate_card.messages.vacancy_hint')}
+                          </p>
+                        </label>
+
+                        <Input
+                          label={t('app.candidate_card.fields.company')}
+                          value={model.company_name || ''}
+                          readOnly
+                          placeholder="—"
+                          hint={t('app.candidate_card.fields.company_hint')}
+                        />
+                      </div>
+                    </section>
+                  )}
+
+                  {!isNew && model?.id && !isMasked ? (
+                    <CandidateApplicationsSection
+                      candidateId={String(model.id)}
+                      locale={locale}
+                      legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                    />
+                  ) : null}
+
             </div>
-            <div>
-              <h1 className="text-3xl font-semibold">{candidateTitle}</h1>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/90">
-                <StageTag code={model.stage || 'new'} />
-                {model.email && <a className="hover:underline text-white" href={`mailto:${model.email}`}>{model.email}</a>}
-                {phoneDisplay && (
-                  <a className="hover:underline text-white" href={telHref}>{phoneDisplay}</a>
-                )}
-                {model.short_id && (
-                  <span className="text-xs rounded-full border border-white/40 px-2 py-0.5">
-                    {t('app.candidate_card.labels.short_id_badge', { values: { id: model.short_id } })}
-                  </span>
-                )}
+
+          {/* Work panel (sticky): contact+RODO (gate stages) → next action → docs → notes → inbox → services → RODO if not above */}
+          {!isNew && model?.id ? (
+            <div
+              className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
+              data-candidate-control-rail
+            >
+              {showContactAttemptsPriorityRail && !isMasked ? (
+                <RailPrimaryStepFrame active={railPrimaryFocus === 'contact_stack'}>
+                  <div className="space-y-3">
+                    <CandidateContactAttemptsSection
+                      candidateId={String(model.id) as any}
+                      refreshTrigger={rodoSentTrigger}
+                      openRegisterSignal={contactAttemptOpenSignal}
+                      onAttemptCreated={
+                        model?.id ? () => void fetchCandidate(String(model.id), model) : undefined
+                      }
+                    />
+                    <CandidateRodoSection
+                      candidateId={String(model.id) as any}
+                      onSent={() => setRodoSentTrigger((x) => x + 1)}
+                      refreshTrigger={rodoSentTrigger}
+                    />
+                  </div>
+                </RailPrimaryStepFrame>
+              ) : null}
+
+              <CandidateNextActionPanel
+                candidateId={String(model.id)}
+                reminders={reminders}
+                remindersLoading={remindersLoading}
+                remindersError={remindersError}
+                reminderTitle={reminderTitle}
+                reminderDueAt={reminderDueAt}
+                reminderOffset={reminderOffset}
+                reminderBusy={reminderBusy}
+                docsIssuesPresent={docsIssuesPresentValue}
+                docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
+                docsRequestTitle={docsNeedsVerification
+                  ? t('app.candidate_card.next_action.docs_verify_title')
+                  : t('app.candidate_card.next_action.docs_request_title')}
+                docsRequestDueLabel={t('common.today')}
+                docsBlockerKind={docsNeedsVerification ? 'review' : (docsNeedsRequest ? 'request' : null)}
+                onDocsRequestCreate={handleDocsNextActionCreate}
+                hideToggle
+                hideRemindersList
+                onReminderTitleChange={setReminderTitle}
+                onReminderDueAtChange={setReminderDueAt}
+                onReminderOffsetChange={setReminderOffset}
+                onReminderCreate={handleCreateReminder}
+                onReminderComplete={handleReminderComplete}
+                onReminderSnooze={handleReminderSnooze}
+                operationallyTerminal={operationallyTerminal}
+                canonicalStageCode={canonicalStageForOps}
+                nextPipelineStageCode={nextPipelineStageCodeForOps}
+                employerDataMissing={employerDataMissingForHint}
+                onOpenEmployerFields={scrollToEmployerData}
+                missingDataHints={missingDataHints}
+                vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+                contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
+                primaryStepHighlight={
+                  railPrimaryFocus === 'next_action' || railPrimaryFocus === 'vacancy'
+                }
+                documentsChecklistSibling
+              />
+
+              {!isMasked && showTransferReadinessReport ? (
+                <RecruitmentDossierChecklist
+                  candidateId={String(model.id)}
+                  pkg={recruitmentPkg}
+                  pkgLoading={recruitmentPkgLoading}
+                  confirmedBlocks={confirmedRecruitmentBlocks}
+                  confirmFingerprints={recruitmentConfirmFingerprints}
+                  documentsSummary={docsSummarySnapshot}
+                  onConfirmBlock={model.can_edit !== false ? handleConfirmRecruitmentBlock : undefined}
+                  confirmBusy={recruitmentConfirmBusy}
+                  canConfirm={model.can_edit !== false}
+                  missing={effectiveDocsBlockersForPipeline.missing}
+                  problematic={effectiveDocsBlockersForPipeline.problematic}
+                  contactsReady={dossierContactsReady}
+                  experienceReady={dossierExperienceReady}
+                />
+              ) : null}
+
+              {showRequirementsChecklist ? (
+                <CandidateRequirementsChecklist
+                  candidateId={String(model.id)}
+                  refreshTrigger={docsSummaryRefreshTrigger}
+                  canEdit={model.can_edit !== false}
+                  onOpenDocs={(typeCode) => openDocsDrawer(typeCode)}
+                  onUpload={() => openDocsDrawer(undefined)}
+                  primaryStepHighlight={railPrimaryFocus === 'docs'}
+                  onChanged={handleDocumentsChanged}
+                  onPipelineBlockersChange={(blockers, loading) => {
+                    setRequirementBlockers(blockers)
+                    setRequirementBlockersLoading(loading)
+                  }}
+                />
+              ) : null}
+
+              <CandidateDocsRailPanel
+                candidateId={String(model.id)}
+                ownerContext={docsOwnerContext}
+                uploadBusy={false}
+                onUpload={() => openDocsDrawer(undefined)}
+                onOpenDocs={() => openDocsDrawer(undefined)}
+                onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
+                onLoadingChange={setDocsBlockersLoading}
+                onSummaryLoaded={(summary) => setDocsSummarySnapshot(summary as Record<string, unknown> | null)}
+                refreshTrigger={docsSummaryRefreshTrigger}
+                onSelectType={(typeCode) => openDocsDrawer(typeCode)}
+                pollingEnabled={docsDrawerOpen}
+                stageSummaryLabel={
+                  model.stage ? stageLabelIntl(String(model.stage)) : null
+                }
+                docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
+                pipelineOverrides={pipelineOverrides}
+                pipelineOverrideBusy={pipelineOverrideBusy}
+                canRequestPipelineOverride={canRequestPipelineOverride}
+                canApprovePipelineOverride={canApprovePipelineOverride}
+                showPipelineWaiverSection={showPipelineWaiverSection}
+                pipelineWaiverReadOnlyCard={pipelineWaiverReadOnlyCard}
+                waiverMode={showRequirementsChecklist ? 'requirement' : 'document'}
+                externalBlockers={showRequirementsChecklist ? activePipelineBlockers : undefined}
+                onCreatePipelineOverride={handleCreatePipelineOverride}
+                onApprovePipelineOverride={handleApprovePipelineOverride}
+                onRejectPipelineOverride={handleRejectPipelineOverride}
+                primaryStepHighlight={showRequirementsChecklist ? false : railPrimaryFocus === 'docs'}
+                hideDocumentTypeChecklist={showRequirementsChecklist}
+                blockersPresentation={operationallyTerminal ? 'historical' : 'operational'}
+              />
+
+              {!isMasked ? (
+                <CandidateNotesRailSection
+                  notes={notes}
+                  notesLoading={notesLoading}
+                  newNote={newNote}
+                  noteSending={noteSending}
+                  onNewNoteChange={setNewNote}
+                  onAddNote={addNote}
+                  onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
+                />
+              ) : null}
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-slate-800">
+                    {t('app.candidate_card.control.inbox_title')}
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Link
+                    to={buildInboxHubPath({ candidateId: String(model.id) })}
+                    className="btn-secondary btn-sm w-full text-center"
+                  >
+                    {t('app.candidate_card.control.open_unified_inbox')}
+                  </Link>
+                </div>
               </div>
+
+              {can('services.view') && !isMasked ? (
+                <CandidateServicesSection
+                  candidateId={String(model.id)}
+                  canManage={can('services.orders.manage')}
+                />
+              ) : null}
+
+              {!(showContactAttemptsPriorityRail && !isMasked) ? (
+                <div className="space-y-3">
+                  <CandidateRodoSection
+                    candidateId={String(model.id) as any}
+                    onSent={() => setRodoSentTrigger((x) => x + 1)}
+                    refreshTrigger={rodoSentTrigger}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          </div>
+          </div>
+      </div>
+
+      {!isNew && model?.id && handoffModalOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={() => setHandoffModalOpen(false)}>
+          <div
+            className="mx-auto mt-12 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-slate-900">{handoffPrimaryActionLabel}</div>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
+                {t('common.actions.close')}
+              </button>
+            </div>
+
+            {primaryHandoffDestination === 'internal_hr' ? (
+              <>
+                <p className="mt-3 text-sm text-slate-600">
+                  {t('app.candidate_card.handoff.internal_hr_modal_hint')}
+                </p>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
+                    {t('common.actions.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={handoffSubmitting || (transferReadinessGateActive && !recruitmentHandoffCreateReady)}
+                    onClick={() => void handleHandoffCreate()}
+                  >
+                    {handoffSubmitting ? t('common.saving') : handoffPrimaryActionLabel}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mt-3">
+                  <label className="label">{t('app.candidate_card.handoff.client')}</label>
+                  <select
+                    className="input w-full"
+                    value={handoffClientLinkId}
+                    onChange={(e) => setHandoffClientLinkId(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {handoffClientsForCompany.map((c) => (
+                      <option key={c.link_id} value={c.link_id}>
+                        {c.client_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
+                    {t('common.actions.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={
+                      !handoffClientLinkId ||
+                      handoffSubmitting ||
+                      (transferReadinessGateActive && !recruitmentHandoffCreateReady)
+                    }
+                    onClick={() => void handleHandoffCreate()}
+                  >
+                    {handoffSubmitting ? t('common.saving') : handoffPrimaryActionLabel}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {!isNew && model?.id && activityModalOpen ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setActivityModalOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="candidate-activity-modal-title"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+              <div id="candidate-activity-modal-title" className="text-sm font-semibold text-slate-900">
+                {t('app.candidate_card.activity_feed.title')}
+              </div>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setActivityModalOpen(false)}>
+                {t('common.actions.close')}
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <CandidateTimelinePanel
+                locale={locale}
+                stageHistory={timelineStageHistory}
+                notes={notes}
+                reminders={timelineReminders}
+                loading={timelineStageHistoryLoading || timelineRemindersLoading}
+                timelineError={timelineError}
+                resolveStageLabel={stageLabelIntl}
+                includeStageChanges
+                variant="info"
+                collapsedCount={15}
+                hideToggle
+                expanded
+                itemsMaxHeightClass="max-h-[min(70vh,28rem)]"
+                stageHistoryShortcut={Boolean(model?.id)}
+              />
             </div>
           </div>
         </div>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-xl border border-white/40 bg-white/10 px-4 py-2 font-medium text-white transition hover:bg-white/20"
-              onClick={()=>nav(-1)}
-            >
-              {t('common.actions.cancel')}
-            </button>
-            <button
-              className="rounded-xl border border-white bg-white px-4 py-2 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
-              disabled={saving}
-              onClick={save}
-            >
-              {saving ? t('common.saving') : (isNew ? t('common.actions.create') : t('common.actions.save'))}
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isNew && canDeleteDirect && (
-              <button
-                className="rounded-xl border border-white/40 bg-white/10 px-4 py-2 font-medium text-rose-50 transition hover:bg-white/20"
-                onClick={async () => {
-                  if (!confirm(t('app.candidate_card.confirm.delete'))) return
-                  await api.delete(`/candidates/${model.id}`)
-                  nav('/app/candidates')
-                }}
-              >
-                {t('common.actions.delete')}
-              </button>
-            )}
-            {!isNew && !canDeleteDirect && canRequestDelete && (
+      ) : null}
+
+      {/* Manager override: reason once, then close — editing continues with autosave (portal → body). */}
+      {typeof document !== 'undefined' &&
+      !isNew &&
+      model?.id &&
+      candidateEditPhase === 'picking_reason' &&
+      !isMasked
+        ? createPortal(
+            <>
               <button
                 type="button"
-                className="rounded-xl border border-white/40 bg-white/10 px-4 py-2 font-medium text-white transition hover:bg-white/20"
-                disabled={deleteRequestLoading}
-                onClick={() => void handleDeleteRequest()}
+                className="fixed inset-0 z-[10000] cursor-default bg-slate-900/40"
+                aria-label={t('common.actions.close')}
+                onClick={() => setCandidateEditPhase('idle')}
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="candidate-override-save-title"
+                className="fixed left-1/2 top-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-300 bg-white p-4 shadow-2xl ring-2 ring-amber-100"
               >
-                {deleteRequestLoading ? t('app.candidate_card.actions.delete_request_loading') : t('app.candidate_card.actions.delete_request')}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {deleteRequestMessage && (
-        <div className="p-3 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
-          {deleteRequestMessage}
-        </div>
-      )}
-      {deleteRequestError && (
-        <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
-          {deleteRequestError}
-        </div>
-      )}
-
-      {savedOk && (
-        <div className="p-3 rounded-lg bg-green-50 text-green-800 border border-green-200">
-          {t('app.candidate_card.messages.saved')}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="card p-3">
-        <div className="mb-4 flex gap-2 border-b border-brand-100/70">
-          {([
-            ['personal', t('app.candidate_card.tabs.personal')],
-            ['docs', t('app.candidate_card.tabs.docs')],
-            ['services', t('app.candidate_card.tabs.services')],
-          ] as [Tab,string][])
-            .map(([tabKey,label]) => (
-            <button key={tabKey}
-              className={clsx('px-3 py-2 -mb-px border-b-2', tab===tabKey ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-500')}
-              onClick={()=>setTab(tabKey)}>{label}</button>
-          ))}
-        </div>
-
-        {/* PERSONAL */}
-        {tab==='personal' && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
-            <div className="space-y-8 lg:pr-6">
-                  <div className="flex flex-wrap items-center gap-2 overflow-x-auto rounded-full bg-white/60 p-2">
-                    {sectionNavItems.map(item => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className="flex items-center gap-2 rounded-full border border-brand-50 bg-white/95 px-3 py-1.5 text-sm text-gray-700 transition-all hover:border-brand-300 hover:text-brand-700"
-                        onClick={handleScrollTo(item.ref)}
-                      >
-                        <span>{item.emoji}</span>
-                        <span>{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-              <section
-                ref={basicRef}
-                id="section-basic"
-                className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-              >
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">👤</span>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.basic.title')}</h2>
-                    <p className="text-sm text-gray-500">{t('app.candidate_card.sections.basic.description')}</p>
-                  </div>
+                <div id="candidate-override-save-title" className="text-sm font-semibold text-amber-950">
+                  {t('app.candidate_card.override_modal.title')}
                 </div>
-                {!isNew && (
-                  <button
-                    type="button"
-                    className="btn-ghost text-sm self-start border border-transparent bg-white shadow-sm transition hover:border-brand-200 hover:shadow"
-                    onClick={openHistoryModal}
-                    disabled={historyLoading}
-                  >
-                    {historyLoading ? t('app.candidate_card.actions.history_loading') : t('app.candidate_card.actions.history')}
-                  </button>
-                )}
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="space-y-4">
-                  <Input label={t('app.candidate_card.fields.first_name')} value={model.first_name} onChange={e=>setModel(m=>m && ({...m, first_name: e.target.value}))}/>
-                  <Input label={t('app.candidate_card.fields.last_name')} value={model.last_name} onChange={e=>setModel(m=>m && ({...m, last_name: e.target.value}))}/>
-                  <Input
-                    label={t('app.candidate_card.fields.email')}
-                    type="email"
-                    value={model.email || ''}
-                    onChange={e=>setModel(m=>m && ({...m, email: e.target.value}))}
-                  />
-
-                  <div>
-                    <div className="label">{t('app.candidate_card.fields.phone')}</div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(160px,1fr)_12px_minmax(160px,1fr)] sm:items-center">
-                      <SearchableSelect
-                        options={dialCodes}
-                        value={(extra as any).phone_country || ''}
-                        onChange={(cc)=>{
-                          const prefix = dialCodes.find(x => x.value === cc)?.extra?.prefix || ''
-                          setExtra({ phone_country: cc, phone_prefix: prefix })
-                        }}
-                        placeholder={selectTexts.empty}
-                        searchPlaceholder={t('app.candidate_card.select.search_country')}
-                        noResultsLabel={selectTexts.noResults}
-                        className="w-full"
-                      />
-                      <span className="hidden text-gray-400 text-center sm:block">—</span>
-                      <Input
-                        placeholder={t('app.candidate_card.placeholders.phone_number')}
-                        value={model.phone || ''}
-                        onChange={e=>handlePhoneInputChange(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.preferred_contact')}</div>
-                    <select
-                      className="input"
-                      value={(extra.preferred_contact as PreferredContact) || ''}
-                      onChange={e=>setExtra({ preferred_contact: e.target.value as PreferredContact })}
-                    >
-                      {preferredContactOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <div className="label flex items-center justify-between">
-                      <span>{t('app.candidate_card.fields.short_id')}</span>
-                      {!isNew && !model.short_id && (
-                        <button
-                          type="button"
-                          className="btn-ghost text-xs"
-                          onClick={async ()=>{
-                            const { data } = await api.patch(`/candidates/${model.id}`, { extra: {} })
-                            setModel(m => normalizeCandidate(data, m || model))
-                            setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
-                          }}
-                        >
-                          {t('app.candidate_card.actions.generate_short_id')}
-                        </button>
-                      )}
-                    </div>
-                    <Input
-                      value={model.short_id || ''}
-                      readOnly
-                      placeholder="—"
-                      hint={t('app.candidate_card.fields.short_id_hint')}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="label">{t('app.candidate_card.fields.stage')}</div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className="input"
-                        value={model.stage || ''}
-                        onChange={e=>{
-                          const nextStage = e.target.value
-                          setModel(m => {
-                            if (!m) return m
-                            const options = meta?.reason_choices?.[nextStage] ?? []
-                            const sanitized = Array.isArray(m.status_reason)
-                              ? m.status_reason.filter(code => options.some(opt => opt.code === code))
-                              : []
-                            return {
-                              ...m,
-                              stage: nextStage,
-                              status_reason: options.length ? sanitized : [],
-                            }
-                          })
-                        }}
-                      >
-                        {stageOptions.map(code => (
-                          <option key={code} value={code}>{stageLabelIntl(code)}</option>
-                        ))}
-                      </select>
-                      <StageTag code={model.stage || 'new'} />
-                    </div>
-                  </div>
-                  {(meta?.reason_choices?.[model.stage || '']?.length ?? 0) > 0 && (
-                    <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <div className="label mb-1">{t('app.candidate_card.fields.status_reasons')}</div>
-                      <div className="space-y-1 text-sm">
-                        {(meta?.reason_choices?.[model.stage || ''] ?? []).map(option => {
-                          const checked = Array.isArray(model.status_reason) && model.status_reason.includes(option.code)
-                          const label = translateReasonLabel(t, option.code, option.label || option.code)
-                          return (
-                            <label key={option.code} className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const nextChecked = e.target.checked
-                                  setModel(m => {
-                                    if (!m) return m
-                                    const current = Array.isArray(m.status_reason) ? m.status_reason : []
-                                    const updated = nextChecked
-                                      ? Array.from(new Set([...current, option.code]))
-                                      : current.filter(code => code !== option.code)
-                                    return { ...m, status_reason: updated }
-                                  })
-                                }}
-                              />
-                              <span>{label}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                      {(!Array.isArray(model.status_reason) || model.status_reason.length === 0) && (
-                        <div className="text-xs text-red-600">{t('app.candidate_card.messages.stage_reason_required')}</div>
-                      )}
-                    </div>
-                  )}
-
-                  <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.manager')}</div>
-                    <SearchableSelect
-                      options={managers}
-                      value={model.manager || ''}
-                      onChange={(v)=>setModel(m=>m && ({...m, manager: v || null, manager_id: v || null}))}
-                      placeholder={selectTexts.empty}
-                      searchPlaceholder={selectTexts.search}
-                      noResultsLabel={selectTexts.noResults}
-                    />
-                  </label>
-
-                  <Input
-                    label={t('app.candidate_card.fields.created_at')}
-                    value={createdAtDisplay}
-                    readOnly
-                    placeholder="—"
-                    hint={t('app.candidate_card.fields.created_at_hint')}
-                  />
-
-                  <div>
-                    <div className="label">{t('app.candidate_card.fields.first_contact')}</div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <Checkbox
-                        label={t('app.candidate_card.fields.first_contact_done')}
-                        checked={firstContactChecked}
-                        onChange={handleFirstContactToggle}
-                      />
-                      <input className="input sm:max-w-xs" readOnly value={firstContactDisplay || '—'} />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">{t('app.candidate_card.fields.first_contact_hint')}</p>
-                  </div>
-
-                  {isMetaLead && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                      {t('app.candidate_card.messages.meta_lead')}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-
-
-            <section
-              ref={personalRef}
-              id="section-personal"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🧍</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.personal.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.personal.description')}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <Input label={t('app.candidate_card.fields.birth_date')} type="date"
-                       value={(extra.birth_date as any) || ''}
-                       onChange={e=>setExtra({ birth_date: e.target.value })}/>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
-                  <SearchableSelect
-                    options={countries}
-                    value={(extra.citizenship as any) || ''}
-                    onChange={(v)=>setExtra({ citizenship: v })}
-                    placeholder={selectTexts.empty}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                  />
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  {t('app.candidate_card.override_modal.hint')}
+                </p>
+                <label className="mt-3 block text-xs font-medium text-slate-700" htmlFor="candidate-override-reason">
+                  {t('app.candidate_card.override_reason_label')}
                 </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.country_code')}</div>
-                  <SearchableSelect
-                    options={countries}
-                    value={(model.country_code as any) || ''}
-                    onChange={(v)=>setModel(m => m && ({ ...m, country_code: v || null }))}
-                    placeholder={selectTexts.empty}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                  />
-                </label>
-                <div className="lg:col-span-2">
-                  <div className="label">{t('app.candidate_card.fields.languages')}</div>
-                  <CheckboxMultiSelect
-                    options={languages}
-                    values={model.languages || []}
-                    onChange={(vals)=>setModel(m=>m && ({...m, languages: vals}))}
-                    placeholder={selectTexts.multiNone}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                    multiSelectedLabel={selectTexts.multiSelected}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-dashed border-gray-300 bg-white/60 p-4">
-                  <div className="font-semibold text-gray-800">{t('app.candidate_card.sections.personal.address_current')}</div>
-                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <label className="block md:col-span-2">
-                      <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-                      <SearchableSelect
-                        options={countries}
-                        value={extra.address?.country || ''}
-                        onChange={(v)=>setAddressField('address','country', v)}
-                        placeholder={selectTexts.empty}
-                        searchPlaceholder={selectTexts.search}
-                        noResultsLabel={selectTexts.noResults}
-                      />
-                    </label>
-                    <Input label={t('app.candidate_card.fields.address.city')} value={extra.address?.city || ''} onChange={e=>setAddressField('address','city', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.zip')} value={extra.address?.zip || ''} onChange={e=>setAddressField('address','zip', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.street')} containerClassName="md:col-span-2" value={extra.address?.street || ''} onChange={e=>setAddressField('address','street', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.house')} value={extra.address?.house || ''} onChange={e=>setAddressField('address','house', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.apt')} value={extra.address?.apt || ''} onChange={e=>setAddressField('address','apt', e.target.value)} />
-                  </div>
-
-                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
-                    <Checkbox
-                      label={t('app.candidate_card.fields.address.diff')}
-                      checked={!!(extra as any).reg_address_diff}
-                      onChange={(v)=>setExtra({ reg_address_diff: v })}
-                    />
-                  </div>
-                </div>
-
-                {(extra as any).reg_address_diff && (
-                  <div className="rounded-xl border border-dashed border-gray-300 bg-white/60 p-4">
-                    <div className="font-semibold text-gray-800">{t('app.candidate_card.sections.personal.address_registered')}</div>
-                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <label className="block md:col-span-2">
-                        <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-                      <SearchableSelect
-                        options={countries}
-                        value={extra.reg_address?.country || ''}
-                        onChange={(v)=>setAddressField('reg_address','country', v)}
-                        placeholder={selectTexts.empty}
-                        searchPlaceholder={selectTexts.search}
-                        noResultsLabel={selectTexts.noResults}
-                      />
-                      </label>
-                      <Input label={t('app.candidate_card.fields.address.city')} value={extra.reg_address?.city || ''} onChange={e=>setAddressField('reg_address','city', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.zip')} value={extra.reg_address?.zip || ''} onChange={e=>setAddressField('reg_address','zip', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.street')} containerClassName="md:col-span-2" value={extra.reg_address?.street || ''} onChange={e=>setAddressField('reg_address','street', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.house')} value={extra.reg_address?.house || ''} onChange={e=>setAddressField('reg_address','house', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.apt')} value={extra.reg_address?.apt || ''} onChange={e=>setAddressField('reg_address','apt', e.target.value)} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section
-              ref={statusRef}
-              id="section-status"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🛂</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.status.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.status.description')}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.in_poland')}</div>
-                  <select
-                    className="input"
-                    value={inPolandValue}
-                    onChange={e=>handleInPolandChange(e.target.value)}
-                  >
-                    <option value="">{selectTexts.multiNone}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.poland_basis')}</div>
-                  <select
-                    className="input"
-                    value={extra.poland_stay_basis || ''}
-                    onChange={e=>setExtra({ poland_stay_basis: e.target.value })}
-                  >
-                    {polandBasisOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </section>
-
-            <section
-              ref={experienceRef}
-              id="section-experience"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🧾</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.experience.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.experience.description')}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Input
-                  label={t('app.candidate_card.fields.experience_eu')}
-                  type="number"
-                  value={
-                    typeof extra.experience_eu_years === 'number' && !Number.isNaN(extra.experience_eu_years)
-                      ? String(extra.experience_eu_years)
-                      : ''
-                  }
-                  onChange={e=>handleExperienceChange('experience_eu_years', e.target.value)}
-                />
-                <Input
-                  label={t('app.candidate_card.fields.experience_non_eu')}
-                  type="number"
-                  value={
-                    typeof extra.experience_non_eu_years === 'number' && !Number.isNaN(extra.experience_non_eu_years)
-                      ? String(extra.experience_non_eu_years)
-                      : ''
-                  }
-                  onChange={e=>handleExperienceChange('experience_non_eu_years', e.target.value)}
-                />
-                <Input
-                  label={t('app.candidate_card.fields.experience_total')}
-                  type="number"
-                  value={experienceTotalDisplay === '' ? '' : String(experienceTotalDisplay)}
-                  readOnly
-                  hint={t('app.candidate_card.fields.experience_total_hint')}
-                />
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.intl_experience')}</div>
-                  <select
-                    className="input"
-                    value={extra.intl_experience === true ? 'yes' : extra.intl_experience === false ? 'no' : ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setExtra({ intl_experience: value === 'yes' ? true : value === 'no' ? false : null })
-                    }}
-                  >
-                    <option value="">{t('app.candidate_card.fields.unset')}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.eu_routes')}</div>
-                  <select
-                    className="input"
-                    value={extra.eu_routes === true ? 'yes' : extra.eu_routes === false ? 'no' : ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setExtra({ eu_routes: value === 'yes' ? true : value === 'no' ? false : null })
-                    }}
-                  >
-                    <option value="">{t('app.candidate_card.fields.unset')}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <div className="label">{t('app.candidate_card.intake.fields.trailer_types')}</div>
-                  <CheckboxMultiSelect
-                    options={trailerTypeOptions}
-                    values={Array.isArray(extra.trailer_types) ? extra.trailer_types : []}
-                    onChange={(vals) => setExtra({ trailer_types: vals })}
-                    placeholder={selectTexts.multiNone}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                    multiSelectedLabel={selectTexts.multiSelected}
-                  />
-                </div>
-                <div>
-                  <div className="label">{t('app.candidate_card.intake.fields.route_types')}</div>
-                  <CheckboxMultiSelect
-                    options={routeTypeOptions}
-                    values={Array.isArray(extra.route_types) ? extra.route_types : []}
-                    onChange={(vals) => setExtra({ route_types: vals })}
-                    placeholder={selectTexts.multiNone}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                    multiSelectedLabel={selectTexts.multiSelected}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-gray-800">{t('app.candidate_card.employment.title')}</div>
-                  <button
-                    type="button"
-                    className="btn-secondary text-sm shadow-sm transition hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={addEmploymentRow}
-                    disabled={employmentHistory.length >= MAX_EMPLOYMENTS}
-                  >
-                    {t('app.candidate_card.employment.add')}
-                  </button>
-                </div>
-                {employmentHistory.length >= MAX_EMPLOYMENTS && (
-                  <p className="text-xs text-gray-500">{t('app.candidate_card.employment.limit', { values: { count: MAX_EMPLOYMENTS } })}</p>
-                )}
-                {employmentError && (
-                  <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                    {employmentError}
-                  </div>
-                )}
-                {employmentLoading ? (
-                  <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 px-4 py-3 text-sm text-gray-500">
-                    {t('app.candidate_card.employment.loading')}
-                  </div>
-                ) : employmentHistory.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 px-4 py-3 text-sm text-gray-500">
-                    {t('app.candidate_card.employment.empty')}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-brand-50 bg-white/95 shadow-card">
-                    <table className="min-w-full divide-y divide-brand-100/70 text-sm">
-                      <thead className="bg-brand-50/60">
-                        <tr>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.employer')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.country')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.position')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.start')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.end')}</th>
-                          <th className="px-3 py-2 text-right"></th>
-                        </tr>
-                          </thead>
-                      <tbody className="divide-y divide-brand-100/70 bg-white/95">
-                        {employmentHistory.map((entry) => (
-                          <tr key={entry.id ?? entry.localId}>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                value={entry.employer_name || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'employer_name', e.target.value)}
-                                placeholder={t('app.candidate_card.employment.placeholders.employer')}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                value={entry.country || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'country', e.target.value.toUpperCase())}
-                                placeholder={t('app.candidate_card.employment.placeholders.country')}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                value={entry.position || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'position', e.target.value)}
-                                placeholder={t('app.candidate_card.employment.placeholders.position')}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                type="date"
-                                value={entry.start_date || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'start_date', e.target.value)}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                type="date"
-                                value={entry.end_date || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'end_date', e.target.value)}
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                className="btn-ghost text-sm text-gray-500 hover:text-rose-600"
-                                onClick={()=>removeEmploymentRow(entry.localId)}
-                              >
-                                {t('common.actions.delete')}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section
-              ref={employerRef}
-              id="section-employer"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🏢</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.employer.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.employer.description')}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="block md:col-span-2">
-                  <div className="label">{t('app.candidate_card.fields.vacancy')}</div>
-                  <SearchableSelect
-                    options={vacancyOpts}
-                    value={(model.vacancy_id as string) || ''}
-                    onChange={(v) => {
-                      if (!v) {
-                        setModel(m => m && ({
-                          ...m,
-                          vacancy_id: null,
-                          vacancy_name: '',
-                          company_id: null,
-                          company_name: '',
-                        }))
-                        return
-                      }
-                      const opt = vacancyOpts.find(o => o.value === v)
-                      const company_id = opt?.extra?.company_id || null
-                      const company_name = opt?.extra?.company_name || model.company_name || ''
-                      const vacancy_label = opt?.label || ''
-                      setModel(m => m && ({
-                        ...m,
-                        vacancy_id: v as any,
-                        vacancy_name: vacancy_label,
-                        company_id,
-                        company_name: company_name || m.company_name || '',
-                      }))
-                    }}
-                    placeholder={selectTexts.empty}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">{t('app.candidate_card.messages.vacancy_hint')}</p>
-                </label>
-                <Input
-                  label={t('app.candidate_card.fields.company')}
-                  value={model.company_name || ''}
-                  readOnly
-                  placeholder="—"
-                  hint={t('app.candidate_card.fields.company_hint')}
-                />
-              </div>
-            </section>
-
-          </div>
-            {!isNew && (
-              <aside
-                ref={notesRef}
-                id="section-notes"
-                className="app-surface sticky top-20 h-fit w-full max-w-sm space-y-3 self-start rounded-2xl p-5 shadow-lg lg:w-80 lg:justify-self-end lg:ml-auto"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">🗒️</span>
-                    <div>
-                      <h3 className="text-base font-semibold text-gray-900">{t('app.candidate_card.sections.notes.title')}</h3>
-                      <p className="text-xs text-gray-500">{t('app.candidate_card.sections.notes.description')}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-ghost text-xs"
-                    onClick={()=> model?.id && fetchNotes(String(model.id))}
-                    disabled={notesLoading}
-                  >{notesLoading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}</button>
-                </div>
-                <div className="flex items-start gap-2">
-                  <textarea
-                    className="input min-h-[72px] flex-1"
-                    placeholder={t('app.candidate_card.notes.placeholder')}
-                    value={newNote}
-                    onChange={e=>setNewNote(e.target.value)}
-                  />
-                  <button type="button" className="btn-primary" onClick={addNote} disabled={noteSending || !newNote.trim()}>
-                    {noteSending ? t('app.candidate_card.actions.saving_note') : t('common.actions.add')}
-                  </button>
-                </div>
-                <div className="divide-y rounded-lg border bg-white">
-                  {notes.length === 0 && (
-                    <div className="p-3 text-gray-500">{t('app.candidate_card.notes.empty')}</div>
-                  )}
-                  {notes.map(n => (
-                    <div key={n.id} className="p-3">
-                      <div className="mb-1 text-sm text-gray-500">
-                        <span className="mr-2">{new Date(n.created_at).toLocaleString()}</span>
-                        <span className="rounded bg-gray-100 px-2 py-0.5">
-                          {t(`app.candidate_card.notes.visibility.${n.visibility}`, { defaultValue: n.visibility })}
-                        </span>
-                      </div>
-                      <div className="whitespace-pre-wrap break-words">{n.text}</div>
-                    </div>
+                <select
+                  id="candidate-override-reason"
+                  className="input mt-1 w-full"
+                  value={candidateOverrideReason}
+                  onChange={(e) => setCandidateOverrideReason(e.target.value)}
+                >
+                  <option value="">{t('app.candidate_card.override_reason_placeholder')}</option>
+                  {overrideReasonOptions.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
                   ))}
-                </div>
-              </aside>
-            )}
-          </div>
-        )}
-        {/* DOCS */}
-        {tab==='docs' && (
-          <div className="space-y-4">
-            <div className="app-surface p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">{t('app.candidate_card.tabs.docs')}</p>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.docs.helper')}</p>
+                </select>
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() => setCandidateEditPhase('idle')}
+                  >
+                    {t('app.candidate_card.override_modal.cancel_edit')}
+                  </button>
+                  <button type="button" className="btn-primary btn-sm" onClick={() => confirmOverrideReasonStartEdit()}>
+                    {t('app.candidate_card.override_modal.continue_edit')}
+                  </button>
                 </div>
               </div>
-              {!isNew && model.id ? (
-                <CandidateDocuments
-                  key={String(model.id)}
-                  candidateId={String(model.id)}
-                  {...({
-                    ownerContext: { citizenship: (extra as any)?.citizenship || '' },
-                    onFieldsApplied: (doc: any, fields: Record<string, any>) =>
-                      applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
-                  } as any)}
-                />
-              ) : (
-                <div className="text-gray-500">{t('app.candidate_card.docs.disabled')}</div>
-              )}
+            </>,
+            document.body,
+          )
+        : null}
+
+      {/* Documents side panel */}
+      {!isMasked && docsDrawerOpen && model?.id ? (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={closeDocsDrawer}>
+          <div
+            className="fixed right-0 top-0 h-full w-full max-w-6xl overflow-hidden rounded-l-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-slate-200 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
+                  {t('app.candidate_card.docs_panel.title')}
+                </div>
+                <button type="button" className="btn-secondary btn-sm" onClick={closeDocsDrawer}>
+                  {t('common.actions.close')}
+                </button>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-primary btn-sm"
+                  onClick={() => void generateUploadLink()}
+                  disabled={uploadLinkBusy}
+                >
+                  {uploadLinkBusy
+                    ? t('app.candidate_card.actions.upload_link_creating')
+                    : t('app.candidate_card.actions.upload_link')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => void downloadBundle()}
+                  disabled={downloadingBundle}
+                >
+                  {downloadingBundle
+                    ? t('app.candidate_card.actions.exporting_bundle')
+                    : t('app.candidate_card.actions.export_bundle')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => setDocsSummaryRefreshTrigger((x) => x + 1)}
+                >
+                  {t('app.candidate_card.actions.refresh')}
+                </button>
+              </div>
+              {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
+                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
+                  <div className="font-medium text-slate-800">
+                    {t('app.candidate_card.docs.upload_link_label')}
+                  </div>
+                  <div className="mt-1 break-all text-slate-600">
+                    {new URL(uploadLink.documents_url || uploadLink.apply_url, window.location.origin).toString()}
+                  </div>
+                  {uploadLink.expires_at ? (
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      {t('app.candidate_card.docs.upload_link_expires', {
+                        values: { date: formatDateSafe(uploadLink.expires_at, locale) || uploadLink.expires_at },
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="h-full overflow-auto p-3">
+              <CandidateDocuments
+                key={`${model.id}:${docsDrawerType || 'default'}`}
+                candidateId={String(model.id)}
+                hideHeader
+                candidateProfile={candidateProfile}
+                initialType={docsDrawerType}
+                onDocumentsChanged={handleDocumentsChanged}
+                {...({
+                  ownerContext: docsOwnerContext,
+                  onFieldsApplied: (doc: any, fields: Record<string, any>) =>
+                    applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
+                } as any)}
+              />
             </div>
           </div>
-        )}
-        {/* SERVICES */}
-        {tab === 'services' && (
-          <div className="space-y-4">
-            {!isNew && model.id ? (
-              <CandidateServicesSection
-                candidateId={String(model.id)}
-                canManage={can('services.orders.manage')}
-              />
-            ) : (
-              <div className="text-gray-500">{t('app.candidate_card.services.disabled')}</div>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
-      <div className="flex justify-end gap-2">
-        <button className="btn-ghost" onClick={()=>nav(-1)}>{t('common.actions.cancel')}</button>
-        <button className="btn-primary disabled:opacity-60" disabled={saving} onClick={save}>
-          {saving ? t('common.saving') : (isNew ? t('common.actions.create') : t('common.actions.save'))}
-        </button>
-      </div>
-      <StageHistoryModal
-        open={historyOpen}
-        loading={historyLoading}
-        error={historyError}
-        infoMessage={historyInfo}
-        entries={stageHistory}
-        onClose={closeHistoryModal}
-        onReload={reloadStageHistory}
-        resolveStageLabel={resolveStageLabel}
-      />
     </div>
   )
 }
@@ -2654,15 +5059,15 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
   const formatItemStatus = (status: string) => itemStatusLabels[status] || status
 
   return (
-    <div className="md:col-span-2 app-surface p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">{t('app.candidate_card.services.title')}</div>
-        <div className="flex items-center gap-2">
-          <button type="button" className="btn-ghost text-sm" onClick={reload} disabled={loading}>
+    <div className="min-w-0 space-y-2 rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs font-semibold text-slate-800">{t('app.candidate_card.services.title')}</div>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <button type="button" className="btn-secondary btn-sm" onClick={reload} disabled={loading}>
             {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
           </button>
           {canManage && (
-            <Link to="/app/services" className="btn-ghost text-sm">
+            <Link to={servicesWorkspacePath('orders', { candidateId })} className="btn-secondary btn-sm">
               {t('app.candidate_card.services.open_module')}
             </Link>
           )}
@@ -2670,11 +5075,11 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-500">{t('app.candidate_card.services.loading')}</div>
+        <div className="text-sm text-slate-500">{t('app.candidate_card.services.loading')}</div>
       ) : orders.length === 0 ? (
-        <div className="text-sm text-gray-500">{t('app.candidate_card.services.empty')}</div>
+        <div className="text-sm text-slate-500">{t('app.candidate_card.services.empty')}</div>
       ) : (
-        <div className="overflow-auto rounded-2xl border border-brand-50 bg-white/95 shadow-card">
+        <div className="max-h-56 overflow-auto rounded-xl border border-slate-200/90 bg-slate-50/40">
           <table className="min-w-full divide-y divide-brand-100/70 text-sm">
             <thead className="bg-brand-50/60">
               <tr>
@@ -2688,136 +5093,24 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td className="px-3 py-2 font-mono text-xs">{order.id.slice(0, 12)}…</td>
-                  <td className="px-3 py-2 uppercase text-xs text-gray-500">{formatOrderStatus(order.status)}</td>
+                  <td className="px-3 py-2 uppercase text-xs text-slate-500">{formatOrderStatus(order.status)}</td>
                   <td className="px-3 py-2 text-xs">
                     <ul className="list-disc list-inside space-y-1">
                       {order.items.map((item) => (
                         <li key={item.id}>
-                          <span className="font-medium text-gray-700">{item.service?.name || item.service_id}</span>
-                          <span className="ml-2 text-gray-500">{formatItemStatus(item.status)}</span>
+                          <span className="font-medium text-slate-700">{item.service?.name || item.service_id}</span>
+                          <span className="ml-2 text-slate-500">{formatItemStatus(item.status)}</span>
                         </li>
                       ))}
                     </ul>
                   </td>
-                  <td className="px-3 py-2 text-right text-sm text-gray-700">{formatAmount(order.total_amount)}</td>
+                  <td className="px-3 py-2 text-right text-sm text-slate-700">{formatAmount(order.total_amount)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-    </div>
-  )
-}
-
-type StageHistoryModalProps = {
-  open: boolean
-  loading: boolean
-  error: string | null
-  infoMessage: string | null
-  entries: StageHistoryEntry[]
-  onClose: () => void
-  onReload: () => void
-  resolveStageLabel: (code: string | null | undefined) => string
-}
-
-function StageHistoryModal({
-  open,
-  loading,
-  error,
-  infoMessage,
-  entries,
-  onClose,
-  onReload,
-  resolveStageLabel,
-}: StageHistoryModalProps) {
-  const { t } = useI18n()
-  if (!open) return null
-
-  const renderStage = (code: string | null | undefined) => {
-    if (!code) return <span className="text-gray-400">—</span>
-    const label = resolveStageLabel(code)
-    return (
-      <div className="flex items-center gap-2">
-        <StageTag code={code} />
-        <span>{label || code}</span>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-3xl bg-white/98 shadow-2xl ring-1 ring-black/10"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-brand-100/60 bg-brand-50/40 px-4 py-3">
-          <div className="text-lg font-semibold">{t('app.candidate_card.history.modal.title')}</div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="btn-ghost text-sm"
-              onClick={onReload}
-              disabled={loading}
-            >
-              {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
-            </button>
-            <button type="button" className="btn-ghost text-sm" onClick={onClose}>
-              {t('common.actions.close')}
-            </button>
-          </div>
-        </div>
-        <div className="max-h-[calc(80vh-56px)] overflow-auto">
-          {loading ? (
-            <div className="px-4 py-6 text-sm text-gray-500">{t('common.loading')}</div>
-          ) : error ? (
-            <div className="px-4 py-6 text-sm text-rose-600">{error}</div>
-          ) : entries.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-500">
-              {infoMessage || t('app.candidate_card.history.empty')}
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.when')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.change')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.actor')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.comment')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="px-3 py-2 text-xs text-gray-500">
-                      {entry.at ? formatDateTime(entry.at) : '—'}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>{t('app.candidate_card.history.modal.previous')}</span>
-                          {renderStage(entry.from_code)}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>{t('app.candidate_card.history.modal.next')}</span>
-                          {renderStage(entry.to_code)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-gray-600">{entry.actor || '—'}</td>
-                    <td className="px-3 py-2 text-xs text-gray-600">
-                      {entry.reason ? entry.reason : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
     </div>
   )
 }

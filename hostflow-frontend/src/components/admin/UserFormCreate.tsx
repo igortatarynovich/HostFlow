@@ -2,6 +2,7 @@ import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import type { Company, ManagerOption, UserRole } from '../../api/types'
 import { useI18n } from '../../i18n'
+import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 
 export interface CreateUserFormValues {
   email: string
@@ -20,11 +21,24 @@ interface UserFormCreateProps {
   onSubmit: (values: CreateUserFormValues) => Promise<void> | void
 }
 
-const ROLE_OPTIONS: UserRole[] = ['administrator', 'supervisor', 'recruiter', 'viewer']
+const ROLE_OPTIONS: UserRole[] = [
+  'administrator',
+  'supervisor',
+  'recruiter',
+  'client_manager',
+  'client_processor',
+  'compliance_officer',
+  'hr_officer',
+  'viewer',
+]
 const ROLE_LABELS: Record<UserRole, string> = {
   administrator: 'app.admin.users.roles.administrator',
   supervisor: 'app.admin.users.roles.supervisor',
   recruiter: 'app.admin.users.roles.recruiter',
+  client_manager: 'app.admin.users.roles.client_manager',
+  client_processor: 'app.admin.users.roles.client_processor',
+  compliance_officer: 'app.admin.users.roles.compliance_officer',
+  hr_officer: 'app.admin.users.roles.hr_officer',
   viewer: 'app.admin.users.roles.viewer',
 }
 
@@ -202,7 +216,17 @@ export function UserFormCreate({ loading, managerOptions, companyOptions, onSubm
         </label>
       </div>
 
-      {error && <div className="text-sm text-red-600">{error}</div>}
+      {error && (
+        <ErrorRecoveryBanner
+          info={{
+            title: error,
+            hint: t('app.common.retry_hint'),
+          }}
+          onRetry={() => setError(null)}
+          retryLabel={t('common.actions.close', { defaultValue: 'Close' })}
+          compact
+        />
+      )}
 
       <button type="submit" className="btn-primary" disabled={loading}>
         {loading ? t('app.admin.users.form.submitting') : t('app.admin.users.form.submit')}

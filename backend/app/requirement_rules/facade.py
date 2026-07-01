@@ -1,0 +1,112 @@
+"""Requirement Rules facade — resolves Entity Profile then compiles/evaluates rules (P1)."""
+
+from __future__ import annotations
+
+from typing import Any, Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
+from backend.app.entity_profile.facade import resolve_entity_profile_facade
+from backend.app.requirement_rules.evaluator import evaluate_requirement_rules
+from backend.app.requirement_rules.registry import (
+    RequirementRulesNotFoundError,
+    build_requirement_rule_set,
+)
+from backend.app.requirement_rules.tenant_override_repository import list_active_tenant_requirement_overrides
+
+
+async def resolve_requirement_rule_set(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_profile_code: str,
+    context: str = "readiness",
+    stage_code: str | None = None,
+    transition_code: str | None = None,
+) -> dict[str, Any]:
+    profile_code = str(entity_profile_code or "").strip()
+    if not profile_code:
+        raise RequirementRulesNotFoundError(entity_profile_code="")
+
+    try:
+        profile_view = await resolve_entity_profile_facade(
+            db,
+            tenant_id=str(tenant_id),
+            entity_profile_code=profile_code,
+            include_presentations=False,
+        )
+    except EntityProfileNotFoundError as exc:
+        raise RequirementRulesNotFoundError(entity_profile_code=profile_code) from exc
+
+    if profile_view.get("resolution_source") == "not_found" or not profile_view.get("profile"):
+        raise RequirementRulesNotFoundError(entity_profile_code=profile_code)
+
+    tenant_overrides = await list_active_tenant_requirement_overrides(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        entity_profile_code=profile_code,
+        context=str(context or "readiness").strip().lower(),
+        stage_code=stage_code,
+    )
+
+    return build_requirement_rule_set(
+        profile_view,
+        context=context,
+        stage_code=stage_code,
+        transition_code=transition_code,
+        tenant_overrides=tenant_overrides,
+    )
+
+
+async def evaluate_entity_requirements(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_profile_code: str,
+    context: str,
+    normalized_payload: Optional[dict[str, Any]] = None,
+    documents: Optional[list[Any]] = None,
+    candidate_evidence_by_requirement: Optional[dict[str, dict[str, Any]]] = None,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    stage_code: str | None = None,
+    transition_code: str | None = None,
+) -> dict[str, Any]:
+    profile_code = str(entity_profile_code or "").strip()
+    if not profile_code:
+        raise RequirementRulesNotFoundError(entity_profile_code="")
+
+    try:
+        profile_view = await resolve_entity_profile_facade(
+            db,
+            tenant_id=str(tenant_id),
+            entity_profile_code=profile_code,
+            include_presentations=False,
+        )
+    except EntityProfileNotFoundError as exc:
+        raise RequirementRulesNotFoundError(entity_profile_code=profile_code) from exc
+
+    if profile_view.get("resolution_source") == "not_found" or not profile_view.get("profile"):
+        raise RequirementRulesNotFoundError(entity_profile_code=profile_code)
+
+    tenant_overrides = await list_active_tenant_requirement_overrides(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        entity_profile_code=profile_code,
+        context=str(context or "readiness").strip().lower(),
+        stage_code=stage_code,
+    )
+
+    return evaluate_requirement_rules(
+        profile_view,
+        context=context,
+        normalized_payload=normalized_payload,
+        documents=documents,
+        candidate_evidence_by_requirement=candidate_evidence_by_requirement,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        stage_code=stage_code,
+        transition_code=transition_code,
+        tenant_overrides=tenant_overrides,
+    )

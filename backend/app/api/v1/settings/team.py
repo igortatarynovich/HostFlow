@@ -1,31 +1,33 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Annotated, Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.tenant import TenantType
+from backend.app.models.user import Role as UserRole
 from backend.app.schemas.user import UserOut
 from backend.app.services import users as users_service
 from backend.app.services import tenant_branding
+from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
+    HIRING_GATES_READ_ROLES,
+    HiringPipelineGatesPatch,
+    HiringPipelineGatesPublicOut,
+    get_hiring_pipeline_gates_core,
+    patch_hiring_pipeline_gates_core,
+)
 
 
 router = APIRouter(prefix="/team", tags=["settings-team"], redirect_slashes=False)
-
-
-def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
-    if (ctx.role or "").strip().lower() == Role.superadmin.value:
-        return
-    token_tenant = (ctx.tenant_id or "").strip()
-    if token_tenant and token_tenant != tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for tenant")
 
 
 class TeamOverviewResponse(BaseModel):
@@ -57,7 +59,31 @@ class SeatRequestCreate(BaseModel):
 
 TenantModuleSettings = platform_schemas.TenantModuleSettings
 TenantModuleSettingsPatch = platform_schemas.TenantModuleSettingsPatch
+TenantRoleModuleMatrix = platform_schemas.TenantRoleModuleMatrix
+EffectiveRoleModules = platform_schemas.EffectiveRoleModules
 SeatRequestOut = platform_schemas.TenantSeatRequestOut
+
+
+class VacancyRequirementsPresetIn(BaseModel):
+    id: str = Field(..., min_length=1, max_length=64)
+    label: str = Field(..., min_length=1, max_length=128)
+    criteria: Dict[str, object] = Field(default_factory=dict)
+
+
+class VacancyRequirementsPresetOut(BaseModel):
+    id: str
+    label: str
+    criteria: Dict[str, object] = Field(default_factory=dict)
+    updated_at: str | None = None
+
+
+class VacancyRequirementsPresetListOut(BaseModel):
+    items: list[VacancyRequirementsPresetOut]
+
+
+class RiskModelV1SettingsOut(BaseModel):
+    effective: Dict[str, Any]
+    overrides: Dict[str, Any]
 
 
 @router.get(
@@ -71,7 +97,7 @@ async def get_team_overview(
 ) -> TeamOverviewResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -111,7 +137,7 @@ async def update_branding(
 ) -> TeamTenantSummary:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -143,7 +169,7 @@ async def upload_branding_logo(
 ) -> TeamTenantSummary:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -166,7 +192,20 @@ async def upload_branding_logo(
 @router.get(
     "/modules",
     response_model=TenantModuleSettings,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.administrator,
+                Role.supervisor,
+                Role.recruiter,
+                Role.client_manager,
+                Role.client_processor,
+                Role.compliance_officer,
+                Role.hr_officer,
+                Role.viewer,
+            )
+        )
+    ],
 )
 async def get_module_settings(
     ctx: UserCtx = Depends(get_current_user),
@@ -174,12 +213,151 @@ async def get_module_settings(
 ) -> TenantModuleSettings:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
     modules = tenant_service.get_module_settings_snapshot(tenant)
     return TenantModuleSettings(**modules)
+
+
+@router.get(
+    "/vacancy-requirements-presets",
+    response_model=VacancyRequirementsPresetListOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager, Role.recruiter))],
+)
+async def list_vacancy_requirements_presets(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> VacancyRequirementsPresetListOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    items = tenant_service.get_vacancy_requirements_presets_snapshot(tenant)
+    return VacancyRequirementsPresetListOut(items=[VacancyRequirementsPresetOut(**i) for i in items])
+
+
+@router.put(
+    "/vacancy-requirements-presets/{preset_id}",
+    response_model=VacancyRequirementsPresetListOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+)
+async def upsert_vacancy_requirements_preset(
+    preset_id: str,
+    payload: VacancyRequirementsPresetIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> VacancyRequirementsPresetListOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        items = await tenant_service.upsert_vacancy_requirements_preset(
+            db,
+            tenant,
+            preset_id=preset_id,
+            label=payload.label,
+            criteria=dict(payload.criteria or {}),
+            actor_id=str(ctx.sub or "").strip() or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return VacancyRequirementsPresetListOut(items=[VacancyRequirementsPresetOut(**i) for i in items])
+
+
+@router.delete(
+    "/vacancy-requirements-presets/{preset_id}",
+    response_model=VacancyRequirementsPresetListOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+)
+async def delete_vacancy_requirements_preset(
+    preset_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> VacancyRequirementsPresetListOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        items = await tenant_service.delete_vacancy_requirements_preset(
+            db,
+            tenant,
+            preset_id=preset_id,
+            actor_id=str(ctx.sub or "").strip() or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return VacancyRequirementsPresetListOut(items=[VacancyRequirementsPresetOut(**i) for i in items])
+
+@router.get(
+    "/module-matrix",
+    response_model=TenantRoleModuleMatrix,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def get_module_matrix(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TenantRoleModuleMatrix:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    return TenantRoleModuleMatrix.model_validate(matrix)
+
+
+@router.get(
+    "/module-matrix/effective",
+    response_model=EffectiveRoleModules,
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.administrator,
+                Role.supervisor,
+                Role.recruiter,
+                Role.client_manager,
+                Role.client_processor,
+                Role.compliance_officer,
+                Role.hr_officer,
+                Role.viewer,
+            )
+        )
+    ],
+)
+async def get_effective_module_permissions(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> EffectiveRoleModules:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    # Match frontend usePermissions: on client (company) workspaces, JWT role "recruiter"
+    # is treated as client-side hiring staff; permissions use client_processor matrix there.
+    # Using recruiter cells here made documents.manage false when only client_processor had
+    # documents editable in the role matrix.
+    role_for_matrix = str(ctx.role or "").strip().lower()
+    if getattr(tenant, "type", None) == TenantType.company and role_for_matrix == UserRole.recruiter.value:
+        role_for_matrix = UserRole.client_processor.value
+    modules = tenant_service.get_effective_role_module_permissions(
+        tenant,
+        role=role_for_matrix,
+        user_id=ctx.sub,
+    )
+    return EffectiveRoleModules(role=ctx.role, modules=modules)
 
 
 @router.patch(
@@ -194,7 +372,7 @@ async def update_module_settings(
 ) -> TenantModuleSettings:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -223,7 +401,7 @@ async def list_seat_requests(
 ) -> List[SeatRequestOut]:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     requests = await tenant_service.list_seat_requests(db, tenant_id, limit=limit)
     return [SeatRequestOut.model_validate(item) for item in requests]
 
@@ -241,7 +419,7 @@ async def create_seat_request(
 ) -> SeatRequestOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     if not ctx.sub:
         raise HTTPException(status_code=400, detail="Missing actor")
     try:
@@ -256,3 +434,94 @@ async def create_seat_request(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return SeatRequestOut.model_validate(entry)
+
+
+@router.get(
+    "/hiring-pipeline-gates",
+    response_model=HiringPipelineGatesPublicOut,
+    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+)
+async def get_hiring_pipeline_gates(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HiringPipelineGatesPublicOut:
+    return await get_hiring_pipeline_gates_core(ctx, db_tenant)
+
+
+@router.patch(
+    "/hiring-pipeline-gates",
+    response_model=HiringPipelineGatesPublicOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def patch_hiring_pipeline_gates(
+    payload: HiringPipelineGatesPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HiringPipelineGatesPublicOut:
+    return await patch_hiring_pipeline_gates_core(payload, ctx, db_tenant)
+
+
+@router.get(
+    "/transfer-policy",
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def get_transfer_policy_settings(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> dict:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    from backend.app.services.transfer_policy_resolver import resolve_tenant_transfer_policy_summary
+
+    return await resolve_tenant_transfer_policy_summary(db, tenant_id=tenant_id)
+
+
+@router.get(
+    "/risk-model-v1",
+    response_model=RiskModelV1SettingsOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.client_manager))],
+)
+async def get_risk_model_v1_settings(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> RiskModelV1SettingsOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    view = await tenant_service.get_risk_model_v1_settings_view(db, tenant)
+    return RiskModelV1SettingsOut(**view)
+
+
+@router.patch(
+    "/risk-model-v1",
+    response_model=RiskModelV1SettingsOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def patch_risk_model_v1_settings(
+    payload: Annotated[Dict[str, Any], Body()],
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> RiskModelV1SettingsOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Body must be a JSON object",
+        )
+    try:
+        view = await tenant_service.patch_risk_model_v1_settings(db, tenant, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return RiskModelV1SettingsOut(**view)

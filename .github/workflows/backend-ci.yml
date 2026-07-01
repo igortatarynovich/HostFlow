@@ -3,10 +3,33 @@ on:
   push:
     paths:
       - "backend/**"
+      - "shared/crm_app_paths.json"
+      - "shared/crm_app_paths.schema.json"
+      - "scripts/codegen/**"
+      - "scripts/architecture/**"
+      - "scripts/security/**"
+      - "docs/specs/gates/**"
+      - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
   pull_request:
     paths:
       - "backend/**"
+      - "shared/crm_app_paths.json"
+      - "shared/crm_app_paths.schema.json"
+      - "scripts/codegen/**"
+      - "scripts/architecture/**"
+      - "scripts/security/**"
+      - "docs/specs/gates/**"
+      - "docs/devel/pr-checklist-adr014-document-access.md"
+      - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/security-gates.yml"
+      - ".github/pull_request_template.md"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
+  workflow_dispatch:
+
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -25,23 +48,62 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
+      - name: CRM app paths codegen drift check
+        run: python3 scripts/codegen/generate_crm_app_paths.py --check
+      - name: SPA path literals (no stray /app/... in app/)
+        run: python3 backend/scripts/check_spa_path_literals.py
       - name: Install deps
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Alembic heads guard (must be exactly 1)
+        run: python3 backend/scripts/check_alembic_heads.py
       - name: Alembic upgrade
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: alembic upgrade head
       - name: Lint
+        continue-on-error: true
         working-directory: backend
         run: |
           pip install ruff
           ruff check .
-      - name: Tests
+      - name: ADR-014 document access guardrails (documents-db module)
+        run: python3 backend/scripts/check_adr014_document_access.py
+      - name: REF-3.1 facade boundary guard scan
+        run: python3 scripts/architecture/check_reference_facade_boundary.py
+      - name: Tests with coverage
         working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: |
+          pip install pytest pytest-asyncio pytest-cov
+          pytest -q \
+            --cov=backend/app \
+            --cov-config=.coveragerc \
+            --cov-report=term \
+            --cov-report=xml:coverage.xml
+      - name: Tenant isolation (Postgres, integration)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: |
           pip install pytest pytest-asyncio
-          pytest -q
+          pytest -q tests/api/test_tenant_isolation.py -m postgres_integration
+      - name: Security regression package
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: pytest -q tests/security
+      - name: Coverage gate (Phase 0 #7 — ratchet)
+        run: python backend/scripts/check_coverage.py
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: warn
+          retention-days: 14

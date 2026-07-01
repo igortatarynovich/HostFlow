@@ -40,15 +40,6 @@ export function cacheVacancy(v: VacancyLike | VacancyLike[] | any) {
   }
 }
 
-export function mergeFromCache<T extends { id?: string }>(input: T | T[]): T | T[] {
-  if (Array.isArray(input)) {
-    return input.map((v: any) => (v?.id ? { ...(VACANCY_CACHE[v.id] || {}), ...v } : v)) as T[]
-  }
-  const v: any = input
-  if (!v || !v.id) return input
-  return { ...(VACANCY_CACHE[v.id] || {}), ...v }
-}
-
 // ===== formatting =====
 export function formatDate(value?: string | Date): string {
   if (!value) return ''
@@ -163,6 +154,10 @@ export function buildVacancyPayload(
     employment_type: employmentType,
   }
 
+  if (typeof form.candidate_profile_id !== 'undefined') {
+    payload.candidate_profile_id = form.candidate_profile_id || null
+  }
+
   if (form.status) {
     const s = String(form.status)
     payload.status = s
@@ -211,6 +206,20 @@ export function buildVacancyPayload(
   if (typeof form.is_active   !== 'undefined') payload.is_active   = !!form.is_active
   if (typeof form.is_archived !== 'undefined') payload.is_archived = !!form.is_archived
 
+  if (typeof form.headcount_target !== 'undefined') {
+    const raw = form.headcount_target
+    if (raw === '' || raw == null) {
+      payload.headcount_target = _mode === 'create' ? undefined : null
+    } else {
+      const n = Number(raw)
+      if (Number.isFinite(n) && n > 0) {
+        payload.headcount_target = Math.min(9999, Math.floor(n))
+      } else {
+        payload.headcount_target = _mode === 'create' ? undefined : null
+      }
+    }
+  }
+
   const extraObject: Record<string, any> = {
     salary: {
       from: hasFrom ? (Number.isFinite(numFrom!) ? numFrom : form.salary_from) : undefined,
@@ -230,7 +239,14 @@ export function buildVacancyPayload(
     stage:  form.status || undefined,
   }
 
-  payload.extra = extraObject
+  // Preserve unknown extra keys (e.g. lead_criteria_v1)
+  let baseExtra: any = _base?.extra ?? {}
+  if (typeof baseExtra === 'string') {
+    try { baseExtra = JSON.parse(baseExtra) } catch { baseExtra = {} }
+  }
+  if (!baseExtra || typeof baseExtra !== 'object' || Array.isArray(baseExtra)) baseExtra = {}
+
+  payload.extra = { ...baseExtra, ...extraObject }
 
   return payload
 }
@@ -249,10 +265,3 @@ export function unwrapVacancyList(input: any): VacancyLike[] {
   return []
 }
 
-// Согласовано с использованием на странице: (list, base?) -> Promise<list>
-export async function enrichVacancyList(list: any, _base?: any): Promise<VacancyLike[]> {
-  const arr = unwrapVacancyList(list)
-  const normalized = arr.map(normalizeVacancy)
-  cacheVacancy(normalized)
-  return normalized
-}

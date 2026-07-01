@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hostflow.local/schemas/crm_app_paths.schema.json",
+  "title": "CRM / SPA canonical paths",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "paths", "drilldown_hrefs", "python_exports"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "paths": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string", "pattern": "^/app" }
+    },
+    "path_comments": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "drilldown_hrefs": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^/app" }
+    },
+    "drilldown_comments": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "python_only_paths": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^/app" }
+    },
+    "python_exports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constants", "functions"],
+      "properties": {
+        "constants": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "literal"],
+                "properties": {
+                  "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+                  "literal": { "type": "string" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "path_key"],
+                "properties": {
+                  "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+                  "path_key": { "type": "string", "minLength": 1 }
+                }
+              }
+            ]
+          }
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "params", "body"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "params": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "body": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

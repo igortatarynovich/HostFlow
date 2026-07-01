@@ -1,7 +1,62 @@
 from __future__ import annotations
 
+import site
+import sys
+from pathlib import Path
+
+
+def _prepend_site_packages_for_alembic_library() -> None:
+    """``backend/alembic`` is the migration *script* tree; with ``backend/`` on ``sys.path`` it can
+    shadow the PyPI ``alembic`` package (breaking ``from alembic.operations import Operations``).
+
+    Prepend the ``site-packages`` directory that contains the real Alembic distribution so the
+    library wins without removing ``backend/`` (tests should import fixtures via ``backend.tests.conftest``).
+    """
+    here = Path(__file__).resolve()
+    backend_root = here.parents[1]
+    try:
+        backend_abs = backend_root.resolve()
+    except OSError:
+        return
+    on_backend_path = False
+    for raw in sys.path:
+        if raw == "":
+            try:
+                if Path.cwd().resolve() == backend_abs:
+                    on_backend_path = True
+                    break
+            except OSError:
+                continue
+        try:
+            if Path(raw).resolve() == backend_abs:
+                on_backend_path = True
+                break
+        except OSError:
+            continue
+    if not on_backend_path:
+        return
+    for sp in site.getsitepackages():
+        lib_root = Path(sp)
+        if not (lib_root / "alembic" / "__init__.py").is_file():
+            continue
+        if not (lib_root / "alembic" / "operations").is_dir():
+            continue
+        s = str(lib_root)
+        if s in sys.path:
+            sys.path.remove(s)
+        sys.path.insert(0, s)
+        return
+
+
+_prepend_site_packages_for_alembic_library()
+
 import asyncio
 import os
+
+# Must run before any backend import or .env load — blocks RODO/invite SMTP during pytest.
+os.environ["EMAIL_DELIVERY_MODE"] = "mock"
+
+import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict
@@ -19,6 +74,110 @@ os.environ["JWT_SECRET"] = os.environ.get("JWT_SECRET", "hostflow-dev-secret")
 os.environ["ALLOW_SQLITE_FOR_TESTS"] = "0"
 os.environ["DOCUMENTS_DISABLED"] = "0"
 os.environ.setdefault("DEV_DB_PATH", "/tmp/hostflow-test.db")
+# Avoid communications_scheduler_loop during ASGI lifespan (slow/teardown TimeoutError on dev DB).
+os.environ.setdefault("COMM_SCHEDULER_ENABLED", "0")
+# Enforced above with assignment (not setdefault): overrides backend/.env SMTP settings.
+# One connection per checkout: avoids asyncpg pool vs pytest-asyncio loop mismatch (Connection._cancel warnings).
+os.environ.setdefault("HOSTFLOW_SQLALCHEMY_NULL_POOL", "1")
+# PR-4A: skip heavy FastAPI lifespan bootstrap during integration tests (pytest.ini `env` is ignored without pytest-env).
+os.environ.setdefault("HOSTFLOW_TEST_LIGHT_STARTUP", "1")
+os.environ["RATE_LIMIT_ENABLED"] = "0"
+
+
+def _pytest_localize_postgres_host() -> None:
+    """Compose uses hostname `db`; on the dev host it often does not resolve (gaierror).
+
+    Rewrite ASYNC_DATABASE_URL / SYNC_DATABASE_URL / DATABASE_URL before any backend import
+    that builds the engine. Override with HOSTFLOW_TEST_DB_HOST or PYTEST_DB_HOST if needed.
+    """
+    import re
+    import socket
+    from pathlib import Path
+
+    try:
+        from dotenv import load_dotenv
+
+        _root = Path(__file__).resolve().parents[2]
+        load_dotenv(_root / ".env", override=False)
+        load_dotenv(_root / "backend" / ".env", override=False)
+    except Exception:
+        pass
+
+    keys = ("ASYNC_DATABASE_URL", "SYNC_DATABASE_URL", "DATABASE_URL")
+    override = (os.environ.get("HOSTFLOW_TEST_DB_HOST") or os.environ.get("PYTEST_DB_HOST") or "").strip()
+    if override:
+        for key in keys:
+            val = os.environ.get(key)
+            if val and "@db:" in val:
+                os.environ[key] = re.sub(r"@db:", f"@{override}:", val)
+        return
+
+    try:
+        socket.getaddrinfo("db", 5432, type=socket.SOCK_STREAM)
+        return
+    except OSError:
+        pass
+
+    for key in keys:
+        val = os.environ.get(key)
+        if val and "@db:" in val:
+            os.environ[key] = re.sub(r"@db:", "@127.0.0.1:", val)
+
+
+_pytest_localize_postgres_host()
+
+
+def _alembic_executable(repo_root: Path) -> str | None:
+    for rel in (".venv/bin/alembic", ".venv312/bin/alembic"):
+        p = repo_root / rel
+        if p.is_file():
+            return str(p)
+    import shutil
+
+    return shutil.which("alembic")
+
+
+def _env_with_local_db_host(base: dict[str, str]) -> dict[str, str]:
+    """Subprocess may run before app settings; mirror conftest @db → 127.0.0.1 rewrite."""
+    import re
+
+    out = dict(base)
+    for key in ("ALEMBIC_DATABASE_URL", "SYNC_DATABASE_URL", "DATABASE_URL", "ASYNC_DATABASE_URL"):
+        val = out.get(key)
+        if val and "@db:" in val:
+            out[key] = re.sub(r"@db:", "@127.0.0.1:", val)
+    return out
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Apply Alembic migrations so ORM columns (e.g. FTS tsvector) exist on the test DB."""
+    if os.environ.get("HOSTFLOW_SKIP_ALEMBIC_UPGRADE", "").strip().lower() in ("1", "true", "yes"):
+        return
+    backend_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
+    alembic_ini = backend_root / "alembic.ini"
+    if not alembic_ini.is_file():
+        return
+    url = (
+        os.environ.get("ALEMBIC_DATABASE_URL")
+        or os.environ.get("SYNC_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
+        or ""
+    )
+    if not url or url.startswith("sqlite:"):
+        return
+    alembic_bin = _alembic_executable(repo_root)
+    if not alembic_bin:
+        raise RuntimeError(
+            "Alembic executable not found (.venv/bin/alembic). Run `make install` or set HOSTFLOW_SKIP_ALEMBIC_UPGRADE=1."
+        )
+    subprocess.run(
+        [alembic_bin, "-c", str(alembic_ini), "upgrade", "head"],
+        cwd=str(backend_root),
+        check=True,
+        env=_env_with_local_db_host(os.environ),
+    )
+
 
 from backend.app.auth.jwt_tools import encode as encode_jwt  # noqa: E402
 from backend.app.core.security import hash_password  # noqa: E402
@@ -27,6 +186,56 @@ from backend.app.main import app  # noqa: E402
 from backend.app.models.user import Role as UserRole  # noqa: E402
 from backend.app.models.user import User  # noqa: E402
 from backend.app.models import Candidate  # noqa: E402
+from backend.app.models.tenant import TenantLicense  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _pytest_block_real_email_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Belt-and-suspenders: block SMTP even if EMAIL_DELIVERY_MODE was set in shell/.env."""
+    os.environ["EMAIL_DELIVERY_MODE"] = "mock"
+
+    class _NoopSMTP:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def starttls(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        def login(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        def sendmail(self, *args: object, **kwargs: object) -> dict:
+            return {}
+
+        def quit(self) -> None:
+            return None
+
+    import smtplib
+
+    monkeypatch.setattr(smtplib, "SMTP", _NoopSMTP)
+    monkeypatch.setattr(smtplib, "SMTP_SSL", _NoopSMTP)
+
+    async def _noop_send_email_for_tenant(*args: object, **kwargs: object) -> bool:
+        return True
+
+    async def _noop_send_system_email(*args: object, **kwargs: object) -> bool:
+        return True
+
+    monkeypatch.setattr(
+        "backend.app.services.tenant_email.send_email_for_tenant",
+        _noop_send_email_for_tenant,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo.send_email_for_tenant",
+        _noop_send_email_for_tenant,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.app.services.system_email.send_system_email",
+        _noop_send_system_email,
+        raising=False,
+    )
 
 
 @pytest.fixture
@@ -68,11 +277,46 @@ async def _init_data() -> Dict[str, str]:
         supervisor_password = "Supervisor123!"
         recruiter_email = "recruiter@work-host.com"
         recruiter_password = "Recruiter123!"
+        hr_officer_email = "hr.officer@work-host.com"
+        hr_officer_password = "HrOfficer123!"
 
         candidate_id: str | None = None
 
         async with async_session_maker() as session:
             await _set_tenant(session, DEFAULT_TENANT_ID)
+
+            if session.get_bind().dialect.name == "postgresql":
+                await session.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS candidate_permits (
+                            id VARCHAR(36) PRIMARY KEY,
+                            tenant_id VARCHAR(36) NOT NULL,
+                            candidate_id VARCHAR(36) NOT NULL,
+                            permit_type VARCHAR(64) NOT NULL,
+                            number VARCHAR(128),
+                            status VARCHAR(32) NOT NULL,
+                            issued_on VARCHAR(32),
+                            expires_on VARCHAR(32),
+                            meta TEXT,
+                            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+                        )
+                        """
+                    )
+                )
+                await session.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_candidate_permits_candidate "
+                        "ON candidate_permits(candidate_id)"
+                    )
+                )
+                await session.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_candidate_permits_tenant "
+                        "ON candidate_permits(tenant_id)"
+                    )
+                )
 
             admin = await session.scalar(
                 select(User).where(func.lower(User.email) == admin_email.lower())
@@ -168,6 +412,29 @@ async def _init_data() -> Dict[str, str]:
                 recruiter.is_active = True
                 recruiter.supervisor_id = supervisor.id
 
+            hr_officer = await session.scalar(
+                select(User).where(func.lower(User.email) == hr_officer_email.lower())
+            )
+            if hr_officer is None:
+                hr_officer = User(
+                    id=str(uuid.uuid4()),
+                    email=hr_officer_email,
+                    password_hash=hash_password(hr_officer_password),
+                    role=UserRole.hr_officer,
+                    short_id="HROFF001",
+                    full_name="HostFlow HR Officer",
+                    tenant_id=DEFAULT_TENANT_ID,
+                    is_active=True,
+                )
+                session.add(hr_officer)
+            else:
+                hr_officer.password_hash = hash_password(hr_officer_password)
+                hr_officer.role = UserRole.hr_officer
+                hr_officer.short_id = hr_officer.short_id or "HROFF001"
+                hr_officer.full_name = hr_officer.full_name or "HostFlow HR Officer"
+                hr_officer.tenant_id = hr_officer.tenant_id or DEFAULT_TENANT_ID
+                hr_officer.is_active = True
+
             await session.flush()
 
             async def ensure_membership(user_id: str, role: str) -> None:
@@ -192,6 +459,7 @@ async def _init_data() -> Dict[str, str]:
             await ensure_membership(viewer.id, "viewer")
             await ensure_membership(supervisor.id, "supervisor")
             await ensure_membership(recruiter.id, "recruiter")
+            await ensure_membership(hr_officer.id, "hr_officer")
 
             result = await session.execute(
                 sa.text(
@@ -267,6 +535,17 @@ async def _init_data() -> Dict[str, str]:
                     {"manager": recruiter.id, "company_id": company_id, "id": candidate_id},
                 )
 
+            # Shared dev DB may seed tenant_licenses with finite caps; vacancy API then returns 402.
+            lic_row = await session.execute(
+                select(TenantLicense).where(TenantLicense.tenant_id == DEFAULT_TENANT_ID).limit(1)
+            )
+            lic = lic_row.scalar_one_or_none()
+            if lic is not None:
+                lic.max_vacancies_active = 0
+                lic.max_candidates_active = 0
+                # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.
+                lic.max_documents = 0
+
             await session.commit()
 
         _BOOTSTRAP.update(
@@ -280,6 +559,8 @@ async def _init_data() -> Dict[str, str]:
                 "supervisor_email": supervisor.email,
                 "recruiter_id": recruiter.id,
                 "recruiter_email": recruiter.email,
+                "hr_officer_id": hr_officer.id,
+                "hr_officer_email": hr_officer.email,
                 "company_id": company_id,
                 "candidate_id": candidate_id,
             }
@@ -305,12 +586,21 @@ def _build_token(user_id: str, email: str, role: str, tenant_id: str, supervisor
 
 
 @pytest_asyncio.fixture
+async def db():
+    """Async DB session for unit tests (e.g. audit, services)."""
+    await _init_data()
+    async with async_session_maker() as session:
+        await _set_tenant(session, DEFAULT_TENANT_ID)
+        yield session
+
+
+@pytest_asyncio.fixture
 async def client() -> AsyncClient:
     """
     In-memory HTTP client bound to FastAPI app with lifespan triggers.
     """
-    async with LifespanManager(app):
-        await _init_data()
+    await _init_data()
+    async with LifespanManager(app, startup_timeout=120.0, shutdown_timeout=60.0):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
             yield c
@@ -318,8 +608,8 @@ async def client() -> AsyncClient:
 
 @pytest_asyncio.fixture
 async def app_with_db() -> AsyncClient:
-    async with LifespanManager(app):
-        await _init_data()
+    await _init_data()
+    async with LifespanManager(app, startup_timeout=120.0, shutdown_timeout=60.0):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as c:
             yield c
@@ -329,6 +619,12 @@ async def app_with_db() -> AsyncClient:
 async def tenant_id() -> str:
     data = await _init_data()
     return data["tenant_id"]
+
+
+@pytest_asyncio.fixture
+async def bootstrap() -> Dict[str, str]:
+    """Stable tenant/user/candidate ids from `_init_data()` (same keys across tests)."""
+    return await _init_data()
 
 
 @pytest_asyncio.fixture
@@ -362,6 +658,17 @@ async def recruiter_token(tenant_id: str) -> str:
         "recruiter",
         tenant_id,
         data.get("supervisor_id"),
+    )
+
+
+@pytest_asyncio.fixture
+async def hr_officer_token(tenant_id: str) -> str:
+    data = await _init_data()
+    return _build_token(
+        data["hr_officer_id"],
+        data["hr_officer_email"],
+        "hr_officer",
+        tenant_id,
     )
 
 
@@ -401,6 +708,14 @@ async def recruiter_headers(recruiter_token: str, tenant_id: str) -> Dict[str, s
 
 
 @pytest_asyncio.fixture
+async def hr_officer_headers(hr_officer_token: str, tenant_id: str) -> Dict[str, str]:
+    return {
+        "Authorization": f"Bearer {hr_officer_token}",
+        "X-Tenant-Id": tenant_id,
+    }
+
+
+@pytest_asyncio.fixture
 async def viewer_headers(viewer_token: str, tenant_id: str) -> Dict[str, str]:
     return {
         "Authorization": f"Bearer {viewer_token}",
@@ -420,7 +735,8 @@ def auth_headers(manager_token: str, tenant_id: str) -> Dict[str, str]:
 async def candidate_id() -> str:
     data = await _init_data()
     candidate_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
+    # Candidate.created_at/updated_at are naive UTC columns.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     async with async_session_maker() as session:
         await _set_tenant(session, data["tenant_id"])
         candidate = Candidate(

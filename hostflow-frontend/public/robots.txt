@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Private/authenticated workspace
+Disallow: /app
+
+# Tokenized and non-indexable public flows
+Disallow: /public/apply/
+Disallow: /public/apply-old/
+Disallow: /public/status/
+
+Sitemap: https://hostflow.cc/sitemap.xml

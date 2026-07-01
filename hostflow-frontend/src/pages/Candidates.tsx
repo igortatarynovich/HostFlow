@@ -1,13 +1,35 @@
 // src/pages/Candidates.tsx
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import api from '../api/client'
-import { patchUserMe } from '../api/users'
+import { useCallback, useEffect, useMemo, useRef, useState, forwardRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
+import {
+  IconArrowRight,
+  IconBookmark,
+  IconBookmarkFilled,
+  IconClipboardList,
+  IconLayoutSidebarLeftExpand,
+  IconListCheck,
+  IconMail,
+  IconPhone,
+  IconX,
+} from '@tabler/icons-react'
+import api, {
+  completeActivity,
+  completeReminder,
+  createActivity,
+  createBulkActivities,
+  snoozeActivity,
+} from '../api/client'
+import { recordPerfMeasurement } from '../api/analytics'
+import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import type { Candidate, UserSavedView, Vacancy } from '../api/types'
-import StageTag from '../components/StageTag'
+import type { ReminderRecord } from '../api/types/notification'
 import { Modal } from '../components/Modal'
+import { ActivitiesPanel } from '../components/activities/ActivitiesPanel'
+import EmptyStatePanel from '../components/EmptyStatePanel'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useMetaStages } from '../store/useMeta'
 import { usePermissions } from '../hooks/usePermissions'
 import { useAuth } from '../store/useAuth'
@@ -18,522 +40,148 @@ import {
   translateReasonLabel,
   translateStageLabel,
 } from '../utils/stageLabels'
+import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
+import { filterRecruitmentVisibleStageCodes } from '../constants/recruitmentStageSurface'
+import { getRegionDisplayName } from '../utils/catalogLocale'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import Pipeline from './Pipeline'
-
-// simple CSV creator
-function toCSV(rows: any[], headers: { key: string; title: string }[]) {
-  const esc = (v: any) => {
-    if (v === null || v === undefined) return ''
-    const s = String(v)
-    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
-    return s
-  }
-  const head = headers.map(h => esc(h.title)).join(',')
-  const body = rows.map(r => headers.map(h => esc(r[h.key])).join(',')).join('\n')
-  return head + '\n' + body
-}
-
-const DOC_READINESS_META: Record<string, { labelKey: string; className: string }> = {
-  pending: { labelKey: 'app.candidates.docs.readiness.pending', className: 'bg-gray-100 text-gray-600' },
-  requested: { labelKey: 'app.candidates.docs.readiness.requested', className: 'bg-blue-50 text-blue-700' },
-  ordered: { labelKey: 'app.candidates.docs.readiness.ordered', className: 'bg-indigo-50 text-indigo-700' },
-  in_progress: { labelKey: 'app.candidates.docs.readiness.in_progress', className: 'bg-sky-50 text-sky-700' },
-  awaiting_review: { labelKey: 'app.candidates.docs.readiness.awaiting_review', className: 'bg-amber-50 text-amber-700' },
-  ready: { labelKey: 'app.candidates.docs.readiness.ready', className: 'bg-green-50 text-green-700' },
-  problem: { labelKey: 'app.candidates.docs.readiness.problem', className: 'bg-rose-50 text-rose-700' },
-}
-
-const DOC_READINESS_ORDER: Record<string, number> = {
-  problem: 6,
-  awaiting_review: 5,
-  in_progress: 4,
-  ordered: 3,
-  requested: 2,
-  pending: 1,
-  ready: 0,
-}
-
-const DOC_ORDER_FILTERS: Array<{ value: string; labelKey: string }> = [
-  { value: 'ordered', labelKey: 'app.candidates.docs.order_filter.ordered' },
-  { value: 'not_ordered', labelKey: 'app.candidates.docs.order_filter.not_ordered' },
-]
-
-const QUICK_DOC_STATUS_SETS: Record<string, string[]> = {
-  ready: ['ready'],
-  attention: ['problem', 'awaiting_review', 'in_progress'],
-  pending: ['pending', 'requested', 'ordered'],
-}
-
-const sanitizeDocsProgress = (value: any): Record<string, any> => {
-  if (value == null) return {}
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value)
-      return typeof parsed === 'object' && !Array.isArray(parsed) && parsed ? parsed : {}
-    } catch {
-      return {}
-    }
-  }
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    return { ...value }
-  }
-  return {}
-}
-
-const firstNonEmpty = (...values: any[]): string => {
-  for (const val of values) {
-    if (val == null) continue
-    const str = String(val).trim()
-    if (str) return str
-  }
-  return ''
-}
-
-const normalizeDateString = (value: any): string | null => {
-  if (!value) return null
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed) return null
-    const parsed = Date.parse(trimmed)
-    if (Number.isNaN(parsed)) {
-      return trimmed.length >= 10 ? trimmed.slice(0, 10) : trimmed
-    }
-    return new Date(parsed).toISOString().slice(0, 10)
-  }
-  return null
-}
-
-const toTimestamp = (value: string | null): number => {
-  if (!value) return 0
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? 0 : parsed
-}
-
-const formatDateSafe = (value: string | null): string => {
-  if (!value) return '—'
-  const parsed = Date.parse(value)
-  if (Number.isNaN(parsed)) return value
-  return new Date(parsed).toLocaleDateString()
-}
-
-type DocsMeta = {
-  readinessState: string
-  readinessLabelKey: string
-  readinessClass: string
-  readinessKey: string
-  rank: number
-  orderDate: string | null
-  orderTs: number
-  validFrom: string | null
-  validTs: number
-  hasFiles: boolean
-  isOrdered: boolean
-}
-
-const deriveDocsMeta = (candidate: UICandidate): DocsMeta => {
-  const progress = sanitizeDocsProgress(candidate.docs_progress)
-
-  const readinessRaw = firstNonEmpty(
-    candidate.docs_readiness_state,
-    progress.readiness_state,
-    progress.readinessState,
-    progress.state,
-  ).toLowerCase()
-
-  let readiness = readinessRaw
-
-  const orderedAt = normalizeDateString(
-    candidate.docs_last_ordered_at ??
-      progress.last_ordered_at ??
-      progress.ordered_at ??
-      progress.orderedAt ??
-      progress.timeline?.ordered_at ??
-      progress.timeline?.orderedAt ??
-      progress.most_recent_ordered_at ??
-      null,
-  )
-
-  const validFrom = normalizeDateString(
-    candidate.docs_next_valid_from ??
-      progress.next_valid_from ??
-      progress.valid_from ??
-      progress.validFrom ??
-      progress.timeline?.valid_from ??
-      progress.timeline?.validFrom ??
-      null,
-  )
-
-  const total = Number(progress.total ?? progress.count ?? 0) || 0
-  const readyCount = Number(progress.ready ?? progress.verified ?? progress.approved ?? 0) || 0
-  const problemCount =
-    Number(progress.problem ?? progress.invalid ?? progress.expired ?? progress.overdue ?? 0) || 0
-  const inProgressCount =
-    Number(progress.in_progress ?? progress.submitted ?? progress.pending_validation ?? 0) || 0
-  const orderedCount =
-    Number(progress.ordered ?? progress.requested ?? progress.pending ?? progress.ordered_count ?? 0) || 0
-  const withFilesCount =
-    Number(progress.with_files ?? progress.uploaded ?? progress.files ?? progress.files_count ?? 0) || 0
-
-  const hasFiles =
-    typeof candidate.docs_has_files === 'boolean'
-      ? candidate.docs_has_files
-      : Boolean(withFilesCount > 0)
-
-  const isOrdered =
-    Boolean(orderedAt) ||
-    Boolean(orderedCount > 0) ||
-    readiness === 'ordered' ||
-    String(progress.latest_status || '').toLowerCase() === 'ordered'
-
-  if (!readiness) {
-    if (problemCount > 0) readiness = 'problem'
-    else if (readyCount > 0 && readyCount >= (total || readyCount)) readiness = 'ready'
-    else if (inProgressCount > 0) readiness = 'in_progress'
-    else if (isOrdered) readiness = 'ordered'
-    else if (hasFiles || withFilesCount > 0) readiness = 'awaiting_review'
-    else if (total > 0) readiness = 'pending'
-    else readiness = 'pending'
-  }
-
-  const meta = DOC_READINESS_META[readiness] ?? DOC_READINESS_META.pending
-  const rank =
-    typeof candidate.docs_readiness_rank === 'number'
-      ? candidate.docs_readiness_rank
-      : DOC_READINESS_ORDER[readiness] ?? 0
-
-  return {
-    readinessState: readiness,
-    readinessLabelKey: meta.labelKey,
-    readinessClass: meta.className,
-    readinessKey: readiness,
-    rank,
-    orderDate: orderedAt,
-    orderTs: toTimestamp(orderedAt),
-    validFrom: validFrom,
-    validTs: toTimestamp(validFrom),
-    hasFiles,
-    isOrdered,
-  }
-}
-
-const extractExtraObject = (raw: any): Record<string, any> => {
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    return raw
-  }
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed
-      }
-    } catch {
-      /* ignore malformed JSON */
-    }
-  }
-  return {}
-}
-
-type CandidateExtraNormalized = {
-  citizenship: string | null
-  preferredContact: string | null
-  firstContactAt: string | null
-  inPoland: boolean | null
-  polandStayBasis: string | null
-  trailerTypes: string[]
-}
-
-type DateRangeFilter = { from: string | null; to: string | null }
-
-type ColumnTextFilters = {
-  name: string
-  email: string
-  phone: string
-  citizenship: string
-  short: string
-}
-
-const makeEmptyTextFilters = (): ColumnTextFilters => ({
-  name: '',
-  email: '',
-  phone: '',
-  citizenship: '',
-  short: '',
-})
-
-const EMPTY_OPTION_VALUE = '__empty__'
-
-const normalizeCandidateExtra = (raw: any): CandidateExtraNormalized => {
-  const extra = extractExtraObject(raw)
-  const asString = (value: any): string | null => {
-    if (typeof value !== 'string') return null
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : null
-  }
-  const toBool = (value: any): boolean | null => {
-    if (value === true) return true
-    if (value === false) return false
-    if (typeof value === 'string') {
-      const normalized = value.trim().toLowerCase()
-      if (normalized === 'true' || normalized === 'yes') return true
-      if (normalized === 'false' || normalized === 'no') return false
-    }
-    if (typeof value === 'number') {
-      if (value === 1) return true
-      if (value === 0) return false
-    }
-    return null
-  }
-  const arrayOfStrings = (value: any): string[] => {
-    if (!value) return []
-    if (Array.isArray(value)) {
-      return value.map((item) => String(item).trim()).filter((item) => item.length > 0)
-    }
-    if (typeof value === 'string') {
-      if (!value.trim()) return []
-      try {
-        const parsed = JSON.parse(value)
-        if (Array.isArray(parsed)) {
-          return parsed.map((item) => String(item).trim()).filter((item) => item.length > 0)
-        }
-      } catch {
-        return value
-          .split(',')
-          .map((piece) => piece.trim())
-          .filter((piece) => piece.length > 0)
-      }
-    }
-    return []
-  }
-
-  return {
-    citizenship: asString(extra.citizenship ?? extra.passport_country) ?? null,
-    preferredContact: asString(extra.preferred_contact) ?? null,
-    firstContactAt: asString(extra.first_contact_at) ?? null,
-    inPoland: toBool(extra.in_poland),
-    polandStayBasis: asString(extra.poland_stay_basis) ?? null,
-    trailerTypes: arrayOfStrings(extra.trailer_types),
-  }
-}
-
-const isRangeActive = (range: DateRangeFilter): boolean => Boolean(range.from || range.to)
-
-const parseBoundary = (value: string | null, endOfDay = false): number | null => {
-  if (!value) return null
-  const parsed = Date.parse(value)
-  if (Number.isNaN(parsed)) return null
-  if (!endOfDay) return parsed
-  const end = new Date(parsed)
-  end.setHours(23, 59, 59, 999)
-  return end.getTime()
-}
-
-const matchesDateRange = (value: string | null, range: DateRangeFilter): boolean => {
-  if (!isRangeActive(range)) return true
-  if (!value) return false
-  const target = Date.parse(value)
-  if (Number.isNaN(target)) return false
-  const from = parseBoundary(range.from, false)
-  const to = parseBoundary(range.to, true)
-  if (from !== null && target < from) return false
-  if (to !== null && target > to) return false
-  return true
-}
-
-const compareStrings = (a: string | null | undefined, b: string | null | undefined): number =>
-  (a || '').localeCompare(b || '', undefined, { sensitivity: 'base' })
-
-const compareNumbers = (a: number, b: number): number => a - b
-
-const normalizeStageKey = (value?: string | null): string => (value ?? '').trim().toLowerCase()
-const isLikelyNewStage = (stage: string) => stage === 'new' || stage.startsWith('new_') || stage.includes('new')
-
-const normalizeSearchValue = (value: string): string => value.trim().toLowerCase()
-const textMatches = (source: string | null | undefined, query: string): boolean => {
-  if (!query) return true
-  if (!source) return false
-  return source.toLowerCase().includes(query)
-}
-
-const boolRank = (value: boolean | null | undefined): number => {
-  if (value === true) return 2
-  if (value === false) return 1
-  return 0
-}
-
-const getCandidateVacancyId = (candidate: UICandidate): string | null => {
-  const raw =
-    (candidate as any)?.vacancy_id ??
-    (candidate as any)?.vacancy?.id ??
-    (candidate as any)?.vacancy_uuid ??
-    null
-  if (!raw) return null
-  const value = String(raw)
-  return value && value !== 'null' ? value : null
-}
-
-const getCandidateManagerId = (candidate: UICandidate): string | null => {
-  const raw =
-    (candidate as any)?.manager_id ??
-    (candidate as any)?.manager?.id ??
-    (candidate as any)?.manager ??
-    null
-  if (!raw) return null
-  const value = String(raw)
-  return value && value !== 'null' ? value : null
-}
-
-type UICandidate = Candidate & {
-  manager_name?: string | null
-  manager_short?: string | null
-}
-
-type AugmentedCandidate = UICandidate & {
-  __docsMeta: DocsMeta
-  __extra: CandidateExtraNormalized
-  __reasonCodes: string[]
-  __reasonFallbackLabels: string[]
-}
-
-type ManagerItem = { id: string; name: string }
-
-// API may return either a plain array or a paginated object
-type ListResp = { items?: UICandidate[]; total?: number } | UICandidate[]
-
-type CandidateFilterSnapshot = {
-  stage: string[]
-  vacancy: string[]
-  manager: string[]
-  statusReasons: string[]
-  docsStatus: string[]
-  docsOrdered: string[]
-  createdRange: DateRangeFilter
-  firstContactRange: DateRangeFilter
-  docsValidRange: DateRangeFilter
-  preferredChannels: string[]
-  polandPresence: string[]
-  polandBasis: string[]
-  trailerTypes: string[]
-  docsHasFiles: string[]
-  query: string
-  textFilters: ColumnTextFilters
-}
-
-type SortKey =
-  | 'created_at'
-  | 'name'
-  | 'email'
-  | 'phone'
-  | 'citizenship'
-  | 'vacancy'
-  | 'short_id'
-  | 'manager'
-  | 'stage'
-  | 'reasons'
-  | 'docs_status'
-  | 'docs_ordered_at'
-  | 'docs_valid_from'
-  | 'docs_has_files'
-  | 'first_contact'
-  | 'preferred_channel'
-  | 'in_poland'
-  | 'poland_basis'
-  | 'trailer_types'
-
-const SORTABLE_KEYS: SortKey[] = [
-  'created_at',
-  'name',
-  'email',
-  'phone',
-  'citizenship',
-  'vacancy',
-  'short_id',
-  'manager',
-  'stage',
-  'reasons',
-  'docs_status',
-  'docs_ordered_at',
-  'docs_valid_from',
-  'docs_has_files',
-  'first_contact',
-  'preferred_channel',
-  'in_poland',
-  'poland_basis',
-  'trailer_types',
-]
-
-const isSortKey = (value: any): value is SortKey =>
-  typeof value === 'string' && SORTABLE_KEYS.includes(value as SortKey)
-
-const DEFAULT_VISIBLE_COLS: Record<string, boolean> = {
-  name: true,
-  email: true,
-  phone: true,
-  citizenship: true,
-  vacancy: true,
-  short: true,
-  manager: true,
-  stage: true,
-  created: true,
-  firstContact: true,
-  preferredChannel: true,
-  inPoland: true,
-  polandBasis: true,
-  trailerTypes: true,
-  reasons: true,
-  docsStatus: true,
-  docsOrdered: false,
-  docsValid: false,
-  docsFiles: true,
-}
-
-const FILTER_STORAGE_KEY = 'cand.filters'
-const VISIBLE_COLS_STORAGE_KEY = 'cand.visibleCols'
-
-// универсальный фетчер, который пытается разные варианты пагинации
-async function getWithFallbacks<T = any>(
-  path: string,
-  params: Record<string, any>
-) {
-  const limit = params.limit ?? 50
-  const offset = params.offset ?? 0
-  const vacancy = params.vacancy_id ?? params.vacancy ?? undefined
-  const common = {
-    q: params.q,
-    stage: params.stage,
-    order_by: params.order_by,
-    desc: params.desc,
-    status_reason: params.status_reason,
-    // пробуем оба ключа для фильтра по вакансии
-    vacancy_id: vacancy,
-    vacancy: vacancy,
-  }
-
-  const attempts = [
-    { ...common, limit, offset },                              // вариант 1: limit/offset
-    { ...common, limit, skip: offset },                        // вариант 2: limit/skip
-    { ...common, page: Math.floor(offset / limit) + 1, per_page: limit }, // вариант 3: page/per_page
-    { ...common, limit },                                      // вариант 4: только limit
-    { ...common },                                             // вариант 5: без пагинации
-  ]
-
-  let lastErr: any = null
-  for (const p of attempts) {
-    try {
-      const res = await api.get<T>(path, { params: p })
-      return res
-    } catch (e: any) {
-      const status = e?.response?.status
-      // если это не 422 — нет смысла продолжать попытки
-      if (status && status !== 422) throw e
-      lastErr = e
-    }
-  }
-  throw lastErr
-}
+import {
+  DOC_READINESS_META,
+  DOC_READINESS_ORDER,
+  DOC_ORDER_FILTERS,
+  QUICK_DOC_STATUS_SETS,
+  FILTER_STORAGE_KEY,
+  VISIBLE_COLS_STORAGE_KEY,
+  COLUMN_WIDTHS_STORAGE_KEY,
+  COLUMN_ORDER_STORAGE_KEY,
+  CANDIDATE_LIST_STORAGE_KEY,
+  CANDIDATE_CACHE_TTL_MS,
+  SCROLL_STATE_KEY,
+  APP_SCROLL_SELECTOR,
+  EMPTY_OPTION_VALUE,
+  SORTABLE_KEYS,
+  DEFAULT_VISIBLE_COLS,
+  DEFAULT_COLUMN_ORDER,
+  CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX,
+} from '../modules/candidates/constants'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
+import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import type {
+  DateRangeFilter,
+  ColumnTextFilters,
+  CandidateOpsMode,
+  UICandidate,
+  DocsMeta,
+  CandidateExtraNormalized,
+  AugmentedCandidate,
+  ManagerItem,
+  ListResp,
+  CandidateFilterSnapshot,
+  CandidateListCacheEntry,
+  CandidatesListInsights,
+  SortKey,
+} from '../modules/candidates/types'
+import { makeEmptyTextFilters } from '../modules/candidates/types'
+import { formatErrorForDisplay, getErrorInfo } from '../utils/errorHandling'
+import {
+  deriveDocsMeta,
+  normalizeCandidateExtra,
+  getCandidateVacancyId,
+  getCandidateManagerId,
+} from '../modules/candidates/utils'
+import {
+  sanitizeDocsProgress,
+  firstNonEmpty,
+  normalizeDateString,
+  toTimestamp,
+  formatDateSafe,
+  extractExtraObject,
+  isRangeActive,
+  parseBoundary,
+  matchesDateRange,
+  compareStrings,
+  compareNumbers,
+  normalizeStageKey,
+  isLikelyNewStage,
+  normalizeSearchValue,
+  phoneTextMatches,
+  textMatches,
+  boolRank,
+} from '../modules/candidates/candidateUtils'
+import { isSortKey } from '../modules/candidates/constants'
+import {
+  BulkStageModal,
+  BulkManagerModal,
+  BulkVacancyModal,
+  BulkHandoffModal,
+  BulkTagsModal,
+  BulkActivitiesModal,
+  BulkDeleteModal,
+  ColumnFilterMenu,
+  FilterBadges,
+  CandidatesSummaryHero,
+  CandidatesQuickViewsBar,
+  CandidatesWorkPanel,
+  CandidatesSelectedPanel,
+  CandidatesLeftRailPanel,
+  CandidatesTableCheckboxCell,
+  CandidatesTableRowNamePreview,
+  CandidatesTableRowStageCell,
+  CandidatesFiltersToolbar,
+  CandidateQuickTaskModal,
+} from '../modules/candidates/components'
+import { CandidatesDebugPanel } from '../modules/candidates/components/CandidatesDebugPanel'
+import { CandidatesBulkModalsCluster } from '../modules/candidates/components/CandidatesBulkModalsCluster'
+import { CandidatesTableRowCells } from '../modules/candidates/components/CandidatesTableRowCells'
+import { CandidatesTableColumnHeaderContent } from '../modules/candidates/components/CandidatesTableColumnHeaderContent'
+import { filterCandidates as filterCandidatesPure } from '../modules/candidates/candidateFilters'
+import {
+  normalizeArrayFilter,
+  normalizeRangeFilter,
+  normalizeReasonList,
+  normalizeTextFilterState,
+  normalizeOpsModeList,
+} from '../modules/candidates/filterNormalizers'
+import { useCandidatesFiltersState } from '../modules/candidates/hooks/useCandidatesFiltersState'
+import { useCandidatesFilterOptions } from '../modules/candidates/hooks/useCandidatesFilterOptions'
+import { useCandidatesUrlSync } from '../modules/candidates/hooks/useCandidatesUrlSync'
+import { useCandidatesFiltersPersistence } from '../modules/candidates/hooks/useCandidatesFiltersPersistence'
+import { useCandidatesUpdateListener } from '../modules/candidates/hooks/useCandidatesUpdateListener'
+import { useCandidatesWorkPanel } from '../modules/candidates/hooks/useCandidatesWorkPanel'
+import { useCandidatesInsightsHero } from '../modules/candidates/hooks/useCandidatesInsightsHero'
+import { useCandidatesSavedViews } from '../modules/candidates/hooks/useCandidatesSavedViews'
+import { useCandidatesQuickViews } from '../modules/candidates/hooks/useCandidatesQuickViews'
+import { useCandidatesTableData } from '../modules/candidates/hooks/useCandidatesTableData'
+import { useCandidatesTableKeyboardNavigation } from '../modules/candidates/hooks/useCandidatesTableKeyboardNavigation'
+import { useCandidatesTableColumnsDnDResize } from '../modules/candidates/hooks/useCandidatesTableColumnsDnDResize'
+import { useCandidatesScrollRestoration } from '../modules/candidates/hooks/useCandidatesScrollRestoration'
+import {
+  useCandidatesManagersCatalog,
+  useCandidatesVacanciesCatalog,
+  useCandidatesHandoffClientsLazy,
+} from '../modules/candidates/hooks/useCandidatesCatalogs'
+import { useCandidatesBulkActions } from '../modules/candidates/hooks/useCandidatesBulkActions'
+import { createBulkHandoff, type AvailableClientOut } from '../api/handoffs'
+import {
+  candidateListCache,
+  normalizeListInsights,
+  getWithFallbacks,
+  parseRiskShadowMinBand,
+  TEAM_WORK_PANEL_ASSIGNEE_ROLES,
+  WP_ASSIGNEE_STORAGE_KEY,
+} from '../modules/candidates/internal'
+import {
+  fetchCandidateListAvailableStatuses,
+  type CandidateListAvailableStatuses,
+} from '../api/candidatesFacets'
 
 export default function Candidates(){
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>(() =>
     searchParams.get('view') === 'kanban' ? 'kanban' : 'table'
@@ -542,31 +190,152 @@ export default function Candidates(){
 
   const [q, setQ] = useState('')
   const [stageFilter, setStageFilter] = useState<string[]>([])
+  const [candidateRowStatusFilter, setCandidateRowStatusFilter] = useState<string[]>([])
   const [vacancyFilter, setVacancyFilter] = useState<string[]>([])
   const [managerFilter, setManagerFilter] = useState<string[]>([])
   const [docsStatusFilter, setDocsStatusFilter] = useState<string[]>([])
   const [docsOrderedFilter, setDocsOrderedFilter] = useState<string[]>([])
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
 
-  const [items, setItems] = useState<UICandidate[]>([])
-  const [limit] = useState(100)
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [limit] = useState(200)
+  // items/total/loading/errorText/listInsights are managed by SSOT hook.
+
+  const { me: meForWorkPanel } = useAuth()
+  const tenantIdForWorkPanel = useCurrentTenantId()
+  const tenantScopeKeyForWorkPanel = (tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
+    ? String(tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
+    : 'default'
+  const canUseTeamWorkPanelAssigneeScope = useMemo(() => {
+    const r = String(meForWorkPanel?.role || '').trim().toLowerCase()
+    return TEAM_WORK_PANEL_ASSIGNEE_ROLES.has(r)
+  }, [meForWorkPanel?.role])
+  const [workPanelAssigneeScope, setWorkPanelAssigneeScopeState] = useState<'mine' | 'team'>('mine')
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`${WP_ASSIGNEE_STORAGE_KEY}:${tenantScopeKeyForWorkPanel}`)
+      if (raw === 'team' || raw === 'mine') setWorkPanelAssigneeScopeState(raw)
+      else setWorkPanelAssigneeScopeState('mine')
+    } catch {
+      setWorkPanelAssigneeScopeState('mine')
+    }
+  }, [tenantScopeKeyForWorkPanel])
+  useEffect(() => {
+    if (!canUseTeamWorkPanelAssigneeScope && workPanelAssigneeScope === 'team') {
+      setWorkPanelAssigneeScopeState('mine')
+    }
+  }, [canUseTeamWorkPanelAssigneeScope, workPanelAssigneeScope])
+  const setWorkPanelAssigneeScope = useCallback(
+    (next: 'mine' | 'team') => {
+      if (next === 'team' && !canUseTeamWorkPanelAssigneeScope) return
+      setWorkPanelAssigneeScopeState(next)
+      try {
+        localStorage.setItem(`${WP_ASSIGNEE_STORAGE_KEY}:${tenantScopeKeyForWorkPanel}`, next)
+      } catch {
+        /* ignore */
+      }
+    },
+    [canUseTeamWorkPanelAssigneeScope, tenantScopeKeyForWorkPanel],
+  )
+
+  const {
+    // Work panel selection + open/close state.
+    selectedCandidateId,
+    setSelectedCandidateId,
+    sidebarOpen,
+    setSidebarOpen,
+    workPanelOpen,
+
+    // Preview state + handlers.
+    nextActionDetailsOpenTrigger,
+    bumpNextActionDetailsOpen,
+    previewReminders,
+    previewRemindersLoading,
+    previewRemindersError,
+    previewReminderBusy,
+    previewReminderTitle,
+    previewReminderDueAt,
+    previewReminderOffset,
+    setPreviewReminderTitle,
+    setPreviewReminderDueAt,
+    setPreviewReminderOffset,
+    previewTimelineItems,
+    previewTimelineLoading,
+    previewTimelineError,
+    previewTimelineExpanded,
+    setPreviewTimelineExpanded,
+    loadPreviewTimeline,
+    docsBlockers,
+    docsBlockersLoading,
+    setDocsBlockers,
+    setDocsBlockersLoading,
+    handleCreatePreviewReminder,
+    handleDocsRequestCreate,
+    handleCompletePreviewReminder,
+    handlePreviewReminderSnooze,
+    previewCandidateExtra,
+    previewDocumentsSummarySnapshot,
+    previewRequirementsSummary,
+    previewPipelineOverrides,
+    usesRequirementBlockers,
+    previewCommsLinks,
+  } = useCandidatesWorkPanel({ t, workPanelAssigneeScope })
+
+  const docsRailEmbeddedSummary = useMemo(
+    () => ({
+      ready: !previewRemindersLoading,
+      summary: previewDocumentsSummarySnapshot,
+    }),
+    [previewRemindersLoading, previewDocumentsSummarySnapshot],
+  )
+
+  // Keep the latest values for stable row click/context handlers.
+  const sidebarOpenRef = useRef<boolean>(sidebarOpen)
+  const selectedCandidateIdRef = useRef<string | null>(selectedCandidateId)
+  useEffect(() => {
+    sidebarOpenRef.current = sidebarOpen
+  }, [sidebarOpen])
+  useEffect(() => {
+    selectedCandidateIdRef.current = selectedCandidateId
+  }, [selectedCandidateId])
+
+  const PREVIEW_TIMELINE_COLLAPSED_COUNT = 15
+
+  const [taskQuickModal, setTaskQuickModal] = useState<{ id: string; label: string } | null>(null)
+
+  const showDebugPanel = searchParams.get('debug') === '1'
+  const [debugHit, setDebugHit] = useState<{
+    tag?: string
+    className?: string
+    pointerEvents?: string
+    insideTable?: boolean
+  } | null>(null)
+  const [debugClickHit, setDebugClickHit] = useState<typeof debugHit>(null)
+  const [debugMouseUpHit, setDebugMouseUpHit] = useState<typeof debugHit>(null)
+  const [debugClickHitBubble, setDebugClickHitBubble] = useState<typeof debugHit>(null)
+  const [debugMouseUpHitBubble, setDebugMouseUpHitBubble] = useState<typeof debugHit>(null)
 
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [bulkOpen, setBulkOpen] = useState(false)
   const [bulkStage, setBulkStage] = useState<string>('')
   const [bulkReasons, setBulkReasons] = useState<string[]>([])
   const [statusReasonFilter, setStatusReasonFilter] = useState<string[]>([])
+  const [tagsFilter, setTagsFilter] = useState<string[]>([])
+  const [isFavoriteFilter, setIsFavoriteFilter] = useState<boolean | null>(null)
   const [preferredChannelFilter, setPreferredChannelFilter] = useState<string[]>([])
   const [inPolandFilter, setInPolandFilter] = useState<string[]>([])
+  const [opsModeFilter, setOpsModeFilter] = useState<CandidateOpsMode[]>([])
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [polandBasisFilter, setPolandBasisFilter] = useState<string[]>([])
   const [trailerTypesFilter, setTrailerTypesFilter] = useState<string[]>([])
   const [createdRange, setCreatedRange] = useState<DateRangeFilter>({ from: null, to: null })
   const [firstContactRange, setFirstContactRange] = useState<DateRangeFilter>({ from: null, to: null })
   const [docsValidRange, setDocsValidRange] = useState<DateRangeFilter>({ from: null, to: null })
   const [docsHasFilesFilter, setDocsHasFilesFilter] = useState<string[]>([])
+  const [handoffStatusFilter, setHandoffStatusFilter] = useState<string>('')
+  const [contactAttemptsFilter, setContactAttemptsFilter] = useState<string>('')
+  const [processorFilter, setProcessorFilter] = useState<string>('')
+  const [intakeApplicationKindFilter, setIntakeApplicationKindFilter] = useState<'client' | 'candidate' | ''>('')
   const [textFilters, setTextFilters] = useState<ColumnTextFilters>(() => makeEmptyTextFilters())
   const setTextFilter = useCallback(
     (key: keyof ColumnTextFilters, value: string) => {
@@ -582,33 +351,134 @@ export default function Candidates(){
   const [managers, setManagers] = useState<ManagerItem[]>([])
   const [bulkManagerOpen, setBulkManagerOpen] = useState(false)
   const [bulkManagerId, setBulkManagerId] = useState('')
-  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false)
 
   const [bulkVacancyOpen, setBulkVacancyOpen] = useState(false)
   const [bulkVacancyId, setBulkVacancyId] = useState('')
 
+  const [bulkTagsOpen, setBulkTagsOpen] = useState(false)
+  const [bulkTagsOperation, setBulkTagsOperation] = useState<'add' | 'remove'>('add')
+  const [bulkTagsList, setBulkTagsList] = useState<string>('')
+
+  const [bulkActivitiesOpen, setBulkActivitiesOpen] = useState(false)
+  const [bulkActivityTitle, setBulkActivityTitle] = useState('')
+  const [bulkActivityDueAt, setBulkActivityDueAt] = useState(() =>
+    new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+  )
+  const [bulkActivityOffsetMinutes, setBulkActivityOffsetMinutes] = useState(60)
+  const [bulkActivityType, setBulkActivityType] = useState('custom')
+
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [activitiesModalOpen, setActivitiesModalOpen] = useState(false)
+  const [activitiesModalRefresh, setActivitiesModalRefresh] = useState(0)
+
+  const [bulkHandoffOpen, setBulkHandoffOpen] = useState(false)
+  const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
+  const [handoffClientsLoading, setHandoffClientsLoading] = useState(false)
+  const [bulkHandoffClientId, setBulkHandoffClientId] = useState('')
+
   const { me, preferences, updatePreferences } = useAuth()
-  const tenantScopeKey = me?.tenant_id ? String(me.tenant_id) : 'default'
+  const currentTenantId = useCurrentTenantId()
+  const tenantScopeKey = (currentTenantId ?? me?.tenant_id) ? String(currentTenantId ?? me?.tenant_id) : 'default'
+  const digestShadowBucket = useMemo(() => searchParams.get('shadow_bucket')?.trim() || null, [searchParams])
+  const digestShadowMinBand = useMemo(() => {
+    const explicit =
+      parseRiskShadowMinBand(searchParams.get('shadow_min_band')) ??
+      parseRiskShadowMinBand(searchParams.get('shadow_bucket_min_band'))
+    if (!digestShadowBucket) return null
+    return explicit ?? 'high'
+  }, [searchParams, digestShadowBucket])
+  /** §2.14: same list shell as main Candidates; data via GET /candidates/no-next-action (see useCandidatesTableData). */
+  const operationalQueue = useMemo<'no_next_action' | null>(() => {
+    const raw = (searchParams.get('queue') || searchParams.get('quick_view') || '').trim().toLowerCase()
+    if (raw === 'no_next_action') return 'no_next_action'
+    const filt = (searchParams.get('filter') || '').trim().toLowerCase()
+    if (filt === 'action_required') return 'no_next_action'
+    return null
+  }, [searchParams])
+  const recruiterUnassignedOnly = useMemo(() => {
+    const v = (searchParams.get('recruiter_unassigned') || '').trim().toLowerCase()
+    return v === '1' || v === 'true'
+  }, [searchParams])
   const filterStorageKey = useMemo(() => `${FILTER_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
   const visibleColsStorageKey = useMemo(() => `${VISIBLE_COLS_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
+  const columnWidthsStorageKey = useMemo(() => `${COLUMN_WIDTHS_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
+  const columnOrderStorageKey = useMemo(() => `${COLUMN_ORDER_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
+  const listStorageKey = useMemo(() => `${CANDIDATE_LIST_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
+  // Include filter state in cache key so count and items update when filters change (was: same key for all filters → stale total)
+  const filterSignature = useMemo(() => {
+    const p: Record<string, string> = {
+      q: (q || '').trim(),
+      stages: stageFilter.slice().sort().join(','),
+      status_reason: statusReasonFilter.slice().sort().join(','),
+      tags: tagsFilter.slice().sort().join(','),
+      vacancy_id: vacancyFilter.slice().sort().join(','),
+      manager_id: managerFilter.slice().sort().join(','),
+      documents_ordered: docsOrderedFilter.join(','),
+      ops_mode: opsModeFilter.slice().sort().join(','),
+      handoff_status: handoffStatusFilter || '',
+      contact_attempts: contactAttemptsFilter || '',
+      processor_id: processorFilter || '',
+      shadow_bucket: digestShadowBucket || '',
+      shadow_min_band: digestShadowMinBand || '',
+      created_from: createdRange.from || '',
+      created_to: createdRange.to || '',
+      is_favorite: isFavoriteFilter === null ? '' : String(isFavoriteFilter),
+      intake_application_kind: intakeApplicationKindFilter || '',
+      operational_queue: operationalQueue || '',
+      recruiter_unassigned: recruiterUnassignedOnly ? '1' : '',
+    }
+    const s = JSON.stringify(p)
+    let h = 0
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
+    return (h >>> 0).toString(36)
+  }, [
+    q,
+    stageFilter,
+    statusReasonFilter,
+    tagsFilter,
+    vacancyFilter,
+    managerFilter,
+    docsOrderedFilter,
+    opsModeFilter,
+    handoffStatusFilter,
+    contactAttemptsFilter,
+    processorFilter,
+    digestShadowBucket,
+    digestShadowMinBand,
+    createdRange.from,
+    createdRange.to,
+    isFavoriteFilter,
+    intakeApplicationKindFilter,
+    operationalQueue,
+    recruiterUnassignedOnly,
+  ])
+  const cacheKey = useMemo(
+    () => `candidates:list:${tenantScopeKey}:${filterSignature}`,
+    [tenantScopeKey, filterSignature]
+  )
+  const scrollKey = useMemo(() => `${SCROLL_STATE_KEY}:${tenantScopeKey}:${viewMode}`, [tenantScopeKey, viewMode])
 
-  const vacancySavedViews = useMemo(() => preferences?.saved_views?.vacancies ?? [], [preferences?.saved_views?.vacancies])
-  const [savedViews, setSavedViews] = useState<UserSavedView[]>(preferences?.saved_views?.candidates ?? [])
-  const [saveViewOpen, setSaveViewOpen] = useState(false)
-  const [saveViewName, setSaveViewName] = useState('')
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
-  const appliedDefaultIdRef = useRef<string | null>(null)
   const actionsMenuRef = useRef<HTMLDivElement | null>(null)
+  
+  // Контекстное меню для строк
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; candidateId: string } | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement | null>(null)
+  
+  // Рефы для управления обновлением кандидатов
+  const updateInProgressRef = useRef<Set<string>>(new Set())
+  const lastUpdateTimeRef = useRef<Map<string, number>>(new Map())
+  // Храним ID недавно обновленных кандидатов, чтобы они оставались видимыми даже если не проходят фильтры
+  const recentlyUpdatedIdsRef = useRef<Map<string, number>>(new Map())
+  
+  // Для отслеживания предыдущего пути
+  const prevLocationRef = useRef<string | null>(null)
 
   const preferredManagerId = useMemo(() => {
     const selfId = (me as any)?.sub || (me as any)?.id || ''
     if (selfId && managers.some(m => m.id === selfId)) return selfId
     return managers[0]?.id || ''
   }, [managers, me])
-
-  useEffect(() => {
-    setSavedViews(preferences?.saved_views?.candidates ?? [])
-  }, [preferences?.saved_views?.candidates])
 
   useEffect(() => {
     if (!actionsMenuOpen) return
@@ -621,146 +491,76 @@ export default function Candidates(){
     return () => document.removeEventListener('mousedown', handleClick)
   }, [actionsMenuOpen])
 
-  const syncCandidateViews = useCallback(async (next: UserSavedView[]) => {
-    setSavedViews(next)
-    try {
-      const result = await patchUserMe({
-        preferences: {
-          saved_views: {
-            candidates: next,
-            vacancies: vacancySavedViews,
-          },
-        },
-      })
-      updatePreferences(result.preferences)
-    } catch (err) {
-      console.warn('[Candidates] failed to persist saved views', err)
-      setSavedViews(preferences?.saved_views?.candidates ?? [])
-    }
-  }, [updatePreferences, vacancySavedViews, preferences?.saved_views?.candidates])
-
-  const normalizeReasonList = useCallback((value: any): string[] => {
-    if (value == null) return []
-    const parts = new Set<string>()
-    const push = (input: unknown) => {
-      if (input == null) return
-      if (Array.isArray(input)) {
-        input.forEach((entry) => push(entry))
-        return
-      }
-      if (typeof input === 'object') {
-        const obj = input as Record<string, unknown>
-        const candidate =
-          obj.code ??
-          obj.value ??
-          obj.id ??
-          obj.reason ??
-          obj.label ??
-          obj.name ??
-          (typeof obj.text === 'string' ? obj.text : undefined)
-        if (candidate) {
-          push(candidate)
-        }
-        if (Array.isArray(obj.codes)) {
-          obj.codes.forEach((entry) => push(entry))
-        }
-        return
-      }
-      const str = String(input)
-      str
-        .split(',')
-        .map((chunk) => chunk.trim())
-        .filter(Boolean)
-        .forEach((chunk) => parts.add(chunk))
-    }
-    push(value)
-    return Array.from(parts)
-  }, [])
-
-  const normalizeArrayFilter = useCallback((value: any): string[] => {
-    if (!value) return []
-    if (Array.isArray(value)) {
-      return value.map((item) => String(item)).filter((item) => item.trim().length > 0)
-    }
-    if (typeof value === 'string') {
-      return value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    }
-    return [String(value)]
-  }, [])
-  const normalizeRangeFilter = useCallback((value: any): DateRangeFilter => {
-    const sanitize = (input: any): string | null => {
-      if (typeof input !== 'string') return null
-      const trimmed = input.trim()
-      return trimmed ? trimmed.slice(0, 10) : null
-    }
-    if (!value || typeof value !== 'object') {
-      return { from: null, to: null }
-    }
-    return {
-      from: sanitize((value as any).from),
-      to: sanitize((value as any).to),
-    }
-  }, [])
-  const normalizeTextFilterState = useCallback((value: any): ColumnTextFilters => {
-    if (!value || typeof value !== 'object') return makeEmptyTextFilters()
-    return {
-      name: typeof value.name === 'string' ? value.name : '',
-      email: typeof value.email === 'string' ? value.email : '',
-      phone: typeof value.phone === 'string' ? value.phone : '',
-      citizenship: typeof value.citizenship === 'string' ? value.citizenship : '',
-      short: typeof value.short === 'string' ? value.short : '',
-    }
-  }, [])
-
-  const applyViewFilters = useCallback(
-    (filters: Record<string, any> | undefined) => {
-      setQ(filters?.q ?? '')
-      setStageFilter(normalizeArrayFilter(filters?.stage ?? filters?.stages))
-      setVacancyFilter(normalizeArrayFilter(filters?.vacancy ?? filters?.vacancyId ?? filters?.vacancies))
-      setManagerFilter(normalizeArrayFilter(filters?.managers ?? filters?.manager))
-      setStatusReasonFilter(normalizeReasonList(filters?.statusReason ?? filters?.status_reason))
-      setDocsStatusFilter(normalizeArrayFilter(filters?.docsStatus))
-      setDocsOrderedFilter(normalizeArrayFilter(filters?.docsOrdered))
-      setPreferredChannelFilter(normalizeArrayFilter(filters?.preferredChannel ?? filters?.preferred_contact))
-      setInPolandFilter(normalizeArrayFilter(filters?.inPoland ?? filters?.in_poland))
-      setPolandBasisFilter(normalizeArrayFilter(filters?.polandBasis ?? filters?.poland_basis))
-      setTrailerTypesFilter(normalizeArrayFilter(filters?.trailerTypes ?? filters?.trailer_types))
-      setCreatedRange(normalizeRangeFilter(filters?.createdRange ?? filters?.created_at))
-      setFirstContactRange(normalizeRangeFilter(filters?.firstContactRange ?? filters?.first_contact_at))
-      setDocsValidRange(normalizeRangeFilter(filters?.docsValidRange ?? filters?.docs_valid_from))
-      setDocsHasFilesFilter(normalizeArrayFilter(filters?.docsHasFiles ?? filters?.docs_has_files))
-      setTextFilters(normalizeTextFilterState(filters?.textFilters))
-    },
-    [normalizeArrayFilter, normalizeRangeFilter, normalizeReasonList, normalizeTextFilterState]
+  useCandidatesHandoffClientsLazy(
+    bulkHandoffOpen,
+    setHandoffClients,
+    setHandoffClientsLoading,
+    setBulkHandoffClientId,
   )
 
   const [filtersHydrated, setFiltersHydrated] = useState(false)
   const persistedFiltersRef = useRef(false)
 
-  useEffect(() => {
-    if (!filtersHydrated) return
-    if (persistedFiltersRef.current) return
-    const defaultView = savedViews.find((view) => view.is_default)
-    if (defaultView && appliedDefaultIdRef.current !== defaultView.id) {
-      applyViewFilters(defaultView.filters ?? {})
-      appliedDefaultIdRef.current = defaultView.id
-    }
-  }, [filtersHydrated, savedViews, applyViewFilters])
+  /** Заполняется после хука колонок — применение tableLayout из сохранённого вида. */
+  const applyTableLayoutFromViewRef = useRef<(filters: Record<string, any> | undefined) => void>(() => {})
 
-  const applyView = (view: UserSavedView) => {
-    applyViewFilters(view.filters ?? {})
-  }
+  const {
+    applyViewFilters,
+    resetCandidatesFiltersCore,
+    handleResetFilters,
+  } = useCandidatesFiltersState({
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setTagsFilter, setIsFavoriteFilter, setDocsStatusFilter, setDocsOrderedFilter,
+    setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
+    setTrailerTypesFilter, setDocsHasFilesFilter,
+    setCreatedRange, setFirstContactRange, setDocsValidRange,
+    setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
+    setIntakeApplicationKindFilter,
+    setTextFilters,
+    setSortKey, setSortDir,
+    filterStorageKey, persistedFiltersRef, applyTableLayoutFromViewRef,
+    searchParams, setSearchParams,
+  })
 
-  const deleteView = async (id: string) => {
-    const next = savedViews.filter((view) => view.id !== id)
-    await syncCandidateViews(next)
-  }
+  const {
+    savedViews,
+    saveViewOpen,
+    setSaveViewOpen,
+    saveViewName,
+    setSaveViewName,
+    syncCandidateViews,
+    applyView,
+    deleteView,
+  } = useCandidatesSavedViews({
+    preferences,
+    updatePreferences,
+    filtersHydrated,
+    // If user already restored persisted filters, don't auto-apply default view.
+    applyViewFilters,
+    skipDefaultView: persistedFiltersRef.current,
+  })
+
+  const [saveViewIncludeTableLayout, setSaveViewIncludeTableLayout] = useState(true)
+
+  const [listColumnFacets, setListColumnFacets] = useState<CandidateListAvailableStatuses | null>(null)
 
   const meta = useMetaStages()
-  const stageOptions = useMemo(() => meta?.order || meta?.codes || [], [meta])
+  const { role, isClientTenant } = usePermissions()
+  const isClientRole = isClientTenant && role !== 'administrator'
+
+  const stageOptions = useMemo(() => {
+    const base = (meta?.order || meta?.codes || []).map((c) => String(c))
+    let list = base
+    if (meta?.meta && isClientRole) {
+      list = base.filter((code) => meta.meta?.[code]?.visible_for_client)
+    }
+    return filterRecruitmentVisibleStageCodes(list)
+  }, [meta, isClientRole])
+
+  const recruitmentListStageFilterActive = Boolean(
+    meta?.recruiter_handoff_stage_filter || meta?.stage_visibility_mode === 'recruitment_handoff',
+  )
+
   const reasonOptions = useMemo(() => {
     if (!meta?.reason_choices) return []
     const out: {
@@ -872,14 +672,6 @@ export default function Candidates(){
     [normalizeReasonList, reasonLabelLookup]
   )
   const stageLabelMap = useMemo(() => meta?.labels ?? {}, [meta?.labels])
-  const stageFilterOptions = useMemo(
-    () =>
-      stageOptions.map((code) => ({
-        value: code,
-        label: translateStageLabel(t, code, stageLabelMap[code] || code),
-      })),
-    [stageOptions, stageLabelMap, t]
-  )
   const vacancyLabelMap = useMemo(() => {
     const map = new Map<string, string>()
     const fallback = t('app.candidates.labels.untitled')
@@ -898,6 +690,42 @@ export default function Candidates(){
     })
     return map
   }, [managers])
+  const resolveManagerLabel = useCallback(
+    (candidate: UICandidate): string | null => {
+      const managerId = getCandidateManagerId(candidate)
+      const mappedLabel = managerId ? managerLabelMap.get(managerId) ?? null : null
+      const isUuidLike = (value: string | null | undefined): boolean =>
+        typeof value === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+      const managerObj = (candidate as any)?.manager
+      const objLabel =
+        managerObj && typeof managerObj === 'object'
+          ? managerObj.label || managerObj.full_name || managerObj.name || managerObj.email || managerObj.short_id || null
+          : null
+      const rawLabel =
+        candidate.manager_name ||
+        candidate.manager_short ||
+        objLabel ||
+        (typeof managerObj === 'string' ? managerObj : null)
+
+      if (rawLabel && managerId && (rawLabel === managerId || isUuidLike(rawLabel))) {
+        const recruiterId = (candidate as any)?.recruiter_id ? String((candidate as any).recruiter_id) : null
+        if (recruiterId && recruiterId === managerId) {
+          const recruiterLabel =
+            (candidate as any)?.recruiter_name ||
+            (candidate as any)?.recruiter_short ||
+            null
+          if (recruiterLabel && !isUuidLike(String(recruiterLabel))) {
+            return String(recruiterLabel)
+          }
+        }
+        return mappedLabel || null
+      }
+      if (rawLabel) return rawLabel
+      return mappedLabel || null
+    },
+    [managerLabelMap]
+  )
   const preferredChannelLabelMap = useMemo<Record<string, string>>(
     () => ({
       [EMPTY_OPTION_VALUE]: t('common.candidate_card.contacts.options.none'),
@@ -913,6 +741,15 @@ export default function Candidates(){
       yes: t('common.words.yes'),
       no: t('common.words.no'),
       unknown: t('common.labels.not_available'),
+    }),
+    [t]
+  )
+  const opsModeLabelMap = useMemo<Record<CandidateOpsMode, string>>(
+    () => ({
+      in_work: t('app.candidate_card.ops_mode.in_work'),
+      later: t('app.candidate_card.ops_mode.later'),
+      no_reply_needed: t('app.candidate_card.ops_mode.no_reply_needed'),
+      escalated: t('app.candidate_card.ops_mode.escalated'),
     }),
     [t]
   )
@@ -947,6 +784,7 @@ export default function Candidates(){
       short: 'Short ID',
       manager: t('app.candidates.table.columns.manager'),
       stage: t('app.candidates.table.columns.stage'),
+      risk: t('app.candidates.table.columns.risk', { defaultValue: 'Risk' }) || 'Risk',
       created: t('app.candidates.table.columns.created'),
       firstContact: t('app.candidates.table.columns.first_contact'),
       preferredChannel: t('app.candidates.table.columns.preferred_channel'),
@@ -954,6 +792,9 @@ export default function Candidates(){
       polandBasis: t('app.candidates.table.columns.poland_basis'),
       trailerTypes: t('app.candidates.table.columns.trailer_types'),
       reasons: t('app.candidates.table.columns.reasons'),
+      intakeKind: t('app.candidates.table.columns.intake_kind', { defaultValue: 'Intake' }),
+      is_favorite: t('app.candidates.table.columns.is_favorite'),
+      tags: t('app.candidates.table.columns.tags'),
       docsStatus: t('app.candidates.table.columns.docs_status'),
       docsOrdered: t('app.candidates.table.columns.docs_ordered'),
       docsValid: t('app.candidates.table.columns.docs_valid'),
@@ -970,6 +811,7 @@ export default function Candidates(){
     'short',
     'manager',
     'stage',
+    'risk',
     'created',
     'firstContact',
     'preferredChannel',
@@ -977,6 +819,9 @@ export default function Candidates(){
     'polandBasis',
     'trailerTypes',
     'reasons',
+    'intakeKind',
+    'tags',
+    'is_favorite',
     'docsStatus',
     'docsOrdered',
     'docsValid',
@@ -1028,272 +873,217 @@ export default function Candidates(){
     }
     setVisibleCols({ ...DEFAULT_VISIBLE_COLS })
   }, [visibleColsStorageKey])
-  const [sortKey, setSortKey] = useState<SortKey>('created_at')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  /** R1.5 Phase C: DnD + column resize only in this mode (default off). */
+  const [tableLayoutCustomize, setTableLayoutCustomize] = useState(() => {
+    try {
+      return localStorage.getItem('hf:candidates:tableLayoutCustomize') === '1'
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('hf:candidates:tableLayoutCustomize', tableLayoutCustomize ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [tableLayoutCustomize])
+
+  const {
+    columnOrder,
+    columnWidths,
+    orderedVisibleColumns,
+    getColumnWidth,
+    draggingColumn,
+    setDraggingColumn,
+    dragOverColumn,
+    setDragOverColumn,
+    reorderColumns,
+    handleResizeStart,
+    applyPersistedLayout,
+    resetColumnLayout,
+    moveColumnRelative,
+  } = useCandidatesTableColumnsDnDResize({
+    visibleCols,
+    columnWidthsStorageKey,
+    columnOrderStorageKey,
+  })
+
+  useEffect(() => {
+    applyTableLayoutFromViewRef.current = (filters) => {
+      const tl = filters?.tableLayout
+      if (!tl || typeof tl !== 'object' || Array.isArray(tl)) return
+      if (tl.visibleCols && typeof tl.visibleCols === 'object' && !Array.isArray(tl.visibleCols)) {
+        const merged = { ...DEFAULT_VISIBLE_COLS, ...tl.visibleCols }
+        setVisibleCols(merged)
+        try {
+          localStorage.setItem(visibleColsStorageKey, JSON.stringify(merged))
+        } catch {
+          /* ignore */
+        }
+      }
+      applyPersistedLayout({
+        order: Array.isArray(tl.columnOrder) && tl.columnOrder.length > 0 ? tl.columnOrder : null,
+        widths:
+          tl.columnWidths && typeof tl.columnWidths === 'object' && !Array.isArray(tl.columnWidths)
+            ? tl.columnWidths
+            : null,
+      })
+    }
+  }, [applyPersistedLayout, visibleColsStorageKey])
+
+  useEffect(() => {
+    if (tableLayoutCustomize) return
+    setDraggingColumn(null)
+    setDragOverColumn(null)
+  }, [tableLayoutCustomize, setDraggingColumn, setDragOverColumn])
+
+  // Компонент для ресайза колонки
+  const ColumnResizeHandle = ({ columnKey }: { columnKey: string }) => {
+    if (columnKey === 'checkbox') return null // Первая колонка не ресайзится
+    return (
+      <div
+        className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-brand-400 transition-colors z-20"
+        onMouseDown={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          handleResizeStart(columnKey, e.clientX)
+        }}
+        title={t('app.candidates.table.resize_column') || 'Изменить ширину колонки'}
+      />
+    )
+  }
+
+
   const handleSortChange = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortKey(key)
-      setSortDir(key === 'created_at' ? 'desc' : 'asc')
+      setSortDir(key === 'created_at' || key === 'risk_score' ? 'desc' : 'asc')
     }
   }
-  const renderSortButton = (label: string, key: SortKey) => (
-    <button
-      type="button"
-      className="flex items-center gap-1 font-semibold text-left text-gray-700"
-      onClick={() => handleSortChange(key)}
-    >
-      <span>{label}</span>
-      {sortKey === key && (
-        <span className="text-xs text-gray-500">{sortDir === 'asc' ? '▲' : '▼'}</span>
-      )}
-    </button>
-  )
-  const renderRangeMenu = (
-    title: string,
-    range: DateRangeFilter,
-    onChange: (next: DateRangeFilter) => void,
-    onReset: () => void
-  ) => (
-    <ColumnFilterMenu title={title} count={isRangeActive(range) ? 1 : 0}>
-      {(close) => (
-        <div className="space-y-2">
-          <label className="flex flex-col gap-1 text-xs text-gray-600">
-            {t('app.candidates.filters.date_from')}
-            <input
-              type="date"
-              className="input"
-              value={range.from ?? ''}
-              onChange={(e) => onChange({ ...range, from: e.currentTarget.value || null })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-gray-600">
-            {t('app.candidates.filters.date_to')}
-            <input
-              type="date"
-              className="input"
-              value={range.to ?? ''}
-              onChange={(e) => onChange({ ...range, to: e.currentTarget.value || null })}
-            />
-          </label>
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              className="btn-ghost btn-xs"
-              onClick={() => {
-                onReset()
-                close()
-              }}
-            >
-              {t('app.candidates.filters.reset')}
-            </button>
-            <button type="button" className="btn-primary btn-xs" onClick={close}>
-              {t('common.actions.close')}
-            </button>
-          </div>
-        </div>
-      )}
-    </ColumnFilterMenu>
-  )
-  const renderTextFilterMenu = (
-    key: keyof ColumnTextFilters,
-    title: string,
-    placeholder: string
-  ) => (
-    <ColumnFilterMenu title={title} count={textFilters[key].trim() ? 1 : 0}>
-      {(close) => (
-        <div className="space-y-2">
-          <input
-            className="input"
-            value={textFilters[key]}
-            onChange={(e) => setTextFilter(key, e.currentTarget.value)}
-            placeholder={placeholder}
-          />
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              className="btn-ghost btn-xs"
-              onClick={() => {
-                setTextFilter(key, '')
-                close()
-              }}
-              disabled={!textFilters[key]}
-            >
-              {t('app.candidates.filters.reset')}
-            </button>
-            <button type="button" className="btn-primary btn-xs" onClick={close}>
-              {t('common.actions.close')}
-            </button>
-          </div>
-        </div>
-      )}
-    </ColumnFilterMenu>
-  )
-
   const searchRef = useRef<HTMLInputElement>(null)
+  const scrollContainerRef = useRef<HTMLElement | null>(null)
+  const outerScrollRef = useRef<HTMLElement | null>(null)
   const { can } = usePermissions()
+  const planLimitModal = usePlanLimitModal()
+  const { warningFor: quotaWarningFor } = useBillingQuotaWarnings()
+  const candidatesQuotaWarning = quotaWarningFor('candidates_active')
   const canManage = can('candidates.manage')
+  const canViewActivities = can('notifications.view')
+  const [recentlyOpenedId, setRecentlyOpenedId] = useState<string | null>(null)
+  const restoredScrollRef = useRef(false)
+  const restoreAttemptsRef = useRef(0)
+  const pendingFullReloadRef = useRef(false)
+  const loadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retriedEmptyItemsRef = useRef(false)
+  const loadIdRef = useRef(0)
+  const loadInProgressRef = useRef(false)
+  const lastSuccessfulListRef = useRef<{
+    items: UICandidate[]
+    total: number
+    insights?: CandidatesListInsights
+  } | null>(null)
+  const tableContainerRef = useRef<HTMLDivElement | null>(null)
+  const getScrollContainer = useCallback((): HTMLElement | null => {
+    return scrollContainerRef.current
+  }, [])
 
-  useEffect(() => {
-    setViewMode(searchParams.get('view') === 'kanban' ? 'kanban' : 'table')
-  }, [searchParams])
+  const {
+    items,
+    setItems,
+    total,
+    setTotal,
+    listInsights,
+    setListInsights,
+    loading,
+    setLoading,
+    errorText,
+    setErrorText,
+    load,
+  } = useCandidatesTableData({
+    candidateListCache,
+    cacheKey,
+    listStorageKey,
+    filtersHydrated,
+    limit,
+    t,
+    q,
+    stageFilter,
+    candidateRowStatusFilter,
+    statusReasonFilter,
+    tagsFilter,
+    vacancyFilter,
+    managerFilter,
+    docsOrderedFilter,
+    handoffStatusFilter,
+    contactAttemptsFilter,
+    processorFilter,
+    shadowBucketFilter: digestShadowBucket,
+    shadowBucketMinBand: digestShadowMinBand,
+    createdRange,
+    isFavoriteFilter,
+    intakeApplicationKindFilter,
+    currentTenantId,
+    meTenantId: me?.tenant_id,
+    restoredScrollRef,
+    operationalQueue,
+    recruiterUnassignedFilter: recruiterUnassignedOnly,
+  })
 
-  useEffect(() => {
-    let applied = false
-    try {
-      const raw = localStorage.getItem(filterStorageKey)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed && typeof parsed === 'object') {
-          if (typeof parsed.q === 'string') {
-            setQ(parsed.q)
-            applied = applied || Boolean(parsed.q)
-          }
-          const restoredStage = normalizeArrayFilter(parsed.stage ?? parsed.stages)
-          setStageFilter(restoredStage)
-          applied = applied || restoredStage.length > 0
+  useCandidatesUrlSync({
+    searchParams, setSearchParams,
+    setViewMode, operationalQueue,
+    filtersHydrated, resetCandidatesFiltersCore,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setStatusReasonFilter,
+    setTextFilter, setManagerFilter, setPreferredChannelFilter,
+    setOpsModeFilter, setInPolandFilter,
+    setHandoffStatusFilter, setContactAttemptsFilter,
+  })
 
-          const restoredVacancies = normalizeArrayFilter(parsed.vacancy ?? parsed.vacancyId ?? parsed.vacancies)
-          setVacancyFilter(restoredVacancies)
-          applied = applied || restoredVacancies.length > 0
 
-          const restoredManagers = normalizeArrayFilter(parsed.managers ?? parsed.manager)
-          setManagerFilter(restoredManagers)
-          applied = applied || restoredManagers.length > 0
+  useCandidatesFiltersPersistence({
+    storageKey: filterStorageKey,
+    filtersHydrated, setFiltersHydrated, persistedFiltersRef,
+    setQ, setStageFilter, setCandidateRowStatusFilter, setVacancyFilter, setManagerFilter, setStatusReasonFilter,
+    setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
+    setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
+    setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
+    setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
+    setTextFilters, setIsFavoriteFilter, setIntakeApplicationKindFilter,
+    setSortKey, setSortDir,
+    q, stageFilter, candidateRowStatusFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
+    docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
+    opsModeFilter, polandBasisFilter, trailerTypesFilter,
+    createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,
+    handoffStatusFilter, contactAttemptsFilter, processorFilter,
+    textFilters, isFavoriteFilter, intakeApplicationKindFilter,
+    sortKey, sortDir,
+  })
 
-          const parsedReason = parsed.statusReason ?? parsed.status_reason
-          const reasonList = normalizeReasonList(parsedReason)
-          setStatusReasonFilter(reasonList)
-          applied = applied || reasonList.length > 0
 
-          const restoredDocsStatus = normalizeArrayFilter(parsed.docsStatus)
-          setDocsStatusFilter(restoredDocsStatus)
-          applied = applied || restoredDocsStatus.length > 0
 
-          const restoredDocsOrdered = normalizeArrayFilter(parsed.docsOrdered ?? parsed.documents_ordered)
-          setDocsOrderedFilter(restoredDocsOrdered)
-          applied = applied || restoredDocsOrdered.length > 0
 
-          const restoredPreferred = normalizeArrayFilter(parsed.preferredChannel ?? parsed.preferred_contact)
-          setPreferredChannelFilter(restoredPreferred)
-          applied = applied || restoredPreferred.length > 0
-
-          const restoredInPoland = normalizeArrayFilter(parsed.inPoland ?? parsed.in_poland)
-          setInPolandFilter(restoredInPoland)
-          applied = applied || restoredInPoland.length > 0
-
-          const restoredPolandBasis = normalizeArrayFilter(parsed.polandBasis ?? parsed.poland_basis)
-          setPolandBasisFilter(restoredPolandBasis)
-          applied = applied || restoredPolandBasis.length > 0
-
-          const restoredTrailerTypes = normalizeArrayFilter(parsed.trailerTypes ?? parsed.trailer_types)
-          setTrailerTypesFilter(restoredTrailerTypes)
-          applied = applied || restoredTrailerTypes.length > 0
-
-          const restoredCreated = normalizeRangeFilter(parsed.createdRange ?? parsed.created_at)
-          setCreatedRange(restoredCreated)
-          applied = applied || isRangeActive(restoredCreated)
-
-          const restoredFirstContact = normalizeRangeFilter(parsed.firstContactRange ?? parsed.first_contact_at)
-          setFirstContactRange(restoredFirstContact)
-          applied = applied || isRangeActive(restoredFirstContact)
-
-          const restoredDocsValid = normalizeRangeFilter(parsed.docsValidRange ?? parsed.docs_valid_from)
-          setDocsValidRange(restoredDocsValid)
-          applied = applied || isRangeActive(restoredDocsValid)
-
-          const restoredDocsFiles = normalizeArrayFilter(parsed.docsHasFiles ?? parsed.docs_has_files)
-          setDocsHasFilesFilter(restoredDocsFiles)
-          applied = applied || restoredDocsFiles.length > 0
-
-          const restoredTextFilters = normalizeTextFilterState(parsed.textFilters)
-          setTextFilters(restoredTextFilters)
-          applied = applied || Object.values(restoredTextFilters).some((value) => value.trim().length > 0)
-
-          if (isSortKey(parsed.sortKey)) {
-            setSortKey(parsed.sortKey)
-            applied = applied || parsed.sortKey !== 'created_at'
-          }
-          if (typeof parsed.sortDir === 'string' && (parsed.sortDir === 'asc' || parsed.sortDir === 'desc')) {
-            setSortDir(parsed.sortDir)
-            applied = applied || parsed.sortDir !== 'desc'
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[Candidates] failed to restore filters', err)
-    } finally {
-      persistedFiltersRef.current = applied
-      setFiltersHydrated(true)
-    }
-  }, [filterStorageKey, normalizeArrayFilter, normalizeRangeFilter, normalizeReasonList, normalizeTextFilterState])
   useEffect(() => {
     if (!canManage) {
       setChecked({})
       setBulkOpen(false)
       setBulkManagerOpen(false)
       setBulkVacancyOpen(false)
-      setBulkArchiveOpen(false)
+      setBulkTagsOpen(false)
+      setBulkDeleteOpen(false)
     }
   }, [canManage])
 
-  useEffect(() => {
-    if (!filtersHydrated) return
-    try {
-      localStorage.setItem(
-        filterStorageKey,
-        JSON.stringify({
-          q,
-          stage: stageFilter,
-          vacancies: vacancyFilter,
-          managers: managerFilter,
-          statusReason: statusReasonFilter,
-          docsStatus: docsStatusFilter,
-          docsOrdered: docsOrderedFilter,
-          preferredChannel: preferredChannelFilter,
-          inPoland: inPolandFilter,
-          polandBasis: polandBasisFilter,
-          trailerTypes: trailerTypesFilter,
-          createdRange,
-          firstContactRange,
-          docsValidRange,
-          docsHasFiles: docsHasFilesFilter,
-          textFilters,
-          sortKey,
-          sortDir,
-        })
-      )
-    } catch (err) {
-      console.warn('[Candidates] failed to persist filters', err)
-    }
-  }, [
-    filterStorageKey,
-    filtersHydrated,
-    q,
-    stageFilter,
-    vacancyFilter,
-    managerFilter,
-    statusReasonFilter,
-    docsStatusFilter,
-    docsOrderedFilter,
-    preferredChannelFilter,
-    inPolandFilter,
-    polandBasisFilter,
-    trailerTypesFilter,
-    createdRange,
-    firstContactRange,
-    docsValidRange,
-    docsHasFilesFilter,
-    textFilters,
-    sortKey,
-    sortDir,
-  ])
 
   const enrichedItems = useMemo<AugmentedCandidate[]>(
-    () =>
-      items.map((item) => {
-        const rawExtra = extractExtraObject((item as any)?.extra ?? item.extra ?? null)
+    () => {
+      const result = items.map((item) => {
+        const rawExtra = extractExtraObject(
+          (item as any)?.extra_summary ?? (item as any)?.extra ?? item.extra ?? null
+        )
         const extra = normalizeCandidateExtra(rawExtra)
         const reasonData = deriveReasonData(item, rawExtra)
         return {
@@ -1303,16 +1093,23 @@ export default function Candidates(){
           __reasonCodes: reasonData.codes,
           __reasonFallbackLabels: reasonData.fallbackLabels,
         }
-      }),
-    [items, deriveReasonData]
+      })
+      if (showDebugPanel) {
+        console.info('[Candidates] enrichedItems computed: items.length=', items.length, 'enrichedItems.length=', result.length)
+      }
+      return result
+    },
+    [items, deriveReasonData, showDebugPanel]
   )
 
   const filterSnapshot = useMemo<CandidateFilterSnapshot>(
     () => ({
       stage: stageFilter,
+      rowStatuses: candidateRowStatusFilter,
       vacancy: vacancyFilter,
       manager: managerFilter,
       statusReasons: statusReasonFilter,
+      tags: tagsFilter,
       docsStatus: docsStatusFilter,
       docsOrdered: docsOrderedFilter,
       createdRange,
@@ -1320,17 +1117,21 @@ export default function Candidates(){
       docsValidRange,
       preferredChannels: preferredChannelFilter,
       polandPresence: inPolandFilter,
+      opsModes: opsModeFilter,
       polandBasis: polandBasisFilter,
       trailerTypes: trailerTypesFilter,
       docsHasFiles: docsHasFilesFilter,
       query: q,
       textFilters,
+      isFavorite: isFavoriteFilter,
     }),
     [
       stageFilter,
+      candidateRowStatusFilter,
       vacancyFilter,
       managerFilter,
       statusReasonFilter,
+      tagsFilter,
       docsStatusFilter,
       docsOrderedFilter,
       createdRange,
@@ -1338,140 +1139,21 @@ export default function Candidates(){
       docsValidRange,
       preferredChannelFilter,
       inPolandFilter,
+      opsModeFilter,
       polandBasisFilter,
       trailerTypesFilter,
       docsHasFilesFilter,
       q,
       textFilters,
+      isFavoriteFilter,
     ]
   )
 
-  const filterCandidates = useCallback((source: AugmentedCandidate[], snapshot: CandidateFilterSnapshot) => {
-    const shouldFilterDocsOrdered = snapshot.docsOrdered.length === 1
-    const orderedTarget = shouldFilterDocsOrdered ? snapshot.docsOrdered[0] : null
-    const normalizedQuery = normalizeSearchValue(snapshot.query ?? '')
-    const textQueries = {
-      name: normalizeSearchValue(snapshot.textFilters.name ?? ''),
-      email: normalizeSearchValue(snapshot.textFilters.email ?? ''),
-      phone: normalizeSearchValue(snapshot.textFilters.phone ?? ''),
-      citizenship: normalizeSearchValue(snapshot.textFilters.citizenship ?? ''),
-      short: normalizeSearchValue(snapshot.textFilters.short ?? ''),
-    }
-
-    return source.filter((item) => {
-      if (normalizedQuery) {
-        const haystacks = [
-          `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(),
-          item.email ?? '',
-          item.phone ?? '',
-          item.short_id ?? '',
-          item.stage ?? '',
-          item.__extra.citizenship ?? '',
-          (item as any)?.vacancy?.title ?? (item as any)?.vacancy_title ?? '',
-        ]
-        const queryMatch = haystacks.some((value) => textMatches(value, normalizedQuery))
-        if (!queryMatch) return false
-      }
-
-      if (textQueries.name && !textMatches(`${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(), textQueries.name)) {
-        return false
-      }
-      if (textQueries.email && !textMatches(item.email ?? '', textQueries.email)) {
-        return false
-      }
-      if (textQueries.phone && !textMatches(item.phone ?? '', textQueries.phone)) {
-        return false
-      }
-      if (textQueries.citizenship && !textMatches(item.__extra.citizenship ?? '', textQueries.citizenship)) {
-        return false
-      }
-      if (textQueries.short && !textMatches(item.short_id ?? '', textQueries.short)) {
-        return false
-      }
-
-      if (snapshot.stage.length && (!item.stage || !snapshot.stage.includes(item.stage))) {
-        return false
-      }
-
-      if (snapshot.vacancy.length) {
-        const candidateVacancy =
-          (item as any)?.vacancy_id || (item as any)?.vacancy?.id || (item as any)?.vacancy_uuid || null
-        if (!candidateVacancy || !snapshot.vacancy.includes(String(candidateVacancy))) {
-          return false
-        }
-      }
-
-      if (snapshot.manager.length) {
-        const candidateManager = (item as any)?.manager_id || (item as any)?.manager?.id || (item as any)?.manager || null
-        if (!candidateManager || !snapshot.manager.includes(String(candidateManager))) {
-          return false
-        }
-      }
-
-      if (snapshot.statusReasons.length) {
-        if (!item.__reasonCodes.some((code) => snapshot.statusReasons.includes(code))) {
-          return false
-        }
-      }
-
-      if (snapshot.docsStatus.length && !snapshot.docsStatus.includes(item.__docsMeta.readinessKey)) {
-        return false
-      }
-
-      if (shouldFilterDocsOrdered) {
-        if (orderedTarget === 'ordered' && !item.__docsMeta.isOrdered) return false
-        if (orderedTarget === 'not_ordered' && item.__docsMeta.isOrdered) return false
-      }
-
-      if (snapshot.docsHasFiles.length) {
-        const bucket = item.__docsMeta.hasFiles ? 'with' : 'without'
-        if (!snapshot.docsHasFiles.includes(bucket)) {
-          return false
-        }
-      }
-
-      if (!matchesDateRange(item.created_at ?? null, snapshot.createdRange)) {
-        return false
-      }
-
-      if (!matchesDateRange(item.__extra.firstContactAt, snapshot.firstContactRange)) {
-        return false
-      }
-
-      if (!matchesDateRange(item.__docsMeta.validFrom, snapshot.docsValidRange)) {
-        return false
-      }
-
-      if (snapshot.preferredChannels.length) {
-        const channel = item.__extra.preferredContact ?? EMPTY_OPTION_VALUE
-        if (!snapshot.preferredChannels.includes(channel)) {
-          return false
-        }
-      }
-
-      if (snapshot.polandPresence.length) {
-        const presence = item.__extra.inPoland === true ? 'yes' : item.__extra.inPoland === false ? 'no' : 'unknown'
-        if (!snapshot.polandPresence.includes(presence)) {
-          return false
-        }
-      }
-
-      if (snapshot.polandBasis.length) {
-        const basis = item.__extra.polandStayBasis ?? EMPTY_OPTION_VALUE
-        if (!snapshot.polandBasis.includes(basis)) {
-          return false
-        }
-      }
-
-      if (snapshot.trailerTypes.length) {
-        if (!item.__extra.trailerTypes.some((code) => snapshot.trailerTypes.includes(code))) {
-          return false
-        }
-      }
-
-      return true
-    })
-  }, [])
+  const filterCandidates = useCallback(
+    (source: AugmentedCandidate[], snapshot: CandidateFilterSnapshot) =>
+      filterCandidatesPure(source, snapshot, { debug: showDebugPanel }),
+    [showDebugPanel],
+  )
 
   const buildFilterSource = useCallback(
     (overrides: Partial<CandidateFilterSnapshot>) =>
@@ -1479,10 +1161,163 @@ export default function Candidates(){
     [enrichedItems, filterSnapshot, filterCandidates]
   )
 
-  const filteredItems = useMemo(
-    () => filterCandidates(enrichedItems, filterSnapshot),
-    [enrichedItems, filterSnapshot, filterCandidates]
+  const stagePresence = useMemo(() => {
+    // Stages on the loaded page (fallback until tenant facets load).
+    const set = new Set<string>()
+    enrichedItems.forEach((item) => {
+      if (item.stage) set.add(String(item.stage))
+    })
+    return set
+  }, [enrichedItems])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const scopeTid = currentTenantId ?? me?.tenant_id
+        const data = await fetchCandidateListAvailableStatuses(
+          scopeTid ? { scope_tenant_id: String(scopeTid) } : undefined,
+        )
+        if (!cancelled) setListColumnFacets(data)
+      } catch {
+        if (!cancelled) setListColumnFacets(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tenantScopeKey, currentTenantId, me?.tenant_id])
+
+  const stageFilterOptions = useMemo(() => {
+    const allowStage = (code: string) =>
+      !recruitmentListStageFilterActive || !isPostRecruitmentStageCode(code)
+
+    const facetStages = listColumnFacets?.stages?.length
+      ? listColumnFacets.stages
+      : Array.from(stagePresence)
+    const presentNorm = new Set<string>()
+    const rawByNorm = new Map<string, string>()
+    const ingest = (raw: string) => {
+      const trimmed = String(raw || '').trim()
+      const n = trimmed.toLowerCase()
+      if (!n) return
+      presentNorm.add(n)
+      if (!rawByNorm.has(n)) rawByNorm.set(n, trimmed)
+    }
+    facetStages.forEach(ingest)
+    stageFilter.forEach(ingest)
+
+    const ordered: string[] = []
+    const seen = new Set<string>()
+    const push = (code: string) => {
+      const trimmed = String(code || '').trim()
+      const n = trimmed.toLowerCase()
+      if (!n || seen.has(n)) return
+      if (!allowStage(trimmed)) return
+      if (!presentNorm.has(n)) return
+      seen.add(n)
+      ordered.push(trimmed)
+    }
+    for (const code of stageOptions) {
+      push(code)
+    }
+    for (const n of [...presentNorm].sort()) {
+      if (seen.has(n)) continue
+      push(rawByNorm.get(n) ?? n)
+    }
+    return ordered.map((code) => ({
+      value: code,
+      label: translateStageLabel(t, code, stageLabelMap[code] || code),
+    }))
+  }, [
+    stageOptions,
+    stagePresence,
+    stageLabelMap,
+    t,
+    stageFilter,
+    recruitmentListStageFilterActive,
+    listColumnFacets?.stages,
+  ])
+
+  const pruneSelectionByOptions = useCallback(
+    (selected: string[], options: Array<{ value: string }>) => {
+      if (!selected.length) return selected
+      const allowed = new Set(options.map((opt) => String(opt.value)))
+      return selected.filter((value) => allowed.has(String(value)))
+    },
+    [],
   )
+
+  const filteredItems = useMemo(() => {
+    const filtered = filterCandidates(enrichedItems, filterSnapshot)
+    // Добавляем недавно обновленных кандидатов, чтобы они оставались видимыми даже если не проходят фильтры.
+    // Date.now() здесь — намеренный side-effect: окно «60 сек после правки» вычисляется на момент рендера.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now()
+    const recentlyUpdated = new Set<string>()
+    recentlyUpdatedIdsRef.current.forEach((timestamp, candidateId) => {
+      // Кандидат считается недавно обновленным в течение 60 секунд после обновления
+      if (now - timestamp < 60000) {
+        recentlyUpdated.add(candidateId)
+      } else {
+        // Удаляем устаревшие записи
+        recentlyUpdatedIdsRef.current.delete(candidateId)
+      }
+    })
+    
+    // Если есть недавно обновленные кандидаты, добавляем их в список, если их там еще нет
+    if (recentlyUpdated.size > 0) {
+      const filteredIds = new Set(filtered.map(item => String(item.id)))
+      const toAdd = enrichedItems.filter(item => {
+        const id = String(item.id)
+        return recentlyUpdated.has(id) && !filteredIds.has(id)
+      })
+      if (toAdd.length > 0) {
+        // Добавляем недавно обновленных кандидатов в начало списка
+        const result = [...toAdd, ...filtered]
+        if (showDebugPanel) {
+          console.info(
+            '[Candidates] filteredItems computed: enrichedItems.length=',
+            enrichedItems.length,
+            'filtered.length=',
+            filtered.length,
+            'result.length=',
+            result.length,
+          )
+        }
+        return result
+      }
+    }
+
+    if (showDebugPanel && enrichedItems.length > 0 && filtered.length === 0) {
+      console.warn('[Candidates] ALL items filtered out! Active filters:', JSON.stringify(filterSnapshot, null, 2))
+      const sampleItem = enrichedItems[0]
+      const sampleIsFavorite = sampleItem.is_favorite ?? false
+      console.warn('[Candidates] Sample item for debugging:', {
+        id: sampleItem.id,
+        stage: sampleItem.stage,
+        vacancy_id: (sampleItem as any)?.vacancy_id || (sampleItem as any)?.vacancy?.id,
+        manager_id: getCandidateManagerId(sampleItem),
+        tags: sampleItem.tags,
+        is_favorite: sampleItem.is_favorite,
+        is_favorite_raw: sampleItem.is_favorite,
+        filter_isFavorite: filterSnapshot.isFavorite,
+        matches_isFavorite:
+          filterSnapshot.isFavorite === null ||
+          filterSnapshot.isFavorite === undefined ||
+          filterSnapshot.isFavorite === sampleIsFavorite,
+        created_at: sampleItem.created_at,
+        __docsMeta: sampleItem.__docsMeta,
+        __extra: sampleItem.__extra,
+      })
+      const favoriteCount = enrichedItems.filter((item) => (item.is_favorite ?? false) === true).length
+      console.warn('[Candidates] Items with is_favorite=true:', favoriteCount, 'out of', enrichedItems.length)
+    }
+    if (showDebugPanel) {
+      console.info('[Candidates] filteredItems computed: enrichedItems.length=', enrichedItems.length, 'filtered.length=', filtered.length)
+    }
+    return filtered
+  }, [enrichedItems, filterSnapshot, filterCandidates, showDebugPanel])
 
   const candidateInsights = useMemo(() => {
     let newCount = 0
@@ -1507,6 +1342,24 @@ export default function Candidates(){
       docsOrdered,
     }
   }, [filteredItems])
+
+  /** Карточки инсайтов: с сервера по фильтрам списка; иначе fallback по загруженным строкам (старый API без include_insights). */
+  const insightSource = useMemo(() => {
+    if (listInsights) {
+      return {
+        total: listInsights.total,
+        newCount: listInsights.new_count,
+        docsReady: listInsights.docs_ready,
+        docsAttention: listInsights.docs_attention,
+      }
+    }
+    return {
+      total: candidateInsights.total,
+      newCount: candidateInsights.newCount,
+      docsReady: candidateInsights.docsReady,
+      docsAttention: candidateInsights.docsAttention,
+    }
+  }, [listInsights, candidateInsights])
 
   const displayedItems = useMemo<AugmentedCandidate[]>(() => {
     const sorted = [...filteredItems]
@@ -1537,17 +1390,19 @@ export default function Candidates(){
         case 'short_id':
           cmp = compareStrings(a.short_id, b.short_id)
           break
-        case 'manager':
-          cmp = compareStrings(
-            a.manager_name || a.manager_short || (a as any)?.manager,
-            b.manager_name || b.manager_short || (b as any)?.manager
-          )
+        case 'manager': {
+          cmp = compareStrings(resolveManagerLabel(a) || '', resolveManagerLabel(b) || '')
           break
+        }
         case 'stage':
           cmp = compareStrings(a.stage, b.stage)
           break
         case 'reasons':
           cmp = compareStrings(a.__reasonCodes.join(','), b.__reasonCodes.join(','))
+          break
+        case 'risk_score':
+          // backend may send null; treat as 0 for sorting
+          cmp = compareNumbers(a.risk_score ?? 0, b.risk_score ?? 0)
           break
         case 'docs_status':
           if (a.__docsMeta.rank !== b.__docsMeta.rank) {
@@ -1593,215 +1448,414 @@ export default function Candidates(){
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
+    if (showDebugPanel) {
+      console.info('[Candidates] displayedItems computed: filteredItems.length=', filteredItems.length, 'sorted.length=', sorted.length)
+    }
     return sorted
-  }, [filteredItems, sortKey, sortDir])
+  }, [filteredItems, sortKey, sortDir, showDebugPanel])
 
-  const vacancyFilterOptions = useMemo(() => {
-    const source = buildFilterSource({ vacancy: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: string | null, label: string) => {
-      if (!value || map.has(value)) return
-      map.set(value, label || t('app.candidates.labels.untitled'))
+  const selectedCandidate = useMemo(() => {
+    const base =
+      selectedCandidateId ? displayedItems.find((c) => c.id === selectedCandidateId) ?? null : null
+    if (!base) return null
+    if (!previewCandidateExtra) return base
+    const ex = previewCandidateExtra
+    return {
+      ...base,
+      contact_policy_enabled: ex.contact_policy_enabled,
+      contact_attempt_count: ex.contact_attempt_count,
+      risk_score: ex.risk_score !== undefined ? ex.risk_score : (base as any).risk_score,
+      risk_band: ex.risk_band !== undefined ? ex.risk_band : (base as any).risk_band,
+      risk_drivers: ex.risk_drivers !== undefined ? ex.risk_drivers : (base as any).risk_drivers,
+      risk_updated_at: ex.risk_updated_at !== undefined ? ex.risk_updated_at : (base as any).risk_updated_at,
+      risk_version: ex.risk_version !== undefined ? ex.risk_version : (base as any).risk_version,
     }
-    source.forEach((item) => {
-      const id = getCandidateVacancyId(item)
-      if (!id) return
-      const title =
-        (item as any)?.vacancy?.title ||
-        (item as any)?.vacancy_title ||
-        vacancyLabelMap.get(id) ||
-        t('app.candidates.labels.untitled')
-      ensure(id, title)
-    })
-    vacancyFilter.forEach((value) => ensure(value, vacancyLabelMap.get(value) || value))
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, vacancyFilter, vacancyLabelMap, t])
+  }, [displayedItems, selectedCandidateId, previewCandidateExtra])
 
-  const managerFilterOptions = useMemo(() => {
-    const source = buildFilterSource({ manager: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: string | null, label: string) => {
-      if (!value || map.has(value)) return
-      map.set(value, label || '—')
-    }
-    source.forEach((item) => {
-      const id = getCandidateManagerId(item)
-      if (!id) return
-      const label = managerLabelMap.get(id) || item.manager_name || item.manager_short || id
-      ensure(id, label)
-    })
-    managerFilter.forEach((value) => ensure(value, managerLabelMap.get(value) || value))
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, managerFilter, managerLabelMap])
+  const openActivitiesModal = useCallback(() => {
+    setActivitiesModalRefresh((n) => n + 1)
+    setActivitiesModalOpen(true)
+  }, [])
 
-  const reasonFilterOptions = useMemo(() => {
-    const source = buildFilterSource({ statusReasons: [] })
-    const present = new Set<string>(statusReasonFilter)
-    source.forEach((item) => {
-      item.__reasonCodes.forEach((code) => present.add(code))
-    })
-    const options = reasonOptions
-      .filter((option) => present.has(option.code))
-      .map((option) => ({
-        value: option.code,
-        label: `${option.label} (${option.stageLabel})`,
-      }))
-    return options
-  }, [buildFilterSource, reasonOptions, statusReasonFilter])
+  const selectedCandidateCitizenship =
+    (selectedCandidate as any)?.__extra?.citizenship ?? null
+  const docsOwnerContext = useMemo(() => {
+    const citizenship = String(selectedCandidateCitizenship || '')
+    return { citizenship }
+  }, [selectedCandidateCitizenship])
 
-  const docsStatusPresence = useMemo(() => {
-    const source = buildFilterSource({ docsStatus: [] })
-    const set = new Set<string>(docsStatusFilter)
-    source.forEach((item) => set.add(item.__docsMeta.readinessKey))
-    return set
-  }, [buildFilterSource, docsStatusFilter])
+  // Preview side-panel state + handlers are centralized in `useCandidatesWorkPanelPreview`.
 
-  const allDocsStatusOptions = useMemo(
-    () =>
-      Object.entries(DOC_READINESS_META).map(([value, meta]) => ({
-        value,
-        label: t(meta.labelKey),
-      })),
-    [t]
-  )
-
-  const docsStatusOptions = useMemo(
-    () => allDocsStatusOptions.filter((option) => docsStatusPresence.has(option.value)),
-    [allDocsStatusOptions, docsStatusPresence]
-  )
-
-  const quickDocFilters = useMemo(() => {
-    const entries: Array<{ key: keyof typeof QUICK_DOC_STATUS_SETS; label: string; statuses: string[] }> = [
-      { key: 'ready', label: t('app.candidates.filters.quick_docs_ready'), statuses: QUICK_DOC_STATUS_SETS.ready },
-      { key: 'attention', label: t('app.candidates.filters.quick_docs_attention'), statuses: QUICK_DOC_STATUS_SETS.attention },
-      { key: 'pending', label: t('app.candidates.filters.quick_docs_pending'), statuses: QUICK_DOC_STATUS_SETS.pending },
-    ]
-    return entries.map((entry) => {
-      const active =
-        docsStatusFilter.length === entry.statuses.length &&
-        entry.statuses.every((status) => docsStatusFilter.includes(status))
-      return { ...entry, active }
-    })
-  }, [docsStatusFilter, t])
-
-  const docsOrderPresence = useMemo(() => {
-    const source = buildFilterSource({ docsOrdered: [] })
-    const set = new Set<string>(docsOrderedFilter)
-    source.forEach((item) => set.add(item.__docsMeta.isOrdered ? 'ordered' : 'not_ordered'))
-    return set
-  }, [buildFilterSource, docsOrderedFilter])
-
-  const docsOrderFilterOptions = useMemo(
-    () =>
-      DOC_ORDER_FILTERS.map((option) => ({ value: option.value, label: t(option.labelKey) })).filter(
-        (option) => docsOrderPresence.has(option.value)
-      ),
-    [docsOrderPresence, t]
-  )
-
-  const docsFilesOptions = useMemo(() => {
-    const source = buildFilterSource({ docsHasFiles: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: 'with' | 'without') => {
-      if (map.has(value)) return
-      map.set(
-        value,
-        value === 'with'
-          ? t('app.candidates.filters.docs_files_with')
-          : t('app.candidates.filters.docs_files_without')
-      )
-    }
-    source.forEach((item) => ensure(item.__docsMeta.hasFiles ? 'with' : 'without'))
-    docsHasFilesFilter.forEach((value) => {
-      if (value === 'with' || value === 'without') ensure(value)
-    })
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, docsHasFilesFilter, t])
-
-  const preferredChannelOptions = useMemo(() => {
-    const source = buildFilterSource({ preferredChannels: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: string, label: string) => {
-      if (map.has(value)) return
-      map.set(value, label)
-    }
-    source.forEach((item) => {
-      const key = item.__extra.preferredContact ?? EMPTY_OPTION_VALUE
-      ensure(key, preferredChannelLabelMap[key] ?? key)
-    })
-    preferredChannelFilter.forEach((value) => {
-      ensure(value, preferredChannelLabelMap[value] ?? value)
-    })
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, preferredChannelFilter, preferredChannelLabelMap])
-
-  const inPolandOptions = useMemo(() => {
-    const source = buildFilterSource({ polandPresence: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: string) => {
-      if (map.has(value)) return
-      map.set(value, inPolandLabelMap[value] ?? inPolandLabelMap.unknown)
-    }
-    source.forEach((item) => {
-      const key = item.__extra.inPoland === true ? 'yes' : item.__extra.inPoland === false ? 'no' : 'unknown'
-      ensure(key)
-    })
-    inPolandFilter.forEach((value) => ensure(value))
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, inPolandFilter, inPolandLabelMap])
-
-  const polandBasisOptions = useMemo(() => {
-    const source = buildFilterSource({ polandBasis: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: string) => {
-      if (map.has(value)) return
-      map.set(value, value === EMPTY_OPTION_VALUE ? t('common.labels.not_available') : getPolandBasisLabel(value))
-    }
-    source.forEach((item) => {
-      ensure(item.__extra.polandStayBasis ?? EMPTY_OPTION_VALUE)
-    })
-    polandBasisFilter.forEach((value) => ensure(value))
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, polandBasisFilter, getPolandBasisLabel, t])
-
-  const trailerTypeOptions = useMemo(() => {
-    const source = buildFilterSource({ trailerTypes: [] })
-    const map = new Map<string, string>()
-    const ensure = (value: string) => {
-      if (!value || map.has(value)) return
-      map.set(value, getTrailerTypeLabel(value))
-    }
-    source.forEach((item) => {
-      item.__extra.trailerTypes.forEach((code) => ensure(code))
-    })
-    trailerTypesFilter.forEach((value) => ensure(value))
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
-  }, [buildFilterSource, getTrailerTypeLabel, trailerTypesFilter])
-
-  const visibleColumnsCount = 1 + Object.values(visibleCols).filter(Boolean).length
   const allVisibleSelected =
     displayedItems.length > 0 && displayedItems.every((candidate) => checked[candidate.id])
 
-  // load managers catalog (array or {items})
+  const {
+    vacancyFilterOptions,
+    managerFilterOptions,
+    reasonFilterOptions,
+    docsStatusPresence,
+    allDocsStatusOptions,
+    docsStatusFilterOptions,
+    docsOrderPresence,
+    docsOrderFilterOptions,
+    docsHasFilesOptions,
+    preferredChannelOptions,
+    inPolandOptions,
+    opsModeOptions,
+    polandBasisOptions,
+    trailerTypesOptions,
+  } = useCandidatesFilterOptions({
+    t, enrichedItems,
+    vacancyLabelMap, managerLabelMap, resolveManagerLabel,
+    preferredChannelLabelMap, inPolandLabelMap, opsModeLabelMap,
+    getPolandBasisLabel, getTrailerTypeLabel,
+    reasonOptions,
+    vacancyFilter, managerFilter, statusReasonFilter, docsStatusFilter,
+    docsOrderedFilter, docsHasFilesFilter, preferredChannelFilter,
+    inPolandFilter, opsModeFilter,     polandBasisFilter, trailerTypesFilter,
+    facetVacancyIds: listColumnFacets?.vacancy_ids ?? [],
+    facetAssigneeIds: listColumnFacets?.assignee_ids ?? [],
+  })
+
+  const quickStageOptions = useMemo(
+    () => stageFilterOptions.map((option) => option.value),
+    [stageFilterOptions],
+  )
+  const quickManagers = useMemo(
+    () => managerFilterOptions.map((option) => ({ id: option.value, name: option.label })),
+    [managerFilterOptions],
+  )
+  const quickVacancies = useMemo(
+    () => vacancyFilterOptions.map((option) => ({ id: option.value, title: option.label })),
+    [vacancyFilterOptions],
+  )
+
   useEffect(() => {
-    (async () => {
-      try{
-        const { data } = await api.get('/catalogs/managers')
-        const list: any[] = Array.isArray(data) ? data : (data?.items || [])
-        const mapped: ManagerItem[] = list.map((it:any) => ({ id: it?.id || it?.user_id || it?.uid, name: it?.name || it?.email || '—' }))
-          .filter(m => m.id)
+    const next = pruneSelectionByOptions(stageFilter, stageFilterOptions)
+    if (next.length !== stageFilter.length) setStageFilter(next)
+  }, [stageFilter, stageFilterOptions, setStageFilter, pruneSelectionByOptions])
 
-        // add current user if API omitted them (happens for restricted catalogs)
-        const selfId = (me as any)?.sub || (me as any)?.id || null
-        const selfName = (me as any)?.full_name || (me as any)?.email || null
-        if (selfId && !mapped.some(m => m.id === selfId)) {
-          mapped.push({ id: selfId, name: selfName || selfId })
-        }
+  useEffect(() => {
+    const next = pruneSelectionByOptions(vacancyFilter, vacancyFilterOptions)
+    if (next.length !== vacancyFilter.length) setVacancyFilter(next)
+  }, [vacancyFilter, vacancyFilterOptions, setVacancyFilter, pruneSelectionByOptions])
 
-        setManagers(mapped)
-      } catch{/* ignore */}
-    })()
-  }, [me])
+  useEffect(() => {
+    const next = pruneSelectionByOptions(managerFilter, managerFilterOptions)
+    if (next.length !== managerFilter.length) setManagerFilter(next)
+  }, [managerFilter, managerFilterOptions, setManagerFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(statusReasonFilter, reasonFilterOptions)
+    if (next.length !== statusReasonFilter.length) setStatusReasonFilter(next)
+  }, [statusReasonFilter, reasonFilterOptions, setStatusReasonFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(docsStatusFilter, docsStatusFilterOptions)
+    if (next.length !== docsStatusFilter.length) setDocsStatusFilter(next)
+  }, [docsStatusFilter, docsStatusFilterOptions, setDocsStatusFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(docsOrderedFilter, docsOrderFilterOptions)
+    if (next.length !== docsOrderedFilter.length) setDocsOrderedFilter(next)
+  }, [docsOrderedFilter, docsOrderFilterOptions, setDocsOrderedFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(docsHasFilesFilter, docsHasFilesOptions)
+    if (next.length !== docsHasFilesFilter.length) setDocsHasFilesFilter(next)
+  }, [docsHasFilesFilter, docsHasFilesOptions, setDocsHasFilesFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(preferredChannelFilter, preferredChannelOptions)
+    if (next.length !== preferredChannelFilter.length) setPreferredChannelFilter(next)
+  }, [preferredChannelFilter, preferredChannelOptions, setPreferredChannelFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(inPolandFilter, inPolandOptions)
+    if (next.length !== inPolandFilter.length) setInPolandFilter(next)
+  }, [inPolandFilter, inPolandOptions, setInPolandFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const allowed = new Set(opsModeOptions.map((option) => String(option.value)))
+    const next = opsModeFilter.filter((value) => allowed.has(String(value)))
+    if (next.length !== opsModeFilter.length) setOpsModeFilter(next)
+  }, [opsModeFilter, opsModeOptions, setOpsModeFilter])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(polandBasisFilter, polandBasisOptions)
+    if (next.length !== polandBasisFilter.length) setPolandBasisFilter(next)
+  }, [polandBasisFilter, polandBasisOptions, setPolandBasisFilter, pruneSelectionByOptions])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(trailerTypesFilter, trailerTypesOptions)
+    if (next.length !== trailerTypesFilter.length) setTrailerTypesFilter(next)
+  }, [trailerTypesFilter, trailerTypesOptions, setTrailerTypesFilter, pruneSelectionByOptions])
+
+  const tagOptions = useMemo(() => {
+    const all = new Set<string>()
+    enrichedItems.forEach((item) => {
+      const tags = Array.isArray(item.tags) ? item.tags : []
+      tags.forEach((tag) => {
+        const value = String(tag || '').trim()
+        if (value) all.add(value)
+      })
+    })
+    return Array.from(all).sort().map((value) => ({ value, label: value }))
+  }, [enrichedItems])
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(tagsFilter, tagOptions)
+    if (next.length !== tagsFilter.length) setTagsFilter(next)
+  }, [tagsFilter, tagOptions, setTagsFilter, pruneSelectionByOptions])
+
+  const candidateRowStatusFilterOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    const labelFor = (value: string) =>
+      t(`app.candidates.row_status.${value}`, { defaultValue: value })
+    const add = (raw: string | null | undefined) => {
+      const v = raw != null && String(raw).trim() !== '' ? String(raw).trim() : null
+      if (!v || map.has(v)) return
+      map.set(v, labelFor(v))
+    }
+    ;(listColumnFacets?.statuses ?? []).forEach((s) => add(s))
+    enrichedItems.forEach((item) => {
+      add((item as { row_status?: string | null }).row_status)
+    })
+    candidateRowStatusFilter.forEach((code) => add(code))
+    return Array.from(map.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }))
+  }, [enrichedItems, candidateRowStatusFilter, t, listColumnFacets?.statuses])
+
+  const candidateRowStatusLabel = useCallback(
+    (code: string) => {
+      const v = String(code || '').trim()
+      if (!v) {
+        return t('app.candidates.filters.row_status_legacy', { defaultValue: 'Unknown / legacy status' })
+      }
+      return t(`app.candidates.row_status.${v}`, { defaultValue: v })
+    },
+    [t],
+  )
+
+  useEffect(() => {
+    const next = pruneSelectionByOptions(candidateRowStatusFilter, candidateRowStatusFilterOptions)
+    if (next.length !== candidateRowStatusFilter.length) setCandidateRowStatusFilter(next)
+  }, [
+    candidateRowStatusFilter,
+    candidateRowStatusFilterOptions,
+    setCandidateRowStatusFilter,
+    pruneSelectionByOptions,
+  ])
+
+  // Функция для рендеринга содержимого заголовка колонки
+  const columnHeaderCtx = useMemo(() => ({
+    t,
+    sortKey, sortDir, handleSortChange,
+    textFilters, setTextFilter,
+    columnLabelMap,
+    allVisibleSelected, canManage, setChecked, displayedItems,
+    vacancyFilterOptions, vacancyFilter, setVacancyFilter,
+    managerFilterOptions, managerFilter, setManagerFilter,
+    stageFilterOptions, stageFilter, setStageFilter,
+    candidateRowStatusFilterOptions, candidateRowStatusFilter, setCandidateRowStatusFilter,
+    preferredChannelOptions, preferredChannelFilter, setPreferredChannelFilter,
+    inPolandOptions, inPolandFilter, setInPolandFilter,
+    polandBasisOptions, polandBasisFilter, setPolandBasisFilter,
+    trailerTypesOptions, trailerTypesFilter, setTrailerTypesFilter,
+    reasonFilterOptions, statusReasonFilter, setStatusReasonFilter,
+    intakeApplicationKindFilter, setIntakeApplicationKindFilter,
+    docsStatusFilterOptions, docsStatusFilter, setDocsStatusFilter,
+    docsOrderFilterOptions, docsOrderedFilter, setDocsOrderedFilter,
+    docsHasFilesOptions, docsHasFilesFilter, setDocsHasFilesFilter,
+    tagsFilter, setTagsFilter,
+    createdRange, setCreatedRange,
+    firstContactRange, setFirstContactRange,
+    docsValidRange, setDocsValidRange,
+    enrichedItems,
+  }), [
+    t,
+    sortKey, sortDir, handleSortChange,
+    textFilters, setTextFilter,
+    columnLabelMap,
+    allVisibleSelected, canManage, setChecked, displayedItems,
+    vacancyFilterOptions, vacancyFilter, setVacancyFilter,
+    managerFilterOptions, managerFilter, setManagerFilter,
+    stageFilterOptions, stageFilter, setStageFilter,
+    candidateRowStatusFilterOptions, candidateRowStatusFilter, setCandidateRowStatusFilter,
+    preferredChannelOptions, preferredChannelFilter, setPreferredChannelFilter,
+    inPolandOptions, inPolandFilter, setInPolandFilter,
+    polandBasisOptions, polandBasisFilter, setPolandBasisFilter,
+    trailerTypesOptions, trailerTypesFilter, setTrailerTypesFilter,
+    reasonFilterOptions, statusReasonFilter, setStatusReasonFilter,
+    intakeApplicationKindFilter, setIntakeApplicationKindFilter,
+    docsStatusFilterOptions, docsStatusFilter, setDocsStatusFilter,
+    docsOrderFilterOptions, docsOrderedFilter, setDocsOrderedFilter,
+    docsHasFilesOptions, docsHasFilesFilter, setDocsHasFilesFilter,
+    tagsFilter, setTagsFilter,
+    createdRange, setCreatedRange,
+    firstContactRange, setFirstContactRange,
+    docsValidRange, setDocsValidRange,
+    enrichedItems,
+  ])
+
+  // Компонент для перетаскиваемого заголовка колонки
+  const DraggableColumnHeader = ({ columnKey, isSticky, stickyLeft }: {
+    columnKey: string
+    isSticky?: boolean
+    stickyLeft?: string
+  }) => {
+    const className = clsx(
+      'group py-2.5 border-r border-slate-200 align-middle whitespace-nowrap',
+      columnKey === 'checkbox' ? 'px-4' : tableLayoutCustomize ? 'pl-2 pr-4' : 'px-4',
+      isSticky ? 'sticky bg-slate-50 z-[25]' : 'relative',
+      'cursor-default',
+      tableLayoutCustomize &&
+        dragOverColumn === columnKey &&
+        draggingColumn &&
+        draggingColumn !== columnKey &&
+        'bg-brand-100/70',
+      // thead с pointer-events:none — интерактив в ячейках должен снова ловить события
+      'pointer-events-auto',
+    )
+
+    const dynamicStyle: React.CSSProperties = {
+      width: columnKey === 'checkbox' ? '56px' : `${getColumnWidth(columnKey)}px`,
+      minWidth: columnKey === 'checkbox' ? '56px' : `${getColumnWidth(columnKey)}px`,
+      maxWidth: columnKey === 'checkbox' ? '56px' : `${getColumnWidth(columnKey)}px`,
+    }
+
+    if (isSticky) {
+      dynamicStyle.position = 'sticky'
+      dynamicStyle.top = 0
+      dynamicStyle.zIndex = 25 // Выше, чем thead (15), чтобы заголовки были поверх
+      dynamicStyle.backgroundColor = '#f9fafb' // bg-slate-50 - обязательно для sticky, чтобы скрыть прокручиваемый контент
+      if (stickyLeft) {
+        // Преобразуем строку "0" в "0px" или оставляем как есть, если уже есть единицы измерения
+        dynamicStyle.left = stickyLeft === '0' ? '0px' : stickyLeft
+      } else if (columnKey === 'checkbox') {
+        // Для checkbox явно устанавливаем left: 0px
+        dynamicStyle.left = '0px'
+      }
+    }
+
+    const content = <CandidatesTableColumnHeaderContent columnKey={columnKey} ctx={columnHeaderCtx} />
+
+    if (columnKey === 'checkbox') {
+      // Для checkbox sticky классы уже применены в className выше
+      return (
+        <th className={className} style={dynamicStyle}>
+          {content}
+        </th>
+      )
+    }
+
+    if (!tableLayoutCustomize) {
+      return (
+        <th className={className} style={dynamicStyle}>
+          <div className="flex h-5 min-w-0 w-full items-center gap-1.5 overflow-hidden whitespace-nowrap">{content}</div>
+        </th>
+      )
+    }
+
+    return (
+      <th
+        className={className}
+        style={dynamicStyle}
+        onDragOver={(e) => {
+          if (!draggingColumn || draggingColumn === columnKey) return
+          e.preventDefault()
+          e.stopPropagation()
+          e.dataTransfer.dropEffect = 'move'
+          if (dragOverColumn !== columnKey) setDragOverColumn(columnKey)
+        }}
+        onDragEnter={(e) => {
+          if (!draggingColumn || draggingColumn === columnKey) return
+          e.preventDefault()
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const from =
+            draggingColumn ||
+            e.dataTransfer.getData('text/plain') ||
+            e.dataTransfer.getData('application/x-hostflow-column')
+          if (from) reorderColumns(from, columnKey)
+          setDragOverColumn(null)
+          setDraggingColumn(null)
+        }}
+        onDragLeave={(e) => {
+          // Игнорируем уход во вложенные узлы — иначе подсветка мигает (Win/Chrome)
+          const next = e.relatedTarget as Node | null
+          if (next && (e.currentTarget as HTMLElement).contains(next)) return
+          if (dragOverColumn === columnKey) setDragOverColumn(null)
+        }}
+      >
+        <div className="flex min-h-[34px] items-stretch justify-between gap-1">
+          <div className="flex min-h-[34px] min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+            <span
+              role="button"
+              tabIndex={0}
+              draggable
+              className="inline-flex h-8 w-7 shrink-0 cursor-grab select-none items-center justify-center rounded-md border border-slate-200 bg-slate-100/95 text-slate-600 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 active:cursor-grabbing"
+              title={t('app.candidates.table.reorder_column') || 'Перетащите, чтобы поменять порядок колонок'}
+              onDragStart={(e) => {
+                setDraggingColumn(columnKey)
+                setDragOverColumn(null)
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', columnKey)
+                e.dataTransfer.setData('application/x-hostflow-column', columnKey)
+                // Пустой drag image — меньше глюков на Windows / HiDPI
+                try {
+                  const canvas = document.createElement('canvas')
+                  canvas.width = 1
+                  canvas.height = 1
+                  e.dataTransfer.setDragImage(canvas, 0, 0)
+                } catch {
+                  /* ignore */
+                }
+              }}
+              onDragEnd={() => {
+                setDraggingColumn(null)
+                setDragOverColumn(null)
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                }
+              }}
+            >
+              <svg
+                width="14"
+                height="18"
+                viewBox="0 0 14 18"
+                fill="currentColor"
+                className="opacity-90"
+                aria-hidden
+              >
+                <circle cx="4" cy="3.5" r="1.35" />
+                <circle cx="10" cy="3.5" r="1.35" />
+                <circle cx="4" cy="9" r="1.35" />
+                <circle cx="10" cy="9" r="1.35" />
+                <circle cx="4" cy="14.5" r="1.35" />
+                <circle cx="10" cy="14.5" r="1.35" />
+              </svg>
+            </span>
+            <div className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+              {content}
+            </div>
+          </div>
+        </div>
+        <ColumnResizeHandle columnKey={columnKey} />
+      </th>
+    )
+  }
+
+  const visibleColumnsCount = 1 + Object.values(visibleCols).filter(Boolean).length
+
+  useCandidatesManagersCatalog(me, setManagers)
+  useCandidatesVacanciesCatalog(setVacancies)
 
   useEffect(() => {
     if (bulkManagerId) return
@@ -1810,171 +1864,316 @@ export default function Candidates(){
     }
   }, [bulkManagerId, preferredManagerId])
 
-  // load vacancies for filter and bulk assign
+
+
+  // Отслеживаем изменения items для диагностики
   useEffect(() => {
-    (async () => {
-      try{
-        const { data } = await api.get('/vacancies/')
-        const list: any[] = Array.isArray(data) ? data : (data?.items || [])
-        setVacancies(list as Vacancy[])
-      } catch {/* ignore */}
-    })()
-  }, [])
+    console.info('[Candidates] items state changed: length=', items.length, 'total=', total)
+  }, [items.length, total])
 
-  async function load(){
-    if (!filtersHydrated) return
-    setLoading(true)
-    setErrorText(null)
-    try{
-      let nextOffset = 0
-      let accumulated: UICandidate[] = []
-      let totalCount: number | null = null
-      let keepFetching = true
-
-      while (keepFetching) {
-        const { data } = await getWithFallbacks<ListResp>('/candidates', {
-          limit,
-          offset: nextOffset,
-          order_by: 'created_at',
-          desc: true,
-        })
-
-        const dataAny = data as any
-        const batch: UICandidate[] = Array.isArray(dataAny)
-          ? dataAny
-          : Array.isArray(dataAny?.items)
-            ? dataAny.items
-            : []
-
-        accumulated = accumulated.concat(batch)
-        if (typeof dataAny?.total === 'number') {
-          totalCount = dataAny.total
-        }
-
-        nextOffset += batch.length
-        const reachedEnd =
-          batch.length < limit ||
-          (totalCount !== null && accumulated.length >= totalCount) ||
-          batch.length === 0
-        keepFetching = !reachedEnd
+  // Автоматически сбрасываем фильтр isFavorite, если он блокирует все элементы
+  useEffect(() => {
+    if (isFavoriteFilter === true && enrichedItems.length > 0) {
+      const favoriteCount = enrichedItems.filter(item => (item.is_favorite ?? false) === true).length
+      if (favoriteCount === 0) {
+        console.warn('[Candidates] Auto-resetting isFavorite filter: filter is true but no favorites found')
+        setIsFavoriteFilter(null)
       }
-
-      setItems(accumulated)
-      setTotal(totalCount ?? accumulated.length)
-    } catch (e: any) {
-      const detail = e?.response?.data?.detail
-      const text = typeof detail === 'string' ? detail : detail ? JSON.stringify(detail, null, 2) : e?.message || t('app.candidates.messages.load_failed')
-      setErrorText(text)
-      setItems([])
-      setTotal(0)
-      console.error('Candidates load error:', e)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [isFavoriteFilter, enrichedItems.length])
+
+  // Обновляем список при возврате на страницу (например, после редактирования кандидата)
+  useCandidatesUpdateListener({
+    pathname: location.pathname,
+    prevLocationRef,
+    cacheKey,
+    listStorageKey,
+    load,
+    recentlyUpdatedIdsRef,
+    lastUpdateTimeRef,
+    updateInProgressRef,
+  })
+
+
+
+  const { persistScrollState, restoreScrollState } = useCandidatesScrollRestoration({
+    displayedItems,
+    setRecentlyOpenedId,
+    getScrollContainer,
+    outerScrollRef,
+    scrollKey,
+    restoredScrollRef,
+    restoreAttemptsRef,
+  })
+
+  const handleCandidateOpen = useCallback(
+    (id: string) => {
+      setRecentlyOpenedId(id)
+      persistScrollState(id)
+    },
+    [persistScrollState]
+  )
 
   useEffect(() => {
     if (!filtersHydrated) return
     load()
-  }, [filtersHydrated]) // первый запуск
+  }, [filtersHydrated, load]) // первый запуск и при смене tenant (me)
+
+  // дебаунс загрузки при изменении фильтров/поиска, чтобы не спамить API
+  useEffect(() => {
+    if (!filtersHydrated) return
+    if (loadDebounceRef.current) {
+      clearTimeout(loadDebounceRef.current)
+    }
+    loadDebounceRef.current = window.setTimeout(() => {
+      load()
+    }, 250)
+    return () => {
+      if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current)
+    }
+  }, [
+    filtersHydrated,
+    q,
+    stageFilter,
+    vacancyFilter,
+    managerFilter,
+    statusReasonFilter,
+    docsStatusFilter,
+    docsOrderedFilter,
+    preferredChannelFilter,
+    inPolandFilter,
+    polandBasisFilter,
+    trailerTypesFilter,
+    createdRange.from,
+    createdRange.to,
+    firstContactRange.from,
+    firstContactRange.to,
+    docsValidRange.from,
+    docsValidRange.to,
+    docsHasFilesFilter,
+    handoffStatusFilter,
+    contactAttemptsFilter,
+    processorFilter,
+    intakeApplicationKindFilter,
+    textFilters.name,
+    textFilters.email,
+    textFilters.phone,
+    textFilters.citizenship,
+    textFilters.short,
+    sortKey,
+    sortDir,
+  ])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'k')){
-        e.preventDefault()
-        searchRef.current?.focus()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const el = document.querySelector(APP_SCROLL_SELECTOR) as HTMLElement | null
+    outerScrollRef.current = el
   }, [])
 
-  function toggle(id: string){
-    if (!canManage) return
-    setChecked(s => ({ ...s, [id]: !s[id] }))
-  }
-  function allSelected(){ return items.filter(i => checked[i.id]).map(i => i.id) }
-
-  async function doBulk(){
-    const ids = allSelected()
-    if (ids.length === 0 || !bulkStage) return
-    const reasonOptions = meta?.reason_choices?.[bulkStage] ?? []
-    if (reasonOptions.length > 0 && bulkReasons.length === 0) {
-      alert(t('app.candidates.messages.reason_required'))
-      return
+  // Сбрасываем флаг восстановления при изменении пути (возврат к списку)
+  // И читаем returnFromCandidateId из location.state (при возврате из CandidateCard)
+  useEffect(() => {
+    const isOnCandidatesList = location.pathname === CRM_APP_PATHS.candidates
+    if (isOnCandidatesList) {
+      restoredScrollRef.current = false
+      restoreAttemptsRef.current = 0
+      const returnId = (location.state as { returnFromCandidateId?: string } | null)?.returnFromCandidateId
+      if (returnId) setRecentlyOpenedId(returnId)
     }
-    try {
-      const payload: Record<string, any> = { candidate_ids: ids, stage: bulkStage }
-      if (reasonOptions.length > 0) {
-        payload.status_reason = bulkReasons
-      }
-      await api.post('/candidates/bulk-stage', payload)
-      setBulkOpen(false); setChecked({}); setBulkReasons([])
-      await load()
-    } catch (e) {
-      const detail = (e as any)?.response?.data?.detail
-      alert(typeof detail === 'string' ? detail : t('app.candidates.messages.bulk_stage_failed'))
-    }
-  }
+  }, [location.pathname, location.state])
 
-  async function doBulkAssign(){
-    const ids = allSelected()
-    if (ids.length === 0 || !bulkManagerId) return
-    try{
-      const { data } = await api.post('/candidates/bulk-manager', {
-        candidate_ids: ids,
-        manager_id: bulkManagerId,
+  // (debug removed)
+
+  useEffect(() => {
+    if (!filtersHydrated) return
+    if (loading) return
+    // При открытом превью кандидата не восстанавливаем скролл по сохраненному
+    // состоянию: это вызывает scrollTo/scrollIntoView и провоцирует
+    // пере-рендер/виртуализацию ровно в момент взаимодействия с таблицей.
+    if (selectedCandidateId) return
+    restoreScrollState()
+  }, [filtersHydrated, loading, restoreScrollState, items.length, recentlyOpenedId, selectedCandidateId])
+
+  // Диагностика "что перекрывает таблицу":
+  // при ?debug=1 на клик показываем DOM-элемент под курсором.
+  // ВАЖНО: не вызывать setState синхронно в capture на window для mousedown —
+  // это перерисовывает Candidates до фазы target, TableVirtuoso пересобирает DOM,
+  // и onMouseDown/onClick на кнопках в таблице не срабатывают (ложный "оверлей").
+  useEffect(() => {
+    if (!showDebugPanel) return
+    const onMouseDownCapture = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugHit({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
       })
-      const results: Array<{ candidate_id?: string; ok?: boolean; error?: string }> = Array.isArray(data) ? data : []
-      const failures = results.filter((item) => item && item.ok === false)
-      if (failures.length) {
-        const labelById = new Map(items.map((c) => [c.id, `${c.first_name} ${c.last_name}`.trim() || c.short_id || c.id]))
-        const details = failures
-          .map((f) => {
-            const name = f.candidate_id ? (labelById.get(f.candidate_id) || f.candidate_id) : ''
-            return `${name}: ${f.error || 'failed'}`
-          })
-          .join('\n')
-        alert(
-          `${t('app.candidates.messages.bulk_manager_partial', {
-            values: { count: failures.length },
-          })}\n${details}`,
-        )
-        return
-      }
-      setBulkManagerOpen(false); setChecked({}); setBulkManagerId(preferredManagerId)
-      await load()
-    } catch (e:any){
-      const detail = e?.response?.data?.detail
-      alert(typeof detail === 'string' ? detail : t('app.candidates.messages.bulk_manager_failed'))
     }
-  }
 
-  async function doBulkAssignVacancy(){
-    const ids = allSelected()
-    if (ids.length === 0 || !bulkVacancyId) return
-    try{
-      await Promise.allSettled(ids.map(id => api.patch(`/candidates/${id}`, { vacancy_id: bulkVacancyId })))
-      setBulkVacancyOpen(false); setChecked({}); setBulkVacancyId('')
-      await load()
-    } catch (e:any){
-      const detail = e?.response?.data?.detail
-      alert(typeof detail === 'string' ? detail : t('app.candidates.messages.bulk_vacancy_failed'))
+    const onClickCapture = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugClickHit({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
     }
-  }
 
-  async function doBulkArchive(){
-    const ids = allSelected()
-    if (ids.length === 0) return
-    try{
-      await Promise.allSettled(ids.map(id => api.patch(`/candidates/${id}`, { is_archived: true })))
-      setBulkArchiveOpen(false); setChecked({})
-      await load()
-    } catch (e:any){
-      const detail = e?.response?.data?.detail
-      alert(typeof detail === 'string' ? detail : t('app.candidates.messages.bulk_archive_failed'))
+    const onClickBubble = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugClickHitBubble({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
     }
-  }
+
+    const onMouseUpCapture = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugMouseUpHit({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    const onMouseUpBubble = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugMouseUpHitBubble({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    window.addEventListener('mousedown', onMouseDownCapture, true)
+    window.addEventListener('click', onClickCapture, true)
+    window.addEventListener('click', onClickBubble, false)
+    window.addEventListener('mouseup', onMouseUpCapture, true)
+    window.addEventListener('mouseup', onMouseUpBubble, false)
+    return () => {
+      window.removeEventListener('mousedown', onMouseDownCapture, true)
+      window.removeEventListener('click', onClickCapture, true)
+      window.removeEventListener('click', onClickBubble, false)
+      window.removeEventListener('mouseup', onMouseUpCapture, true)
+      window.removeEventListener('mouseup', onMouseUpBubble, false)
+    }
+  }, [showDebugPanel])
+
+  // Состояние для клавиатурной навигации
+  // На случай drag-to-select: запоминаем координаты mousedown на строке,
+  // чтобы onClick по строке не срабатывал после выделения текста.
+  const lastRowMouseDownRef = useRef<{ x: number; y: number; t: number } | null>(null)
+
+  const toggle = useCallback((id: string) => {
+    if (!canManage) return
+    setChecked((s) => ({ ...s, [id]: !s[id] }))
+  }, [canManage])
+
+  const { focusedRowIndex, focusedRowRef } = useCandidatesTableKeyboardNavigation({
+    searchRef,
+    canManage,
+    displayedItems,
+    checked,
+    setChecked,
+    toggle,
+    handleCandidateOpen,
+    navigate,
+  })
+
+  // (toggle moved above keyboard hook)
+
+  const allSelected = useCallback(() => {
+    return items.filter(i => checked[i.id]).map(i => i.id)
+  }, [items, checked])
+
+  const [bulkOperationLoading, setBulkOperationLoading] = useState<string | null>(null) // 'stage' | 'manager' | 'vacancy' | 'handoff' | 'tags' | 'activities' | null
+
+  const {
+    doBulkActivities,
+    doBulk,
+    doBulkAssign,
+    doBulkAssignVacancy,
+    doBulkHandoff,
+    doBulkTags,
+    doBulkDelete,
+  } = useCandidatesBulkActions({
+    allSelected,
+    items,
+    recentlyUpdatedIdsRef,
+    load,
+    cacheKey,
+    listStorageKey,
+    meta,
+    t,
+    planLimitModal,
+    setBulkOperationLoading,
+    bulkStage,
+    bulkReasons,
+    setBulkOpen,
+    setBulkReasons,
+    setChecked,
+    bulkManagerId,
+    preferredManagerId,
+    setBulkManagerOpen,
+    setBulkManagerId,
+    bulkVacancyId,
+    setBulkVacancyOpen,
+    setBulkVacancyId,
+    bulkHandoffClientId,
+    setBulkHandoffOpen,
+    setBulkHandoffClientId,
+    bulkTagsList,
+    bulkTagsOperation,
+    setBulkTagsOpen,
+    setBulkTagsList,
+    bulkActivityTitle,
+    bulkActivityDueAt,
+    bulkActivityOffsetMinutes,
+    bulkActivityType,
+    setBulkActivitiesOpen,
+    setBulkDeleteOpen,
+  })
+
 
   const asTelHref = (display: string | null | undefined) => {
     if (!display) return undefined
@@ -1982,37 +2181,36 @@ export default function Candidates(){
     return digits ? `tel:${digits}` : undefined
   }
 
-  const handleResetFilters = () => {
-    setQ('')
-    setStageFilter([])
-    setVacancyFilter([])
-    setManagerFilter([])
-    setStatusReasonFilter([])
-    setDocsStatusFilter([])
-    setDocsOrderedFilter([])
-    setPreferredChannelFilter([])
-    setInPolandFilter([])
-    setPolandBasisFilter([])
-    setTrailerTypesFilter([])
-    setCreatedRange({ from: null, to: null })
-    setFirstContactRange({ from: null, to: null })
-    setDocsValidRange({ from: null, to: null })
-    setDocsHasFilesFilter([])
-    setTextFilters(makeEmptyTextFilters())
-    setSortKey('created_at')
-    setSortDir('desc')
-    persistedFiltersRef.current = false
-    try {
-      localStorage.removeItem(filterStorageKey)
-    } catch {/* ignore */}
-  }
+  const {
+    quickViewParam,
+    quickFiltersExpanded,
+    setQuickFiltersExpanded,
+    quickDocFilters,
+    toggleQuickDocFilter,
+    applyQuickViewFilters,
+  } = useCandidatesQuickViews({
+    t,
+    navigate,
+    searchParams,
+    setSearchParams,
+    filtersHydrated,
+    handleResetFilters,
+    preferredManagerId,
+    docsStatusFilter,
+    setDocsStatusFilter,
+    setManagerFilter,
+    setCreatedRange,
+    setHandoffStatusFilter,
+    setStageFilter,
+  })
 
   // Reusable secondary button style for top/filter actions
-  const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 text-gray-800 bg-white hover:bg-gray-100 active:bg-gray-200 transition-colors cursor-pointer";
+  const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
 
   const hasFilterBadges =
     Boolean(q) ||
     stageFilter.length > 0 ||
+    candidateRowStatusFilter.length > 0 ||
     vacancyFilter.length > 0 ||
     managerFilter.length > 0 ||
     statusReasonFilter.length > 0 ||
@@ -2020,15 +2218,24 @@ export default function Candidates(){
     docsOrderedFilter.length > 0 ||
     preferredChannelFilter.length > 0 ||
     inPolandFilter.length > 0 ||
+    opsModeFilter.length > 0 ||
     polandBasisFilter.length > 0 ||
     trailerTypesFilter.length > 0 ||
     docsHasFilesFilter.length > 0 ||
+    !!handoffStatusFilter ||
+    !!contactAttemptsFilter ||
+    Boolean(digestShadowBucket) ||
+    !!processorFilter ||
+    Boolean(operationalQueue) ||
+    intakeApplicationKindFilter === 'client' ||
+    intakeApplicationKindFilter === 'candidate' ||
     isRangeActive(createdRange) ||
     isRangeActive(firstContactRange) ||
     isRangeActive(docsValidRange) ||
     Object.values(textFilters).some((value) => value.trim().length > 0)
 
   const changeView = (mode: 'table' | 'kanban') => {
+    if (mode === 'kanban' && operationalQueue) return
     setViewMode(mode)
     const next = new URLSearchParams(searchParams)
     if (mode === 'kanban') {
@@ -2040,12 +2247,12 @@ export default function Candidates(){
   }
 
   const viewToggle = (
-    <div className="inline-flex rounded-full border border-brand-200 bg-white p-1 shadow">
+    <div className="inline-flex rounded-md border border-brand-200 bg-white p-0.5 shadow-sm">
       <button
         type="button"
         className={clsx(
-          'rounded-full px-3 py-1.5 text-sm font-medium transition',
-          !isKanban ? 'bg-brand-600 text-white shadow' : 'text-brand-700 hover:bg-brand-50'
+          'rounded px-2 py-1 text-xs font-medium transition',
+          !isKanban ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-700 hover:bg-brand-50'
         )}
         onClick={() => changeView('table')}
       >
@@ -2054,938 +2261,886 @@ export default function Candidates(){
       <button
         type="button"
         className={clsx(
-          'rounded-full px-3 py-1.5 text-sm font-medium transition',
-          isKanban ? 'bg-brand-600 text-white shadow' : 'text-brand-700 hover:bg-brand-50'
+          'rounded px-2 py-1 text-xs font-medium transition',
+          isKanban ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-700 hover:bg-brand-50',
+          operationalQueue && 'cursor-not-allowed opacity-50',
         )}
+        disabled={Boolean(operationalQueue)}
+        title={
+          operationalQueue
+            ? t('app.candidates.no_next_action.kanban_disabled_hint', {
+                defaultValue: 'Pipeline view is unavailable for this queue. Clear the queue filter to use kanban.',
+              })
+            : undefined
+        }
         onClick={() => changeView('kanban')}
       >
         {t('app.candidates.views.kanban')}
       </button>
     </div>
   )
-  const canSaveCurrentView = hasFilterBadges && filteredItems.length > 0
-  const insightCards = [
-    {
-      label: t('app.candidates.insights.total'),
-      value: candidateInsights.total,
-      hint: t('app.candidates.insights.total_hint', { values: { count: candidateInsights.total } }),
-    },
-    {
-      label: t('app.candidates.insights.new'),
-      value: candidateInsights.newCount,
-      hint: t('app.candidates.insights.new_hint', { values: { count: candidateInsights.newCount } }),
-    },
-    {
-      label: t('app.candidates.insights.docs_ready'),
-      value: candidateInsights.docsReady,
-      hint: t('app.candidates.insights.docs_ready_hint', { values: { count: candidateInsights.docsReady } }),
-    },
-    {
-      label: t('app.candidates.insights.docs_attention'),
-      value: candidateInsights.docsAttention,
-      hint: t('app.candidates.insights.docs_attention_hint', {
-        values: { count: candidateInsights.docsAttention },
-      }),
-    },
-  ]
+  const {
+    heroExpanded,
+    setHeroExpanded,
+    insightCards,
+    handleInsightDrillDown,
+  } = useCandidatesInsightsHero({
+    t,
+    insightSource,
+    enrichedItems,
+    handleResetFilters,
+    setStageFilter,
+    setDocsStatusFilter,
+  })
+
+  // Закрытие контекстного меню при клике вне его и Escape
+  useEffect(() => {
+    if (!contextMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null)
+    }
+    window.addEventListener('click', handleClick, true)
+    window.addEventListener('contextmenu', handleClick, true)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('click', handleClick, true)
+      window.removeEventListener('contextmenu', handleClick, true)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [contextMenu])
+  useEffect(() => {
+    if (!contextMenu) return
+    const exists = displayedItems.some((candidate) => candidate.id === contextMenu.candidateId)
+    if (!exists) setContextMenu(null)
+  }, [contextMenu, displayedItems])
+
   const summaryHero = (
-    <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <p className="text-2xl font-semibold">{t('app.candidates.header.title')}</p>
-          <p className="text-sm text-white/80">{t('app.candidates.insights.subtitle')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {viewToggle}
-          {canSaveCurrentView && (
-            <button
-              type="button"
-              className="btn-ghost border border-white/30 bg-white/10 text-white hover:bg-white/20"
-              onClick={() => {
-                setSaveViewName('')
-                setSaveViewOpen(true)
-              }}
-            >
-              {t('app.candidates.insights.save_view')}
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {insightCards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-white/30 bg-white/10 p-4 shadow-inner backdrop-blur"
+    <CandidatesSummaryHero
+      title={t('app.candidates.insights.title')}
+      subtitle={t('app.candidates.insights.subtitle')}
+      expandLabel={t('common.actions.expand')}
+      collapseLabel={t('common.actions.collapse')}
+      expanded={heroExpanded}
+      cards={insightCards}
+      onToggleExpanded={() => setHeroExpanded((prev) => !prev)}
+      onCardClick={(key) => handleInsightDrillDown(key as 'total' | 'new' | 'docs_ready' | 'docs_attention')}
+      headerActions={
+        canViewActivities ? (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm hover:border-brand-300 hover:bg-brand-50/50"
+            onClick={openActivitiesModal}
+            title={t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
           >
-            <div className="text-sm text-white/80">{card.label}</div>
-            <div className="text-3xl font-semibold">{card.value}</div>
-            <div className="text-xs text-white/70">{card.hint}</div>
-          </div>
-        ))}
-      </div>
-    </section>
+            <IconListCheck size={14} className="text-slate-500" aria-hidden />
+            {t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
+          </button>
+        ) : null
+      }
+    />
+  )
+
+  const visibleCandidatesCount = displayedItems.length
+  const hasActiveTableFilters =
+    hasFilterBadges ||
+    isFavoriteFilter === true ||
+    isFavoriteFilter === false ||
+    Boolean(quickViewParam) ||
+    Boolean(operationalQueue)
+  const showsFilteredCount = total > 0 && visibleCandidatesCount !== total
+
+  const tableRowCellsCtx = useMemo(
+    () => ({
+      t, locale,
+      focusedRowIndex, workPanelOpen, selectedCandidateId,
+      setSelectedCandidateId, setSidebarOpen,
+      checked, toggle, canManage, canViewActivities,
+      orderedVisibleColumns, visibleCols, getColumnWidth,
+      vacancyLabelMap, preferredChannelLabelMap, inPolandLabelMap, reasonLabelMap,
+      resolveManagerLabel, getPolandBasisLabel, getTrailerTypeLabel, asTelHref,
+      navigate, handleCandidateOpen, setItems, setTaskQuickModal, planLimitModal,
+    }),
+    [
+      t, locale,
+      focusedRowIndex, workPanelOpen, selectedCandidateId,
+      setSelectedCandidateId, setSidebarOpen,
+      checked, toggle, canManage, canViewActivities,
+      orderedVisibleColumns, visibleCols, getColumnWidth,
+      vacancyLabelMap, preferredChannelLabelMap, inPolandLabelMap, reasonLabelMap,
+      resolveManagerLabel, getPolandBasisLabel, getTrailerTypeLabel, asTelHref,
+      navigate, handleCandidateOpen, setItems, setTaskQuickModal, planLimitModal,
+    ],
   )
 
   if (isKanban) {
-    return (
-      <div className="space-y-4">
-        {summaryHero}
-        <Pipeline />
-      </div>
-    )
+    return <Pipeline />
   }
 
-  const toggleQuickDocFilter = (statuses: string[], active: boolean) => {
-    if (active) {
-      setDocsStatusFilter([])
-    } else {
-      setDocsStatusFilter(statuses)
-    }
-  }
 
   return (
-    <div className="space-y-4">
-      {summaryHero}
-      <section className="app-surface space-y-4 p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex-1 min-w-[260px]">
-            <label className="sr-only" htmlFor="cand-search">{t('app.candidates.search.label')}</label>
-            <input
-              id="cand-search"
-              ref={searchRef}
-              className="input w-full"
-              value={q}
-              onChange={(e)=>setQ(e.target.value)}
-              placeholder={t('app.candidates.search.placeholder')}
+    <div
+      data-hf-ui="candidates-native-table-v7-grid-rail"
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      {/* R1.P0: отдельная grid-колонка под rail, без absolute — стабильный hit-testing. Ширина: `CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX`. */}
+      <div
+        className="grid min-h-0 min-w-0 flex-1"
+        style={
+          workPanelOpen
+            ? {
+                gridTemplateColumns: `minmax(0, 1fr) ${CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX}px`,
+              }
+            : undefined
+        }
+      >
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+        <div
+          ref={tableContainerRef}
+          className="flex-1 min-h-0 overflow-hidden flex flex-col"
+          data-candidates-table-container
+        >
+          {showDebugPanel && (
+            <CandidatesDebugPanel
+              t={t}
+              onForceTwoApplied={() => load({ force: true })}
+              debugHit={debugHit}
+              debugClickHit={debugClickHit}
+              debugMouseUpHit={debugMouseUpHit}
+              debugClickHitBubble={debugClickHitBubble}
+              debugMouseUpHitBubble={debugMouseUpHitBubble}
+              sidebarOpen={sidebarOpen}
+              selectedCandidateId={selectedCandidateId}
             />
-            <p className="mt-1 text-xs text-gray-500">{t('app.candidates.search.hint')}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 self-end lg:self-start">
-            {viewToggle}
-            <button
-              className={secondaryBtn}
-              onClick={()=>load()}
-              disabled={loading}
-              title={t('app.candidates.actions.refresh_title')}
-            >
-              {loading ? t('app.candidates.actions.refreshing') : t('app.candidates.actions.refresh')}
-            </button>
-            <button
-              className={secondaryBtn}
-              title={t('app.candidates.actions.export_title')}
-              onClick={() => {
-                const rows = displayedItems.map(item => {
-                  const c = item as AugmentedCandidate
-                  const docsMeta = c.__docsMeta
-                  return {
-                    name: `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim(),
-                    email: c.email ?? '',
-                    phone: c.phone ?? '',
-                    citizenship: (()=>{ try{ const ex = typeof (c as any).extra === 'string' ? JSON.parse((c as any).extra) : (c as any).extra || {}; return ex.citizenship || ex.passport_country || '' }catch{return ''} })(),
-                    vacancy: (c as any).vacancy?.title || (c as any).vacancy_title || '',
-                    short_id: (c as any).short_id || '',
-                    manager: c.manager_name || c.manager_short || (c as any).manager || '',
-                    stage: c.stage,
-                    docs_status: t(docsMeta.readinessLabelKey),
-                    docs_ordered_at: docsMeta.orderDate ?? '',
-                    docs_valid_from: docsMeta.validFrom ?? '',
-                    docs_has_files: docsMeta.hasFiles ? t('common.words.yes') : t('common.words.no'),
-                  }
-                })
-                const csv = toCSV(rows, [
-                  { key:'name', title: t('app.candidates.table.columns.name') },
-                  { key:'email', title:'Email' },
-                  { key:'phone', title: t('app.candidates.table.columns.phone') },
-                  { key:'citizenship', title: t('app.candidates.table.columns.citizenship') },
-                  { key:'vacancy', title: t('app.candidates.table.columns.vacancy') },
-                  { key:'short_id', title:'Short ID' },
-                  { key:'manager', title: t('app.candidates.table.columns.manager') },
-                  { key:'stage', title: t('app.candidates.table.columns.stage') },
-                  { key:'docs_status', title: t('app.candidates.table.columns.docs_status') },
-                  { key:'docs_ordered_at', title: t('app.candidates.table.columns.docs_ordered') },
-                  { key:'docs_valid_from', title: t('app.candidates.table.columns.docs_valid') },
-                  { key:'docs_has_files', title: t('app.candidates.table.columns.docs_files') },
-                ])
-                const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = 'candidates.csv'
-                a.click()
-                URL.revokeObjectURL(url)
-              }}
-            >{t('app.candidates.actions.export')}</button>
-            <button
-              className={secondaryBtn}
-              onClick={handleResetFilters}
-              disabled={!hasFilterBadges}
-            >
-              {t('app.candidates.actions.reset_filters')}
-            </button>
-            <div className="relative" ref={actionsMenuRef}>
+          )}
+
+          {digestShadowBucket ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-sm text-slate-800">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <span className="font-medium">
+                  {t('app.candidates.digest_shadow.banner', { defaultValue: 'Risk digest cohort' })}
+                </span>
+                <span className="text-xs text-slate-600">
+                  {t('app.candidates.digest_shadow.bucket', {
+                    defaultValue: 'Hourly bucket: {t}',
+                    values: { t: new Date(digestShadowBucket).toLocaleString(locale) },
+                  })}
+                </span>
+                <label className="flex items-center gap-1.5 text-xs text-slate-700">
+                  <span className="shrink-0">
+                    {t('app.candidates.digest_shadow.min_band', { defaultValue: 'Band floor' })}
+                  </span>
+                  <select
+                    className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs"
+                    value={digestShadowMinBand ?? 'high'}
+                    onChange={(e) => {
+                      const next = new URLSearchParams(searchParams)
+                      next.set('shadow_min_band', e.target.value)
+                      setSearchParams(next, { replace: true })
+                    }}
+                  >
+                    {(['low', 'medium', 'high', 'critical'] as const).map((b) => (
+                      <option key={b} value={b}>
+                        {b}+
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <button
                 type="button"
-                className={secondaryBtn}
-                title={t('app.candidates.actions.more')}
-                onClick={() => setActionsMenuOpen((prev) => !prev)}
+                className="btn-secondary btn-sm shrink-0"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams)
+                  next.delete('shadow_bucket')
+                  next.delete('shadow_min_band')
+                  next.delete('shadow_bucket_min_band')
+                  setSearchParams(next, { replace: true })
+                }}
               >
-                ⋯
+                {t('app.candidates.digest_shadow.clear', { defaultValue: 'Clear digest filter' })}
               </button>
-              {actionsMenuOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-gray-200 bg-white p-3 shadow-lg">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    {t('app.candidates.table.columns.title')}
-                  </div>
-                  <div className="mt-2 max-h-48 space-y-1 overflow-auto">
-                    {columnToggleKeys.map((key) => (
-                      <label key={key} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={!!visibleCols[key]}
-                          onChange={(e)=>{
-                            const next = { ...visibleCols, [key]: e.currentTarget.checked }
-                            setVisibleCols(next)
-                            try{ localStorage.setItem(visibleColsStorageKey, JSON.stringify(next)) }catch{}
-                          }}
-                        />
-                        <span>{columnLabelMap[key]}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-primary mt-3 w-full"
-                    onClick={() => {
-                      setActionsMenuOpen(false)
-                      setSaveViewName('')
-                      setSaveViewOpen(true)
-                    }}
-                    disabled={!hasFilterBadges}
-                  >
-                    {t('app.candidates.views.save_action')}
-                  </button>
-                </div>
-              )}
             </div>
-            {canManage && (
-              <Link className="btn-primary" to="/app/candidates/new" title={t('app.candidates.actions.new_candidate_title')}>
-                {t('app.candidates.actions.new_candidate')}
-              </Link>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {quickDocFilters.map((filter) => (
+          ) : null}
+
+          {operationalQueue === 'no_next_action' ? (
+            <div className="mx-4 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-slate-800">
+              <div className="min-w-0">
+                <div className="font-medium text-slate-900">{t('app.candidates.no_next_action.title')}</div>
+                <div className="text-xs text-slate-600">{t('app.candidates.no_next_action.subtitle')}</div>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary btn-sm shrink-0"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams)
+                  next.delete('queue')
+                  next.delete('quick_view')
+                  setSearchParams(next, { replace: true })
+                }}
+              >
+                {t('app.candidates.no_next_action.clear_queue', { defaultValue: 'Show all candidates' })}
+              </button>
+            </div>
+          ) : null}
+
+          <div className="mx-4 mb-1.5 shrink-0 flex items-center justify-between gap-2">
+            <PageBreadcrumb />
             <button
-              key={filter.key}
               type="button"
-              onClick={() => toggleQuickDocFilter(filter.statuses, filter.active)}
-              className={[
-                'rounded-full px-4 py-2 text-sm font-medium',
-                filter.active ? 'bg-brand-600 text-white shadow' : 'bg-white text-brand-700 border border-brand-100 hover:bg-brand-50',
-              ].join(' ')}
+              onClick={() => {
+                const next = !workPanelOpen
+                setSidebarOpen(next)
+                if (!next) setSelectedCandidateId(null)
+              }}
+              className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+              title={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
+              aria-label={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
             >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {savedViews.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <details className="relative">
-            <summary className={secondaryBtn + " select-none"} title={t('app.candidates.views.manage_title')}>
-              {t('app.candidates.views.toggle')}
-            </summary>
-            <div className="absolute right-0 z-10 mt-2 card p-2 w-64 space-y-2 max-h-72 overflow-auto">
-              {savedViews.map(v => (
-                <div key={v.id} className="flex items-center justify-between gap-2">
-                  <button
-                    className="btn-ghost text-left flex-1 truncate"
-                    title={t('app.candidates.views.apply_title', { values: { name: v.name } })}
-                    onClick={()=>applyView(v)}
-                  >{v.name}</button>
-                  <button
-                    className="btn-ghost text-red-600"
-                    title={t('app.candidates.views.delete_title')}
-                    onClick={(e)=>{ e.preventDefault(); void deleteView(v.id) }}
-                  >×</button>
-                </div>
-              ))}
-              {savedViews.length === 0 && (
-                <div className="text-xs text-gray-500">{t('app.candidates.views.empty')}</div>
+              {workPanelOpen ? (
+                <>
+                  <IconX size={18} stroke={2} />
+                  <span className="hidden sm:inline">{t('app.candidates.menu.close')}</span>
+                </>
+              ) : (
+                <>
+                  <IconLayoutSidebarLeftExpand size={18} stroke={2} />
+                  <span className="hidden sm:inline">{t('app.candidates.menu.open')}</span>
+                </>
               )}
-            </div>
-          </details>
-        </div>
-      )}
+            </button>
+          </div>
 
-      {/* Active filter badges */}
-      {hasFilterBadges && (
-        <div className="flex flex-wrap items-center gap-2 mt-2">
-          {q && (
-            <span className="badge">
-              {t('app.candidates.filters.search', { values: { value: q } })}
-              <button className="ml-2 text-xs" onClick={()=>setQ('')}>×</button>
-            </span>
-          )}
-          {textFilters.name.trim() && (
-            <span className="badge">
-              {t('app.candidates.filters.name_badge', { values: { value: textFilters.name } })}
-              <button className="ml-2 text-xs" onClick={()=>setTextFilter('name','')}>×</button>
-            </span>
-          )}
-          {textFilters.email.trim() && (
-            <span className="badge">
-              {t('app.candidates.filters.email_badge', { values: { value: textFilters.email } })}
-              <button className="ml-2 text-xs" onClick={()=>setTextFilter('email','')}>×</button>
-            </span>
-          )}
-          {textFilters.phone.trim() && (
-            <span className="badge">
-              {t('app.candidates.filters.phone_badge', { values: { value: textFilters.phone } })}
-              <button className="ml-2 text-xs" onClick={()=>setTextFilter('phone','')}>×</button>
-            </span>
-          )}
-          {textFilters.citizenship.trim() && (
-            <span className="badge">
-              {t('app.candidates.filters.citizenship_badge', { values: { value: textFilters.citizenship } })}
-              <button className="ml-2 text-xs" onClick={()=>setTextFilter('citizenship','')}>×</button>
-            </span>
-          )}
-          {textFilters.short.trim() && (
-            <span className="badge">
-              {t('app.candidates.filters.short_badge', { values: { value: textFilters.short } })}
-              <button className="ml-2 text-xs" onClick={()=>setTextFilter('short','')}>×</button>
-            </span>
-          )}
-          {stageFilter.map((code) => (
-            <span className="badge" key={`stage-${code}`}>
-              {t('app.candidates.filters.stage', { values: { value: stageLabelMap[code] || code } })}
-              <button className="ml-2 text-xs" onClick={()=>setStageFilter(prev => prev.filter((item) => item !== code))}>×</button>
-            </span>
-          ))}
-          {vacancyFilter.map((id) => (
-            <span className="badge" key={`vacancy-${id}`}>
-              {t('app.candidates.filters.vacancy', { values: { value: vacancyLabelMap.get(id) || '—' } })}
-              <button className="ml-2 text-xs" onClick={()=>setVacancyFilter(prev => prev.filter((item) => item !== id))}>×</button>
-            </span>
-          ))}
-          {managerFilter.map((id) => (
-            <span className="badge" key={`manager-${id}`}>
-              {t('app.candidates.filters.manager', { values: { value: managerLabelMap.get(id) || '—' } })}
-              <button className="ml-2 text-xs" onClick={()=>setManagerFilter(prev => prev.filter((item) => item !== id))}>×</button>
-            </span>
-          ))}
-          {statusReasonFilter.map((code) => (
-            <span className="badge" key={`reason-${code}`}>
-              {t('app.candidates.filters.reason', { values: { value: reasonLabelMap.get(code) || code } })}
-              <span className="ml-1 text-xs text-gray-500">
-                {t('app.candidates.filters.reason_stage', { values: { stage: reasonStageMap.get(code) || '—' } })}
+          {candidatesQuotaWarning ? (
+            <div className="mx-4 mb-2 shrink-0">
+              <QuotaNearLimitBanner
+                kind="candidates_active"
+                percentUsed={candidatesQuotaWarning.percentUsed}
+              />
+            </div>
+          ) : null}
+
+          <CandidatesFiltersToolbar
+            t={t}
+            locale={locale}
+            q={q}
+            setQ={setQ}
+            searchRef={searchRef}
+            quickViewParam={quickViewParam}
+            applyQuickViewFilters={applyQuickViewFilters}
+            isFavoriteFilter={isFavoriteFilter}
+            setIsFavoriteFilter={setIsFavoriteFilter}
+            quickDocFilters={quickDocFilters}
+            quickFiltersExpanded={quickFiltersExpanded}
+            toggleQuickDocFilter={toggleQuickDocFilter}
+            setQuickFiltersExpanded={setQuickFiltersExpanded}
+            savedViews={savedViews}
+            applyView={applyView}
+            deleteView={deleteView}
+            stageOptions={quickStageOptions}
+            stageLabelMap={stageLabelMap}
+            managers={quickManagers}
+            vacancies={quickVacancies}
+            stageFilter={stageFilter}
+            setStageFilter={setStageFilter}
+            candidateRowStatusFilter={candidateRowStatusFilter}
+            setCandidateRowStatusFilter={setCandidateRowStatusFilter}
+            candidateRowStatusLabel={candidateRowStatusLabel}
+            managerFilter={managerFilter}
+            setManagerFilter={setManagerFilter}
+            vacancyFilter={vacancyFilter}
+            setVacancyFilter={setVacancyFilter}
+            hasFilterBadges={hasFilterBadges}
+            textFilters={textFilters}
+            setTextFilter={setTextFilter}
+            statusReasonFilter={statusReasonFilter}
+            setStatusReasonFilter={setStatusReasonFilter}
+            docsStatusFilter={docsStatusFilter}
+            setDocsStatusFilter={setDocsStatusFilter}
+            docsOrderedFilter={docsOrderedFilter}
+            setDocsOrderedFilter={setDocsOrderedFilter}
+            preferredChannelFilter={preferredChannelFilter}
+            setPreferredChannelFilter={setPreferredChannelFilter}
+            inPolandFilter={inPolandFilter}
+            setInPolandFilter={setInPolandFilter}
+            opsModeFilter={opsModeFilter}
+            setOpsModeFilter={setOpsModeFilter}
+            polandBasisFilter={polandBasisFilter}
+            setPolandBasisFilter={setPolandBasisFilter}
+            trailerTypesFilter={trailerTypesFilter}
+            setTrailerTypesFilter={setTrailerTypesFilter}
+            createdRange={createdRange}
+            setCreatedRange={setCreatedRange}
+            firstContactRange={firstContactRange}
+            setFirstContactRange={setFirstContactRange}
+            docsValidRange={docsValidRange}
+            setDocsValidRange={setDocsValidRange}
+            docsHasFilesFilter={docsHasFilesFilter}
+            setDocsHasFilesFilter={setDocsHasFilesFilter}
+            handoffStatusFilter={handoffStatusFilter}
+            setHandoffStatusFilter={setHandoffStatusFilter}
+            contactAttemptsFilter={contactAttemptsFilter}
+            setContactAttemptsFilter={setContactAttemptsFilter}
+            processorFilter={processorFilter}
+            setProcessorFilter={setProcessorFilter}
+            intakeApplicationKindFilter={intakeApplicationKindFilter}
+            setIntakeApplicationKindFilter={setIntakeApplicationKindFilter}
+            vacancyLabelMap={vacancyLabelMap}
+            managerLabelMap={managerLabelMap}
+            reasonLabelMap={reasonLabelMap}
+            reasonStageMap={reasonStageMap}
+            preferredChannelLabelMap={preferredChannelLabelMap}
+            inPolandLabelMap={inPolandLabelMap}
+            opsModeLabelMap={opsModeLabelMap}
+            getPolandBasisLabel={getPolandBasisLabel}
+            getTrailerTypeLabel={getTrailerTypeLabel}
+            docsStatusFilterOptions={docsStatusFilterOptions}
+            docsOrderFilterOptions={docsOrderFilterOptions}
+          />
+
+          {/* Bulk actions appear only when there is a selection */}
+          {canManage && Object.values(checked).some(Boolean) && (
+            <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-2.5 shadow-sm">
+              <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-200/60">
+                {t('app.candidates.bulk.selected', { values: { count: Object.values(checked).filter(Boolean).length } })}
               </span>
               <button
-                className="ml-2 text-xs"
-                onClick={() => setStatusReasonFilter((prev) => prev.filter((item) => item !== code))}
+                className="inline-flex items-center rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
+                title={t('app.candidates.bulk.stage.title')}
+                onClick={() => {
+                  setBulkStage(stageOptions[0] || 'new')
+                  setBulkReasons([])
+                  setBulkOpen(true)
+                }}
               >
-                ×
+                {t('app.candidates.bulk.stage.action')}
               </button>
-            </span>
-          ))}
-          {docsStatusFilter.map((value) => {
-            const entry = docsStatusOptions.find((option) => option.value === value)
-            return (
-              <span className="badge" key={`docs-status-${value}`}>
-                {t('app.candidates.filters.docs_status', { values: { value: entry?.label || value } })}
-                <button className="ml-2 text-xs" onClick={()=>setDocsStatusFilter(prev => prev.filter((item) => item !== value))}>×</button>
-              </span>
-            )
-          })}
-          {docsOrderedFilter.map((value) => {
-            const entry = docsOrderFilterOptions.find((option) => option.value === value)
-            return (
-              <span className="badge" key={`docs-ordered-${value}`}>
-                {t('app.candidates.filters.docs_order', { values: { value: entry?.label || value } })}
-                <button className="ml-2 text-xs" onClick={()=>setDocsOrderedFilter(prev => prev.filter((item) => item !== value))}>×</button>
-              </span>
-            )
-          })}
-          {preferredChannelFilter.map((value) => (
-            <span className="badge" key={`preferred-${value}`}>
-              {t('app.candidates.filters.preferred_channel', {
-                values: { value: preferredChannelLabelMap[value] ?? value },
-              })}
-              <button className="ml-2 text-xs" onClick={()=>setPreferredChannelFilter(prev => prev.filter((item) => item !== value))}>×</button>
-            </span>
-          ))}
-          {inPolandFilter.map((value) => (
-            <span className="badge" key={`poland-now-${value}`}>
-              {t('app.candidates.filters.in_poland', { values: { value: inPolandLabelMap[value] || value } })}
-              <button className="ml-2 text-xs" onClick={()=>setInPolandFilter(prev => prev.filter((item) => item !== value))}>×</button>
-            </span>
-          ))}
-          {polandBasisFilter.map((value) => (
-            <span className="badge" key={`poland-basis-${value}`}>
-              {t('app.candidates.filters.poland_basis', {
-                values: { value: value === EMPTY_OPTION_VALUE ? t('common.labels.not_available') : getPolandBasisLabel(value) },
-              })}
-              <button className="ml-2 text-xs" onClick={()=>setPolandBasisFilter(prev => prev.filter((item) => item !== value))}>×</button>
-            </span>
-          ))}
-          {trailerTypesFilter.map((value) => (
-            <span className="badge" key={`trailer-${value}`}>
-              {t('app.candidates.filters.trailer_types', { values: { value: getTrailerTypeLabel(value) } })}
-              <button className="ml-2 text-xs" onClick={()=>setTrailerTypesFilter(prev => prev.filter((item) => item !== value))}>×</button>
-            </span>
-          ))}
-          {isRangeActive(createdRange) && (
-            <span className="badge">
-              {t('app.candidates.filters.created_range', {
-                values: { from: createdRange.from || '—', to: createdRange.to || '—' },
-              })}
-              <button className="ml-2 text-xs" onClick={()=>setCreatedRange({ from: null, to: null })}>×</button>
-            </span>
+              <button
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                title={t('app.candidates.bulk.manager.title')}
+                onClick={() => {
+                  setBulkManagerId(preferredManagerId)
+                  setBulkManagerOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.manager.action')}
+              </button>
+              <button
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                title={t('app.candidates.bulk.vacancy.title')}
+                onClick={() => {
+                  setBulkVacancyId(vacancies[0]?.id || '')
+                  setBulkVacancyOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.vacancy.action')}
+              </button>
+              <button
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                title={t('app.candidates.bulk.handoff.title', { defaultValue: 'Przekaż wybranych do klienta' })}
+                onClick={() => setBulkHandoffOpen(true)}
+              >
+                {t('app.candidates.bulk.handoff.action', { defaultValue: 'Przekaż do klienta (wybrani)' })}
+              </button>
+              <button
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                title={t('app.candidates.bulk.tags.title')}
+                onClick={() => {
+                  setBulkTagsOperation('add')
+                  setBulkTagsList('')
+                  setBulkTagsOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.tags.action')}
+              </button>
+              <button
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                title={t('app.candidates.bulk.activities.title', { defaultValue: 'Create activities for selected' })}
+                onClick={() => {
+                  setBulkActivityTitle(t('app.candidates.bulk.activities.default_title', { defaultValue: 'Follow up' }))
+                  setBulkActivityDueAt(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
+                  setBulkActivityOffsetMinutes(60)
+                  setBulkActivitiesOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.activities.action', { defaultValue: 'Create activity' })}
+              </button>
+              <button
+                className="inline-flex items-center rounded-lg border border-red-200/90 bg-white px-2.5 py-2 text-xs font-medium text-red-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50"
+                title={t('app.candidates.bulk.delete.title')}
+                onClick={() => {
+                  setBulkDeleteOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.delete.action')}
+              </button>
+              <div className="min-w-[1rem] flex-1" />
+              <button
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100"
+                title={t('app.candidates.bulk.clear_title')}
+                onClick={() => setChecked({})}
+              >
+                {t('app.candidates.bulk.clear_action')}
+              </button>
+            </div>
           )}
-          {isRangeActive(firstContactRange) && (
-            <span className="badge">
-              {t('app.candidates.filters.first_contact_range', {
-                values: { from: firstContactRange.from || '—', to: firstContactRange.to || '—' },
-              })}
-              <button className="ml-2 text-xs" onClick={()=>setFirstContactRange({ from: null, to: null })}>×</button>
-            </span>
+
+          {errorText && (
+            <div className="m-4">
+              <ErrorRecoveryBanner
+                info={errorText}
+                onRetry={() => void load({ force: true })}
+                retryLabel={t('app.candidates.errors.retry') || 'Повторить попытку'}
+                {...friendlyErrorBannerSecondary(
+                  errorText,
+                  CRM_APP_PATHS.candidates,
+                  t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+                )}
+              />
+            </div>
           )}
-          {isRangeActive(docsValidRange) && (
-            <span className="badge">
-              {t('app.candidates.filters.docs_valid_range', {
-                values: { from: docsValidRange.from || '—', to: docsValidRange.to || '—' },
-              })}
-              <button className="ml-2 text-xs" onClick={()=>setDocsValidRange({ from: null, to: null })}>×</button>
-            </span>
-          )}
-          {docsHasFilesFilter.map((value) => (
-            <span className="badge" key={`docs-files-${value}`}>
-              {t('app.candidates.filters.docs_files_badge', {
-                values: {
-                  value:
-                    value === 'with'
-                      ? t('app.candidates.filters.docs_files_with')
-                      : t('app.candidates.filters.docs_files_without'),
-                },
-              })}
-              <button className="ml-2 text-xs" onClick={()=>setDocsHasFilesFilter((prev)=>prev.filter((item)=>item!==value))}>×</button>
-            </span>
-          ))}
-        </div>
-      )}
 
-      {/* Bulk actions appear only when there is a selection */}
-      {canManage && Object.values(checked).some(Boolean) && (
-        <div className="card p-3 flex flex-wrap items-center gap-2">
-          <div className="text-sm">
-            {t('app.candidates.bulk.selected', { values: { count: Object.values(checked).filter(Boolean).length } })}
-          </div>
-          <button
-            className="btn-primary"
-            title={t('app.candidates.bulk.stage.title')}
-            onClick={()=>{ setBulkStage(stageOptions[0] || 'new'); setBulkReasons([]); setBulkOpen(true) }}
-          >
-            {t('app.candidates.bulk.stage.action')}
-          </button>
-          <button
-            className="btn"
-            title={t('app.candidates.bulk.manager.title')}
-            onClick={()=>{ setBulkManagerId(preferredManagerId); setBulkManagerOpen(true) }}
-          >
-            {t('app.candidates.bulk.manager.action')}
-          </button>
-          <button
-            className="btn"
-            title={t('app.candidates.bulk.vacancy.title')}
-            onClick={()=>{ setBulkVacancyId(vacancies[0]?.id || ''); setBulkVacancyOpen(true) }}
-          >
-            {t('app.candidates.bulk.vacancy.action')}
-          </button>
-          <button className="btn" title={t('app.candidates.bulk.archive.title')} onClick={()=> setBulkArchiveOpen(true)}>
-            {t('app.candidates.bulk.archive.action')}
-          </button>
-          <div className="flex-1" />
-          <button
-            className="btn-ghost"
-            title={t('app.candidates.bulk.clear_title')}
-            onClick={()=> setChecked({})}
-          >
-            {t('app.candidates.bulk.clear_action')}
-          </button>
-        </div>
-      )}
-
-      {errorText && (
-        <div className="text-sm text-red-600 whitespace-pre-wrap break-words">
-          {errorText}
-        </div>
-      )}
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 text-left">
-              <th className="px-4 py-3 w-1">
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  disabled={!canManage}
-                  onChange={(e) => {
-                    if (!canManage) return
-                    const val = e.currentTarget.checked
-                    setChecked((prev) => {
-                      const next = { ...prev }
-                      displayedItems.forEach((candidate) => {
-                        next[candidate.id] = val
-                      })
-                      return next
-                    })
-                  }}
-                />
-              </th>
-              {visibleCols.name && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.name, 'name')}
-                    {renderTextFilterMenu(
-                      'name',
-                      t('app.candidates.filters.name_menu'),
-                      t('app.candidates.filters.name_placeholder')
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.email && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.email, 'email')}
-                    {renderTextFilterMenu(
-                      'email',
-                      t('app.candidates.filters.email_menu'),
-                      t('app.candidates.filters.email_placeholder')
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.phone && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.phone, 'phone')}
-                    {renderTextFilterMenu(
-                      'phone',
-                      t('app.candidates.filters.phone_menu'),
-                      t('app.candidates.filters.phone_placeholder')
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.citizenship && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.citizenship, 'citizenship')}
-                    {renderTextFilterMenu(
-                      'citizenship',
-                      t('app.candidates.filters.citizenship_menu'),
-                      t('app.candidates.filters.citizenship_placeholder')
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.vacancy && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.vacancy, 'vacancy')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.vacancy_menu')}
-                      options={vacancyFilterOptions}
-                      selected={vacancyFilter}
-                      onChange={setVacancyFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.short && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.short, 'short_id')}
-                    {renderTextFilterMenu(
-                      'short',
-                      t('app.candidates.filters.short_menu'),
-                      t('app.candidates.filters.short_placeholder')
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.manager && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.manager, 'manager')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.manager_menu')}
-                      options={managerFilterOptions}
-                      selected={managerFilter}
-                      onChange={setManagerFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.stage && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.stage, 'stage')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.stage_menu')}
-                      options={stageFilterOptions}
-                      selected={stageFilter}
-                      onChange={setStageFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.created && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.created, 'created_at')}
-                    {renderRangeMenu(
-                      t('app.candidates.filters.created_menu'),
-                      createdRange,
-                      (next) => setCreatedRange(next),
-                      () => setCreatedRange({ from: null, to: null })
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.firstContact && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.firstContact, 'first_contact')}
-                    {renderRangeMenu(
-                      t('app.candidates.filters.first_contact_menu'),
-                      firstContactRange,
-                      (next) => setFirstContactRange(next),
-                      () => setFirstContactRange({ from: null, to: null })
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.preferredChannel && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.preferredChannel, 'preferred_channel')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.preferred_channel_menu')}
-                      options={preferredChannelOptions}
-                      selected={preferredChannelFilter}
-                      onChange={setPreferredChannelFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.inPoland && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.inPoland, 'in_poland')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.in_poland_menu')}
-                      options={inPolandOptions}
-                      selected={inPolandFilter}
-                      onChange={setInPolandFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.polandBasis && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.polandBasis, 'poland_basis')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.poland_basis_menu')}
-                      options={polandBasisOptions}
-                      selected={polandBasisFilter}
-                      onChange={setPolandBasisFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.trailerTypes && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.trailerTypes, 'trailer_types')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.trailer_types_menu')}
-                      options={trailerTypeOptions}
-                      selected={trailerTypesFilter}
-                      onChange={setTrailerTypesFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.reasons && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.reasons, 'reasons')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.reason_menu')}
-                      options={reasonFilterOptions}
-                      selected={statusReasonFilter}
-                      onChange={setStatusReasonFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.docsStatus && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.docsStatus, 'docs_status')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.docs_status_menu')}
-                      options={docsStatusOptions}
-                      selected={docsStatusFilter}
-                      onChange={setDocsStatusFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.docsOrdered && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.docsOrdered, 'docs_ordered_at')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.docs_order_menu')}
-                      options={docsOrderFilterOptions}
-                      selected={docsOrderedFilter}
-                      onChange={setDocsOrderedFilter}
-                    />
-                  </div>
-                </th>
-              )}
-              {visibleCols.docsValid && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.docsValid, 'docs_valid_from')}
-                    {renderRangeMenu(
-                      t('app.candidates.filters.docs_valid_menu'),
-                      docsValidRange,
-                      (next) => setDocsValidRange(next),
-                      () => setDocsValidRange({ from: null, to: null })
-                    )}
-                  </div>
-                </th>
-              )}
-              {visibleCols.docsFiles && (
-                <th className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    {renderSortButton(columnLabelMap.docsFiles, 'docs_has_files')}
-                    <ColumnFilterMenu
-                      title={t('app.candidates.filters.docs_files_menu')}
-                      options={docsFilesOptions}
-                      selected={docsHasFilesFilter}
-                      onChange={setDocsHasFilesFilter}
-                    />
-                  </div>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td className="px-4 py-3" colSpan={visibleColumnsCount}>{t('common.loading')}</td>
-              </tr>
-            )}
-            {!loading && displayedItems.map((item) => {
-              const c = item as AugmentedCandidate
-              const phoneDisplay = c.phone || '—'
-              const href = phoneDisplay && phoneDisplay !== '—' ? asTelHref(phoneDisplay) : undefined
-              const docsMeta = c.__docsMeta
-              const reasonTags = c.__reasonCodes
-              const fallbackReasons = c.__reasonFallbackLabels
-              return (
-                <tr key={c.id} className="border-t border-gray-100 transition hover:bg-brand-50/50">
-                  <td className="px-4 py-3">
-                    <input type="checkbox" checked={!!checked[c.id]} disabled={!canManage} onChange={()=>toggle(c.id)} />
-                  </td>
-                  {visibleCols.name && (
-                    <td className="px-4 py-3 font-medium">
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <Link className="text-brand-700 hover:underline" to={`/app/candidates/${c.id}`}>
-                            {c.first_name} {c.last_name}
-                          </Link>
-                          <div className="text-xs text-gray-500">
-                            {c.short_id ? `ID ${c.short_id}` : t('common.labels.not_available')}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  )}
-                  {visibleCols.email && (
-                    <td className="px-4 py-3">{c.email || '—'}</td>
-                  )}
-                  {visibleCols.phone && (
-                    <td className="px-4 py-3">
-                      {href ? <a className="text-brand-600 hover:underline" href={href}>{phoneDisplay}</a> : phoneDisplay}
-                    </td>
-                  )}
-                  {visibleCols.citizenship && (
-                    <td className="px-4 py-3">{c.__extra.citizenship || '—'}</td>
-                  )}
-                  {visibleCols.vacancy && (
-                    <td className="px-4 py-3">{(c as any).vacancy?.title || (c as any).vacancy_title || '—'}</td>
-                  )}
-                  {visibleCols.short && (
-                    <td className="px-4 py-3">{c.short_id || '—'}</td>
-                  )}
-                  {visibleCols.manager && (
-                    <td className="px-4 py-3">
-                      {c.manager_name || c.manager_short || (c as any).manager || '—'}
-                    </td>
-                  )}
-                  {visibleCols.stage && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <StageTag code={c.stage}/>
-                        {canManage && (
-                          <details className="relative">
-                            <summary className="inline-flex cursor-pointer select-none rounded-full border border-brand-100 bg-white px-2 py-0.5 text-xs text-brand-700 shadow-sm hover:bg-brand-50">
-                              {t('common.actions.more')}
-                            </summary>
-                            <div className="absolute z-10 right-0 mt-1 card p-2 w-56 space-y-2">
-                              <button className="btn w-full" onClick={()=>{ setChecked({ [c.id]: true }); setBulkStage(stageOptions[0] || 'new'); setBulkReasons([]); setBulkOpen(true) }}>
-                                {t('app.candidates.row_actions.change_stage')}
-                              </button>
-                              <button className="btn w-full" onClick={()=>{ setChecked({ [c.id]: true }); setBulkManagerOpen(true); setBulkManagerId(preferredManagerId) }}>
-                                {t('app.candidates.row_actions.assign_manager')}
-                              </button>
-                              <button className="btn w-full" onClick={()=>{ setChecked({ [c.id]: true }); setBulkVacancyOpen(true); setBulkVacancyId(vacancies[0]?.id || '') }}>
-                                {t('app.candidates.row_actions.assign_vacancy')}
-                              </button>
-                            </div>
-                          </details>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                  {visibleCols.created && (
-                    <td className="px-4 py-3">{c.created_at ? formatDateSafe(c.created_at) : '—'}</td>
-                  )}
-                  {visibleCols.firstContact && (
-                    <td className="px-4 py-3">
-                      {c.__extra.firstContactAt ? formatDateSafe(c.__extra.firstContactAt) : '—'}
-                    </td>
-                  )}
-                  {visibleCols.preferredChannel && (
-                    <td className="px-4 py-3">
-                      {preferredChannelLabelMap[c.__extra.preferredContact ?? EMPTY_OPTION_VALUE] || '—'}
-                    </td>
-                  )}
-                  {visibleCols.inPoland && (
-                    <td className="px-4 py-3">
-                      {(() => {
-                        const key = c.__extra.inPoland === true ? 'yes' : c.__extra.inPoland === false ? 'no' : 'unknown'
-                        const label = inPolandLabelMap[key] || inPolandLabelMap.unknown
-                        const className =
-                          key === 'yes'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : key === 'no'
-                              ? 'bg-gray-100 text-gray-600'
-                              : 'bg-gray-50 text-gray-500'
-                        return (
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${className}`}>
-                            {label}
-                          </span>
-                        )
-                      })()}
-                    </td>
-                  )}
-                  {visibleCols.polandBasis && (
-                    <td className="px-4 py-3">
-                      {c.__extra.polandStayBasis
-                        ? getPolandBasisLabel(c.__extra.polandStayBasis)
-                        : t('common.labels.not_available')}
-                    </td>
-                  )}
-                  {visibleCols.trailerTypes && (
-                    <td className="px-4 py-3">
-                      {c.__extra.trailerTypes.length === 0 ? (
-                        <span className="text-gray-400">—</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {c.__extra.trailerTypes.map((code) => (
-                            <span key={`${c.id}-trailer-${code}`} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                              {getTrailerTypeLabel(code)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  )}
-                  {visibleCols.reasons && (
-                    <td className="px-4 py-3">
-                      {reasonTags.length === 0 && fallbackReasons.length === 0 ? (
-                        <span className="text-gray-400">—</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {reasonTags.map((code) => (
-                            <span
-                              key={`${c.id}-reason-${code}`}
-                              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                            >
-                              {reasonLabelMap.get(code) || code}
-                            </span>
-                          ))}
-                          {fallbackReasons.map((label, idx) => (
-                            <span
-                              key={`${c.id}-reason-fallback-${idx}`}
-                              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 italic"
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  )}
-                  {visibleCols.docsStatus && (
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${docsMeta.readinessClass}`}>
-                        {t(docsMeta.readinessLabelKey)}
-                      </span>
-                    </td>
-                  )}
-                  {visibleCols.docsOrdered && (
-                    <td className="px-4 py-3">{docsMeta.orderDate ? formatDateSafe(docsMeta.orderDate) : '—'}</td>
-                  )}
-                  {visibleCols.docsValid && (
-                    <td className="px-4 py-3">{docsMeta.validFrom ? formatDateSafe(docsMeta.validFrom) : '—'}</td>
-                  )}
-                  {visibleCols.docsFiles && (
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
-                          docsMeta.hasFiles ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {docsMeta.hasFiles ? t('common.words.yes') : t('common.words.no')}
-                      </span>
-                    </td>
-                  )}
-                </tr>
-              )
+          <div className="card m-0 relative flex-1 min-h-0 flex flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
+        {tableLayoutCustomize ? (
+          <div className="border-b border-brand-200/80 bg-brand-50 px-3 py-1.5 text-[11px] font-medium text-brand-900">
+            {t('app.candidates.table.customize_banner', {
+              defaultValue:
+                'Layout mode: drag the dotted grip on the left of each header to reorder columns; drag the right edge of a header to resize width.',
             })}
-            {!loading && displayedItems.length === 0 && !errorText && (
-              <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={visibleColumnsCount}>{t('app.candidates.table.empty')}</td></tr>
-            )}
-          </tbody>
+          </div>
+        ) : null}
+        {loading && displayedItems.length > 0 && (
+          <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-1.5 shadow-lg">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-brand-600"></div>
+              <span className="font-medium">{t('app.candidates.table.updating') || 'Обновление...'}</span>
+            </div>
+          </div>
+        )}
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-b-xl">
+          <table className="min-w-full text-sm border-separate border-spacing-0">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_0_rgb(226_232_240)]">
+              <tr className="h-11 bg-slate-50 text-left">
+                <DraggableColumnHeader columnKey="checkbox" />
+                {orderedVisibleColumns.map((columnKey) => (
+                  <DraggableColumnHeader key={columnKey} columnKey={columnKey} />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {displayedItems.map((item, dataIndex) => {
+                const c = item as AugmentedCandidate
+                const id = c.id
+                const index = dataIndex
+                const isFocused = focusedRowIndex === index && index >= 0
+                const isWorkPanelRow = Boolean(workPanelOpen && id && selectedCandidateId === id)
+                return (
+                  <tr
+                    key={id}
+                    ref={(node) => {
+                      if (isFocused && node) focusedRowRef.current = node
+                    }}
+                    data-candidate-id={id}
+                    data-index={index}
+                    data-work-panel-row={isWorkPanelRow ? 'true' : undefined}
+                    aria-current={isWorkPanelRow ? 'true' : undefined}
+                    tabIndex={-1}
+                    onMouseDown={(e) => {
+                      if (e.button !== 0) return
+                      lastRowMouseDownRef.current = { x: e.clientX, y: e.clientY, t: Date.now() }
+                    }}
+                    onClick={(e) => {
+                      if (!id) return
+                      const md = lastRowMouseDownRef.current
+                      if (md) {
+                        const dx = Math.abs(e.clientX - md.x)
+                        const dy = Math.abs(e.clientY - md.y)
+                        const dt = Date.now() - md.t
+                        if ((dx + dy) > 6 && dt < 1200) return
+                      }
+                      const target = e.target as HTMLElement | null
+                      if (target?.closest('a,button,input[type="checkbox"],select,textarea')) return
+                      if (sidebarOpenRef.current || selectedCandidateIdRef.current != null) {
+                        const nextId = id
+                        window.requestAnimationFrame(() => {
+                          setSelectedCandidateId(nextId)
+                          setSidebarOpen(true)
+                        })
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      if (id && canManage) {
+                        e.preventDefault()
+                        setContextMenu({ x: e.clientX, y: e.clientY, candidateId: id })
+                      }
+                    }}
+                    className={clsx(
+                      'border-t border-slate-200/90 transition-colors duration-150 cursor-pointer',
+                      isWorkPanelRow && 'border-l-[3px] border-l-brand-600 bg-brand-50/90 shadow-[inset_0_0_0_1px_rgb(191_219_254_/_0.35)]',
+                      isFocused && 'ring-2 ring-brand-500 ring-inset outline-none',
+                      !isFocused && !isWorkPanelRow && 'hover:bg-brand-50/50',
+                      id &&
+                        recentlyOpenedId === id &&
+                        !isFocused &&
+                        !isWorkPanelRow &&
+                        'bg-amber-50/60',
+                      id &&
+                        (items.find((row) => row.id === id)?.is_favorite) &&
+                        !isFocused &&
+                        !isWorkPanelRow &&
+                        'bg-yellow-50/40 border-l-2 border-l-yellow-400',
+                    )}
+                  >
+                    <CandidatesTableRowCells index={index} c={c} ctx={tableRowCellsCtx} />
+                  </tr>
+                )
+              })}
+            </tbody>
           </table>
         </div>
+        {loading && displayedItems.length === 0 && (
+          <div className="px-4 py-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mb-3"></div>
+            <div className="text-sm text-slate-600 font-medium">{t('common.loading')}</div>
+            <div className="text-xs text-slate-400 mt-1">{t('app.candidates.table.loading_hint') || 'Загрузка кандидатов...'}</div>
+          </div>
+        )}
+        {!loading && displayedItems.length === 0 && !errorText && (
+          <div className="px-4 py-12 text-center">
+            <div className="mb-3 inline-flex text-slate-400"><IconClipboardList size={34} /></div>
+            {items.length === 0 && total > 0 ? (
+              <>
+                <div className="text-sm font-medium text-slate-700 mb-1">
+                  {t('app.candidates.table.empty_partial', {
+                    values: { count: total },
+                    defaultValue: `Список не загрузился полностью (всего: ${total}). Повторить?`,
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className="mt-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700"
+                  onClick={() => void load({ force: true, allowCache: false })}
+                >
+                  {t('common.retry', { defaultValue: 'Повторить' })}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto max-w-2xl">
+                  <EmptyStatePanel
+                    compact
+                    title={t('app.candidates.table.empty_title', { defaultValue: 'No candidates found' })}
+                    description={
+                      hasActiveTableFilters
+                        ? t('app.candidates.table.empty_with_filters_desc', {
+                            defaultValue: 'Current filters returned no results. Reset filters or adjust conditions.',
+                          })
+                        : t('app.candidates.table.empty_no_data_desc', {
+                            defaultValue: 'Add the first lead or candidate to start pipeline operations.',
+                          })
+                    }
+                    whyHint={
+                      hasActiveTableFilters
+                        ? undefined
+                        : t('app.candidates.table.empty_why', {
+                            defaultValue:
+                              'Candidates are people you actively work with — qualified leads, contacted prospects, hires in pipeline. Convert a lead from the Leads inbox or import a list to start.',
+                          })
+                    }
+                    primaryAction={
+                      hasActiveTableFilters
+                        ? {
+                            label: t('app.candidates.table.empty_cta_reset', { defaultValue: 'Reset filters' }),
+                            onClick: handleResetFilters,
+                          }
+                        : {
+                            label: t('app.candidates.table.empty_cta_leads', { defaultValue: 'Open leads' }),
+                            to: CRM_APP_PATHS.leads,
+                          }
+                    }
+                    secondaryAction={
+                      hasActiveTableFilters
+                        ? {
+                            label: t('app.candidates.table.empty_cta_leads', { defaultValue: 'Open leads' }),
+                            to: CRM_APP_PATHS.leads,
+                          }
+                        : {
+                            label: t('app.candidates.table.empty_cta_pipeline', { defaultValue: 'Open pipeline' }),
+                            to: CRM_APP_PATHS.pipeline,
+                          }
+                    }
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+          <div className="text-sm leading-6 text-slate-600 px-4 pt-3 pb-4 border-t border-slate-200/80">
+            {showsFilteredCount
+              ? t('app.candidates.table.total_filtered', {
+                  values: { shown: visibleCandidatesCount, total },
+                  defaultValue: `Показано: ${visibleCandidatesCount} из ${total}`,
+                })
+              : t('app.candidates.table.total', { values: { count: visibleCandidatesCount } })}
+          </div>
+          </div>
+        </div>
       </div>
+        {workPanelOpen ? (
+          <div
+            className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden"
+            style={{ maxWidth: CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX }}
+          >
+            <CandidatesWorkPanel
+              summaryHero={summaryHero}
+              previewVisible={false}
+              previewSlot={null}
+              controlsSlot={
+          <CandidatesLeftRailPanel
+            t={t}
+            handoffStatusFilter={handoffStatusFilter}
+            onHandoffStatusFilterChange={setHandoffStatusFilter}
+            contactAttemptsFilter={contactAttemptsFilter}
+            onContactAttemptsFilterChange={setContactAttemptsFilter}
+            opsModeFilter={opsModeFilter}
+            onOpsModeFilterChange={setOpsModeFilter}
+            opsModeOptions={opsModeOptions as any}
+            opsModeLabelMap={opsModeLabelMap}
+            viewToggle={viewToggle}
+            secondaryBtn={secondaryBtn}
+            onRefresh={() => load({ force: true })}
+            loading={loading}
+            actionsMenuRef={actionsMenuRef}
+            actionsMenuOpen={actionsMenuOpen}
+            onActionsMenuOpenChange={setActionsMenuOpen}
+            displayedItems={displayedItems}
+            resolveManagerLabel={resolveManagerLabel}
+            onResetFilters={handleResetFilters}
+            hasFilterBadges={hasFilterBadges}
+            onOpenSaveView={() => {
+              setSaveViewName('')
+              setSaveViewIncludeTableLayout(true)
+              setSaveViewOpen(true)
+            }}
+            columnToggleKeys={columnToggleKeys}
+            visibleCols={visibleCols}
+            onVisibleColsChange={setVisibleCols}
+            visibleColsStorageKey={visibleColsStorageKey}
+            columnLabelMap={columnLabelMap}
+            canManage={canManage}
+            quickViewParam={quickViewParam}
+            onApplyQuickViewFilters={(key) => {
+              void applyQuickViewFilters(key as any, { syncUrl: true })
+            }}
+            isFavoriteFilter={isFavoriteFilter}
+            onFavoriteFilterToggle={() => setIsFavoriteFilter((prev) => (prev === true ? null : true))}
+            quickDocFilters={quickDocFilters}
+            quickFiltersExpanded={quickFiltersExpanded}
+            onToggleQuickDocFilter={toggleQuickDocFilter}
+            onQuickFiltersExpandedChange={setQuickFiltersExpanded}
+            savedViews={savedViews}
+            onApplySavedView={applyView}
+            onDeleteSavedView={(id) => {
+              void deleteView(id)
+            }}
+            viewSaveEnabled={hasActiveTableFilters}
+            tableLayoutCustomize={tableLayoutCustomize}
+            onTableLayoutCustomizeChange={setTableLayoutCustomize}
+            orderedVisibleColumns={orderedVisibleColumns}
+            moveColumnRelative={moveColumnRelative}
+            onResetColumnLayout={resetColumnLayout}
+          />
+              }
+            />
+          </div>
+        ) : null}
+      </div>
+      {/* Контекстное меню для строк */}
+      {contextMenu && (
+        <>
+          <div
+            ref={contextMenuRef}
+            className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-xl"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const candidate = displayedItems.find(c => c.id === contextMenu.candidateId)
+              if (!candidate || !canManage) return null
+              
+              return (
+                <div className="space-y-1">
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    onClick={() => {
+                      handleCandidateOpen(candidate.id)
+                      navigate(`${CRM_APP_PATHS.candidates}/${candidate.id}`)
+                      setContextMenu(null)
+                    }}
+                  >
+                    {t('app.candidates.context.open_card')}
+                  </button>
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    title={t('app.candidates.context.preview_next_action_hint', {
+                      defaultValue: 'Open preview and the reminders window.',
+                    })}
+                    onClick={() => {
+                      setSelectedCandidateId(candidate.id)
+                      setSidebarOpen(true)
+                      window.requestAnimationFrame(() => bumpNextActionDetailsOpen())
+                      setContextMenu(null)
+                    }}
+                  >
+                    {t('app.candidates.context.preview_next_action', {
+                      defaultValue: 'Preview — next action',
+                    })}
+                  </button>
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    onClick={() => {
+                      toggle(candidate.id)
+                      setContextMenu(null)
+                    }}
+                  >
+                    {checked[candidate.id] 
+                      ? t('app.candidates.context.deselect')
+                      : t('app.candidates.context.select')
+                    }
+                  </button>
+                  <div className="border-t border-slate-200 my-1" />
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    onClick={() => {
+                      setChecked({ [candidate.id]: true })
+                      setBulkStage(stageOptions[0] || 'new')
+                      setBulkReasons([])
+                      setBulkOpen(true)
+                      setContextMenu(null)
+                    }}
+                  >
+                    {t('app.candidates.context.change_stage')}
+                  </button>
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    onClick={() => {
+                      setChecked({ [candidate.id]: true })
+                      setBulkManagerId(preferredManagerId)
+                      setBulkManagerOpen(true)
+                      setContextMenu(null)
+                    }}
+                  >
+                    {t('app.candidates.context.assign_manager')}
+                  </button>
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    onClick={() => {
+                      setChecked({ [candidate.id]: true })
+                      setBulkVacancyId(vacancies[0]?.id || '')
+                      setBulkVacancyOpen(true)
+                      setContextMenu(null)
+                    }}
+                  >
+                    {t('app.candidates.context.assign_vacancy')}
+                  </button>
+                </div>
+              )
+            })()}
+          </div>
+        </>
+      )}
 
-      <div className="text-sm text-gray-500">{t('app.candidates.table.total', { values: { count: total } })}</div>
+      <Modal
+        open={Boolean(selectedCandidate)}
+        onClose={() => {
+          setSelectedCandidateId(null)
+          setSidebarOpen(false)
+        }}
+        title={t('app.candidates.preview_modal.shell_title', { defaultValue: 'Candidate preview' })}
+        size="2xl"
+      >
+        {selectedCandidate ? (
+          <CandidatesSelectedPanel
+            t={t}
+            locale={locale}
+            selectedCandidate={selectedCandidate}
+            selectedCandidateId={selectedCandidateId}
+            stageSummaryLabel={translateStageLabel(
+              t,
+              String((selectedCandidate as any).stage || ''),
+              String((selectedCandidate as any).stage_label || ''),
+            )}
+            previewReminders={previewReminders}
+            previewRemindersLoading={previewRemindersLoading}
+            previewRemindersError={previewRemindersError}
+            previewReminderBusy={previewReminderBusy}
+            previewReminderTitle={previewReminderTitle}
+            previewReminderDueAt={previewReminderDueAt}
+            previewReminderOffset={previewReminderOffset}
+            nextActionDetailsOpenTrigger={nextActionDetailsOpenTrigger}
+            docsBlockers={docsBlockers}
+            docsBlockersLoading={docsBlockersLoading}
+            usesRequirementBlockers={usesRequirementBlockers}
+            previewRequirementsSummary={previewRequirementsSummary}
+            previewPipelineOverrides={previewPipelineOverrides}
+            docsRailEmbeddedSummary={docsRailEmbeddedSummary}
+            canUseTeamWorkPanelAssigneeScope={canUseTeamWorkPanelAssigneeScope}
+            workPanelAssigneeScope={workPanelAssigneeScope}
+            onWorkPanelAssigneeScopeChange={setWorkPanelAssigneeScope}
+            docsOwnerContext={docsOwnerContext}
+            previewTimelineItems={previewTimelineItems}
+            previewTimelineLoading={previewTimelineLoading}
+            previewTimelineError={previewTimelineError}
+            previewTimelineExpanded={previewTimelineExpanded}
+            previewTimelineCollapsedCount={PREVIEW_TIMELINE_COLLAPSED_COUNT}
+            onClose={() => {
+              setSelectedCandidateId(null)
+              setSidebarOpen(false)
+            }}
+            onOpenCandidate={(candidateId) => navigate(`${CRM_APP_PATHS.candidates}/${candidateId}`)}
+            onOpenDocuments={(candidateId) =>
+              navigate(`${CRM_APP_PATHS.candidates}/${candidateId}/documents`)
+            }
+            workPanelCommsLinks={previewCommsLinks}
+            onReminderTitleChange={setPreviewReminderTitle}
+            onReminderDueAtChange={setPreviewReminderDueAt}
+            onReminderOffsetChange={setPreviewReminderOffset}
+            onReminderCreate={() => void handleCreatePreviewReminder()}
+            onReminderComplete={(id) => void handleCompletePreviewReminder(id)}
+            onReminderSnooze={(id, minutes) => void handlePreviewReminderSnooze(id, minutes)}
+            onDocsRequestCreate={handleDocsRequestCreate}
+            onDocsLoadedBlockers={(b) =>
+              setDocsBlockers({
+                missing: b.missing,
+                problematic: b.problematic,
+                inProgress: b.inProgress ?? [],
+              })
+            }
+            onDocsLoadingChange={setDocsBlockersLoading}
+            onDocsSelectType={(candidateId, typeCode) =>
+              navigate(
+                `${CRM_APP_PATHS.candidates}/${candidateId}/documents?type=${encodeURIComponent(typeCode)}`,
+              )
+            }
+            onTimelineRefresh={(candidateId) => void loadPreviewTimeline(candidateId)}
+            onTimelineExpandedChange={setPreviewTimelineExpanded}
+          />
+        ) : null}
+      </Modal>
+
+      {taskQuickModal ? (
+        <CandidateQuickTaskModal
+          open
+          onClose={() => setTaskQuickModal(null)}
+          candidateId={taskQuickModal.id}
+          candidateLabel={taskQuickModal.label}
+          t={t}
+        />
+      ) : null}
 
       <Modal open={saveViewOpen} onClose={()=>setSaveViewOpen(false)} title={t('app.candidates.views.save_modal.title')}>
         <div className="space-y-3">
@@ -2998,9 +3153,22 @@ export default function Candidates(){
               placeholder={t('app.candidates.views.save_modal.placeholder')}
             />
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-slate-500">
             {t('app.candidates.views.save_modal.hint')}
           </div>
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 shrink-0"
+              checked={saveViewIncludeTableLayout}
+              onChange={(e) => setSaveViewIncludeTableLayout(e.currentTarget.checked)}
+            />
+            <span>
+              {t('app.candidates.views.save_modal.include_table_layout', {
+                defaultValue: 'Include visible columns, order, and widths in this view',
+              })}
+            </span>
+          </label>
           <div className="flex gap-2">
             <button
               className="btn-primary"
@@ -3019,6 +3187,7 @@ export default function Candidates(){
                     docsOrdered: docsOrderedFilter,
                     preferredChannel: preferredChannelFilter,
                     inPoland: inPolandFilter,
+                    opsMode: opsModeFilter,
                     polandBasis: polandBasisFilter,
                     trailerTypes: trailerTypesFilter,
                     createdRange,
@@ -3026,215 +3195,89 @@ export default function Candidates(){
                     docsValidRange,
                     docsHasFiles: docsHasFilesFilter,
                     textFilters,
+                    intakeApplicationKind: intakeApplicationKindFilter,
+                    ...(saveViewIncludeTableLayout
+                      ? {
+                          tableLayout: {
+                            visibleCols,
+                            columnOrder,
+                            columnWidths,
+                          },
+                        }
+                      : {}),
                   },
                 }
                 void syncCandidateViews([...savedViews, newView])
                 setSaveViewOpen(false)
               }}
             >{t('common.actions.save')}</button>
-            <button className="btn-ghost" onClick={()=>setSaveViewOpen(false)}>{t('common.actions.cancel')}</button>
+            <button className="btn-secondary" onClick={()=>setSaveViewOpen(false)}>{t('common.actions.cancel')}</button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={canManage && bulkManagerOpen} onClose={()=>setBulkManagerOpen(false)} title={t('app.candidates.modals.manager.title')}>
-        <div className="space-y-3">
-          <div>
-            <div className="label">{t('app.candidates.modals.manager.label')}</div>
-            <select className="input" value={bulkManagerId} onChange={e=>setBulkManagerId(e.target.value)}>
-              <option value="">{t('app.candidates.select.placeholder')}</option>
-              {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <button className="btn-primary" onClick={doBulkAssign}>{t('common.actions.apply')}</button>
-            <button className="btn-ghost" onClick={()=>setBulkManagerOpen(false)}>{t('common.actions.cancel')}</button>
-          </div>
-        </div>
-      </Modal>
+      <CandidatesBulkModalsCluster
+        t={t}
+        canManage={canManage}
+        canViewActivities={canViewActivities}
+        bulkOperationLoading={bulkOperationLoading}
+        checked={checked}
+        actions={{
+          doBulkActivities,
+          doBulk,
+          doBulkAssign,
+          doBulkAssignVacancy,
+          doBulkHandoff,
+          doBulkTags,
+          doBulkDelete,
+        }}
+        bulkManagerOpen={bulkManagerOpen}
+        setBulkManagerOpen={setBulkManagerOpen}
+        managers={managers}
+        bulkManagerId={bulkManagerId}
+        setBulkManagerId={setBulkManagerId}
+        bulkVacancyOpen={bulkVacancyOpen}
+        setBulkVacancyOpen={setBulkVacancyOpen}
+        vacancies={vacancies}
+        bulkVacancyId={bulkVacancyId}
+        setBulkVacancyId={setBulkVacancyId}
+        bulkHandoffOpen={bulkHandoffOpen}
+        setBulkHandoffOpen={setBulkHandoffOpen}
+        handoffClients={handoffClients}
+        handoffClientsLoading={handoffClientsLoading}
+        bulkHandoffClientId={bulkHandoffClientId}
+        setBulkHandoffClientId={setBulkHandoffClientId}
+        bulkTagsOpen={bulkTagsOpen}
+        setBulkTagsOpen={setBulkTagsOpen}
+        bulkTagsOperation={bulkTagsOperation}
+        setBulkTagsOperation={setBulkTagsOperation}
+        bulkTagsList={bulkTagsList}
+        setBulkTagsList={setBulkTagsList}
+        bulkActivitiesOpen={bulkActivitiesOpen}
+        setBulkActivitiesOpen={setBulkActivitiesOpen}
+        bulkActivityTitle={bulkActivityTitle}
+        setBulkActivityTitle={setBulkActivityTitle}
+        bulkActivityDueAt={bulkActivityDueAt}
+        setBulkActivityDueAt={setBulkActivityDueAt}
+        bulkActivityOffsetMinutes={bulkActivityOffsetMinutes}
+        setBulkActivityOffsetMinutes={setBulkActivityOffsetMinutes}
+        bulkActivityType={bulkActivityType}
+        setBulkActivityType={setBulkActivityType}
+        bulkDeleteOpen={bulkDeleteOpen}
+        setBulkDeleteOpen={setBulkDeleteOpen}
+        bulkOpen={bulkOpen}
+        setBulkOpen={setBulkOpen}
+        bulkStage={bulkStage}
+        setBulkStage={setBulkStage}
+        bulkReasons={bulkReasons}
+        setBulkReasons={setBulkReasons}
+        stageOptions={stageOptions}
+        meta={meta}
+        activitiesModalOpen={activitiesModalOpen}
+        setActivitiesModalOpen={setActivitiesModalOpen}
+        activitiesModalRefresh={activitiesModalRefresh}
+      />
 
-      <Modal open={canManage && bulkVacancyOpen} onClose={()=>setBulkVacancyOpen(false)} title={t('app.candidates.modals.vacancy.title')}>
-        <div className="space-y-3">
-          <div>
-            <div className="label">{t('app.candidates.modals.vacancy.label')}</div>
-            <select className="input" value={bulkVacancyId} onChange={e=>setBulkVacancyId(e.target.value)}>
-              <option value="">{t('app.candidates.select.placeholder')}</option>
-              {vacancies.map(v => <option key={v.id} value={v.id}>{(v as any).title || t('app.candidates.labels.untitled')}</option>)}
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <button className="btn-primary" onClick={doBulkAssignVacancy}>{t('common.actions.apply')}</button>
-            <button className="btn-ghost" onClick={()=>setBulkVacancyOpen(false)}>{t('common.actions.cancel')}</button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={canManage && bulkArchiveOpen} onClose={()=>setBulkArchiveOpen(false)} title={t('app.candidates.modals.archive.title')}>
-        <div className="space-y-3">
-          <div className="text-sm">{t('app.candidates.modals.archive.body')}</div>
-          <div className="flex gap-2">
-            <button className="btn" onClick={doBulkArchive}>{t('app.candidates.modals.archive.confirm')}</button>
-            <button className="btn-ghost" onClick={()=>setBulkArchiveOpen(false)}>{t('common.actions.cancel')}</button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={canManage && bulkOpen} onClose={()=>{ setBulkOpen(false); setBulkReasons([]) }} title={t('app.candidates.modals.stage.title')}>
-        <div className="space-y-3">
-          <div>
-            <div className="label">{t('app.candidates.modals.stage.new_stage')}</div>
-            <select className="input" value={bulkStage} onChange={e=>setBulkStage(e.target.value)}>
-              {stageOptions.map(c => (
-                <option key={c} value={c}>{translateStageLabel(t, c, meta?.labels?.[c] || c)}</option>
-              ))}
-            </select>
-          </div>
-          {(meta?.reason_choices?.[bulkStage]?.length ?? 0) > 0 && (
-            <div>
-              <div className="label">{t('app.candidates.modals.stage.reasons_label')}</div>
-              <div className="space-y-1">
-                {(meta?.reason_choices?.[bulkStage] ?? []).map(option => (
-                  <label key={option.code} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={bulkReasons.includes(option.code)}
-                      onChange={(e) => {
-                        const checked = e.target.checked
-                        setBulkReasons(prev => {
-                          if (checked) {
-                            if (prev.includes(option.code)) return prev
-                            return [...prev, option.code]
-                          }
-                          return prev.filter(code => code !== option.code)
-                        })
-                      }}
-                    />
-                    <span>{translateReasonLabel(t, option.code, option.label || option.code)}</span>
-                  </label>
-                ))}
-              </div>
-              {bulkReasons.length === 0 && (
-                <div className="text-xs text-red-600">{t('app.candidates.messages.reason_required')}</div>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <button className="btn-primary" onClick={doBulk}>{t('common.actions.apply')}</button>
-            <button className="btn-ghost" onClick={()=>setBulkOpen(false)}>{t('common.actions.cancel')}</button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }
-
-type ColumnFilterMenuProps =
-  | {
-      title: string
-      options: Array<{ value: string; label: string }>
-      selected: string[]
-      onChange: (next: string[]) => void
-      count?: number
-      children?: undefined
-    }
-  | {
-    title: string
-    count?: number
-    children: (close: () => void) => ReactNode
-    options?: undefined
-    selected?: undefined
-    onChange?: undefined
-  }
-
-function ColumnFilterMenu(props: ColumnFilterMenuProps) {
-  const { t } = useI18n()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  const toggle = () => setOpen((prev) => !prev)
-  const badgeCount =
-    'children' in props && props.children
-      ? props.count ?? 0
-      : props.selected?.length ?? 0
-
-  return (
-    <div className="relative inline-flex" ref={ref}>
-      <button
-        type="button"
-        className="btn-icon"
-        onClick={toggle}
-        aria-label={props.title}
-      >
-        <FilterIcon />
-        {badgeCount > 0 && (
-          <span className="ml-1 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700">
-            {badgeCount}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="absolute right-0 z-30 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-xl">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">{props.title}</div>
-          {'children' in props && props.children ? (
-            <div className="mt-2 space-y-2">{props.children(() => setOpen(false))}</div>
-          ) : props.options && props.options.length > 0 ? (
-            <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1">
-              {props.options.map((option) => (
-                <label key={option.value} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={props.selected?.includes(option.value)}
-                    onChange={(event) => {
-                      if (!props.selected || !props.onChange) return
-                      const checked = event.currentTarget.checked
-                      props.onChange(
-                        checked
-                          ? [...props.selected, option.value]
-                          : props.selected.filter((value) => value !== option.value)
-                      )
-                    }}
-                  />
-                  <span>{option.label}</span>
-                </label>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-2 text-xs text-gray-500">{t('app.candidates.filters.empty')}</div>
-          )}
-          {!('children' in props && props.children) && (
-            <button
-              type="button"
-              className="btn-ghost btn-xs mt-2"
-              onClick={() => props.onChange?.([])}
-              disabled={!props.selected || props.selected.length === 0}
-            >
-              {t('app.candidates.filters.reset')}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-const FilterIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    className="h-4 w-4 text-gray-500"
-  >
-    <path d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .78 1.63l-5.78 7.04V19a1 1 0 0 1-1.45.9l-4-2A1 1 0 0 1 9 17v-4.33L3.22 5.63A1 1 0 0 1 3 5Z" />
-  </svg>
-)

@@ -217,6 +217,7 @@ def ensure_document_templates(conn):
             "code": "driver_ce",
             "name": "Driver CE Poland",
             "documents": [
+                {"doc_type": "pesel", "required": True},  # PESEL always required
                 {"doc_type": "identity_document", "required": True},
                 {"doc_type": "driver_license", "required": True},
                 {"doc_type": "qualification_code95", "required": True},
@@ -241,6 +242,7 @@ def ensure_document_templates(conn):
             "code": "warehouse",
             "name": "Warehouse Worker",
             "documents": [
+                {"doc_type": "pesel", "required": True},  # PESEL always required
                 {"doc_type": "identity_document", "required": True},
                 {"doc_type": "medical_certificate", "required": True},
                 {"doc_type": "criminal_record", "required": True},
@@ -914,7 +916,7 @@ def seeded_service_orders(
                 "candidate_id": candidate["id"],
                 "vacancy_id": None,
                 "company_id": None,
-                "status": "scheduled",
+                "status": "in_progress",
                 "total_amount": _to_amount(total),
                 "currency": "PLN",
                 "vat_total": _to_amount(vat_total),
@@ -1062,7 +1064,7 @@ def seeded_service_orders(
                     "unit_price": float(unit_price),
                     "vat_rate": float(vat_rate),
                     "amount": float(amount),
-                    "status": "quoted",
+                    "status": "pending",
                     "required_documents": svc.get("requires_documents"),
                     "result_document_type": svc.get("result_document_type"),
                     "meta": svc.get("meta"),
@@ -1078,7 +1080,7 @@ def seeded_service_orders(
                     "candidate_id": None,
                     "vacancy_id": None,
                     "company_id": company["id"],
-                    "status": "quoted",
+                    "status": "confirmed",
                     "total_amount": _to_amount(total),
                     "currency": "PLN",
                     "vat_total": _to_amount(vat_total),

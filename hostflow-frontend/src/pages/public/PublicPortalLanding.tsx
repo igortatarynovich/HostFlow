@@ -7,12 +7,21 @@ import { useI18n } from '../../i18n'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { useSeoMeta } from '../../hooks/useSeoMeta'
 
 export default function PublicPortalLanding() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { notify } = useToast()
   const { t } = useI18n()
+  useSeoMeta({
+    title: t('app.seo.public_portal.title', { defaultValue: 'Candidate Portal' }),
+    description: t('app.seo.public_portal.description', {
+      defaultValue: 'Access your candidate portal, continue onboarding, and track required steps and documents.',
+    }),
+    canonicalPath: '/public/portal',
+  })
 
   const [tokenInput, setTokenInput] = useState('')
   const [lastEmail, setLastEmail] = useState<string | undefined>()
@@ -78,16 +87,16 @@ export default function PublicPortalLanding() {
   return (
     <PublicPageShell maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
       <div className="space-y-16">
-        <section className="overflow-hidden rounded-[32px] border border-brand-100 bg-white/95 shadow-card backdrop-blur">
+        <section className="card overflow-hidden backdrop-blur">
           <div className="grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.portal.hero.title')}</p>
               <h1 className="text-3xl font-semibold text-slate-900 lg:text-4xl">{t('public.portal.hero.subtitle')}</h1>
               <p className="text-base text-slate-600">{t('public.portal.hero.note')}</p>
               <div className="flex flex-wrap gap-3 text-sm text-brand-800">
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.presign')}</span>
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.hints')}</span>
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.return')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.presign')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.hints')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.return')}</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link
@@ -103,8 +112,21 @@ export default function PublicPortalLanding() {
                   {t('public.portal.hero.secondary')}
                 </Link>
               </div>
+              <p className="text-sm text-slate-600">
+                {t('public.portal.hero.client_inquiry_prefix')}{' '}
+                <Link
+                  to="/public/intake?application_kind=client"
+                  className="font-semibold text-brand-700 underline-offset-4 hover:text-brand-900 hover:underline"
+                >
+                  {t('public.portal.hero.client_inquiry_link_label')}
+                </Link>{' '}
+                {t('public.portal.hero.client_inquiry_suffix')}
+              </p>
               {magicRedeemError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{magicRedeemError}</div>
+                <ErrorRecoveryBanner
+                  info={{ title: magicRedeemError, hint: t('app.common.retry_hint') }}
+                  compact
+                />
               )}
               {verifyingMagic && (
                 <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
@@ -112,8 +134,15 @@ export default function PublicPortalLanding() {
                 </div>
               )}
             </div>
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg">
-              <img src="/assets/image_truck.png" alt={t('public.portal.hero.image_alt')} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+            <div className="relative overflow-hidden rounded-xl bg-slate-900 text-white shadow-lg">
+              <img
+                src="/assets/image_truck.png"
+                alt={t('public.portal.hero.image_alt')}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
               <div className="relative flex h-full flex-col justify-end bg-gradient-to-t from-slate-900/90 via-slate-900/25 to-transparent p-6">
                 <p className="text-xs uppercase tracking-wide text-brand-100">{t('public.portal.hero.card_title')}</p>
                 <p className="mt-2 text-lg font-semibold">{t('public.portal.hero.card_caption')}</p>
@@ -122,7 +151,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
+        <section className="card cv-auto grid gap-6 bg-white/90 p-6 lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{t('public.portal.landing.steps.title')}</h2>
             <ol className="mt-4 space-y-3 text-slate-700">
@@ -147,7 +176,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
+        <section className="card cv-auto grid gap-6 bg-white/90 p-6 lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{t('public.portal.landing.why.title')}</h2>
             <ul className="mt-4 space-y-2 text-slate-700">
@@ -174,8 +203,8 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section id="apply" className="grid gap-6 lg:grid-cols-2">
-          <div className="relative overflow-hidden rounded-3xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100 p-6 shadow-2xl">
+        <section id="apply" className="cv-auto grid gap-6 lg:grid-cols-2">
+          <div className="relative overflow-hidden rounded-xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100 p-6 shadow-lg">
             <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden>
               <div className="absolute -left-10 top-6 h-32 w-32 rounded-full bg-white mix-blend-overlay" />
             </div>
@@ -201,7 +230,7 @@ export default function PublicPortalLanding() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
+          <div className="card p-6">
             <p className="text-xs uppercase tracking-wide text-emerald-600">{t('public.portal.cards.resume.badge')}</p>
             <h2 className="mt-2 text-xl font-semibold text-slate-900">{t('public.portal.cards.resume.title')}</h2>
             <p className="mt-2 text-sm text-slate-600">
@@ -215,7 +244,7 @@ export default function PublicPortalLanding() {
                   type="text"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-brand-100 bg-white px-4 py-3 font-mono text-sm tracking-wide text-slate-900 focus:border-brand-400 focus:outline-none focus:ring"
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm tracking-wide text-slate-900 focus:border-brand-400 focus:outline-none focus:ring"
                   placeholder={t('public.portal.cards.resume.placeholder')}
                   autoComplete="off"
                 />

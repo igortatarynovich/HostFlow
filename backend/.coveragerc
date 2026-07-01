@@ -1,0 +1,33 @@
+; Phase 0 #7: coverage config consumed by `pytest-cov`.
+;
+; The gate itself lives in backend/scripts/check_coverage.py — this file only
+; tells coverage.py WHAT to measure and which junk to ignore. Keep exclusions
+; narrow: we want real signal, not a green bar gamed by skipping everything.
+
+[run]
+branch = False
+source =
+    backend/app
+omit =
+    # Generated / vendored
+    backend/app/**/migrations/*
+    backend/app/**/*__pycache__*
+    # Scripts and entrypoints — exercised via integration paths, not unit
+    backend/app/main.py
+    backend/app/scanner/*
+    # Legacy / deprecated shims flagged as TODO in SSOT
+    backend/app/main.py.bak.*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    ^\s*\.\.\.\s*$
+show_missing = True
+skip_covered = False
+precision = 2
+
+[xml]
+output = coverage.xml

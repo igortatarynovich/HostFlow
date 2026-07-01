@@ -28,7 +28,7 @@ export function PublicCookieBanner() {
             <a
               href="/legal/cookies.html"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-brand-700 underline-offset-2 hover:underline"
             >
               {t('public.cookies.banner.link')}
@@ -39,7 +39,7 @@ export function PublicCookieBanner() {
             <a
               href="/legal/cookies.html"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-center text-sm font-semibold text-brand-700 underline-offset-4 hover:underline"
             >
               {t('public.cookies.banner.more')}

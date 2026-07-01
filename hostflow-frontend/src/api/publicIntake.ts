@@ -12,6 +12,10 @@ export type IntakePersonal = {
   citizenship?: string | null
   residency_status?: string | null
   in_poland?: boolean | null
+  birth_date?: string | null  // ISO date string 'YYYY-MM-DD'
+  current_location?: string | null  // 'in_poland' | 'not_in_poland' | 'other'
+  frigo_experience?: boolean | null
+  has_adr?: boolean | null
 }
 
 export type IntakeExperience = {
@@ -19,6 +23,19 @@ export type IntakeExperience = {
   intl_experience?: boolean | null
   trailer_types?: string[]
   route_types?: string[]
+}
+
+export type IntakeClientCompany = {
+  name?: string | null
+  legal_name?: string | null
+  tax_id?: string | null
+  website?: string | null
+  country_code?: string | null
+  country?: string | null
+  city?: string | null
+  address?: string | null
+  fleet_size?: number | null
+  transport_profile?: string | null
 }
 
 export type IntakeEmployment = {
@@ -46,12 +63,19 @@ export type IntakeAgreements = {
   contact?: boolean
 }
 
+export type IntakeApplicationKind = 'candidate' | 'client'
+
 export type IntakeData = {
   contacts: IntakeContacts
   personal: IntakePersonal
   experience: IntakeExperience
   employments: IntakeEmployment[]
   agreements: IntakeAgreements
+  lead_form?: Record<string, unknown> | null
+  client_company?: IntakeClientCompany | null
+  presentation_values?: Record<string, unknown> | null
+  /** Mirrors public intake state; **client** may create a CRM Lead on submit when company is routable. */
+  application_kind?: IntakeApplicationKind | null
 }
 
 export type PublicIntakeCreateRequest = {
@@ -59,13 +83,45 @@ export type PublicIntakeCreateRequest = {
   vacancy_id?: string
   locale?: string
   source?: string
+  /** Send at most one of these (backend rejects both set). */
+  lead_form_id?: string | null
+  lead_form_slug?: string | null
+  /** **client** = B2B client inquiry (Lead on submit); omit or **candidate** = hiring-only. */
+  application_kind?: IntakeApplicationKind
+  /** Optional B2B client company data; used to create/update a client company on submit. */
+  client_company?: IntakeClientCompany | null
+}
+
+export type PublicLeadFormListItem = {
+  id: string
+  title: string
+  public_slug: string
 }
 
 export type PublicIntakeCreateResponse = {
   apply_url: string
   token: string
-  candidate_id: string
+  candidate_id?: string | null
+  lead_id?: string | null
   expires_at: string
+}
+
+export type FormPresentationRuntimeField = {
+  qualified_code: string
+  sort_order: number
+  intake_level: string
+  label: string
+  field_type?: string | null
+  widget_hint?: string | null
+}
+
+export type FormPresentationRuntime = {
+  contract_version: string
+  entity_profile_code: string
+  presentation_code: string
+  profile_name?: string | null
+  fields: FormPresentationRuntimeField[]
+  warnings?: string[]
 }
 
 export type PublicChecklist = {
@@ -139,7 +195,8 @@ export type PublicIntakeDocuments = {
 
 export type PublicIntakeState = {
   token: string
-  candidate_id: string
+  candidate_id?: string | null
+  lead_id?: string | null
   status: string
   stage?: string | null
   created_at?: string | null
@@ -150,6 +207,7 @@ export type PublicIntakeState = {
   documents: PublicIntakeDocuments
   timeline?: PublicTimelineEntry[]
   status_share_token?: string | null
+  form_presentation?: FormPresentationRuntime | null
 }
 
 export type PublicStatusState = {
@@ -170,6 +228,23 @@ export type MagicLinkRequestPayload = {
   email?: string
   phone_country_code?: string
   phone?: string
+  /** Prefer on /public/apply/:token so the correct workspace is used without X-Tenant-Id. */
+  intake_token?: string | null
+  lead_form_id?: string | null
+  lead_form_slug?: string | null
+}
+
+export type PublicDocumentsAccessPayload = {
+  email?: string
+  phone_country_code?: string
+  phone?: string
+}
+
+export type PublicDocumentsAccessResponse = {
+  verified: boolean
+  upload_url: string
+  questionnaire_url: string
+  expires_at: string
 }
 
 export type MagicLinkRequestResponse = {
@@ -190,6 +265,20 @@ export type MagicLinkRedeemResponse = {
 
 export async function createPublicIntake(payload: PublicIntakeCreateRequest): Promise<PublicIntakeCreateResponse> {
   const { data } = await http.post('/public/intake', payload)
+  return data
+}
+
+export async function listPublicIntakeLeadForms(opts?: {
+  publicSlug?: string
+  leadFormId?: string
+}): Promise<PublicLeadFormListItem[]> {
+  const params = new URLSearchParams()
+  const slug = (opts?.publicSlug || '').trim()
+  const fid = (opts?.leadFormId || '').trim()
+  if (slug) params.set('public_slug', slug)
+  if (fid) params.set('lead_form_id', fid)
+  const q = params.toString() ? `?${params.toString()}` : ''
+  const { data } = await http.get<PublicLeadFormListItem[]>(`/public/intake/lead-forms${q}`)
   return data
 }
 
@@ -251,6 +340,14 @@ export async function redeemMagicLink(token: string): Promise<MagicLinkRedeemRes
   return data
 }
 
+export async function requestPublicDocumentsAccess(
+  statusToken: string,
+  payload: PublicDocumentsAccessPayload,
+): Promise<PublicDocumentsAccessResponse> {
+  const { data } = await http.post(`/public/status/${statusToken}/documents/access`, payload)
+  return data
+}
+
 export type PublicPresignPayload = {
   doc_type: string
   filename: string
@@ -271,6 +368,21 @@ export async function presignPublicDocument(token: string, payload: PublicPresig
 
 export async function uploadPublicDocument(token: string, formData: FormData): Promise<PublicIntakeState> {
   const { data } = await http.post(`/public/apply/${token}/documents/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+export async function presignStatusDocument(
+  statusToken: string,
+  payload: PublicPresignPayload & PublicDocumentsAccessPayload,
+): Promise<PublicPresignResponse> {
+  const { data } = await http.post(`/public/status/${statusToken}/documents/presign`, payload)
+  return data
+}
+
+export async function uploadStatusDocument(statusToken: string, formData: FormData): Promise<PublicStatusState> {
+  const { data } = await http.post(`/public/status/${statusToken}/documents/upload`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return data

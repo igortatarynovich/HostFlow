@@ -19,7 +19,8 @@ import { useToast } from '../../components/Toast'
 import { PublicTimeline, buildFallbackTimeline } from './components/PublicTimeline'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { PublicPageShell } from './components/PublicPageShell'
-import { PublicBrandingLogo } from '../../components/public/PublicLogo'
+import { LegalLinksBlock } from './components/LegalLinksBlock'
+import { PublicLogo } from '../../components/public/PublicLogo'
 import {
   describeRequiredFiles,
   formatDocumentStatus,
@@ -31,15 +32,11 @@ import Select from '../../components/controls/Select'
 import { buildCountryOptions } from '../../data/countries'
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import { isCookieConsentGranted, subscribeCookieConsent } from '../../components/public/cookieConsent'
+import { useRobotsMeta } from '../../hooks/useRobotsMeta'
+
+import type { StepKey, MultiSelectOption } from '../../modules/public-intake/types'
 
 const STEP_KEYS = ['overview', 'contacts', 'personal', 'experience', 'employment', 'documents', 'agreements'] as const
-
-type StepKey = typeof STEP_KEYS[number]
-
-type MultiSelectOption = {
-  value: string
-  labelKey: string
-}
 
 const normalizeDocType = (code: string): string => String(code || '').trim().toLowerCase()
 
@@ -59,6 +56,7 @@ const GUIDED_DOC_ORDER = [
   'residence_card',
   'karta_pobytu',
   'voivodeship_decision',
+  'medical_certificate',
   'psych_tests',
 ]
 const STAY_DOC_CODES = ['id_card', 'visa', 'residence_permit', 'residence_card', 'karta_pobytu']
@@ -136,6 +134,7 @@ function statusTone(status?: string): string {
 }
 
 export default function PublicApplyPage() {
+  useRobotsMeta({ index: false, follow: false })
   const { token } = useParams<{ token: string }>()
   const [activeStep, setActiveStep] = useState<StepKey>('overview')
   const initialStepChosen = useRef(false)
@@ -625,8 +624,9 @@ export default function PublicApplyPage() {
       email: email || undefined,
       phone: phone || undefined,
       phone_country_code: phone_country_code || undefined,
+      ...(token ? { intake_token: token } : {}),
     }
-  }, [formData.contacts])
+  }, [formData.contacts, token])
 
   const handleResendMagicLink = useCallback(async () => {
     const payload = buildMagicLinkPayload()
@@ -827,37 +827,13 @@ export default function PublicApplyPage() {
     return !required
   }, [])
 
-  const handleOpenScanner = useCallback(
-    async (docCode: string) => {
-      if (!token) return
-      try {
-        const { createPublicScanSession } = await import('../../api/scanner')
-        // Don't pass preset_code - let backend determine it from document_type
-        const session = await createPublicScanSession({
-          token,
-          document_type: docCode,
-        })
-        // Open scanner in new window/tab
-        const scanUrl = `/public/scan?token=${token}&doc=${docCode}&session=${session.id}&return_to=${encodeURIComponent(window.location.href)}`
-        window.open(scanUrl, '_blank', 'noopener,noreferrer')
-      } catch (err: any) {
-        notify({
-          title: t('public.intake.notifications.scanner_failed', { defaultValue: 'Failed to open scanner' }),
-          description: err?.response?.data?.detail || err?.message,
-          variant: 'error',
-        })
-      }
-    },
-    [token, notify, t]
-  )
-
   const renderUploadField = useCallback(
     (code: string, currentFile: File | null) => {
       const inputId = `doc-upload-${code}`
       const uploading = Boolean(docUploading[code])
       const error = docUploadErrors[code]
       return (
-        <div className="rounded-xl border border-dashed border-brand-100 bg-brand-50/50 p-3 text-sm text-slate-700">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-brand-50/50 p-3 text-sm text-slate-700">
           <div className="flex flex-wrap items-center gap-3">
             <input
               id={inputId}
@@ -868,24 +844,13 @@ export default function PublicApplyPage() {
             />
             <label
               htmlFor={inputId}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm ring-1 ring-brand-100 hover:bg-brand-50"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               {t('documents.actions.upload')}
             </label>
-            <button
-              type="button"
-              onClick={() => handleOpenScanner(code)}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-brand-700 hover:bg-brand-700 active:scale-95"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {t('public.intake.documents.scan_with_camera', { defaultValue: 'Scan with camera' })}
-            </button>
             <span className="text-xs text-slate-500">
               {currentFile
                 ? `${currentFile.name} (${Math.round(currentFile.size / 1024)} KB)`
@@ -906,7 +871,7 @@ export default function PublicApplyPage() {
         </div>
       )
     },
-    [docUploading, docUploadErrors, handleDocumentFileChange, t, uploadDocumentForType, handleOpenScanner]
+    [docUploading, docUploadErrors, handleDocumentFileChange, t, uploadDocumentForType]
   )
 
   const handleRotateShareLink = useCallback(async () => {
@@ -939,7 +904,7 @@ export default function PublicApplyPage() {
 
   const stepContent: Record<StepKey, JSX.Element> = {
     overview: (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <OverviewStatCard
             title={t('public.intake.cards.status_title')}
@@ -958,8 +923,8 @@ export default function PublicApplyPage() {
           />
         </div>
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="space-y-6">
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+          <div className="space-y-4">
+            <div className="card space-y-3 bg-white/80 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">{t('public.intake.documents.next_steps_title')}</h3>
@@ -974,7 +939,7 @@ export default function PublicApplyPage() {
                 <button
                   type="button"
                   onClick={() => setActiveStep('documents')}
-                  className="rounded-full border border-brand-200 px-4 py-2 text-sm text-brand-700 hover:border-brand-300"
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm text-brand-700 hover:bg-brand-50"
                 >
                   {t('public.intake.documents.cta')}
                 </button>
@@ -1005,7 +970,7 @@ export default function PublicApplyPage() {
                 </ul>
               ) : null}
             </div>
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+            <div className="card space-y-3 bg-white/80 p-5">
               <h3 className="text-base font-semibold text-slate-900">{t('public.intake.checklist.title')}</h3>
               <ul className="space-y-2">
                 {profileChecklist.map((item) => (
@@ -1024,7 +989,7 @@ export default function PublicApplyPage() {
               </ul>
             </div>
           </div>
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+          <div className="card space-y-3 bg-white/80 p-5">
             <div>
               <h3 className="text-base font-semibold text-slate-900">{t('public.intake.timeline.title')}</h3>
               <p className="text-sm text-slate-500">{t('public.intake.timeline.subtitle')}</p>
@@ -1032,7 +997,7 @@ export default function PublicApplyPage() {
             <PublicTimeline entries={timelineEntries} />
           </div>
           {statusShareUrl && (
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
+            <div className="card space-y-3 bg-white/80 p-5">
               <div className="flex flex-col gap-2">
                 <h3 className="text-base font-semibold text-slate-900">{t('public.intake.share.title')}</h3>
                 <p className="text-sm text-slate-500">{t('public.intake.share.description')}</p>
@@ -1043,7 +1008,7 @@ export default function PublicApplyPage() {
                   <button
                     type="button"
                     onClick={handleCopyShareLink}
-                  className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
                   >
                     {shareCopied ? t('public.intake.share.copied') : t('public.intake.share.copy')}
                   </button>
@@ -1051,7 +1016,7 @@ export default function PublicApplyPage() {
                     type="button"
                     disabled={rotatingShare}
                     onClick={handleRotateShareLink}
-                    className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 disabled:opacity-60"
                   >
                     {rotatingShare ? t('public.intake.share.rotating') : t('public.intake.share.rotate')}
                   </button>
@@ -1059,7 +1024,7 @@ export default function PublicApplyPage() {
                 <button
                   type="button"
                   onClick={handleResendMagicLink}
-                  className="inline-flex items-center justify-center rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
                 >
                   {resendState === 'pending'
                     ? t('public.intake.share.sending')
@@ -1091,7 +1056,7 @@ export default function PublicApplyPage() {
             </div>
           )}
         </div>
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <div className="card space-y-3 bg-slate-50 p-5">
           <h3 className="text-base font-semibold text-slate-900">{t('public.intake.contacts_card.title')}</h3>
           {formData.contacts.email && (
             <p className="text-sm text-slate-700">
@@ -1124,7 +1089,7 @@ export default function PublicApplyPage() {
     ),
     contacts: (
         <div className="space-y-4">
-          <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
+          <div className="rounded-xl border border-slate-200 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
             {t('public.intake.forms.contacts.help')}
           </div>
           <div>
@@ -1181,7 +1146,7 @@ export default function PublicApplyPage() {
     ),
     personal: (
       <div className="space-y-4">
-        <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
+        <div className="rounded-xl border border-slate-200 bg-brand-50/60 px-4 py-3 text-sm text-brand-900">
           {t('public.intake.forms.personal.help')}
         </div>
         <div>
@@ -1339,7 +1304,7 @@ export default function PublicApplyPage() {
       </div>
     ),
     employment: (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="space-y-4">
           {formData.employments.length === 0 && (
             <p className="text-sm text-slate-500">{t('public.intake.forms.employment.list_hint')}</p>
@@ -1495,10 +1460,10 @@ export default function PublicApplyPage() {
       </div>
     ),
     documents: (
-      <div className="space-y-6">
-        <div className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+      <div className="space-y-4">
+        <div className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <PublicBrandingLogo className="text-white" showWordmark={false} size={32} />
+            <PublicLogo showWordmark={false} size={32} white />
             <p className="text-sm text-white/80">{t('public.intake.documents.upload_hint')}</p>
           </div>
           <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
@@ -1506,7 +1471,7 @@ export default function PublicApplyPage() {
               <p className="text-lg font-semibold">{t('public.intake.documents.summary.title')}</p>
               <p className="text-white/80">{t('public.intake.documents.card_body')}</p>
             </div>
-            <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+            <div className="rounded-xl border border-white/30 bg-white/10 p-4">
               <p className="text-xs uppercase tracking-wide text-white/80">{t('public.intake.documents.summary.ready')}</p>
               <p className="text-2xl font-semibold">{readyOrUploadedCount}</p>
               <p className="text-xs text-white/80">
@@ -1516,7 +1481,7 @@ export default function PublicApplyPage() {
           </div>
         </div>
         {summary && (
-          <div className="rounded-2xl border border-brand-100 bg-white/95 p-5 shadow-sm">
+          <div className="card p-5">
             {checklistInitialized ? (
               <>
                 <div className="flex items-center justify-between gap-2">
@@ -1559,12 +1524,12 @@ export default function PublicApplyPage() {
         )}
         <div className="space-y-4">
           {docCards.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-800">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-brand-50/60 p-4 text-sm text-brand-800">
               {t('public.intake.documents.checklist_pending')}
             </div>
           )}
           {docRequirements && docCards.length > 0 && (
-            <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-sm text-brand-900">
+            <div className="rounded-xl border border-slate-200 bg-brand-50/70 p-4 text-sm text-brand-900">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-700">
                 {t('documents.requirements')}
               </div>
@@ -1596,7 +1561,6 @@ export default function PublicApplyPage() {
             const response = docResponses[card.code] ?? (card.entry ? 'yes' : null)
             const currentFile = docFiles[card.code]
             const metaDescription = (card.meta as any)?.description as string | undefined
-            const accent = card.required ? 'border-brand-200' : 'border-slate-200'
             const processType =
               (card.entry?.process_type as string | undefined) ||
               (card.meta as any)?.process_type ||
@@ -1629,10 +1593,7 @@ export default function PublicApplyPage() {
             const question = questionKey ? t(questionKey) : null
             const showUploadField = question ? response === 'yes' : shouldRenderUploadField(card.required, response)
             return (
-              <div
-                key={`${card.code}-${idx}`}
-                className={`space-y-3 rounded-2xl border bg-white/95 p-5 shadow-sm ${accent}`}
-              >
+              <div key={`${card.code}-${idx}`} className="card space-y-3 bg-white/95 p-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-base font-semibold text-slate-900">{title}</p>
@@ -1699,20 +1660,20 @@ export default function PublicApplyPage() {
                   )}
                 </div>
                 {(question || card.required) && response === null && (
-                  <div className="rounded-xl border border-dashed border-brand-100 bg-brand-50/40 p-3 text-sm text-brand-900">
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-brand-50/40 p-3 text-sm text-brand-900">
                     <p>{t('public.intake.documents.responses.waiting')}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => handleDocumentResponse(card.code, 'yes')}
-                        className="rounded-full border border-brand-200 px-3 py-1 text-brand-700 hover:bg-brand-50"
+                        className="rounded-full border border-slate-300 px-3 py-1 text-brand-700 hover:bg-brand-50"
                       >
                         {t('public.intake.documents.responses.yes')}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDocumentResponse(card.code, 'no')}
-                        className="rounded-full border border-brand-200 px-3 py-1 text-brand-700 hover:bg-brand-50"
+                        className="rounded-full border border-slate-300 px-3 py-1 text-brand-700 hover:bg-brand-50"
                       >
                         {t('public.intake.documents.responses.no')}
                       </button>
@@ -1727,7 +1688,7 @@ export default function PublicApplyPage() {
                 )}
                 {showUploadField && !card.meta?.orderable && renderUploadField(card.code, currentFile)}
                 {card.meta?.orderable && (
-                  <div className="rounded-xl border border-brand-100 bg-brand-50 p-3 text-xs text-brand-900">
+                  <div className="rounded-xl border border-slate-200 bg-brand-50 p-3 text-xs text-brand-900">
                     {card.code === 'work_permit'
                       ? t('documents.work_permit.ordered')
                       : t('public.intake.documents.order_notice')}
@@ -1751,7 +1712,11 @@ export default function PublicApplyPage() {
             />
             <span>
               {t('public.intake.forms.agreements.general')}{' '}
-              <a href="/legal/privacy.html" target="_blank" rel="noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+              <a href="/legal/rodo.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+                {t('public.portal.landing.footer.links.rodo', { defaultValue: 'RODO' })}
+              </a>
+              {' · '}
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
                 {t('public.intake.forms.agreements.privacy_link')}
               </a>
               .
@@ -1775,16 +1740,17 @@ export default function PublicApplyPage() {
             />
             <span>
               {t('public.intake.forms.agreements.terms')}{' '}
-              <a href="/legal/terms.html" target="_blank" rel="noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
                 {t('public.intake.forms.agreements.terms_link')}
               </a>{' '}
               ·{' '}
-              <a href="/legal/privacy.html" target="_blank" rel="noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
                 {t('public.intake.forms.agreements.privacy_link')}
               </a>
             </span>
           </label>
           <p className="text-xs text-slate-500">{t('public.intake.forms.agreements.cookies_hint')}</p>
+          <LegalLinksBlock className="mt-3" />
         </div>
 
         {!consentChecklistReady && (
@@ -1814,7 +1780,7 @@ export default function PublicApplyPage() {
               </div>
             )}
             {docWarningReasons.length > 0 && (
-              <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-900">
+              <div className="rounded-xl border border-slate-200 bg-brand-50 p-4 text-sm text-brand-900">
                 <p className="font-semibold">{t('public.intake.validations.documents.warning_title')}</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {docWarningReasons.map((reason) => (
@@ -1849,11 +1815,11 @@ export default function PublicApplyPage() {
 
   return (
     <PublicPageShell maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
-      <div className="rounded-3xl border border-brand-50 bg-white/95 p-6 shadow-card">
-        <div className="mb-6 rounded-2xl border border-brand-100 bg-brand-50/40 p-4">
+      <div className="card bg-white/95 p-6">
+        <div className="mb-6 rounded-xl border border-slate-200 bg-brand-50/40 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <PublicBrandingLogo showWordmark={false} className="text-brand-700" size={28} />
+              <PublicLogo showWordmark={false} className="text-brand-700" size={28} />
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">{t('public.intake.title')}</h1>
                 {state?.expires_at && (
@@ -1870,7 +1836,7 @@ export default function PublicApplyPage() {
             </div>
           </div>
         </div>
-        <div className="mb-6 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-brand-50 via-white to-brand-100/70 p-5 ring-1 ring-brand-100">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl bg-gradient-to-r from-brand-50 via-white to-brand-100/70 p-5 ring-1 ring-slate-200">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
@@ -1906,7 +1872,7 @@ export default function PublicApplyPage() {
                 return (
                   <div
                     key={`${card.type}-${card.step.key}`}
-                    className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4"
+                    className="rounded-xl border border-slate-200 bg-brand-50/70 p-4"
                   >
                     <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{toneText}</p>
                     <p className="text-base font-semibold text-slate-900">{card.step.label}</p>
@@ -2031,9 +1997,9 @@ function OverviewStatCard({ title, value, description, accent = 'default' }: Ove
       ? 'border-green-200 bg-green-50 text-green-900'
       : accent === 'warning'
         ? 'border-amber-200 bg-amber-50 text-amber-900'
-        : 'border-brand-50 bg-white text-slate-900'
+        : 'border-slate-200 bg-white text-slate-900'
   return (
-    <div className={`rounded-2xl border ${accentClasses} p-4`}>
+    <div className={`rounded-xl border shadow-sm ${accentClasses} p-4`}>
       <p className="text-xs uppercase tracking-wide text-slate-500">{title}</p>
       <p className="mt-2 text-2xl font-semibold">{value}</p>
       {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}

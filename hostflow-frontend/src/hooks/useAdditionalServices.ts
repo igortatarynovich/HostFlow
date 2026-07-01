@@ -13,7 +13,7 @@ import {
   type ServiceOrderQuery,
 } from '../api/additionalServices'
 
-export function useAdditionalServiceCatalog(includeInactive = false) {
+export function useAdditionalServiceCatalog(includeInactive = false, includeMetrics = true) {
   const [services, setServices] = useState<AdditionalService[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<unknown>(null)
@@ -21,7 +21,7 @@ export function useAdditionalServiceCatalog(includeInactive = false) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await listAdditionalServices(includeInactive)
+      const data = await listAdditionalServices(includeInactive, includeMetrics)
       setServices(data)
       setError(null)
     } catch (err) {
@@ -29,7 +29,7 @@ export function useAdditionalServiceCatalog(includeInactive = false) {
     } finally {
       setLoading(false)
     }
-  }, [includeInactive])
+  }, [includeInactive, includeMetrics])
 
   useEffect(() => {
     void load()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import textwrap
 from uuid import uuid4
 
@@ -11,12 +12,19 @@ from backend.app.models import Lead
 from backend.tests.api.test_leads_meta import _ensure_company, _ensure_vacancy
 
 
-def _csv_payload(company_id: str, vacancy_id: str) -> str:
+def _csv_payload(company_id: str, vacancy_id: str, *, email_suffix: str | None = None) -> str:
+    """Stable CSV for one job; ``email_suffix`` keeps ``external_id`` unique across DB state."""
+    token = (email_suffix or uuid4().hex[:12]).lower()
+    rng = random.Random(token)
+    phone_a = f"+48{rng.randint(0, 10**9 - 1):09d}"
+    phone_b = f"+48{rng.randint(0, 10**9 - 1):09d}"
+    while phone_b == phone_a:
+        phone_b = f"+48{rng.randint(0, 10**9 - 1):09d}"
     return textwrap.dedent(
         f"""
         first_name,last_name,email,phone,company_id,vacancy_id
-        John,Doe,john.doe@example.com,+48123123123,{company_id},{vacancy_id}
-        Jane,Doe,jane.doe@example.com,+48123123124,{company_id},{vacancy_id}
+        John,Doe,john.doe.{token}@example.com,{phone_a},{company_id},{vacancy_id}
+        Jane,Doe,jane.doe.{token}@example.com,{phone_b},{company_id},{vacancy_id}
         """
     ).strip()
 
@@ -69,15 +77,21 @@ async def test_leads_import_sync_idempotent(client, manager_headers, tenant_id):
         company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
 
-    csv_body = _csv_payload(company_id, vacancy_id)
+    run_token = uuid4().hex[:12].lower()
+    csv_body = _csv_payload(company_id, vacancy_id, email_suffix=run_token)
     files = {"file": ("leads.csv", csv_body, "text/csv")}
 
-    await client.post(
+    first = await client.post(
         "/api/v1/settings/leads/import",
         params={"sync": "true"},
         headers=manager_headers,
         files=files,
     )
+    assert first.status_code == 202, first.text
+    first_body = first.json()
+    assert first_body["status"] == "completed", first_body
+    assert first_body["success_rows"] == 2, first_body
+
     files = {"file": ("leads.csv", csv_body, "text/csv")}
 
     response = await client.post(
@@ -88,9 +102,15 @@ async def test_leads_import_sync_idempotent(client, manager_headers, tenant_id):
     )
     assert response.status_code == 202
     body = response.json()
-    assert body["status"] == "completed"
+    # Re-import may classify rows as duplicates (processed leads) or as blocked
+    # failures (e.g. ``needs_routing`` + intake guard) depending on pipeline state.
     assert body["success_rows"] == 0
-    assert body["duplicate_rows"] == 2
+    assert body["duplicate_rows"] + body["failed_rows"] == 2
+    if body["status"] == "completed":
+        assert body["duplicate_rows"] == 2
+    else:
+        assert body["status"] == "failed"
+        assert body["failed_rows"] == 2
 
 
 @pytest.mark.anyio

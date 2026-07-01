@@ -11,7 +11,7 @@ try:
 except ImportError:  # pragma: no cover - SQLAlchemy < 1.4
     from sqlalchemy.sql import Select  # type: ignore
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,7 +24,10 @@ from backend.app.models.additional_service import (
     ServiceItemStatus,
     ServiceOrderStatus,
 )
+from backend.app.models.candidate import Candidate
+from backend.app.models.company import Company
 from backend.app.models.document import Document
+from backend.app.models.vacancy import Vacancy
 from backend.app.models.enums import DocumentStatus
 from backend.app.services import reminders as reminders_service
 from backend.app.services.document_catalog import (
@@ -44,6 +47,50 @@ READY_DOCUMENT_STATUSES = {
     DocumentStatus.received,
     DocumentStatus.approved,
 }
+
+# Backward-compatible input mapping (DB stores canonical values after migration).
+_LEGACY_SERVICE_ORDER_STATUS: Dict[str, str] = {
+    "quoted": ServiceOrderStatus.confirmed.value,
+    "approved": ServiceOrderStatus.confirmed.value,
+    "scheduled": ServiceOrderStatus.in_progress.value,
+    "delivered": ServiceOrderStatus.completed.value,
+    "refunded": ServiceOrderStatus.cancelled.value,
+}
+
+
+def normalize_service_order_status(value: object) -> str:
+    raw = str(value or "").strip()
+    canon = _LEGACY_SERVICE_ORDER_STATUS.get(raw, raw)
+    try:
+        return ServiceOrderStatus(canon).value
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid service order status: {raw}") from exc
+
+
+def _service_order_scope_where(active_oc: Optional[str]):
+    """Filter service orders visible under active own-company (§2.4)."""
+    if not active_oc:
+        return None
+    oc = str(active_oc).strip()
+    if not oc:
+        return None
+    return or_(
+        ServiceOrder.own_company_id == oc,
+        and_(
+            ServiceOrder.own_company_id.is_(None),
+            ServiceOrder.candidate_id.is_not(None),
+            or_(Candidate.own_company_id == oc, Candidate.own_company_id.is_(None)),
+        ),
+        and_(
+            ServiceOrder.own_company_id.is_(None),
+            ServiceOrder.vacancy_id.is_not(None),
+            or_(Vacancy.own_company_id == oc, Vacancy.own_company_id.is_(None)),
+        ),
+        and_(
+            ServiceOrder.own_company_id.is_(None),
+            ServiceOrder.company_id.is_not(None),
+        ),
+    )
 
 
 def _now_utc() -> datetime:
@@ -79,10 +126,153 @@ def _dec(value: Decimal | float | int | str | None, default: Decimal = Decimal("
 def _quantize(amount: Decimal) -> Decimal:
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+
+def _normalize_cost_status(value: object) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"missing", "estimated", "confirmed"}:
+        return normalized
+    return "missing"
+
 class AdditionalServicesService:
     def __init__(self, db: AsyncSession, tenant_id: str):
         self.db = db
         self.tenant_id = tenant_id
+
+    async def ensure_order_own_company_scope(
+        self,
+        order: ServiceOrder,
+        active_own_company_id: Optional[str],
+    ) -> None:
+        if not active_own_company_id:
+            return
+        oc = str(active_own_company_id).strip()
+        if not oc:
+            return
+        row_oc = str(getattr(order, "own_company_id", None) or "").strip()
+        if row_oc:
+            if row_oc != oc:
+                raise HTTPException(status_code=404, detail="Service order not found")
+            return
+        if order.candidate_id:
+            res = await self.db.execute(
+                select(Candidate.own_company_id).where(
+                    Candidate.id == order.candidate_id,
+                    Candidate.tenant_id == self.tenant_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+            c_oc = res.scalar_one_or_none()
+            c_oc_s = str(c_oc or "").strip()
+            if c_oc_s and c_oc_s != oc:
+                raise HTTPException(status_code=404, detail="Service order not found")
+            return
+        if order.vacancy_id:
+            res = await self.db.execute(
+                select(Vacancy.own_company_id).where(
+                    Vacancy.id == order.vacancy_id,
+                    Vacancy.tenant_id == self.tenant_id,
+                )
+            )
+            v_oc = res.scalar_one_or_none()
+            v_oc_s = str(v_oc or "").strip()
+            if v_oc_s and v_oc_s != oc:
+                raise HTTPException(status_code=404, detail="Service order not found")
+            return
+        if order.company_id:
+            return
+
+    async def resolve_new_order_own_company_id(
+        self,
+        *,
+        candidate_id: Optional[str],
+        vacancy_id: Optional[str],
+        company_id: Optional[str],
+        active_own_company_id: Optional[str],
+    ) -> Optional[str]:
+        active = str(active_own_company_id or "").strip() or None
+
+        if candidate_id:
+            row = await self.db.execute(
+                select(Candidate).where(
+                    Candidate.id == candidate_id,
+                    Candidate.tenant_id == self.tenant_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+            cand = row.scalar_one_or_none()
+            if not cand:
+                raise HTTPException(status_code=404, detail="Candidate not found")
+            c_set = str(getattr(cand, "own_company_id", None) or "").strip()
+            if active and c_set and c_set != active:
+                raise HTTPException(status_code=404, detail="Candidate not found")
+            return c_set or active
+
+        if vacancy_id:
+            row = await self.db.execute(
+                select(Vacancy).where(
+                    Vacancy.id == vacancy_id,
+                    Vacancy.tenant_id == self.tenant_id,
+                )
+            )
+            vac = row.scalar_one_or_none()
+            if not vac:
+                raise HTTPException(status_code=404, detail="Vacancy not found")
+            v_set = str(getattr(vac, "own_company_id", None) or "").strip()
+            if active and v_set and v_set != active:
+                raise HTTPException(status_code=404, detail="Vacancy not found")
+            return v_set or active
+
+        if company_id:
+            row = await self.db.execute(
+                select(Company).where(
+                    Company.id == company_id,
+                    Company.tenant_id == self.tenant_id,
+                )
+            )
+            if row.scalar_one_or_none() is None:
+                raise HTTPException(status_code=404, detail="Company not found")
+            return active
+
+        return active
+
+    async def ensure_item_branch_scope(
+        self,
+        item_id: str,
+        active_own_company_id: Optional[str],
+    ) -> None:
+        if not active_own_company_id:
+            return
+        oid = (
+            await self.db.execute(
+                select(ServiceItem.order_id).where(
+                    ServiceItem.id == item_id,
+                    ServiceItem.tenant_id == self.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not oid:
+            raise HTTPException(status_code=404, detail="Service item not found")
+        order = await self.get_order(str(oid), with_items=False)
+        await self.ensure_order_own_company_scope(order, active_own_company_id)
+
+    async def ensure_schedule_branch_scope(
+        self,
+        schedule_id: str,
+        active_own_company_id: Optional[str],
+    ) -> None:
+        if not active_own_company_id:
+            return
+        iid = (
+            await self.db.execute(
+                select(ServiceSchedule.item_id).where(
+                    ServiceSchedule.id == schedule_id,
+                    ServiceSchedule.tenant_id == self.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not iid:
+            raise HTTPException(status_code=404, detail="Service schedule not found")
+        await self.ensure_item_branch_scope(str(iid), active_own_company_id)
 
     # --- Catalog helpers -------------------------------------------------
     async def list_services(self, *, include_inactive: bool = False) -> List[Service]:
@@ -95,6 +285,70 @@ class AdditionalServicesService:
             stmt = stmt.where(Service.is_active.is_(True))
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
+
+    async def catalog_usage_metrics_map(
+        self,
+        *,
+        own_company_scope: Optional[str] = None,
+    ) -> Dict[str, Tuple[int, Decimal]]:
+        """Per catalog service_id: (distinct active orders count, revenue on completed orders)."""
+        cancelled_o = ServiceOrderStatus.cancelled.value
+        cancelled_i = ServiceItemStatus.cancelled.value
+        completed_o = ServiceOrderStatus.completed.value
+
+        orders_expr = func.count(
+            func.distinct(
+                case(
+                    (
+                        and_(
+                            ServiceOrder.status != cancelled_o,
+                            ServiceItem.status != cancelled_i,
+                        ),
+                        ServiceItem.order_id,
+                    ),
+                )
+            )
+        )
+        revenue_expr = func.coalesce(
+            func.sum(
+                case(
+                    (
+                        and_(
+                            ServiceOrder.status == completed_o,
+                            ServiceItem.status != cancelled_i,
+                        ),
+                        ServiceItem.amount,
+                    ),
+                    else_=0,
+                )
+            ),
+            0,
+        )
+
+        stmt = (
+            select(
+                ServiceItem.service_id,
+                orders_expr.label("orders_count"),
+                revenue_expr.label("revenue_completed"),
+            )
+            .join(ServiceOrder, ServiceOrder.id == ServiceItem.order_id)
+            .outerjoin(Candidate, ServiceOrder.candidate_id == Candidate.id)
+            .outerjoin(Vacancy, ServiceOrder.vacancy_id == Vacancy.id)
+            .where(
+                ServiceItem.tenant_id == self.tenant_id,
+                ServiceOrder.tenant_id == self.tenant_id,
+            )
+        )
+        scope = _service_order_scope_where(own_company_scope)
+        if scope is not None:
+            stmt = stmt.where(scope)
+        stmt = stmt.group_by(ServiceItem.service_id)
+        res = await self.db.execute(stmt)
+        out: Dict[str, Tuple[int, Decimal]] = {}
+        for sid, oc, rev in res.all():
+            rev_d = rev if isinstance(rev, Decimal) else Decimal(str(rev or 0))
+            out[str(sid)] = (int(oc or 0), rev_d.quantize(Decimal("0.01")))
+        return out
 
     async def get_service(self, service_id: str) -> Service:
         stmt = select(Service).where(
@@ -197,11 +451,20 @@ class AdditionalServicesService:
         vacancy_id: Optional[str] = None,
         company_id: Optional[str] = None,
         status: Optional[Sequence[str]] = None,
+        q: Optional[str] = None,
+        limit: Optional[int] = None,
+        own_company_scope: Optional[str] = None,
     ) -> List[ServiceOrder]:
+        stmt = select(ServiceOrder).where(ServiceOrder.tenant_id == self.tenant_id)
+        scope = _service_order_scope_where(own_company_scope)
+        if scope is not None:
+            stmt = (
+                stmt.outerjoin(Candidate, ServiceOrder.candidate_id == Candidate.id)
+                .outerjoin(Vacancy, ServiceOrder.vacancy_id == Vacancy.id)
+                .where(scope)
+            )
         stmt = (
-            select(ServiceOrder)
-            .where(ServiceOrder.tenant_id == self.tenant_id)
-            .options(
+            stmt.options(
                 selectinload(ServiceOrder.items)
                 .selectinload(ServiceItem.service),
                 selectinload(ServiceOrder.items)
@@ -219,6 +482,17 @@ class AdditionalServicesService:
             stmt = stmt.where(ServiceOrder.company_id == company_id)
         if status:
             stmt = stmt.where(ServiceOrder.status.in_(status))
+        q_norm = (q or "").strip()
+        if q_norm:
+            like = f"%{q_norm}%"
+            stmt = stmt.where(
+                or_(
+                    ServiceOrder.id.ilike(like),
+                    ServiceOrder.notes.ilike(like),
+                )
+            )
+        if limit is not None:
+            stmt = stmt.limit(int(limit))
 
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
@@ -245,6 +519,24 @@ class AdditionalServicesService:
                 item_payload.get("unit_price"),
                 _dec(service.base_price, Decimal("0")),
             )
+            estimated_cost = _dec(
+                item_payload.get("estimated_cost"),
+                _quantize(qty * _dec(service.estimated_cost, Decimal("0"))),
+            )
+            actual_cost = item_payload.get("actual_cost")
+            actual_cost_dec = _quantize(_dec(actual_cost)) if actual_cost is not None else None
+            cost_currency = str(
+                item_payload.get("cost_currency")
+                or getattr(service, "cost_currency", None)
+                or service.currency
+                or payload.get("currency")
+                or "PLN"
+            )
+            cost_status = _normalize_cost_status(item_payload.get("cost_status"))
+            if actual_cost_dec is not None:
+                cost_status = "confirmed"
+            elif estimated_cost > 0 and cost_status == "missing":
+                cost_status = "estimated"
             vat_rate = _dec(
                 item_payload.get("vat_rate"),
                 _dec(service.vat_rate, Decimal("0")),
@@ -270,6 +562,11 @@ class AdditionalServicesService:
                 service_id=service.id,
                 qty=qty,
                 unit_price=unit_price,
+                estimated_cost=estimated_cost,
+                actual_cost=actual_cost_dec,
+                cost_currency=cost_currency,
+                cost_source=str(item_payload.get("cost_source") or "service_catalog"),
+                cost_status=cost_status,
                 vat_rate=vat_rate,
                 amount=_quantize(qty * unit_price),
                 required_documents=required_docs,
@@ -300,6 +597,24 @@ class AdditionalServicesService:
             item_payload.get("unit_price"),
             _dec(service.base_price, Decimal("0")),
         )
+        estimated_cost = _dec(
+            item_payload.get("estimated_cost"),
+            _quantize(qty * _dec(service.estimated_cost, Decimal("0"))),
+        )
+        actual_cost = item_payload.get("actual_cost")
+        actual_cost_dec = _quantize(_dec(actual_cost)) if actual_cost is not None else None
+        cost_currency = str(
+            item_payload.get("cost_currency")
+            or getattr(service, "cost_currency", None)
+            or service.currency
+            or order.currency
+            or "PLN"
+        )
+        cost_status = _normalize_cost_status(item_payload.get("cost_status"))
+        if actual_cost_dec is not None:
+            cost_status = "confirmed"
+        elif estimated_cost > 0 and cost_status == "missing":
+            cost_status = "estimated"
         vat_rate = _dec(
             item_payload.get("vat_rate"),
             _dec(service.vat_rate, Decimal("0")),
@@ -317,6 +632,11 @@ class AdditionalServicesService:
             service_id=service.id,
             qty=qty,
             unit_price=unit_price,
+            estimated_cost=estimated_cost,
+            actual_cost=actual_cost_dec,
+            cost_currency=cost_currency,
+            cost_source=str(item_payload.get("cost_source") or "service_catalog"),
+            cost_status=cost_status,
             vat_rate=vat_rate,
             amount=_quantize(qty * unit_price),
             required_documents=required_docs,
@@ -346,11 +666,15 @@ class AdditionalServicesService:
         order: ServiceOrder,
         status: str,
     ) -> ServiceOrder:
-        status_enum = ServiceOrderStatus(status)
-        if order.status == ServiceOrderStatus.draft.value and status_enum == ServiceOrderStatus.approved:
+        status_enum = ServiceOrderStatus(normalize_service_order_status(status))
+        current = normalize_service_order_status(order.status)
+        if current == ServiceOrderStatus.draft.value and status_enum == ServiceOrderStatus.confirmed:
             await self._freeze_prices(order)
 
-        if status_enum in (ServiceOrderStatus.scheduled, ServiceOrderStatus.in_progress, ServiceOrderStatus.delivered):
+        if status_enum in (
+            ServiceOrderStatus.in_progress,
+            ServiceOrderStatus.completed,
+        ):
             await self._ensure_required_documents(order)
 
         order.status = status_enum.value
@@ -368,6 +692,12 @@ class AdditionalServicesService:
         await self.db.flush()
         await self._recalculate_order_totals(item.order_id)
         await self.db.refresh(item)
+        order = getattr(item, "order", None)
+        if order is None:
+            try:
+                order = await self.get_order(item.order_id, with_items=False)
+            except Exception:
+                order = None
         if order is not None:
             try:
                 await self.db.refresh(order)
@@ -472,6 +802,7 @@ class AdditionalServicesService:
                 candidate_id=order.candidate_id,
                 doc_type=item.result_document_type,
                 payload=result_document,
+                own_company_id=str(getattr(order, "own_company_id", None) or "").strip() or None,
             )
 
         await self.db.flush()
@@ -620,6 +951,7 @@ class AdditionalServicesService:
         candidate_id: str,
         doc_type: str,
         payload: Dict[str, object],
+        own_company_id: Optional[str] = None,
     ) -> None:
         canonical_type = normalize_doc_type(doc_type)
         defaults = get_doc_type_defaults(canonical_type)
@@ -705,10 +1037,12 @@ class AdditionalServicesService:
             doc.updated_at = _now_utc()
         else:
             await documents_crud.ensure_document_type(self.db, self.tenant_id, canonical_type)
+            doc_own = str(own_company_id or "").strip() or None
             doc = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=self.tenant_id,
                 candidate_id=candidate_id,
+                own_company_id=doc_own,
                 owner_type="candidate",
                 owner_id=candidate_id,
                 kind=defaults.kind,

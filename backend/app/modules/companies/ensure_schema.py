@@ -25,6 +25,10 @@ def ensure_companies_schema() -> None:
 
         if "legal_name" not in existing:
             add_column("ALTER TABLE companies ADD COLUMN legal_name TEXT")
+        if "owner_user_id" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN owner_user_id TEXT")
+        if "manager_user_id" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN manager_user_id TEXT")
         if "tax_id" not in existing:
             add_column("ALTER TABLE companies ADD COLUMN tax_id TEXT")
         if "phone" not in existing:
@@ -41,4 +45,12 @@ def ensure_companies_schema() -> None:
             add_column(
                 "ALTER TABLE companies ADD COLUMN is_archived INTEGER DEFAULT 0 NOT NULL"
             )
+        if "party_entity_type" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN party_entity_type TEXT NOT NULL DEFAULT 'company'")
+        if "party_business_roles" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN party_business_roles TEXT")
+        if "client_stage" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN client_stage TEXT")
+        if "client_source" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN client_source TEXT")
         conn.commit()

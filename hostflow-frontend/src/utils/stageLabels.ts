@@ -69,6 +69,9 @@ const STAGE_LABEL_ALIASES: Record<string, string> = {
   at_client_base: 'at_client',
   на_базе_клиента: 'at_client',
   na_bazie_klienta: 'at_client',
+  employment_pending: 'employment_pending',
+  на_трудоустройстве: 'employment_pending',
+  w_trakcie_zatrudnienia: 'employment_pending',
   employed: 'employed',
   hired: 'employed',
   трудоустроен: 'employed',
@@ -93,6 +96,14 @@ const STAGE_LABEL_ALIASES: Record<string, string> = {
   не_отвечает: 'no_answer',
   brak_kontaktu: 'no_answer',
   brak_kontaktu_: 'no_answer',
+  ready_for_handoff: 'ready_for_handoff',
+  gotowy_do_przekazania: 'ready_for_handoff',
+  processing_by_client: 'processing_by_client',
+  procesowany_przez_zleceniodawce: 'processing_by_client',
+  docs_submitted_permit: 'docs_submitted_permit',
+  zlozono_dokumenty_na_zezwolenie: 'docs_submitted_permit',
+  handoff_returned: 'handoff_returned',
+  zwrocono: 'handoff_returned',
 }
 
 const REASON_LABEL_ALIASES: Record<string, string> = {
@@ -203,6 +214,10 @@ const STAGE_FALLBACK_LABELS: Record<string, string> = {
   probation_ok: 'Испытательный срок',
   rejected: 'Отказ',
   declined: 'Отказался',
+  ready_for_handoff: 'Готов к передаче',
+  processing_by_client: 'Обработка заказчиком',
+  docs_submitted_permit: 'Документы поданы на разрешение',
+  handoff_returned: 'Возвращён',
   open: 'Открыта',
   paused: 'Пауза',
   closed: 'Закрыта',
@@ -249,6 +264,9 @@ export const canonicalReasonKey = (code?: string | null, fallback?: string | nul
   return null
 }
 
+/** Canonical i18n namespace for funnel stage labels (recruitment + shared surfaces). */
+export const STAGE_LABEL_I18N_PREFIX = 'app.candidates.stage_labels'
+
 export function translateStageLabel(
   t: TranslateFn,
   code?: string | null,
@@ -258,11 +276,14 @@ export function translateStageLabel(
   const normalized = normalizeKey(code) || normalizeKey(fallback)
   const lookupKey = canonical ?? normalized
   if (lookupKey) {
-    const translated =
-      t(`app.dashboard.stage_labels.${lookupKey}`, { defaultValue: '' }) ||
-      t(`app.candidates.stage_labels.${lookupKey}`, { defaultValue: '' })
+    const translated = t(`${STAGE_LABEL_I18N_PREFIX}.${lookupKey}`, { defaultValue: '' })
     if (translated) {
       return translated
+    }
+    // Deprecated duplicate tree — dashboard should not add new keys here.
+    const legacyDashboard = t(`app.dashboard.stage_labels.${lookupKey}`, { defaultValue: '' })
+    if (legacyDashboard) {
+      return legacyDashboard
     }
     if (STAGE_FALLBACK_LABELS[lookupKey]) {
       return STAGE_FALLBACK_LABELS[lookupKey]

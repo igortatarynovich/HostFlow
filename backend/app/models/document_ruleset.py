@@ -13,7 +13,6 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -32,16 +31,36 @@ class DocumentRulesetVersion(Base):
 
     __tablename__ = "document_ruleset_versions"
     __table_args__ = (
-        UniqueConstraint(
-            "tenant_id", "version", name="uq_document_ruleset_versions_tenant_version"
-        ),
         Index("ix_document_ruleset_versions_tenant", "tenant_id"),
+        Index(
+            "uq_document_ruleset_global_version",
+            "tenant_id",
+            "version",
+            unique=True,
+            sqlite_where=text("own_company_id IS NULL"),
+            postgresql_where=text("own_company_id IS NULL"),
+        ),
+        Index(
+            "uq_document_ruleset_scoped_version",
+            "tenant_id",
+            "own_company_id",
+            "version",
+            unique=True,
+            sqlite_where=text("own_company_id IS NOT NULL"),
+            postgresql_where=text("own_company_id IS NOT NULL"),
+        ),
+        Index("ix_document_ruleset_versions_own_company_id", "own_company_id"),
     )
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     json_data: Mapped[dict[str, object]] = mapped_column(
         JSON,

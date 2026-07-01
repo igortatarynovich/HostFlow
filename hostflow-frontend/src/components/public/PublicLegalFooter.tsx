@@ -24,7 +24,7 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
     <ul className="space-y-2 text-sm text-brand-700">
       {DOC_LINKS.map(({ key, href }) => (
         <li key={key}>
-          <a href={href} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+          <a href={href} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
             {t(`public.portal.landing.footer.links.${key}`, { defaultValue: key })}
           </a>
         </li>
@@ -64,12 +64,15 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
       </div>
     </div>
   )
+  const copyright = t('public.portal.landing.footer.copyright', {
+    defaultValue: '© 2026 HostFlow. All rights reserved.',
+  })
 
   if (variant === 'card') {
     return (
-      <section className={clsx('rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-card', className)}>
+      <section className={clsx('card p-6', className)}>
         {content}
-        <p className="mt-6 text-xs text-slate-500">© 2025 HostFlow. All rights reserved.</p>
+        <p className="mt-6 text-xs text-slate-500">{copyright}</p>
       </section>
     )
   }
@@ -77,7 +80,7 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
   return (
     <footer className={clsx('border-t border-slate-200 pt-8 text-sm text-slate-600', className)}>
       {content}
-      <p className="mt-6 text-xs text-slate-500">© 2025 HostFlow. All rights reserved.</p>
+      <p className="mt-6 text-xs text-slate-500">{copyright}</p>
     </footer>
   )
 }

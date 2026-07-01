@@ -190,3 +190,115 @@ async def test_company_profile_workflow(
         headers=manager_headers,
     )
     assert delete_contact_resp.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_company_bootstrap_assigns_owner_and_manager(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    me_resp = await client.get("/api/v1/users/me", headers=manager_headers)
+    assert me_resp.status_code == 200, me_resp.text
+    me = me_resp.json()
+
+    create_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Ownership Bootstrap Co"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    company = create_resp.json()
+    assert company["owner_user_id"] == me["user_id"]
+    assert company["manager_user_id"] == me["user_id"]
+
+
+@pytest.mark.anyio
+async def test_first_company_forces_operating_role(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    create_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Forced Operating Co", "company_role": "client"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    company = create_resp.json()
+    assert company["extra"]["company_role"] == "operating"
+
+
+@pytest.mark.anyio
+async def test_company_limit_applies_only_to_operating_profiles(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    operating_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Primary Operating Co", "company_type": "services", "company_role": "operating"},
+    )
+    assert operating_resp.status_code == 200, operating_resp.text
+    operating_company = operating_resp.json()
+    assert operating_company["extra"]["company_role"] == "operating"
+
+    second_operating_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Second Operating Co", "company_type": "services", "company_role": "operating"},
+    )
+    assert second_operating_resp.status_code == 402, second_operating_resp.text
+    assert second_operating_resp.json()["detail"] == "OPERATING-COMPANY-LIMIT"
+
+    client_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Client Counterparty", "company_role": "client"},
+    )
+    assert client_resp.status_code == 200, client_resp.text
+    client_company = client_resp.json()
+    assert client_company["extra"]["company_role"] == "client"
+
+
+@pytest.mark.anyio
+async def test_tenant_link_display_name_sets_client_company_role(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    tenant_id: str,
+) -> None:
+    create_resp = await client.post(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+        json={"display_name": "Tenant Link Client Co", "handoff_enabled": True},
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    payload = create_resp.json()
+    company_id = payload.get("client_company_id")
+    assert company_id
+
+    company_resp = await client.get(f"{COMPANY_BASE_URL}/{company_id}", headers=manager_headers)
+    assert company_resp.status_code == 200, company_resp.text
+    company = company_resp.json()
+    assert company["extra"]["company_role"] == "client"
+
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    tenant_id: str,
+) -> None:
+    create_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Auto Link Client Co", "company_role": "client"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    company = create_resp.json()
+    assert company["extra"]["company_role"] == "client"
+
+    links_resp = await client.get(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+    )
+    assert links_resp.status_code == 200, links_resp.text
+    links = links_resp.json()
+    matched = [row for row in links if str(row.get("client_company_id") or "") == company["id"]]
+    assert len(matched) == 1, links
+    assert matched[0]["status"] == "active"

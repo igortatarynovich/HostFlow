@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Enum, Integer, String, Text, text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict, MutableList
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, synonym
 from sqlalchemy.sql import func
 
 from backend.app.db.base import Base
+from backend.app.db.tsvector_compat import TsVector
 from .enums import (
     DocumentKind,
     DocumentProcessType,
@@ -36,6 +37,7 @@ class Document(Base):
         default=lambda: str(uuid4()),
     )
     tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    own_company_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
 
     # Candidate / company ownership
     candidate_id: Mapped[str] = mapped_column(
@@ -57,6 +59,18 @@ class Document(Base):
 
     # Type / naming
     doc_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    document_type_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_types.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    document_type_version_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_type_versions.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     custom_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Status flow
@@ -126,6 +140,8 @@ class Document(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    hostflow_document_search_tsv: Mapped[Optional[Any]] = mapped_column(TsVector, nullable=True)
 
     # --- backwards compatibility helpers ---
     key = synonym("doc_type")

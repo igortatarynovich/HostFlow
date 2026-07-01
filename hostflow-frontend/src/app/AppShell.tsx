@@ -1,10 +1,33 @@
-import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import clsx from 'clsx'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
+import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
+import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
 import { getCurrentTenant } from '../api/tenants'
+import { getOnboardingStatus, settings, type OnboardingStatus } from '../api/client'
+import { setTenantId } from '../api/http'
+import { CurrentTenantProvider } from '../contexts/CurrentTenant'
+import { TenantInfoProvider } from '../contexts/TenantInfo'
+import { TeamOverviewNavProvider } from '../contexts/TeamOverviewNavContext'
+import { HiringPipelineGatesProvider } from '../contexts/HiringPipelineGatesContext'
 import type { NavItem } from './routes'
 import { Sidebar } from '../components/nav/Sidebar'
 import { Topbar } from '../components/nav/Topbar'
+import WorkContextTabs from '../components/nav/WorkContextTabs'
+import { SettingsChrome } from '../components/nav/SettingsChrome'
+import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
+import { TrialStatusBanner } from '../components/TrialStatusBanner'
+import { WizardSetupRail } from '../components/onboarding/WizardSetupRail'
+import { isOnboardingWizardEnabled } from '../utils/featureFlags'
+import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
+import { useLicenseStatus } from '../hooks/useLicenseStatus'
+import { useRobotsMeta } from '../hooks/useRobotsMeta'
+import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
+import { usePermissions } from '../hooks/usePermissions'
+import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
+import { CRM_APP_PATHS } from './crmAppPaths'
+import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -13,6 +36,23 @@ type AppShellProps = {
 }
 
 export function AppShell({ me, navItems, onLogout }: AppShellProps) {
+  const { can } = usePermissions()
+  useRobotsMeta({ index: false, follow: false })
+  const location = useLocation()
+  const navigate = useNavigate()
+  const path = location.pathname
+  const isOnboardingPage = location.pathname.startsWith(ACTIVATION_PATHS.onboarding)
+  const isSettingsArea = location.pathname.startsWith(CRM_APP_PATHS.settings)
+  const onboardingWizardEnabled = isOnboardingWizardEnabled()
+  /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
+  const isCrmWorkspace = path.startsWith(CRM_APP_PATHS.appShellPrefix) && !isOnboardingPage
+  /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + таблица) ломают hit-testing/клики. */
+  const isCandidatesTablePage = path === CRM_APP_PATHS.candidates
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
+
+  const pendingHandoffsCount = usePendingHandoffsCount()
+  const { expired: licenseExpired, validUntil } = useLicenseStatus()
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -35,6 +75,31 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     }
   }, [sidebarOpen])
 
+  // Sync X-Tenant-Id from JWT as soon as me is available so list/analytics use correct tenant before getCurrentTenant() resolves
+  useEffect(() => {
+    const jwtTenantId = me?.tenant_id ? String(me.tenant_id).trim() : ''
+    if (!jwtTenantId) return
+    const isPlatformSuperadmin = isPlatformSuperadminRole(me?.role)
+    const storedTenantId = String(settings.get() || '').trim()
+    // For superadmin we preserve manually selected tenant context.
+    const effectiveTenantId =
+      isPlatformSuperadmin && storedTenantId && storedTenantId !== jwtTenantId
+        ? storedTenantId
+        : jwtTenantId
+    settings.set(effectiveTenantId)
+    setTenantId(effectiveTenantId)
+  }, [me?.role, me?.tenant_id])
+
+  useEffect(() => {
+    invalidateBillingSubscriptionCache()
+    invalidateBillingQuotaHeadroomCache()
+  }, [me?.tenant_id])
+
+  useEffect(() => {
+    if (!me) return
+    maybeMigrateDefaultAppHomeToTasks(can('notifications.view'))
+  }, [me, can])
+
   useEffect(() => {
     let cancelled = false
     if (!me?.tenant_id) {
@@ -46,7 +111,24 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     ;(async () => {
       try {
         const info = await getCurrentTenant()
-        if (!cancelled) setTenant(info)
+        if (!cancelled) {
+          setTenant(info)
+          if (info?.id) {
+            const infoTenantId = String(info.id).trim()
+            const jwtTenantId = me?.tenant_id ? String(me.tenant_id).trim() : ''
+            const isPlatformSuperadmin = isPlatformSuperadminRole(me?.role)
+            const storedTenantId = String(settings.get() || '').trim()
+            const effectiveTenantId =
+              isPlatformSuperadmin &&
+              storedTenantId &&
+              storedTenantId !== jwtTenantId &&
+              storedTenantId !== infoTenantId
+                ? storedTenantId
+                : infoTenantId
+            settings.set(effectiveTenantId)
+            setTenantId(effectiveTenantId)
+          }
+        }
       } catch (err) {
         console.warn('[AppShell] failed to load tenant', err)
         if (!cancelled) setTenant(null)
@@ -57,30 +139,157 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     }
   }, [me?.tenant_id])
 
+  useEffect(() => {
+    if (!me?.tenant_id || isOnboardingPage) {
+      if (isOnboardingPage) setOnboardingStatus(null)
+      return
+    }
+    let cancelled = false
+    getOnboardingStatus()
+      .then((r) => {
+        if (!cancelled) setOnboardingStatus(r)
+      })
+      .catch(() => {
+        if (!cancelled) setOnboardingStatus(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [me?.tenant_id, isOnboardingPage])
+
+  const currentTenantId = tenant?.id ? String(tenant.id) : (me?.tenant_id ? String(me.tenant_id) : null)
+
+  const role = String(me?.role || '').toLowerCase()
+  const isSuperAdmin = isPlatformSuperadminRole(me?.role)
+  const canOpenBilling =
+    role === 'administrator' ||
+    role === 'superadmin' ||
+    role === 'super_admin' ||
+    role === 'owner' ||
+    role === 'admin'
+  const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
+  const guidedTrialWorkspace = Boolean(!isSuperAdmin && role === 'administrator' && isTrialTenant)
+  const setupTarget = getActivationSetupTarget(onboardingStatus)
+  const shellNavItems = useMemo(() => {
+    if (!guidedTrialWorkspace) return navItems
+    return navItems.filter((item) => {
+      if (!item.path) return false
+      if (
+        item.path === CRM_APP_PATHS.settings ||
+        item.path.startsWith(`${CRM_APP_PATHS.settings}/`)
+      )
+        return false
+      return item.group !== 'admin'
+    })
+  }, [guidedTrialWorkspace, navItems])
+
+  useEffect(() => {
+    setTrialBannerDismissed(false)
+  }, [currentTenantId])
+
+  if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
+    return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
+  }
+  /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
+  const isTrialAllowedSettingsPath =
+    path === ACTIVATION_PATHS.billing || path === CRM_APP_PATHS.settingsTeam
+  if (guidedTrialWorkspace && path.startsWith(CRM_APP_PATHS.settings) && !isTrialAllowedSettingsPath) {
+    return <Navigate to={ACTIVATION_PATHS.overview} replace />
+  }
+
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900">
-      <Sidebar
-        tenant={tenant}
-        items={navItems}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onLogout={onLogout}
-      />
+    <CurrentTenantProvider value={currentTenantId}>
+      <TenantInfoProvider tenant={tenant}>
+        <TeamOverviewNavProvider tenantId={currentTenantId}>
+        <HiringPipelineGatesProvider tenantId={currentTenantId}>
+        <div className="flex h-screen bg-slate-50 text-slate-900">
+          <Sidebar
+            tenant={tenant}
+            businessType={onboardingStatus?.business_type ?? 'agency'}
+            items={shellNavItems}
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            pendingHandoffsCount={pendingHandoffsCount}
+          />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar
-          me={me}
-          tenant={tenant}
-          onLogout={onLogout}
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-        />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <LicenseExpiredBanner visible={licenseExpired && !isSuperAdmin} validUntil={validUntil} />
+            <TrialStatusBanner
+              visible={
+                !isSuperAdmin &&
+                isTrialTenant &&
+                !licenseExpired &&
+                !isOnboardingPage &&
+                !trialBannerDismissed &&
+                !guidedTrialWorkspace
+              }
+              validUntil={validUntil}
+              canOpenBilling={canOpenBilling}
+              onSetupClick={() => {
+                setTrialBannerDismissed(true)
+                if (path !== setupTarget) navigate(setupTarget)
+              }}
+            />
+            <Topbar
+              me={me}
+              tenant={tenant}
+              onLogout={onLogout}
+              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+              compact={isCrmWorkspace}
+            />
+            <WizardSetupRail hidden={!onboardingWizardEnabled || isOnboardingPage || !me?.tenant_id} />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="w-full px-6 py-6 lg:px-10">
-            <Outlet />
+            <main
+              className={
+                isCandidatesTablePage
+                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+                  : 'min-h-0 flex-1 overflow-y-auto'
+              }
+            >
+              <div
+                className={
+                  isCrmWorkspace
+                    ? clsx(
+                        'flex min-h-0 w-full flex-1 flex-col',
+                        isSettingsArea
+                          ? 'px-4 pb-10 pt-1 sm:px-6 lg:px-8'
+                          : 'px-0 py-0',
+                        isCandidatesTablePage && 'overflow-hidden',
+                      )
+                    : 'w-full px-6 py-6 lg:px-10'
+                }
+              >
+                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && (
+                  <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
+                )}
+                {isSettingsArea && location.pathname !== CRM_APP_PATHS.settings && (
+                  <SettingsChrome
+                    pathname={location.pathname}
+                    search={location.search}
+                    compactMode={guidedTrialWorkspace}
+                  />
+                )}
+                <div
+                  className={clsx(
+                    'app-ui min-h-0',
+                    isSettingsArea && 'settings-surface',
+                    isCrmWorkspace && 'crm-workspace-fill',
+                    isCrmWorkspace &&
+                      !isSettingsArea &&
+                      !isCandidatesTablePage &&
+                      'crm-page-inset',
+                    isCandidatesTablePage && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+                  )}
+                >
+                  <Outlet />
+                </div>
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+        </HiringPipelineGatesProvider>
+        </TeamOverviewNavProvider>
+      </TenantInfoProvider>
+    </CurrentTenantProvider>
   )
 }

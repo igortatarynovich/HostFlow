@@ -69,6 +69,7 @@ def ensure_leads_schema() -> None:
                     normalized TEXT,
                     status TEXT NOT NULL DEFAULT 'new',
                     candidate_id TEXT,
+                    converted_client_id TEXT,
                     external_id TEXT,
                     error TEXT,
                     last_routed_at TEXT,
@@ -79,6 +80,7 @@ def ensure_leads_schema() -> None:
             cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_tenant ON leads(tenant_id)")
             cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_status ON leads(status)")
             cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_vacancy ON leads(vacancy_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_converted_client_id ON leads(converted_client_id)")
             cur.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_source_external_id
@@ -91,6 +93,15 @@ def ensure_leads_schema() -> None:
                 cur.execute("ALTER TABLE leads ADD COLUMN external_id TEXT")
             if not _column_exists(cur, "leads", "last_routed_at"):
                 cur.execute("ALTER TABLE leads ADD COLUMN last_routed_at TEXT")
+            if not _column_exists(cur, "leads", "stage"):
+                cur.execute("ALTER TABLE leads ADD COLUMN stage TEXT")
+            if not _column_exists(cur, "leads", "lead_type"):
+                cur.execute("ALTER TABLE leads ADD COLUMN lead_type TEXT NOT NULL DEFAULT 'candidate'")
+            if not _column_exists(cur, "leads", "lead_target_type"):
+                cur.execute("ALTER TABLE leads ADD COLUMN lead_target_type TEXT NOT NULL DEFAULT 'candidate'")
+            if not _column_exists(cur, "leads", "converted_client_id"):
+                cur.execute("ALTER TABLE leads ADD COLUMN converted_client_id TEXT")
+            cur.execute("CREATE INDEX IF NOT EXISTS ix_leads_converted_client_id ON leads(converted_client_id)")
             cur.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_source_external_id
@@ -222,6 +233,14 @@ def ensure_leads_schema() -> None:
                 cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN last_webhook_check_at TEXT")
             if not _column_exists(cur, "meta_lead_settings", "last_signature_status"):
                 cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN last_signature_status TEXT")
+            if not _column_exists(cur, "meta_lead_settings", "leads_processing_mode_v1"):
+                cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN leads_processing_mode_v1 TEXT")
+            if not _column_exists(cur, "meta_lead_settings", "leads_auto_convert_on_fit_v1"):
+                cur.execute(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN leads_auto_convert_on_fit_v1 INTEGER NOT NULL DEFAULT 1"
+                )
+            if not _column_exists(cur, "meta_lead_settings", "generic_inbound_webhook_secret"):
+                cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN generic_inbound_webhook_secret TEXT")
 
         cur.execute(
             """
@@ -229,5 +248,67 @@ def ensure_leads_schema() -> None:
             ON meta_lead_settings(webhook_verify_token)
             """
         )
+        cur.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ix_meta_lead_settings_generic_inbound_wh_secret
+            ON meta_lead_settings(generic_inbound_webhook_secret)
+            WHERE generic_inbound_webhook_secret IS NOT NULL
+            """
+        )
+
+        if not _table_exists(cur, "meta_lead_form_mappings"):
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS meta_lead_form_mappings (
+                    id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    source TEXT NOT NULL DEFAULT 'meta',
+                    page_id TEXT NOT NULL DEFAULT '',
+                    form_id TEXT NOT NULL,
+                    form_name TEXT,
+                    mapping_rules TEXT NOT NULL DEFAULT '[]',
+                    last_sample_lead_id TEXT,
+                    updated_by TEXT,
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+                    updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )
+                """
+            )
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_meta_lead_form_mappings "
+                "ON meta_lead_form_mappings(tenant_id, source, form_id, page_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_meta_lead_form_mappings_tenant "
+                "ON meta_lead_form_mappings(tenant_id)"
+            )
+
+        if not _table_exists(cur, "meta_form_routes"):
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS meta_form_routes (
+                    id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    source TEXT NOT NULL DEFAULT 'meta',
+                    page_id TEXT NOT NULL DEFAULT '',
+                    form_id TEXT NOT NULL,
+                    own_company_id TEXT NOT NULL,
+                    lead_target_type TEXT NOT NULL DEFAULT 'candidate',
+                    pipeline_preset TEXT,
+                    default_assignee_id TEXT,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    updated_by TEXT,
+                    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+                    updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
+                )
+                """
+            )
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_meta_form_routes "
+                "ON meta_form_routes(tenant_id, source, form_id, page_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS ix_meta_form_routes_tenant ON meta_form_routes(tenant_id)"
+            )
 
         conn.commit()

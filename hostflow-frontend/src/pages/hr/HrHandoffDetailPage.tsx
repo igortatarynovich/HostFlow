@@ -1,0 +1,228 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { acceptHandoff } from '../../api/handoffs'
+import {
+  fetchHandoffHrReview,
+  fetchHrHandoffInboxRow,
+  type HrHandoffInboxItem,
+} from '../../api/hrWorkspace'
+import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
+import HrReviewCaseHero from '../../components/hr/HrReviewCaseHero'
+import HrNextActionRail from '../../components/hr/HrNextActionRail'
+import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
+import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
+import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
+import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
+import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
+import { isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
+import { useI18n } from '../../i18n'
+import { useToast } from '../../components/Toast'
+import type { HrReviewPanel } from '../../api/workforce'
+
+export default function HrHandoffDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const { t } = useI18n()
+  const { notify } = useToast()
+  const [row, setRow] = useState<HrHandoffInboxItem | null>(null)
+  const [hrReview, setHrReview] = useState<HrReviewPanel | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [accepting, setAccepting] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!id) return
+    setLoading(true)
+    setErr(null)
+    try {
+      const inboxRow = await fetchHrHandoffInboxRow(id)
+      setRow(inboxRow)
+      if (inboxRow.handoff.status === 'accepted') {
+        try {
+          const panel = await fetchHandoffHrReview(id)
+          setHrReview(panel)
+        } catch {
+          setHrReview(null)
+        }
+      } else {
+        setHrReview(null)
+      }
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
+      setErr(ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'))
+      setRow(null)
+      setHrReview(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [id, t])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const handleAcceptPickup = async () => {
+    if (!id) return
+    setAccepting(true)
+    try {
+      await acceptHandoff(id)
+      notify({
+        variant: 'success',
+        title: t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' }),
+      })
+      await load()
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
+      notify({
+        variant: 'error',
+        title: ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'),
+      })
+    } finally {
+      setAccepting(false)
+    }
+  }
+
+  const isPickup = row?.operational_queue === 'awaiting_hr_pickup'
+  const empId = row?.workforce_employee_id || hrReview?.employee_id || undefined
+  const displayName = row?.candidate_display_name || undefined
+
+  const scrollTo = (anchor: string) => {
+    const sel = anchor.startsWith('#') ? anchor : `#${anchor}`
+    document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  if (empId) {
+    return <Navigate to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}#hr-verification`} replace />
+  }
+
+  return (
+    <div className="space-y-4">
+      <Link to={CRM_APP_PATHS.hrInbox} className="text-sm font-medium text-brand-700 hover:text-brand-900">
+        ← {t('app.nav.hr.handoff.back_inbox', { defaultValue: 'Back to inbox' })}
+      </Link>
+
+      {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
+      {err && (
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
+      )}
+
+      {row && hrReview && !isPickup ? (
+        <>
+          <HrReviewCaseHero panel={hrReview} displayName={displayName} />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+            <div className="min-w-0 space-y-4">
+              <HrDataVerificationWorkspace
+                panel={hrReview}
+                handoffId={id}
+                employeeId={empId}
+                manage
+                onPanelUpdated={(next) => {
+                  setHrReview(next)
+                  void load()
+                }}
+              />
+              <HrReviewPanelCard
+                handoffId={id!}
+                employeeId={empId}
+                panel={hrReview}
+                hideDocuments
+                caseDecisionMode
+                manage
+                onUpdated={(next) => {
+                  setHrReview(next)
+                  void load()
+                }}
+              />
+              {empId ? (
+                <details className="rounded-lg border border-slate-200 bg-white">
+                  <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-900">
+                    {t('app.hr.contract_preview.section', { defaultValue: 'Contract draft preview' })}
+                  </summary>
+                  <div className="border-t border-slate-100 px-2 pb-2">
+                    <HrContractPreviewPanel employeeId={empId} manage />
+                  </div>
+                </details>
+              ) : null}
+              {empId ? (
+                <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />
+              ) : null}
+              <HrHandoffContextSummary row={row} />
+            </div>
+            <HrNextActionRail panel={hrReview} employeeId={empId} onScrollTo={scrollTo} />
+          </div>
+        </>
+      ) : null}
+
+      {row && isPickup && !loading ? (
+        <>
+          <HrReviewCaseHero
+            panel={{
+              review_id: '',
+              status: 'awaiting_hr_pickup',
+              checklist: [],
+              blockers: [],
+              failed_required_items: [],
+              can_approve: false,
+              documents_for_approval: [],
+              handoff_id: id,
+              hero: {
+                candidate_display_name: displayName,
+                handoff_id: id,
+                handoff_status: row.handoff.status,
+                review_status: 'awaiting_hr_pickup',
+                state_message: t('app.nav.hr.handoff.hint', {
+                  defaultValue: 'Take this case into HR review to start document and compliance checks.',
+                }),
+                process_stages: [
+                  { code: 'transferred_from_recruitment', label: 'Transferred', state: 'done' },
+                  { code: 'hr_pickup', label: 'HR pickup', state: 'current' },
+                  { code: 'document_verification', label: 'Documents', state: 'pending' },
+                  { code: 'legal_eligibility', label: 'Eligibility', state: 'pending' },
+                  { code: 'hr_decision', label: 'Decision', state: 'pending' },
+                  { code: 'employee_onboarding', label: 'Employee', state: 'pending' },
+                ],
+              },
+            }}
+            displayName={displayName}
+          />
+          <HrCurrentTaskPanel
+            task={{
+              task_type: 'take_into_review',
+              title: t('app.hr.review_case.task_take_title', { defaultValue: 'Take case into HR review' }),
+              description: t('app.hr.review_case.task_take_desc', {
+                defaultValue:
+                  'Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.',
+              }),
+              why: t('app.hr.review_case.task_take_why', {
+                defaultValue:
+                  'Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.',
+              }),
+              priority: 'critical',
+              priority_step: 1,
+              priority_total: 8,
+              blocks_approval: true,
+              primary_action: { label: t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' }), anchor: '#hr-handoff-accept' },
+              secondary_actions: [{ label: t('app.hr.review_case.view_handoff', { defaultValue: 'View handoff summary' }), anchor: '#hr-handoff-summary' }],
+              target_anchor: '#hr-handoff-accept',
+              completion_condition: t('app.hr.review_case.task_take_done', {
+                defaultValue: 'Handoff status becomes accepted and the HR review checklist is active.',
+              }),
+            }}
+            onScrollTo={scrollTo}
+          />
+          <div id="hr-handoff-accept" className="scroll-mt-24">
+            <button type="button" className="btn-primary" disabled={accepting} onClick={() => void handleAcceptPickup()}>
+              {t('app.nav.hr.handoff.accept_pickup', { defaultValue: 'Take into HR review' })}
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {empId && isEmployeeOperationalProfile(hrReview) ? (
+        <Link className="text-sm font-medium text-brand-700 hover:underline" to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}`}>
+          {t('app.hr.review_case.open_employee_profile', { defaultValue: 'Open employee profile' })}
+        </Link>
+      ) : null}
+    </div>
+  )
+}

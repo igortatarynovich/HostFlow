@@ -16,7 +16,7 @@
 |-------|------|-------|
 | `id` | UUID | PK |
 | `name` | text | Отображаемое название |
-| `slug` | text | Уникальный идентификатор (`citronex`) |
+| `slug` | text | Уникальный идентификатор (`northwind-logistics`) |
 | `type` | enum(`agency`,`company`,`platform`) | см. multi_tenant_model |
 | `parent_tenant_id` | UUID? | для sub-clients |
 | `status` | enum(`active`,`suspended`,`trial`) | Управление доступом |
@@ -159,6 +159,16 @@
 - **Seat Request Modal**: форма “Сколько дополнительных слотов и какой роли? Комментарий.” → создаёт тикет/notification.
 - **Suspended state**: баннер и только read-only доступ к данным плюс кнопка “Contact support”.
 - **Platform > Tenant detail**: блок с тогглами модулей (Candidates/Leads/Documents/etc) и виджет seat-requests с кнопками “Approve/Reject” + поле комментария.
+
+## Business-Type Routing Rule
+
+- `tenants.settings.business_type` должен влиять на default workspace routing после signup и company bootstrap.
+- После обязательного шага `/app/onboarding/company` tenant получает business-aware first working route:
+  - `agency` -> recruiting-first workspace (`/app/candidates` или `/app/vacancies`)
+  - `employer` -> hiring-first workspace (`/app/vacancies` или `/app/candidates`)
+  - `services` -> client-first workspace (`/app/clients`)
+- Orientation-mode onboarding не должен блокировать рабочие разделы после создания первой компании.
+- Retention CTA, empty states и dashboard shortcuts обязаны использовать тот же route-map, а не локальные hardcoded пути.
 
 ---
 

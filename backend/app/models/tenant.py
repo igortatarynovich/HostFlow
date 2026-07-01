@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 from uuid import uuid4
@@ -8,11 +9,11 @@ import sqlalchemy as sa
 from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
+
+from backend.app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Table, Column
 from sqlalchemy.sql import text
-
-from backend.app.db.base import Base
 from .mixins import TimestampMixin
 from .user import User
 
@@ -128,6 +129,18 @@ class Tenant(Base, TimestampMixin):
         back_populates="tenant",
         cascade="all,delete-orphan",
     )
+    tenant_links_as_agency: Mapped[list["TenantLink"]] = relationship(
+        "TenantLink",
+        foreign_keys="TenantLink.agency_tenant_id",
+        back_populates="agency_tenant",
+        cascade="all,delete-orphan",
+    )
+    tenant_links_as_client: Mapped[list["TenantLink"]] = relationship(
+        "TenantLink",
+        foreign_keys="TenantLink.client_tenant_id",
+        back_populates="client_tenant",
+        cascade="all,delete-orphan",
+    )
 
 
 class TenantLicense(Base, TimestampMixin):
@@ -142,6 +155,8 @@ class TenantLicense(Base, TimestampMixin):
         nullable=False,
         unique=True,
     )
+    # Человекочитаемое название плана (например, "Free", "Pro", "Scale").
+    # Для кода плана и логики ограничений используем сервисный слой.
     plan: Mapped[str] = mapped_column(String(64), nullable=False)
     max_recruiters: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, default=0, server_default=sa.text("0")
@@ -159,6 +174,23 @@ class TenantLicense(Base, TimestampMixin):
         sa.Integer, nullable=False, default=0, server_default=sa.text("0")
     )
     max_companies: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, server_default=sa.text("0")
+    )
+    # Дополнительные лимиты по продукту (0 = неограничено, логика в сервисном слое).
+    # Активные кандидаты в пайплайне (по всем вакансиям).
+    max_candidates_active: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, server_default=sa.text("0")
+    )
+    # Активные вакансии (открытые / набирающие).
+    max_vacancies_active: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, server_default=sa.text("0")
+    )
+    # Общее количество документов (для грубого лимита по storage, поверх max_storage_gb).
+    max_documents: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, server_default=sa.text("0")
+    )
+    # Одновременные публичные порталы/ссылки статуса (кабинет кандидата / клиента).
+    max_public_portal_links: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, default=0, server_default=sa.text("0")
     )
     expires_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
@@ -230,11 +262,161 @@ class TenantVacancyAccess(Base, TimestampMixin):
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="vacancy_access")
 
 
+class TenantLink(Base, TimestampMixin):
+    """Link agency tenant to client (company or employer tenant). Used for handoff feature."""
+
+    __tablename__ = "tenant_links"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    agency_tenant_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    client_tenant_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    handoff_include_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="active", server_default="active", index=True
+    )
+    features_json: Mapped[Optional[dict]] = mapped_column(
+        SQLiteJSON().with_variant(JSONB, "postgresql"),
+        nullable=True,
+    )
+    portal_token: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, unique=True, index=True,
+    )
+    portal_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+
+    agency_tenant: Mapped["Tenant"] = relationship(
+        "Tenant",
+        foreign_keys=[agency_tenant_id],
+        back_populates="tenant_links_as_agency",
+    )
+    client_tenant: Mapped[Optional["Tenant"]] = relationship(
+        "Tenant",
+        foreign_keys=[client_tenant_id],
+        back_populates="tenant_links_as_client",
+    )
+
+    def get_handoff_enabled(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_enabled", False))
+
+    def get_handoff_to_client(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_to_client", True))
+
+    def get_handoff_to_internal_hr(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("handoff_to_internal_hr", False))
+
+    def get_workforce_handoff_on_ready_for_handoff_stage(self) -> bool:
+        features = self.features_json or {}
+        return bool(features.get("workforce_handoff_on_ready_for_handoff_stage", False))
+
+    def get_contact_policy(self) -> dict:
+        """Return contact_attempts policy: max_attempts, post_action, enabled."""
+        features = self.features_json or {}
+        policy = features.get("contact_policy") or {}
+        # Безопасно приводим max_attempts к int, падать из‑за некорректного значения в JSON нельзя.
+        raw_max_attempts = policy.get("max_attempts")
+        try:
+            max_attempts = int(raw_max_attempts) if raw_max_attempts not in (None, "") else 3
+        except Exception:
+            max_attempts = 3
+        return {
+            "enabled": bool(policy.get("enabled", False)),
+            "max_attempts": max_attempts,
+            "post_action": policy.get("post_action") or "auto_reject",  # auto_reject | stage_change
+            "stage_code": policy.get("stage_code"),  # if post_action=stage_change
+        }
+
+
+class TenantUsageMetric(str, Enum):
+    """Типы метрик потребления для биллинга/ограничений.
+
+    Храним как строки, чтобы удобно расширять без миграций ENUM.
+    """
+
+    documents_uploaded = "documents_uploaded"
+    candidates_created = "candidates_created"
+    notifications_sent = "notifications_sent"
+    public_links_created = "public_links_created"
+    conversion_actions = "conversion_actions"
+    automation_runs = "automation_runs"
+
+
+class TenantUsage(Base, TimestampMixin):
+    """Агрегированные usage-метрики по арендаторам (tenant) и периоду.
+
+    Используется для мягких и жёстких лимитов (N операций в месяц и т.п.).
+    """
+
+    __tablename__ = "tenant_usage"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "tenant_id",
+            "metric",
+            "period_start",
+            "period_end",
+            name="uq_tenant_usage_period",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Строковое имя метрики (см. TenantUsageMetric). Не жёсткий ENUM в БД для гибкости.
+    metric: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    period_start: Mapped[Date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[Date] = mapped_column(Date, nullable=False)
+    value: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        default=0,
+        server_default=sa.text("0"),
+    )
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", backref="usage")
+
+
 __all__ = [
     "Tenant",
     "TenantLicense",
+    "TenantLink",
     "TenantType",
     "TenantStatus",
     "TenantSeatRequest",
     "TenantSeatRequestStatus",
+    "TenantVacancyAccess",
+    "TenantUsage",
+    "TenantUsageMetric",
 ]

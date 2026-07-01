@@ -18,6 +18,10 @@ class TenantLicenseBase(BaseModel):
     max_viewers: int = Field(default=0, ge=0)
     max_storage_gb: int = Field(default=0, ge=0)
     max_companies: int = Field(default=0, ge=0)
+    max_candidates_active: int = Field(default=0, ge=0)
+    max_vacancies_active: int = Field(default=0, ge=0)
+    max_documents: int = Field(default=0, ge=0)
+    max_public_portal_links: int = Field(default=0, ge=0)
     expires_at: date | None = None
     auto_renew: bool = False
     notes: str | None = Field(default=None, max_length=4000)
@@ -35,6 +39,10 @@ class TenantLicensePatch(BaseModel):
     max_viewers: int | None = Field(default=None, ge=0)
     max_storage_gb: int | None = Field(default=None, ge=0)
     max_companies: int | None = Field(default=None, ge=0)
+    max_candidates_active: int | None = Field(default=None, ge=0)
+    max_vacancies_active: int | None = Field(default=None, ge=0)
+    max_documents: int | None = Field(default=None, ge=0)
+    max_public_portal_links: int | None = Field(default=None, ge=0)
     expires_at: date | None = None
     auto_renew: bool | None = None
     notes: str | None = Field(default=None, max_length=4000)
@@ -55,6 +63,11 @@ class TenantUsageOut(BaseModel):
     client_manager_count: int = 0
     viewer_count: int = 0
     storage_used_gb: float = 0
+    leads_created_this_month: int = 0
+    candidates_active_count: int = 0
+    documents_count: int = 0
+    vacancies_open_count: int = 0
+    portal_links_active_count: int = 0
 
 
 class TenantModuleSettings(BaseModel):
@@ -65,6 +78,7 @@ class TenantModuleSettings(BaseModel):
     leads: bool = True
     services: bool = True
     client_portal: bool = True
+    hr: bool = True
 
 
 class TenantModuleSettingsPatch(BaseModel):
@@ -75,6 +89,47 @@ class TenantModuleSettingsPatch(BaseModel):
     leads: bool | None = None
     services: bool | None = None
     client_portal: bool | None = None
+    hr: bool | None = None
+
+
+class RoleModulePermissions(BaseModel):
+    visible: bool = True
+    editable: bool = False
+
+
+class TenantRoleModuleMatrix(BaseModel):
+    administrator: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    supervisor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    recruiter: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    client_manager: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    client_processor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    compliance_officer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    hr_officer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    viewer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+
+
+class TenantRoleModuleMatrixPatch(BaseModel):
+    administrator: Dict[str, RoleModulePermissions] | None = None
+    supervisor: Dict[str, RoleModulePermissions] | None = None
+    recruiter: Dict[str, RoleModulePermissions] | None = None
+    client_manager: Dict[str, RoleModulePermissions] | None = None
+    client_processor: Dict[str, RoleModulePermissions] | None = None
+    compliance_officer: Dict[str, RoleModulePermissions] | None = None
+    hr_officer: Dict[str, RoleModulePermissions] | None = None
+    viewer: Dict[str, RoleModulePermissions] | None = None
+
+
+class EffectiveRoleModules(BaseModel):
+    role: str
+    modules: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+
+
+class TenantUserModuleOverrides(BaseModel):
+    users: Dict[str, Dict[str, RoleModulePermissions]] = Field(default_factory=dict)
+
+
+class TenantUserModuleOverridesPatch(BaseModel):
+    users: Dict[str, Dict[str, RoleModulePermissions] | None] = Field(default_factory=dict)
 
 
 class TenantProvisionIn(BaseModel):
@@ -115,6 +170,12 @@ class PlatformTenantOut(BaseModel):
     updated_at: datetime
     license: TenantLicenseOut | None = None
     usage: TenantUsageOut
+    public_domain: str | None = None
+    custom_domain: str | None = None
+    legal_domain: str | None = None
+    public_hosts: list[str] = Field(default_factory=list)
+    domains: list[str] = Field(default_factory=list)
+    legal_hosts: list[str] = Field(default_factory=list)
 
 
 class PlatformTenantPatch(BaseModel):
@@ -127,9 +188,33 @@ class PlatformTenantPatch(BaseModel):
     status_sharing_allowed: bool | None = None
 
 
+class TenantLegalHostSettingsOut(BaseModel):
+    public_domain: str | None = None
+    custom_domain: str | None = None
+    legal_domain: str | None = None
+    public_hosts: list[str] = Field(default_factory=list)
+    domains: list[str] = Field(default_factory=list)
+    legal_hosts: list[str] = Field(default_factory=list)
+
+
+class TenantLegalHostSettingsPatch(BaseModel):
+    public_domain: str | None = None
+    custom_domain: str | None = None
+    legal_domain: str | None = None
+    public_hosts: list[str] | None = None
+    domains: list[str] | None = None
+    legal_hosts: list[str] | None = None
+
+
 class PlatformTenantList(BaseModel):
     total: int
     items: list[PlatformTenantOut]
+
+
+class PlatformFounderEnrollOut(BaseModel):
+    enrolled: bool
+    founder_slots_used: int
+    founder_slots_max: int = 50
 
 
 class TenantStatusChange(BaseModel):

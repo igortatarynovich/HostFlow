@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -9,6 +9,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -39,14 +40,14 @@ class ServiceUnit(str, Enum):
 
 
 class ServiceOrderStatus(str, Enum):
+    """Canonical revenue order pipeline (ATS + services)."""
+
     draft = "draft"
-    quoted = "quoted"
-    approved = "approved"
-    scheduled = "scheduled"
+    confirmed = "confirmed"
     in_progress = "in_progress"
-    delivered = "delivered"
+    completed = "completed"
     cancelled = "cancelled"
-    refunded = "refunded"
+    on_hold = "on_hold"
 
 
 class ServiceItemStatus(str, Enum):
@@ -85,6 +86,10 @@ class Service(Base, TimestampMixin):
     base_price: Mapped[float] = mapped_column(
         Numeric(12, 2), nullable=False, default=0
     )
+    estimated_cost: Mapped[float] = mapped_column(
+        Numeric(12, 2), nullable=False, default=0
+    )
+    cost_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PLN")
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PLN")
     vat_rate: Mapped[float] = mapped_column(Numeric(4, 2), nullable=False, default=23)
     requires_schedule: Mapped[bool] = mapped_column(
@@ -124,6 +129,9 @@ class ServiceOrder(Base, TimestampMixin):
         default=_uuid_str,
     )
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36), nullable=True, index=True
+    )
 
     candidate_id: Mapped[Optional[str]] = mapped_column(
         String(36),
@@ -158,6 +166,8 @@ class ServiceOrder(Base, TimestampMixin):
     )
     requested_by: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     assigned_to: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     audit: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONType, nullable=True)
 
@@ -203,6 +213,13 @@ class ServiceItem(Base, TimestampMixin):
     unit_price: Mapped[float] = mapped_column(
         Numeric(12, 2), nullable=False, default=0
     )
+    estimated_cost: Mapped[float] = mapped_column(
+        Numeric(12, 2), nullable=False, default=0
+    )
+    actual_cost: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    cost_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PLN")
+    cost_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    cost_status: Mapped[str] = mapped_column(String(16), nullable=False, default="missing")
     vat_rate: Mapped[float] = mapped_column(Numeric(4, 2), nullable=False, default=0)
     amount: Mapped[float] = mapped_column(
         Numeric(12, 2), nullable=False, default=0

@@ -3,29 +3,88 @@ from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models import Candidate, Vacancy
 from backend.app.models.company import Company, CandidateVacancy
+from backend.app.models.candidate_profile import CandidateProfile
+from backend.app.models.tenant import TenantLink
 from backend.app.services.tenant_visibility import TenantVisibility
 
 class VacancyRepo:
-    def __init__(self, db: AsyncSession, tenant_id: str, visibility: TenantVisibility | None = None) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        tenant_id: str,
+        *,
+        own_company_id: str | None = None,
+        visibility: TenantVisibility | None = None,
+        is_client_tenant: bool = False,
+    ) -> None:
         self.db = db
         self.tenant_id = tenant_id
+        self.own_company_id = own_company_id
         self.visibility = visibility or TenantVisibility(tenant_id=tenant_id)
+        self.is_client_tenant = is_client_tenant
 
     def _scope_clause(self):
+        # Client (company) tenant: vacancies live on the agency DB row but are visible when
+        # the vacancy's company is linked via TenantLink or owned by this client tenant —
+        # same idea as candidates repo `_candidate_scope_clause` for clients.
+        if self.is_client_tenant:
+            include_company_subq = select(TenantLink.handoff_include_company_id).where(
+                TenantLink.client_tenant_id == self.tenant_id,
+                TenantLink.handoff_include_company_id.isnot(None),
+            )
+            client_owned_company_subq = select(Company.id).where(Company.tenant_id == self.tenant_id)
+            return or_(
+                Vacancy.company_id.in_(include_company_subq),
+                Vacancy.company_id.in_(client_owned_company_subq),
+            )
+
         clauses = [Vacancy.tenant_id == self.tenant_id]
         shared_ids = getattr(self.visibility, "shared_vacancy_ids", set())
         if shared_ids:
             clauses.append(Vacancy.id.in_(shared_ids))
         return or_(*clauses)
 
-    async def get(self, vacancy_id: str) -> Optional[Vacancy]:
-        res = await self.db.execute(
-            select(Vacancy).where(
+    async def get(self, vacancy_id: str):
+        count_filters = [
+            Candidate.vacancy_id == vacancy_id,
+            Candidate.deleted_at.is_(None),
+        ]
+        if not self.is_client_tenant:
+            count_filters.append(Candidate.tenant_id == self.tenant_id)
+
+        candidate_count_sq = (
+            select(func.count(Candidate.id)).where(*count_filters).scalar_subquery()
+        )
+        last_candidate_activity_sq = (
+            select(func.max(Candidate.updated_at)).where(*count_filters).scalar_subquery()
+        )
+        stmt = (
+            select(
+                Vacancy,
+                Company.name.label("company_name"),
+                CandidateProfile.id.label("candidate_profile_id"),
+                CandidateProfile.name.label("candidate_profile_name"),
+                candidate_count_sq.label("candidate_count"),
+                last_candidate_activity_sq.label("last_candidate_activity_at"),
+            )
+            .where(
                 Vacancy.id == vacancy_id,
                 self._scope_clause(),
             )
+            .join(Company, Company.id == Vacancy.company_id, isouter=True)
+            .join(
+                CandidateProfile,
+                CandidateProfile.id == Vacancy.candidate_profile_id,
+                isouter=True,
+            )
         )
-        return res.scalar_one_or_none()
+        if self.own_company_id:
+            stmt = stmt.where(Vacancy.own_company_id == self.own_company_id)
+        res = await self.db.execute(stmt)
+        row = res.first()
+        if row is None:
+            return None
+        return row
 
     async def list(
         self,
@@ -33,35 +92,69 @@ class VacancyRepo:
         company_id: Optional[str],
         status: Optional[str],
         search: Optional[str],
+        candidate_profile_id: Optional[str] = None,
         limit: int,
         offset: int,
         order_by: Optional[str],
         descending: bool,
         allowed_company_ids: set[str] | None = None,
         allowed_vacancy_ids: set[str] | None = None,
+        include_archived: bool = False,
     ):
+        last_cand_activity_sq = (
+            select(func.max(Candidate.updated_at))
+            .where(
+                Candidate.vacancy_id == Vacancy.id,
+                Candidate.tenant_id == self.tenant_id,
+                Candidate.deleted_at.is_(None),
+            )
+            .correlate(Vacancy)
+            .scalar_subquery()
+        )
         stmt = (
             select(
                 Vacancy,
                 Company.name.label("company_name"),
+                CandidateProfile.id.label("candidate_profile_id"),
+                CandidateProfile.name.label("candidate_profile_name"),
                 func.count(Candidate.id).label("candidate_count"),
+                last_cand_activity_sq.label("last_candidate_activity_at"),
             )
             .where(self._scope_clause())
             .join(Company, Company.id == Vacancy.company_id, isouter=True)
+            .join(
+                CandidateProfile,
+                CandidateProfile.id == Vacancy.candidate_profile_id,
+                isouter=True,
+            )
             .join(
                 Candidate,
                 (Candidate.vacancy_id == Vacancy.id)
                 & (Candidate.deleted_at.is_(None)),
                 isouter=True,
             )
-            .group_by(Vacancy.id, Company.name)
+            .group_by(Vacancy.id, Company.name, CandidateProfile.id, CandidateProfile.name)
         )
+        if self.own_company_id:
+            stmt = stmt.where(Vacancy.own_company_id == self.own_company_id)
         if company_id:
             stmt = stmt.where(Vacancy.company_id == company_id)
-        if status:
-            stmt = stmt.where(Vacancy.status == status)
+
+        normalized_status = (status or "").strip().lower() if status else None
+        if normalized_status == "archived":
+            col_arch = getattr(Vacancy, "is_archived", None)
+            if col_arch is not None:
+                stmt = stmt.where(col_arch.is_(True))
+        else:
+            col_arch = getattr(Vacancy, "is_archived", None)
+            if col_arch is not None and not include_archived:
+                stmt = stmt.where(col_arch.is_(False))
+            if status and normalized_status != "archived":
+                stmt = stmt.where(Vacancy.status == status)
         if search:
             stmt = stmt.where(Vacancy.title.ilike(f"%{search}%"))
+        if candidate_profile_id:
+            stmt = stmt.where(Vacancy.candidate_profile_id == candidate_profile_id)
         if allowed_company_ids is not None or allowed_vacancy_ids is not None:
             filters = []
             if allowed_company_ids:
@@ -84,7 +177,7 @@ class VacancyRepo:
         stmt = stmt.limit(limit).offset(offset)
 
         res = await self.db.execute(stmt)
-        return res.all()  # [(Vacancy, company_name, candidate_count)]
+        return res.all()  # [(Vacancy, company_name, candidate_profile_id, candidate_profile_name, candidate_count)]
 
     async def create(self, values: Dict[str, Any]) -> Vacancy:
         obj = Vacancy(**values)

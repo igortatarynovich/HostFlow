@@ -1,0 +1,117 @@
+name: security-gates
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  threat-model-docs:
+    name: Threat model / security docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gate sensitive code vs docs/security changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/security/threat_model_gate.py
+
+  sql-injection-surface:
+    name: No f-string SQL text()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan backend/app for dynamic SQL literals
+        run: python3 backend/scripts/check_sql_fstring_text.py
+
+  no-raw-emit-security-event:
+    name: No raw emit_security_event( outside allowlist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce canonical security event producers
+        run: python3 scripts/security/check_no_raw_emit_security_event.py
+
+  telemetry-phase34-stability:
+    name: Phase 3/4 telemetry stabilization (helpers + logger heuristic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Document/export helpers use emit_security_event_v1 only
+        run: python3 scripts/security/check_telemetry_helpers_v1_only.py
+      - name: No logger lines mixing logger.*( with signed_url / export path hints
+        run: python3 scripts/security/check_no_sensitive_logger_bypass.py
+
+  backend-bandit:
+    name: Bandit (high severity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install bandit
+        run: pip install "bandit[toml]>=1.7"
+      - name: Run bandit
+        run: bandit -r backend/app -q -x backend/app/db/seeds --severity-level high --confidence-level high
+
+  backend-pip-audit:
+    name: pip-audit (requirements)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Audit backend requirements
+        run: pip-audit -r backend/requirements.txt --strict
+
+  frontend-npm-audit:
+    name: npm audit + sensitive high gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hostflow-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: hostflow-frontend/package-lock.json
+      - run: npm ci
+      - name: Critical CVE gate
+        run: npm audit --audit-level=critical
+      - name: High CVE gate (sensitive packages)
+        working-directory: ${{ github.workspace }}
+        run: node scripts/security/npm_audit_gate.mjs
+
+  dependency-review:
+    name: Dependency review (GitHub)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+
+  trivy-fs:
+    name: Trivy filesystem (CRITICAL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore
+          skip-dirs: node_modules,.git,hostflow-frontend/dist,backend/uploads,.venv

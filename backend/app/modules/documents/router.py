@@ -4,6 +4,8 @@ import csv
 import io
 import json
 import logging
+import os
+import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path as PathLib
 from typing import Any, Dict, List, Optional, Sequence
@@ -15,6 +17,7 @@ from fastapi import (
     Depends,
     File,
     Form,
+    Header,
     HTTPException,
     Path,
     Query,
@@ -25,9 +28,31 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.security.document_events import (
+    emit_document_security_event_v1,
+    url_looks_presigned,
+)
+from backend.app.security.export_events import (
+    clip_export_filter_scope,
+    emit_export_security_event_v1,
+)
+from backend.app.security.event_taxonomy import (
+    EVENT_DOCUMENT_FILE_ACCESS_REQUESTED,
+    EVENT_DOCUMENT_FILE_DOWNLOADED,
+    EVENT_DOCUMENT_METADATA_READ,
+    EVENT_DOCUMENT_SIGNED_URL_DENIED,
+    EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+    EVENT_EXPORT_DENIED,
+    EVENT_EXPORT_DOWNLOADED,
+    EVENT_EXPORT_GENERATED,
+    EVENT_EXPORT_REQUESTED,
+)
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
+from backend.app.models.user import User
 from ...models.enums import (
     DocumentKind,
     DocumentProcessType,
@@ -53,6 +78,7 @@ from backend.app.services.ruleset_versioning import (
     normalize_ruleset_payload,
 )
 from backend.app.services.document_workflow import STATUS_ORDER, default_workflow
+from backend.app.services.document_runtime_delivery_contract import enrich_snapshot_via_contract
 from .ocr_pipeline import OcrPipeline
 from .owner_summary import compute_owner_summary
 from .rules_engine import compute_candidate_checklist
@@ -66,6 +92,12 @@ from .storage import (
     sanitize_filename,
     select_file_entry,
 )
+from backend.app.services.document_files import resolve_document_file
+from backend.app.services.own_company_doc_scope import (
+    ensure_document_own_company_matches,
+    tenant_documents_own_company_clause,
+)
+from backend.app.services.tenant_visibility import get_tenant_visibility
 
 from .crud import (
     create_document,
@@ -74,8 +106,8 @@ from .crud import (
     ensure_ruleset_seed,
     activate_ruleset_version,
     get_document,
+    get_effective_latest_ruleset_version,
     get_latest_diff_for_version,
-    get_latest_ruleset_version,
     get_last_document_checks_map,
     get_previous_ruleset_version,
     get_ruleset_diff_between,
@@ -86,6 +118,9 @@ from .crud import (
     list_ruleset_versions,
     list_ruleset_usage,
     log_ruleset_usage,
+    ruleset_version_visible_for_scope,
+    ruleset_versions_share_scope,
+    ruleset_write_scope_own_company_id,
     soft_delete_document,
     update_document,
 )
@@ -102,10 +137,139 @@ from .schemas_db import (
     RulesetUsageResponse,
     RulesetVersionOut,
 )
+from .candidate_document_owner_access import (
+    CandidateDocsContext,
+    candidate_visible_for_tenant_documents,
+)
+from .document_access_resolver import DocumentAccessContext, DocumentAccessResolver
+from .document_visibility_and_locks import (
+    DOCUMENT_VIEWER_CHANNELS,
+    document_visible_to_viewer,
+    viewer_readable_scopes,
+)
 from .validators import validate_meta
 
 router = APIRouter(prefix="/db", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+
+def _db_access_kind(session: AsyncSession) -> Optional[str]:
+    raw = session.info.get("security_access_kind")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s or None
+
+
+async def _candidate_documents_export_access(
+    session: AsyncSession,
+    tenant_id: UUID,
+    candidate_id: UUID,
+    *,
+    workspace_own_company_header: Optional[str],
+    viewer_channel: str,
+    export_type: str,
+    source: str,
+) -> tuple[DocumentAccessContext, Optional[str]]:
+    """Resolve read access for candidate document exports; emit ``export.denied`` on HTTP errors."""
+    access_kind = _db_access_kind(session)
+    try:
+        ctx = await _candidate_documents_read_access(
+            session,
+            str(tenant_id),
+            candidate_id,
+            workspace_own_company_header=workspace_own_company_header,
+            viewer_channel=viewer_channel,
+        )
+        return ctx, access_kind
+    except HTTPException as exc:
+        emit_export_security_event_v1(
+            event_type=EVENT_EXPORT_DENIED,
+            result="denied",
+            severity="low",
+            source=source,
+            tenant_id=str(tenant_id),
+            access_kind=access_kind,
+            entity_type="candidate",
+            entity_id=str(candidate_id),
+            export_type=export_type,
+            filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+            reason=f"http_{exc.status_code}",
+            export_scope="single_candidate",
+            contains_class3=True,
+            bulk_operation=False,
+        )
+        raise
+
+
+def resolve_document_viewer_channel(
+    x_document_viewer_channel: Optional[str] = Header(
+        None,
+        alias="X-Document-Viewer-Channel",
+        description=(
+            "Viewer channel for document read visibility (recruitment|hr|transport|finance). "
+            "Defaults to recruitment."
+        ),
+    ),
+) -> str:
+    if x_document_viewer_channel is None or not str(x_document_viewer_channel).strip():
+        return "recruitment"
+    ch = str(x_document_viewer_channel).strip().lower()
+    if ch not in DOCUMENT_VIEWER_CHANNELS:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid X-Document-Viewer-Channel",
+        )
+    return ch
+
+
+def document_access_trace_response_enabled() -> bool:
+    """When true, JSON responses may include ``document_access_trace`` (dev/CI only)."""
+    return os.environ.get("HOSTFLOW_DOCUMENT_ACCESS_DEBUG", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def _log_document_access_visibility(
+    *,
+    surface: str,
+    candidate_id: UUID,
+    viewer_channel: str,
+    db_fetch_total: int,
+    db_visible: int,
+    response_items: int,
+    synthetics_returned: int,
+) -> None:
+    """DEBUG-only: why rows disappeared for a viewer channel (no policy graph)."""
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
+    scopes = ",".join(sorted(viewer_readable_scopes(viewer_channel)))
+    logger.debug(
+        "[document_access_visibility] surface=%s candidate=%s viewer=%s readable_scopes=[%s] "
+        "db_fetch_total=%s db_visible=%s filtered_out=%s response_items=%s synthetics_in_response=%s",
+        surface,
+        candidate_id,
+        viewer_channel,
+        scopes,
+        db_fetch_total,
+        db_visible,
+        max(0, db_fetch_total - db_visible),
+        response_items,
+        synthetics_returned,
+    )
+
+# G-8 stage 2.2: per-document "what to do next" CTA. Mounted as a sub-router
+# so the implementation lives in a small, single-purpose file. Must be
+# included BEFORE the inline `@router.get("/documents/{document_id}")`
+# below — Starlette matches in registration order and the bare
+# `/documents/{document_id}` would otherwise swallow
+# `/documents/{document_id}/next-action` and force FastAPI to validate the
+# literal string `next-action` as a UUID.
+from backend.app.modules.documents import next_action_api as _next_action_api  # noqa: E402
+
+router.include_router(_next_action_api.router)
 
 StatusFilter = Optional[str]
 
@@ -156,17 +320,57 @@ def _load_meta_schema_for(code: str) -> Dict[str, Any]:
     return {}
 
 
-def _owner_context_or_400(owner_context: Optional[str], candidate_id: UUID) -> Dict[str, Any]:
+def _owner_context_or_400(
+    owner_context: Optional[str],
+    candidate_id: UUID,
+    defaults: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    base: Dict[str, Any] = dict(defaults or {})
+    base.setdefault("candidate_id", str(candidate_id))
     if not owner_context:
-        return {"candidate_id": str(candidate_id)}
+        return base
     try:
         parsed = json.loads(owner_context)
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=400, detail=f"Invalid owner_context: {exc}")
     if not isinstance(parsed, dict):
         raise HTTPException(status_code=400, detail="owner_context must be an object")
-    parsed.setdefault("candidate_id", str(candidate_id))
-    return parsed
+    merged = dict(base)
+    for key, value in parsed.items():
+        if key == "documents" and isinstance(merged.get("documents"), dict) and isinstance(value, dict):
+            merged["documents"] = {**merged["documents"], **value}
+        else:
+            merged[key] = value
+    merged.setdefault("candidate_id", str(candidate_id))
+    return merged
+
+
+def _candidate_owner_context_defaults(candidate: Candidate, candidate_id: UUID) -> Dict[str, Any]:
+    try:
+        extra = candidate._get_extra()
+    except Exception:
+        extra = getattr(candidate, "extra", {}) or {}
+    try:
+        personal = candidate._get_personal_data()
+    except Exception:
+        personal = getattr(candidate, "personal_data", {}) or {}
+
+    extra = extra if isinstance(extra, dict) else {}
+    personal = personal if isinstance(personal, dict) else {}
+    docs_raw = extra.get("documents")
+    docs_ctx = {
+        key: bool(value)
+        for key, value in (docs_raw.items() if isinstance(docs_raw, dict) else [])
+        if isinstance(value, bool)
+    }
+    ctx: Dict[str, Any] = {
+        "candidate_id": str(candidate_id),
+        "citizenship": extra.get("citizenship") or personal.get("citizenship"),
+        "residency_status": extra.get("poland_stay_basis") or personal.get("residency_status"),
+        "has_adr": extra.get("has_adr"),
+        "documents": docs_ctx,
+    }
+    return {k: v for k, v in ctx.items() if v is not None}
 
 
 def _checklist_sources_for(doc_type: str, checklist: Dict[str, Any]) -> List[str]:
@@ -253,6 +457,8 @@ def _build_synthetic_documents(
                 reminders=[],
                 version=None,
                 last_check=None,
+                responsible_user_id=None,
+                responsible_name=None,
             )
         )
     return synthetic_docs
@@ -372,11 +578,48 @@ def _check_to_out(check) -> DocumentCheckOut:
         created_at=getattr(check, "created_at"),
     )
 
+async def _batch_candidate_recruiter_labels(
+    session: AsyncSession,
+    tenant_id: str,
+    candidate_ids: list[str],
+) -> dict[str, tuple[str | None, str | None]]:
+    """Map candidate_id -> (recruiter_user_id, recruiter_display_name) for registry columns."""
+    if not candidate_ids:
+        return {}
+    uniq = list(dict.fromkeys([c for c in candidate_ids if c]))
+    if not uniq:
+        return {}
+    stmt = select(Candidate.id, Candidate.recruiter_id).where(
+        Candidate.tenant_id == tenant_id,
+        Candidate.id.in_(uniq),
+    )
+    rows = (await session.execute(stmt)).all()
+    rid_by_cand: dict[str, str | None] = {
+        str(r[0]): (str(r[1]) if r[1] else None) for r in rows
+    }
+    recruiter_ids = {rid for rid in rid_by_cand.values() if rid}
+    name_by_uid: dict[str, str] = {}
+    if recruiter_ids:
+        ustmt = select(User.id, User.email, User.full_name).where(User.id.in_(recruiter_ids))
+        for uid, email, full_name in (await session.execute(ustmt)).all():
+            label = (full_name or "").strip() or (email or "").strip() or str(uid)
+            name_by_uid[str(uid)] = label
+    out: dict[str, tuple[str | None, str | None]] = {}
+    for cid in uniq:
+        rid = rid_by_cand.get(cid)
+        if not rid:
+            out[cid] = (None, None)
+        else:
+            out[cid] = (rid, name_by_uid.get(rid))
+    return out
+
+
 def _ruleset_to_out(record) -> RulesetVersionOut:
     ruleset_payload = normalize_ruleset_payload(getattr(record, "json_data", None))
     return RulesetVersionOut(
         id=str(getattr(record, "id")),
         tenant_id=str(getattr(record, "tenant_id")),
+        own_company_id=getattr(record, "own_company_id", None),
         version=int(getattr(record, "version")),
         ruleset=ruleset_payload,
         comment=getattr(record, "comment", None),
@@ -394,6 +637,8 @@ async def _document_to_out(
     doc,
     *,
     last_check=None,
+    responsible_user_id: str | None = None,
+    responsible_name: str | None = None,
 ) -> DocumentOut:
     await ensure_document_files(session, doc)
     reminders = await _load_reminders(session, doc.tenant_id, doc.id)
@@ -441,11 +686,31 @@ async def _document_to_out(
     if raw_type and canonical_type != raw_type:
         meta_payload.setdefault("legacy_doc_type", raw_type)
         extra_payload.setdefault("legacy_doc_type", raw_type)
+    expire_value = _as_date(getattr(doc, "expire_date", None))
+    runtime_snapshot = {
+        "id": str(doc.id),
+        "document_id": str(doc.id),
+        "status": status_value,
+        "doc_type": canonical_type,
+        "type": canonical_type,
+        "type_code": canonical_type,
+        "document_type_code": canonical_type,
+        "expire_date": expire_value,
+        "expires_at": expire_value,
+        "expires_on": expire_value,
+        "has_files": has_files,
+        "meta": meta_payload,
+    }
+    enriched_runtime = enrich_snapshot_via_contract(runtime_snapshot)
+    document_runtime = enriched_runtime.get("document_runtime")
     return DocumentOut(
         id=str(doc.id),
         tenant_id=str(doc.tenant_id),
         candidate_id=str(doc.candidate_id),
         company_id=str(doc.company_id) if getattr(doc, "company_id", None) else None,
+        own_company_id=str(getattr(doc, "own_company_id", None))
+        if getattr(doc, "own_company_id", None) is not None
+        else None,
         kind=kind_value,
         doc_type=canonical_type,
         type=canonical_type,
@@ -481,7 +746,316 @@ async def _document_to_out(
         reminders=reminders,
         version=getattr(doc, "version", None),
         last_check=last_check_out,
+        document_runtime=document_runtime if isinstance(document_runtime, dict) else None,
+        responsible_user_id=responsible_user_id,
+        responsible_name=responsible_name,
     )
+
+
+async def _document_to_out_with_responsible(
+    session: AsyncSession,
+    tenant_id_for_candidate_lookup: str,
+    doc,
+    *,
+    last_check=None,
+) -> DocumentOut:
+    """Attach recruiter (candidate owner) display for single-document responses."""
+    m = await _batch_candidate_recruiter_labels(
+        session, tenant_id_for_candidate_lookup, [str(doc.candidate_id)]
+    )
+    rid, rname = m.get(str(doc.candidate_id), (None, None))
+    return await _document_to_out(
+        session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+    )
+
+
+async def _candidate_documents_read_access(
+    session: AsyncSession,
+    tenant_id: str,
+    candidate_id: UUID,
+    *,
+    workspace_own_company_header: Optional[str],
+    viewer_channel: str = "recruitment",
+) -> DocumentAccessContext:
+    """ADR-014: one read-path resolver call for list / checklist / export / summary."""
+    return await DocumentAccessResolver.resolve_for_candidate_documents(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=workspace_own_company_header,
+        viewer_channel=viewer_channel,
+    )
+
+
+async def _candidate_documents_mutation_access(
+    session: AsyncSession,
+    tenant_id: str,
+    candidate_id: UUID,
+    *,
+    workspace_own_company_header: Optional[str],
+    viewer_channel: str = "recruitment",
+) -> DocumentAccessContext:
+    """ADR-014: mutation-oriented resolver call (same contract as read; not the read helper)."""
+    return await DocumentAccessResolver.resolve_for_candidate_document_mutations(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=workspace_own_company_header,
+        viewer_channel=viewer_channel,
+    )
+
+
+async def _maybe_ensure_doc_own_company(
+    session: AsyncSession,
+    doc: Document,
+    candidate_row: Optional[Candidate],
+    active_own_company_id: Optional[str],
+) -> None:
+    cand = candidate_row
+    if not cand and doc.candidate_id:
+        cand = (
+            await session.execute(
+                select(Candidate).where(
+                    Candidate.id == doc.candidate_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+    if cand:
+        ensure_document_own_company_matches(doc, cand, active_own_company_id)
+
+
+async def _fetch_document_with_visibility(
+    session: AsyncSession,
+    tenant_id: str,
+    document_id: str,
+) -> tuple[Optional[Document], str, Optional[Candidate]]:
+    """Load document + candidate row without own-company slice enforcement."""
+    visibility = get_tenant_visibility(session, tenant_id)
+    doc = await get_document(session, tenant_id, document_id)
+    if doc:
+        candidate_row = (
+            await session.execute(
+                select(Candidate).where(
+                    Candidate.id == doc.candidate_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
+
+    doc = (
+        await session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not doc:
+        return None, tenant_id, None
+
+    candidate_row = (
+        await session.execute(
+            select(Candidate).where(
+                Candidate.id == doc.candidate_id,
+                Candidate.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not candidate_row:
+        return None, tenant_id, None
+    if not candidate_visible_for_tenant_documents(candidate_row, tenant_id, visibility):
+        return None, tenant_id, None
+    return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
+
+
+async def _get_document_with_access(
+    session: AsyncSession,
+    tenant_id: str,
+    document_id: str,
+    *,
+    active_own_company_id: Optional[str] = None,
+    viewer_channel: str = "recruitment",
+) -> tuple[Optional[Document], str, Optional[Candidate]]:
+    doc, doc_tenant_id, candidate_row = await _fetch_document_with_visibility(
+        session, tenant_id, document_id
+    )
+    if doc:
+        await _maybe_ensure_doc_own_company(session, doc, candidate_row, active_own_company_id)
+        if not document_visible_to_viewer(getattr(doc, "doc_type", None), viewer_channel):
+            return None, doc_tenant_id, candidate_row
+    return doc, doc_tenant_id, candidate_row
+
+
+async def _get_document_with_mutation_access(
+    session: AsyncSession,
+    tenant_id: str,
+    document_id: str,
+    *,
+    workspace_own_company_header: Optional[str],
+    enforce_destructive_process_lock: bool = False,
+    viewer_channel: str = "recruitment",
+) -> tuple[Optional[Document], str, Optional[Candidate], Optional[DocumentAccessContext]]:
+    """ADR-014: resolver + resolved workspace slice before mutating a document row."""
+    doc, doc_tenant_id, candidate_row = await _fetch_document_with_visibility(
+        session, tenant_id, document_id
+    )
+    if not doc:
+        return None, tenant_id, None, None
+    doc_access: Optional[DocumentAccessContext] = None
+    if doc.candidate_id:
+        cid = UUID(str(doc.candidate_id))
+        if enforce_destructive_process_lock:
+            doc_access = await DocumentAccessResolver.resolve_for_candidate_destructive_document_mutations(
+                session,
+                tenant_id,
+                cid,
+                workspace_own_company_header=workspace_own_company_header,
+                viewer_channel=viewer_channel,
+            )
+        else:
+            doc_access = await _candidate_documents_mutation_access(
+                session,
+                tenant_id,
+                cid,
+                workspace_own_company_header=workspace_own_company_header,
+                viewer_channel=viewer_channel,
+            )
+        ensure_document_own_company_matches(
+            doc,
+            doc_access.candidate_context.candidate,
+            doc_access.resolved_workspace_own_company_id,
+        )
+        candidate_row = doc_access.candidate_context.candidate
+        if doc_access.viewer_channel != "recruitment":
+            raise HTTPException(
+                status_code=403,
+                detail="Document mutations require recruitment viewer channel",
+            )
+    else:
+        await _maybe_ensure_doc_own_company(
+            session, doc, candidate_row, workspace_own_company_header
+        )
+    return doc, doc_tenant_id, candidate_row, doc_access
+
+
+def _safe_json(value: Any) -> str:
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)
+    except Exception:
+        return ""
+
+
+def _iso(value: Any) -> Optional[str]:
+    try:
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+    except Exception:
+        return None
+    return str(value) if value is not None else None
+
+
+def _profile_from_context(cand_ctx: CandidateDocsContext) -> Dict[str, Any]:
+    candidate = cand_ctx.candidate
+    contacts = {}
+    personal = {}
+    extra = {}
+    try:
+        contacts = candidate._get_contacts()
+    except Exception:
+        contacts = getattr(candidate, "contacts", {}) or {}
+    try:
+        personal = candidate._get_personal_data()
+    except Exception:
+        personal = getattr(candidate, "personal_data", {}) or {}
+    try:
+        extra = candidate._get_extra()
+    except Exception:
+        extra = getattr(candidate, "extra", {}) or {}
+
+    status_reason = getattr(candidate, "status_reason", None) or []
+    if isinstance(status_reason, str):
+        try:
+            parsed = json.loads(status_reason)
+            if isinstance(parsed, list):
+                status_reason = parsed
+        except Exception:
+            status_reason = [status_reason]
+    if not isinstance(status_reason, list):
+        status_reason = []
+
+    languages = getattr(candidate, "languages", None) or personal.get("languages") or extra.get("languages")
+    if isinstance(languages, (list, tuple, set)):
+        languages = ", ".join(str(x) for x in languages if str(x).strip())
+
+    return {
+        "tenant_id": cand_ctx.owner_tenant_id,
+        "candidate_id": str(candidate.id),
+        "short_id": getattr(candidate, "short_id", None),
+        "first_name": getattr(candidate, "first_name", None),
+        "last_name": getattr(candidate, "last_name", None),
+        "email": contacts.get("email") or getattr(candidate, "email", None),
+        "phone_country_code": contacts.get("phone_country_code") or getattr(candidate, "phone_country_code", None),
+        "phone": contacts.get("phone") or getattr(candidate, "phone", None),
+        "stage": getattr(candidate, "stage", None),
+        "status": getattr(candidate, "status", None) or getattr(candidate, "stage", None),
+        "status_reason": ", ".join(str(x) for x in status_reason if str(x).strip()),
+        "manager_id": cand_ctx.manager_raw or getattr(candidate, "manager", None),
+        "manager_name": cand_ctx.manager_name or cand_ctx.manager_raw or getattr(candidate, "manager", None),
+        "recruiter_id": cand_ctx.recruiter_id,
+        "recruiter_name": cand_ctx.recruiter_name or cand_ctx.recruiter_short or cand_ctx.recruiter_id,
+        "company_id": getattr(candidate, "company_id", None),
+        "company_name": cand_ctx.company_name,
+        "vacancy_id": getattr(candidate, "vacancy_id", None),
+        "vacancy_title": cand_ctx.vacancy_title,
+        "languages": languages,
+        "country_code": personal.get("country_code") or getattr(candidate, "country_code", None),
+        "city": personal.get("city") or getattr(candidate, "city", None),
+        "address": personal.get("address") or getattr(candidate, "address", None),
+        "birth_date": _iso(getattr(candidate, "birth_date", None)) or personal.get("birth_date"),
+        "note": getattr(candidate, "note", None),
+        "source": getattr(candidate, "source", None),
+        "origin": _safe_json(getattr(candidate, "origin", None)),
+        "contacts_json": _safe_json(contacts),
+        "personal_data_json": _safe_json(personal),
+        "extra_json": _safe_json(extra),
+        "docs_progress_json": _safe_json(getattr(candidate, "docs_progress", None)),
+        "created_at": _iso(getattr(candidate, "created_at", None)),
+        "updated_at": _iso(getattr(candidate, "updated_at", None)),
+        "downloaded_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+def _add_document_file_to_zip(
+    doc: Document,
+    archive: zipfile.ZipFile,
+    index: int,
+    used_names: set[str],
+) -> Optional[str]:
+    try:
+        path, _, original_name = resolve_document_file(doc)
+    except FileNotFoundError:
+        return None
+    base_label = sanitize_filename(
+        (getattr(doc, "custom_name", None) or getattr(doc, "title", None) or getattr(doc, "doc_type", None) or f"document_{index}")
+    ) or f"document_{index}"
+    number = getattr(doc, "number", None)
+    stem_parts = [f"{index:02d}", base_label]
+    if number:
+        stem_parts.append(str(number))
+    stem = "_".join(part for part in stem_parts if part)
+    ext = PathLib(original_name).suffix
+    candidate_name = f"{stem}{ext}" if ext else stem
+    unique_name = candidate_name
+    counter = 1
+    while unique_name in used_names:
+        counter += 1
+        unique_name = f"{stem}_{counter}{ext}" if ext else f"{stem}_{counter}"
+    used_names.add(unique_name)
+    with path.open("rb") as fh:
+        archive.writestr(unique_name, fh.read())
+    return unique_name
 
 
 async def _list_documents_for_candidate(
@@ -494,81 +1068,143 @@ async def _list_documents_for_candidate(
     include_deleted: bool,
     include_last_check: bool,
     owner_context: Optional[str],
+    owner_context_defaults: Optional[Dict[str, Any]],
     fill_missing: bool,
     limit: Optional[int],
     offset: Optional[int],
+    owner_tenant_id: Optional[str] = None,
+    allowed_tenant_ids: Optional[set[str]] = None,
+    active_own_company_id: Optional[str] = None,
+    viewer_channel: str = "recruitment",
 ) -> List[DocumentOut]:
-    docs = await list_candidate_documents(
+    doc_tenant_id = owner_tenant_id or tenant_id
+    tenants_scope = set(allowed_tenant_ids or {doc_tenant_id, tenant_id})
+    raw_docs = await list_candidate_documents(
         session,
-        tenant_id,
+        doc_tenant_id,
         str(candidate_id),
         status=status,
         type_filter=doc_type,
         include_deleted=include_deleted,
         limit=limit,
         offset=offset,
+        allowed_tenant_ids=tenants_scope,
+        active_own_company_id=active_own_company_id,
     )
+    last_db_fetch_total = len(raw_docs)
+    docs = [
+        d
+        for d in raw_docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
+    last_db_visible = len(docs)
     last_checks: Dict[str, Any] = {}
     if include_last_check:
         last_checks = await get_last_document_checks_map(
-            session, tenant_id, [str(doc.id) for doc in docs]
+            session,
+            doc_tenant_id,
+            [str(doc.id) for doc in docs],
         )
+    cand_labels = await _batch_candidate_recruiter_labels(
+        session, doc_tenant_id, [str(d.candidate_id) for d in docs]
+    )
     result: List[DocumentOut] = []
     for doc in docs:
         last_check = last_checks.get(str(doc.id)) if include_last_check else None
-        result.append(await _document_to_out(session, doc, last_check=last_check))
+        rid, rname = cand_labels.get(str(doc.candidate_id), (None, None))
+        result.append(
+            await _document_to_out(
+                session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+            )
+        )
 
     if fill_missing:
-        ctx = _owner_context_or_400(owner_context, candidate_id)
+        ctx = _owner_context_or_400(owner_context, candidate_id, owner_context_defaults)
         ruleset_version = await ensure_ruleset_seed(
             session,
-            tenant_id,
+            doc_tenant_id,
             load_default_ruleset(),
+            own_company_id=active_own_company_id,
         )
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
         checklist = compute_candidate_checklist(ctx, ruleset_payload)
-        auto_docs = docs
-        if any([status, doc_type, limit, offset]):
-            auto_docs = await list_candidate_documents(
-                session,
-                tenant_id,
-                str(candidate_id),
-                include_deleted=False,
-            )
+        auto_docs = await list_candidate_documents(
+            session,
+            doc_tenant_id,
+            str(candidate_id),
+            include_deleted=False,
+            allowed_tenant_ids=tenants_scope,
+            active_own_company_id=active_own_company_id,
+        )
         auto_created = await _ensure_auto_ordered_documents(
             session,
-            tenant_id,
+            doc_tenant_id,
             str(candidate_id),
             checklist,
             auto_docs,
         )
         if auto_created:
             await session.commit()
-            docs = await list_candidate_documents(
+            raw_docs = await list_candidate_documents(
                 session,
-                tenant_id,
+                doc_tenant_id,
                 str(candidate_id),
                 status=status,
                 type_filter=doc_type,
                 include_deleted=include_deleted,
                 limit=limit,
                 offset=offset,
+                allowed_tenant_ids=tenants_scope,
+                active_own_company_id=active_own_company_id,
             )
+            last_db_fetch_total = len(raw_docs)
+            docs = [
+                d
+                for d in raw_docs
+                if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+            ]
+            last_db_visible = len(docs)
             if include_last_check:
                 last_checks = await get_last_document_checks_map(
-                    session, tenant_id, [str(doc.id) for doc in docs]
+                    session,
+                    doc_tenant_id,
+                    [str(doc.id) for doc in docs],
                 )
+            cand_labels = await _batch_candidate_recruiter_labels(
+                session, doc_tenant_id, [str(d.candidate_id) for d in docs]
+            )
             result = []
             for doc in docs:
                 last_check = last_checks.get(str(doc.id)) if include_last_check else None
-                result.append(await _document_to_out(session, doc, last_check=last_check))
+                rid, rname = cand_labels.get(str(doc.candidate_id), (None, None))
+                result.append(
+                    await _document_to_out(
+                        session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+                    )
+                )
 
         serialized = [item.model_dump() for item in result]
         synthetic_docs = _build_synthetic_documents(
             tenant_id, candidate_id, checklist, serialized
         )
-        result.extend(synthetic_docs)
+        result.extend(
+            d
+            for d in synthetic_docs
+            if document_visible_to_viewer(d.doc_type, viewer_channel)
+        )
+    synth_returned = sum(
+        1 for r in result if str(getattr(r, "id", "")).startswith("synthetic::")
+    )
+    _log_document_access_visibility(
+        surface="candidate_documents_list",
+        candidate_id=candidate_id,
+        viewer_channel=viewer_channel,
+        db_fetch_total=last_db_fetch_total,
+        db_visible=last_db_visible,
+        response_items=len(result),
+        synthetics_returned=synth_returned,
+    )
     return result
 
 
@@ -677,6 +1313,8 @@ async def api_list_documents_legacy(
         None, ge=0, description="Offset (for pagination)"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
     if candidate_id is None:
@@ -685,6 +1323,9 @@ async def api_list_documents_legacy(
             .where(Document.tenant_id == str(tenant_id))
             .order_by(Document.updated_at.desc())
         )
+        scope_t = tenant_documents_own_company_clause(own_company_id)
+        if scope_t is not None:
+            stmt = stmt.where(scope_t)
         if not include_deleted:
             stmt = stmt.where(Document.deleted_at.is_(None))
         if status:
@@ -700,6 +1341,11 @@ async def api_list_documents_legacy(
         if limit:
             stmt = stmt.limit(int(limit))
         docs = (await session.execute(stmt)).scalars().all()
+        docs = [
+            d
+            for d in docs
+            if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+        ]
         if not docs:
             return []
         last_checks: Dict[str, Any] = {}
@@ -707,12 +1353,29 @@ async def api_list_documents_legacy(
             last_checks = await get_last_document_checks_map(
                 session, str(tenant_id), [str(doc.id) for doc in docs]
             )
+        cand_labels = await _batch_candidate_recruiter_labels(
+            session, str(tenant_id), [str(d.candidate_id) for d in docs]
+        )
         result: List[DocumentOut] = []
         for doc in docs:
             last_check = last_checks.get(str(doc.id)) if include_last_check else None
-            result.append(await _document_to_out(session, doc, last_check=last_check))
+            rid, rname = cand_labels.get(str(doc.candidate_id), (None, None))
+            result.append(
+                await _document_to_out(
+                    session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+                )
+            )
         return result
 
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -722,9 +1385,14 @@ async def api_list_documents_legacy(
         include_deleted=include_deleted,
         include_last_check=include_last_check,
         owner_context=owner_context,
+        owner_context_defaults=_candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
         fill_missing=fill_missing,
         limit=limit,
         offset=offset,
+        owner_tenant_id=cand_ctx.owner_tenant_id,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_for_docs,
+        viewer_channel=viewer_channel,
     )
 
 
@@ -754,8 +1422,19 @@ async def api_list_candidate_documents(
         None, ge=0, description="Offset (for pagination)"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
+    doc_access = await _candidate_documents_read_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -765,9 +1444,14 @@ async def api_list_candidate_documents(
         include_deleted=include_deleted,
         include_last_check=include_last_check,
         owner_context=owner_context,
+        owner_context_defaults=_candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
         fill_missing=fill_missing,
         limit=limit,
         offset=offset,
+        owner_tenant_id=cand_ctx.owner_tenant_id,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_for_docs,
+        viewer_channel=viewer_channel,
     )
 
 
@@ -780,15 +1464,49 @@ async def api_create_candidate_document(
     candidate_id: UUID,
     payload: DocumentCreateIn,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
+    current_user: UserCtx = Depends(get_current_user),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    from backend.app.services.candidate_operational_write import ensure_candidate_operational_write_allowed
+
+    await ensure_candidate_operational_write_allowed(
+        session,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate_id),
+        role=str(getattr(current_user, "role", "") or ""),
+    )
+    logger.info(f"[create_doc] Received request for candidate {candidate_id}, parsed payload: {payload.model_dump()}")
+    doc_access = await _candidate_documents_mutation_access(
+        session,
+        str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    if doc_access.viewer_channel != "recruitment":
+        raise HTTPException(
+            status_code=403,
+            detail="Document mutations require recruitment viewer channel",
+        )
     try:
         doc_type = payload.effective_doc_type()
     except ValueError as exc:
+        payload_dump = payload.model_dump()
+        logger.error(
+            f"[create_doc] effective_doc_type failed: {exc}, "
+            f"payload keys: {list(payload_dump.keys())}, "
+            f"doc_type: {payload_dump.get('doc_type')}, "
+            f"type: {payload_dump.get('type')}, "
+            f"key: {payload_dump.get('key')}, "
+            f"meta: {payload_dump.get('meta')}"
+        )
         raise HTTPException(status_code=422, detail=str(exc)) from None
 
     data = payload.model_dump(by_alias=True, exclude_unset=True)
-    data["tenant_id"] = str(tenant_id)
+    data["tenant_id"] = cand_ctx.owner_tenant_id
     data["candidate_id"] = str(candidate_id)
     data["doc_type"] = doc_type
     data.pop("type", None)
@@ -798,17 +1516,18 @@ async def api_create_candidate_document(
         data["meta"] = meta_json_payload
     owner_id = data.get("owner_id") or str(candidate_id)
     data["owner_id"] = owner_id
+    data["own_company_id"] = doc_access.resolved_workspace_own_company_id
 
     try:
         doc = await create_document(session, data)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     await reminders_service.schedule_document_expiry_reminders(
-        session, str(tenant_id), doc
+        session, cand_ctx.owner_tenant_id, doc
     )
     await session.commit()
     await session.refresh(doc)
-    return await _document_to_out(session, doc)
+    return await _document_to_out_with_responsible(session, cand_ctx.owner_tenant_id, doc)
 
 
 @router.get(
@@ -820,27 +1539,59 @@ async def api_get_document(
     include_checks: bool = Query(False),
     include_last_check: bool = Query(True),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentWithChecksOut:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
+    )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_METADATA_READ,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_document",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found_or_invisible",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     checks: List[Any] = []
     last_check = None
     if include_checks:
-        checks = await list_document_checks(session, str(tenant_id), str(document_id))
+        checks = await list_document_checks(
+            session, doc_tenant_id, str(document_id)
+        )
         last_check = checks[0] if checks else None
     elif include_last_check:
         last_map = await get_last_document_checks_map(
-            session, str(tenant_id), [str(document_id)]
+            session, doc_tenant_id, [str(document_id)]
         )
         last_check = last_map.get(str(document_id))
 
-    out = await _document_to_out(session, doc, last_check=last_check)
+    out = await _document_to_out_with_responsible(session, doc_tenant_id, doc, last_check=last_check)
     if include_checks:
         checks_payload = [_check_to_out(item) for item in checks]
     else:
         checks_payload = []
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_METADATA_READ,
+        result="success",
+        severity="info",
+        source="http:documents_router:get_document",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+    )
     return DocumentWithChecksOut(**out.model_dump(), checks=checks_payload)
 
 
@@ -852,8 +1603,19 @@ async def api_patch_document(
     document_id: UUID,
     payload: DocumentUpdateIn,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
     update_data = payload.model_dump(by_alias=True, exclude_unset=True)
     meta_json_payload = update_data.pop("meta_json", None)
     if meta_json_payload is not None and "meta" not in update_data:
@@ -861,7 +1623,7 @@ async def api_patch_document(
     try:
         doc = await update_document(
             session,
-            str(tenant_id),
+            doc_tenant_id,
             str(document_id),
             update_data,
         )
@@ -870,31 +1632,43 @@ async def api_patch_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     await reminders_service.schedule_document_expiry_reminders(
-        session, str(tenant_id), doc
+        session, doc_tenant_id, doc
     )
     await session.commit()
     await session.refresh(doc)
-    return await _document_to_out(session, doc)
+    return await _document_to_out_with_responsible(session, doc_tenant_id, doc)
 
 
 @router.delete("/documents/{document_id}", status_code=204)
 async def api_delete_document(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Response:
     session, tenant_id = db_dep
-    deleted = await soft_delete_document(session, str(tenant_id), str(document_id))
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        workspace_own_company_header=own_company_id,
+        enforce_destructive_process_lock=True,
+        viewer_channel=viewer_channel,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    deleted = await soft_delete_document(session, doc_tenant_id, str(document_id))
     if not deleted:
         raise HTTPException(status_code=404, detail="Document not found")
     await reminders_service.cancel_entity_reminders(
         session,
-        tenant_id=str(tenant_id),
+        tenant_id=doc_tenant_id,
         entity_type="document",
         entity_id=str(document_id),
     )
     await reminders_service.cancel_document_step_reminders(
         session,
-        tenant_id=str(tenant_id),
+        tenant_id=doc_tenant_id,
         document_id=str(document_id),
     )
     await session.commit()
@@ -902,8 +1676,47 @@ async def api_delete_document(
 
 
 @router.post("/documents/{document_id}/presign-upload")
-async def api_presign_upload(document_id: UUID) -> dict[str, Any]:
-    return presign_upload(str(document_id))
+async def api_presign_upload(
+    document_id: UUID,
+    db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
+) -> dict[str, Any]:
+    session, tenant_id = db_dep
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:presign_upload",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found",
+        )
+        raise HTTPException(status_code=404, detail="Document not found")
+    out = presign_upload(str(document_id))
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+        result="success",
+        severity="info",
+        source="http:documents_router:presign_upload",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+        upload_presign=True,
+    )
+    return out
 
 
 @router.get("/documents/{document_id}/file-url")
@@ -911,24 +1724,125 @@ async def api_get_document_file_url(
     document_id: UUID,
     version: Optional[int] = Query(None),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
+    )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found_or_invisible",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
     entry = select_file_entry(files, version=version)
     if not entry:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_entry_not_found",
+            file_version=version,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     try:
         path = resolve_file_path(entry)
     except ValueError as exc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="invalid_file_entry",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found") from exc
     if not path.exists():
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_not_on_disk",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     url = entry.get("url") or doc.path
     if not url:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="url_not_configured",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found")
+    presigned_shape = url_looks_presigned(str(url))
+    fv = entry.get("version")
+    file_version = int(fv) if isinstance(fv, int) else None
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_ACCESS_REQUESTED,
+        result="success",
+        severity="info",
+        source="http:documents_router:get_file_url",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+        file_version=file_version,
+        has_presigned_url_shape=presigned_shape,
+    )
+    if presigned_shape:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_GENERATED,
+            result="success",
+            severity="info",
+            source="http:documents_router:get_file_url",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            file_version=file_version,
+            has_presigned_url_shape=True,
+        )
     return {
         "url": url,
         "expires_at": None,
@@ -942,20 +1856,78 @@ async def api_download_document_file(
     document_id: UUID,
     version: Optional[int] = Query(None),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> FileResponse:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    access_kind = _db_access_kind(session)
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
+    )
     if not doc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            reason="document_not_found_or_invisible",
+        )
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
     entry = select_file_entry(files, version=version)
     if not entry:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_entry_not_found",
+            file_version=version,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     try:
         path = resolve_file_path(entry)
     except ValueError as exc:
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="invalid_file_entry",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found") from exc
     if not path.exists():
+        emit_document_security_event_v1(
+            event_type=EVENT_DOCUMENT_SIGNED_URL_DENIED,
+            result="denied",
+            severity="low",
+            source="http:documents_router:download_file",
+            tenant_id=str(doc_tenant_id),
+            document_id=str(document_id),
+            access_kind=access_kind,
+            document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+            candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+            reason="file_not_on_disk",
+            file_version=entry.get("version") if isinstance(entry.get("version"), int) else None,
+        )
         raise HTTPException(status_code=404, detail="File not found")
     media_type = file_entry_media_type(entry)
     filename = entry.get("name") or path.name
@@ -967,6 +1939,21 @@ async def api_download_document_file(
     version_value = entry.get("version")
     if version_value is not None:
         response.headers["X-Document-Version"] = str(version_value)
+    fv = entry.get("version")
+    file_version = int(fv) if isinstance(fv, int) else None
+    emit_document_security_event_v1(
+        event_type=EVENT_DOCUMENT_FILE_DOWNLOADED,
+        result="success",
+        severity="info",
+        source="http:documents_router:download_file",
+        tenant_id=str(doc_tenant_id),
+        document_id=str(document_id),
+        access_kind=access_kind,
+        document_class=str(doc.doc_type) if getattr(doc, "doc_type", None) else None,
+        candidate_id=str(doc.candidate_id) if doc.candidate_id else None,
+        file_version=file_version,
+        response_mode="file_stream",
+    )
     return response
 
 
@@ -974,12 +1961,20 @@ async def api_download_document_file(
 async def api_list_document_checks(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> List[DocumentCheckOut]:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    checks = await list_document_checks(session, str(tenant_id), str(document_id))
+    checks = await list_document_checks(session, doc_tenant_id, str(document_id))
     return [_check_to_out(item) for item in checks]
 
 
@@ -989,8 +1984,19 @@ async def api_check_document(
     body: Dict[str, Any],
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    doc, doc_tenant_id, _, _ = await _get_document_with_mutation_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
     decision = (body.get("decision") or "").strip().lower()
     if decision not in {"approved", "rejected"}:
         raise HTTPException(status_code=422, detail="decision must be approved|rejected")
@@ -1005,7 +2011,7 @@ async def api_check_document(
         update_payload["meta"] = meta_update
     doc = await update_document(
         session,
-        str(tenant_id),
+        doc_tenant_id,
         str(document_id),
         update_payload,
     )
@@ -1015,7 +2021,7 @@ async def api_check_document(
     payload = body.get("payload") or body.get("meta_json") or {}
     check = await create_document_check(
         session,
-        str(tenant_id),
+        doc_tenant_id,
         str(document_id),
         reviewer_id=reviewer_id,
         decision=decision,
@@ -1024,36 +2030,53 @@ async def api_check_document(
         payload=payload if isinstance(payload, dict) else {},
     )
     await reminders_service.schedule_document_expiry_reminders(
-        session, str(tenant_id), doc
+        session, doc_tenant_id, doc
     )
     await session.commit()
     await session.refresh(doc)
-    return await _document_to_out(session, doc, last_check=check)
+    return await _document_to_out_with_responsible(session, doc_tenant_id, doc, last_check=check)
 
 
-@router.get(
-    "/candidate/{candidate_id}/documents/summary",
-)
-async def api_candidate_documents_summary(
+async def fetch_candidate_documents_summary_response(
+    session: AsyncSession,
+    tenant_id: str,
     candidate_id: UUID,
-    owner_context: Optional[str] = Query(
-        None,
-        description="Optional JSON string with candidate/vacancy context",
-    ),
-    db_dep=Depends(get_db_with_tenant),
+    owner_context: Optional[str] = None,
+    *,
+    active_own_company_id: Optional[str] = None,
+    viewer_channel: str = "recruitment",
 ) -> Dict[str, Any]:
-    session, tenant_id = db_dep
-    ctx = _owner_context_or_400(owner_context, candidate_id)
+    """Same payload as GET /candidate/{id}/documents/summary (work-panel bundle, tests, etc.)."""
+    doc_access = await _candidate_documents_read_access(
+        session,
+        tenant_id,
+        candidate_id,
+        workspace_own_company_header=active_own_company_id,
+        viewer_channel=viewer_channel,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
+    ctx = _owner_context_or_400(
+        owner_context,
+        candidate_id,
+        _candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
+    )
     docs = await list_candidate_documents(
-        session, str(tenant_id), str(candidate_id), include_deleted=False
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_for_docs,
     )
     ruleset_version = None
     ruleset_payload: Dict[str, Any]
     try:
         ruleset_version = await ensure_ruleset_seed(
             session,
-            str(tenant_id),
+            cand_ctx.owner_tenant_id,
             load_default_ruleset(),
+            own_company_id=own_for_docs,
         )
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
@@ -1068,19 +2091,52 @@ async def api_candidate_documents_summary(
         ruleset_version = None
         ruleset_payload = load_default_ruleset()
     doc_ids = [str(doc.id) for doc in docs]
-    last_checks = await get_last_document_checks_map(session, str(tenant_id), doc_ids)
-    serialized_docs: List[Dict[str, Any]] = []
+    last_checks = await get_last_document_checks_map(
+        session, cand_ctx.owner_tenant_id, doc_ids
+    )
+    resp_pair = await _batch_candidate_recruiter_labels(
+        session, cand_ctx.owner_tenant_id, [str(candidate_id)]
+    )
+    rid, rname = resp_pair.get(str(candidate_id), (None, None))
+    serialized_docs_full: List[Dict[str, Any]] = []
     for doc in docs:
         last_check = last_checks.get(str(doc.id))
-        serialized_docs.append(
-            (await _document_to_out(session, doc, last_check=last_check)).model_dump()
+        serialized_docs_full.append(
+            (
+                await _document_to_out(
+                    session, doc, last_check=last_check, responsible_user_id=rid, responsible_name=rname
+                )
+            ).model_dump()
         )
-    summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
+
+    def _serialized_visible(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return [
+            d
+            for d in rows
+            if document_visible_to_viewer(
+                d.get("doc_type") or d.get("type_code") or d.get("type"),
+                viewer_channel,
+            )
+        ]
+
+    serialized_visible = _serialized_visible(serialized_docs_full)
+    summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
+    from backend.app.services.document_hub_delivery_contract import (
+        evaluate_document_hub_requirements_via_contract,
+        merge_document_hub_requirements_into_summary_via_contract,
+    )
+
+    hub_requirements = await evaluate_document_hub_requirements_via_contract(
+        session,
+        tenant_id=cand_ctx.owner_tenant_id,
+        candidate=cand_ctx.candidate,
+    )
+    summary = merge_document_hub_requirements_into_summary_via_contract(summary, hub_requirements)
     checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
         session,
-        str(tenant_id),
+        cand_ctx.owner_tenant_id,
         str(candidate_id),
         checklist,
         docs,
@@ -1088,23 +2144,60 @@ async def api_candidate_documents_summary(
     if auto_created:
         await session.commit()
         docs = await list_candidate_documents(
-            session, str(tenant_id), str(candidate_id), include_deleted=False
+            session,
+            cand_ctx.owner_tenant_id,
+            str(candidate_id),
+            include_deleted=False,
+            allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+            active_own_company_id=own_for_docs,
         )
         last_checks = await get_last_document_checks_map(
-            session, str(tenant_id), [str(doc.id) for doc in docs]
+            session,
+            cand_ctx.owner_tenant_id,
+            [str(doc.id) for doc in docs],
         )
-        serialized_docs = [
-            (await _document_to_out(session, doc, last_check=last_checks.get(str(doc.id)))).model_dump()
+        serialized_docs_full = [
+            (
+                await _document_to_out(
+                    session,
+                    doc,
+                    last_check=last_checks.get(str(doc.id)),
+                    responsible_user_id=rid,
+                    responsible_name=rname,
+                )
+            ).model_dump()
             for doc in docs
         ]
-        summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
+        serialized_visible = _serialized_visible(serialized_docs_full)
+        summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
+        summary = merge_document_hub_requirements_into_summary_via_contract(summary, hub_requirements)
         checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
         summary["checklist"] = checklist
-    synthetic_docs = [doc.model_dump() for doc in _build_synthetic_documents(str(tenant_id), candidate_id, checklist, serialized_docs)]
-    response: Dict[str, Any] = {
+    synthetic_models = _build_synthetic_documents(
+        cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs_full
+    )
+    synthetic_docs = [
+        doc.model_dump()
+        for doc in synthetic_models
+        if document_visible_to_viewer(doc.doc_type, viewer_channel)
+    ]
+    physical_total = len(docs)
+    physical_visible = len(serialized_visible)
+    synth_built = len(synthetic_models)
+    synth_vis = len(synthetic_docs)
+    _log_document_access_visibility(
+        surface="candidate_documents_summary",
+        candidate_id=candidate_id,
+        viewer_channel=viewer_channel,
+        db_fetch_total=physical_total,
+        db_visible=physical_visible,
+        response_items=len(serialized_visible) + len(synthetic_docs),
+        synthetics_returned=synth_vis,
+    )
+    out: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "summary": summary,
-        "documents": serialized_docs + synthetic_docs,
+        "documents": serialized_visible + synthetic_docs,
         "ruleset_version": (
             _ruleset_to_out(ruleset_version).model_dump()
             if ruleset_version is not None
@@ -1119,7 +2212,46 @@ async def api_candidate_documents_summary(
         ),
         "checklist": checklist,
     }
-    return response
+    if hub_requirements and hub_requirements.get("applied"):
+        out["requirement_engine"] = hub_requirements
+        out["source_layer"] = hub_requirements.get("source_layer")
+    if document_access_trace_response_enabled():
+        out["document_access_trace"] = {
+            "surface": "candidate_documents_summary",
+            "viewer_channel": viewer_channel,
+            "viewer_readable_scopes": sorted(doc_access.viewer_readable_scopes),
+            "physical_documents_total": physical_total,
+            "physical_documents_visible_to_viewer": physical_visible,
+            "physical_documents_filtered_out": max(0, physical_total - physical_visible),
+            "synthetic_candidates_built": synth_built,
+            "synthetic_documents_returned": synth_vis,
+            "synthetic_documents_filtered_out": max(0, synth_built - synth_vis),
+        }
+    return out
+
+
+@router.get(
+    "/candidate/{candidate_id}/documents/summary",
+)
+async def api_candidate_documents_summary(
+    candidate_id: UUID,
+    owner_context: Optional[str] = Query(
+        None,
+        description="Optional JSON string with candidate/vacancy context",
+    ),
+    db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
+) -> Dict[str, Any]:
+    session, tenant_id = db_dep
+    return await fetch_candidate_documents_summary_response(
+        session,
+        str(tenant_id),
+        candidate_id,
+        owner_context,
+        active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
+    )
 
 
 @router.get("/candidate/{candidate_id}/checklist")
@@ -1130,74 +2262,221 @@ async def api_candidate_checklist(
         description="Optional JSON string with candidate/vacancy context",
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    try:
-        ctx = json.loads(owner_context) if owner_context else {}
-        if not isinstance(ctx, dict):
-            raise ValueError("context must be a JSON object")
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid owner_context: {exc}")
-    ctx.setdefault("candidate_id", str(candidate_id))
-    ruleset_version = await ensure_ruleset_seed(
+    doc_access = await _candidate_documents_read_access(
         session,
         str(tenant_id),
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
+    ctx = _owner_context_or_400(
+        owner_context,
+        candidate_id,
+        _candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
+    )
+    ruleset_version = await ensure_ruleset_seed(
+        session,
+        cand_ctx.owner_tenant_id,
         load_default_ruleset(),
+        own_company_id=own_for_docs,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = _fill_checklist_defaults(compute_candidate_checklist(ctx, ruleset_payload), ruleset_payload)
+    from backend.app.services.document_hub_delivery_contract import (
+        evaluate_document_hub_requirements_via_contract,
+    )
+
+    hub_requirements = await evaluate_document_hub_requirements_via_contract(
+        session,
+        tenant_id=cand_ctx.owner_tenant_id,
+        candidate=cand_ctx.candidate,
+    )
+    if hub_requirements and hub_requirements.get("applied"):
+        from backend.app.requirement_rules.document_hub_bridge import apply_hub_requirements_to_checklist
+
+        checklist = apply_hub_requirements_to_checklist(checklist, hub_requirements)
     await log_ruleset_usage(
         session,
-        str(tenant_id),
+        cand_ctx.owner_tenant_id,
         str(ruleset_version.id),
         used_in="checklist",
         reference_id=str(candidate_id),
         meta={"context_keys": sorted(ctx.keys())[:10]},
     )
     await session.commit()
-    return {
+    response: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "context": ctx,
         "checklist": checklist,
         "ruleset_version": _ruleset_to_out(ruleset_version).model_dump(),
     }
+    if hub_requirements and hub_requirements.get("applied"):
+        response["requirement_engine"] = hub_requirements
+        response["source_layer"] = hub_requirements.get("source_layer")
+    return response
 
 
 @router.get("/candidate/{candidate_id}/documents/export.json")
 async def api_export_documents_json(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    docs = await list_candidate_documents(
-        session, str(tenant_id), str(candidate_id), include_deleted=False
+    _source = "http:documents_router:export_documents_json"
+    _export_type = "candidate_documents_json"
+    doc_access, access_kind = await _candidate_documents_export_access(
+        session,
+        tenant_id,
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+        export_type=_export_type,
+        source=_source,
     )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
+    raw_docs = await list_candidate_documents(
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_for_docs,
+    )
+    physical_total = len(raw_docs)
+    docs = [
+        d
+        for d in raw_docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
+    physical_visible = len(docs)
     last_checks = await get_last_document_checks_map(
-        session, str(tenant_id), [str(doc.id) for doc in docs]
+        session,
+        cand_ctx.owner_tenant_id,
+        [str(doc.id) for doc in docs],
     )
+    resp_pair = await _batch_candidate_recruiter_labels(
+        session, cand_ctx.owner_tenant_id, [str(candidate_id)]
+    )
+    rid, rname = resp_pair.get(str(candidate_id), (None, None))
     serialized = [
-        (await _document_to_out(session, doc, last_check=last_checks.get(str(doc.id)))).model_dump()
+        (
+            await _document_to_out(
+                session,
+                doc,
+                last_check=last_checks.get(str(doc.id)),
+                responsible_user_id=rid,
+                responsible_name=rname,
+            )
+        ).model_dump()
         for doc in docs
     ]
-    return {
+    _log_document_access_visibility(
+        surface="candidate_documents_export_json",
+        candidate_id=candidate_id,
+        viewer_channel=viewer_channel,
+        db_fetch_total=physical_total,
+        db_visible=physical_visible,
+        response_items=len(serialized),
+        synthetics_returned=0,
+    )
+    out: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "documents": serialized,
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "count": len(serialized),
     }
+    if document_access_trace_response_enabled():
+        out["document_access_trace"] = {
+            "surface": "candidate_documents_export_json",
+            "viewer_channel": viewer_channel,
+            "viewer_readable_scopes": sorted(doc_access.viewer_readable_scopes),
+            "physical_documents_total": physical_total,
+            "physical_documents_visible_to_viewer": physical_visible,
+            "physical_documents_filtered_out": max(0, physical_total - physical_visible),
+        }
+    row_count = len(serialized)
+    byte_size = len(json.dumps(out, default=str).encode("utf-8"))
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="inline_json",
+    )
+    return out
 
 
 @router.get("/candidate/{candidate_id}/documents/export.csv")
 async def api_export_documents_csv(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
-    docs = await list_candidate_documents(
-        session, str(tenant_id), str(candidate_id), include_deleted=False
+    _source = "http:documents_router:export_documents_csv"
+    _export_type = "candidate_documents_csv"
+    doc_access, access_kind = await _candidate_documents_export_access(
+        session,
+        tenant_id,
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+        export_type=_export_type,
+        source=_source,
     )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
+    docs = await list_candidate_documents(
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_for_docs,
+    )
+    docs = [
+        d
+        for d in docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
     last_checks = await get_last_document_checks_map(
-        session, str(tenant_id), [str(doc.id) for doc in docs]
+        session,
+        cand_ctx.owner_tenant_id,
+        [str(doc.id) for doc in docs],
     )
     output = io.StringIO()
     fieldnames = [
@@ -1233,6 +2512,59 @@ async def api_export_documents_csv(
             }
         )
     output.seek(0)
+    row_count = len(docs)
+    byte_size = len(output.getvalue().encode("utf-8"))
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_DOWNLOADED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
     filename = f"candidate_{candidate_id}_documents.csv"
     return StreamingResponse(
         output,
@@ -1241,13 +2573,171 @@ async def api_export_documents_csv(
     )
 
 
+@router.get("/candidate/{candidate_id}/export.zip")
+async def api_export_candidate_bundle(
+    candidate_id: UUID,
+    db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
+) -> StreamingResponse:
+    session, tenant_id = db_dep
+    _source = "http:documents_router:export_candidate_bundle_zip"
+    _export_type = "candidate_documents_bundle_zip"
+    doc_access, access_kind = await _candidate_documents_export_access(
+        session,
+        tenant_id,
+        candidate_id,
+        workspace_own_company_header=own_company_id,
+        viewer_channel=viewer_channel,
+        export_type=_export_type,
+        source=_source,
+    )
+    cand_ctx = doc_access.candidate_context
+    own_for_docs = doc_access.resolved_workspace_own_company_id
+    docs = await list_candidate_documents(
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_for_docs,
+    )
+    docs = [
+        d
+        for d in docs
+        if document_visible_to_viewer(getattr(d, "doc_type", None), viewer_channel)
+    ]
+    last_checks = await get_last_document_checks_map(
+        session, cand_ctx.owner_tenant_id, [str(doc.id) for doc in docs]
+    )
+
+    buf = io.BytesIO()
+    profile = _profile_from_context(cand_ctx)
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        profile_csv = io.StringIO()
+        profile_writer = csv.DictWriter(profile_csv, fieldnames=list(profile.keys()))
+        profile_writer.writeheader()
+        profile_writer.writerow(profile)
+        zf.writestr("candidate_profile.csv", profile_csv.getvalue())
+
+        doc_fields = [
+            "id",
+            "type",
+            "number",
+            "status",
+            "issued_at",
+            "expires_at",
+            "ordered_at",
+            "verified_at",
+            "version",
+            "last_check_decision",
+            "last_check_reviewer",
+            "last_check_at",
+            "file_name",
+        ]
+        docs_csv = io.StringIO()
+        docs_writer = csv.DictWriter(docs_csv, fieldnames=doc_fields)
+        docs_writer.writeheader()
+        used_names: set[str] = set()
+        for idx, doc in enumerate(docs, start=1):
+            check = last_checks.get(str(doc.id))
+            file_name = _add_document_file_to_zip(doc, zf, idx, used_names)
+            docs_writer.writerow(
+                {
+                    "id": str(doc.id),
+                    "type": getattr(doc, "doc_type", None),
+                    "number": getattr(doc, "number", "") or "",
+                    "status": getattr(doc, "status", "") or "",
+                    "issued_at": _iso(getattr(doc, "issue_date", None)) or "",
+                    "expires_at": _iso(getattr(doc, "expire_date", None)) or "",
+                    "ordered_at": _iso(getattr(doc, "ordered_at", None)) or "",
+                    "verified_at": _iso(getattr(doc, "verified_at", None)) or "",
+                    "version": getattr(doc, "version", "") or "",
+                    "last_check_decision": getattr(check, "decision", "") if check else "",
+                    "last_check_reviewer": getattr(check, "reviewer_id", "") if check else "",
+                    "last_check_at": _iso(getattr(check, "created_at", None)) if check else "",
+                    "file_name": file_name or "",
+                }
+            )
+        zf.writestr("documents.csv", docs_csv.getvalue())
+
+    buf.seek(0)
+    row_count = len(docs)
+    byte_size = len(buf.getvalue())
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_DOWNLOADED,
+        result="success",
+        severity="info",
+        source=_source,
+        tenant_id=str(cand_ctx.owner_tenant_id),
+        access_kind=access_kind,
+        entity_type="candidate",
+        entity_id=str(candidate_id),
+        export_type=_export_type,
+        row_count=row_count,
+        byte_size=byte_size,
+        filter_scope=clip_export_filter_scope(f"vc={viewer_channel}"),
+        export_scope="single_candidate",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_stream",
+    )
+    filename = f"candidate_{candidate_id}_bundle.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/documents/{document_id}/extract")
 async def api_extract_document(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, _, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+        viewer_channel=viewer_channel,
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
@@ -1279,6 +2769,8 @@ async def api_mock_upload(
     file: UploadFile = File(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+    viewer_channel: str = Depends(resolve_document_viewer_channel),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     segments = [seg for seg in key.strip().split("/") if seg]
@@ -1288,7 +2780,14 @@ async def api_mock_upload(
             detail="key must follow 'documents/{document_id}/...'",
         )
     document_id = segments[1]
-    doc = await get_document(session, str(tenant_id), document_id)
+    doc, _, _, _ = await _get_document_with_mutation_access(
+        session,
+        str(tenant_id),
+        document_id,
+        workspace_own_company_header=own_company_id,
+        enforce_destructive_process_lock=True,
+        viewer_channel=viewer_channel,
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -1333,14 +2832,18 @@ async def api_mock_upload(
 @router.get("/ruleset", response_model=RulesetVersionOut)
 async def api_get_ruleset(
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
-    ruleset_version = await get_latest_ruleset_version(session, str(tenant_id))
+    ruleset_version = await get_effective_latest_ruleset_version(
+        session, str(tenant_id), own_company_id=own_company_id
+    )
     if not ruleset_version:
         ruleset_version = await ensure_ruleset_seed(
             session,
             str(tenant_id),
             load_default_ruleset(),
+            own_company_id=own_company_id,
         )
     await session.commit()
     return _ruleset_to_out(ruleset_version)
@@ -1358,6 +2861,7 @@ async def api_list_ruleset_versions_route(
         None, ge=0, description="Optional offset for pagination"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[RulesetVersionOut]:
     session, tenant_id = db_dep
     status_norm = None
@@ -1367,9 +2871,13 @@ async def api_list_ruleset_versions_route(
             status_norm = status_lower
         elif status_lower not in {"all", "any"}:
             raise HTTPException(status_code=400, detail="Invalid status filter")
+    list_scope = await ruleset_write_scope_own_company_id(
+        session, str(tenant_id), own_company_id
+    )
     rows = await list_ruleset_versions(
         session,
         str(tenant_id),
+        own_company_id=list_scope,
         status=status_norm,
         limit=limit,
         offset=offset,
@@ -1381,10 +2889,11 @@ async def api_list_ruleset_versions_route(
 async def api_get_ruleset_version(
     version_id: str = Path(..., description="Ruleset version identifier"),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     record = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
-    if not record:
+    if not record or not ruleset_version_visible_for_scope(record, own_company_id):
         raise HTTPException(status_code=404, detail="Ruleset version not found")
     return _ruleset_to_out(record)
 
@@ -1398,6 +2907,7 @@ async def api_create_ruleset_version(
     payload: Dict[str, Any] = Body(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
@@ -1414,6 +2924,7 @@ async def api_create_ruleset_version(
         comment=comment,
         activate=activate,
         origin_version_id=origin_version_id,
+        own_company_id=own_company_id,
     )
     await session.commit()
     return _ruleset_to_out(new_version)
@@ -1427,8 +2938,12 @@ async def api_create_ruleset_version(
 async def api_activate_ruleset_version(
     version_id: str = Path(..., description="Ruleset version identifier"),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
+    pre = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
+    if not pre or not ruleset_version_visible_for_scope(pre, own_company_id):
+        raise HTTPException(status_code=404, detail="Ruleset version not found")
     record = await activate_ruleset_version(session, str(tenant_id), version_id)
     if not record:
         raise HTTPException(status_code=404, detail="Ruleset version not found")
@@ -1446,10 +2961,11 @@ async def api_rollback_ruleset_version(
     payload: Dict[str, Any] = Body(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     target = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
-    if not target:
+    if not target or not ruleset_version_visible_for_scope(target, own_company_id):
         raise HTTPException(status_code=404, detail="Ruleset version not found")
     rollback_comment = str(payload.get("comment") or payload.get("rollback_comment") or "").strip()
     if len(rollback_comment) < 3:
@@ -1466,6 +2982,7 @@ async def api_rollback_ruleset_version(
         activate=True,
         origin_version_id=str(target.id),
         rollback_comment=rollback_comment,
+        own_company_id=getattr(target, "own_company_id", None),
     )
     await session.commit()
     return _ruleset_to_out(new_version)
@@ -1482,14 +2999,25 @@ async def api_get_ruleset_diff(
         description="Optional version id to compare against; defaults to previous version",
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetDiffOut:
     session, tenant_id = db_dep
     target = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
-    if not target:
+    if not target or not ruleset_version_visible_for_scope(target, own_company_id):
         raise HTTPException(status_code=404, detail="Ruleset version not found")
     compare_id = compare_to
     diff_row = None
     if compare_to:
+        other = await get_ruleset_version_by_id(session, str(tenant_id), compare_to)
+        if not other or not ruleset_version_visible_for_scope(other, own_company_id):
+            raise HTTPException(
+                status_code=404, detail="Compare ruleset version not found"
+            )
+        if not ruleset_versions_share_scope(target, other):
+            raise HTTPException(
+                status_code=400,
+                detail="Compare ruleset version is not in the same workspace scope",
+            )
         diff_row = await get_ruleset_diff_between(session, compare_to, version_id)
     else:
         diff_row = await get_latest_diff_for_version(session, version_id)
@@ -1506,7 +3034,10 @@ async def api_get_ruleset_diff(
     else:
         if not compare_id:
             prev_version = await get_previous_ruleset_version(
-                session, str(tenant_id), target.version
+                session,
+                str(tenant_id),
+                target.version,
+                own_company_id=getattr(target, "own_company_id", None),
             )
             if prev_version:
                 compare_id = str(prev_version.id)
@@ -1517,9 +3048,16 @@ async def api_get_ruleset_diff(
             compare_version = await get_ruleset_version_by_id(
                 session, str(tenant_id), compare_id
             )
-            if not compare_version:
+            if not compare_version or not ruleset_version_visible_for_scope(
+                compare_version, own_company_id
+            ):
                 raise HTTPException(
                     status_code=404, detail="Compare ruleset version not found"
+                )
+            if not ruleset_versions_share_scope(target, compare_version):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Compare ruleset version is not in the same workspace scope",
                 )
             previous_payload = normalize_ruleset_payload(compare_version.json_data)
 
@@ -1556,11 +3094,16 @@ async def api_list_ruleset_usage(
         100, ge=1, le=500, description="Limit number of usage records (default 100)"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetUsageResponse:
     session, tenant_id = db_dep
+    usage_scope = await ruleset_write_scope_own_company_id(
+        session, str(tenant_id), own_company_id
+    )
     rows = await list_ruleset_usage(
         session,
         str(tenant_id),
+        own_company_id=usage_scope,
         used_in=used_in,
         since=since,
         until=until,
@@ -1592,12 +3135,16 @@ async def api_update_ruleset(
     payload: Dict[str, Any] = Body(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
     if not isinstance(ruleset_data, dict):
         raise HTTPException(status_code=400, detail="ruleset must be an object")
     comment = payload.get("comment")
+    write_scope = await ruleset_write_scope_own_company_id(
+        session, str(tenant_id), own_company_id
+    )
     new_version = await create_ruleset_version(
         session,
         str(tenant_id),
@@ -1605,6 +3152,7 @@ async def api_update_ruleset(
         created_by=getattr(current_user, "sub", None),
         comment=comment,
         activate=True,
+        own_company_id=write_scope,
     )
     await session.commit()
     return _ruleset_to_out(new_version)

@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "schema_version": "2026-06",
+    "description": "Platform requirement document slots — satisfaction via any_of / all_of alternatives"
+  },
+  "slots": [
+    {
+      "slot_code": "identity_document",
+      "public_name": "Identity document",
+      "business_purpose": "identification",
+      "level": "blocking",
+      "verification": "optional",
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "identity_any",
+          "any_of": ["passport", "national_id", "id_card", "identity_document"]
+        }
+      ]
+    },
+    {
+      "slot_code": "legal_stay_confirmation",
+      "public_name": "Legal stay confirmation",
+      "business_purpose": "legal_stay",
+      "level": "blocking",
+      "verification": "optional",
+      "not_applicable_when": {
+        "citizenship_group": "eu"
+      },
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "legal_stay_any",
+          "any_of": ["visa", "visa_d", "residence_card", "karta_pobytu", "residence_permit"]
+        }
+      ]
+    },
+    {
+      "slot_code": "driver_license_with_code95",
+      "public_name": "Driver license with Code 95",
+      "business_purpose": "driver_qualification",
+      "level": "blocking",
+      "verification": "optional",
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "combined_eu_license",
+          "any_of": ["driver_license_code95"]
+        },
+        {
+          "alternative_code": "separate_documents",
+          "all_of": ["driver_license", "code95"]
+        }
+      ]
+    },
+    {
+      "slot_code": "tachograph_card",
+      "public_name": "Tachograph card",
+      "business_purpose": "driver_qualification",
+      "level": "blocking",
+      "verification": "optional",
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "tacho_any",
+          "any_of": ["tachograph_card", "tacho_card", "karta_tachografu"]
+        }
+      ]
+    },
+    {
+      "slot_code": "work_authorization",
+      "public_name": "Work authorization",
+      "business_purpose": "right_to_work",
+      "level": "blocking",
+      "verification": "optional",
+      "not_applicable_when": {
+        "citizenship_group": "eu"
+      },
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "work_permit_any",
+          "any_of": ["work_permit", "oswiadczenie", "zezwolenie_a"]
+        }
+      ]
+    }
+  ]
+}

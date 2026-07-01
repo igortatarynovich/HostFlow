@@ -5,6 +5,7 @@ import type { WhoAmI } from '../api/types'
 import { usePermissions } from '../hooks/usePermissions'
 import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 const SIDEBAR_WIDTH = 256
 const SIDEBAR_STORAGE_KEY = 'hf:ui:sidebar_open'
@@ -42,7 +43,7 @@ export function Layout({ me, onLogout, children }:{
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-gray-50">
+    <div className="h-screen w-screen overflow-hidden bg-slate-50">
       <aside
         className={clsx(
           'fixed top-0 left-0 z-20 h-full transform bg-brand-900 text-white shadow-xl transition-transform duration-300 ease-in-out',
@@ -66,7 +67,7 @@ export function Layout({ me, onLogout, children }:{
         className="flex h-full flex-col transition-[padding-left] duration-300 ease-in-out"
         style={{ paddingLeft: sidebarOpen ? SIDEBAR_WIDTH : 0 }}
       >
-        <header className="relative flex h-20 items-center justify-between border-b border-gray-200 bg-white px-6">
+        <header className="relative flex h-20 items-center justify-between border-b border-slate-200 bg-white px-6">
           <button
             type="button"
             className="rounded-md p-2 text-brand-900 outline-none ring-brand-500 transition hover:bg-brand-900/10 focus-visible:ring-2"
@@ -112,7 +113,7 @@ export function Sidebar({
   return (
     <div className="flex h-full w-full flex-col px-4 py-6">
       <div className="mb-6">
-        <PublicBrandingLogo showWordmark className="text-white" />
+        <PublicBrandingLogo showWordmark white />
       </div>
 
       <nav className="flex-1 overflow-y-auto space-y-2">
@@ -170,7 +171,7 @@ export function Sidebar({
         )}
         {can('candidates.view') && (
           <Link
-            to="/app/candidates"
+            to={CRM_APP_PATHS.candidates}
             className="block rounded px-3 py-2 text-sm transition hover:bg-white/10"
             onClick={onNavigate}
           >
@@ -197,7 +198,7 @@ export function Sidebar({
         )}
         {can('admin.companyAcl') && (
           <Link
-            to="/app/settings/company-access"
+            to={CRM_APP_PATHS.settingsCompanyAccess}
             className="block rounded px-3 py-2 text-sm transition hover:bg-white/10"
             onClick={onNavigate}
           >
@@ -206,11 +207,11 @@ export function Sidebar({
         )}
         {can('admin.metaLeads') && (
           <Link
-            to="/settings/leads"
+            to={CRM_APP_PATHS.settingsIntegrations}
             className="block rounded px-3 py-2 text-sm transition hover:bg-white/10"
             onClick={onNavigate}
           >
-            {t('app.layout.nav.meta_leads')}
+            {t('app.nav.items.settings_integrations')}
           </Link>
         )}
         {can('admin.deletionQueue') && (

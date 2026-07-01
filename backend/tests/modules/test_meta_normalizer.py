@@ -63,6 +63,17 @@ def test_normalize_meta_payload_invalid_phone_returns_none():
     assert data["phone"] is None
 
 
+def test_normalize_meta_payload_parses_ag_ad_id_from_field_data():
+    payload = _make_payload(
+        [
+            {"name": "ad_id", "values": ["ag:120245661643030547"]},
+            {"name": "email", "values": ["a@example.com"]},
+        ]
+    )
+    data = normalizer.normalize_meta_payload(payload)
+    assert data["ad_id"] == 120245661643030547
+
+
 def test_normalize_meta_payload_graph_error_propagates():
     payload = _make_payload(
         [
@@ -99,7 +110,7 @@ def test_contact_method_alias_is_captured():
     data = normalizer.normalize_meta_payload(payload)
 
     assert data["phone"] == "+48504004622"
-    assert data["contact_method"] == "WhatsApp"
+    assert data["preferred_contact"] == "whatsapp"
 
 
 def test_case_insensitive_keys_are_supported():
