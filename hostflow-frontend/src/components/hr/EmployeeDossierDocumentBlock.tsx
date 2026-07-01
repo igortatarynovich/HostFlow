@@ -31,6 +31,7 @@ import { MAX_FILE_MB } from '../../modules/documents/constants'
 import { isTooLarge } from '../../modules/documents/documentUtils'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
+import { hrDossierBlockAnchorId } from './HrDossierChecklist'
 
 type Props = {
   doc: HrReviewDocumentRow
@@ -206,7 +207,7 @@ export function EmployeeDossierDocumentBlock({
 
   return (
     <article
-      id={`dossier-doc-${doc.document_key.replace(/[^a-z0-9_-]+/gi, '-')}`}
+      id={hrDossierBlockAnchorId(doc.document_key)}
       className={clsx(
         'rounded-xl border bg-white p-5 shadow-sm',
         verified ? 'border-emerald-200' : previewActive ? 'border-brand-300 ring-2 ring-brand-100' : 'border-slate-200',

@@ -128,7 +128,7 @@ export default function HrEmployeeDetailPage() {
   const showPostVerifySections = Boolean(hrReview && (caseWorkspace || dossierDocsVerified))
   const showEmploymentDecision =
     Boolean(hrReview) &&
-    (hrReview.status === 'approved_for_employment' || (!caseWorkspace && dossierDocsVerified))
+    (hrReview.status === 'approved_for_employment' || dossierDocsVerified)
 
   const load = useCallback(async () => {
     if (!employeeId) return

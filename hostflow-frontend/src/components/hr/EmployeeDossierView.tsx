@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import type { HrReviewPanel, WorkforceEmployee, WorkforceEmployeeOperationalProfile } from '../../api/workforce'
-import HrDataVerificationWorkspace from './HrDataVerificationWorkspace'
+import HrDossierChecklist from './HrDossierChecklist'
 import { EmployeeDossierDocumentBlock } from './EmployeeDossierDocumentBlock'
 import { EmployeeDossierPreviewRail } from './EmployeeDossierPreviewRail'
 import {
@@ -14,7 +14,6 @@ import { humanVerificationBlockingMessages } from './hrVerificationBlockingHuman
 import { formatShortDateIso } from './hrEmployeeUiFormat'
 import { useI18n } from '../../i18n'
 import { EmployeeDossierHrActions } from './EmployeeDossierHrActions'
-import { isVerificationPlanReady } from './hrVerificationReadySummary'
 
 type Props = {
   employeeId: string
@@ -27,10 +26,7 @@ type Props = {
   onScrollTo?: (anchor: string) => void
 }
 
-/**
- * Employee dossier: PR14 sequential verification in case mode;
- * per-document blocks in operational profile after approval.
- */
+/** Employee dossier — same block layout as recruitment package (documents + fields + confirm). */
 export function EmployeeDossierView({
   employeeId,
   employee,
@@ -63,17 +59,10 @@ export function EmployeeDossierView({
   )
 
   const allDocsConfirmed = progress.total > 0 && progress.verified >= progress.total
-  const planReady = hrReview ? isVerificationPlanReady(hrReview) : false
   const candidateId = employee.candidate_id ?? hrReview?.candidate_id ?? null
-  const useSequentialFlow = caseMode && Boolean(hrReview)
 
   return (
-    <div
-      className={clsx(
-        'grid gap-6',
-        useSequentialFlow ? 'grid-cols-1' : 'xl:grid-cols-[minmax(0,1fr)_min(420px,38%)] xl:items-start',
-      )}
-    >
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_min(420px,38%)] xl:items-start">
       <div className="min-w-0 space-y-6">
         <section id="hr-verification" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -103,74 +92,47 @@ export function EmployeeDossierView({
                 </div>
               </dl>
             </div>
-            {!useSequentialFlow ? (
-              <div
-                className={clsx(
-                  'rounded-lg border px-4 py-3 text-sm',
-                  allDocsConfirmed
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                    : 'border-amber-200 bg-amber-50 text-amber-950',
-                )}
-              >
-                <p className="font-semibold">
-                  {t('app.hr.verify_task.title', { defaultValue: 'Verify documents and data' })}
-                </p>
-                <p className="mt-1">
-                  {progress.total > 0
-                    ? t('app.hr.verify_task.progress', {
-                        defaultValue: '{verified} of {total} required documents confirmed',
-                        values: { verified: progress.verified, total: progress.total },
-                      })
-                    : t('app.hr.verify_task.no_docs', {
-                        defaultValue: 'No required documents in the verification plan yet.',
-                      })}
-                </p>
-                {!allDocsConfirmed && pendingLabels.length > 0 ? (
-                  <p className="mt-2 text-xs">
-                    {t('app.hr.verify_task.pending_list', {
-                      defaultValue: 'Not confirmed yet: {list}',
-                      values: { list: pendingLabels.join(', ') },
-                    })}
-                  </p>
-                ) : null}
-                {allDocsConfirmed && hrReview?.next_action?.title ? (
-                  <p className="mt-2 font-medium">
-                    {t('app.hr.verify_task.next_step', {
-                      defaultValue: 'Next step: {step}',
-                      values: { step: hrReview.next_action.title },
-                    })}
-                  </p>
-                ) : null}
-              </div>
-            ) : planReady ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                <p className="font-semibold">
-                  {t('app.hr.ready.title', { defaultValue: 'Verification complete' })}
-                </p>
-                <p className="mt-1">
-                  {t('app.hr.ready.all_done_hint', {
-                    defaultValue: 'All required documents are confirmed. You can approve employment.',
-                  })}
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-950">
-                <p className="font-semibold">
-                  {t('app.hr.verify_task.title', { defaultValue: 'Verify documents and data' })}
-                </p>
-                {progress.total > 0 ? (
-                  <p className="mt-1">
-                    {t('app.hr.verify_task.progress', {
+            <div
+              className={clsx(
+                'rounded-lg border px-4 py-3 text-sm',
+                allDocsConfirmed
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                  : 'border-amber-200 bg-amber-50 text-amber-950',
+              )}
+            >
+              <p className="font-semibold">
+                {t('app.hr.verify_task.title', { defaultValue: 'Verify documents and data' })}
+              </p>
+              <p className="mt-1">
+                {progress.total > 0
+                  ? t('app.hr.verify_task.progress', {
                       defaultValue: '{verified} of {total} required documents confirmed',
                       values: { verified: progress.verified, total: progress.total },
+                    })
+                  : t('app.hr.verify_task.no_docs', {
+                      defaultValue: 'No required documents in the verification plan yet.',
                     })}
-                  </p>
-                ) : null}
-              </div>
-            )}
+              </p>
+              {!allDocsConfirmed && pendingLabels.length > 0 ? (
+                <p className="mt-2 text-xs">
+                  {t('app.hr.verify_task.pending_list', {
+                    defaultValue: 'Not confirmed yet: {list}',
+                    values: { list: pendingLabels.join(', ') },
+                  })}
+                </p>
+              ) : null}
+              {allDocsConfirmed && hrReview?.next_action?.title ? (
+                <p className="mt-2 font-medium">
+                  {t('app.hr.verify_task.next_step', {
+                    defaultValue: 'Next step: {step}',
+                    values: { step: hrReview.next_action.title },
+                  })}
+                </p>
+              ) : null}
+            </div>
           </div>
 
-          {!useSequentialFlow && !allDocsConfirmed && blockingMessages.length > 0 ? (
+          {!allDocsConfirmed && blockingMessages.length > 0 ? (
             <ul className="mt-4 space-y-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
               {blockingMessages.map((msg) => (
                 <li key={msg}>• {msg}</li>
@@ -185,20 +147,16 @@ export function EmployeeDossierView({
               defaultValue: 'HR review context is not available for this employee yet.',
             })}
           </p>
-        ) : useSequentialFlow ? (
-          <HrDataVerificationWorkspace
-            panel={hrReview}
-            employeeId={employeeId}
-            candidateId={candidateId}
-            manage={manage}
-            onPanelUpdated={onHrPanelUpdated}
-          />
         ) : documentBlocks.length === 0 ? (
           <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             {t('app.hr.dossier.no_documents', { defaultValue: 'No documents in the verification plan.' })}
           </p>
         ) : (
           <>
+            <HrDossierChecklist
+              blocks={documentBlocks}
+              onSelectBlock={(key) => setPreviewDocKey(key)}
+            />
             {documentBlocks.map((doc) => (
               <EmployeeDossierDocumentBlock
                 key={doc.document_key}
@@ -236,13 +194,11 @@ export function EmployeeDossierView({
         ) : null}
       </div>
 
-      {!useSequentialFlow ? (
-        <EmployeeDossierPreviewRail
-          doc={previewDoc}
-          onClose={() => setPreviewDocKey(null)}
-          className="hidden min-h-[420px] xl:block"
-        />
-      ) : null}
+      <EmployeeDossierPreviewRail
+        doc={previewDoc}
+        onClose={() => setPreviewDocKey(null)}
+        className="hidden min-h-[420px] xl:block"
+      />
     </div>
   )
 }
