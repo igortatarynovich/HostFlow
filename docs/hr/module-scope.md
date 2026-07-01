@@ -44,7 +44,7 @@ HR-модуль в целом должен давать тенанту отве�
 
 ## Порядок внедрения и пул настроек
 
-**Сейчас (первая очередь):** развиваем **модуль отдела кадров** (Workforce, `/workforce/*`, HR UI, политики доступа). **Отдельно вырезать воронки** рекрутинга и заводить параллельную HR-воронку в БД на этом шаге **не планируем** — воронки кандидатов остаются в CRM; граница handoff и стадии «после подбора» по-прежнему описываются в [`ADR-002`](../specs/architecture/ADR-002-modular-recruitment-hr-boundary.md).
+**Employee pipeline (P0, shipped):** company-scoped воронки `module_key=hr`, `type=employee` — bootstrap, `resolve_hr_employee_funnel`, runtime binding на `WorkforceEmployee.meta.employee_pipeline`, `/meta/stages?pipeline_type=employee`. Gate: [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md) (**CLOSED**). Recruitment не обязателен для HR-only tenant.
 
 Публичный сбор данных (анкеты сотрудника, ZUS, согласия и т.д.) — контур **Forms** как платформенной capability, см. [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md) и [`../forms/module-scope.md`](../forms/module-scope.md). Кадровые документы и reuse файлов из Recruitment — **Document Hub** ([`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md), [`../document-hub/module-scope.md`](../document-hub/module-scope.md)).
 
@@ -54,7 +54,7 @@ HR-модуль в целом должен давать тенанту отве�
 |--------|-------------------|
 | **Tenant** | Лицензия: модуль `hr` включён на workspace, матрица ролей, security, audit, **только presets по умолчанию** — не операционные шаблоны конкретной компании |
 | **Company** | `enabled_modules`, юрданные, роли/пользователи company, visibility, оргструктура и т.д. |
-| **Module Settings (per company)** | Employee pipelines, employment/contract templates, HR document templates, ZUS checklist, work permit rules, HR assignment rules — строка `(company_id, module_key=hr, settings_json)`; типизированная схема **`HrModuleSettingsV1`** (`backend/app/schemas/company_module_settings_json.py`), валидация на `PATCH .../module-settings/hr`. |
+| **Module Settings (per company)** | Employee pipeline (`employee_pipeline_funnel_id`), employment/contract templates, HR document templates, ZUS checklist, work permit rules, HR assignment rules — `(company_id, module_key=hr, settings_json)`; **`HrModuleSettingsV1`**; bootstrap + resolver + CMS PATCH validation (gate H1–H6). |
 
 Рекрутинг не обязан существовать: HR-only company конфигурируется независимо. Текущий код может ещё опираться на `tenant.settings`; новые фичи — с **company scope** по ADR-005.
 
@@ -167,9 +167,18 @@ HR-модуль в целом должен давать тенанту отве�
 
 ## Process Engine — HR stages (P0 manifest)
 
-HR owns **`hr.*` system stages** in Process Engine (not recruitment funnel stages or legacy four-bucket `system_stage`). Registration only — no employee funnel / `resolve_hr_funnel` in this phase.
+HR owns **`hr.*` system stages** in Process Engine (not recruitment funnel stages or legacy four-bucket `system_stage`). Registration: [`hr-process-manifest-p0.md`](../specs/architecture/hr-process-manifest-p0.md).
 
-Spec: [`hr-process-manifest-p0.md`](../specs/architecture/hr-process-manifest-p0.md). Employee pipeline gate (not implemented): [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md).
+## Employee pipeline ownership (P0 — shipped)
+
+| Owns | Does not own |
+|------|----------------|
+| `module_key=hr`, `type=employee` company-scoped funnels and stages | Recruitment candidate/lead funnels (`module_key=recruitment`) |
+| `resolve_hr_employee_funnel`, `bootstrap_hr_employee_funnel_for_company` | `resolve_recruitment_funnel` in HR paths |
+| `WorkforceEmployee.meta.employee_pipeline` on create (when `company_id` set) | Recruitment → HR handoff runtime (separate gate) |
+| `/meta/stages?pipeline_type=employee&company_id=` — stages with `pe_maps_to_module=hr` | HR analytics dashboard widgets (post-gate) |
+
+Spec + gate closure: [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md). Acceptance: `backend/tests/integration/test_hr_only_employee_pipeline_h6.py`.
 
 ## Сопровождение
 
