@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -199,7 +199,7 @@ async def api_patch_merge_template(
 
 @router.delete(
     "/templates/{template_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(*TEMPLATE_ADMIN_ROLES))],
 )
 async def api_delete_merge_template(

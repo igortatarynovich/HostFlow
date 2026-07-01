@@ -27,6 +27,7 @@ interface UseDocumentActionsProps {
   getFieldValue: (doc: Document, fieldKey: string, metadataValues: MetadataState) => any;
   coreFromDocument: (doc: Document) => CoreFields;
   onFieldsApplied?: (doc: Document, fields: Record<string, any>) => void;
+  onDocumentsChanged?: () => void;
 }
 
 export function useDocumentActions({
@@ -43,6 +44,7 @@ export function useDocumentActions({
   getFieldValue,
   coreFromDocument,
   onFieldsApplied,
+  onDocumentsChanged,
 }: UseDocumentActionsProps) {
   const { t } = useI18n();
   const planLimitModal = usePlanLimitModal();
@@ -113,6 +115,7 @@ export function useDocumentActions({
         updateDocumentState(updated);
         flash(t("admin.documents.notifications.status_updated"));
         await loadAll();
+        onDocumentsChanged?.();
       } catch (e: any) {
         if (
           planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.status_failed"))
@@ -158,6 +161,7 @@ export function useDocumentActions({
         updateDocumentState(updated);
         flash(t("admin.documents.notifications.approve_success"));
         await loadAll();
+        onDocumentsChanged?.();
       } catch (e: any) {
         if (
           planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.approve_failed"))
@@ -205,6 +209,7 @@ export function useDocumentActions({
         updateDocumentState(updated);
         flash(t("admin.documents.notifications.reject_success"));
         await loadAll();
+        onDocumentsChanged?.();
       } catch (e: any) {
         if (
           planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.reject_failed"))

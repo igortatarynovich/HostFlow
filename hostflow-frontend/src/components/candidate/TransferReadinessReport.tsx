@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { TransferReadinessReport as TransferReadinessReportData } from '../../api/candidates'
 import { useI18n } from '../../i18n'
 import { formatTransferList, groupBlockingReasonsByLayer } from './transferReadinessDisplay'
@@ -7,9 +7,10 @@ import { formatTransferList, groupBlockingReasonsByLayer } from './transferReadi
 type Props = {
   report: TransferReadinessReportData | null
   loading?: boolean
-  onConfirmBlock?: (blockKey: string) => void | Promise<void>
+  onConfirmBlock?: (blockKey: string, fingerprint?: string) => void | Promise<void>
   confirmBusy?: boolean
   canConfirm?: boolean
+  confirmedBlocks?: string[]
   className?: string
 }
 
@@ -54,9 +55,16 @@ export default function TransferReadinessReport({
   onConfirmBlock,
   confirmBusy = false,
   canConfirm = true,
+  confirmedBlocks = [],
   className,
 }: Props) {
   const { t } = useI18n()
+
+  const confirmedSet = useMemo(() => new Set(confirmedBlocks), [confirmedBlocks])
+  const pendingConfirmations = useMemo(
+    () => (report?.required_confirmations || []).filter((item) => !confirmedSet.has(item.block_key)),
+    [confirmedSet, report?.required_confirmations],
+  )
 
   const groupedReasons = groupBlockingReasonsByLayer(report?.blocking_reasons)
   const groupedWarnings = groupBlockingReasonsByLayer(report?.warnings)
@@ -199,10 +207,10 @@ export default function TransferReadinessReport({
 
           <Section
             title={t('app.candidate_card.transfer_readiness.confirmations', { defaultValue: 'Confirmations' })}
-            empty={!report.required_confirmations?.length}
+            empty={pendingConfirmations.length === 0}
           >
             <ul className="space-y-2">
-              {report.required_confirmations.map((item) => (
+              {pendingConfirmations.map((item) => (
                 <li
                   key={item.block_key}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 px-2 py-1.5"

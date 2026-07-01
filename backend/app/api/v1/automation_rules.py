@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -353,7 +353,7 @@ async def patch_rule(
 
 @router.delete(
     "/{rule_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin))],
 )
 async def delete_rule(

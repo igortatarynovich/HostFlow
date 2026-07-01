@@ -6,7 +6,7 @@ from datetime import date
 from typing import Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
@@ -206,7 +206,7 @@ async def patch_line_vehicle(
     )
 
 
-@router.delete("/operating-lines/{line_id}/vehicles/{membership_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/operating-lines/{line_id}/vehicles/{membership_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_line_vehicle(
     line_id: str,
     membership_id: str,
@@ -383,7 +383,7 @@ async def patch_line_driver(
     )
 
 
-@router.delete("/operating-lines/{line_id}/drivers/{membership_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/operating-lines/{line_id}/drivers/{membership_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_line_driver(
     line_id: str,
     membership_id: str,

@@ -104,6 +104,7 @@ export const DocumentCard = memo(function DocumentCard({
   const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
   const firstFileName = Array.isArray(doc.files) ? doc.files[0]?.name : undefined;
   const needsVerification = badgePresentation.badge === "pending";
+  const isApproved = badgePresentation.badge === "approved" || selectStatus === "approved";
   const fieldsConfig = getDocumentFieldsConfig(normalizedTypeCode || doc.doc_type || doc.type_code || "");
   const docReminders = Array.isArray(doc.reminders) ? doc.reminders : [];
   const hasLastCheck = Boolean(doc.last_check);
@@ -272,11 +273,13 @@ export const DocumentCard = memo(function DocumentCard({
             </>
           ) : (
             <>
-              {needsVerification ? (
+              {needsVerification && !isApproved ? (
                 <div className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium leading-snug text-amber-950 sm:max-w-xl">
                   {t("admin.documents.hints.review_required")}
                 </div>
               ) : null}
+              {!isApproved ? (
+                <>
               <label className="flex w-full items-center gap-2 text-xs sm:w-auto">
                 <span className="text-slate-600">{t("admin.documents.table.status")}</span>
                 <select
@@ -295,7 +298,7 @@ export const DocumentCard = memo(function DocumentCard({
               <button
                 className={clsx("btn-xs w-full sm:w-auto", needsVerification ? "btn-primary ring-2 ring-emerald-200" : "btn-primary")}
                 onClick={() => approveDocument(doc)}
-                disabled={!canManageDocuments || statusUpdating[doc.id] || selectStatus === "approved"}
+                disabled={!canManageDocuments || statusUpdating[doc.id]}
               >
                 {t("admin.documents.actions.approve")}
               </button>
@@ -306,6 +309,8 @@ export const DocumentCard = memo(function DocumentCard({
               >
                 {t("admin.documents.actions.reject")}
               </button>
+                </>
+              ) : null}
               <label className="input btn-xs flex w-full cursor-pointer items-center gap-2 sm:w-auto">
                 <span className="text-xs">{t("admin.documents.actions.choose_file")}</span>
                 <input type="file" className="hidden" onChange={handleFileSelect} />

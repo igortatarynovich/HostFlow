@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -190,7 +190,7 @@ async def update_candidate_stage(
     return CandidateStageOut.from_model(stage)
 
 
-@router.delete("/{stage_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{stage_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_candidate_stage(
     stage_id: int,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -214,3 +214,4 @@ async def delete_candidate_stage(
     await db.commit()
 
     return None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

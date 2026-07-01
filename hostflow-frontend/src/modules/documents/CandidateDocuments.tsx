@@ -299,6 +299,7 @@ type Props = {
   candidateId: string;
   ownerContext?: Record<string, any>;
   onFieldsApplied?: (doc: Document, fields: Record<string, any>) => void;
+  onDocumentsChanged?: () => void;
   hideHeader?: boolean;
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null;
   initialType?: string;
@@ -309,6 +310,7 @@ export default function CandidateDocuments({
   candidateId,
   ownerContext,
   onFieldsApplied,
+  onDocumentsChanged,
   hideHeader,
   candidateProfile,
   initialType,
@@ -1555,6 +1557,7 @@ useEffect(() => {
     getFieldValue,
     coreFromDocument,
     onFieldsApplied,
+    onDocumentsChanged,
   });
 
   // Document upload is now handled by useDocumentUpload hook

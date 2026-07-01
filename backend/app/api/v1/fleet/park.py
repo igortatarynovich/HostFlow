@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
@@ -197,7 +197,7 @@ async def patch_vehicle(
     return _vehicle_out(row)
 
 
-@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_vehicle(
     vehicle_id: str,
     ctx: UserCtx = Depends(get_current_user),
@@ -352,7 +352,7 @@ async def patch_trailer(
     return _trailer_out(row)
 
 
-@router.delete("/trailers/{trailer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/trailers/{trailer_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_trailer(
     trailer_id: str,
     ctx: UserCtx = Depends(get_current_user),
@@ -522,7 +522,7 @@ async def patch_driver(
     return _driver_out(row)
 
 
-@router.delete("/drivers/{driver_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/drivers/{driver_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_driver(
     driver_id: str,
     ctx: UserCtx = Depends(get_current_user),

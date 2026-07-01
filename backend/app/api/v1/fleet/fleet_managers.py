@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
@@ -123,7 +123,7 @@ async def add_vehicle_manager(
     return ManagerItemOut(id=row.id, user_id=row.user_id, label=row.user_id[:8])
 
 
-@router.delete("/vehicles/{vehicle_id}/managers/{membership_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/vehicles/{vehicle_id}/managers/{membership_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_vehicle_manager(
     vehicle_id: str,
     membership_id: str,
@@ -194,7 +194,7 @@ async def add_driver_manager(
     return ManagerItemOut(id=row.id, user_id=row.user_id, label=row.user_id[:8])
 
 
-@router.delete("/drivers/{driver_id}/managers/{membership_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/drivers/{driver_id}/managers/{membership_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_driver_manager(
     driver_id: str,
     membership_id: str,

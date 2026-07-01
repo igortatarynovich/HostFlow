@@ -6,7 +6,7 @@ from datetime import date
 from typing import Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete as sql_delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -303,7 +303,7 @@ async def patch_assignment(
     return await _to_out(db, tenant_id, row)
 
 
-@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_assignment(
     assignment_id: str,
     ctx: UserCtx = Depends(get_current_user),

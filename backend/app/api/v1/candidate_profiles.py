@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional, Any, Dict
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -882,13 +882,13 @@ async def update_candidate_profile(
     return await CandidateProfileOut.from_model_with_usage(profile, db, str(tenant_id))
 
 
-@router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_candidate_profile(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
     _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
-) -> None:
+) -> Response:
     """Delete (deactivate) a candidate profile."""
     db, tenant_id = db_tenant
     await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
@@ -956,6 +956,8 @@ async def delete_candidate_profile(
         )
 
 
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 @router.get("/{profile_id}/history", response_model=List[Dict[str, Any]])
 async def get_profile_history(
     profile_id: str,

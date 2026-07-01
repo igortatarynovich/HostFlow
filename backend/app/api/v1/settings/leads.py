@@ -573,7 +573,7 @@ async def update_lead_message_template_endpoint(
 @router.delete(
     "/message-templates/{template_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
+    response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.administrator))],
 )
 async def delete_lead_message_template_endpoint(
@@ -797,7 +797,7 @@ async def update_credential_endpoint(
 
 @router.delete(
     "/credentials/{credential_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.administrator))],
 )
 async def delete_credential_endpoint(
@@ -888,7 +888,7 @@ async def update_mapping_endpoint(
 
 @router.delete(
     "/mapping/{ad_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.administrator))],
 )
 async def delete_mapping_endpoint(

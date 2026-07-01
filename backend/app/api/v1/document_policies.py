@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -205,7 +205,7 @@ async def update_document_policy(
     return DocumentPolicyOut.from_model(policy)
 
 
-@router.delete("/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{policy_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_document_policy(
     policy_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),

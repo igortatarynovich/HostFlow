@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
@@ -763,14 +763,18 @@ async def update_lead_stage_endpoint(
     )
 
 
-@router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{lead_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response, response_model=None,
+)
 async def delete_lead_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
-) -> None:
+) -> Response:
     """Permanently remove a lead (e.g. test / mistaken ingest). Does not delete linked candidates."""
     from backend.app.modules.leads import crud
 
@@ -814,6 +818,7 @@ async def delete_lead_endpoint(
     except Exception:
         pass
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/bulk/auto-process-queue", response_model=BulkAutoProcessQueueResponse)

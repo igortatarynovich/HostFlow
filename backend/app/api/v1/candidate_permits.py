@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Dict, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel
 from sqlalchemy import delete, select, update, insert, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -209,7 +209,7 @@ async def update_permit(
 
 @router.delete(
     "/{candidate_id}/permits/{permit_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.recruiter))],
 )
 async def delete_permit(

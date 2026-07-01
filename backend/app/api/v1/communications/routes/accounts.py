@@ -28,7 +28,7 @@ from typing import Tuple
 from uuid import UUID
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
@@ -223,7 +223,7 @@ async def patch_channel_account(
     return _account_out(account)
 
 
-@router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_channel_account(
     account_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),

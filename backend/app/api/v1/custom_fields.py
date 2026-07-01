@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -268,7 +268,7 @@ async def update_custom_field_definition(
     return CustomFieldDefinitionOut.from_model(definition)
 
 
-@router.delete("/definitions/{definition_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/definitions/{definition_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_custom_field_definition(
     definition_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -403,7 +403,7 @@ async def set_custom_field_value(
 
 @router.delete(
     "/values/{definition_id}/{entity_type}/{entity_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
 )
 async def delete_custom_field_value(
     definition_id: str,

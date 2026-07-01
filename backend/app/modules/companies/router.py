@@ -33,7 +33,7 @@ from backend.app.modules.companies.service import (
     update_company_service,
 )
 from pydantic import BaseModel
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status, Response
 from sqlalchemy import select, or_
 
 router = APIRouter(
@@ -286,7 +286,7 @@ async def patch_company(
 
 @router.delete(
     "/{company_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
 )
 async def archive_company(
     company_id: UUID,
@@ -381,7 +381,7 @@ async def update_bank_account(
 
 @router.delete(
     "/{company_id}/bank-accounts/{account_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
 )
 async def delete_bank_account(
     company_id: UUID,
@@ -431,7 +431,7 @@ async def update_contact(
 
 @router.delete(
     "/{company_id}/contacts/{contact_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
 )
 async def delete_contact(
     company_id: UUID,

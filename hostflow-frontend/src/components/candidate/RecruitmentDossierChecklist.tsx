@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { RecruitmentPackageBlock, RecruitmentPackageReadiness } from '../../api/candidates'
 import { useI18n } from '../../i18n'
 import {
@@ -8,17 +8,25 @@ import {
   type RecruitmentBlockStatus,
 } from '../hr/recruitmentDossierBlocks'
 import {
+  buildRecruitmentBlockConfirmFingerprint,
   pruneConfirmedRecruitmentBlocks,
   recruitmentBlocksPendingConfirm,
   recruitmentPackageHandoffReady,
+  type RecruitmentChecklistRow,
 } from '../hr/recruitmentDossierConfirm'
+import {
+  extractRuntimeItemsFromSummary,
+  indexRuntimeItemsByType,
+} from '../../utils/runtimeBadgePresentation'
 
 type Props = {
   candidateId?: string
   pkg: RecruitmentPackageReadiness | null
   pkgLoading?: boolean
   confirmedBlocks: string[]
-  onConfirmBlock?: (blockKey: string) => void | Promise<void>
+  confirmFingerprints?: Record<string, string>
+  documentsSummary?: Record<string, unknown> | null
+  onConfirmBlock?: (blockKey: string, fingerprint: string) => void | Promise<void>
   confirmBusy?: boolean
   canConfirm?: boolean
   missing: string[]
@@ -86,6 +94,8 @@ export default function RecruitmentDossierChecklist({
   pkg,
   pkgLoading = false,
   confirmedBlocks,
+  confirmFingerprints,
+  documentsSummary,
   onConfirmBlock,
   confirmBusy = false,
   canConfirm = true,
@@ -98,47 +108,61 @@ export default function RecruitmentDossierChecklist({
   const { t } = useI18n()
   void _candidateId
 
-  const apiBlockByKey = useMemo(() => {
-    const map = new Map<string, RecruitmentPackageBlock>()
-    for (const b of pkg?.blocks || []) {
-      const key = String(b.document_key || b.label || '').trim()
-      if (key) map.set(key, b)
-    }
-    return map
-  }, [pkg?.blocks])
+  const runtimeByType = useMemo(
+    () => indexRuntimeItemsByType(extractRuntimeItemsFromSummary(documentsSummary)),
+    [documentsSummary],
+  )
 
-  const rows = useMemo(() => {
+  const fingerprintForBlock = useCallback(
+    (blockKey: string, status: RecruitmentBlockStatus, block?: RecruitmentPackageBlock) => {
+      return buildRecruitmentBlockConfirmFingerprint({
+        blockKey,
+        status,
+        missingDocTypes: block?.missing_doc_types,
+        missingFieldCodes: block?.missing_fields?.map((f) => f.field_code),
+        runtimeByType,
+      })
+    },
+    [runtimeByType],
+  )
+
+  const rows = useMemo((): RecruitmentChecklistRow[] => {
     if (pkg?.blocks?.length) {
-      return pkg.blocks.map((b: RecruitmentPackageBlock) => ({
-        key: b.document_key || b.label,
-        label: b.label || b.document_key,
-        status: mapApiStatus(b.status),
-        block: b,
-      }))
+      return pkg.blocks.map((b: RecruitmentPackageBlock) => {
+        const key = b.document_key || b.label
+        const status = mapApiStatus(b.status)
+        return {
+          key,
+          status,
+          fingerprint: fingerprintForBlock(String(key), status, b),
+        }
+      })
     }
     const base = recruitmentBlockStatuses(RECRUITMENT_DOSSIER_BLOCKS, missing, problematic)
     return base.map(({ block, status }) => {
+      let rowStatus = status
       if (block.key === 'Contacts & address' && contactsReady !== undefined) {
-        return {
-          key: block.key,
-          label: block.key,
-          status: contactsReady ? ('ready' as const) : ('data' as const),
-          block: undefined,
-        }
+        rowStatus = contactsReady ? ('ready' as const) : ('data' as const)
       }
       if (block.key === 'Work experience' && experienceReady !== undefined && status !== 'issue') {
-        if (experienceReady) return { key: block.key, label: block.key, status: 'ready' as const, block: undefined }
-        if (!missing.some((m) => block.docTypes.includes(m))) {
-          return { key: block.key, label: block.key, status: 'data' as const, block: undefined }
-        }
+        if (experienceReady) rowStatus = 'ready'
+        else if (!missing.some((m) => block.docTypes.includes(m))) rowStatus = 'data'
       }
-      return { key: block.key, label: block.key, status, block: undefined }
+      return {
+        key: block.key,
+        status: rowStatus,
+        fingerprint: fingerprintForBlock(block.key, rowStatus),
+      }
     })
-  }, [pkg, contactsReady, experienceReady, missing, problematic])
+  }, [pkg, contactsReady, experienceReady, fingerprintForBlock, missing, problematic])
 
+  const storedFingerprints = useMemo(
+    () => confirmFingerprints ?? {},
+    [confirmFingerprints],
+  )
   const prunedConfirmed = useMemo(
-    () => pruneConfirmedRecruitmentBlocks(confirmedBlocks, rows),
-    [confirmedBlocks, rows],
+    () => pruneConfirmedRecruitmentBlocks(confirmedBlocks, rows, storedFingerprints),
+    [confirmedBlocks, rows, storedFingerprints],
   )
   const confirmedSet = useMemo(() => new Set(prunedConfirmed), [prunedConfirmed])
   const pendingConfirm = useMemo(
@@ -199,8 +223,11 @@ export default function RecruitmentDossierChecklist({
         </p>
       ) : null}
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {rows.map(({ key, label, status, block }) => {
-          const apiBlock = block || apiBlockByKey.get(String(key))
+        {rows.map(({ key, status, fingerprint }) => {
+          const label = String(key)
+          const apiBlock = pkg?.blocks?.find(
+            (b) => String(b.document_key || b.label) === String(key),
+          )
           const detail = blockDetail(apiBlock, status)
           const isConfirmed = confirmedSet.has(String(key))
           const showConfirm =
@@ -231,7 +258,7 @@ export default function RecruitmentDossierChecklist({
                   type="button"
                   className="btn-secondary btn-xs self-start"
                   disabled={confirmBusy}
-                  onClick={() => void onConfirmBlock(String(key))}
+                  onClick={() => void onConfirmBlock(String(key), String(fingerprint || ''))}
                 >
                   {t('app.candidate_card.dossier_checklist.confirm_block', { defaultValue: 'Confirm reviewed' })}
                 </button>

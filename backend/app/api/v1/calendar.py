@@ -9,7 +9,7 @@ import time
 from typing import Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status, Response
 import httpx
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
@@ -1048,11 +1048,11 @@ async def refresh_calendar_connection_oauth(
     return CalendarConnectionOut.from_model(row)
 
 
-@router.delete("/integrations/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/integrations/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_calendar_connection(
     connection_id: UUID,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> None:
+) -> Response:
     db, tenant_uuid = db_tenant
     row = await db.get(CalendarConnection, str(connection_id))
     if row is None or str(row.tenant_id) != str(tenant_uuid):
@@ -1062,6 +1062,8 @@ async def delete_calendar_connection(
     return None
 
 
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 @router.get("/integrations/connections/{connection_id}/cursor", response_model=CalendarSyncCursorListOut)
 async def get_calendar_connection_cursors(
     connection_id: UUID,

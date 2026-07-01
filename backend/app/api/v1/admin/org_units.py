@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
@@ -236,7 +236,7 @@ async def org_patch(
     }
 
 
-@router.delete("/{unit_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{unit_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def org_delete(
     unit_id: str,
     ctx: UserCtx = Depends(get_current_user),
@@ -280,6 +280,8 @@ async def org_delete(
         _handle(exc)
 
 
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 @router.get("/{unit_id}/members", response_model=List[Dict[str, Any]])
 async def org_members_list(
     unit_id: str,
@@ -338,7 +340,7 @@ async def org_members_add(
     return {"user_id": m.user_id, "role_in_unit": m.role_in_unit, "org_unit_id": m.org_unit_id}
 
 
-@router.delete("/{unit_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{unit_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def org_members_remove(
     unit_id: str,
     user_id: str,
@@ -372,3 +374,5 @@ async def org_members_remove(
     except OrgStructureError as exc:
         await db.rollback()
         _handle(exc)
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

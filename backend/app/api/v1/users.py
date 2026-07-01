@@ -105,7 +105,7 @@ async def patch_me(
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
-@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def change_self_password(
     payload: UserPasswordChange,
     ctx: UserCtx = Depends(get_current_user),

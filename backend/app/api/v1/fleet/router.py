@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
@@ -207,7 +207,7 @@ async def patch_operating_line(
     return _out_from_row(row)
 
 
-@router.delete("/operating-lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/operating-lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_operating_line(
     line_id: str,
     ctx: UserCtx = Depends(get_current_user),
