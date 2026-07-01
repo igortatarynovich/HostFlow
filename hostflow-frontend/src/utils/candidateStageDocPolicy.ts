@@ -185,14 +185,47 @@ export function relaxDocBlockers(blockers: DocBlockersPayload, relaxedTypes: Ite
 }
 
 export function pipelineRelaxedTypesFromOverrides(
-  overrides: Array<{ status: string; granted_scope?: string | null; doc_type_code: string }>,
+  overrides: Array<{ status: string; granted_scope?: string | null; doc_type_code?: string | null }>,
 ): Set<string> {
   const out = new Set<string>()
   for (const o of overrides) {
     if (String(o.status || '').toLowerCase() !== 'approved') continue
     const g = String(o.granted_scope || '').toLowerCase()
     if (g === 'pipeline' || g === 'both') {
-      const c = normType(o.doc_type_code)
+      const c = normType(String(o.doc_type_code || ''))
+      if (c) out.add(c)
+    }
+  }
+  return out
+}
+
+/** Remove requirement codes that have an active approved pipeline waiver (pipeline or both). */
+export function relaxRequirementBlockers(
+  blockers: DocBlockersPayload,
+  relaxedRequirements: Iterable<string>,
+): DocBlockersPayload {
+  const set = new Set<string>()
+  for (const raw of relaxedRequirements) {
+    const c = normType(raw)
+    if (c) set.add(c)
+  }
+  const filt = (xs: string[]) => xs.filter((t) => !set.has(normType(t)))
+  return {
+    missing: filt(blockers.missing),
+    problematic: filt(blockers.problematic),
+    inProgress: filt(blockers.inProgress),
+  }
+}
+
+export function pipelineRelaxedRequirementsFromOverrides(
+  overrides: Array<{ status: string; granted_scope?: string | null; requirement_code?: string | null }>,
+): Set<string> {
+  const out = new Set<string>()
+  for (const o of overrides) {
+    if (String(o.status || '').toLowerCase() !== 'approved') continue
+    const g = String(o.granted_scope || '').toLowerCase()
+    if (g === 'pipeline' || g === 'both') {
+      const c = normType(String(o.requirement_code || ''))
       if (c) out.add(c)
     }
   }

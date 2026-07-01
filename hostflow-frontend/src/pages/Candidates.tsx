@@ -274,6 +274,9 @@ export default function Candidates(){
     handlePreviewReminderSnooze,
     previewCandidateExtra,
     previewDocumentsSummarySnapshot,
+    previewRequirementsSummary,
+    previewPipelineOverrides,
+    usesRequirementBlockers,
     previewCommsLinks,
   } = useCandidatesWorkPanel({ t, workPanelAssigneeScope })
 
@@ -3081,6 +3084,9 @@ export default function Candidates(){
             nextActionDetailsOpenTrigger={nextActionDetailsOpenTrigger}
             docsBlockers={docsBlockers}
             docsBlockersLoading={docsBlockersLoading}
+            usesRequirementBlockers={usesRequirementBlockers}
+            previewRequirementsSummary={previewRequirementsSummary}
+            previewPipelineOverrides={previewPipelineOverrides}
             docsRailEmbeddedSummary={docsRailEmbeddedSummary}
             canUseTeamWorkPanelAssigneeScope={canUseTeamWorkPanelAssigneeScope}
             workPanelAssigneeScope={workPanelAssigneeScope}

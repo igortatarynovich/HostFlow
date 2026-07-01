@@ -5359,6 +5359,67 @@
         "blocked_eligibility": "Правила workforce не допускают передачу ({status}). Проверьте документы и назначение вакансии.",
         "blocked_eligibility_generic": "Правила workforce не допускают передачу. Проверьте документы и назначение вакансии."
       },
+      "requirements_checklist": {
+        "title": "Требования",
+        "subtitle": "Подтвердите каждое требование — выберите доказательство, привяжите документы и утвердите.",
+        "confirm_hint": "Выберите, чем подтверждаете требование, затем привяжите документы.",
+        "all_confirmed": "Все подтверждены",
+        "pending_count": "Открыто: {count}",
+        "progress": "Подтверждено {fulfilled}/{total}",
+        "empty": "Для этого профиля кандидата нет требований.",
+        "not_applicable_hint": "Не требуется для этого профиля кандидата.",
+        "evidence_picker_label": "Подтвердить через",
+        "select_evidence": "Выбрать доказательство",
+        "selected_variant": "Доказательство",
+        "linked_documents": "Привязанные документы",
+        "no_linked_documents": "Документы ещё не привязаны.",
+        "no_files": "Нет файлов",
+        "linked": "Привязан",
+        "link_document": "Привязать документ",
+        "link_btn": "Привязать",
+        "upload_first": "Сначала загрузите подходящий документ, затем привяжите его здесь.",
+        "approve": "Утвердить",
+        "reject": "Отклонить",
+        "replace": "Заменить доказательство",
+        "reject_reason_placeholder": "Причина (необязательно)",
+        "confirm_reject": "Подтвердить отклонение",
+        "rejection_reason": "Причина отклонения: {reason}",
+        "toast_selected": "Доказательство выбрано",
+        "toast_linked": "Документ привязан",
+        "toast_approved": "Требование подтверждено",
+        "toast_rejected": "Доказательство отклонено",
+        "toast_replaced": "Доказательство заменено",
+        "status": {
+          "missing": "Не выбрано",
+          "selected": "Выбрано",
+          "pending_review": "На проверке",
+          "approved": "Подтверждено",
+          "rejected": "Отклонено",
+          "superseded": "Заменено",
+          "not_applicable": "Не применимо"
+        },
+        "requirements": {
+          "identity_document": "Документ, удостоверяющий личность",
+          "legal_stay_confirmation": "Подтверждение легального пребывания",
+          "driver_license_with_code95": "Водительское удостоверение с Code 95",
+          "tachograph_card": "Карта тахографа",
+          "work_authorization": "Разрешение на работу"
+        },
+        "variants": {
+          "identity_any": "Паспорт, ID-карта или national ID",
+          "legal_stay_any": "Виза, карта pobytu или вид на жительство",
+          "combined_eu_license": "EU license с Code 95 (единый документ)",
+          "separate_documents": "Водительское удостоверение + Code 95 (отдельно)",
+          "tacho_any": "Карта тахографа",
+          "work_permit_any": "Work permit или oświadczenie"
+        },
+        "purpose": {
+          "identification": "Подтвердить личность кандидата",
+          "legal_stay": "Подтвердить легальное пребывание в стране",
+          "driver_qualification": "Подтвердить квалификацию водителя",
+          "right_to_work": "Подтвердить право на работу"
+        }
+      },
       "transfer_readiness": {
         "badge": "Готовность к передаче",
         "hint": "Решение Transfer Policy — без локальных правил чеклиста.",

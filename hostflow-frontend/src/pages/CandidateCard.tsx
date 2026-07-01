@@ -77,7 +77,9 @@ import {
   docsPipelineBlocksForwardResolved,
   hiringPipelineGatesFromApi,
   pipelineRelaxedTypesFromOverrides,
+  pipelineRelaxedRequirementsFromOverrides,
   relaxDocBlockers,
+  relaxRequirementBlockers,
   vacancyPipelineBlocksForward,
 } from '../utils/candidateStageDocPolicy'
 import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
@@ -109,13 +111,16 @@ import { Input, SearchableSelect } from '../components/candidate/shared/FormComp
 import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import CandidateRequirementsChecklist from '../components/candidate/CandidateRequirementsChecklist'
 import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
 import RecruitmentDossierChecklist from '../components/candidate/RecruitmentDossierChecklist'
 import { useTransferReadiness } from '../components/candidate/useTransferReadiness'
 import { useRecruitmentPackage } from '../components/candidate/useRecruitmentPackage'
 import {
   RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY,
+  RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY,
   readConfirmedRecruitmentBlocks,
+  readRecruitmentConfirmFingerprints,
 } from '../components/hr/recruitmentDossierConfirm'
 import RailPrimaryStepFrame from '../components/candidate/RailPrimaryStepFrame'
 import { railHasUrgentReminder, resolveRailPrimaryFocus } from '../utils/railPrimaryFocus'
@@ -411,6 +416,18 @@ const sanitizeExtra = (extra?: Partial<CandidateExtra> | null, fallback?: Candid
     >
   }
   delete (result as any).documents
+  const confirmedBlocksRaw = (extra as any)?.[RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]
+    ?? (fallback as any)?.[RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]
+  if (Array.isArray(confirmedBlocksRaw)) {
+    result[RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY] = confirmedBlocksRaw
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+  }
+  const confirmFingerprintsRaw = (extra as any)?.[RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY]
+    ?? (fallback as any)?.[RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY]
+  if (confirmFingerprintsRaw && typeof confirmFingerprintsRaw === 'object' && !Array.isArray(confirmFingerprintsRaw)) {
+    result[RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY] = { ...confirmFingerprintsRaw }
+  }
   return result as CandidateExtra
 }
 
@@ -994,20 +1011,39 @@ export default function CandidateCard(){
     inProgress: [],
   })
   const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
+  const [requirementBlockers, setRequirementBlockers] = useState<{
+    missing: string[]
+    problematic: string[]
+    inProgress: string[]
+  }>({
+    missing: [],
+    problematic: [],
+    inProgress: [],
+  })
+  const [requirementBlockersLoading, setRequirementBlockersLoading] = useState(false)
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
+  const [docsSummarySnapshot, setDocsSummarySnapshot] = useState<Record<string, unknown> | null>(null)
   const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
   const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
+
+  const isAutoDocsVerifyReminder = useCallback((r: ReminderRecord | null | undefined) => {
+    if (!r || r.status === 'done' || r.status === 'cancelled') return false
+    const type = String(r.type || '').toLowerCase()
+    const title = String(r.title || '').toLowerCase()
+    const description = String(r.description || '').toLowerCase()
+    return type === 'document_review'
+      || title.includes('verify uploaded documents')
+      || description.includes('[auto:docs_verify]')
+  }, [])
   const [handoffStatus, setHandoffStatus] = useState<HandoffStatusResponse | null>(null)
   const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
   const [handoffLoading, setHandoffLoading] = useState(false)
   const [handoffModalOpen, setHandoffModalOpen] = useState(false)
   const [handoffSubmitting, setHandoffSubmitting] = useState(false)
   const [handoffClientLinkId, setHandoffClientLinkId] = useState('')
-  const docsNeedsVerification = docsBlockers.inProgress.length > 0
-  const docsNeedsRequest = docsBlockers.missing.length > 0 || docsBlockers.problematic.length > 0
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
 
   const nextAction = useMemo(() => {
@@ -2128,18 +2164,45 @@ export default function CandidateCard(){
               await revertStageOptimistic()
               return
             }
-            if (code === 'stage_blocked_by_documents') {
-              const missing = Array.isArray((d as any).missing_types) ? (d as any).missing_types : []
-              const problematic = Array.isArray((d as any).problematic_types) ? (d as any).problematic_types : []
-              const inProgress = Array.isArray((d as any).in_progress_types) ? (d as any).in_progress_types : []
+            if (code === 'stage_blocked_by_documents' || code === 'stage_blocked_by_requirements') {
+              const missing = Array.isArray((d as any).missing_requirements)
+                ? (d as any).missing_requirements
+                : Array.isArray((d as any).missing_types)
+                  ? (d as any).missing_types
+                  : []
+              const problematic = Array.isArray((d as any).problematic_requirements)
+                ? (d as any).problematic_requirements
+                : Array.isArray((d as any).problematic_types)
+                  ? (d as any).problematic_types
+                  : []
+              const inProgress = Array.isArray((d as any).pending_review_requirements)
+                ? (d as any).pending_review_requirements
+                : Array.isArray((d as any).in_progress_types)
+                  ? (d as any).in_progress_types
+                  : []
               const firstHit = [missing[0], problematic[0], inProgress[0]].find(Boolean)
+              const labelForBlocker = (raw: string) => {
+                const codeKey = String(raw || '').trim()
+                if (!codeKey) return ''
+                if (code === 'stage_blocked_by_requirements' || showRequirementsChecklist) {
+                  return t(`app.candidate_card.requirements_checklist.requirements.${codeKey}`, {
+                    defaultValue: codeKey.replace(/_/g, ' '),
+                  })
+                }
+                return codeKey
+              }
               const docHint = firstHit
-                ? String(firstHit)
+                ? labelForBlocker(String(firstHit))
                 : typeof (d as any).message === 'string'
                   ? String((d as any).message)
                   : ''
               notify({
-                title: t('app.candidate_card.stage_blocked_by_docs.title'),
+                title:
+                  code === 'stage_blocked_by_requirements'
+                    ? t('app.candidate_card.stage_blocked_by_requirements.title', {
+                        defaultValue: 'Blocked by requirements',
+                      })
+                    : t('app.candidate_card.stage_blocked_by_docs.title'),
                 description: docHint || t('app.candidate_card.stage_blocked_by_docs.description_generic'),
                 variant: 'error',
               })
@@ -2794,23 +2857,44 @@ export default function CandidateCard(){
   }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
 
   const handleDocsNextActionCreate = useCallback(() => {
-    // Distinguish action by blocker type:
-    // - missing/problematic -> request docs from candidate
-    // - in_progress -> verify and approve/reject uploaded docs
+    const masked = model?.masked === true
+    const terminal = isCandidateOperationallyTerminal({
+      stage: model?.stage,
+      row_status: model?.row_status,
+      status: model?.status,
+    })
+    const stage = String(model?.stage || '').trim().toLowerCase()
+    const early = new Set(['new', 'no_answer', 'contacted', 'questionnaire_submitted'])
+    const useRequirements =
+      !masked &&
+      (terminal ||
+        ['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage) ||
+        (Boolean(stage) && !early.has(stage)))
+    const blockers = useRequirements ? requirementBlockers : docsBlockers
+    const needsVerification = blockers.inProgress.length > 0
+    const needsRequest = blockers.missing.length > 0 || blockers.problematic.length > 0
+
     const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
-    if (docsNeedsVerification) {
+    if (needsVerification) {
       setReminderTitle(t('app.candidate_card.next_action.docs_verify_title'))
       setReminderDueAt(dt)
       return
     }
     setReminderTitle(t('app.candidate_card.next_action.docs_request_title'))
     setReminderDueAt(dt)
-    // Convenience only: pre-generate docs upload URL for recruiter, but keep
-    // "Create task" semantic as task creation (no auto-copy/toast side effects).
-    if (docsNeedsRequest) {
+    if (needsRequest) {
       void generateUploadLink({ copyToClipboard: false, notifyOnReady: false })
     }
-  }, [docsNeedsRequest, docsNeedsVerification, generateUploadLink, t])
+  }, [
+    docsBlockers,
+    requirementBlockers,
+    generateUploadLink,
+    model?.masked,
+    model?.stage,
+    model?.row_status,
+    model?.status,
+    t,
+  ])
 
   useEffect(() => {
     if (!model?.id || docsBlockersLoading) return
@@ -2819,15 +2903,7 @@ export default function CandidateCard(){
     const signature = `${String(model.id)}::${pending.join('|')}`
     if (docsVerifyTaskSignatureRef.current === signature) return
 
-    const hasActiveVerify = (reminders || []).some((r) => {
-      if (!r || r.status === 'done' || r.status === 'cancelled') return false
-      const type = String(r.type || '').toLowerCase()
-      const title = String(r.title || '').toLowerCase()
-      const description = String(r.description || '').toLowerCase()
-      return type === 'document_review'
-        || title.includes('verify uploaded documents')
-        || description.includes('[auto:docs_verify]')
-    })
+    const hasActiveVerify = (reminders || []).some(isAutoDocsVerifyReminder)
     if (hasActiveVerify) {
       docsVerifyTaskSignatureRef.current = signature
       return
@@ -2860,7 +2936,49 @@ export default function CandidateCard(){
         // Best-effort automation; user-facing docs flow should not break.
       }
     })()
-  }, [docsBlockers.inProgress, docsBlockersLoading, model?.id, reminders, t, loadTimelineReminders])
+  }, [docsBlockers.inProgress, docsBlockersLoading, isAutoDocsVerifyReminder, model?.id, reminders, t, loadTimelineReminders])
+
+  useEffect(() => {
+    if (!model?.id || docsBlockersLoading) return
+    const pending = [...(docsBlockers.inProgress || [])].filter(Boolean)
+    if (pending.length > 0) return
+
+    docsVerifyTaskSignatureRef.current = null
+
+    void (async () => {
+      try {
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        const verifyTasks = items.filter(isAutoDocsVerifyReminder)
+        if (!verifyTasks.length) return
+        for (const task of verifyTasks) {
+          if (task?.id) await completeActivity(String(task.id))
+        }
+        const refreshed = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const nextItems = Array.isArray(refreshed?.items) ? refreshed.items : []
+        setReminders(nextItems.slice(0, 5))
+        void loadTimelineReminders(String(model.id))
+        bumpNextActionTick()
+      } catch {
+        // Best-effort; manual complete remains available.
+      }
+    })()
+  }, [
+    bumpNextActionTick,
+    docsBlockers.inProgress,
+    docsBlockersLoading,
+    isAutoDocsVerifyReminder,
+    loadTimelineReminders,
+    model?.id,
+  ])
 
   const overrideReasonOptions = useMemo(
     () => [
@@ -3179,7 +3297,12 @@ export default function CandidateCard(){
   }, [])
 
   const handleCreatePipelineOverride = useCallback(
-    async (input: { doc_type_code: string; reason: string; requested_scope: 'pipeline' | 'both' }) => {
+    async (input: {
+      doc_type_code?: string
+      requirement_code?: string
+      reason: string
+      requested_scope: 'pipeline' | 'both'
+    }) => {
       if (!model?.id) return
       setPipelineOverrideBusy(true)
       try {
@@ -3490,25 +3613,62 @@ export default function CandidateCard(){
     [pipelineOverrides],
   )
 
+  const pipelineRelaxedRequirements = useMemo(
+    () => pipelineRelaxedRequirementsFromOverrides(pipelineOverrides),
+    [pipelineOverrides],
+  )
+
+  const showRequirementsChecklist = useMemo(() => {
+    if (isMasked) return false
+    if (operationallyTerminal) return true
+    const stage = String(effectiveStageForDocPolicy || '').trim().toLowerCase()
+    if (['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage)) return true
+    const early = new Set(['new', 'no_answer', 'contacted', 'questionnaire_submitted'])
+    if (!stage || early.has(stage)) return false
+    return true
+  }, [effectiveStageForDocPolicy, isMasked, operationallyTerminal])
+
+  const activePipelineBlockers = showRequirementsChecklist ? requirementBlockers : docsBlockers
+  const activePipelineBlockersLoading = showRequirementsChecklist
+    ? requirementBlockersLoading
+    : docsBlockersLoading
+
   const effectiveDocsBlockersForPipeline = useMemo(
-    () => relaxDocBlockers(docsBlockers, pipelineRelaxedTypes),
-    [docsBlockers, pipelineRelaxedTypes],
+    () =>
+      showRequirementsChecklist
+        ? relaxRequirementBlockers(activePipelineBlockers, pipelineRelaxedRequirements)
+        : relaxDocBlockers(activePipelineBlockers, pipelineRelaxedTypes),
+    [
+      activePipelineBlockers,
+      pipelineRelaxedRequirements,
+      pipelineRelaxedTypes,
+      showRequirementsChecklist,
+    ],
   )
 
   const docsIssuesPresentValue = useMemo(
-    () => docsIssuesPresent(docsBlockers, docsBlockersLoading),
-    [docsBlockers, docsBlockersLoading],
+    () => docsIssuesPresent(activePipelineBlockers, activePipelineBlockersLoading),
+    [activePipelineBlockers, activePipelineBlockersLoading],
   )
+
+  const docsNeedsVerification = activePipelineBlockers.inProgress.length > 0
+  const docsNeedsRequest =
+    activePipelineBlockers.missing.length > 0 || activePipelineBlockers.problematic.length > 0
 
   const docPipelineResolved = useMemo(
     () =>
       docsPipelineBlocksForwardResolved(
         effectiveStageForDocPolicy,
         effectiveDocsBlockersForPipeline,
-        docsBlockersLoading,
+        activePipelineBlockersLoading,
         hiringGatesRuntime,
       ),
-    [effectiveStageForDocPolicy, effectiveDocsBlockersForPipeline, docsBlockersLoading, hiringGatesRuntime],
+    [
+      effectiveStageForDocPolicy,
+      effectiveDocsBlockersForPipeline,
+      activePipelineBlockersLoading,
+      hiringGatesRuntime,
+    ],
   )
   const docsPipelineBlockingValue = docPipelineResolved.hard
   const docsPipelineSoftWarnValue = docPipelineResolved.softWarnOnly
@@ -3664,6 +3824,15 @@ export default function CandidateCard(){
     return Boolean(extra?.experience_eu_years)
   }, [employmentHistory, extra?.experience, extra?.experience_eu_years])
 
+  const confirmedRecruitmentBlocks = useMemo(
+    () => readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined),
+    [extra],
+  )
+  const recruitmentConfirmFingerprints = useMemo(
+    () => readRecruitmentConfirmFingerprints(extra as Record<string, unknown> | undefined),
+    [extra],
+  )
+
   const recruitmentPackageRefreshKey = useMemo(
     () =>
       [
@@ -3675,6 +3844,8 @@ export default function CandidateCard(){
         dossierExperienceReady,
         effectiveDocsBlockersForPipeline.missing.join('|'),
         effectiveDocsBlockersForPipeline.problematic.join('|'),
+        effectiveDocsBlockersForPipeline.inProgress.join('|'),
+        confirmedRecruitmentBlocks.join('|'),
       ].join('\0'),
     [
       docsSummaryRefreshTrigger,
@@ -3685,16 +3856,19 @@ export default function CandidateCard(){
       dossierExperienceReady,
       effectiveDocsBlockersForPipeline.missing,
       effectiveDocsBlockersForPipeline.problematic,
+      effectiveDocsBlockersForPipeline.inProgress,
+      confirmedRecruitmentBlocks,
     ],
   )
   const { report: transferReport, loading: transferReportLoading, reload: reloadTransferReport } =
     useTransferReadiness(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
   const { pkg: recruitmentPkg, loading: recruitmentPkgLoading, reload: reloadRecruitmentPkg } =
     useRecruitmentPackage(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
-  const confirmedRecruitmentBlocks = useMemo(
-    () => readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined),
-    [extra],
-  )
+
+  const handleDocumentsChanged = useCallback(() => {
+    setDocsSummaryRefreshTrigger((x) => x + 1)
+    docsVerifyTaskSignatureRef.current = null
+  }, [])
 
   const transferReadinessGateActive = showTransferReadinessReport && !handoffActiveBlock
 
@@ -3750,21 +3924,31 @@ export default function CandidateCard(){
   const [recruitmentConfirmBusy, setRecruitmentConfirmBusy] = useState(false)
 
   const handleConfirmRecruitmentBlock = useCallback(
-    async (blockKey: string) => {
+    async (blockKey: string, fingerprint = '') => {
       if (!model?.id || model.can_edit === false) return
       const key = String(blockKey || '').trim()
       if (!key) return
       const prev = readConfirmedRecruitmentBlocks(extra as Record<string, unknown> | undefined)
-      if (prev.includes(key)) return
+      if (prev.includes(key)) {
+        const stored = readRecruitmentConfirmFingerprints(extra as Record<string, unknown> | undefined)
+        const fp = String(fingerprint || '').trim()
+        if (!fp || stored[key] === fp) return
+      }
       const nextConfirmed = Array.from(new Set([...prev, key]))
+      const prevFingerprints = readRecruitmentConfirmFingerprints(extra as Record<string, unknown> | undefined)
+      const nextFingerprints = { ...prevFingerprints }
+      const fp = String(fingerprint || '').trim()
+      if (fp) nextFingerprints[key] = fp
       const nextExtra = {
         ...(extra || {}),
         [RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY]: nextConfirmed,
+        [RECRUITMENT_CONFIRM_FINGERPRINTS_EXTRA_KEY]: nextFingerprints,
       }
       try {
         setRecruitmentConfirmBusy(true)
         await api.patch(`/candidates/${model.id}`, { extra: nextExtra })
         setExtra(nextExtra)
+        setDocsSummaryRefreshTrigger((x) => x + 1)
         await reloadTransferReport()
         await reloadRecruitmentPkg()
         notify({
@@ -4183,7 +4367,8 @@ export default function CandidateCard(){
               candidateRowStatus={model.row_status}
               candidateStatus={model.status}
               stageLabelIntl={stageLabelIntl}
-              docsBlockers={docsBlockers}
+              docsBlockers={effectiveDocsBlockersForPipeline}
+              blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
               docsPipelineBlocking={docsPipelineBlockingValue}
               docsPipelineSoftWarn={docsPipelineSoftWarnValue}
               vacancyPipelineBlocking={vacancyPipelineBlockingValue}
@@ -4481,6 +4666,8 @@ export default function CandidateCard(){
                   pkg={recruitmentPkg}
                   pkgLoading={recruitmentPkgLoading}
                   confirmedBlocks={confirmedRecruitmentBlocks}
+                  confirmFingerprints={recruitmentConfirmFingerprints}
+                  documentsSummary={docsSummarySnapshot}
                   onConfirmBlock={model.can_edit !== false ? handleConfirmRecruitmentBlock : undefined}
                   confirmBusy={recruitmentConfirmBusy}
                   canConfirm={model.can_edit !== false}
@@ -4488,6 +4675,22 @@ export default function CandidateCard(){
                   problematic={effectiveDocsBlockersForPipeline.problematic}
                   contactsReady={dossierContactsReady}
                   experienceReady={dossierExperienceReady}
+                />
+              ) : null}
+
+              {showRequirementsChecklist ? (
+                <CandidateRequirementsChecklist
+                  candidateId={String(model.id)}
+                  refreshTrigger={docsSummaryRefreshTrigger}
+                  canEdit={model.can_edit !== false}
+                  onOpenDocs={(typeCode) => openDocsDrawer(typeCode)}
+                  onUpload={() => openDocsDrawer(undefined)}
+                  primaryStepHighlight={railPrimaryFocus === 'docs'}
+                  onChanged={handleDocumentsChanged}
+                  onPipelineBlockersChange={(blockers, loading) => {
+                    setRequirementBlockers(blockers)
+                    setRequirementBlockersLoading(loading)
+                  }}
                 />
               ) : null}
 
@@ -4499,6 +4702,7 @@ export default function CandidateCard(){
                 onOpenDocs={() => openDocsDrawer(undefined)}
                 onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
                 onLoadingChange={setDocsBlockersLoading}
+                onSummaryLoaded={(summary) => setDocsSummarySnapshot(summary as Record<string, unknown> | null)}
                 refreshTrigger={docsSummaryRefreshTrigger}
                 onSelectType={(typeCode) => openDocsDrawer(typeCode)}
                 pollingEnabled={docsDrawerOpen}
@@ -4512,10 +4716,13 @@ export default function CandidateCard(){
                 canApprovePipelineOverride={canApprovePipelineOverride}
                 showPipelineWaiverSection={showPipelineWaiverSection}
                 pipelineWaiverReadOnlyCard={pipelineWaiverReadOnlyCard}
+                waiverMode={showRequirementsChecklist ? 'requirement' : 'document'}
+                externalBlockers={showRequirementsChecklist ? activePipelineBlockers : undefined}
                 onCreatePipelineOverride={handleCreatePipelineOverride}
                 onApprovePipelineOverride={handleApprovePipelineOverride}
                 onRejectPipelineOverride={handleRejectPipelineOverride}
-                primaryStepHighlight={railPrimaryFocus === 'docs'}
+                primaryStepHighlight={showRequirementsChecklist ? false : railPrimaryFocus === 'docs'}
+                hideDocumentTypeChecklist={showRequirementsChecklist}
                 blockersPresentation={operationallyTerminal ? 'historical' : 'operational'}
               />
 
@@ -4814,6 +5021,7 @@ export default function CandidateCard(){
                 hideHeader
                 candidateProfile={candidateProfile}
                 initialType={docsDrawerType}
+                onDocumentsChanged={handleDocumentsChanged}
                 {...({
                   ownerContext: docsOwnerContext,
                   onFieldsApplied: (doc: any, fields: Record<string, any>) =>

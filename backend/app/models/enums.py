@@ -124,3 +124,14 @@ class CandidateStage(str, enum.Enum):
     HIRED = "Трудоустроен"
     REJECTED = "Отклонён"
     DECLINED = "Отказался"
+
+
+class CandidateEvidenceStatus(str, enum.Enum):
+    """Recruitment workflow status for a candidate's chosen evidence variant."""
+
+    draft = "draft"
+    selected = "selected"
+    pending_review = "pending_review"
+    approved = "approved"
+    rejected = "rejected"
+    superseded = "superseded"

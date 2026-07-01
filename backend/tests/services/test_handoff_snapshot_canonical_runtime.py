@@ -79,6 +79,8 @@ async def test_handoff_snapshot_contains_canonical_runtime_metadata() -> None:
         assert "criticality" in first["canonical"]
         assert "expected_documents" in payload
         assert isinstance(payload["expected_documents"], list)
+        assert "requirement_fulfillments" in payload
+        assert isinstance(payload["requirement_fulfillments"], list)
 
 
 async def test_handoff_snapshot_expected_documents_contract_fields() -> None:

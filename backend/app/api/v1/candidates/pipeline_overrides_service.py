@@ -10,6 +10,7 @@ from backend.app.models.candidate_pipeline_override import CandidatePipelineOver
 from backend.app.services.document_catalog import normalize_doc_type
 from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
 from backend.app.services.pipeline_override_policy import (
+    NON_OVERRIDABLE_REQUIREMENT_CODES,
     SCOPE_BOTH,
     SCOPE_PIPELINE,
     STATUS_APPROVED,
@@ -29,6 +30,7 @@ def row_to_dict(row: CandidatePipelineOverride) -> Dict[str, Any]:
     return {
         "id": row.id,
         "doc_type_code": row.doc_type_code,
+        "requirement_code": row.requirement_code,
         "status": row.status,
         "requested_scope": row.requested_scope,
         "granted_scope": row.granted_scope,
@@ -40,6 +42,10 @@ def row_to_dict(row: CandidatePipelineOverride) -> Dict[str, Any]:
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
+
+
+def _norm_requirement_code(value: Optional[str]) -> str:
+    return str(value or "").strip().lower().replace("-", "_")
 
 
 async def list_overrides(
@@ -82,22 +88,46 @@ async def _pending_for_doc(
     return int(q.scalar_one() or 0)
 
 
+async def _pending_for_requirement(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    requirement_code: str,
+) -> int:
+    q = await db.execute(
+        select(func.count())
+        .select_from(CandidatePipelineOverride)
+        .where(
+            and_(
+                CandidatePipelineOverride.tenant_id == tenant_id,
+                CandidatePipelineOverride.candidate_id == candidate_id,
+                CandidatePipelineOverride.requirement_code == requirement_code,
+                CandidatePipelineOverride.status == STATUS_PENDING,
+            )
+        )
+    )
+    return int(q.scalar_one() or 0)
+
+
 async def create_override_request(
     db: AsyncSession,
     *,
     tenant_id: str,
     candidate_id: str,
     actor_id: Optional[str],
-    doc_type_code: str,
+    doc_type_code: Optional[str] = None,
+    requirement_code: Optional[str] = None,
     reason: str,
     requested_scope: str,
 ) -> Dict[str, Any]:
-    code = normalize_doc_type(doc_type_code)
-    if not code:
-        raise ValueError("invalid_doc_type")
-    gates = await resolve_hiring_pipeline_gates(db, tenant_id, candidate_id=candidate_id)
-    if code in gates.effective_non_overridable_doc_types():
-        raise ValueError("doc_type_not_overridable")
+    req_code = _norm_requirement_code(requirement_code)
+    doc_code = normalize_doc_type(doc_type_code) if doc_type_code else ""
+    if req_code and doc_code:
+        raise ValueError("ambiguous_override_target")
+    if not req_code and not doc_code:
+        raise ValueError("missing_override_target")
+
     rs = str(requested_scope or "").strip().lower()
     if rs not in VALID_REQUESTED_SCOPES:
         raise ValueError("invalid_requested_scope")
@@ -107,23 +137,50 @@ async def create_override_request(
     if len(reason_clean) > 4000:
         raise ValueError("reason_too_long")
 
-    pending = await _pending_for_doc(db, tenant_id=tenant_id, candidate_id=candidate_id, doc_type_code=code)
-    if pending > 0:
-        raise ValueError("pending_exists")
+    if req_code:
+        if req_code in NON_OVERRIDABLE_REQUIREMENT_CODES:
+            raise ValueError("requirement_not_overridable")
+        pending = await _pending_for_requirement(
+            db, tenant_id=tenant_id, candidate_id=candidate_id, requirement_code=req_code
+        )
+        if pending > 0:
+            raise ValueError("pending_exists")
+        row = CandidatePipelineOverride(
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            doc_type_code=None,
+            requirement_code=req_code,
+            status=STATUS_PENDING,
+            requested_scope=rs,
+            granted_scope=None,
+            reason=reason_clean,
+            review_note=None,
+            requested_by_user_id=actor_id,
+            reviewed_by_user_id=None,
+            reviewed_at=None,
+        )
+    else:
+        gates = await resolve_hiring_pipeline_gates(db, tenant_id, candidate_id=candidate_id)
+        if doc_code in gates.effective_non_overridable_doc_types():
+            raise ValueError("doc_type_not_overridable")
+        pending = await _pending_for_doc(db, tenant_id=tenant_id, candidate_id=candidate_id, doc_type_code=doc_code)
+        if pending > 0:
+            raise ValueError("pending_exists")
+        row = CandidatePipelineOverride(
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            doc_type_code=doc_code,
+            requirement_code=None,
+            status=STATUS_PENDING,
+            requested_scope=rs,
+            granted_scope=None,
+            reason=reason_clean,
+            review_note=None,
+            requested_by_user_id=actor_id,
+            reviewed_by_user_id=None,
+            reviewed_at=None,
+        )
 
-    row = CandidatePipelineOverride(
-        tenant_id=tenant_id,
-        candidate_id=candidate_id,
-        doc_type_code=code,
-        status=STATUS_PENDING,
-        requested_scope=rs,
-        granted_scope=None,
-        reason=reason_clean,
-        review_note=None,
-        requested_by_user_id=actor_id,
-        reviewed_by_user_id=None,
-        reviewed_at=None,
-    )
     db.add(row)
     await db.flush()
     await db.refresh(row)
@@ -268,6 +325,27 @@ async def approved_pipeline_relaxed_types(
         )
     )
     return {str(x) for x in res.scalars().all() if x}
+
+
+async def approved_pipeline_relaxed_requirements(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+) -> set[str]:
+    """Requirement codes waived for pipeline UI / forward movement (pipeline or both)."""
+    res = await db.execute(
+        select(CandidatePipelineOverride.requirement_code).where(
+            and_(
+                CandidatePipelineOverride.tenant_id == tenant_id,
+                CandidatePipelineOverride.candidate_id == candidate_id,
+                CandidatePipelineOverride.status == STATUS_APPROVED,
+                CandidatePipelineOverride.granted_scope.in_((SCOPE_PIPELINE, SCOPE_BOTH)),
+                CandidatePipelineOverride.requirement_code.is_not(None),
+            )
+        )
+    )
+    return {_norm_requirement_code(x) for x in res.scalars().all() if x}
 
 
 async def approved_handoff_relaxed_types(

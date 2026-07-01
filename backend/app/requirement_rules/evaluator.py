@@ -18,9 +18,11 @@ from backend.app.requirement_rules.constants import (
     LEVEL_BLOCKING,
     REQUIREMENT_EVALUATION_V1,
     RULE_TYPE_DOCUMENT_REQUIRED,
+    RULE_TYPE_DOCUMENT_SLOT_REQUIRED,
     RULE_TYPE_FIELD_REQUIRED,
 )
 from backend.app.requirement_rules.registry import build_requirement_rule_set
+from backend.app.requirement_rules.slot_evaluator import evaluate_document_slot
 
 
 def _is_empty(value: Any) -> bool:
@@ -98,6 +100,7 @@ def evaluate_requirement_rules(
     stage_code: str | None = None,
     transition_code: str | None = None,
     tenant_overrides: list[dict[str, Any]] | None = None,
+    candidate_evidence_by_requirement: Optional[dict[str, dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """Evaluate Entity Profile + Document Pack + Process Profile + Tenant Overrides."""
     rule_set = build_requirement_rule_set(
@@ -113,8 +116,15 @@ def evaluate_requirement_rules(
 
     required_fields: list[dict[str, Any]] = []
     required_documents: list[dict[str, Any]] = []
+    required_slots: list[dict[str, Any]] = []
+    slot_evaluations: list[dict[str, Any]] = []
     blockers: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
+
+    citizenship = _payload_value(payload, "platform.identity.citizenship")
+    if _is_empty(citizenship):
+        citizenship = payload.get("citizenship")
+    position_category = payload.get("position_category") or payload.get("role")
 
     for rule in rule_set.get("rules") or []:
         if not isinstance(rule, dict):
@@ -184,6 +194,46 @@ def evaluate_requirement_rules(
                     warnings.extend(doc_blockers)
                     warnings.extend(doc_warnings)
 
+        elif rule_type == RULE_TYPE_DOCUMENT_SLOT_REQUIRED:
+            slot_code = str(rule.get("slot_code") or rule.get("target") or "").strip().lower()
+            if not slot_code:
+                continue
+            verification = str(rule.get("verification") or "optional").strip().lower()
+            entry = {
+                "slot_code": slot_code,
+                "pack_code": rule.get("pack_code"),
+                "level": level,
+                "verification": verification,
+                "reason_code": reason_code or f"document_slot_required:{slot_code}",
+                "source": rule.get("source"),
+                "source_ref": rule.get("source_ref"),
+            }
+            required_slots.append(entry)
+            slot_result = evaluate_document_slot(
+                slot_code,
+                documents=doc_list,
+                candidate_evidence=(candidate_evidence_by_requirement or {}).get(slot_code),
+                citizenship=str(citizenship).strip() if not _is_empty(citizenship) else None,
+                position_category=str(position_category).strip() if not _is_empty(position_category) else None,
+            )
+            slot_evaluations.append(slot_result)
+            if slot_result.get("status") == "not_applicable":
+                continue
+            if slot_result.get("status") != "satisfied":
+                for row in slot_result.get("blockers") or []:
+                    blocker = {
+                        "code": str(row.get("code") or reason_code or f"document_slot_required:{slot_code}"),
+                        "message": str(row.get("message") or f"Required document slot not satisfied: {slot_code}"),
+                        "source_rule_id": slot_code,
+                        "layer": "requirement_slots",
+                        "slot_code": slot_code,
+                    }
+                    if level == LEVEL_BLOCKING:
+                        blockers.append(blocker)
+                    else:
+                        blocker["severity"] = "warning"
+                        warnings.append(blocker)
+
     return {
         "evaluation_version": REQUIREMENT_EVALUATION_V1,
         "entity_profile_code": rule_set["entity_profile_code"],
@@ -195,6 +245,8 @@ def evaluate_requirement_rules(
         "process_profile_code": rule_set.get("process_profile_code"),
         "required_fields": required_fields,
         "required_documents": required_documents,
+        "required_slots": required_slots,
+        "slot_evaluations": slot_evaluations,
         "blockers": blockers,
         "warnings": warnings,
         "satisfied": len(blockers) == 0,

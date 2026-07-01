@@ -27,6 +27,9 @@
 | [slice-4-activity-continuity-guards.md](slice-4-activity-continuity-guards.md) | Continuity первого контакта (UOS) на convert | Lead, Candidate | **Не** статусы Application (см. §1.1) |
 | [candidate-intake-via-telegram-execution-plan.md](candidate-intake-via-telegram-execution-plan.md) | _Operational backlog (execution plan)._ Telegram-based intake кандидатов: implementation slices, DoD по фазам | Candidate, TelegramBot, Application | Status: **Plan** — не источник истины архитектуры; canon границ см. ADR-002 / ADR-013 |
 | [email-client-outlook-style-research.md](email-client-outlook-style-research.md) | _Research draft._ Outlook-style email-клиент внутри HostFlow: модели почтовых ящиков, протоколы, запросы UX | Communications, Mailbox | Status: **Research draft** — не часть канона; служит источником вопросов для будущего ADR |
+| [recruitment-document-collection-handoff.md](recruitment-document-collection-handoff.md) | Requirements → Accepted Evidence → Candidate Evidence → handoff `requirement_fulfillments[]` | Candidate, Requirement, CandidateEvidence, Document | ADR-016 |
+| [requirement-evidence-model-p0.md](../platform/requirement-evidence-model-p0.md) | Platform canon: 4 entities |
+| [first-operational-flow-recruitment-documents-hr.md](first-operational-flow-recruitment-documents-hr.md) | Первый operational контур Tenant → Recruitment → Document Hub → HR (ownership, без копирования файлов) | Candidate, WorkforceEmployee, DocumentEntityLink | Stage handoff, document links |
 
 **Канон Application (один контур):** семантика статусов и переходов — [recruitment-application-lifecycle.md](recruitment-application-lifecycle.md); границы сущности — [applications-operating-model.md](../architecture/applications-operating-model.md) (раздел про статус **не** дублирует enum); сверка с кодом, resolved/open конфликты и gaps (C1–C4, C2b, I1 и т.д.) — [recruitment-application-lifecycle-sync-note.md](recruitment-application-lifecycle-sync-note.md).
 

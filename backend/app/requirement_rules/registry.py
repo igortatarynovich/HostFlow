@@ -10,6 +10,7 @@ from backend.app.requirement_rules.constants import (
     DOCUMENT_EVALUATION_CONTEXTS,
     REQUIREMENT_RULES_V1,
     RULE_TYPE_DOCUMENT_REQUIRED,
+    RULE_TYPE_DOCUMENT_SLOT_REQUIRED,
     RULE_TYPE_FIELD_REQUIRED,
     SOURCE_DOCUMENT_PACK,
     SOURCE_ENTITY_PROFILE,
@@ -119,12 +120,51 @@ def build_document_required_rules(
     return rules
 
 
+def build_document_slot_required_rules(
+    *,
+    pack_code: str,
+    entity_profile_code: str,
+    context: str,
+) -> list[dict[str, Any]]:
+    ctx = str(context or "readiness").strip().lower()
+    if ctx not in DOCUMENT_EVALUATION_CONTEXTS:
+        return []
+    pack = get_document_pack_manifest(pack_code)
+    if pack is None:
+        return []
+    rules: list[dict[str, Any]] = []
+    for item in pack.get("required_slots") or []:
+        if not isinstance(item, dict):
+            continue
+        slot_code = str(item.get("slot_code") or "").strip()
+        if not slot_code:
+            continue
+        rules.append(
+            {
+                "rule_type": RULE_TYPE_DOCUMENT_SLOT_REQUIRED,
+                "source": SOURCE_DOCUMENT_PACK,
+                "source_ref": pack_code,
+                "target": slot_code,
+                "slot_code": slot_code,
+                "pack_code": pack_code,
+                "level": str(item.get("level") or "blocking").strip().lower(),
+                "verification": str(item.get("verification") or "optional").strip().lower(),
+                "context": ctx,
+                "reason_code": str(item.get("reason_code") or f"document_slot_required:{slot_code}"),
+                "entity_profile_code": entity_profile_code,
+            }
+        )
+    return rules
+
+
 def _rule_dedup_key(rule: dict[str, Any]) -> tuple[str, str]:
     rule_type = str(rule.get("rule_type") or "").strip()
     if rule_type == RULE_TYPE_FIELD_REQUIRED:
         return ("field", str(rule.get("qualified_code") or rule.get("target") or "").strip())
     if rule_type == RULE_TYPE_DOCUMENT_REQUIRED:
         return ("document", str(rule.get("document_type_code") or rule.get("target") or "").strip().lower())
+    if rule_type == RULE_TYPE_DOCUMENT_SLOT_REQUIRED:
+        return ("slot", str(rule.get("slot_code") or rule.get("target") or "").strip().lower())
     return ("other", str(rule.get("target") or rule.get("reason_code") or ""))
 
 
@@ -176,6 +216,24 @@ def build_requirement_rule_set(
         entity_profile_code=entity_profile_code,
         context=ctx,
     )
+    slot_rules = build_document_slot_required_rules(
+        pack_code=pack_code,
+        entity_profile_code=entity_profile_code,
+        context=ctx,
+    )
+
+    from backend.app.requirement_rules.slot_evaluator import document_types_covered_by_slot
+
+    covered_types: set[str] = set()
+    for slot_rule in slot_rules:
+        covered_types.update(document_types_covered_by_slot(str(slot_rule.get("slot_code") or "")))
+
+    if covered_types:
+        document_rules = [
+            rule
+            for rule in document_rules
+            if str(rule.get("document_type_code") or "").strip().lower() not in covered_types
+        ]
 
     process_profile_code = str(profile_meta.get("process_profile_code") or profile_view.get("process_profile_code") or "").strip() or None
     process_rules: list[dict[str, Any]] = []
@@ -186,10 +244,14 @@ def build_requirement_rule_set(
             stage_code=stage_code,
             transition_code=transition_code,
             occupied_field_targets={str(r.get("qualified_code") or "") for r in field_rules},
-            occupied_doc_targets={str(r.get("document_type_code") or "") for r in document_rules},
+            occupied_doc_targets={
+                str(r.get("document_type_code") or "")
+                for r in document_rules
+            }
+            | {str(r.get("slot_code") or "") for r in slot_rules},
         )
 
-    merged_rules = merge_requirement_rules(field_rules, document_rules, process_rules)
+    merged_rules = merge_requirement_rules(field_rules, document_rules, slot_rules, process_rules)
 
     canonical_field_targets = {
         str(r.get("qualified_code") or "")
@@ -210,7 +272,7 @@ def build_requirement_rule_set(
     )
 
     rule_sources_applied: list[dict[str, str]] = [{"source": SOURCE_ENTITY_PROFILE, "ref": entity_profile_code}]
-    if pack_code and document_rules:
+    if pack_code and (document_rules or slot_rules):
         rule_sources_applied.append({"source": SOURCE_DOCUMENT_PACK, "ref": pack_code})
     if process_rules and process_profile_code:
         rule_sources_applied.append({"source": SOURCE_PROCESS_PROFILE, "ref": process_profile_code})

@@ -36,6 +36,8 @@ type Props = {
   stageLabelIntl: (code: string) => string
 
   docsBlockers: DocsBlockers
+  /** Label blockers as requirement names vs document type codes. */
+  blockerLabelMode?: 'requirement' | 'document'
   /** When true, forward movement in the pipeline is blocked by documents. */
   docsPipelineBlocking: boolean
   /**
@@ -71,6 +73,7 @@ export default function CandidateStageDecisionPanel({
   candidateStatus,
   stageLabelIntl,
   docsBlockers,
+  blockerLabelMode = 'document',
   docsPipelineBlocking,
   docsPipelineSoftWarn = false,
   vacancyPipelineBlocking = false,
@@ -144,7 +147,13 @@ export default function CandidateStageDecisionPanel({
     return out
   }, [docsBlockers.missing, docsBlockers.problematic, docsBlockers.inProgress, docsSoftAdvisory])
 
-  const labelForDocType = (code: string) => {
+  const labelForBlocker = (code: string) => {
+    if (blockerLabelMode === 'requirement') {
+      const fromRequirements = t(`app.candidate_card.requirements_checklist.requirements.${code}`, {
+        defaultValue: '',
+      }).trim()
+      if (fromRequirements) return fromRequirements
+    }
     const fromTypeCodes = t(`admin.documents.type_codes.${code}`, { defaultValue: '' }).trim()
     if (fromTypeCodes) return fromTypeCodes
     const fromProcessTypes = t(`admin.documents.process_types.${code}`, { defaultValue: '' }).trim()
@@ -249,7 +258,7 @@ export default function CandidateStageDecisionPanel({
                       key={`soft-${code}`}
                       className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900"
                     >
-                      {labelForDocType(code)}
+                      {labelForBlocker(code)}
                     </span>
                   ))}
                   {requiredCodes.length > 4 ? (
@@ -280,7 +289,7 @@ export default function CandidateStageDecisionPanel({
                           : 'border-amber-200 bg-amber-50 text-amber-800',
                       )}
                     >
-                      {labelForDocType(code)}
+                      {labelForBlocker(code)}
                     </span>
                   ))}
                   {requiredCodes.length > 4 ? (
@@ -384,7 +393,11 @@ export default function CandidateStageDecisionPanel({
             onClick={() => nextStage && onMoveStage(nextStage.code)}
             title={
               docsPipelineBlocking
-                ? t('app.candidate_card.stage_decision.blocked_title', { defaultValue: 'Blocked by required documents' })
+                ? blockerLabelMode === 'requirement'
+                  ? t('app.candidate_card.stage_decision.blocked_title_requirements', {
+                      defaultValue: 'Blocked by unconfirmed requirements',
+                    })
+                  : t('app.candidate_card.stage_decision.blocked_title', { defaultValue: 'Blocked by required documents' })
                 : docsSoftAdvisory
                   ? t('app.candidate_card.stage_decision.soft_docs_title', {
                       defaultValue: 'Documents recommended — forward move still allowed',

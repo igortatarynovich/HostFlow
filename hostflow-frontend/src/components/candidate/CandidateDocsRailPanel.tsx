@@ -7,7 +7,9 @@ import type { CandidatePipelineOverride } from '../../api/candidatePipelineOverr
 import {
   effectiveNonOverridableDocTypesSet,
   isNonOverridableDocTypeCode,
+  isNonOverridableRequirementCode,
 } from '../../constants/pipelineOverridePolicy'
+import type { DocBlockersPayload } from '../../utils/candidateStageDocPolicy'
 import { useHiringPipelineGates } from '../../contexts/HiringPipelineGatesContext'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
@@ -60,6 +62,7 @@ type Props = {
   // For pipeline gating + next action overriding
   onLoadedBlockers?: (blockers: { missing: string[]; problematic: string[]; inProgress: string[] }) => void
   onLoadingChange?: (loading: boolean) => void
+  onSummaryLoaded?: (summary: SummaryResponse | null) => void
   onOpenDocs?: () => void
   onSelectType?: (typeCode: string) => void
   pollingEnabled?: boolean
@@ -77,7 +80,8 @@ type Props = {
   canRequestPipelineOverride?: boolean
   canApprovePipelineOverride?: boolean
   onCreatePipelineOverride?: (input: {
-    doc_type_code: string
+    doc_type_code?: string
+    requirement_code?: string
     reason: string
     requested_scope: 'pipeline' | 'both'
   }) => Promise<void>
@@ -98,7 +102,17 @@ type Props = {
    * When ``historical``, missing/problematic docs use informational framing (closed candidate).
    * Does not hide the checklist (unlike ``docsPipelineBlocking === false`` for early funnel).
    */
-  blockersPresentation?: 'operational' | 'historical'
+  /**
+   * When true, hides document-type checklist rows and blocker panels.
+   * Requirements checklist (Candidate Evidence) is the primary confirmation UI.
+   */
+  hideDocumentTypeChecklist?: boolean
+  /** When true, do not push document-summary blockers to parent (requirements path owns blockers). */
+  suppressBlockerCallbacks?: boolean
+  /** Requirement-centric waivers use requirement_code instead of doc_type_code. */
+  waiverMode?: 'document' | 'requirement'
+  /** Blocker lists for waiver eligibility when checklist is hidden (requirements path). */
+  externalBlockers?: DocBlockersPayload
 }
 
 type RowStatus = 'missing' | 'expiring' | 'valid' | 'in_progress'
@@ -132,6 +146,7 @@ export default function CandidateDocsRailPanel({
   refreshTrigger = 0,
   onLoadedBlockers,
   onLoadingChange,
+  onSummaryLoaded,
   onOpenDocs,
   onSelectType,
   pollingEnabled = false,
@@ -150,7 +165,12 @@ export default function CandidateDocsRailPanel({
   embeddedDocumentsSummary,
   primaryStepHighlight = false,
   blockersPresentation = 'operational',
+  hideDocumentTypeChecklist = false,
+  suppressBlockerCallbacks = false,
+  waiverMode: waiverModeProp,
+  externalBlockers,
 }: Props) {
+  const waiverMode = waiverModeProp ?? (hideDocumentTypeChecklist ? 'requirement' : 'document')
   const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const { gates } = useHiringPipelineGates()
@@ -274,13 +294,24 @@ export default function CandidateDocsRailPanel({
   ])
 
   useEffect(() => {
+    if (suppressBlockerCallbacks) return
     onLoadedBlockers?.({ missing, problematic, inProgress: inProgressTypes })
-  }, [missing, problematic, inProgressTypes, onLoadedBlockers])
+  }, [missing, problematic, inProgressTypes, onLoadedBlockers, suppressBlockerCallbacks])
 
-  // NOTE: we intentionally do NOT poll repeatedly here.
-  // Polling can cause request storms (browser "ERR_INSUFFICIENT_RESOURCES")
-  // and unnecessary load. The blockers state is refreshed via `refreshTrigger`
-  // after upload actions.
+  useEffect(() => {
+    onSummaryLoaded?.(summary)
+  }, [summary, onSummaryLoaded])
+
+  useEffect(() => {
+    if (!pollingEnabled || !candidateId) return
+    const intervalMs = Math.max(pollingIntervalMs, 5_000)
+    const timer = window.setInterval(() => {
+      void load()
+    }, intervalMs)
+    return () => window.clearInterval(timer)
+  }, [candidateId, load, pollingEnabled, pollingIntervalMs])
+
+  // NOTE: polling is opt-in via `pollingEnabled` (e.g. while the documents drawer is open).
 
   const labelForType = useCallback(
     (code: string) => {
@@ -292,6 +323,23 @@ export default function CandidateDocsRailPanel({
       return normalized || code
     },
     [t],
+  )
+
+  const labelForRequirement = useCallback(
+    (code: string) => {
+      const fromKey = t(`app.candidate_card.requirements_checklist.requirements.${code}`, { defaultValue: '' }).trim()
+      if (fromKey) return fromKey
+      return String(code || '').replace(/_/g, ' ')
+    },
+    [t],
+  )
+
+  const labelForOverrideTarget = useCallback(
+    (o: CandidatePipelineOverride) => {
+      if (o.requirement_code) return labelForRequirement(o.requirement_code)
+      return labelForType(String(o.doc_type_code || ''))
+    },
+    [labelForRequirement, labelForType],
   )
 
   const rows = useMemo(() => {
@@ -379,19 +427,32 @@ export default function CandidateDocsRailPanel({
 
   const normType = useCallback((c: string) => String(c || '').trim().toLowerCase(), [])
 
-  const pendingByType = useMemo(() => {
+  const pendingByCode = useMemo(() => {
     const m = new Map<string, CandidatePipelineOverride>()
     for (const o of pipelineOverrides) {
       if (String(o.status).toLowerCase() !== 'pending') continue
-      const k = normType(o.doc_type_code)
+      const k =
+        waiverMode === 'requirement'
+          ? normType(String(o.requirement_code || ''))
+          : normType(String(o.doc_type_code || ''))
       if (!k) continue
       if (!m.has(k)) m.set(k, o)
     }
     return m
-  }, [pipelineOverrides, normType])
+  }, [pipelineOverrides, normType, waiverMode])
+
+  const blockerSource = externalBlockers ?? {
+    missing,
+    problematic,
+    inProgress: inProgressTypes,
+  }
 
   const blockerCodesForRequest = useMemo(() => {
-    const codes = [...missing, ...problematic, ...inProgressTypes].filter(Boolean)
+    const codes = [
+      ...blockerSource.missing,
+      ...blockerSource.problematic,
+      ...blockerSource.inProgress,
+    ].filter(Boolean)
     const uniq: string[] = []
     const seen = new Set<string>()
     for (const c of codes) {
@@ -401,12 +462,19 @@ export default function CandidateDocsRailPanel({
       uniq.push(c)
     }
     return uniq
-  }, [missing, problematic, inProgressTypes, normType])
+  }, [blockerSource, normType])
 
-  /** Types that may appear in a waiver request (fail-safe types excluded — plan §12). */
-  const waiverEligibleCodes = useMemo(
-    () => blockerCodesForRequest.filter((c) => !isNonOverridableDocTypeCode(c, nonOverridableEffective)),
-    [blockerCodesForRequest, nonOverridableEffective],
+  /** Codes that may appear in a waiver request (fail-safe targets excluded). */
+  const waiverEligibleCodes = useMemo(() => {
+    if (waiverMode === 'requirement') {
+      return blockerCodesForRequest.filter((c) => !isNonOverridableRequirementCode(c))
+    }
+    return blockerCodesForRequest.filter((c) => !isNonOverridableDocTypeCode(c, nonOverridableEffective))
+  }, [blockerCodesForRequest, nonOverridableEffective, waiverMode])
+
+  const labelForWaiverCode = useCallback(
+    (code: string) => (waiverMode === 'requirement' ? labelForRequirement(code) : labelForType(code)),
+    [labelForRequirement, labelForType, waiverMode],
   )
 
   const allPipelineBlockersAreNonOverridable = useMemo(
@@ -417,15 +485,15 @@ export default function CandidateDocsRailPanel({
     [blockerCodesForRequest, waiverEligibleCodes, docsPipelineBlocking],
   )
 
-  const [waiverDocType, setWaiverDocType] = useState<string>('')
+  const [waiverTargetCode, setWaiverTargetCode] = useState<string>('')
   const [waiverReason, setWaiverReason] = useState('')
   const [waiverIncludeHandoff, setWaiverIncludeHandoff] = useState(false)
 
   useEffect(() => {
-    if (!waiverDocType && waiverEligibleCodes.length) {
-      setWaiverDocType(waiverEligibleCodes[0])
+    if (!waiverTargetCode && waiverEligibleCodes.length) {
+      setWaiverTargetCode(waiverEligibleCodes[0])
     }
-  }, [waiverEligibleCodes, waiverDocType])
+  }, [waiverEligibleCodes, waiverTargetCode])
 
   const canOpenWaiverRequestModal = Boolean(
     docsPipelineBlocking === true &&
@@ -439,10 +507,10 @@ export default function CandidateDocsRailPanel({
 
   useEffect(() => {
     if (!waiverModalOpen || !waiverEligibleCodes.length) return
-    if (!waiverEligibleCodes.includes(waiverDocType)) {
-      setWaiverDocType(waiverEligibleCodes[0])
+    if (!waiverEligibleCodes.includes(waiverTargetCode)) {
+      setWaiverTargetCode(waiverEligibleCodes[0])
     }
-  }, [waiverModalOpen, waiverEligibleCodes, waiverDocType])
+  }, [waiverModalOpen, waiverEligibleCodes, waiverTargetCode])
 
   const formatExpDate = useCallback(
     (iso: string) => {
@@ -496,7 +564,11 @@ export default function CandidateDocsRailPanel({
           </div>
 
           <div className="mt-1 text-[11px] text-slate-600">
-            {hideEarlyStageDocDetails
+            {hideDocumentTypeChecklist
+              ? t('app.candidate_card.documents.operational_hub_hint', {
+                  defaultValue: 'Upload and manage files — confirm requirements in the checklist above.',
+                })
+              : hideEarlyStageDocDetails
               ? t('app.candidate_card.documents.early_stage_hint', {
                   defaultValue: 'Documents are not required at this stage (e.g. New). Upload / Open full — optional.',
                 })
@@ -515,7 +587,7 @@ export default function CandidateDocsRailPanel({
                     values: { percent: percentReady },
                   })}
           </div>
-          {workspace ? (
+          {workspace && !hideDocumentTypeChecklist ? (
             <div className="mt-1 text-[11px] font-medium text-slate-700">
               {t('app.candidate_card.documents.runtime_kpi', {
                 defaultValue: '{ready}/{total} satisfied · {percent}%',
@@ -539,7 +611,10 @@ export default function CandidateDocsRailPanel({
       {waiverSectionVisible ? (
         <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-900">
-            {t('app.candidate_card.pipeline_override.section_title', { defaultValue: 'Document waivers' })}
+            {t('app.candidate_card.pipeline_override.section_title', {
+              defaultValue:
+                waiverMode === 'requirement' ? 'Requirement waivers' : 'Document waivers',
+            })}
           </div>
           <div className="mt-1 text-[11px] text-indigo-800/90">
             {t('app.candidate_card.pipeline_override.section_hint', {
@@ -562,7 +637,7 @@ export default function CandidateDocsRailPanel({
                 .filter((o) => String(o.status).toLowerCase() === 'pending')
                 .map((o) => (
                   <div key={o.id} className="rounded-lg border border-indigo-200 bg-white p-2 text-xs">
-                    <div className="font-semibold text-slate-900">{labelForType(o.doc_type_code)}</div>
+                    <div className="font-semibold text-slate-900">{labelForOverrideTarget(o)}</div>
                     <div className="mt-0.5 text-[11px] text-slate-600">
                       {t('app.candidate_card.pipeline_override.requested_scope', {
                         defaultValue: 'Requested',
@@ -622,7 +697,7 @@ export default function CandidateDocsRailPanel({
                   .filter((o) => String(o.status).toLowerCase() === 'approved')
                   .map((o) => (
                     <li key={o.id} className="text-[11px] text-emerald-900">
-                      {labelForType(o.doc_type_code)} —{' '}
+                      {labelForOverrideTarget(o)} —{' '}
                       {o.granted_scope === 'both'
                         ? t('app.candidate_card.pipeline_override.granted_both', { defaultValue: 'pipeline + handoff' })
                         : t('app.candidate_card.pipeline_override.granted_pipeline', { defaultValue: 'pipeline' })}
@@ -673,7 +748,7 @@ export default function CandidateDocsRailPanel({
         </div>
       ) : null}
 
-      {!hideEarlyStageDocDetails ? (
+      {!hideEarlyStageDocDetails && !hideDocumentTypeChecklist ? (
         <div className="mt-3">
           {canToggleDetails ? (
             <button
@@ -776,7 +851,7 @@ export default function CandidateDocsRailPanel({
         </div>
       ) : null}
 
-      {!hideEarlyStageDocDetails && detailsOpen ? (
+      {!hideEarlyStageDocDetails && !hideDocumentTypeChecklist && detailsOpen ? (
         <div
           className={clsx(
             'mt-3 rounded-xl border p-3',
@@ -920,16 +995,24 @@ export default function CandidateDocsRailPanel({
                 </p>
                 <div className="mt-4 space-y-3">
                   <label className="block text-xs text-slate-600">
-                    {t('app.candidate_card.pipeline_override.doc_type', { defaultValue: 'Document type' })}
+                    {t(
+                      waiverMode === 'requirement'
+                        ? 'app.candidate_card.pipeline_override.requirement_code'
+                        : 'app.candidate_card.pipeline_override.doc_type',
+                      {
+                        defaultValue:
+                          waiverMode === 'requirement' ? 'Requirement' : 'Document type',
+                      },
+                    )}
                     <select
                       className="mt-1 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-                      value={waiverDocType}
-                      onChange={(e) => setWaiverDocType(e.target.value)}
+                      value={waiverTargetCode}
+                      onChange={(e) => setWaiverTargetCode(e.target.value)}
                     >
                       {waiverEligibleCodes.map((c) => (
-                        <option key={c} value={c} disabled={pendingByType.has(normType(c))}>
-                          {labelForType(c)}
-                          {pendingByType.has(normType(c))
+                        <option key={c} value={c} disabled={pendingByCode.has(normType(c))}>
+                          {labelForWaiverCode(c)}
+                          {pendingByCode.has(normType(c))
                             ? ` (${t('app.candidate_card.pipeline_override.pending_suffix', { defaultValue: 'pending' })})`
                             : ''}
                         </option>
@@ -985,13 +1068,15 @@ export default function CandidateDocsRailPanel({
                     className="btn-primary btn-sm"
                     disabled={
                       pipelineOverrideBusy ||
-                      !waiverDocType ||
+                      !waiverTargetCode ||
                       waiverReason.trim().length < 8 ||
-                      pendingByType.has(normType(waiverDocType))
+                      pendingByCode.has(normType(waiverTargetCode))
                     }
                     onClick={() =>
                       void onCreatePipelineOverride({
-                        doc_type_code: waiverDocType,
+                        ...(waiverMode === 'requirement'
+                          ? { requirement_code: waiverTargetCode }
+                          : { doc_type_code: waiverTargetCode }),
                         reason: waiverReason.trim(),
                         requested_scope: waiverIncludeHandoff ? 'both' : 'pipeline',
                       }).then(() => {

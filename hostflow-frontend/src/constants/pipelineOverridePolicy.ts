@@ -64,3 +64,14 @@ export function isNonOverridableDocTypeCode(
   const set = effectiveSet ?? NON_OVERRIDABLE_SET
   return set.has(k)
 }
+
+const NON_OVERRIDABLE_REQUIREMENT_SET = new Set<string>(['identity_document', 'work_authorization'])
+
+export function isNonOverridableRequirementCode(code: string | null | undefined): boolean {
+  const k = String(code || '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_')
+  if (!k) return false
+  return NON_OVERRIDABLE_REQUIREMENT_SET.has(k)
+}

@@ -43,6 +43,42 @@ def _profile_view_from_manifest() -> dict:
     }
 
 
+def _approved_evidence(variant_code: str, documents: list[dict]) -> dict:
+    return {
+        "status": "approved",
+        "evidence_variant_code": variant_code,
+        "documents": documents,
+    }
+
+
+def _driver_ce_evidence(*, separate_license: bool = False) -> dict[str, dict]:
+    license_evidence = (
+        _approved_evidence(
+            "separate_documents",
+            [
+                {"document_id": "d1", "document_type_code": "driver_license", "status": "approved", "has_files": True},
+                {"document_id": "d2", "document_type_code": "code95", "status": "approved", "has_files": True},
+            ],
+        )
+        if separate_license
+        else _approved_evidence(
+            "combined_eu_license",
+            [{"document_id": "d1", "document_type_code": "driver_license_code95", "status": "approved", "has_files": True}],
+        )
+    )
+    return {
+        "identity_document": _approved_evidence(
+            "identity_any",
+            [{"document_id": "p1", "document_type_code": "passport", "status": "approved", "has_files": True}],
+        ),
+        "driver_license_with_code95": license_evidence,
+        "tachograph_card": _approved_evidence(
+            "tacho_any",
+            [{"document_id": "t1", "document_type_code": "tacho_card", "status": "approved", "has_files": True}],
+        ),
+    }
+
+
 def test_p2c_driver_ce_required_documents_from_engine() -> None:
     evaluation = evaluate_requirement_rules(
         _profile_view_from_manifest(),
@@ -70,6 +106,11 @@ def test_p2c_satisfied_documents_when_approved() -> None:
         _profile_view_from_manifest(),
         context="readiness",
         normalized_payload={},
+        documents=[],
+        candidate_evidence_by_requirement=_driver_ce_evidence(separate_license=True),
+    )
+    hub = map_requirement_evaluation_to_document_hub(
+        evaluation,
         documents=[
             {"type": "passport", "status": "approved", "has_files": True},
             {"type": "driver_license", "status": "approved", "has_files": True},
@@ -77,7 +118,6 @@ def test_p2c_satisfied_documents_when_approved() -> None:
             {"type": "tacho_card", "status": "approved", "has_files": True},
         ],
     )
-    hub = map_requirement_evaluation_to_document_hub(evaluation)
 
     assert hub["satisfied_documents"] == ["code95", "driver_license", "passport", "tacho_card"]
     assert hub["missing_documents"] == []

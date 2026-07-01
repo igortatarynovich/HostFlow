@@ -30,7 +30,8 @@ class CandidatePipelineOverride(TimestampMixin, Base):
         nullable=False,
     )
 
-    doc_type_code: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    doc_type_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    requirement_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     # pending | approved | rejected | revoked
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
 

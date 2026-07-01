@@ -43,6 +43,33 @@ def _profile_view_from_manifest() -> dict:
     }
 
 
+def _driver_ce_evidence() -> dict[str, dict]:
+    return {
+        "identity_document": {
+            "status": "approved",
+            "evidence_variant_code": "identity_any",
+            "documents": [
+                {"document_id": "p1", "document_type_code": "passport", "status": "approved", "has_files": True},
+            ],
+        },
+        "driver_license_with_code95": {
+            "status": "approved",
+            "evidence_variant_code": "separate_documents",
+            "documents": [
+                {"document_id": "d1", "document_type_code": "driver_license", "status": "approved", "has_files": True},
+                {"document_id": "d2", "document_type_code": "code95", "status": "approved", "has_files": True},
+            ],
+        },
+        "tachograph_card": {
+            "status": "approved",
+            "evidence_variant_code": "tacho_any",
+            "documents": [
+                {"document_id": "t1", "document_type_code": "tacho_card", "status": "approved", "has_files": True},
+            ],
+        },
+    }
+
+
 def test_p2b_is_ready_for_handoff_gate() -> None:
     assert is_ready_for_handoff_gate("ready_for_handoff") is True
     assert is_ready_for_handoff_gate("READY_FOR_HANDOFF") is True
@@ -338,6 +365,7 @@ async def test_p2b_integration_full_package_allows_transition(db, tenant_id: str
             {"document_type_code": "tacho_card", "status": "approved", "has_files": True},
             {"document_type_code": "medical_certificate", "status": "approved", "has_files": True},
         ],
+        candidate_evidence_by_requirement=_driver_ce_evidence(),
     )
     assert evaluation["satisfied"] is True
     satisfied_gate = map_requirement_evaluation_to_transition_gate(evaluation)

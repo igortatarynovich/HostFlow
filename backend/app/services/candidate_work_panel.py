@@ -100,12 +100,17 @@ async def load_candidate_work_panel(
     assignee_scope: str = "mine",
     active_own_company_id: str | None = None,
 ):
-    """Bundle: profile ops + reminders + timeline + comms URLs + optional documents_summary (owner checklist blockers)."""
+    """Bundle: profile ops + reminders + timeline + comms URLs + requirements preview + overrides."""
 
     from backend.app.api.v1.candidates.schemas import (
         CandidateTimelineResponse,
         CandidateWorkPanelCommsOut,
         CandidateWorkPanelDocumentsSummaryOut,
+        CandidateWorkPanelPipelineOverrideOut,
+        CandidateWorkPanelPipelineOverridesOut,
+        CandidateWorkPanelRequirementsSummaryOut,
+        CandidateWorkPanelRequirementRowOut,
+        CandidateWorkPanelLinkedDocumentOut,
         CandidateWorkPanelResponse,
     )
     from backend.app.modules.documents.router import fetch_candidate_documents_summary_response
@@ -159,6 +164,62 @@ async def load_candidate_work_panel(
     except Exception:
         logger.exception("work_panel documents summary failed candidate=%s", candidate_id)
 
+    requirements_summary: CandidateWorkPanelRequirementsSummaryOut | None = None
+    pipeline_overrides: CandidateWorkPanelPipelineOverridesOut | None = None
+    try:
+        from backend.app.api.v1.candidates.pipeline_overrides_service import list_overrides
+        from backend.app.services.candidate_evidence_service import (
+            build_requirements_checklist,
+            build_requirements_work_panel_preview,
+            resolve_required_requirement_codes,
+        )
+
+        requirement_codes = await resolve_required_requirement_codes(
+            db, tenant_id=tenant_id_str, candidate=cand_row
+        )
+        if requirement_codes:
+            checklist = await build_requirements_checklist(
+                db, tenant_id=tenant_id_str, candidate=cand_row
+            )
+            preview = build_requirements_work_panel_preview(checklist)
+            req_items = []
+            for row in preview.get("items") or []:
+                if not isinstance(row, dict):
+                    continue
+                linked_raw = row.get("linked_document")
+                linked = None
+                if isinstance(linked_raw, dict):
+                    linked = CandidateWorkPanelLinkedDocumentOut(
+                        document_id=linked_raw.get("document_id"),
+                        document_type_code=linked_raw.get("document_type_code"),
+                        status=linked_raw.get("status"),
+                    )
+                req_items.append(
+                    CandidateWorkPanelRequirementRowOut(
+                        requirement_code=str(row.get("requirement_code") or ""),
+                        public_name=row.get("public_name"),
+                        fulfilled=bool(row.get("fulfilled")),
+                        evaluation_status=row.get("evaluation_status"),
+                        evidence_variant_code=row.get("evidence_variant_code"),
+                        evidence_status=row.get("evidence_status"),
+                        linked_document=linked,
+                    )
+                )
+            requirements_summary = CandidateWorkPanelRequirementsSummaryOut(
+                all_fulfilled=bool(preview.get("all_fulfilled")),
+                pipeline_blockers=preview.get("pipeline_blockers")
+                if isinstance(preview.get("pipeline_blockers"), dict)
+                else {},
+                items=req_items,
+            )
+
+        override_rows = await list_overrides(db, tenant_id=tenant_id_str, candidate_id=candidate_id)
+        pipeline_overrides = CandidateWorkPanelPipelineOverridesOut(
+            items=[CandidateWorkPanelPipelineOverrideOut(**row) for row in override_rows]
+        )
+    except Exception:
+        logger.exception("work_panel requirements summary failed candidate=%s", candidate_id)
+
     cid = str(candidate_id)
     comms = CandidateWorkPanelCommsOut(
         messages_relative_url=f"{INBOX_MESSAGES_SCOPED}&candidateId={cid}",
@@ -172,4 +233,6 @@ async def load_candidate_work_panel(
         timeline=CandidateTimelineResponse(items=timeline_events),
         comms=comms,
         documents_summary=documents_summary,
+        requirements_summary=requirements_summary,
+        pipeline_overrides=pipeline_overrides,
     )

@@ -11,7 +11,15 @@ import CandidateRemindersSection from '../../../components/candidate/CandidateRe
 import { Modal } from '../../../components/Modal'
 import { isCandidateOperationallyTerminal } from '../../../utils/candidatePipelineCompleted'
 import StageTag from '../../../components/StageTag'
-import { docsIssuesPresent, docsPipelineBlocksForward } from '../../../utils/candidateStageDocPolicy'
+import {
+  docsIssuesPresent,
+  docsPipelineBlocksForward,
+  pipelineRelaxedRequirementsFromOverrides,
+  relaxRequirementBlockers,
+} from '../../../utils/candidateStageDocPolicy'
+import CandidateRequirementsWorkPanelPreview from '../../../components/candidate/CandidateRequirementsWorkPanelPreview'
+import type { CandidatePipelineOverride } from '../../../api/candidatePipelineOverrides'
+import type { WorkPanelRequirementsSummary } from '../../../utils/workPanelRequirements'
 import { canonicalStageKey } from '../../../utils/stageLabels'
 import { formatDateSafe } from '../candidateUtils'
 import { buildInboxHubPath } from '../../../utils/inboxDeepLinks'
@@ -43,6 +51,9 @@ type CandidatesSelectedPanelProps = {
   nextActionDetailsOpenTrigger: number
   docsBlockers: { missing: string[]; problematic: string[]; inProgress: string[] }
   docsBlockersLoading: boolean
+  usesRequirementBlockers?: boolean
+  previewRequirementsSummary?: WorkPanelRequirementsSummary | null
+  previewPipelineOverrides?: CandidatePipelineOverride[]
   docsRailEmbeddedSummary: CandidateDocsRailEmbeddedDocumentsSummary
   canUseTeamWorkPanelAssigneeScope: boolean
   workPanelAssigneeScope: 'mine' | 'team'
@@ -87,6 +98,9 @@ export function CandidatesSelectedPanel({
   nextActionDetailsOpenTrigger,
   docsBlockers,
   docsBlockersLoading,
+  usesRequirementBlockers = false,
+  previewRequirementsSummary = null,
+  previewPipelineOverrides = [],
   docsRailEmbeddedSummary,
   canUseTeamWorkPanelAssigneeScope,
   workPanelAssigneeScope,
@@ -126,17 +140,30 @@ export function CandidatesSelectedPanel({
     : null
 
   // Hooks must run every render — never place `return` above them (React #310 when selection appears).
+  const relaxedRequirements = useMemo(
+    () => pipelineRelaxedRequirementsFromOverrides(previewPipelineOverrides),
+    [previewPipelineOverrides],
+  )
+
+  const effectiveBlockers = useMemo(
+    () =>
+      usesRequirementBlockers
+        ? relaxRequirementBlockers(docsBlockers, relaxedRequirements)
+        : docsBlockers,
+    [docsBlockers, relaxedRequirements, usesRequirementBlockers],
+  )
+
   const docsIssues = useMemo(
     () =>
-      selectedCandidate ? docsIssuesPresent(docsBlockers, docsBlockersLoading) : false,
-    [selectedCandidate, docsBlockers, docsBlockersLoading],
+      selectedCandidate ? docsIssuesPresent(effectiveBlockers, docsBlockersLoading) : false,
+    [selectedCandidate, effectiveBlockers, docsBlockersLoading],
   )
   const docsPipelineBlocking = useMemo(
     () =>
       selectedCandidate && stageCode
-        ? docsPipelineBlocksForward(stageCode, docsBlockers, docsBlockersLoading)
+        ? docsPipelineBlocksForward(stageCode, effectiveBlockers, docsBlockersLoading)
         : false,
-    [selectedCandidate, stageCode, docsBlockers, docsBlockersLoading],
+    [selectedCandidate, stageCode, effectiveBlockers, docsBlockersLoading],
   )
 
   if (!selectedCandidate) return null
@@ -334,24 +361,41 @@ export function CandidatesSelectedPanel({
         />
 
         {!selectedCandidate.masked ? (
-          <CandidateDocsRailPanel
-            key={`docs-rail:${selectedCandidate.id}`}
-            candidateId={String(selectedCandidate.id)}
-            embeddedDocumentsSummary={docsRailEmbeddedSummary}
-            ownerContext={docsOwnerContext}
-            uploadBusy={false}
-            onUpload={() => onOpenDocuments(String(selectedCandidate.id))}
-            onLoadedBlockers={(b) =>
-              onDocsLoadedBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })
-            }
-            onLoadingChange={onDocsLoadingChange}
-            refreshTrigger={0}
-            onSelectType={(typeCode) => onDocsSelectType(String(selectedCandidate.id), typeCode)}
-            pollingEnabled={false}
-            stageSummaryLabel={stageSummaryLabel}
-            docsPipelineBlocking={!selectedCandidate.masked && docsPipelineBlocking}
-            blockersPresentation={previewOperationallyTerminal ? 'historical' : 'operational'}
-          />
+          <>
+            {usesRequirementBlockers ? (
+              <CandidateRequirementsWorkPanelPreview
+                items={previewRequirementsSummary?.items ?? []}
+                loading={docsBlockersLoading}
+              />
+            ) : null}
+            <CandidateDocsRailPanel
+              key={`docs-rail:${selectedCandidate.id}`}
+              candidateId={String(selectedCandidate.id)}
+              embeddedDocumentsSummary={docsRailEmbeddedSummary}
+              ownerContext={docsOwnerContext}
+              uploadBusy={false}
+              onUpload={() => onOpenDocuments(String(selectedCandidate.id))}
+              suppressBlockerCallbacks={usesRequirementBlockers}
+              onLoadedBlockers={
+                usesRequirementBlockers
+                  ? undefined
+                  : (b) =>
+                      onDocsLoadedBlockers({
+                        missing: b.missing,
+                        problematic: b.problematic,
+                        inProgress: b.inProgress,
+                      })
+              }
+              onLoadingChange={onDocsLoadingChange}
+              refreshTrigger={0}
+              onSelectType={(typeCode) => onDocsSelectType(String(selectedCandidate.id), typeCode)}
+              pollingEnabled={false}
+              stageSummaryLabel={stageSummaryLabel}
+              docsPipelineBlocking={!selectedCandidate.masked && docsPipelineBlocking}
+              blockersPresentation={previewOperationallyTerminal ? 'historical' : 'operational'}
+              hideDocumentTypeChecklist={usesRequirementBlockers}
+            />
+          </>
         ) : null}
 
         <div className="space-y-1.5">

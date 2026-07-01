@@ -210,6 +210,14 @@ async def build_handoff_snapshot_payload_v1(
             candidate_block[key] = flat.get(key)
     await enrich_snapshot_experience(db, agency_tid, candidate, candidate_block)
 
+    from backend.app.services.candidate_evidence_service import build_requirement_fulfillments_for_candidate
+
+    requirement_fulfillments = await build_requirement_fulfillments_for_candidate(
+        db,
+        tenant_id=agency_tid,
+        candidate_id=str(candidate.id),
+    )
+
     lead_id = str(app.lead_id) if app and getattr(app, "lead_id", None) else None
     app_source = str(app.source) if app else (getattr(candidate, "source", None) or None)
     if app_source is not None:
@@ -236,6 +244,7 @@ async def build_handoff_snapshot_payload_v1(
         "application": application_block,
         "documents": documents_out,
         "expected_documents": applicability_out,
+        "requirement_fulfillments": requirement_fulfillments,
         "notes_summary": getattr(candidate, "note", None),
         "source": {
             "lead_id": lead_id,

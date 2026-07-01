@@ -69,6 +69,9 @@ RecruitmentApplication = _load_model_module("recruitment_application").Recruitme
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
+candidate_evidence_module = _load_model_module("candidate_evidence")
+CandidateEvidence = candidate_evidence_module.CandidateEvidence  # type: ignore[attr-defined]
+CandidateEvidenceDocument = candidate_evidence_module.CandidateEvidenceDocument  # type: ignore[attr-defined]
 ContactAttempt = _load_model_module("contact_attempt").ContactAttempt  # type: ignore[attr-defined]
 Stage = _load_model_module("stage").Stage  # type: ignore[attr-defined]
 MagicLink = _load_model_module("magic_link").MagicLink  # type: ignore[attr-defined]
@@ -211,6 +214,8 @@ __all__ = [
     "Candidate",
     "RecruitmentApplication",
     "CandidateHandoff",
+    "CandidateEvidence",
+    "CandidateEvidenceDocument",
     "ContactAttempt",
     "Document",
     "DocumentType",

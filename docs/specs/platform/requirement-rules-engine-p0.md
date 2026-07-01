@@ -14,6 +14,8 @@
 | [`field-registry-card-configuration.md`](field-registry-card-configuration.md) | Canonical field codes; requirement rules reference `qualified_code` only |
 | [`process-engine.md`](process-engine.md) | Transition / handoff evaluation consumes requirement results; Field & Document Requirement Registries migrate here |
 | [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (**v1 closed** §20); feeds back into requirement satisfaction |
+| [`requirement-evidence-model-p0.md`](requirement-evidence-model-p0.md) | **Requirement / Accepted Evidence / Candidate Evidence** — PE gates on requirement satisfaction (ADR-016) |
+| [`requirement-document-slots-p0.md`](requirement-document-slots-p0.md) | **Superseded bridge** — slot terminology; migrate to requirement-evidence model |
 | [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) | Downstream expiry notification events (post-v1) |
 | P10A Presentation Rules | **Separate layer** — UI visibility only; see §9 |
 
@@ -185,6 +187,8 @@ Canonical rule types for P0/P1 schema design:
 |------|------|---------|---------|
 | Field required | `field_required` | Canonical field must be populated | `platform.identity.citizenship` required before handoff |
 | Document required | `document_required` | Document type or pack item must be present / verified | `passport` blocking for `driver_ce` pack |
+| Document slot required | `document_slot_required` | **Bridge** — maps to `requirement_required`; migrate to ADR-016 |
+| Requirement required | `requirement_required` | Business requirement satisfied via Candidate Evidence + Document Runtime | `legal_stay_confirmation` fulfilled (not “visa present”) |
 | Eligibility | `eligibility` | Conditional requirement based on entity attributes | citizenship ∉ EU → `work_permit` document required |
 | Gate blocked | `gate_blocked` | Hard stop with reason code | duplicate active candidate → block create |
 | Stage requirement | `stage_requirement` | Requirements to enter or leave a PE system stage | cannot enter `ready_for_handoff` without phone + code95 |

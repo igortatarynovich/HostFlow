@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
@@ -35,9 +35,18 @@ APPROVE_OVERRIDE_ROLES = (Role.manager, Role.administrator, Role.superadmin)
 
 
 class PipelineOverrideCreateIn(BaseModel):
-    doc_type_code: str = Field(min_length=1, max_length=128)
+    doc_type_code: Optional[str] = Field(default=None, max_length=128)
+    requirement_code: Optional[str] = Field(default=None, max_length=128)
     reason: str = Field(min_length=8, max_length=4000)
     requested_scope: str = Field(default="pipeline", description="pipeline | both")
+
+    @model_validator(mode="after")
+    def exactly_one_target(self) -> "PipelineOverrideCreateIn":
+        has_doc = bool(str(self.doc_type_code or "").strip())
+        has_req = bool(str(self.requirement_code or "").strip())
+        if has_doc == has_req:
+            raise ValueError("exactly_one_override_target")
+        return self
 
 
 class PipelineOverrideApproveIn(BaseModel):
@@ -54,11 +63,15 @@ def _map_value_error(exc: Exception) -> HTTPException:
     mapping = {
         "invalid_doc_type": (400, "invalid_doc_type"),
         "doc_type_not_overridable": (400, "doc_type_not_overridable"),
+        "requirement_not_overridable": (400, "requirement_not_overridable"),
+        "missing_override_target": (400, "missing_override_target"),
+        "ambiguous_override_target": (400, "ambiguous_override_target"),
+        "exactly_one_override_target": (400, "exactly_one_override_target"),
         "invalid_requested_scope": (400, "invalid_requested_scope"),
         "invalid_granted_scope": (400, "invalid_granted_scope"),
         "reason_too_short": (400, "reason_too_short"),
         "reason_too_long": (400, "reason_too_long"),
-        "pending_exists": (409, "pending_override_exists_for_doc_type"),
+        "pending_exists": (409, "pending_override_exists"),
         "not_found": (404, "override_not_found"),
         "not_pending": (409, "override_not_pending"),
         "not_approved": (409, "override_not_approved"),
@@ -144,6 +157,7 @@ async def post_pipeline_override(
             candidate_id=str(candidate_id),
             actor_id=current_user.sub,
             doc_type_code=body.doc_type_code,
+            requirement_code=body.requirement_code,
             reason=body.reason,
             requested_scope=body.requested_scope,
         )
@@ -159,8 +173,11 @@ async def post_pipeline_override(
         actor_id=current_user.sub,
         payload={
             "override_id": created["id"],
-            "doc_type_code": created["doc_type_code"],
+            "doc_type_code": created.get("doc_type_code"),
+            "requirement_code": created.get("requirement_code"),
             "requested_scope": created["requested_scope"],
+            "reason": created["reason"],
+            "requested_by_user_id": created.get("requested_by_user_id"),
         },
     )
     await db.commit()
@@ -222,8 +239,12 @@ async def post_pipeline_override_approve(
         actor_id=current_user.sub,
         payload={
             "override_id": updated["id"],
-            "doc_type_code": updated["doc_type_code"],
+            "doc_type_code": updated.get("doc_type_code"),
+            "requirement_code": updated.get("requirement_code"),
             "granted_scope": updated["granted_scope"],
+            "review_note": updated.get("review_note"),
+            "reviewed_by_user_id": updated.get("reviewed_by_user_id"),
+            "reviewed_at": updated.get("reviewed_at"),
         },
     )
     await db.commit()
@@ -282,7 +303,14 @@ async def post_pipeline_override_reject(
         entity_type=AuditEntityType.candidate,
         entity_id=str(candidate_id),
         actor_id=current_user.sub,
-        payload={"override_id": updated["id"], "doc_type_code": updated["doc_type_code"]},
+        payload={
+            "override_id": updated["id"],
+            "doc_type_code": updated.get("doc_type_code"),
+            "requirement_code": updated.get("requirement_code"),
+            "review_note": updated.get("review_note"),
+            "reviewed_by_user_id": updated.get("reviewed_by_user_id"),
+            "reviewed_at": updated.get("reviewed_at"),
+        },
     )
     await db.commit()
     return updated
@@ -340,7 +368,14 @@ async def post_pipeline_override_revoke(
         entity_type=AuditEntityType.candidate,
         entity_id=str(candidate_id),
         actor_id=current_user.sub,
-        payload={"override_id": updated["id"], "doc_type_code": updated["doc_type_code"]},
+        payload={
+            "override_id": updated["id"],
+            "doc_type_code": updated.get("doc_type_code"),
+            "requirement_code": updated.get("requirement_code"),
+            "review_note": updated.get("review_note"),
+            "reviewed_by_user_id": updated.get("reviewed_by_user_id"),
+            "reviewed_at": updated.get("reviewed_at"),
+        },
     )
     await db.commit()
     return updated

@@ -2856,11 +2856,11 @@ async def patch_candidate(
 
 @router.delete(
     "/{candidate_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
 )
 @router.delete(
     "/{candidate_id}/",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
     include_in_schema=False,
 )
 async def delete_candidate(

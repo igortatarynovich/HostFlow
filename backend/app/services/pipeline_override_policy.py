@@ -20,6 +20,14 @@ SCOPE_BOTH = "both"
 VALID_REQUESTED_SCOPES = frozenset({SCOPE_PIPELINE, SCOPE_BOTH})
 VALID_GRANTED_SCOPES = frozenset({SCOPE_PIPELINE, SCOPE_BOTH})
 
+# Requirement codes that must never receive a pipeline waiver (identity / work authorization gates).
+NON_OVERRIDABLE_REQUIREMENT_CODES: frozenset[str] = frozenset(
+    {
+        "identity_document",
+        "work_authorization",
+    }
+)
+
 STATUS_PENDING = "pending"
 STATUS_APPROVED = "approved"
 STATUS_REJECTED = "rejected"

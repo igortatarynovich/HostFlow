@@ -302,6 +302,13 @@ async def evaluate_candidate_requirements(
             tenant_id=str(tenant_id).strip(),
             candidate_id=str(candidate.id),
         )
+        from backend.app.services.candidate_evidence_service import load_candidate_evidence_snapshots
+
+        candidate_evidence = await load_candidate_evidence_snapshots(
+            db,
+            tenant_id=str(tenant_id).strip(),
+            candidate_id=str(candidate.id),
+        )
         return await evaluate_entity_requirements(
             db,
             tenant_id=str(tenant_id).strip(),
@@ -309,6 +316,7 @@ async def evaluate_candidate_requirements(
             context=str(context or READINESS_CONTEXT).strip().lower(),
             normalized_payload=normalized_payload,
             documents=documents,
+            candidate_evidence_by_requirement=candidate_evidence,
             entity_type="candidate",
             entity_id=str(candidate.id),
             stage_code=stage_code,

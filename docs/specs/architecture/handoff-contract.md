@@ -64,7 +64,9 @@
 
 ### B.4 Документы и поля
 
-- **Документы:** не копируются; доступ HR через существующий Document Hub + workforce-scoped API; связь сотрудник↔документ — **`document_entity_links`** (MVP), см. roadmap.
+- **Документы:** не копируются; доступ HR через Document Hub + workforce-scoped API; связь сотрудник↔документ — **`document_entity_links`** (MVP), см. roadmap.
+- **Requirements & Evidence (ADR-016):** handoff передаёт **`requirement_fulfillments[]`** — для каждого Requirement: `requirement_code`, `chosen_evidence_variant_code`, `document_id`(s), extracted fields, recruitment verification. HR не выводит legal stay из flat document list. Канон: [`requirement-evidence-model-p0.md`](../platform/requirement-evidence-model-p0.md).
+- **Candidate Evidence:** operational fact at handoff — см. ADR-016; snapshot materializes fulfillments from `candidate_evidence` rows (Phase 4).
 - **Кандидат после передачи:** может оставаться read-only для recruitment в зависимости от handoff state (см. `handoff.py` blocking rules).
 - **WorkforceEmployee:** каноническое представление «принятого в HR» файла; **идемпотентно** по `candidate_id` в рамках tenant.
 

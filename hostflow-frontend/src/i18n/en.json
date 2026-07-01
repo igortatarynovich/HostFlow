@@ -5587,6 +5587,71 @@
         "blocked_eligibility": "Workforce eligibility blocks handoff ({status}). Check documents and vacancy assignment.",
         "blocked_eligibility_generic": "Workforce eligibility blocks handoff. Check documents and vacancy assignment."
       },
+      "stage_blocked_by_requirements": {
+        "title": "Blocked by requirements",
+        "description_generic": "Confirm all requirements before moving forward."
+      },
+      "requirements_checklist": {
+        "title": "Requirements",
+        "subtitle": "Confirm each requirement — choose evidence, link documents, then approve.",
+        "confirm_hint": "Choose how you confirm this requirement, then link supporting documents.",
+        "all_confirmed": "All confirmed",
+        "pending_count": "{count} open",
+        "progress": "{fulfilled}/{total} confirmed",
+        "empty": "No requirements for this candidate profile.",
+        "not_applicable_hint": "Not required for this candidate profile.",
+        "evidence_picker_label": "Confirm with",
+        "select_evidence": "Select evidence",
+        "selected_variant": "Evidence",
+        "linked_documents": "Linked documents",
+        "no_linked_documents": "No documents linked yet.",
+        "no_files": "No files",
+        "linked": "Linked",
+        "link_document": "Link document",
+        "link_btn": "Link",
+        "upload_first": "Upload a matching document first, then link it here.",
+        "approve": "Approve",
+        "reject": "Reject",
+        "replace": "Replace evidence",
+        "reject_reason_placeholder": "Reason (optional)",
+        "confirm_reject": "Confirm reject",
+        "rejection_reason": "Rejection reason: {reason}",
+        "toast_selected": "Evidence selected",
+        "toast_linked": "Document linked",
+        "toast_approved": "Requirement approved",
+        "toast_rejected": "Evidence rejected",
+        "toast_replaced": "Evidence replaced",
+        "status": {
+          "missing": "Missing",
+          "selected": "Selected",
+          "pending_review": "Pending review",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "superseded": "Superseded",
+          "not_applicable": "Not applicable"
+        },
+        "requirements": {
+          "identity_document": "Identity document",
+          "legal_stay_confirmation": "Legal stay confirmation",
+          "driver_license_with_code95": "Driver license with Code 95",
+          "tachograph_card": "Tachograph card",
+          "work_authorization": "Work authorization"
+        },
+        "variants": {
+          "identity_any": "Passport, ID card, or national ID",
+          "legal_stay_any": "Visa, residence card, or karta pobytu",
+          "combined_eu_license": "EU license with Code 95 (combined)",
+          "separate_documents": "Driver license + Code 95 (separate)",
+          "tacho_any": "Tachograph card",
+          "work_permit_any": "Work permit or oświadczenie"
+        },
+        "purpose": {
+          "identification": "Prove the candidate's identity",
+          "legal_stay": "Confirm legal stay in the country",
+          "driver_qualification": "Confirm driving qualification",
+          "right_to_work": "Confirm right to work"
+        }
+      },
       "transfer_readiness": {
         "badge": "Transfer readiness",
         "hint": "Transfer Policy decision — no local checklist gate rules.",
@@ -5619,6 +5684,7 @@
       },
       "stage_decision": {
         "blocked_title": "Blocked by required documents",
+        "blocked_title_requirements": "Blocked by unconfirmed requirements",
         "blocked_title_vacancy": "Assign a vacancy before moving forward",
         "blocked_title_contact_attempt": "Register a contact attempt before moving forward",
         "docs_blocking_generic": "Documents block moving forward — see checklist",

@@ -5,7 +5,8 @@ export type PipelineOverrideStatus = 'pending' | 'approved' | 'rejected' | 'revo
 
 export type CandidatePipelineOverride = {
   id: string
-  doc_type_code: string
+  doc_type_code?: string | null
+  requirement_code?: string | null
   status: PipelineOverrideStatus
   requested_scope: PipelineOverrideScope
   granted_scope?: PipelineOverrideScope | null
@@ -28,7 +29,12 @@ export async function listCandidatePipelineOverrides(candidateId: string): Promi
 
 export async function createCandidatePipelineOverride(
   candidateId: string,
-  body: { doc_type_code: string; reason: string; requested_scope: PipelineOverrideScope },
+  body: {
+    doc_type_code?: string
+    requirement_code?: string
+    reason: string
+    requested_scope: PipelineOverrideScope
+  },
 ): Promise<CandidatePipelineOverride> {
   const { data } = await api.post<CandidatePipelineOverride>(`/candidates/${candidateId}/pipeline-overrides`, body)
   return data

@@ -9,6 +9,12 @@ import {
 import { recordPerfMeasurement } from '../../../api/analytics'
 import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import type { CandidateDocsRailSummarySnapshot } from '../../../components/candidate/CandidateDocsRailPanel'
+import type { CandidatePipelineOverride } from '../../../api/candidatePipelineOverrides'
+import {
+  blockersFromWorkPanelRequirements,
+  parseWorkPanelRequirementsSummary,
+  type WorkPanelRequirementsSummary,
+} from '../../../utils/workPanelRequirements'
 import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
 import type { FriendlyErrorInfo } from '../../../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
@@ -104,19 +110,25 @@ export function useCandidatesWorkPanelPreview({
     { at: string; kind: string; source: string; title?: string | null; description?: string | null }[]
   >([])
 
-  // Docs blockers: seeded from work-panel bundle, then refined by CandidateDocsRailPanel.
+  // Pipeline blockers: seeded from work-panel requirements_summary (preferred) or legacy documents_summary.
   const [docsBlockers, setDocsBlockers] = useState<{
     missing: string[]
     problematic: string[]
     inProgress: string[]
   }>({ missing: [], problematic: [], inProgress: [] })
   const [docsRailLoading, setDocsRailLoading] = useState(false)
-  const [docsSeededFromWorkPanel, setDocsSeededFromWorkPanel] = useState(false)
-  const docsBlockersLoading = docsRailLoading && !docsSeededFromWorkPanel
+  const [blockersSeededFromWorkPanel, setBlockersSeededFromWorkPanel] = useState(false)
+  const [usesRequirementBlockers, setUsesRequirementBlockers] = useState(false)
+  const docsBlockersLoading = docsRailLoading && !blockersSeededFromWorkPanel
 
   /** Full checklist snapshot for `CandidateDocsRailPanel` (skips duplicate getSummary when seeded). */
   const [previewDocumentsSummarySnapshot, setPreviewDocumentsSummarySnapshot] =
     useState<CandidateDocsRailSummarySnapshot | null>(null)
+
+  const [previewRequirementsSummary, setPreviewRequirementsSummary] =
+    useState<WorkPanelRequirementsSummary | null>(null)
+
+  const [previewPipelineOverrides, setPreviewPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
 
   const [previewCommsLinks, setPreviewCommsLinks] = useState<CandidatesWorkPanelCommsLinks | null>(null)
 
@@ -173,20 +185,44 @@ export function useCandidatesWorkPanelPreview({
         })),
       )
 
-      const ds = data.documents_summary as Record<string, unknown> | null | undefined
-      if (ds && typeof ds === 'object') {
-        const snap = parseWorkPanelDocumentsSummary(ds)
-        setDocsBlockers({
-          missing: snap.required?.missing ?? [],
-          problematic: snap.required?.problematic ?? [],
-          inProgress: snap.required?.in_progress_types ?? [],
-        })
-        setDocsSeededFromWorkPanel(true)
-        setPreviewDocumentsSummarySnapshot(snap)
+      const requirementsSummaryRaw = data.requirements_summary as Record<string, unknown> | null | undefined
+      const reqSummary = parseWorkPanelRequirementsSummary(requirementsSummaryRaw)
+      if (reqSummary?.items?.length) {
+        setPreviewRequirementsSummary(reqSummary)
+        setUsesRequirementBlockers(true)
+        setDocsBlockers(blockersFromWorkPanelRequirements(reqSummary))
+        setBlockersSeededFromWorkPanel(true)
       } else {
-        setDocsSeededFromWorkPanel(false)
-        setPreviewDocumentsSummarySnapshot(null)
-        setDocsBlockers({ missing: [], problematic: [], inProgress: [] })
+        setPreviewRequirementsSummary(null)
+        setUsesRequirementBlockers(false)
+        const ds = data.documents_summary as Record<string, unknown> | null | undefined
+        if (ds && typeof ds === 'object') {
+          const snap = parseWorkPanelDocumentsSummary(ds)
+          setDocsBlockers({
+            missing: snap.required?.missing ?? [],
+            problematic: snap.required?.problematic ?? [],
+            inProgress: snap.required?.in_progress_types ?? [],
+          })
+          setBlockersSeededFromWorkPanel(true)
+          setPreviewDocumentsSummarySnapshot(snap)
+        } else {
+          setBlockersSeededFromWorkPanel(false)
+          setPreviewDocumentsSummarySnapshot(null)
+          setDocsBlockers({ missing: [], problematic: [], inProgress: [] })
+        }
+      }
+
+      const overridesRaw = data.pipeline_overrides as { items?: unknown[] } | null | undefined
+      const overrideItems = Array.isArray(overridesRaw?.items) ? overridesRaw.items : []
+      setPreviewPipelineOverrides(overrideItems as CandidatePipelineOverride[])
+
+      if (reqSummary?.items?.length) {
+        const ds = data.documents_summary as Record<string, unknown> | null | undefined
+        if (ds && typeof ds === 'object') {
+          setPreviewDocumentsSummarySnapshot(parseWorkPanelDocumentsSummary(ds))
+        } else {
+          setPreviewDocumentsSummarySnapshot(null)
+        }
       }
 
       setPreviewCommsLinks(parseWorkPanelComms(data.comms))
@@ -213,8 +249,11 @@ export function useCandidatesWorkPanelPreview({
       setPreviewCandidateExtra({ contact_policy_enabled: false, contact_attempt_count: 0 })
       setPreviewReminders([])
       setPreviewTimelineItems([])
-      setDocsSeededFromWorkPanel(false)
+      setBlockersSeededFromWorkPanel(false)
+      setUsesRequirementBlockers(false)
       setPreviewDocumentsSummarySnapshot(null)
+      setPreviewRequirementsSummary(null)
+      setPreviewPipelineOverrides([])
       setPreviewCommsLinks(null)
     } finally {
       setWorkPanelBundleLoading(false)
@@ -230,6 +269,8 @@ export function useCandidatesWorkPanelPreview({
       setPreviewTimelineError(null)
       setWorkPanelBundleLoading(false)
       setPreviewDocumentsSummarySnapshot(null)
+      setPreviewRequirementsSummary(null)
+      setPreviewPipelineOverrides([])
       setPreviewCommsLinks(null)
       return
     }
@@ -248,8 +289,11 @@ export function useCandidatesWorkPanelPreview({
   useEffect(() => {
     setDocsBlockers({ missing: [], problematic: [], inProgress: [] })
     setDocsRailLoading(false)
-    setDocsSeededFromWorkPanel(false)
+    setBlockersSeededFromWorkPanel(false)
+    setUsesRequirementBlockers(false)
     setPreviewDocumentsSummarySnapshot(null)
+    setPreviewRequirementsSummary(null)
+    setPreviewPipelineOverrides([])
     setPreviewCommsLinks(null)
   }, [selectedCandidateId])
 
@@ -363,6 +407,9 @@ export function useCandidatesWorkPanelPreview({
     setDocsBlockers,
     setDocsBlockersLoading: setDocsRailLoading,
     previewDocumentsSummarySnapshot,
+    previewRequirementsSummary,
+    previewPipelineOverrides,
+    usesRequirementBlockers,
     previewCommsLinks,
     handleCreatePreviewReminder,
     handleDocsRequestCreate,

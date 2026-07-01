@@ -20,12 +20,6 @@ from fastapi import HTTPException
 from backend.app.models.candidate import Candidate
 from backend.app.constants.stages import LABELS, TERMINAL_STATUSES, code_for_label
 from backend.app.constants.stages_adapter import PIPELINE_SEQUENCE
-from backend.app.modules.documents import crud as documents_crud
-from backend.app.modules.documents.crud import get_last_document_checks_map
-from backend.app.modules.documents.owner_summary import compute_owner_summary
-from backend.app.services.document_catalog import normalize_doc_type
-from backend.app.services.document_ruleset import load_default_ruleset
-from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 from backend.app.services.hiring_pipeline_gates import (
     HiringPipelineGates,
     contact_attempt_gate_applies,
@@ -103,6 +97,8 @@ def is_forward_pipeline_move(old_stage: Optional[str], new_stage: str) -> bool:
 
 
 def _norm_doc_type(value: str) -> str:
+    from backend.app.services.document_catalog import normalize_doc_type
+
     raw = str(value or "").strip().lower().replace("-", "_")
     if not raw:
         return ""
@@ -122,6 +118,29 @@ def _relax_blocker_lists(
         out: List[str] = []
         for x in xs:
             if _norm_doc_type(x) not in rset:
+                out.append(x)
+        return out
+
+    return filt(missing), filt(problematic), filt(in_progress)
+
+
+def _norm_requirement_code(value: str) -> str:
+    return str(value or "").strip().lower().replace("-", "_")
+
+
+def _relax_requirement_blocker_lists(
+    missing: List[str],
+    problematic: List[str],
+    in_progress: List[str],
+    relaxed: Set[str],
+) -> Tuple[List[str], List[str], List[str]]:
+    rset = {_norm_requirement_code(x) for x in relaxed if x}
+    rset.discard("")
+
+    def filt(xs: List[str]) -> List[str]:
+        out: List[str] = []
+        for x in xs:
+            if _norm_requirement_code(x) not in rset:
                 out.append(x)
         return out
 
@@ -183,34 +202,20 @@ def _minimal_serialized_doc(doc: Any, last_check: Any) -> Dict[str, Any]:
     }
 
 
-async def enforce_pipeline_doc_forward_block(
+async def _legacy_document_type_blockers(
     db: AsyncSession,
     *,
     tenant_id: str,
     candidate_id: str,
-    old_stage: Optional[str],
-    new_stage: str,
     extra: Dict[str, Any] | None,
     personal: Dict[str, Any] | None,
-    gates: HiringPipelineGates | None = None,
-) -> None:
-    """
-    Raise HTTP 409 when moving forward in the pipeline while document blockers apply
-    at the *current* stage (same rule as CandidateCard journey).
-    """
-    if not is_forward_pipeline_move(old_stage, new_stage):
-        return
-
-    if _norm_stage_token(new_stage) in TERMINAL_STATUSES:
-        return
-
-    resolved_gates = gates or await resolve_hiring_pipeline_gates(
-        db, tenant_id, candidate_id=candidate_id
-    )
-
-    canon_old = _norm_stage_token(old_stage)
-    if not canon_old:
-        return
+) -> Tuple[List[str], List[str], List[str]]:
+    """Fallback: ruleset summary doc-type lists (diagnostic / profiles without requirement rules)."""
+    from backend.app.modules.documents import crud as documents_crud
+    from backend.app.modules.documents.crud import get_last_document_checks_map
+    from backend.app.modules.documents.owner_summary import compute_owner_summary
+    from backend.app.services.document_ruleset import load_default_ruleset
+    from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 
     owner_ctx = _owner_context_for_docs(candidate_id=candidate_id, extra=extra, personal=personal)
 
@@ -244,21 +249,138 @@ async def enforce_pipeline_doc_forward_block(
 
     summary = compute_owner_summary(owner_ctx, ruleset_payload, serialized)
     req = summary.get("required") or {}
-    missing = list(req.get("missing") or [])
-    problematic = list(req.get("problematic") or [])
-    in_progress = list(req.get("in_progress_types") or [])
+    return (
+        list(req.get("missing") or []),
+        list(req.get("problematic") or []),
+        list(req.get("in_progress_types") or []),
+    )
+
+
+async def _requirement_fulfillment_blockers(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate: Candidate,
+) -> Optional[dict[str, Any]]:
+    from backend.app.services.candidate_evidence_service import (
+        build_requirements_checklist,
+        resolve_required_requirement_codes,
+    )
+
+    requirement_codes = await resolve_required_requirement_codes(
+        db,
+        tenant_id=str(tenant_id),
+        candidate=candidate,
+    )
+    if not requirement_codes:
+        return None
+    checklist = await build_requirements_checklist(db, tenant_id=str(tenant_id), candidate=candidate)
+    blockers = checklist.get("pipeline_blockers")
+    if not isinstance(blockers, dict):
+        return None
+    return blockers
+
+
+async def enforce_pipeline_doc_forward_block(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    old_stage: Optional[str],
+    new_stage: str,
+    extra: Dict[str, Any] | None,
+    personal: Dict[str, Any] | None,
+    gates: HiringPipelineGates | None = None,
+) -> None:
+    """
+    Raise HTTP 409 when moving forward in the pipeline while document blockers apply
+    at the *current* stage (same rule as CandidateCard journey).
+    """
+    if not is_forward_pipeline_move(old_stage, new_stage):
+        return
+
+    if _norm_stage_token(new_stage) in TERMINAL_STATUSES:
+        return
+
+    resolved_gates = gates or await resolve_hiring_pipeline_gates(
+        db, tenant_id, candidate_id=candidate_id
+    )
+
+    canon_old = _norm_stage_token(old_stage)
+    if not canon_old:
+        return
+
+    candidate = await db.get(Candidate, candidate_id)
+    if not candidate or str(candidate.tenant_id) != str(tenant_id):
+        return
+
+    req_blockers = await _requirement_fulfillment_blockers(
+        db,
+        tenant_id=tenant_id,
+        candidate=candidate,
+    )
+    if req_blockers is not None:
+        missing = list(req_blockers.get("missing_requirements") or [])
+        problematic = list(req_blockers.get("problematic_requirements") or [])
+        in_progress = list(req_blockers.get("pending_review_requirements") or [])
+        blocker_source = "requirement_fulfillment_v1"
+        unfulfilled = list(req_blockers.get("unfulfilled_requirements") or [])
+    else:
+        missing, problematic, in_progress = await _legacy_document_type_blockers(
+            db,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            extra=extra,
+            personal=personal,
+        )
+        blocker_source = "legacy_document_summary_v1"
+        unfulfilled = []
 
     # Lazy import: pipeline_overrides_service lives under candidates package (router pulls service).
-    from backend.app.api.v1.candidates.pipeline_overrides_service import approved_pipeline_relaxed_types
+    from backend.app.api.v1.candidates.pipeline_overrides_service import (
+        approved_pipeline_relaxed_requirements,
+        approved_pipeline_relaxed_types,
+    )
 
-    relaxed = await approved_pipeline_relaxed_types(db, tenant_id=tenant_id, candidate_id=candidate_id)
-    missing, problematic, in_progress = _relax_blocker_lists(missing, problematic, in_progress, relaxed)
+    if blocker_source == "legacy_document_summary_v1":
+        relaxed = await approved_pipeline_relaxed_types(db, tenant_id=tenant_id, candidate_id=candidate_id)
+        missing, problematic, in_progress = _relax_blocker_lists(missing, problematic, in_progress, relaxed)
+    elif blocker_source == "requirement_fulfillment_v1":
+        relaxed_reqs = await approved_pipeline_relaxed_requirements(
+            db, tenant_id=tenant_id, candidate_id=candidate_id
+        )
+        missing, problematic, in_progress = _relax_requirement_blocker_lists(
+            missing, problematic, in_progress, relaxed_reqs
+        )
+        unfulfilled = [
+            row
+            for row in unfulfilled
+            if _norm_requirement_code(str(row.get("requirement_code") or "")) not in relaxed_reqs
+        ]
 
     hard_block, _soft = docs_pipeline_blocks_forward_resolved(
         canon_old, missing, problematic, in_progress, resolved_gates
     )
     if not hard_block:
         return
+
+    if blocker_source == "requirement_fulfillment_v1":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "stage_blocked_by_requirements",
+                "message": "Cannot move stage forward: required recruitment confirmations are incomplete",
+                "missing_requirements": missing,
+                "problematic_requirements": problematic,
+                "pending_review_requirements": in_progress,
+                "unfulfilled_requirements": unfulfilled,
+                "blocker_source": blocker_source,
+                # Transitional aliases — values are requirement codes, not document types.
+                "missing_types": missing,
+                "problematic_types": problematic,
+                "in_progress_types": in_progress,
+            },
+        )
 
     raise HTTPException(
         status_code=409,
@@ -268,6 +390,7 @@ async def enforce_pipeline_doc_forward_block(
             "missing_types": missing,
             "problematic_types": problematic,
             "in_progress_types": in_progress,
+            "blocker_source": blocker_source,
         },
     )
 

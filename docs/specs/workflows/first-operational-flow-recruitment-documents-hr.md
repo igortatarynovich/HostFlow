@@ -132,6 +132,8 @@ Tenant → Company → Recruitment → Document Hub → HR
 
 **Документы:** хранятся в Document Hub; у записи указывается operational привязка (например `own_company_id`, связь с candidate, источник/модуль инициации — по вашей схеме БД).
 
+**Детальный flow:** [`recruitment-document-collection-handoff.md`](recruitment-document-collection-handoff.md) + [ADR-016](../architecture/ADR-016-requirement-evidence-document-separation.md) + [`requirement-evidence-model-p0.md`](../platform/requirement-evidence-model-p0.md). Рекрутер закрывает **Requirements** через **Candidate Evidence** (выбор Accepted Evidence → Document Instance); в HR уходит `requirement_fulfillments[]`, не угадывание по типам документов.
+
 ### 5.2 Handoff event
 
 **Recruitment** доводит кандидата до **`ready_for_hr`** (готовность к передаче в кадры) — это **финал воронки рекрутера**, не действие HR. При включённом agency handoff рекрутер **может** выставить `ready_for_hr`; **`hired`** / **`employed`** — зона **HR** (рекрутер не переводит на них через PATCH). См. [invariants…](../architecture/invariants-recruitment-hr-document-hub.md).
@@ -227,6 +229,9 @@ Tenant → Company → Recruitment → Document Hub → HR
 | [documents_workflow_contract.md](../modules/documents_workflow_contract.md) | Поля workflow документов (шаги, статусы) |
 | [glossary.md](../glossary.md) | Термины |
 | [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) + [ADR-002](../architecture/ADR-002-modular-recruitment-hr-boundary.md) | Канон пайплайна кандидата (бывший `candidate_pipeline.md` архивирован 2026-05-12) |
+| [recruitment-document-collection-handoff.md](recruitment-document-collection-handoff.md) | Слоты документов, variant selection, handoff payload |
+| [requirement-evidence-model-p0.md](../platform/requirement-evidence-model-p0.md) | Platform canon: 4 entities |
+| [ADR-016](../architecture/ADR-016-requirement-evidence-document-separation.md) | Requirement / Evidence / Document Instance / Candidate Evidence |
 
 ---
 

@@ -409,7 +409,7 @@ class CandidateWorkPanelCommsOut(BaseModel):
 
 
 class CandidateWorkPanelDocumentsSummaryOut(BaseModel):
-    """Subset of documents owner summary for list work-panel (blockers + readiness)."""
+    """Subset of documents owner summary for list work-panel (readiness metrics only)."""
 
     percent_ready: int = 0
     status: Optional[str] = None
@@ -420,12 +420,55 @@ class CandidateWorkPanelDocumentsSummaryOut(BaseModel):
     expiring_soon: List[Dict[str, Any]] = Field(default_factory=list)
 
 
+class CandidateWorkPanelLinkedDocumentOut(BaseModel):
+    document_id: Optional[str] = None
+    document_type_code: Optional[str] = None
+    status: Optional[str] = None
+
+
+class CandidateWorkPanelRequirementRowOut(BaseModel):
+    requirement_code: str
+    public_name: Optional[str] = None
+    fulfilled: bool = False
+    evaluation_status: Optional[str] = None
+    evidence_variant_code: Optional[str] = None
+    evidence_status: Optional[str] = None
+    linked_document: Optional[CandidateWorkPanelLinkedDocumentOut] = None
+
+
+class CandidateWorkPanelRequirementsSummaryOut(BaseModel):
+    all_fulfilled: bool = False
+    pipeline_blockers: Dict[str, Any] = Field(default_factory=dict)
+    items: List[CandidateWorkPanelRequirementRowOut] = Field(default_factory=list)
+
+
+class CandidateWorkPanelPipelineOverrideOut(BaseModel):
+    id: str
+    doc_type_code: Optional[str] = None
+    requirement_code: Optional[str] = None
+    status: str
+    requested_scope: str
+    granted_scope: Optional[str] = None
+    reason: str
+    review_note: Optional[str] = None
+    requested_by_user_id: Optional[str] = None
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class CandidateWorkPanelPipelineOverridesOut(BaseModel):
+    items: List[CandidateWorkPanelPipelineOverrideOut] = Field(default_factory=list)
+
+
 class CandidateWorkPanelResponse(BaseModel):
     profile: CandidateWorkPanelProfileOut
     reminders: List[ReminderOut]
     timeline: CandidateTimelineResponse
     comms: CandidateWorkPanelCommsOut
     documents_summary: Optional[CandidateWorkPanelDocumentsSummaryOut] = None
+    requirements_summary: Optional[CandidateWorkPanelRequirementsSummaryOut] = None
+    pipeline_overrides: Optional[CandidateWorkPanelPipelineOverridesOut] = None
 
 
 # --- Recruitment applications (intent layer read model) ----------------------

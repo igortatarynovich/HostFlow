@@ -4820,6 +4820,67 @@
         "blocked_eligibility": "Reguły workforce blokują przekazanie ({status}). Sprawdź dokumenty i przypisanie wakatu.",
         "blocked_eligibility_generic": "Reguły workforce blokują przekazanie. Sprawdź dokumenty i przypisanie wakatu."
       },
+      "requirements_checklist": {
+        "title": "Wymagania",
+        "subtitle": "Potwierdź każde wymaganie — wybierz dowód, powiąż dokumenty i zatwierdź.",
+        "confirm_hint": "Wybierz, czym potwierdzasz wymaganie, a następnie powiąż dokumenty.",
+        "all_confirmed": "Wszystko potwierdzone",
+        "pending_count": "Otwarte: {count}",
+        "progress": "Potwierdzone {fulfilled}/{total}",
+        "empty": "Brak wymagań dla tego profilu kandydata.",
+        "not_applicable_hint": "Niewymagane dla tego profilu kandydata.",
+        "evidence_picker_label": "Potwierdź przez",
+        "select_evidence": "Wybierz dowód",
+        "selected_variant": "Dowód",
+        "linked_documents": "Powiązane dokumenty",
+        "no_linked_documents": "Brak powiązanych dokumentów.",
+        "no_files": "Brak plików",
+        "linked": "Powiązany",
+        "link_document": "Powiąż dokument",
+        "link_btn": "Powiąż",
+        "upload_first": "Najpierw prześlij pasujący dokument, a potem powiąż go tutaj.",
+        "approve": "Zatwierdź",
+        "reject": "Odrzuć",
+        "replace": "Zamień dowód",
+        "reject_reason_placeholder": "Powód (opcjonalnie)",
+        "confirm_reject": "Potwierdź odrzucenie",
+        "rejection_reason": "Powód odrzucenia: {reason}",
+        "toast_selected": "Dowód wybrany",
+        "toast_linked": "Dokument powiązany",
+        "toast_approved": "Wymaganie potwierdzone",
+        "toast_rejected": "Dowód odrzucony",
+        "toast_replaced": "Dowód zamieniony",
+        "status": {
+          "missing": "Brak",
+          "selected": "Wybrany",
+          "pending_review": "Do weryfikacji",
+          "approved": "Zatwierdzony",
+          "rejected": "Odrzucony",
+          "superseded": "Zastąpiony",
+          "not_applicable": "Nie dotyczy"
+        },
+        "requirements": {
+          "identity_document": "Dokument tożsamości",
+          "legal_stay_confirmation": "Potwierdzenie legalnego pobytu",
+          "driver_license_with_code95": "Prawo jazdy z Code 95",
+          "tachograph_card": "Karta tachografu",
+          "work_authorization": "Uprawnienie do pracy"
+        },
+        "variants": {
+          "identity_any": "Paszport, dowód osobisty lub national ID",
+          "legal_stay_any": "Wiza, karta pobytu lub zezwolenie na pobyt",
+          "combined_eu_license": "Prawo jazdy UE z Code 95 (łącznie)",
+          "separate_documents": "Prawo jazdy + Code 95 (osobno)",
+          "tacho_any": "Karta tachografu",
+          "work_permit_any": "Work permit lub oświadczenie"
+        },
+        "purpose": {
+          "identification": "Potwierdź tożsamość kandydata",
+          "legal_stay": "Potwierdź legalny pobyt w kraju",
+          "driver_qualification": "Potwierdź kwalifikacje kierowcy",
+          "right_to_work": "Potwierdź prawo do pracy"
+        }
+      },
       "transfer_readiness": {
         "badge": "Gotowość do przekazania",
         "hint": "Decyzja Transfer Policy — bez lokalnych reguł checklisty.",

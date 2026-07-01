@@ -943,6 +943,13 @@ if not _DOCUMENTS_DISABLED:
         logger.warning("[router] candidate-docs skipped (explicit): %s", e)
 
 if not _DOCUMENTS_DISABLED:
+    try:
+        from backend.app.api.v1.candidate_requirements import router as candidate_requirements_router
+        app.include_router(candidate_requirements_router, prefix="/api/v1", tags=["candidate-requirements"])
+    except Exception as e:
+        logger.warning("[router] candidate-requirements skipped: %s", e)
+
+if not _DOCUMENTS_DISABLED:
     app.include_router(candidate_permits_router, prefix="/api/v1", tags=["candidate-permits"])
     app.include_router(candidate_visas_router, prefix="/api/v1", tags=["candidate-visas"])
     # Phase 2.1 (ADR-012): legacy candidate-tasks router was mounted here.

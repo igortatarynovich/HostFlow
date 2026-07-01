@@ -7,6 +7,7 @@ REQUIREMENT_RULES_V1 = "requirement_rules_v1"
 
 RULE_TYPE_FIELD_REQUIRED = "field_required"
 RULE_TYPE_DOCUMENT_REQUIRED = "document_required"
+RULE_TYPE_DOCUMENT_SLOT_REQUIRED = "document_slot_required"
 
 SOURCE_ENTITY_PROFILE = "entity_profile"
 SOURCE_DOCUMENT_PACK = "document_pack"
