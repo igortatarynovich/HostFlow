@@ -5,7 +5,9 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { api } from '../../api/client'
 import type { Candidate } from '../../api/types'
 import type { RequirementChecklistItem } from '../../api/candidateRequirements'
+import type { OperationalRequirementRow } from '../../api/types/candidateRequirements'
 import HandoffReadinessPane from '../../components/candidate/requirements/HandoffReadinessPane'
+import RequirementActivityPane from '../../components/candidate/requirements/RequirementActivityPane'
 import RequirementDataFieldsPane from '../../components/candidate/requirements/RequirementDataFieldsPane'
 import RequirementDetailPane, { useRequirementLabelForType } from '../../components/candidate/requirements/RequirementDetailPane'
 import RequirementScopedDocumentsDrawer from '../../components/candidate/requirements/RequirementScopedDocumentsDrawer'
@@ -32,11 +34,16 @@ function isRequirementOpen(item: RequirementChecklistItem): boolean {
   return !item.fulfilled
 }
 
-function pickDefaultRequirementCode(requirements: RequirementChecklistItem[]): string | null {
+function pickDefaultRequirementCode(
+  requirements: RequirementChecklistItem[],
+  operationalRequirements: OperationalRequirementRow[],
+): string | null {
+  const openOps = operationalRequirements.find((row) => row.status !== 'satisfied')
+  if (openOps) return openOps.requirement_code
   const open = requirements.find(isRequirementOpen)
   if (open) return open.requirement_code
   const first = requirements.find((item) => resolveRequirementRowStatus(item) !== 'not_applicable')
-  return first?.requirement_code ?? requirements[0]?.requirement_code ?? null
+  return first?.requirement_code ?? operationalRequirements[0]?.requirement_code ?? null
 }
 
 export default function CandidateRequirementsWorkspace() {
@@ -69,22 +76,34 @@ export default function CandidateRequirementsWorkspace() {
   } = useCandidateRequirementsChecklist(candidateId, refreshKey, bumpRefresh)
 
   const requirements = workspace?.checklist.requirements ?? []
+  const operationalRequirements = workspace?.operational_requirements ?? []
 
   const selectedItem = useMemo(
     () => requirements.find((item) => item.requirement_code === selectedRequirementCode) ?? null,
     [requirements, selectedRequirementCode],
   )
 
+  const selectedOperational = useMemo(
+    () =>
+      operationalRequirements.find((item) => item.requirement_code === selectedRequirementCode) ?? null,
+    [operationalRequirements, selectedRequirementCode],
+  )
+
   useEffect(() => {
-    if (!requirements.length) {
+    const total = requirements.length + operationalRequirements.length
+    if (!total) {
       setSelectedRequirementCode(null)
       return
     }
-    if (selectedRequirementCode && requirements.some((item) => item.requirement_code === selectedRequirementCode)) {
+    const knownCodes = new Set([
+      ...requirements.map((item) => item.requirement_code),
+      ...operationalRequirements.map((item) => item.requirement_code),
+    ])
+    if (selectedRequirementCode && knownCodes.has(selectedRequirementCode)) {
       return
     }
-    setSelectedRequirementCode(pickDefaultRequirementCode(requirements))
-  }, [requirements, selectedRequirementCode])
+    setSelectedRequirementCode(pickDefaultRequirementCode(requirements, operationalRequirements))
+  }, [requirements, operationalRequirements, selectedRequirementCode])
 
   const loadCandidate = useCallback(async () => {
     if (!candidateId) {
@@ -217,12 +236,23 @@ export default function CandidateRequirementsWorkspace() {
             <RequirementsWorkspaceNavList
               requirements={requirements}
               fieldRequirements={workspace.field_requirements.required_fields}
+              operationalRequirements={operationalRequirements}
               selectedRequirementCode={selectedRequirementCode}
               onSelectRequirement={setSelectedRequirementCode}
             />
 
             <div className="min-w-0">
-              {selectedItem ? (
+              {selectedOperational ? (
+                <RequirementActivityPane
+                  candidateId={candidateId}
+                  item={selectedOperational}
+                  canEdit={canEdit}
+                  onCompleted={() => {
+                    bumpRefresh()
+                    void reload()
+                  }}
+                />
+              ) : selectedItem ? (
                 <RequirementDetailPane
                   key={selectedItem.requirement_code}
                   item={selectedItem}

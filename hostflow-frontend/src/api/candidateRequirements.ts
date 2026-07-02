@@ -13,12 +13,12 @@ export type {
   RequirementEvaluationStatus,
   RequirementEvidenceDocument,
   RequirementPipelineBlockers,
-  RequirementsChecklistResponse,
   RequirementsWorkspaceResponse,
   WorkspaceFieldRequirement,
   WorkspaceFieldRequirementsSection,
   WorkspaceSummary,
   WorkspaceTransferReadiness,
+  OperationalRequirementRow,
 } from './types/candidateRequirements'
 
 export async function getCandidateRequirementsChecklist(
@@ -92,6 +92,18 @@ export async function replaceRequirementEvidence(
 ): Promise<CandidateEvidenceSnapshot> {
   const { data } = await api.post<CandidateEvidenceSnapshot>(
     `/candidates/${candidateId}/requirements/${requirementCode}/replace-evidence`,
+    body,
+  )
+  return data
+}
+
+export async function completeOperationalRequirementActivity(
+  candidateId: string,
+  requirementCode: string,
+  body: { activity_id: string },
+): Promise<OperationalRequirementRow> {
+  const { data } = await api.post<OperationalRequirementRow>(
+    `/candidates/${candidateId}/requirements/${requirementCode}/complete-activity`,
     body,
   )
   return data

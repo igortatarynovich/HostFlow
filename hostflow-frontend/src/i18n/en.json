@@ -5023,7 +5023,18 @@
         "handoff_subtitle": "Transfer Policy decision — same data as the handoff modal on the candidate card.",
         "handoff_ready_hint": "Requirements and policy checks passed — you can create a handoff.",
         "handoff_blocked_hint": "Handoff is blocked until all blockers above are resolved.",
-        "create_handoff": "Create handoff"
+        "create_handoff": "Create handoff",
+        "section_operational": "Operational actions",
+        "activity_subtitle": "Record a call or contact attempt to close this operational requirement.",
+        "activity_open": "Open",
+        "activity_satisfied": "Completed",
+        "activity_record_call": "Record call",
+        "activity_call_title": "Call candidate",
+        "activity_lead_continuity": "Already satisfied from lead intake — no duplicate first-contact task needed.",
+        "activity_linked": "Linked activity: {id}",
+        "operational": {
+          "first_contact_completed": "First contact completed"
+        }
       }
     },
     "candidate_card": {
@@ -6809,6 +6820,8 @@
         }
       },
       "pipeline_errors": {
+        "AD_NOT_MAPPED": "Meta ad is not mapped to a vacancy — pick a vacancy manually or add an ad_id mapping.",
+        "VACANCY_NOT_RESOLVED": "Vacancy could not be resolved — configure routing or pick a vacancy manually.",
         "LEAD_FIT_NO_MATCH": "Does not meet vacancy criteria — automatic candidate creation was skipped.",
         "LEAD_FIT_NEEDS_INFO": "Not enough data to verify fit — complete the lead or relax criteria, then Process."
       },

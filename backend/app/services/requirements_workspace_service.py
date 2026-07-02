@@ -16,6 +16,9 @@ from backend.app.requirement_rules.readiness_bridge import (
     resolve_entity_profile_code_for_candidate,
 )
 from backend.app.services.candidate_evidence_service import build_requirements_checklist
+from backend.app.services.operational_requirements_service import (
+    evaluate_operational_requirements_for_candidate,
+)
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     is_recruitment_recruiter_write_locked_by_handoff,
@@ -119,6 +122,7 @@ def build_workspace_summary(
     checklist: dict[str, Any],
     field_requirements: dict[str, Any],
     transfer_readiness: dict[str, Any],
+    operational_requirements: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     requirements = checklist.get("requirements") or []
     applicable = [
@@ -141,13 +145,24 @@ def build_workspace_summary(
 
     all_doc_slots_fulfilled = bool(checklist.get("all_fulfilled"))
     fields_satisfied = bool(field_requirements.get("satisfied"))
-    all_fulfilled = all_doc_slots_fulfilled and fields_satisfied
+    ops_rows = operational_requirements or []
+    open_ops = [row for row in ops_rows if isinstance(row, dict) and row.get("status") != "satisfied"]
+    ops_open_count = len(open_ops)
+    ops_fulfilled = sum(
+        1 for row in ops_rows if isinstance(row, dict) and row.get("status") == "satisfied"
+    )
+    all_fulfilled = all_doc_slots_fulfilled and fields_satisfied and ops_open_count == 0
 
     return {
-        "total_requirements": len(applicable) + len(field_requirements.get("required_fields") or []),
+        "total_requirements": len(applicable)
+        + len(field_requirements.get("required_fields") or [])
+        + len(ops_rows),
         "fulfilled_count": fulfilled_count
-        + sum(1 for row in field_requirements.get("required_fields") or [] if row.get("satisfied")),
-        "blocking_open_count": blocking_open_count + int(field_requirements.get("missing_count") or 0),
+        + sum(1 for row in field_requirements.get("required_fields") or [] if row.get("satisfied"))
+        + ops_fulfilled,
+        "blocking_open_count": blocking_open_count
+        + int(field_requirements.get("missing_count") or 0)
+        + ops_open_count,
         "pending_review_count": pending_review_count,
         "all_fulfilled": all_fulfilled,
         "handoff_ready": bool(transfer_readiness.get("transfer_allowed")),
@@ -193,6 +208,13 @@ async def build_requirements_workspace(
     )
     transfer_readiness = build_transfer_readiness_section(transfer_report)
 
+    operational_requirements = await evaluate_operational_requirements_for_candidate(
+        db,
+        tenant_id=tenant_str,
+        candidate=candidate,
+        entity_profile_code=entity_profile_code,
+    )
+
     role = _norm(user_role)
     locked, _lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
         db,
@@ -209,6 +231,7 @@ async def build_requirements_workspace(
         checklist=checklist,
         field_requirements=field_requirements,
         transfer_readiness=transfer_readiness,
+        operational_requirements=operational_requirements,
     )
 
     return {
@@ -223,7 +246,7 @@ async def build_requirements_workspace(
         "requirement_evaluation": requirement_evaluation,
         "transfer_readiness": transfer_readiness,
         "pipeline_blockers": pipeline_blockers,
-        "operational_requirements": [],
+        "operational_requirements": operational_requirements,
         "evaluated_at": _now_iso(),
     }
 

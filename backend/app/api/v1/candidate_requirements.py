@@ -22,6 +22,9 @@ from backend.app.services.candidate_evidence_service import (
     select_evidence_variant,
     serialize_candidate_evidence,
 )
+from backend.app.services.operational_requirements_service import (
+    complete_operational_requirement_activity,
+)
 from backend.app.services.requirements_workspace_service import build_requirements_workspace
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
@@ -49,6 +52,23 @@ class LinkDocumentRequest(BaseModel):
 
 class RejectEvidenceRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class CompleteOperationalActivityRequest(BaseModel):
+    activity_id: str = Field(..., min_length=1)
+
+
+class OperationalRequirementOut(BaseModel):
+    requirement_code: str
+    type: str
+    public_name: str
+    level: str
+    status: str
+    activity_id: Optional[str] = None
+    satisfied_via: Optional[str] = None
+    continuity_reasons: list[str] = Field(default_factory=list)
+    completed_at: Optional[str] = None
+    cta: dict[str, Any] = Field(default_factory=dict)
 
 
 async def _ensure_candidate_write(
@@ -258,3 +278,45 @@ async def post_replace_evidence(
     payload_out = serialize_candidate_evidence(row)
     await db.commit()
     return payload_out
+
+
+@router.post(
+    "/{candidate_id}/requirements/{requirement_code}/complete-activity",
+    response_model=OperationalRequirementOut,
+    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+)
+async def post_complete_operational_activity(
+    candidate_id: uuid.UUID,
+    requirement_code: str,
+    payload: CompleteOperationalActivityRequest,
+    db_tenant: Tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> OperationalRequirementOut:
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+    candidate = await _ensure_candidate_write(db, tenant_str, str(candidate_id), current_user)
+
+    try:
+        row = await complete_operational_requirement_activity(
+            db,
+            tenant_id=tenant_str,
+            candidate=candidate,
+            requirement_code=requirement_code,
+            activity_id=str(payload.activity_id),
+            user_id=str(current_user.sub),
+        )
+    except ValueError as exc:
+        err = str(exc)
+        detail_map = {
+            "unknown_operational_requirement": (404, "Operational requirement not found"),
+            "not_activity_requirement": (422, "Requirement is not activity-type"),
+            "activity_not_found": (404, "Activity not found"),
+            "activity_not_candidate_scoped": (422, "Activity must be candidate-scoped"),
+            "activity_wrong_candidate": (422, "Activity does not belong to this candidate"),
+            "activity_type_not_allowed": (422, "Activity type does not satisfy this requirement"),
+        }
+        status_code, detail = detail_map.get(err, (422, err))
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+
+    await db.commit()
+    return OperationalRequirementOut.model_validate(row)

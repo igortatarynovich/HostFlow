@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { useMemo, useState } from 'react'
 import { useI18n } from '../../../i18n'
 import type {
+  OperationalRequirementRow,
   RequirementChecklistItem,
   WorkspaceFieldRequirement,
 } from '../../../api/candidateRequirements'
@@ -17,6 +18,7 @@ type FilterMode = 'all' | 'open'
 type Props = {
   requirements: RequirementChecklistItem[]
   fieldRequirements: WorkspaceFieldRequirement[]
+  operationalRequirements: OperationalRequirementRow[]
   selectedRequirementCode: string | null
   onSelectRequirement: (code: string) => void
   className?: string
@@ -34,9 +36,14 @@ function isRequirementOpen(item: RequirementChecklistItem): boolean {
   return !item.fulfilled
 }
 
+function isOperationalOpen(item: OperationalRequirementRow): boolean {
+  return item.status !== 'satisfied'
+}
+
 export default function RequirementsWorkspaceNavList({
   requirements,
   fieldRequirements,
+  operationalRequirements,
   selectedRequirementCode,
   onSelectRequirement,
   className,
@@ -55,6 +62,12 @@ export default function RequirementsWorkspaceNavList({
     if (filter === 'open') return rows.filter((row) => !row.satisfied)
     return rows
   }, [fieldRequirements, filter])
+
+  const visibleOperational = useMemo(() => {
+    const rows = operationalRequirements || []
+    if (filter === 'open') return rows.filter(isOperationalOpen)
+    return rows
+  }, [filter, operationalRequirements])
 
   return (
     <section className={clsx('space-y-3', className)}>
@@ -165,6 +178,54 @@ export default function RequirementsWorkspaceNavList({
           </ul>
         )}
       </div>
+
+      {visibleOperational.length > 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="border-b border-slate-100 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.candidate_requirements.workspace.section_operational', {
+              defaultValue: 'Operational actions',
+            })}
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {visibleOperational.map((item) => {
+              const selected = selectedRequirementCode === item.requirement_code
+              const open = isOperationalOpen(item)
+              return (
+                <li key={item.requirement_code}>
+                  <button
+                    type="button"
+                    className={clsx(
+                      'flex w-full items-start justify-between gap-2 px-3 py-2.5 text-left transition',
+                      selected ? 'bg-brand-50' : 'hover:bg-slate-50',
+                    )}
+                    onClick={() => onSelectRequirement(item.requirement_code)}
+                  >
+                    <span className="min-w-0 text-sm font-medium text-slate-900">
+                      {t(`app.candidate_requirements.workspace.operational.${item.requirement_code}`, {
+                        defaultValue: item.public_name || item.requirement_code.replace(/_/g, ' '),
+                      })}
+                    </span>
+                    <span
+                      className={clsx(
+                        'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                        open
+                          ? 'border-amber-200 bg-amber-50 text-amber-950'
+                          : 'border-emerald-200 bg-emerald-50 text-emerald-900',
+                      )}
+                    >
+                      {open
+                        ? t('app.candidate_requirements.workspace.activity_open', { defaultValue: 'Open' })
+                        : t('app.candidate_requirements.workspace.activity_satisfied', {
+                            defaultValue: 'Completed',
+                          })}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
     </section>
   )
 }

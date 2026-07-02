@@ -111,6 +111,22 @@ export type WorkspaceTransferReadiness = {
   } | null
 }
 
+export type OperationalRequirementRow = {
+  requirement_code: string
+  type: string
+  public_name?: string
+  level?: string
+  status: 'open' | 'satisfied' | string
+  activity_id?: string | null
+  satisfied_via?: string | null
+  continuity_reasons?: string[]
+  completed_at?: string | null
+  cta?: {
+    action?: string
+    default_activity_type?: string
+  }
+}
+
 export type RequirementsWorkspaceResponse = {
   schema_version: string
   candidate_id: string
@@ -123,7 +139,7 @@ export type RequirementsWorkspaceResponse = {
   requirement_evaluation?: Record<string, unknown> | null
   transfer_readiness: WorkspaceTransferReadiness
   pipeline_blockers: RequirementPipelineBlockers
-  operational_requirements: Array<Record<string, unknown>>
+  operational_requirements: OperationalRequirementRow[]
   evaluated_at: string
 }
 

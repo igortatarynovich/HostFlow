@@ -4800,7 +4800,18 @@
         "handoff_subtitle": "Решение Transfer Policy — те же данные, что в модалке handoff на карточке кандидата.",
         "handoff_ready_hint": "Требования и проверки policy пройдены — можно создать handoff.",
         "handoff_blocked_hint": "Handoff заблокирован, пока не устранены блокеры выше.",
-        "create_handoff": "Создать handoff"
+        "create_handoff": "Создать handoff",
+        "section_operational": "Операционные действия",
+        "activity_subtitle": "Зафиксируйте звонок или контакт, чтобы закрыть это требование.",
+        "activity_open": "Открыто",
+        "activity_satisfied": "Выполнено",
+        "activity_record_call": "Записать звонок",
+        "activity_call_title": "Позвонить кандидату",
+        "activity_lead_continuity": "Уже закрыто на этапе лида — дублирующий first-contact не нужен.",
+        "activity_linked": "Связанная активность: {id}",
+        "operational": {
+          "first_contact_completed": "Первый контакт выполнен"
+        }
       }
     },
     "candidate_card": {
@@ -6576,6 +6587,8 @@
         }
       },
       "pipeline_errors": {
+        "AD_NOT_MAPPED": "Объявление Meta не замаплено на вакансию — выберите вакансию вручную или добавьте маппинг ad_id.",
+        "VACANCY_NOT_RESOLVED": "Вакансия не определена — настройте маршрутизацию или выберите вакансию вручную.",
         "LEAD_FIT_NO_MATCH": "Не проходит критерии вакансии — автосоздание кандидата отменено.",
         "LEAD_FIT_NEEDS_INFO": "Недостаточно данных для проверки фита — дополните лид или ослабьте критерии, затем Process."
       },

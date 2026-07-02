@@ -55,7 +55,10 @@ async def test_workspace_returns_bundle_shape(
     assert isinstance(transfer["blocking_reasons"], list)
 
     assert workspace["pipeline_blockers"]["source"] == "requirement_fulfillment_v1"
-    assert workspace["operational_requirements"] == []
+    ops = workspace["operational_requirements"]
+    assert len(ops) == 1
+    assert ops[0]["requirement_code"] == "first_contact_completed"
+    assert ops[0]["status"] == "open"
 
 
 async def test_workspace_handoff_ready_after_all_evidence_approved(
@@ -115,6 +118,28 @@ async def test_workspace_handoff_ready_after_all_evidence_approved(
             candidate_id=cid,
             evidence_id=evidence["evidence_id"],
         )
+
+    from datetime import datetime, timedelta, timezone
+
+    due_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    call = await client.post(
+        "/api/v1/activities",
+        headers=manager_headers,
+        json={
+            "title": "Call candidate",
+            "type": "call",
+            "entity_type": "candidate",
+            "entity_id": cid,
+            "due_at": due_at,
+        },
+    )
+    assert call.status_code == 201, call.text
+    complete = await client.post(
+        f"/api/v1/candidates/{cid}/requirements/first_contact_completed/complete-activity",
+        headers=manager_headers,
+        json={"activity_id": call.json()["id"]},
+    )
+    assert complete.status_code == 200, complete.text
 
     workspace = await get_requirements_workspace(client, manager_headers, cid)
     assert workspace["checklist"]["all_fulfilled"] is True

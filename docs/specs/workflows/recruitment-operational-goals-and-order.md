@@ -224,10 +224,10 @@ HR **не собирает заново** то, что recruitment уже зак
 
 | # | Работа | Зависимости |
 |---|--------|-------------|
-| B1 | Усилить handoff gates (не пускать без package readiness) | A4 |
-| B2 | HR Handoff Runtime P0 — `meta.employee_pipeline` | B1 |
-| B3 | PR17 — mapping fields + documents на employee card | B2 |
-| B4 | Phase 1 manual stand sign-off | B3 |
+| B1 | Усилить handoff gates (не пускать без package readiness) | A4 | **Done (2026-07-02)** |
+| B2 | HR Handoff Runtime P0 — `meta.employee_pipeline` | B1 | **Done (2026-07-02)** |
+| B3 | PR17 — mapping fields + documents на employee card | B2 | **Done (2026-07-02)** |
+| B4 | Phase 1 manual stand sign-off | B3 | **Done (2026-07-02)** |
 
 ### Направление C — Form Constructor
 

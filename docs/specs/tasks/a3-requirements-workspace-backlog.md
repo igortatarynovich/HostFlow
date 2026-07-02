@@ -420,9 +420,20 @@ Keys under `app.candidate_requirements.workspace.*` in `ru.json`, `en.json`, `pl
 
 ---
 
-### A3-B4 + FE6 — Operational requirements (Phase 2, after Slice 4)
+### A3-B4 + FE6 — Operational requirements (Phase 2, after Slice 4) — **Done (2026-07-02)**
 
 Activity-type requirements + continuity.
+
+**Scope:**
+
+- Catalog: `backend/app/requirement_rules/data/operational_requirements.v1.json` (`first_contact_completed`)
+- Evaluation + lead continuity bridge in `operational_requirements_service.py`
+- Workspace bundle includes `operational_requirements[]`; summary counts open ops rows
+- API: `POST /candidates/{id}/requirements/{code}/complete-activity`
+- FE: `RequirementActivityPane` + nav section in workspace
+- Tests: `backend/tests/api/test_operational_requirement_activity_closure.py`
+
+**Done when:** workspace shows activity requirement; complete-activity closes row; lead continuity auto-satisfies; FE records call. ✅
 
 ---
 
