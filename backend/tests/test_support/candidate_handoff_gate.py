@@ -6,7 +6,10 @@ from typing import Dict, Sequence
 
 from httpx import AsyncClient
 
-from backend.tests.test_support.candidate_evidence_helpers import RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS
+from backend.tests.test_support.candidate_evidence_helpers import (
+    RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS,
+    satisfy_first_contact_operational_requirement,
+)
 
 # Aligns with default checklist used by hiring / handoff gate (see test_documents._ensure_required_documents).
 DEFAULT_HANDOFF_GATE_DOC_TYPES: tuple[str, ...] = (
@@ -73,3 +76,8 @@ async def seed_documents_for_ready_for_handoff(
         json={"extra": {"recruitment_dossier_confirmed_blocks": list(RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS)}},
     )
     assert confirm.status_code == 200, confirm.text
+    await satisfy_first_contact_operational_requirement(
+        client,
+        manager_headers,
+        candidate_id=candidate_id,
+    )
