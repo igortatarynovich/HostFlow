@@ -11460,6 +11460,7 @@
       "header_kicker": "Szablony pól, etapów lejka i dokumentów używane przez wakaty.",
       "title": "Profile kandydatów",
       "subtitle": "Twórz i utrzymuj szablony profili, z których korzystają wakaty przy intake i pipeline.",
+      "deprecation_banner": "Macierze pól i dokumentów w config profilu są przestarzałe. Nową semantykę ustawiaj w Entity Profile, formularzach intake i układzie karty Field Registry. Dla mapowanych profili systemowych edycja config jest blokowana.",
       "fix_orphan_vacancies": "Przypisz wakaty bez profilu",
       "import": "Import",
       "bulk_update": "Masowa zmiana",

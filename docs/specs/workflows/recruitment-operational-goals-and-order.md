@@ -236,7 +236,7 @@ HR **не собирает заново** то, что recruitment уже зак
 | # | Работа | Зависимости |
 |---|--------|-------------|
 | C1 | ADR-013 (связка public form → Lead-first) | A5 | **Done (2026-07-02)** |
-| C2 | Bridge removal: deprecate `CandidateProfile.config` | C1 |
+| C2 | Bridge removal: deprecate `CandidateProfile.config` | C1 | **Done (2026-07-02)** |
 | C3 | Mapping / smoke для новых профилей (страна, роль) | Entity Profile seeds |
 | C4 | ADR-007 universal Forms platform | После C2 closure |
 

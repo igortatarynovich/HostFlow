@@ -11824,6 +11824,7 @@
       "header_kicker": "Reusable templates of fields, funnel stages, and documents for vacancies.",
       "title": "Candidate profiles",
       "subtitle": "Create and maintain profile templates that vacancies use for intake and pipeline.",
+      "deprecation_banner": "Field and document matrices in profile config are deprecated. Use Entity Profile, intake forms, and the Field Registry card layout for new semantics. Mapped system profiles reject config edits here.",
       "fix_orphan_vacancies": "Link vacancies without a profile",
       "import": "Import",
       "bulk_update": "Bulk update",

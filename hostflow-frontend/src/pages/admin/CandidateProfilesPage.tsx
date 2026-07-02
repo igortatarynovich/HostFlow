@@ -351,6 +351,13 @@ export default function CandidateProfilesPage() {
         subtitle={t('admin.candidate_profiles_page.subtitle')}
       />
 
+      <div
+        className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        role="status"
+      >
+        {t('admin.candidate_profiles_page.deprecation_banner')}
+      </div>
+
       <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-slate-200 bg-white p-4">
         <button
           className="btn-secondary btn-sm"

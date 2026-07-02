@@ -673,4 +673,18 @@ A3-{slice-id}: {title}
 
 ---
 
+### C2 — Bridge removal: deprecate `CandidateProfile.config` — **Done (2026-07-02)**
+
+**Scope:**
+
+- `config_deprecation.py` — block `field_configs` / `document_configs` writes for Entity Profile–mapped codes; warn on unmapped legacy writes
+- `POST/PATCH /candidate-profiles` returns `deprecation_warnings`; mapped profiles get HTTP 422 on semantic config edits
+- `candidate_layout_bridge` marks overlay with `layout_bridge_source=candidate_profile_deprecated_overlay`
+- Admin Candidate Profiles page deprecation banner
+- Tests: `backend/tests/entity_profile/test_entity_profile_c2_bridge_deprecation.py`
+
+**Done when:** mapped profiles resolve via registry facade; API rejects new semantic config on mapped codes; unmapped profiles still work with warnings. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*
