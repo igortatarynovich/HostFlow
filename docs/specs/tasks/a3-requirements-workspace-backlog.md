@@ -659,7 +659,7 @@ A3-{slice-id}: {title}
 - Signals: intake resolution, lead stage, note, ActivityLog stage/operational touch, lead call activity
 - Wired via `create_candidate_full(..., source_lead=lead)` on conversion paths
 - Continuity marker: `lead_to_candidate.first_contact_suppressed` in ActivityLog
-- Tests: `test_first_contact_continuity_guard.py` (12 cases incl. conversion integration)
+- Tests: `test_first_contact_continuity_guard.py` (14 cases incl. conversion integration + Guard 3 SLA dedup)
 
 **Done when:** contacted/request_info/pooled lead → convert → no duplicate first-contact reminder; greenfield unchanged. ✅
 

@@ -1,6 +1,6 @@
 # Slice 4 — Activity Continuity Guards (spec skeleton)
 
-**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Guard 2 **Done (2026-07-02)** — lead note + intake snapshot carried to candidate (`lead_continuity_v1`), audit marker, candidate card panel. Further guards (reminder SLA) incremental.  
+**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Guard 2 **Done (2026-07-02)** — lead note + intake snapshot carried to candidate (`lead_continuity_v1`), audit marker, candidate card panel. Guard 3 **Done (2026-07-01)** — suppress `uos_candidate_call` when lead has active open reminder (SLA/follow-up) or pooled intake; integration tests §7.1/§7.4. Further guards (request_info playbook alignment) incremental.  
 **Depends on:** intake routing & decisions (Slice 2), qualification summary read-layer (Slice 3).  
 **Intent:** tighten **Lead → Candidate** handoff so the system does not invent duplicate work or “day zero” contact semantics when the lead already has real activity.
 
@@ -168,6 +168,18 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
 - Tests: `backend/tests/modules/leads/test_lead_context_carry_guard.py`
 
 **Done when:** scenario 7 (§7) — lead note visible on candidate + link to source lead. ✅
+
+### 8.6 Guard 3 — no duplicate SLA / follow-up stack — **Done (2026-07-01)**
+
+**Goal:** On Lead → Candidate conversion, do not create default `uos_candidate_call` when the lead already has an **active open reminder** (next-action / follow-up SLA) or **pooled** intake resolution.
+
+**Implementation:**
+
+- `lead_first_contact_continuity.py` — `_lead_has_active_open_reminder`, reason `lead_reminder:active_next_action`
+- Existing pooled intake signal (`intake_resolution:pooled`) retained
+- Tests: `test_uos_skips_when_lead_has_active_followup_reminder`, `test_conversion_from_pooled_lead_skips_uos_call`
+
+**Done when:** scenarios §7.1 (call/follow-up on lead) and §7.4 (pool) — no duplicate candidate first-contact reminder. ✅
 
 ---
 

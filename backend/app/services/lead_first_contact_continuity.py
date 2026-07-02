@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.audit import ActivityLog
+from backend.app.models.reminder import ReminderStatus
 from backend.app.services.lead_context_carry import resolve_lead_note
 
 # Logged when default first-contact reminder is intentionally not created.
@@ -119,6 +120,31 @@ async def _activity_log_lead_operational_touch(
     return row is not None
 
 
+async def _lead_has_active_open_reminder(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_id: str,
+) -> bool:
+    """Any active lead-scoped reminder — avoid stacking uos_candidate_call on convert (Guard 3)."""
+    from backend.app.models import Reminder
+
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    row = (
+        await db.execute(
+            select(Reminder.id)
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id == str(lead_id),
+                Reminder.status.in_(active_statuses),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    return row is not None
+
+
 async def _lead_has_call_or_contact_activity(
     db: AsyncSession,
     *,
@@ -162,6 +188,8 @@ async def lead_first_contact_suppression_reasons(
         reasons.append("activity_log:lead.operational_touch")
     if await _lead_has_call_or_contact_activity(db, tenant_id=tenant_id, lead_id=lead_id):
         reasons.append("activity:lead.call_or_contact")
+    if await _lead_has_active_open_reminder(db, tenant_id=tenant_id, lead_id=lead_id):
+        reasons.append("lead_reminder:active_next_action")
 
     return _uniq_preserve(reasons)
 
