@@ -3133,6 +3133,8 @@ export default function CandidateCard(){
     primaryHandoffDestination,
   ])
 
+  const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
+
   const handleHandoffCreate = useCallback(async () => {
     if (!model?.id || !primaryHandoffDestination) return
     try {
@@ -3215,12 +3217,12 @@ export default function CandidateCard(){
   }, [handoffModalOpen, primaryHandoffDestination, handoffClientsForCompany, handoffClientLinkId])
 
   useEffect(() => {
-    if (isNew || !model?.id || isMasked) return
+    if (isNew || !model?.id || model?.masked === true) return
     const sp = new URLSearchParams(location.search || '')
     if (sp.get('handoff') !== '1') return
     if (!showAgencyHandoffHeader || handoffActiveBlock) return
     setHandoffModalOpen(true)
-  }, [handoffActiveBlock, isMasked, isNew, location.search, model?.id, showAgencyHandoffHeader])
+  }, [handoffActiveBlock, isNew, location.search, model?.id, model?.masked, showAgencyHandoffHeader])
 
   const handleReminderComplete = useCallback(async (id: string) => {
     try {
@@ -3405,7 +3407,6 @@ export default function CandidateCard(){
   )
 
   const candidateDataReadOnly = !isNew && candidateEditPhase !== 'editing'
-  const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
   const handoffReadonlySummary = useMemo(() => {
     if (!handoffActiveBlock || handoffLoading) return null
     const pending = handoffStatus?.pending
