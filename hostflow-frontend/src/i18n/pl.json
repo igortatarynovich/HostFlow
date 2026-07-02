@@ -6515,6 +6515,8 @@
         }
       },
       "pipeline_errors": {
+        "AD_NOT_MAPPED": "Reklama Meta nie jest zmapowana na ofertę — wybierz ofertę ręcznie lub dodaj mapowanie ad_id.",
+        "VACANCY_NOT_RESOLVED": "Nie udało się ustalić oferty — skonfiguruj routing lub wybierz ofertę ręcznie.",
         "LEAD_FIT_NO_MATCH": "Kryteria oferty niespełnione — pominięto autotworzenie kandydata.",
         "LEAD_FIT_NEEDS_INFO": "Za mało danych do oceny fit — uzupełnij lead lub zmień kryteria, potem Process."
       },

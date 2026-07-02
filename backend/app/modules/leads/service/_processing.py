@@ -62,7 +62,7 @@ from ._helpers import (
     _pick_lead_assignee_id,
     _rule_recruiter_id_from_normalized,
     _stamp_lead_qualification_preview_v1,
-    _triage_bypass_from_vacancy_fallback,
+    unresolved_vacancy_routing_error_code,
     _vacancy_allows_auto_convert_on_fit,
     _validate_company_id,
     _validate_recruiter_id,
@@ -360,7 +360,6 @@ async def process_normalized_lead(
 
     triage_gate_bypass = bool(
         force_candidate_conversion
-        or _triage_bypass_from_vacancy_fallback(normalized)
         or intake_vacancy_confirm_triage_bypass(normalized, vacancy_for_confirm)
     )
 
@@ -832,6 +831,11 @@ async def process_normalized_lead(
                     fit_reasons=list(routing_fit_reasons or []),
                     blocked_auto_convert=True,
                 )
+        assisted_routing_error = (
+            unresolved_vacancy_routing_error_code(normalized)
+            if not vacancy and not pool_manual_convert_ready
+            else None
+        )
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
@@ -839,7 +843,7 @@ async def process_normalized_lead(
             status="needs_routing",
             vacancy_id=lead.vacancy_id,
             normalized=normalized,
-            error=None,
+            error=assisted_routing_error,
             last_routed_at=now_marker,
         )
         await _emit_lead_event(
@@ -852,6 +856,7 @@ async def process_normalized_lead(
             outcome_entity_type="company",
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
+            error=assisted_routing_error,
         )
         await lead_custom_fields.sync_lead_custom_fields_from_normalized(
             db,
@@ -874,7 +879,7 @@ async def process_normalized_lead(
             outcome_entity_type="company",
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
-            error=None,
+            error=assisted_routing_error,
             is_new=created_new,
         )
 
@@ -984,13 +989,14 @@ async def process_normalized_lead(
 
     if not vacancy and not pool_manual_convert_ready and creates_candidate:
         needs_routing_lead_id = str(lead.id)
+        routing_error = unresolved_vacancy_routing_error_code(normalized)
         await crud.update_lead(
             db,
             lead,
             status="needs_routing",
             vacancy_id=None,
             normalized=normalized,
-            error="VACANCY_NOT_RESOLVED",
+            error=routing_error,
             last_routed_at=datetime.now(timezone.utc),
         )
         await _emit_lead_event(
@@ -1003,7 +1009,7 @@ async def process_normalized_lead(
             outcome_entity_type="company",
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
-            error="VACANCY_NOT_RESOLVED",
+            error=routing_error,
         )
         await lead_custom_fields.sync_lead_custom_fields_from_normalized(
             db,
@@ -1026,11 +1032,16 @@ async def process_normalized_lead(
             outcome_entity_type="company",
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
-            error="VACANCY_NOT_RESOLVED",
+            error=routing_error,
             is_new=created_new,
         )
 
     if ingest_decision.disposition != IngestDisposition.create_candidate.value:
+        disposition_routing_error = (
+            unresolved_vacancy_routing_error_code(normalized)
+            if not vacancy and not pool_manual_convert_ready
+            else None
+        )
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
@@ -1038,7 +1049,7 @@ async def process_normalized_lead(
             status="needs_routing",
             vacancy_id=lead.vacancy_id,
             normalized=normalized,
-            error=None,
+            error=disposition_routing_error,
             last_routed_at=now_marker,
         )
         await _emit_lead_event(
@@ -1051,6 +1062,7 @@ async def process_normalized_lead(
             outcome_entity_type="company",
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
+            error=disposition_routing_error,
         )
         await lead_custom_fields.sync_lead_custom_fields_from_normalized(
             db,
@@ -1070,7 +1082,7 @@ async def process_normalized_lead(
             outcome_entity_type="company",
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
-            error=None,
+            error=disposition_routing_error,
             is_new=created_new,
         )
 

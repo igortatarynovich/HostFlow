@@ -493,9 +493,8 @@ async def resolve_vacancy_for_lead_processing(
     3) Else: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids — prefer first vacancy with
        fit or no_criteria; if none pass, attach the **first resolvable** row in that order so ingest
        does not end with VACANCY_NOT_RESOLVED when the list is configured (no_fit / needs_info flow to triage).
-    4) Else: **Last resort** — oldest active open vacancy for the tenant (scoped to OwnCompany when possible);
-       stamps ``vacancy_routing_fallback_v1`` on ``normalized`` and bypasses assisted/fit triage gates in
-       ``process_normalized_lead`` so a candidate can still be created.
+    4) Else: return ``(None, None, [])`` — lead stays in ``needs_routing`` with ``AD_NOT_MAPPED`` or
+       ``VACANCY_NOT_RESOLVED`` (no silent fallback to an arbitrary open vacancy).
     """
     primary = await _resolve_vacancy(
         db, tenant_id, normalized, own_company_id=own_company_id
@@ -530,25 +529,16 @@ async def resolve_vacancy_for_lead_processing(
     if first_ordered_fallback is not None:
         v, st, rs = first_ordered_fallback
         return v, st, rs
-    v_last = await crud.last_resort_first_open_vacancy_for_tenant(
-        db,
-        tenant_id=tenant_id,
-        scoped_own_company_id=own_company_id,
-    )
-    if v_last is not None:
-        normalized["vacancy_routing_fallback_v1"] = {
-            "kind": "last_resort_first_active",
-            "vacancy_id": str(v_last.id),
-            "title": getattr(v_last, "title", None),
-        }
-        st, rs = evaluate_vacancy_for_lead(normalized, v_last.extra)
-        return v_last, st, rs
     return None, None, []
 
 
-def _triage_bypass_from_vacancy_fallback(normalized: Dict[str, Any]) -> bool:
-    raw = normalized.get("vacancy_routing_fallback_v1")
-    return isinstance(raw, dict) and raw.get("kind") == "last_resort_first_active"
+def unresolved_vacancy_routing_error_code(normalized: Dict[str, Any]) -> str:
+    """Pick operator-facing error when vacancy resolution finds nothing."""
+    ad_id = normalized.get("ad_id")
+    explicit = normalized.get("vacancy_id") or normalized.get("vacancy_id_hint")
+    if ad_id is not None and not explicit:
+        return "AD_NOT_MAPPED"
+    return "VACANCY_NOT_RESOLVED"
 
 
 def _stamp_lead_qualification_preview_v1(
