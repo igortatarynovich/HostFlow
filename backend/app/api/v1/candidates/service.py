@@ -793,6 +793,16 @@ async def create_candidate_full(
         await db.rollback()
     # UOS: default “call candidate” activity (deduped; tenant may disable via settings.uos_auto_activities_v1).
     try:
+        if source_lead is not None:
+            from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
+
+            await carry_lead_context_on_conversion(
+                db,
+                tenant_id=tenant_id,
+                lead=source_lead,
+                candidate=c,
+                actor_id=actor_id,
+            )
         from backend.app.services import uos_auto_activities
 
         await uos_auto_activities.ensure_candidate_created_call_task(

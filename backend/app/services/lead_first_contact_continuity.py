@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.audit import ActivityLog
+from backend.app.services.lead_context_carry import resolve_lead_note
 
 # Logged when default first-contact reminder is intentionally not created.
 FIRST_CONTACT_SUPPRESSED_ACTION = "lead_to_candidate.first_contact_suppressed"
@@ -69,7 +70,7 @@ def lead_first_contact_suppression_reasons_sync(lead: Any) -> List[str]:
     if stage in _LEAD_STAGES_POST_TOUCH:
         reasons.append(f"lead_stage:{stage}")
 
-    note = str(getattr(lead, "note", None) or "").strip()
+    note = resolve_lead_note(lead)
     if note:
         reasons.append("lead_note:present")
 

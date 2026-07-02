@@ -113,6 +113,7 @@ import CandidateNotesRailSection from '../components/candidate/CandidateNotesRai
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
 import CandidateRequirementsChecklist from '../components/candidate/CandidateRequirementsChecklist'
 import RequirementsWorkspaceSummaryCard from '../components/candidate/requirements/RequirementsWorkspaceSummaryCard'
+import { CandidateLeadOriginPanel } from '../components/candidate/CandidateLeadOriginPanel'
 import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
 import RecruitmentDossierChecklist from '../components/candidate/RecruitmentDossierChecklist'
 import TransferReadinessReport from '../components/candidate/TransferReadinessReport'
@@ -4779,7 +4780,12 @@ export default function CandidateCard(){
               ) : null}
 
               {showRequirementsSummaryCard ? (
-                <RequirementsWorkspaceSummaryCard
+                <>
+                  <CandidateLeadOriginPanel
+                    candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
+                    candidateNote={model.note}
+                  />
+                  <RequirementsWorkspaceSummaryCard
                   candidateId={String(model.id)}
                   workspace={requirementsWorkspace}
                   workspaceLoading={requirementsWorkspaceLoading}
@@ -4792,6 +4798,7 @@ export default function CandidateCard(){
                     setRequirementBlockersLoading(loading)
                   }}
                 />
+                </>
               ) : null}
 
               {showFullRequirementsChecklist ? (

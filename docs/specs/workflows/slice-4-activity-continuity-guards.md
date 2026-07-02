@@ -1,6 +1,6 @@
 # Slice 4 — Activity Continuity Guards (spec skeleton)
 
-**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Further guards (reminder SLA, context carry) incremental.  
+**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Guard 2 **Done (2026-07-02)** — lead note + intake snapshot carried to candidate (`lead_continuity_v1`), audit marker, candidate card panel. Further guards (reminder SLA) incremental.  
 **Depends on:** intake routing & decisions (Slice 2), qualification summary read-layer (Slice 3).  
 **Intent:** tighten **Lead → Candidate** handoff so the system does not invent duplicate work or “day zero” contact semantics when the lead already has real activity.
 
@@ -154,6 +154,21 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
    - **duplicate attach** to existing candidate → **no** fake first-contact;
    - **request_info** (or other non-greenfield intake) → suppression + **continuity preserved** (marker + no wrong “cold first call” default).
 
+### 8.5 Guard 2 — context carry (note + intake snapshot) — **Done (2026-07-02)**
+
+**Goal:** After Lead → Candidate conversion, recruiter sees **carried** lead context (note, intake decision), not an empty narrative.
+
+**Implementation:**
+
+- `backend/app/services/lead_context_carry.py` — `carry_lead_context_on_conversion`, `build_lead_continuity_snapshot`
+- Hook in `create_candidate_full(..., source_lead=...)` before UOS auto-activity
+- Candidate `extra.lead_continuity_v1` + `extra.source_lead_id`; lead note copied to `candidate.note` when empty
+- ActivityLog action `lead_to_candidate.context_carried`
+- FE: `CandidateLeadOriginPanel` on candidate card
+- Tests: `backend/tests/modules/leads/test_lead_context_carry_guard.py`
+
+**Done when:** scenario 7 (§7) — lead note visible on candidate + link to source lead. ✅
+
 ---
 
 ## References
@@ -163,4 +178,5 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
 - Slice 3 (read-only qualification context): `docs/specs/workflows/slice-3-qualification-summary-data-audit.md`
 - Intake / routing: `docs/specs/workflows/lead-intake-resolution-and-activity-continuity.md`
 - **Guard 1 code:** `backend/app/services/lead_first_contact_continuity.py`, gate in `backend/app/services/uos_auto_activities.py` (`ensure_candidate_created_call_task`, optional `source_lead`). Lead conversion passes `source_lead` via `create_candidate_full(..., source_lead=lead)` from `lead_candidate_conversion.py`, `service/_processing.py`, `service/_reroute.py`.
-- **Tests:** `backend/tests/modules/leads/test_first_contact_continuity_guard.py`
+- **Guard 2 code:** `backend/app/services/lead_context_carry.py`, hook in `create_candidate_full`; FE `CandidateLeadOriginPanel.tsx`
+- **Tests:** `backend/tests/modules/leads/test_first_contact_continuity_guard.py`, `backend/tests/modules/leads/test_lead_context_carry_guard.py`

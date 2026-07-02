@@ -5038,6 +5038,11 @@
       }
     },
     "candidate_card": {
+      "from_lead_badge": "Converted from lead",
+      "from_lead_hint": "Context from the lead intake is carried here so you do not start from scratch.",
+      "from_lead_stage": "Lead stage",
+      "from_lead_intake": "Intake decision",
+      "from_lead_intake_summary": "Intake summary",
       "actions": {
         "delete_request": "Request deletion",
         "delete_request_loading": "Sending request…",

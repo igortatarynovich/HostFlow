@@ -4222,6 +4222,11 @@
       }
     },
     "candidate_card": {
+      "from_lead_badge": "Utworzony z leada",
+      "from_lead_hint": "Kontekst z intake leada jest tutaj — nie zaczynasz od zera.",
+      "from_lead_stage": "Etap leada",
+      "from_lead_intake": "Decyzja intake",
+      "from_lead_intake_summary": "Podsumowanie intake",
       "actions": {
         "delete_request": "Zgłoś usunięcie",
         "delete_request_loading": "Wysyłamy zgłoszenie…",
