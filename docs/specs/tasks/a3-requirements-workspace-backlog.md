@@ -577,4 +577,19 @@ A3-{slice-id}: {title}
 
 ---
 
+### B3 — PR17 employee card enrichment — **Done (2026-07-02)**
+
+**Scope:**
+
+- Rich `candidate_snapshot` + `meta.recruitment_transfer` on handoff (17.1)
+- Work eligibility + verified-field seed from candidate (17.1)
+- Delayed path doc links + handoff→employee redirect (17.2)
+- Case-first employee dossier + inbox routing (17.3)
+- `CandidateOpenInHrLink` with delayed handoff fallback (17.4)
+- Tests: `test_workforce_handoff_snapshot.py`, extended single-tenant + delayed + e2e
+
+**Done when:** employee card shows recruitment context, linked docs, and wel profile after accept/approve. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

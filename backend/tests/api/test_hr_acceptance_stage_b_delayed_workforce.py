@@ -212,12 +212,18 @@ async def _run_delayed_workforce_flow(
         linked_entity_id=str(review_row.id),
     ) >= 1
 
-    panel = await client.get(f"/api/v1/handoffs/{handoff_id}/hr-review", headers=hr_officer_headers)
-    assert panel.status_code == 200, panel.text
-    body = panel.json()
-    assert body["handoff_id"] == handoff_id
-    assert body.get("employee_id") in (None, "")
-    assert len(body.get("checklist") or []) >= 1
+    handoff_review = await client.get(
+        f"/api/v1/handoffs/{handoff_id}/hr-review",
+        headers=hr_officer_headers,
+    )
+    assert handoff_review.status_code == 200, handoff_review.text
+    panel = handoff_review.json()
+    assert panel.get("handoff_id") == handoff_id
+    assert panel.get("employee_id") in (None, "")
+    docs = panel.get("documents_for_approval") or []
+    assert any(str(d.get("document_id") or "").strip() for d in docs if isinstance(d, dict))
+
+    assert len(panel.get("checklist") or []) >= 1
 
     await prepare_handoff_hr_review_for_approve(client, handoff_id, hr_officer_headers)
 
@@ -255,6 +261,8 @@ async def _run_delayed_workforce_flow(
 
     wel = await _work_eligibility_row(tenant_id, emp_id)
     assert wel is not None
+    assert wel.citizenship == "UA"
+    assert wel.work_country == "PL"
 
     emp_detail = await client.get(
         f"/api/v1/workforce/employees/{emp_id}",

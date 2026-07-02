@@ -184,6 +184,31 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     assert (rs.get("notes") or {}).get("handoff_notes") == "docs complete"
     assert (rs.get("personal_data") or {}).get("passport_number") == "PP-123456"
 
+    bundle = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}/hr-bundle",
+        headers=hr_officer_headers,
+    )
+    assert bundle.status_code == 200, bundle.text
+    wel = (bundle.json().get("work_eligibility_profile") or {})
+    assert wel.get("citizenship") == "UA"
+    assert wel.get("work_country") == "PL"
+    assert wel.get("position_category") == "driver"
+
+    review = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}/hr-review",
+        headers=hr_officer_headers,
+    )
+    assert review.status_code == 200, review.text
+    verified = review.json().get("verified_fields") or []
+    citizenship_row = next(
+        (f for f in verified if str(f.get("field_code") or "") == "citizenship"),
+        None,
+    )
+    if citizenship_row:
+        profile_vals = citizenship_row.get("profile_values") or citizenship_row.get("profile_values_json") or {}
+        seeded = profile_vals.get("recruitment") or profile_vals.get("candidate_snapshot")
+        assert seeded == "UA"
+
     patch_hired = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
         headers=hr_json,

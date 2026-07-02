@@ -3857,6 +3857,14 @@ export default function CandidateCard(){
     const stage = String(canonicalStageForOps || model?.stage || '').trim().toLowerCase()
     return canViewHrEmployee && stage === 'processing_by_hr'
   }, [canonicalStageForOps, canViewHrEmployee, model?.stage])
+  const internalHrHandoffId = useMemo(() => {
+    const pick = (row: { id?: string; destination?: string | null } | null | undefined) => {
+      if (!row?.id) return null
+      const dest = String(row.destination || '').trim().toLowerCase()
+      return dest === 'internal_hr' ? String(row.id) : null
+    }
+    return pick(handoffStatus?.pending) || pick(handoffStatus?.accepted)
+  }, [handoffStatus?.accepted, handoffStatus?.pending])
   const dossierContactsReady = useMemo(() => {
     const phone = String(model?.phone || extra?.phone || '').trim()
     const email = String(model?.email || extra?.email || '').trim()
@@ -4473,7 +4481,11 @@ export default function CandidateCard(){
         <div className="flex flex-wrap items-center justify-between gap-2">
           <PageBreadcrumb />
           {!isNew && model?.id ? (
-            <CandidateOpenInHrLink candidateId={String(model.id)} enabled={showOpenInHrLink} />
+            <CandidateOpenInHrLink
+              candidateId={String(model.id)}
+              enabled={showOpenInHrLink}
+              fallbackHandoffId={internalHrHandoffId}
+            />
           ) : null}
         </div>
       </div>

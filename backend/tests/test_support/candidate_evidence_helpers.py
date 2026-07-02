@@ -308,6 +308,7 @@ async def close_driver_ce_requirements(
     """Approve all driver_ce evidence slots and patch data fields for workspace closure."""
     extra: dict[str, Any] = {
         "citizenship": "UA",
+        "work_country": "PL",
         "experience_eu_years": "5",
         "address": "Warsaw, Test Street 1",
     }
