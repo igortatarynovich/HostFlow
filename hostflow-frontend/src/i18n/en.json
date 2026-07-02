@@ -707,6 +707,9 @@
         "expiring_queue": "Expiring (queue)",
         "queue_truncated": "Showing first 12 rows.",
         "linked_documents": "Linked dossier documents",
+        "hr_context_status": "Operational record: {status}",
+        "hr_context_links": "{count} document(s) linked from recruitment",
+        "reused_from_recruitment": "Reused from recruitment",
         "onboarding_overdue": "{count} task(s) overdue"
       },
       "employee_legal": {

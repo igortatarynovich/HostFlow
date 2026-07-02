@@ -575,6 +575,9 @@
         "expiring_queue": "Wygasające (kolejka)",
         "queue_truncated": "Pokazano pierwsze 12 wierszy.",
         "linked_documents": "Powiązane dokumenty dossier",
+        "hr_context_status": "Rekord operacyjny: {status}",
+        "hr_context_links": "{count} dokument(ów) powiązanych z rekrutacji",
+        "reused_from_recruitment": "Ponownie użyty z rekrutacji",
         "onboarding_overdue": "Przeterminowanych zadań: {count}"
       },
       "employee_legal": {

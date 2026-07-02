@@ -575,6 +575,9 @@
         "expiring_queue": "Истекающие (очередь)",
         "queue_truncated": "Показаны первые 12 строк.",
         "linked_documents": "Документы связанного досье",
+        "hr_context_status": "Операционная запись: {status}",
+        "hr_context_links": "{count} документ(ов) связано из рекрутинга",
+        "reused_from_recruitment": "Повторно использован из рекрутинга",
         "onboarding_overdue": "Просрочено задач: {count}"
       },
       "employee_legal": {

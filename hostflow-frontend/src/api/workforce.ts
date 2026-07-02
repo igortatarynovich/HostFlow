@@ -588,6 +588,51 @@ export type HrVerificationPlan = {
   }>
 }
 
+export type HrOperationalDocumentLink = {
+  id: string
+  document_id: string
+  linked_entity_type: string
+  linked_entity_id: string
+  relation_type: string
+  module_key?: string | null
+  created_at?: string | null
+}
+
+export type HrOperationalCase = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  source_candidate_id?: string | null
+  status: string
+  notes?: string | null
+  meta?: Record<string, unknown>
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export type HrOperationalContext = {
+  hr_case: HrOperationalCase | null
+  document_links: HrOperationalDocumentLink[]
+}
+
+export type WorkforceDocumentHrReviewPayload = {
+  decision: 'approved' | 'rejected'
+  comment?: string
+  reason_code?: string
+  payload?: Record<string, unknown>
+}
+
+export type WorkforceDocumentHrReviewResult = {
+  id: string
+  document_id: string
+  decision: string
+  comment?: string | null
+  reason_code?: string | null
+  payload: Record<string, unknown>
+  reviewer_id?: string | null
+  created_at?: string | null
+}
+
 export type HrReviewPanel = {
   review_id: string
   employee_id?: string | null
@@ -1049,6 +1094,25 @@ export async function getWorkEligibilityJourney(employeeId: string): Promise<Wor
 export async function getWorkforceHrReview(employeeId: string): Promise<HrReviewPanel> {
   const { data } = await http.get<HrReviewPanel>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/hr-review`,
+  )
+  return data
+}
+
+export async function getHrOperationalContext(employeeId: string): Promise<HrOperationalContext> {
+  const { data } = await http.get<HrOperationalContext>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/hr-operational-context`,
+  )
+  return data
+}
+
+export async function recordWorkforceDocumentHrReview(
+  employeeId: string,
+  documentId: string,
+  body: WorkforceDocumentHrReviewPayload,
+): Promise<WorkforceDocumentHrReviewResult> {
+  const { data } = await http.post<WorkforceDocumentHrReviewResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/documents/${encodeURIComponent(documentId)}/hr-review`,
+    body,
   )
   return data
 }

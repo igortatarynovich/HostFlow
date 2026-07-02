@@ -73,6 +73,21 @@ describe('HrEmployeeDocumentsSection', () => {
     vi.restoreAllMocks()
   })
 
+  it('loads HR operational context for linked employee', async () => {
+    mockGetCtx.mockResolvedValue({
+      hr_case: { id: 'case-1', status: 'open', employee_id: 'emp-1', tenant_id: 't1' },
+      document_links: [{ id: 'link-1', document_id: 'doc-uuid-1', relation_type: 'reused_for_hr' }],
+    })
+    renderSection()
+    await waitFor(() => {
+      expect(mockGetCtx).toHaveBeenCalledWith('emp-1')
+    })
+    await waitFor(() => {
+      expect(screen.getByText(/Operational record: open/i)).toBeInTheDocument()
+      expect(screen.getByText(/Reused from recruitment/i)).toBeInTheDocument()
+    })
+  })
+
   it('shows open button when API provides workforce open_url', async () => {
     mockListDocs.mockResolvedValue([
       {
