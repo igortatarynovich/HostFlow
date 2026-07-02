@@ -132,6 +132,7 @@ try:
     from backend.app.api.v1.platform import tenants as platform_tenants_router
     from backend.app.api.v1.platform import field_registry as platform_field_registry_router
     from backend.app.api.v1.platform import entity_profiles as platform_entity_profiles_router
+    from backend.app.api.v1.platform import forms_publications as platform_forms_publications_router
     from backend.app.api.v1.platform import requirement_rules as platform_requirement_rules_router
     from backend.app.api.v1.platform import tenant_requirement_overrides as platform_tenant_requirement_overrides_router
     from backend.app.api.v1.platform import notification_events as platform_notification_events_router
@@ -858,6 +859,7 @@ app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])
 app.include_router(platform_tenants_router.router, prefix="/api/v1", tags=["platform-tenants"])
 app.include_router(platform_field_registry_router.router, prefix="/api/v1", tags=["field-registry"])
 app.include_router(platform_entity_profiles_router.router, prefix="/api/v1", tags=["entity-profiles"])
+app.include_router(platform_forms_publications_router.router, prefix="/api/v1", tags=["forms-platform"])
 app.include_router(platform_requirement_rules_router.router, prefix="/api/v1", tags=["requirement-rules"])
 app.include_router(platform_tenant_requirement_overrides_router.router, prefix="/api/v1", tags=["requirement-overrides"])
 app.include_router(platform_notification_events_router.router, prefix="/api/v1", tags=["notification-events"])

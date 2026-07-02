@@ -116,3 +116,4 @@
 - 2026-05: первичная фиксация Forms как платформенной capability, Basic/Advanced, standalone/linked, целевые handlers и примеры по модулям.
 - 2026-05: связка с **ADR-008** (форма отклика в цепочке Job Publishing).
 - 2026-05: связка с **ADR-009** (документы из форм — в Document Hub).
+- 2026-07-02 (**C4 bridge MVP**): `TenantLeadForm` exposed as ADR-007 publication via `backend/app/forms_platform/` — handler registry (`recruitment.lead_draft`, `recruitment.client_lead_draft`), resolve API, admin `forms_platform` block on intake form detail. **Not in scope:** FormTemplate table migration or new submission storage; existing `/public/intake` path unchanged.

@@ -188,7 +188,7 @@ async def build_intake_form_admin_context(
             "is_active": bool(intake_source.is_active),
         }
 
-    return {
+    payload = {
         "form": {
             "id": str(lead_form.id),
             "title": lead_form.title or "",
@@ -212,6 +212,14 @@ async def build_intake_form_admin_context(
             route_intent=route_intent,
         ),
     }
+    from backend.app.forms_platform.publication_bridge import build_forms_platform_admin_block
+
+    payload["forms_platform"] = await build_forms_platform_admin_block(
+        db,
+        tenant_id=str(tenant_id),
+        form_id=str(form_id),
+    )
+    return payload
 
 
 async def run_intake_form_smoke_test(

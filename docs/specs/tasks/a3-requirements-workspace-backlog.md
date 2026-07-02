@@ -700,4 +700,18 @@ A3-{slice-id}: {title}
 
 ---
 
+### C4 — ADR-007 Forms platform publication bridge — **Done (2026-07-02)**
+
+**Scope:**
+
+- `backend/app/forms_platform/` — contract constants, submission handler registry, `TenantLeadForm` → ADR-007 publication bridge
+- API: `GET /api/v1/platform/forms/handlers`, `GET /api/v1/platform/forms/publications/resolve`
+- Admin intake form detail includes `forms_platform` block (publication contract + available handlers)
+- Bridge storage backend `tenant_lead_form` (no FormTemplate DB migration in this slice)
+- Tests: `backend/tests/forms_platform/test_forms_platform_c4.py`
+
+**Done when:** handlers API lists `recruitment.lead_draft`; publication resolve by `form_id` / `public_slug` returns ADR-007 contract; intake form detail exposes `forms_platform`. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*
