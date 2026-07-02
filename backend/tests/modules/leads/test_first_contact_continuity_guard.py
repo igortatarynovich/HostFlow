@@ -599,3 +599,168 @@ async def test_conversion_from_pooled_lead_skips_uos_call(
             )
         )
         assert int(log_cnt.scalar_one() or 0) >= 1
+
+
+@pytest.mark.anyio
+async def test_conversion_from_request_info_lead_skips_uos_and_carries_intake(
+    tenant_id: str, bootstrap: Dict[str, str]
+) -> None:
+    """Guard 4 (§7.2): request_info intake — no cold call; intake context carried."""
+    from backend.app.modules.leads.lead_candidate_conversion import create_candidate_from_lead_conversion
+
+    actor_id = bootstrap["admin_id"]
+    lead_id = str(uuid.uuid4())
+    info_note = "Need passport scan before qualify"
+    async with async_session_maker() as db:
+        company_id = await _ensure_company(db, tenant_id)
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=tenant_id,
+                lead_type="candidate",
+                company_id=company_id,
+                payload={},
+                normalized={
+                    "email": f"info-{uuid.uuid4().hex[:8]}@example.com",
+                    "intake_resolution_v1": {
+                        "status": "info_requested",
+                        "last_decision": "request_info",
+                        "note": info_note,
+                    },
+                },
+                status="processed",
+                stage="new",
+                source="meta",
+                external_id=f"ext-{uuid.uuid4().hex}",
+            )
+        )
+        await db.commit()
+
+    async with async_session_maker() as db:
+        row = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = row.scalar_one()
+        payload = {
+            "first_name": "Info",
+            "last_name": "Lead",
+            "email": (lead.normalized or {}).get("email"),
+            "company_id": company_id,
+            "recruiter_id": actor_id,
+            "stage": "new",
+            "status": "new",
+            "source": "meta",
+            "origin": {"meta": {}},
+        }
+        cand = await create_candidate_from_lead_conversion(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            candidate_payload=payload,
+            source_channel="meta",
+            duplicate_match_level="none",
+            conversion_reason="lead_processing",
+        )
+        await db.commit()
+        cid = str(cand.id)
+
+    async with async_session_maker() as db:
+        lead_row = (
+            await db.execute(select(Lead).where(Lead.id == lead_id))
+        ).scalar_one()
+        assert str(lead_row.candidate_id or "") == cid
+
+        cnt = await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "candidate",
+                Reminder.entity_id == cid,
+                Reminder.type == "uos_candidate_call",
+            )
+        )
+        assert int(cnt.scalar_one() or 0) == 0
+
+        cand_row = (
+            await db.execute(select(Candidate).where(Candidate.id == cid))
+        ).scalar_one()
+        extra = cand_row._get_extra() if hasattr(cand_row, "_get_extra") else {}
+        continuity = extra.get("lead_continuity_v1") if isinstance(extra, dict) else {}
+        assert isinstance(continuity, dict)
+        intake = continuity.get("intake_resolution_v1")
+        assert isinstance(intake, dict)
+        assert intake.get("status") == "info_requested"
+        assert intake.get("note") == info_note
+
+
+@pytest.mark.anyio
+async def test_uos_skips_when_candidate_already_past_cold_stage(
+    tenant_id: str, bootstrap: Dict[str, str]
+) -> None:
+    """Guard 5 (§7.5): duplicate attach / active dossier — no second first-contact task."""
+    actor_id = bootstrap["admin_id"]
+    lead_id = str(uuid.uuid4())
+    async with async_session_maker() as db:
+        company_id = await _ensure_company(db, tenant_id)
+        cid = str(uuid.uuid4())
+        db.add(
+            Candidate(
+                id=cid,
+                tenant_id=tenant_id,
+                first_name="Active",
+                last_name="Dossier",
+                email=f"uos-dup-{uuid.uuid4().hex[:8]}@example.com",
+                stage="ready_for_hr",
+                status="ready_for_hr",
+                company_id=company_id,
+                recruiter_id=actor_id,
+            )
+        )
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=tenant_id,
+                lead_type="candidate",
+                company_id=company_id,
+                payload={},
+                normalized={},
+                status="needs_routing",
+                stage="new",
+                source="meta",
+            )
+        )
+        await db.commit()
+
+    async with async_session_maker() as db:
+        row = await db.execute(select(Lead).where(Lead.id == lead_id))
+        lead = row.scalar_one()
+        row_c = await db.execute(select(Candidate).where(Candidate.id == cid))
+        cand = row_c.scalar_one()
+        await uos_auto_activities.ensure_candidate_created_call_task(
+            db, tenant_id, actor_id, cand, source_lead=lead
+        )
+        await db.commit()
+
+    async with async_session_maker() as db:
+        cnt = await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "candidate",
+                Reminder.entity_id == cid,
+                Reminder.type == "uos_candidate_call",
+            )
+        )
+        assert int(cnt.scalar_one() or 0) == 0
+
+        log_cnt = await db.execute(
+            select(func.count())
+            .select_from(ActivityLog)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action == FIRST_CONTACT_SUPPRESSED_ACTION,
+                ActivityLog.target_type == "candidate",
+                ActivityLog.target_id == cid,
+            )
+        )
+        assert int(log_cnt.scalar_one() or 0) >= 1

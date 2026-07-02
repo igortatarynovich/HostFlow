@@ -1,6 +1,6 @@
 # Slice 4 — Activity Continuity Guards (spec skeleton)
 
-**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Guard 2 **Done (2026-07-02)** — lead note + intake snapshot carried to candidate (`lead_continuity_v1`), audit marker, candidate card panel. Guard 3 **Done (2026-07-01)** — suppress `uos_candidate_call` when lead has active open reminder (SLA/follow-up) or pooled intake; integration tests §7.1/§7.4. Further guards (request_info playbook alignment) incremental.  
+**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Guard 2 **Done (2026-07-02)** — lead note + intake snapshot carried to candidate (`lead_continuity_v1`), audit marker, candidate card panel. Guard 3 **Done (2026-07-01)** — suppress `uos_candidate_call` when lead has active open reminder (SLA/follow-up) or pooled intake; integration tests §7.1/§7.4. Guard 4 **Done (2026-07-01)** — `request_info` conversion: no cold call, intake snapshot on candidate, lead↔candidate link, `first_contact_completed` via lead continuity. Guard 5 **Done (2026-07-01)** — duplicate attach / active dossier: no second `uos_candidate_call`; lead context carried on attach + idempotent replay.  
 **Depends on:** intake routing & decisions (Slice 2), qualification summary read-layer (Slice 3).  
 **Intent:** tighten **Lead → Candidate** handoff so the system does not invent duplicate work or “day zero” contact semantics when the lead already has real activity.
 
@@ -180,6 +180,31 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
 - Tests: `test_uos_skips_when_lead_has_active_followup_reminder`, `test_conversion_from_pooled_lead_skips_uos_call`
 
 **Done when:** scenarios §7.1 (call/follow-up on lead) and §7.4 (pool) — no duplicate candidate first-contact reminder. ✅
+
+### 8.7 Guard 4 — request_info playbook alignment — **Done (2026-07-01)**
+
+**Goal:** Lead in **info_requested** intake → convert → no cold `uos_candidate_call`; intake context visible on candidate; operational `first_contact_completed` satisfied via lead continuity (not a fake “call candidate” playbook).
+
+**Implementation:**
+
+- Existing Guard 1 suppression for `intake_resolution:info_requested`
+- `create_candidate_from_lead_conversion` links `lead.candidate_id` after create (parity with processing path)
+- Guard 2 carries `intake_resolution_v1` in `lead_continuity_v1`
+- Tests: `test_conversion_from_request_info_lead_skips_uos_and_carries_intake`, `test_request_info_lead_continuity_auto_satisfies_first_contact`
+
+**Done when:** scenario §7.2 — request_info path does not fire cold first-call; follow-up context carried. ✅
+
+### 8.8 Guard 5 — duplicate attach / active dossier — **Done (2026-07-01)**
+
+**Goal:** Merge to **existing** candidate (manual `attach_existing`, auto `blocked_duplicate`, or idempotent conversion replay) must not spawn a second cold `uos_candidate_call`; lead narrative carried where applicable.
+
+**Implementation:**
+
+- `lead_first_contact_continuity.candidate_past_cold_first_contact_sync` + gate in `ensure_candidate_created_call_task` (reason `candidate:existing_active_stage`)
+- `carry_lead_context_on_conversion` on `attach_existing`, `apply_blocked_duplicate_outcome`, and idempotent `create_candidate_from_lead_conversion` replay
+- Tests: `test_uos_skips_when_candidate_already_past_cold_stage`, `test_duplicate_attach_carries_context_without_uos_call`
+
+**Done when:** scenario §7.5 — duplicate attach does not fake first-contact. ✅
 
 ---
 

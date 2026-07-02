@@ -43,6 +43,11 @@ _ACTIVITY_LOG_TOUCH_ACTIONS: frozenset[str] = frozenset(
     }
 )
 
+# Candidate stages still treated as cold-first-contact (align with uos_auto_activities).
+_CANDIDATE_PRE_CONTACT_STAGES: frozenset[str] = frozenset(
+    {"", "new", "no_answer", "to_call", "to_contact"}
+)
+
 # Lead-scoped activity types that imply outreach already happened or was scheduled.
 _LEAD_ACTIVITY_TOUCH_TYPES: frozenset[str] = frozenset(
     {
@@ -52,6 +57,12 @@ _LEAD_ACTIVITY_TOUCH_TYPES: frozenset[str] = frozenset(
         "contact",
     }
 )
+
+
+def candidate_past_cold_first_contact_sync(candidate: Any) -> bool:
+    """True when candidate is already past day-zero outreach (duplicate attach / active dossier)."""
+    stage = str(getattr(candidate, "stage", None) or "").strip().lower()
+    return bool(stage and stage not in _CANDIDATE_PRE_CONTACT_STAGES)
 
 
 def lead_first_contact_suppression_reasons_sync(lead: Any) -> List[str]:

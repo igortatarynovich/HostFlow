@@ -31,6 +31,7 @@ from backend.app.models.tenant import Tenant
 from backend.app.services.audit import log_activity
 from backend.app.services.lead_first_contact_continuity import (
     FIRST_CONTACT_SUPPRESSED_ACTION,
+    candidate_past_cold_first_contact_sync,
     should_skip_default_first_contact_after_lead_conversion,
 )
 from backend.app.services.recruiter_assignment import resolve_vacancy_primary_recruiter
@@ -206,6 +207,22 @@ async def ensure_candidate_created_call_task(
             )
             await db.flush()
             return
+    if candidate_past_cold_first_contact_sync(candidate):
+        await log_activity(
+            db,
+            tenant_id=tenant_id,
+            actor_id=None,
+            action=FIRST_CONTACT_SUPPRESSED_ACTION,
+            target_type="candidate",
+            target_id=cid,
+            payload={
+                "lead_id": str(getattr(source_lead, "id", "") or "") or None,
+                "reasons": ["candidate:existing_active_stage"],
+                "candidate_stage": str(getattr(candidate, "stage", "") or ""),
+            },
+        )
+        await db.flush()
+        return
     if await _has_active_typed_reminder(
         db, tenant_id=tenant_id, entity_type="candidate", entity_id=cid, rtype="uos_candidate_call"
     ):

@@ -211,7 +211,7 @@ HR **не собирает заново** то, что recruitment уже зак
 
 | # | Работа | Зависимости |
 |---|--------|-------------|
-| A1 | Slice 4 — activity continuity (Lead → Candidate) | Intake 2–3 done | **Done (2026-07-02)** — Guards 1–3 (first-contact, context carry, SLA dedup) |
+| A1 | Slice 4 — activity continuity (Lead → Candidate) | Intake 2–3 done | **Done (2026-07-02)** — Guards 1–5 (first-contact, context carry, SLA dedup, request_info, duplicate attach) |
 | A2 | Slice 6 — Lead workspace = intake decision first | A1 желательно | **Done (2026-07-02)** |
 | A3 | Requirements workspace UX (checklist-first на Candidate) | Requirement Engine API — **backlog:** [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) | **Done (2026-07-01)** |
 | A4 | Закрыть gaps: stage/handoff gates ← engine blockers | A3 | **Done (2026-07-01)** |

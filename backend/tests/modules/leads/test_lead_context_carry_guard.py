@@ -249,3 +249,113 @@ async def test_greenfield_lead_carries_source_link_only(
         assert extra.get("source_lead_id") == lead_id
         assert continuity.get("link_only") is True
         assert continuity.get("carried_fields") == []
+
+
+@pytest.mark.anyio
+async def test_duplicate_attach_carries_context_without_uos_call(
+    tenant_id: str,
+    bootstrap: Dict[str, str],
+) -> None:
+    """Guard 5 (§7.5): attach_existing links lead to active dossier — context carried, no UOS."""
+    from backend.app.models import Reminder
+    from backend.app.modules.leads.duplicate_decision import apply_lead_duplicate_decision
+    from backend.app.services.lead_first_contact_continuity import FIRST_CONTACT_SUPPRESSED_ACTION
+
+    actor_id = bootstrap["admin_id"]
+    lead_id = str(uuid.uuid4())
+    attach_note = "Second application — same driver"
+    async with async_session_maker() as db:
+        company_id = await _ensure_company(db, tenant_id)
+        cid = str(uuid.uuid4())
+        db.add(
+            Candidate(
+                id=cid,
+                tenant_id=tenant_id,
+                first_name="Existing",
+                last_name="Driver",
+                email=f"dup-attach-{uuid.uuid4().hex[:8]}@example.com",
+                stage="ready_for_hr",
+                status="ready_for_hr",
+                company_id=company_id,
+                recruiter_id=actor_id,
+            )
+        )
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=tenant_id,
+                lead_type="candidate",
+                company_id=company_id,
+                payload={},
+                normalized={
+                    "duplicate_match_v1": {
+                        "level": "exact",
+                        "suggested_candidate_id": cid,
+                        "reasons": ["email"],
+                    },
+                    "note": attach_note,
+                },
+                status="duplicate_review",
+                stage="new",
+                source="meta",
+                external_id=f"dup-attach-{uuid.uuid4().hex[:10]}",
+            )
+        )
+        await db.commit()
+
+    async with async_session_maker() as db:
+        await apply_lead_duplicate_decision(
+            db,
+            tenant_id=tenant_id,
+            lead_id=lead_id,
+            actor_id=actor_id,
+            decision="attach_existing",
+            note="confirmed same person",
+        )
+
+    async with async_session_maker() as db:
+        lead_row = (await db.execute(select(Lead).where(Lead.id == lead_id))).scalar_one()
+        assert str(lead_row.candidate_id or "") == cid
+        assert lead_row.status == "duplicated"
+
+        cand = (await db.execute(select(Candidate).where(Candidate.id == cid))).scalar_one()
+        extra = _extra_dict(cand)
+        assert extra.get("source_lead_id") == lead_id
+        continuity = extra.get("lead_continuity_v1") or {}
+        assert continuity.get("lead_note") == attach_note
+
+        uos_cnt = await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "candidate",
+                Reminder.entity_id == cid,
+                Reminder.type == "uos_candidate_call",
+            )
+        )
+        assert int(uos_cnt.scalar_one() or 0) == 0
+
+        ctx_cnt = await db.execute(
+            select(func.count())
+            .select_from(ActivityLog)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action == CONTEXT_CARRIED_ACTION,
+                ActivityLog.target_type == "candidate",
+                ActivityLog.target_id == cid,
+            )
+        )
+        assert int(ctx_cnt.scalar_one() or 0) >= 1
+
+        suppressed_cnt = await db.execute(
+            select(func.count())
+            .select_from(ActivityLog)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action == FIRST_CONTACT_SUPPRESSED_ACTION,
+                ActivityLog.target_type == "candidate",
+                ActivityLog.target_id == cid,
+            )
+        )
+        assert int(suppressed_cnt.scalar_one() or 0) == 0

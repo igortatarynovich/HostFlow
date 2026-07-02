@@ -136,6 +136,15 @@ async def apply_lead_duplicate_decision(
             normalized=norm,
             match_reasons=reasons or ["manual_duplicate_attach"],
         )
+        from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
+
+        await carry_lead_context_on_conversion(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            candidate=cand,
+            actor_id=actor,
+        )
         await db.flush()
         vac_eff = lead.vacancy_id or cand.vacancy_id
         await ensure_recruitment_application_for_converted_lead(

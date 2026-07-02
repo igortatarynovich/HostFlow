@@ -148,6 +148,44 @@ async def test_lead_continuity_auto_satisfies_first_contact(
     assert "lead_stage:contacted" in (row.get("continuity_reasons") or [])
 
 
+async def test_request_info_lead_continuity_auto_satisfies_first_contact(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+    db: AsyncSession,
+    tenant_id: str,
+) -> None:
+    """Guard 4: info_requested intake on linked lead closes first_contact via continuity."""
+    candidate, company_id = await setup_driver_ce_candidate(db, tenant_id)
+    cid = str(candidate.id)
+    lead = Lead(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        company_id=company_id,
+        candidate_id=cid,
+        stage="new",
+        status="processed",
+        source="test",
+        normalized={
+            "intake_resolution_v1": {
+                "status": "info_requested",
+                "last_decision": "request_info",
+                "note": "Awaiting documents",
+            }
+        },
+    )
+    db.add(lead)
+    await db.commit()
+
+    workspace = await get_requirements_workspace(client, manager_headers, cid)
+    row = workspace["operational_requirements"][0]
+    assert row["status"] == "satisfied"
+    assert row["satisfied_via"] == "lead_continuity"
+    assert any(
+        str(r).startswith("intake_resolution:info_requested")
+        for r in (row.get("continuity_reasons") or [])
+    )
+
+
 async def test_complete_activity_rejects_wrong_candidate(
     client: AsyncClient,
     manager_headers: dict[str, str],
