@@ -1,6 +1,6 @@
 # Slice 4 — Activity Continuity Guards (spec skeleton)
 
-**Status:** Guard 1 **implemented** (UOS “Call candidate” suppression + `activity_log` marker); further guards incremental.  
+**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Further guards (reminder SLA, context carry) incremental.  
 **Depends on:** intake routing & decisions (Slice 2), qualification summary read-layer (Slice 3).  
 **Intent:** tighten **Lead → Candidate** handoff so the system does not invent duplicate work or “day zero” contact semantics when the lead already has real activity.
 

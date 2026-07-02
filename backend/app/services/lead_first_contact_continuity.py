@@ -31,6 +31,26 @@ _LEAD_STAGES_POST_TOUCH: frozenset[str] = frozenset({"contacted", "qualified"})
 # From ``lead.stage_changed`` audit payloads — reached a post-touch CRM stage at least once.
 _ACTIVITY_TO_STAGES_TOUCH: frozenset[str] = frozenset({"contacted", "qualified"})
 
+# ActivityLog actions that prove operator engagement before candidate materialization.
+_ACTIVITY_LOG_TOUCH_ACTIONS: frozenset[str] = frozenset(
+    {
+        "lead.manual_process",
+        "lead.manual_process.done",
+        "lead.vacancy_confirmed",
+        "lead.intake_decision.qualify",
+    }
+)
+
+# Lead-scoped activity types that imply outreach already happened or was scheduled.
+_LEAD_ACTIVITY_TOUCH_TYPES: frozenset[str] = frozenset(
+    {
+        "call",
+        "meeting",
+        "phone",
+        "contact",
+    }
+)
+
 
 def lead_first_contact_suppression_reasons_sync(lead: Any) -> List[str]:
     """Signals available without extra DB reads (normalized + lead columns)."""
@@ -48,6 +68,10 @@ def lead_first_contact_suppression_reasons_sync(lead: Any) -> List[str]:
     stage = str(getattr(lead, "stage", None) or "").strip().lower()
     if stage in _LEAD_STAGES_POST_TOUCH:
         reasons.append(f"lead_stage:{stage}")
+
+    note = str(getattr(lead, "note", None) or "").strip()
+    if note:
+        reasons.append("lead_note:present")
 
     return reasons
 
@@ -74,13 +98,55 @@ async def _activity_log_lead_touched_via_stage_audit(
     return False
 
 
+async def _activity_log_lead_operational_touch(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_id: str,
+) -> bool:
+    stmt = (
+        select(ActivityLog.id)
+        .where(
+            ActivityLog.tenant_id == tenant_id,
+            ActivityLog.target_type == "lead",
+            ActivityLog.target_id == str(lead_id),
+            ActivityLog.action.in_(_ACTIVITY_LOG_TOUCH_ACTIONS),
+        )
+        .limit(1)
+    )
+    row = (await db.execute(stmt)).scalar_one_or_none()
+    return row is not None
+
+
+async def _lead_has_call_or_contact_activity(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_id: str,
+) -> bool:
+    from backend.app.models import Reminder
+
+    stmt = (
+        select(Reminder.id)
+        .where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.related_entity_type == "lead",
+            Reminder.related_entity_id == str(lead_id),
+            Reminder.type.in_(_LEAD_ACTIVITY_TOUCH_TYPES),
+        )
+        .limit(1)
+    )
+    row = (await db.execute(stmt)).scalar_one_or_none()
+    return row is not None
+
+
 async def lead_first_contact_suppression_reasons(
     db: AsyncSession,
     *,
     tenant_id: str,
     lead: Any,
 ) -> List[str]:
-    """Merge sync signals with ActivityLog (stage transitions into contacted/qualified)."""
+    """Merge sync signals with ActivityLog and lead-scoped activities."""
     reasons = list(lead_first_contact_suppression_reasons_sync(lead))
     if reasons:
         return _uniq_preserve(reasons)
@@ -91,6 +157,10 @@ async def lead_first_contact_suppression_reasons(
 
     if await _activity_log_lead_touched_via_stage_audit(db, tenant_id=tenant_id, lead_id=lead_id):
         reasons.append("activity_log:lead.stage_changed→contacted|qualified")
+    if await _activity_log_lead_operational_touch(db, tenant_id=tenant_id, lead_id=lead_id):
+        reasons.append("activity_log:lead.operational_touch")
+    if await _lead_has_call_or_contact_activity(db, tenant_id=tenant_id, lead_id=lead_id):
+        reasons.append("activity:lead.call_or_contact")
 
     return _uniq_preserve(reasons)
 
