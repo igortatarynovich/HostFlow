@@ -297,7 +297,7 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 | **3** | **Reject reasons + intake taxonomy** | Foundation для source/campaign/recruiter KPI и automation; CRM `lost` недостаточно. §5 коды — опора аналитики. |
 | **4** | **Qualification summary** | Один компактный блок (опыт, документы, язык, fit, route, source) **без** гигантских виджетов — поддержка решения по intake, не дублирование candidate card. |
 | **5** | **Activity continuity guards** | Enforcement: нет дублирующего first-call/SLA после convert; перенос контекста (§7). Doctrine без слоя проверки ≠ «проблема решена». |
-| **6** | **Lead workspace cleanup** | Demote stage/fit/automation/playbook до вторичного; **intake decision first** в layout и mental model. |
+| **6** | **Lead workspace cleanup** | Demote stage/fit/automation/playbook до вторичного; **intake decision first** в layout и mental model. | **Done (2026-07-02)** — recruitment detail + inbox workspace; CRM chrome under More. |
 
 **Порядок намеренный:** сначала семантика, действия, таксономия, qualification data, continuity guards — **затем** чистка UI. Рисовать «красивый Lead» до стабилизации смыслов почти всегда даёт **operationally inconsistent** интерфейс.
 

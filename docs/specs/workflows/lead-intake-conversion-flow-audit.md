@@ -58,12 +58,12 @@
 ### 2.5 Activity continuity
 
 - **Doctrine:** no duplicate first-call / SLA on Candidate after Lead work.
-- **Reality:** `lead.processed` triggers **automation rules** and notifications; Candidate-side reminders/contact policies **may** still fire independently — **risk of “fake work”** unless rules are entity-aware and deduped. **Not** fully verified per tenant config; treat as **open technical debt**.
+- **Reality (2026-07-02):** Slice 4 Guard 1 suppresses default UOS `Call candidate` when lead shows prior touch; marker `lead_to_candidate.first_contact_suppressed`. Tenant automation rules may still fire independently — audit per config if needed.
 
 ### 2.6 Lead UI (CRM)
 
-- **Lead detail** still mixes **ingest mode**, **process**, funnel **stage**, qualification/fit panels, next-action/playbook — consistent with user observation: **right rail tends toward candidate-style ops** before intake decision is visually primary.
-- **“Intake decision first”** is **not** yet the dominant layout (doctrine §3.1).
+- **Recruitment agency (2026-07-02):** `LeadDetailPage` + list inbox use **intake-first** layout — sticky header, `LeadIntakeDecisionRail`, qualification collapsed, CRM chrome under **More**. Services tenant retains legacy hero + `LeadIntakeResolutionPanel`.
+- **Gap (services / legacy paths):** services tenant detail still mixes ingest mode, stage, qualification panels prominently.
 
 ### 2.8 Operational communication (not RODO)
 

@@ -621,4 +621,17 @@ A3-{slice-id}: {title}
 
 ---
 
+### A2 — Lead workspace intake-first (Slice 6) — **Done (2026-07-02)**
+
+**Scope:**
+
+- Recruitment `LeadDetailPage`: sticky header + `RecruitmentAgencyIntakeDetailView` + `LeadIntakeDecisionRail` primary
+- List inbox: `LeadIntakeWorkspacePanel` with decision rail; CRM chrome (playbook, stage, fit) under collapsed **More**
+- Qualification summary collapsed; audit mode after convert
+- Tests: `leadIntakeWorkspace.test.ts` utilities
+
+**Done when:** intake decision is primary on recruitment lead detail + inbox; candidate-style ops demoted. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

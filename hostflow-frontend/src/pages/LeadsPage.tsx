@@ -69,6 +69,7 @@ import {
 } from '../utils/intakeResolution'
 import {
   leadIntakeColumnStatusKey,
+  leadIntakeWorkspaceSuppressesCrmChrome,
   leadQueueIntakeShortcutActionsAllowed,
   leadQueueIntakeVacancyPickerAllowed,
   leadRowPrimaryAction,
@@ -2760,6 +2761,17 @@ export default function LeadsPage() {
                 void handleConfirmLeadRouting(selectedLead.id, vacancyId, thenProcess)
               }
               moreSection={
+                (() => {
+                  const suppressCrmChrome = leadIntakeWorkspaceSuppressesCrmChrome(selectedLead, isServicesTenant)
+                  const playbookBlock = selectedIsMetaProblemLead ? (
+                    <div className="space-y-2">
+                      <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
+                      <LeadMetaProblemPanel lead={selectedLead} onRefreshed={onMetaProblemPanelRefreshed} />
+                    </div>
+                  ) : (
+                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
+                  )
+                  return (
                 <div className="space-y-3">
                   {!isServicesTenant && !selectedLead.candidate_id ? (
                     <details className="rounded-lg border border-slate-200 bg-white p-2">
@@ -2809,13 +2821,15 @@ export default function LeadsPage() {
                     </details>
                   ) : null}
 
-                  {selectedIsMetaProblemLead ? (
-                    <div className="space-y-2">
-                      <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
-                      <LeadMetaProblemPanel lead={selectedLead} onRefreshed={onMetaProblemPanelRefreshed} />
-                    </div>
+                  {suppressCrmChrome ? (
+                    <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2">
+                      <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                        {t('app.leads.intake_workspace.more.playbook', { defaultValue: 'Playbook & diagnostics' })}
+                      </summary>
+                      <div className="mt-2">{playbookBlock}</div>
+                    </details>
                   ) : (
-                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
+                    playbookBlock
                   )}
 
                   <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2">
@@ -3031,7 +3045,8 @@ export default function LeadsPage() {
                     </div>
                   </details>
                 </div>
-              }
+                  )
+                })()}
             />
           )}
         </aside>

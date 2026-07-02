@@ -150,6 +150,11 @@ export function intakeWorkspaceHeader(lead: Lead, isServicesTenant: boolean): In
   return { tone: 'ready' }
 }
 
+/** Recruitment agency CRM uses intake-first workspace (list rail + detail page), not services/client chrome. */
+export function recruitmentAgencyIntakeFirstLayout(isServicesTenant: boolean, isClientLead: boolean): boolean {
+  return !isServicesTenant && !isClientLead
+}
+
 /** True when CRM noise (call/write, stage, reminders…) should stay under “More”, not in the main workspace. */
 export function leadIntakeWorkspaceSuppressesCrmChrome(lead: Lead | null, isServicesTenant: boolean): boolean {
   if (!lead || isServicesTenant) return false
