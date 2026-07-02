@@ -137,12 +137,10 @@ test.describe('HR PR17 workspace (API smoke)', () => {
       meta?: Record<string, unknown>
     }
     const snap = body.candidate_snapshot
-    if (snap) {
-      expect(snap).toHaveProperty('personal_data')
-    }
+    expect(snap).toBeTruthy()
+    expect(snap).toHaveProperty('personal_data')
     const transfer = (body.meta?.recruitment_transfer || null) as Record<string, unknown> | null
-    if (transfer) {
-      expect(transfer.candidate_id).toBe(IDS.candidateHrReadonly)
-    }
+    expect(transfer).toBeTruthy()
+    expect(transfer!.candidate_id).toBe(IDS.candidateHrReadonly)
   })
 })

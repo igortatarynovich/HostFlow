@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+import uuid
 
 from backend.app.services.workforce_employees import (
     _candidate_snapshot,
@@ -82,18 +83,19 @@ async def test_seed_work_eligibility_from_candidate(db) -> None:
     from backend.app.models.workforce_employee import WorkforceEmployee
     from backend.app.services.workforce_work_eligibility import get_work_eligibility_profile
 
+    suffix = uuid.uuid4().hex[:8]
     tenant = Tenant(
-        id="tenant-wel-1",
-        name="Wel Test",
-        slug="wel-test",
-        api_key="wel-key",
+        id=f"tenant-wel-{suffix}",
+        name=f"Wel Test {suffix}",
+        slug=f"wel-test-{suffix}",
+        api_key=f"wel-key-{suffix}",
         type=TenantType.agency,
         status=TenantStatus.active,
         settings={"modules": {"hr": True}},
     )
-    company = Company(id="co-wel-1", tenant_id=tenant.id, name="Wel Co")
+    company = Company(id=f"co-wel-{suffix}", tenant_id=tenant.id, name=f"Wel Co {suffix}")
     emp = WorkforceEmployee(
-        id="emp-wel-1",
+        id=f"emp-wel-{suffix}",
         tenant_id=tenant.id,
         candidate_id=None,
         company_id=company.id,

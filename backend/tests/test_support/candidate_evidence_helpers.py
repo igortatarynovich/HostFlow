@@ -83,15 +83,11 @@ async def setup_driver_ce_candidate(
 
     from backend.app.seed_candidate_profiles import ensure_driver_ce_default_profile
 
-    company_row = (
-        await db.execute(
-            text("SELECT id FROM companies WHERE tenant_id = :tid LIMIT 1"),
-            {"tid": tenant_id},
-        )
-    ).first()
-    if not company_row:
-        pytest.skip("No company for tenant")
-    company_id = str(company_row[0])
+    from backend.app.services.recruitment_funnel_bootstrap import resolve_first_operating_company_id
+
+    company_id = await resolve_first_operating_company_id(db, tenant_id=tenant_id)
+    if not company_id:
+        pytest.skip("No operating company for tenant")
 
     await ensure_tenant_entity_profile_defaults(db, tenant_id)
     await ensure_driver_ce_default_profile(db, tenant_id)

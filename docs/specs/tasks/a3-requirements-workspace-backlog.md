@@ -592,4 +592,19 @@ A3-{slice-id}: {title}
 
 ---
 
+### B4 — Phase 1 manual stand sign-off — **Done (2026-07-02)**
+
+**Scope:**
+
+- Close `hr-handoff-runtime-p0.md` §7 gate checklist (G1–G4 + module gates)
+- PR17 §7 acceptance criteria verified via automated regression
+- Test helper fix: `setup_driver_ce_candidate` uses operating company (funnel alignment)
+- E2E: strict PR17 workspace + full-flow assertions
+
+**Regression suite (45 tests):** handoff gates, module gates G3, idempotency G4, single-tenant flow, delayed workforce, internal HR, pipeline H4, snapshot/wel, H6 HR-only.
+
+**Done when:** Direction B Phase 1 gate closed; docs + tests green. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*
