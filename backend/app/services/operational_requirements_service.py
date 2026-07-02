@@ -223,6 +223,27 @@ async def evaluate_operational_requirements_for_candidate(
     return rows
 
 
+def open_operational_requirements(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [row for row in rows if isinstance(row, dict) and row.get("status") != "satisfied"]
+
+
+def operational_requirement_blocking_reasons(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    blockers: list[dict[str, Any]] = []
+    for row in open_operational_requirements(rows):
+        code = _norm(row.get("requirement_code"))
+        label = str(row.get("public_name") or code or "operational requirement")
+        blockers.append(
+            {
+                "code": "operational_requirement_open",
+                "message": f"Operational requirement open: {label}",
+                "source_layer": "operational_requirements",
+                "requirement_code": code,
+                "requirement_type": row.get("type"),
+            }
+        )
+    return blockers
+
+
 async def complete_operational_requirement_activity(
     db: AsyncSession,
     *,
@@ -289,4 +310,6 @@ __all__ = [
     "complete_operational_requirement_activity",
     "evaluate_operational_requirement_row",
     "evaluate_operational_requirements_for_candidate",
+    "open_operational_requirements",
+    "operational_requirement_blocking_reasons",
 ]

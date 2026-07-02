@@ -385,6 +385,38 @@ class TransferPolicyResolver:
                         missing_data_fields.append(field)
                         seen_field_codes.add(fc)
 
+        from backend.app.requirement_rules.readiness_bridge import resolve_entity_profile_code_for_candidate
+        from backend.app.services.operational_requirements_service import (
+            evaluate_operational_requirements_for_candidate,
+            operational_requirement_blocking_reasons,
+        )
+
+        entity_profile_code = await resolve_entity_profile_code_for_candidate(
+            db,
+            tenant_id=tenant_id,
+            candidate=cand,
+        )
+        operational_rows = await evaluate_operational_requirements_for_candidate(
+            db,
+            tenant_id=tenant_id,
+            candidate=cand,
+            entity_profile_code=entity_profile_code,
+        )
+        ops_blockers = operational_requirement_blocking_reasons(operational_rows)
+        if ops_blockers:
+            source_layers.add("operational_requirements")
+        for reason in ops_blockers:
+            blocking_reasons.append(
+                _blocking_reason(
+                    code=str(reason.get("code") or "operational_requirement_open"),
+                    message=str(reason.get("message") or "Operational requirement open"),
+                    source_layer="operational_requirements",
+                    requirement_code=reason.get("requirement_code"),
+                    requirement_type=reason.get("requirement_type"),
+                )
+            )
+        ops_ready = not ops_blockers
+
         package_blocks = list(pkg.get("blocks") or [])
         required_confirmations = _pending_confirmations(package_blocks, confirmed_blocks)
         if required_confirmations:
@@ -456,6 +488,7 @@ class TransferPolicyResolver:
             and docs_ready
             and bool(pkg.get("ready"))
             and not required_confirmations
+            and ops_ready
         )
         handoff_create_allowed = transfer_allowed and bool(destinations_allowed)
 

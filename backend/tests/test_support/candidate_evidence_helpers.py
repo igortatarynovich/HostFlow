@@ -294,12 +294,42 @@ RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS = (
 )
 
 
+async def satisfy_first_contact_operational_requirement(
+    client: AsyncClient,
+    headers: dict[str, str],
+    *,
+    candidate_id: str,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    due_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    created = await client.post(
+        "/api/v1/activities",
+        headers=headers,
+        json={
+            "title": "Call candidate",
+            "type": "call",
+            "entity_type": "candidate",
+            "entity_id": candidate_id,
+            "due_at": due_at,
+        },
+    )
+    assert created.status_code == 201, created.text
+    complete = await client.post(
+        f"/api/v1/candidates/{candidate_id}/requirements/first_contact_completed/complete-activity",
+        headers=headers,
+        json={"activity_id": created.json()["id"]},
+    )
+    assert complete.status_code == 200, complete.text
+
+
 async def close_driver_ce_requirements(
     client: AsyncClient,
     headers: dict[str, str],
     *,
     candidate_id: str,
     include_dossier_confirmations: bool = True,
+    include_first_contact: bool = True,
 ) -> None:
     """Approve all driver_ce evidence slots and patch data fields for workspace closure."""
     extra: dict[str, Any] = {
@@ -346,6 +376,13 @@ async def close_driver_ce_requirements(
             headers,
             candidate_id=candidate_id,
             evidence_id=evidence["evidence_id"],
+        )
+
+    if include_first_contact:
+        await satisfy_first_contact_operational_requirement(
+            client,
+            headers,
+            candidate_id=candidate_id,
         )
 
 

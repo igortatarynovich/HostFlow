@@ -437,6 +437,19 @@ Activity-type requirements + continuity.
 
 ---
 
+### A3-B5 — Operational requirements handoff gate parity — **Done (2026-07-02)**
+
+**Scope:**
+
+- Transfer policy blocks `transfer_allowed` / `handoff_create_allowed` when operational requirements are open
+- `blocking_reasons[]` includes `operational_requirement_open` with `requirement_code`
+- Test helper `close_driver_ce_requirements` satisfies `first_contact_completed` by default
+- Tests: extended `test_requirements_workspace_gates.py`
+
+**Done when:** open `first_contact_completed` blocks stage/handoff like document blockers; helpers green. ✅
+
+---
+
 ### A3-QA — E2E — **Done (2026-07-01)**
 
 **File:** `e2e/candidate-requirements-workspace.api.spec.ts`

@@ -77,6 +77,49 @@ async def test_handoff_create_blocked_when_workspace_handoff_not_ready(
     assert detail.get("code") == "handoff_docs_incomplete"
 
 
+async def test_handoff_create_blocked_when_open_operational_requirement(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+    recruiter_headers: dict[str, str],
+    db: AsyncSession,
+    tenant_id: str,
+) -> None:
+    candidate, company_id = await setup_driver_ce_candidate(db, tenant_id)
+    cid = str(candidate.id)
+
+    await ensure_tenant_link_internal_hr(
+        client,
+        manager_headers=manager_headers,
+        tenant_id=tenant_id,
+        company_id=company_id,
+    )
+    await close_driver_ce_requirements(
+        client,
+        manager_headers,
+        candidate_id=cid,
+        include_first_contact=False,
+    )
+
+    workspace_after = await get_requirements_workspace(client, manager_headers, cid)
+    assert workspace_after["operational_requirements"][0]["status"] == "open"
+    assert workspace_after["summary"]["handoff_ready"] is False
+
+    await db.execute(
+        text("UPDATE candidates SET stage = 'ready_for_handoff' WHERE id = :id"),
+        {"id": cid},
+    )
+    await db.commit()
+
+    handoff = await client.post(
+        f"/api/v1/handoffs/candidates/{cid}",
+        headers=recruiter_headers,
+        json={"client_company_id": company_id, "destination": "internal_hr"},
+    )
+    assert handoff.status_code == 409, handoff.text
+    blockers = handoff.json().get("detail", {}).get("blocking_reasons") or []
+    assert any(row.get("code") == "operational_requirement_open" for row in blockers)
+
+
 async def test_stage_and_handoff_allowed_when_workspace_handoff_ready(
     client: AsyncClient,
     manager_headers: dict[str, str],
