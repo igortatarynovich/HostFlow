@@ -5,7 +5,10 @@ import type { RequirementChecklistItem } from '../../../api/candidateRequirement
 import { useI18n } from '../../../i18n'
 import {
   documentMatchesVariantTypes,
+  evaluatedAlternatives,
   evidenceStatusLabelKey,
+  formatExtractionValue,
+  hasExtractionBlockers,
   normDocType,
   requirementStatusBadgeClass,
   resolveRequirementRowStatus,
@@ -114,7 +117,11 @@ export default function RequirementDetailPane({
     rowStatus !== 'not_applicable' &&
     Boolean(evidence?.evidence_id) &&
     (rowStatus === 'approved' || rowStatus === 'rejected' || rowStatus === 'pending_review')
+  const isWorkspace = layout === 'workspace'
   const showEvidenceActions = Boolean(evidence?.evidence_id) && rowStatus !== 'not_applicable'
+  const alternativePaths = useMemo(() => evaluatedAlternatives(item), [item])
+  const showAlternativePaths = isWorkspace && alternativePaths.length > 1
+  const approveBlocked = hasExtractionBlockers(item)
 
   const statusLabel = t(evidenceStatusLabelKey(rowStatus), {
     defaultValue:
@@ -131,7 +138,17 @@ export default function RequirementDetailPane({
       }).trim()
     : ''
 
-  const isWorkspace = layout === 'workspace'
+  const alternativeStatusLabel = (status: string) =>
+    t(`app.candidate_card.requirements_checklist.alternative_status.${status}`, {
+      defaultValue:
+        status === 'satisfied'
+          ? 'Complete'
+          : status === 'pending_verification'
+            ? 'Partial'
+            : status === 'missing'
+              ? 'Not started'
+              : status.replace(/_/g, ' '),
+    })
 
   return (
     <div
@@ -332,6 +349,104 @@ export default function RequirementDetailPane({
             </div>
           ) : null}
 
+          {showAlternativePaths ? (
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                {t('app.candidate_card.requirements_checklist.evidence_paths', {
+                  defaultValue: 'Evidence paths',
+                })}
+              </div>
+              <ul className="mt-2 space-y-2">
+                {alternativePaths.map((alt) => {
+                  const altCode = String(alt.alternative_code || alt.evidence_variant_code || '')
+                  const variant = variants.find((v) => v.evidence_variant_code === altCode)
+                  const active = altCode === evidence?.evidence_variant_code
+                  return (
+                    <li
+                      key={altCode}
+                      className={clsx(
+                        'rounded-lg border px-3 py-2 text-sm',
+                        active ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white',
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-slate-900">
+                          {variant ? variantLabel(t, variant, labelForType) : altCode}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-600">
+                          {alternativeStatusLabel(String(alt.status || 'missing'))}
+                        </span>
+                      </div>
+                      {alt.document_type_codes?.length ? (
+                        <div className="mt-1 text-xs text-slate-600">
+                          {alt.document_type_codes.map((code) => labelForType(String(code))).join(' + ')}
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : null}
+
+          {evidence?.documents?.some(
+            (doc) =>
+              (doc.required_extraction_fields?.length || 0) > 0 ||
+              (doc.missing_extraction_fields?.length || 0) > 0,
+          ) ? (
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                {t('app.candidate_card.requirements_checklist.extraction_fields', {
+                  defaultValue: 'Document data',
+                })}
+              </div>
+              <div className="mt-2 space-y-3">
+                {evidence.documents.map((doc) => {
+                  const typeCode = String(doc.document_type_code || doc.type || '')
+                  const required = doc.required_extraction_fields || []
+                  if (!required.length) return null
+                  const extracted = doc.extracted_fields || {}
+                  const missing = new Set(doc.missing_extraction_fields || [])
+                  return (
+                    <div key={String(doc.document_id || doc.id || typeCode)} className="rounded-lg border border-slate-200 p-3">
+                      <div className="text-sm font-semibold text-slate-900">{labelForType(typeCode)}</div>
+                      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {required.map((fieldCode) => (
+                          <div key={fieldCode} className="rounded-md bg-slate-50 px-2 py-1.5">
+                            <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              {t(`app.candidate_card.requirements_checklist.field.${fieldCode}`, {
+                                defaultValue: fieldCode.replace(/_/g, ' '),
+                              })}
+                            </dt>
+                            <dd
+                              className={clsx(
+                                'text-sm',
+                                missing.has(fieldCode) ? 'text-amber-800 font-medium' : 'text-slate-900',
+                              )}
+                            >
+                              {missing.has(fieldCode)
+                                ? t('app.candidate_card.requirements_checklist.field_missing', {
+                                    defaultValue: 'Missing',
+                                  })
+                                : formatExtractionValue(extracted[fieldCode])}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )
+                })}
+              </div>
+              {approveBlocked ? (
+                <div className="mt-2 text-xs text-amber-800">
+                  {t('app.candidate_card.requirements_checklist.approve_blocked_extraction', {
+                    defaultValue: 'Fill missing document fields before approving evidence.',
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {canReview || canReplace ? (
             <div className="flex flex-wrap gap-2">
               {canReview ? (
@@ -339,7 +454,7 @@ export default function RequirementDetailPane({
                   <button
                     type="button"
                     className="btn-primary btn-sm"
-                    disabled={busy}
+                    disabled={busy || approveBlocked}
                     onClick={() => void runRow(() => onApprove(String(evidence!.evidence_id)))}
                   >
                     {t('app.candidate_card.requirements_checklist.approve', { defaultValue: 'Approve' })}

@@ -4845,6 +4845,25 @@
         "reject_reason_placeholder": "Powód (opcjonalnie)",
         "confirm_reject": "Potwierdź odrzucenie",
         "rejection_reason": "Powód odrzucenia: {reason}",
+        "evidence_paths": "Ścieżki dowodu",
+        "extraction_fields": "Dane z dokumentu",
+        "field_missing": "Brak",
+        "approve_blocked_extraction": "Uzupełnij brakujące pola dokumentu przed zatwierdzeniem dowodu.",
+        "alternative_status": {
+          "satisfied": "Kompletne",
+          "pending_verification": "Częściowe",
+          "missing": "Nierozpoczęte"
+        },
+        "field": {
+          "number": "Numer",
+          "country": "Kraj",
+          "issued_at": "Wydano",
+          "expires_at": "Ważne do",
+          "categories": "Kategorie",
+          "type": "Typ",
+          "voivodeship": "Województwo",
+          "issued_by": "Wydawca"
+        },
         "toast_selected": "Dowód wybrany",
         "toast_linked": "Dokument powiązany",
         "toast_approved": "Wymaganie potwierdzone",

@@ -5670,6 +5670,25 @@
         "reject_reason_placeholder": "Reason (optional)",
         "confirm_reject": "Confirm reject",
         "rejection_reason": "Rejection reason: {reason}",
+        "evidence_paths": "Evidence paths",
+        "extraction_fields": "Document data",
+        "field_missing": "Missing",
+        "approve_blocked_extraction": "Fill missing document fields before approving evidence.",
+        "alternative_status": {
+          "satisfied": "Complete",
+          "pending_verification": "Partial",
+          "missing": "Not started"
+        },
+        "field": {
+          "number": "Number",
+          "country": "Country",
+          "issued_at": "Issued",
+          "expires_at": "Expires",
+          "categories": "Categories",
+          "type": "Type",
+          "voivodeship": "Voivodeship",
+          "issued_by": "Issued by"
+        },
         "toast_selected": "Evidence selected",
         "toast_linked": "Document linked",
         "toast_approved": "Requirement approved",

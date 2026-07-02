@@ -450,6 +450,26 @@ Activity-type requirements + continuity.
 
 ---
 
+### A3-C — Type C: Document + data (evidence + extraction) — **Done (2026-07-02)**
+
+**Scope:**
+
+- Checklist documents include `extracted_fields`, `required_extraction_fields`, `missing_extraction_fields`
+- Multi-variant requirements expose full `alternatives_evaluated[]` (combined vs separate license paths)
+- Missing extraction fields → `pending_verification` + `document_extraction_field_missing` blockers
+- Approve API rejects evidence when required extraction fields are empty
+- `legal_stay_confirmation` → `not_applicable` + `fulfilled=true` for EU citizenship
+- FE: `RequirementDetailPane` — evidence paths, document data grid, approve disabled on extraction gaps
+
+**Tests:**
+
+- `backend/tests/api/test_requirements_workspace_combined_license.py`
+- `backend/tests/api/test_legal_stay_not_applicable_eu.py`
+
+**Done when:** workspace shows extraction side-by-side, both license paths, EU legal stay N/A, approve gated. ✅
+
+---
+
 ### A3-QA — E2E — **Done (2026-07-01)**
 
 **File:** `e2e/candidate-requirements-workspace.api.spec.ts`
@@ -472,7 +492,7 @@ Activity-type requirements + continuity.
 | S0 Catalog | seed | seed | seed | stub | — |
 | B1 Bundle | read | read | read | — | read |
 | FE1 Shell | list | list | list | — | summary |
-| FE2 Detail | — | **done** | partial | — | — |
+| FE2 Detail | — | **done** | **done** | — | — |
 | FE3 Data pane | **done** | — | — | — | — |
 | FE4 Card | CTA | CTA | CTA | — | — |
 | FE5 Handoff | gate | gate | gate | — | **done** |

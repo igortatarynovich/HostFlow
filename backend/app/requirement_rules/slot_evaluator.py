@@ -152,13 +152,14 @@ def _alternative_status(
             if status != "satisfied" or not doc:
                 if status == "pending":
                     has_pending = True
+                partial = has_pending or bool(satisfied_types)
                 return {
                     "alternative_code": alt_code,
                     "evidence_variant_code": alt_code,
-                    "status": "pending_verification" if has_pending else "missing",
-                    "satisfying_document_ids": [],
+                    "status": "pending_verification" if partial else "missing",
+                    "satisfying_document_ids": satisfying_ids,
                     "document_type_codes": satisfied_types,
-                    "partial": has_pending or bool(satisfied_types),
+                    "partial": partial,
                 }
             satisfied_types.append(code)
             raw_id = doc.get("document_id") or doc.get("id")
@@ -438,6 +439,22 @@ def evaluate_document_slot(
         if level == "blocking"
         else [],
     )
+
+
+def evaluate_slot_alternatives(
+    slot: dict[str, Any],
+    *,
+    linked_docs: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Evaluate every satisfaction alternative for workspace variant-path UI (A3-C)."""
+    doc_index = _index_documents(linked_docs or [])
+    alternatives = slot.get("accepted_evidence_variants") or slot.get("satisfaction_alternatives") or []
+    evaluated: list[dict[str, Any]] = []
+    for alternative in alternatives:
+        if not isinstance(alternative, dict):
+            continue
+        evaluated.append(_alternative_status(alternative, doc_index=doc_index))
+    return evaluated
 
 
 def evaluate_document_slots(

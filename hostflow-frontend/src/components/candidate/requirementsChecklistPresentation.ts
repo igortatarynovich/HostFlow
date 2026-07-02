@@ -78,3 +78,32 @@ export function documentMatchesVariantTypes(
   const docNorm = normDocType(docType)
   return normalizedAllowed.has(docNorm)
 }
+
+export function evaluatedAlternatives(item: RequirementChecklistItem): Array<{
+  alternative_code?: string
+  evidence_variant_code?: string
+  status?: string
+  partial?: boolean
+  document_type_codes?: string[]
+}> {
+  const raw = item.evaluation?.alternatives_evaluated
+  if (!Array.isArray(raw)) return []
+  return raw.filter((row): row is NonNullable<typeof row> => typeof row === 'object' && row !== null)
+}
+
+export function hasExtractionBlockers(item: RequirementChecklistItem): boolean {
+  if (item.evaluation?.extraction_incomplete) return true
+  for (const doc of item.candidate_evidence?.documents || []) {
+    const missing = doc.missing_extraction_fields
+    if (Array.isArray(missing) && missing.length > 0) return true
+  }
+  return (item.evaluation?.blockers || []).some(
+    (row) => String(row.code || '') === 'document_extraction_field_missing',
+  )
+}
+
+export function formatExtractionValue(value: unknown): string {
+  if (value == null) return '—'
+  if (Array.isArray(value)) return value.join(', ')
+  return String(value)
+}

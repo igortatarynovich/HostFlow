@@ -148,6 +148,8 @@ async def post_document(
         payload["expires_at"] = expires_at
     if meta:
         payload["meta"] = meta
+    elif default_document_extraction_meta(doc_type):
+        payload["meta"] = default_document_extraction_meta(doc_type)
     resp = await client.post("/api/v1/documents/", headers=headers, json=payload)
     assert resp.status_code == 200, resp.text
     return str(resp.json()["id"])
@@ -292,6 +294,30 @@ RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS = (
     "Psychological",
     "Work experience",
 )
+
+
+def default_document_extraction_meta(doc_type: str) -> dict[str, Any]:
+    """Minimal extracted_fields so evidence approval passes catalog required_meta."""
+    from backend.app.services.requirement_document_data import required_extraction_fields_for_type
+
+    fields = required_extraction_fields_for_type(doc_type)
+    if not fields:
+        return {}
+    values: dict[str, Any] = {
+        "number": "TEST-123456",
+        "country": "PL",
+        "issued_at": "2020-01-01",
+        "expires_at": "2030-01-01",
+        "categories": ["CE"],
+        "type": "temporary",
+        "voivodeship": "mazowieckie",
+        "issued_by": "Test Authority",
+    }
+    extracted = {field: values[field] for field in fields if field in values}
+    for field in fields:
+        if field not in extracted:
+            extracted[field] = f"test-{field}"
+    return {"extracted_fields": extracted}
 
 
 async def satisfy_first_contact_operational_requirement(

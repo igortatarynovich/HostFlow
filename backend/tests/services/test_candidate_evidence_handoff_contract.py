@@ -24,6 +24,7 @@ from backend.app.services.candidate_evidence_service import (
 from backend.app.services.handoff_snapshot import build_handoff_snapshot_payload_v1
 from backend.tests.test_support.candidate_evidence_helpers import (
     assert_handoff_requirement_fulfillments_contract,
+    default_document_extraction_meta,
     setup_driver_ce_candidate,
 )
 
@@ -50,7 +51,14 @@ async def _seed_approved_identity_evidence(
         process_type=DocumentProcessType.none,
         expire_date=expire_date,
         files=[{"name": "passport.pdf", "url": "/uploads/test/passport.pdf"}],
-        meta=doc_meta or {"extracted_fields": {"passport_number": "AB123456"}},
+        meta=doc_meta
+        or {
+            **default_document_extraction_meta("passport"),
+            "extracted_fields": {
+                **default_document_extraction_meta("passport").get("extracted_fields", {}),
+                "passport_number": "AB123456",
+            },
+        },
     )
     db.add(doc)
     await db.flush()

@@ -23,6 +23,18 @@ export type RequirementEvidenceDocument = {
   has_files?: boolean
   expires_on?: string | null
   document_runtime?: Record<string, unknown> | null
+  extracted_fields?: Record<string, unknown>
+  required_extraction_fields?: string[]
+  missing_extraction_fields?: string[]
+}
+
+export type EvaluatedEvidenceAlternative = {
+  alternative_code?: string
+  evidence_variant_code?: string
+  status?: string
+  partial?: boolean
+  document_type_codes?: string[]
+  satisfying_document_ids?: string[]
 }
 
 export type CandidateEvidenceSnapshot = {
@@ -61,6 +73,8 @@ export type RequirementChecklistItem = {
     blockers?: Array<Record<string, unknown>>
     evidence_status?: string | null
     evidence_variant_code?: string | null
+    alternatives_evaluated?: EvaluatedEvidenceAlternative[]
+    extraction_incomplete?: boolean
     [key: string]: unknown
   }
 }
