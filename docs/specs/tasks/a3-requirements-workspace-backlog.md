@@ -517,4 +517,41 @@ A3-{slice-id}: {title}
 
 ---
 
+### B1 — Handoff gates (structured 409 parity) — **Done (2026-07-02)**
+
+**Scope:**
+
+- `POST /handoffs/candidates/{id}` → **409** + `handoff_docs_incomplete` detail (как stage PATCH)
+- `POST /handoffs/bulk` → `errors[].detail` с тем же контрактом
+- FE: handoff modal + bulk handoff распознают structured gate
+
+**Done when:** create/bulk handoff не обходят transfer policy; UI показывает тот же blocker, что workspace. ✅
+
+---
+
+### B2-G1 — HR handoff runtime pipeline binding — **Done (2026-07-02)**
+
+**Scope:**
+
+- `handoff_from_candidate` → `meta.employee_pipeline` via HR resolver (not recruitment)
+- Entry stage `received_from_recruitment` when mapped; fallback `handoff_pending` + `source_handoff_fallback`
+- Repeat handoff §5.3 no-downgrade policy
+
+**Done when:** accept internal HR handoff leaves workforce row with `employee_pipeline.origin=recruitment_handoff`. ✅
+
+---
+
+### B2-G3 — Module gates on handoff create/accept + from-candidate — **Done (2026-07-02)**
+
+**Scope:**
+
+- `assert_hr_for_company_scope` / `assert_hr_for_candidate` (mirror recruitment helpers)
+- `create_handoff` / `accept_handoff` / `handoff_from_candidate` → 403 when HR or recruitment off per §2.4
+- `Company.enabled_modules` mapped on ORM model; derived `recruitment` in `company_module_access`
+- Tests: `backend/tests/api/test_hr_handoff_module_gates_g3.py`
+
+**Done when:** internal_hr blocked when HR off; recruitment handoff blocked when recruitment off; client_portal not blocked by HR-off alone. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

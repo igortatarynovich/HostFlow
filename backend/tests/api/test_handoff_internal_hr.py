@@ -10,6 +10,30 @@ from httpx import AsyncClient
 
 from backend.tests.conftest import DEFAULT_TENANT_ID, _init_data
 from backend.tests.test_support.candidate_handoff_gate import seed_documents_for_ready_for_handoff
+from backend.tests.test_support.candidate_evidence_helpers import RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS
+
+
+async def _ensure_hr_employee_funnel_for_company(
+    *,
+    tenant_id: str,
+    company_id: str,
+) -> None:
+    from sqlalchemy import select, text
+
+    from backend.app.db.session import async_session_maker
+    from backend.app.models.company import Company
+    from backend.app.models.tenant import Tenant
+    from backend.app.services.hr_employee_funnel_bootstrap import bootstrap_hr_employee_funnel_for_company
+
+    async with async_session_maker() as session:
+        await session.execute(
+            text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+            {"tenant_id": tenant_id},
+        )
+        tenant = (await session.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one()
+        company = (await session.execute(select(Company).where(Company.id == company_id))).scalar_one()
+        await bootstrap_hr_employee_funnel_for_company(db=session, tenant=tenant, company=company)
+        await session.commit()
 
 
 async def _ensure_tenant_link_internal_hr(
@@ -60,6 +84,13 @@ async def internal_hr_handoff_create_and_accept(
     company_id: str,
 ) -> str:
     """PR-5: materialize HR workforce only via internal HR handoff + accept."""
+    await _ensure_hr_employee_funnel_for_company(tenant_id=DEFAULT_TENANT_ID, company_id=company_id)
+    confirm = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers={**recruiter_headers, "Content-Type": "application/json"},
+        json={"extra": {"recruitment_dossier_confirmed_blocks": list(RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS)}},
+    )
+    assert confirm.status_code == 200, confirm.text
     rf = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
         headers={**recruiter_headers, "Content-Type": "application/json"},

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, select, func
@@ -580,7 +580,7 @@ async def create_handoff(
     assigned_to_user_id: str | None = None,
     destination: str | None = None,
     application_id: str | None = None,
-) -> tuple[CandidateHandoff | None, str | None]:
+) -> tuple[CandidateHandoff | None, str | dict[str, Any] | None]:
     """Create handoff (client portal or internal HR). Returns (handoff, error)."""
     if not client_company_id and not client_tenant_id:
         return None, "Either client_company_id or client_tenant_id required"
@@ -594,6 +594,16 @@ async def create_handoff(
         return None, "Candidate not found"
     if str(cand.tenant_id) != agency_tenant_id:
         return None, "Candidate does not belong to agency tenant"
+
+    from backend.app.services.company_module_enforcement import (
+        assert_hr_for_candidate,
+        assert_recruitment_for_candidate,
+    )
+
+    await assert_recruitment_for_candidate(db, agency_tenant_id, cand)
+    if dest == "internal_hr":
+        await assert_hr_for_candidate(db, agency_tenant_id, cand)
+
     cand_stage = (getattr(cand, "stage", None) or "").strip().lower()
     if dest == "internal_hr":
         if cand_stage not in ("ready_for_handoff", "ready_for_hr"):
@@ -609,11 +619,7 @@ async def create_handoff(
         candidate_id=candidate_id,
     )
     if pkg_err:
-        msg = str(pkg_err.get("message") or "Recruitment package is incomplete for handoff")
-        blocks = pkg_err.get("blocking_blocks") or []
-        if blocks:
-            msg = f"{msg}: {', '.join(blocks)}"
-        return None, msg
+        return None, pkg_err
 
     link = await get_tenant_link(
         db,
@@ -820,6 +826,9 @@ async def accept_handoff(
         )
     if cand:
         if dest == "internal_hr":
+            from backend.app.services.company_module_enforcement import assert_hr_for_candidate
+
+            await assert_hr_for_candidate(db, str(handoff.agency_tenant_id), cand)
             cand.stage = "processing_by_hr"
             if hasattr(cand, "status"):
                 cand.status = "processing_by_hr"

@@ -45,7 +45,8 @@ async def seed_documents_for_ready_for_handoff(
     elif isinstance(address_raw, dict):
         has_address = bool(str(address_raw.get("line1") or address_raw.get("address") or "").strip())
     if not has_address:
-        patch_payload["personal_data"] = {**personal, "address": "Handoff Gate Street 1, Warsaw"}
+        extra = cand.get("extra") if isinstance(cand.get("extra"), dict) else {}
+        patch_payload["extra"] = {**extra, "address": "Handoff Gate Street 1, Warsaw"}
 
     if patch_payload:
         contact_patch = await client.patch(

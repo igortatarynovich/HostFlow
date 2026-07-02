@@ -3170,10 +3170,25 @@ export default function CandidateCard(){
           ? t('app.candidate_card.handoff.transfer_internal_hr_btn')
           : t('app.candidate_card.handoff.transfer_client_btn')
       if (!planLimitModal?.showPlanLimitIfNeeded(e, transferLabel)) {
-        notify({
-          title: e?.response?.data?.detail || e?.message || t('app.common.messages.unexpected'),
-          variant: 'error',
-        })
+        const handoffDocs = parseHandoffDocsIncomplete(e)
+        if (handoffDocs) {
+          notify({
+            title: t('app.candidate_card.messages.handoff_docs_incomplete'),
+            variant: 'warning',
+          })
+        } else {
+          const detail = e?.response?.data?.detail
+          const title =
+            typeof detail === 'object' && detail && typeof (detail as { message?: string }).message === 'string'
+              ? String((detail as { message: string }).message)
+              : typeof detail === 'string'
+                ? detail
+                : e?.message || t('app.common.messages.unexpected')
+          notify({
+            title,
+            variant: 'error',
+          })
+        }
       }
     } finally {
       setHandoffSubmitting(false)
@@ -3187,6 +3202,7 @@ export default function CandidateCard(){
     notify,
     planLimitModal,
     primaryHandoffDestination,
+    parseHandoffDocsIncomplete,
     refreshHandoffMeta,
     t,
   ])

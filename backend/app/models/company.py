@@ -83,6 +83,11 @@ class Company(Base):
         default=dict,
         server_default=text("'{}'"),
     )
+    enabled_modules: Mapped[Optional[dict]] = mapped_column(
+        _JSONType,
+        nullable=True,
+        default=None,
+    )
 
     # ДВА уровня дефолтов: python-side + server_default — чтобы не ловить
     # NOT NULL даже если миграции отстают

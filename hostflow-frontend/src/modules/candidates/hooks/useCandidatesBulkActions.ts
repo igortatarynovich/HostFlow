@@ -522,16 +522,41 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
         client_company_id: ctx.bulkHandoffClientId,
       })
       if (result.failed > 0) {
-        const details = result.errors
-          .slice(0, 5)
-          .map((e) => `${e.candidate_id}: ${e.error}`)
-          .join('\n')
-        alert(
-          (ctx.t('app.candidates.modals.handoff.partial', {
-            values: { created: result.created, failed: result.failed, total: ids.length },
-            defaultValue: `Przekazano ${result.created} z ${ids.length}. Nie udało się: ${result.failed}.`,
-          }) as string) + (details ? `\n\n${details}` : ''),
-        )
+        const handoffDocsFailures = result.errors.filter((item) => {
+          const detail = item.detail
+          if (detail && String(detail.code || '') === 'handoff_docs_incomplete') return true
+          const parsed = parseErrorObject(item.error)
+          return String(parsed?.code || '') === 'handoff_docs_incomplete'
+        })
+        if (handoffDocsFailures.length > 0) {
+          const firstDetail = handoffDocsFailures[0]?.detail || parseErrorObject(handoffDocsFailures[0]?.error)
+          const missingFromFirst = Array.isArray(firstDetail?.missing_types)
+            ? (firstDetail?.missing_types as unknown[]).map((code) => String(code || '').trim()).filter(Boolean)
+            : []
+          const missingLabels = missingFromFirst
+            .map((code: string) => ctx.t(`admin.documents.types.${code}`, { defaultValue: code }))
+            .join(', ')
+          alert(
+            ctx.t('app.candidates.messages.bulk_stage_handoff_docs_blocked', {
+              values: {
+                docs: handoffDocsFailures.length,
+                total: result.failed,
+                missing: missingLabels || '—',
+              },
+            }),
+          )
+        } else {
+          const details = result.errors
+            .slice(0, 5)
+            .map((e) => `${e.candidate_id}: ${e.error}`)
+            .join('\n')
+          alert(
+            (ctx.t('app.candidates.modals.handoff.partial', {
+              values: { created: result.created, failed: result.failed, total: ids.length },
+              defaultValue: `Przekazano ${result.created} z ${ids.length}. Nie udało się: ${result.failed}.`,
+            }) as string) + (details ? `\n\n${details}` : ''),
+          )
+        }
       }
       if (result.created > 0) {
         ctx.setBulkHandoffOpen(false)

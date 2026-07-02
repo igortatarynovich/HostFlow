@@ -141,6 +141,16 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     assert lst.status_code == 200, lst.text
     emp_id = _employee_id_for_candidate(lst.json(), candidate_id)
 
+    emp_detail = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}",
+        headers=hr_officer_headers,
+    )
+    assert emp_detail.status_code == 200, emp_detail.text
+    pipeline = (emp_detail.json().get("meta") or {}).get("employee_pipeline") or {}
+    assert pipeline.get("funnel_id")
+    assert pipeline.get("stage_code")
+    assert pipeline.get("origin") == "recruitment_handoff"
+
     hr_docs = await client.get(
         f"/api/v1/workforce/employees/{emp_id}/documents",
         headers=hr_officer_headers,

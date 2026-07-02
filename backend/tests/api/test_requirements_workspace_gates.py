@@ -72,8 +72,9 @@ async def test_handoff_create_blocked_when_workspace_handoff_not_ready(
         headers=recruiter_headers,
         json={"client_company_id": company_id, "destination": "internal_hr"},
     )
-    assert handoff.status_code == 400, handoff.text
-    assert "incomplete" in str(handoff.json().get("detail") or "").lower()
+    assert handoff.status_code == 409, handoff.text
+    detail = handoff.json().get("detail") or {}
+    assert detail.get("code") == "handoff_docs_incomplete"
 
 
 async def test_stage_and_handoff_allowed_when_workspace_handoff_ready(
