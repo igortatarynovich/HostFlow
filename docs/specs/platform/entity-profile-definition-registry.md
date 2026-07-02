@@ -741,7 +741,23 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **Not changed in P9 (by design):** Meta admin page replacement, TikTok/CSV adapters, conditional presentation fields.
 
-### P8 implementation status (2026-06-22)
+### C1 — Form Constructor Lead-first closure (2026-07-02)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Bound form create → Lead draft only | Done | `create_public_intake` skips legacy candidate reuse when `TenantLeadForm` bound |
+| Admin submit_destination contract | Done | `intake_form_admin_context._submit_destination` |
+| Smoke / P6–P9 tests | Done | `test_intake_forms_settings*.py`, `test_public_intake_c1.py` |
+| Legacy candidate path | Deprecated | Unbound public intake only; `create_public_intake_draft_via_service` |
+
+**C1 acceptance:** Manager-configured public form (`lead_form_slug`) → `POST /public/intake` returns `lead_id` even if matching Candidate exists; smoke test creates Lead draft; `submit_destination.creates_candidate_on_create === false`.
+
+**Canonical chain (Form Constructor):**
+
+```
+Settings form (P8) → Public render (P7) → POST /intake → Lead draft (P5C) → Submit → Decision → Outcome
+```
+
 
 | Deliverable | Status | Location |
 |-------------|--------|----------|

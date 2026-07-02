@@ -50,6 +50,9 @@ def _headers(tenant_id: str) -> dict[str, str]:
 
 async def _seed_entity_profiles(tenant_id: str) -> None:
     async with async_session_maker() as session:
+        from backend.tests.api.test_public_intake import _ensure_recruitment_funnels
+
+        await _ensure_recruitment_funnels(session, tenant_id)
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
         await session.commit()
 

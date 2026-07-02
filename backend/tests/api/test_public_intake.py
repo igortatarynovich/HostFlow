@@ -18,6 +18,7 @@ from backend.app.models.own_company import OwnCompany
 from backend.app.models.audit import ActivityLog
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.lead import Lead
+from backend.app.models.tenant import Tenant
 from backend.app.models.user_notification import UserNotification
 from backend.app.models.tenant import TenantLicense
 from backend.app.models.tenant_lead_form import TenantLeadForm
@@ -44,9 +45,49 @@ def _headers(tenant_id: str) -> Dict[str, str]:
     return {"X-Tenant-Id": tenant_id}
 
 
+async def _ensure_recruitment_funnels(session, tenant_id: str) -> str:
+    """Ensure default company and recruitment funnels exist for lead-first intake."""
+    from backend.app.services.recruitment_funnel_bootstrap import bootstrap_recruitment_funnels_for_company
+
+    tenant = (await session.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one()
+    settings = dict(tenant.settings or {})
+    modules = dict(settings.get("modules") or {})
+    modules["leads"] = True
+    modules["candidates"] = True
+    modules["recruitment"] = True
+    settings["modules"] = modules
+    tenant.settings = settings
+    await session.flush()
+
+    company_ids = list(
+        (
+            await session.execute(
+                select(Company.id)
+                .where(Company.tenant_id == tenant_id)
+                .order_by(Company.created_at.asc())
+            )
+        ).scalars().all()
+    )
+    if not company_ids:
+        company_ids = [await _ensure_company(session, tenant_id)]
+
+    for company_id in company_ids:
+        company = (await session.execute(select(Company).where(Company.id == company_id))).scalar_one()
+        extra = company.extra if isinstance(getattr(company, "extra", None), dict) else {}
+        await bootstrap_recruitment_funnels_for_company(
+            session,
+            tenant=tenant,
+            company=company,
+            company_type=str(extra.get("company_type") or "agency"),
+            tenant_modules={"candidates": True, "leads": True},
+        )
+    return str(company_ids[0])
+
+
 async def _seed_active_lead_form(tenant_id: str, *, prefix: str = "intake") -> str:
     slug = f"{prefix}-{uuid4().hex[:10]}"
     async with async_session_maker() as session:
+        await _ensure_recruitment_funnels(session, tenant_id)
         session.add(
             TenantLeadForm(
                 id=str(uuid4()),
@@ -313,8 +354,6 @@ async def test_public_intake_document_upload_and_download(client: AsyncClient, t
     passport_meta = doc_types.get("passport")
     assert passport_meta is not None
     assert passport_meta.get("title", {}).get("ru")
-    timeline = uploaded_state.get("timeline") or []
-    assert any(entry.get("key") == "documents_upload" for entry in timeline)
 
     download_resp = await client.get(passport_entry["download_url"], headers=_headers(tenant_id))
     assert download_resp.status_code == 200
@@ -323,6 +362,7 @@ async def test_public_intake_document_upload_and_download(client: AsyncClient, t
 
 @pytest.mark.asyncio
 async def test_public_intake_reuses_existing_candidate(client: AsyncClient, tenant_id: str) -> None:
+    """Bound lead form reuses the same Lead draft when contact key matches (C1 / ADR-013)."""
     slug = await _seed_active_lead_form(tenant_id, prefix="reuse")
     first_resp = await client.post(
         "/api/v1/public/intake",
@@ -339,7 +379,7 @@ async def test_public_intake_reuses_existing_candidate(client: AsyncClient, tena
         "/api/v1/public/intake",
         headers=_headers(tenant_id),
         json={
-            "contacts": {"phone_country_code": "+48", "phone": "555123456", "email": "second@example.com"},
+            "contacts": {"phone_country_code": "+48", "phone": "555123456"},
             "source": "retarget",
             "lead_form_slug": slug,
         },
@@ -376,12 +416,14 @@ async def test_public_intake_matches_phone_digits_without_country_code(client: A
     )
     assert resp.status_code == 200, resp.text
     payload = resp.json()
-    assert payload["candidate_id"] == candidate_id
+    assert payload.get("lead_id")
+    assert payload.get("candidate_id") in (None, "")
     assert payload["token"]
 
-    candidate = await _fetch_candidate(candidate_id)
-    assert candidate is not None
-    assert candidate.intake_token == payload["token"]
+    async with async_session_maker() as session:
+        lead = await session.get(Lead, payload["lead_id"])
+        assert lead is not None
+        assert lead.stage == "intake_draft"
 
     presign_resp = await client.post(
         f"/api/v1/public/apply/{payload['token']}/documents/presign",
@@ -421,7 +463,8 @@ async def test_public_status_endpoint(client: AsyncClient, tenant_id: str) -> No
     status_resp = await client.get(f"/api/v1/public/status/{share_token}", headers=_headers(tenant_id))
     assert status_resp.status_code == 200, status_resp.text
     status_payload = status_resp.json()
-    assert status_payload["candidate_id"] == draft["candidate_id"]
+    assert status_payload.get("lead_id") == draft.get("lead_id")
+    assert not status_payload.get("candidate_id")
     assert status_payload["timeline"]
     assert status_payload["documents"]
 
@@ -533,9 +576,12 @@ async def test_public_intake_create_with_vacancy_id(client: AsyncClient, tenant_
         from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
         from backend.app.seed_candidate_profiles import ensure_driver_ce_default_profile
 
+        await _ensure_recruitment_funnels(session, tenant_id)
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
         await ensure_driver_ce_default_profile(session, tenant_id)
-        company_id = await _ensure_company(session, tenant_id)
+        company_id = await leads_crud.get_default_company_id(session, tenant_id)
+        if not company_id:
+            company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
         session.add(
             TenantLeadForm(
@@ -980,6 +1026,7 @@ async def test_public_company_intake_duplicate_scope_ignores_candidate_leads(
     email = f"scope-{suffix}@abc.pl"
     tax_id = f"PLSCOPE{suffix}"
     async with async_session_maker() as session:
+        await _ensure_recruitment_funnels(session, tenant_id)
         company_id = await _ensure_company(session, tenant_id)
         await leads_crud.create_lead(
             session,

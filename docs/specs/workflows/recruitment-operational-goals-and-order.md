@@ -235,7 +235,7 @@ HR **не собирает заново** то, что recruitment уже зак
 
 | # | Работа | Зависимости |
 |---|--------|-------------|
-| C1 | ADR-013 (связка public form → Lead-first) | A5 | **Unblocked (ADR Accepted 2026-07-02)** |
+| C1 | ADR-013 (связка public form → Lead-first) | A5 | **Done (2026-07-02)** |
 | C2 | Bridge removal: deprecate `CandidateProfile.config` | C1 |
 | C3 | Mapping / smoke для новых профилей (страна, роль) | Entity Profile seeds |
 | C4 | ADR-007 universal Forms platform | После C2 closure |
@@ -262,7 +262,7 @@ HR **не собирает заново** то, что recruitment уже зак
 | Operational actions | Частично Activities; fake tasks после convert | Continuity + typed requirements |
 | Handoff | E2E работает; pipeline gap; слабая связь с gates | Только после readiness; fulfillments + pipeline |
 | Кто решает обязательность | Задокументировано в engine; не везде enforced в UI | Все transitions читают engine |
-| Forms | P6–P10A для intake; dual-stack | Один путь; форма ≠ требования |
+| Forms | P6–P10A для intake; dual-stack | **Lead-first** для Form Constructor; legacy candidate reuse только без lead form |
 
 ---
 

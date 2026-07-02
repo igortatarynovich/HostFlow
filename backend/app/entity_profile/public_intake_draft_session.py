@@ -169,6 +169,43 @@ async def resolve_public_intake_lead_draft_tenant_id(db: AsyncSession, token: st
     return None
 
 
+async def find_lead_draft_by_status_share_token(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    share_token: str,
+) -> Optional[Lead]:
+    stmt = select(Lead).where(
+        Lead.tenant_id == str(tenant_id),
+        Lead.source == PUBLIC_INTAKE_SOURCE,
+        Lead.stage == "intake_draft",
+    )
+    result = await db.execute(stmt)
+    for lead in result.scalars().all():
+        block = get_public_intake_draft_block(lead)
+        if str(block.get("status_share_token") or "") == str(share_token):
+            return lead
+    return None
+
+
+async def resolve_public_intake_lead_draft_status_tenant_id(
+    db: AsyncSession,
+    share_token: str,
+) -> Optional[str]:
+    stmt = select(Lead.tenant_id, Lead.normalized).where(
+        Lead.source == PUBLIC_INTAKE_SOURCE,
+        Lead.stage == "intake_draft",
+    )
+    result = await db.execute(stmt)
+    for tenant_id, normalized in result.all():
+        if not isinstance(normalized, dict):
+            continue
+        block = normalized.get(PUBLIC_INTAKE_DRAFT_V1)
+        if isinstance(block, dict) and str(block.get("status_share_token") or "") == str(share_token):
+            return str(tenant_id)
+    return None
+
+
 async def resolve_public_intake_session(
     db: AsyncSession,
     *,

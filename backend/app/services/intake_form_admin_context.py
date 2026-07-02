@@ -72,6 +72,7 @@ def _submit_destination(*, entity_profile_code: str, route_intent: Optional[str]
         "entity_profile_code": entity_profile_code,
         "creates_candidate_on_create": False,
         "creates_lead_draft_on_create": True,
+        "canon": "ADR-013 Decision 2 — Lead-first public form (C1)",
     }
 
 

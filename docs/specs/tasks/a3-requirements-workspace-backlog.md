@@ -660,4 +660,17 @@ A3-{slice-id}: {title}
 
 ---
 
+### C1 — Form Constructor → Lead-first (ADR-013) — **Done (2026-07-02)**
+
+**Scope:**
+
+- `POST /public/intake` with bound `TenantLeadForm` always uses `create_or_reuse_public_intake_lead_draft` (never legacy candidate reuse)
+- Admin `submit_destination` documents Lead-first pipeline + ADR canon ref
+- Deprecation notice on `create_public_intake_draft_via_service` (legacy in-flight only)
+- Tests: `test_public_intake_c1.py`, updated `test_public_intake_matches_phone_digits_without_country_code`
+
+**Done when:** Form Constructor smoke + public create return `lead_id`; no Candidate INSERT on create for bound forms. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

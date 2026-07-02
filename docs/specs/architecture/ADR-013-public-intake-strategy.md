@@ -71,7 +71,7 @@ Ingestion — это **governed operational contract**, а не «любой end
 
 - **Accepted (2):** analytics и intake governance выровнены с Lead-first doctrine; CRM — audit mode для public submit; legacy Candidate drafts и client kind явно в §9 contract.
 - **Guardrails сохранены:** не смешивать intake и dossier ops на одном экране без роли; Intake Resolution MVP slices 1–6 закрыты для CRM Meta path.
-- **Direction C (C1):** Form Constructor may treat public forms as Lead-first surfaces — unblocked.
+- **Direction C (C1):** Form Constructor treats public forms as Lead-first surfaces — **Done (2026-07-02)**; see [ingestion-contract-public-intake.md](../workflows/ingestion-contract-public-intake.md).
 
 **Guardrails:** (1) не смешивать в одном экране «intake» и «dossier ops» без явного разделения ролей UI; (2) закрывать **Intake Resolution MVP** ([lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8) до масштабного расширения Activities / Rehire / Person. **Canonical Intake Resolution Layer** = архитектурная программа; **Intake Resolution MVP** = поэтапная поставка (6 срезов).
 
