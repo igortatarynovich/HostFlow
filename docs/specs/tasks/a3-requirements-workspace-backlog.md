@@ -687,4 +687,17 @@ A3-{slice-id}: {title}
 
 ---
 
+### C3 — Mapping / smoke для новых профилей (страна, роль) — **Done (2026-07-02)**
+
+**Scope:**
+
+- Entity Profile seeds: `recruitment.candidate.warehouse_worker` (role) + `recruitment.candidate.driver_ce_ua` (country/market variant)
+- Document pack: `recruitment.warehouse_worker_documents` (identity + legal stay)
+- Intake mapping validation rejects fields outside profile; P8 create + smoke-test → Lead draft for both profiles
+- Tests: `backend/tests/entity_profile/test_entity_profile_c3.py`
+
+**Done when:** admin entity-profile picker lists new profiles; form create + smoke pass; mapping rejects out-of-profile fields. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

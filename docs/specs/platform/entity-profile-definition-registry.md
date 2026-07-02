@@ -859,7 +859,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 | Change | Detail |
 |--------|--------|
 | Tables | `ep_entity_profiles`, `ep_entity_profile_fields`, `ep_intake_presentations` |
-| Seed profile | `recruitment.candidate.driver_ce` — 10 canonical fields + Meta short intake presentation |
+| Seed profiles | `recruitment.candidate.driver_ce`, `recruitment.candidate.warehouse_worker` (role), `recruitment.candidate.driver_ce_ua` (country/market) — intake presentations + mapping/smoke (C3) |
 | Validation | `UnknownCanonicalFieldError` when profile references codes absent from Field Registry |
 | Read API | `GET /api/v1/platform/entity-profiles/{profile_code}?include_presentations=` |
 | Resolver | `resolve_effective_entity_profile()` — joins `fr_canonical_fields` per profile field row |

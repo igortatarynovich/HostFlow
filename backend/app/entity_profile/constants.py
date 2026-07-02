@@ -15,6 +15,12 @@ ENTITY_CANDIDATE = "candidate"
 DRIVER_CE_PROFILE_CODE = "recruitment.candidate.driver_ce"
 DRIVER_CE_INTAKE_PRESENTATION_CODE = "recruitment.candidate.driver_ce.meta_short"
 
+WAREHOUSE_WORKER_PROFILE_CODE = "recruitment.candidate.warehouse_worker"
+WAREHOUSE_WORKER_INTAKE_PRESENTATION_CODE = "recruitment.candidate.warehouse_worker.public_short"
+
+DRIVER_CE_UA_PROFILE_CODE = "recruitment.candidate.driver_ce_ua"
+DRIVER_CE_UA_INTAKE_PRESENTATION_CODE = "recruitment.candidate.driver_ce_ua.meta_short"
+
 REQUIREMENT_REQUIRED = "required"
 REQUIREMENT_OPTIONAL = "optional"
 REQUIREMENT_HIDDEN = "hidden"
