@@ -151,9 +151,20 @@ from backend.app.api.v1.candidates.schemas import (
     CandidateChangeLogResponse,
     CandidateWorkPanelResponse,
     RecruitmentApplicationOut,
+    RecruitmentApplicationStatusPatch,
+    RecruitmentApplicationVacancySwitchRequest,
 )
-from backend.app.services.recruitment_application_lifecycle import normalize_application_status
-from backend.app.services.recruitment_application_service import list_recruitment_applications_for_candidate
+from backend.app.services.recruitment_application_lifecycle import (
+    InvalidRecruitmentApplicationStatus,
+    InvalidRecruitmentApplicationTransition,
+    normalize_application_status,
+)
+from backend.app.services.recruitment_application_service import (
+    RecruitmentApplicationNotFound,
+    list_recruitment_applications_for_candidate,
+    patch_recruitment_application_status,
+    switch_recruitment_application_vacancy,
+)
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
@@ -2293,6 +2304,7 @@ def _recruitment_application_to_out(row: RecruitmentApplication) -> RecruitmentA
         applied_at=applied,
         status=normalize_application_status(getattr(row, "status", None)),
         application_cycle=application_cycle,
+        external_id=_opt_id(getattr(row, "external_id", None)),
         meta=meta,
     )
 
@@ -2330,6 +2342,100 @@ async def list_candidate_recruitment_applications(
         candidate_id=str(candidate_id),
     )
     return [_recruitment_application_to_out(a) for a in apps]
+
+
+@router.patch(
+    "/{candidate_id}/applications/{application_id}",
+    response_model=RecruitmentApplicationOut,
+    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    summary="Update recruitment application status (lifecycle §4)",
+)
+async def patch_candidate_recruitment_application_status(
+    candidate_id: UUID,
+    application_id: UUID,
+    body: RecruitmentApplicationStatusPatch,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> RecruitmentApplicationOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        app = await patch_recruitment_application_status(
+            db,
+            tenant_id=tenant_id_str,
+            candidate_id=str(candidate_id),
+            application_id=str(application_id),
+            new_status=body.status,
+        )
+        await db.commit()
+    except RecruitmentApplicationNotFound:
+        raise HTTPException(status_code=404, detail="Application not found") from None
+    except (InvalidRecruitmentApplicationStatus, InvalidRecruitmentApplicationTransition) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    return _recruitment_application_to_out(app)
+
+
+@router.post(
+    "/{candidate_id}/applications/{application_id}/switch-vacancy",
+    response_model=RecruitmentApplicationOut,
+    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    summary="Switch evaluation to another vacancy (lifecycle §7 — new Application row)",
+)
+async def switch_candidate_recruitment_application_vacancy(
+    candidate_id: UUID,
+    application_id: UUID,
+    body: RecruitmentApplicationVacancySwitchRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> RecruitmentApplicationOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        _prev, new_app = await switch_recruitment_application_vacancy(
+            db,
+            tenant_id=tenant_id_str,
+            candidate_id=str(candidate_id),
+            application_id=str(application_id),
+            to_vacancy_id=body.to_vacancy_id,
+            actor_sub=current_user.sub,
+            close_previous=body.close_previous,
+        )
+        await db.commit()
+    except RecruitmentApplicationNotFound:
+        raise HTTPException(status_code=404, detail="Application not found") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return _recruitment_application_to_out(new_app)
 
 
 @router.post(

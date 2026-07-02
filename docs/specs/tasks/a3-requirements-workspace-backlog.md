@@ -647,4 +647,17 @@ A3-{slice-id}: {title}
 
 ---
 
+### A6 — Application lifecycle I1 / C2b / C3 — **Done (2026-07-02)**
+
+**Scope:**
+
+- **C2b:** `external_id` column + `ensure_recruitment_application_for_external_intent`
+- **I1:** `switch_recruitment_application_vacancy` + POST switch-vacancy API
+- **C3:** PATCH application status API; `hired` does not create WorkforceEmployee
+- Tests: `backend/tests/api/test_recruitment_application_a6.py`
+
+**Done when:** second apply idempotent by external_id; vacancy switch creates new row; hired status has no implicit HR materialization. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

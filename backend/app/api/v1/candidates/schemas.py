@@ -486,6 +486,16 @@ class RecruitmentApplicationOut(BaseModel):
     applied_at: datetime
     status: str = "applied"
     application_cycle: Optional[str] = None
+    external_id: Optional[str] = None
     meta: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"from_attributes": False}
+
+
+class RecruitmentApplicationStatusPatch(BaseModel):
+    status: str = Field(..., min_length=1, max_length=32)
+
+
+class RecruitmentApplicationVacancySwitchRequest(BaseModel):
+    to_vacancy_id: str = Field(..., min_length=1)
+    close_previous: bool = True

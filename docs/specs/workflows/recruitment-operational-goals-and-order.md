@@ -216,7 +216,7 @@ HR **не собирает заново** то, что recruitment уже зак
 | A3 | Requirements workspace UX (checklist-first на Candidate) | Requirement Engine API — **backlog:** [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) | **Done (2026-07-01)** |
 | A4 | Закрыть gaps: stage/handoff gates ← engine blockers | A3 | **Done (2026-07-01)** |
 | A5 | ADR-013 + выравнивание public intake | После A2 стабилизации | **Done (2026-07-02)** |
-| A6 | Application lifecycle I1 / C2b / C3 | После A4 |
+| A6 | Application lifecycle I1 / C2b / C3 | После A4 | **Done (2026-07-02)** |
 
 ### Направление B — Handoff + Employee flow
 
