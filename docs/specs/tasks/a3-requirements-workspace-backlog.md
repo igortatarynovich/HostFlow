@@ -554,4 +554,27 @@ A3-{slice-id}: {title}
 
 ---
 
+### B2-G2 — Delayed approve path pipeline binding — **Done (2026-07-02)**
+
+**Scope:**
+
+- `approve_employment_for_handoff` → `handoff_from_candidate` (same pipeline assignment as accept)
+- Test assert `meta.employee_pipeline` after delayed approve: `test_hr_acceptance_stage_b_delayed_workforce.py`
+
+**Done when:** delayed workforce path leaves employee with `employee_pipeline.origin=recruitment_handoff`. ✅
+
+---
+
+### B2-G4 — Idempotency + repeat handoff meta policy — **Done (2026-07-02)**
+
+**Scope:**
+
+- §5.3 no-downgrade via `merge_recruitment_handoff_pipeline_meta`
+- API regression: `backend/tests/api/test_hr_handoff_idempotency_g4.py`
+- Handoff test helper seeds dossier confirmations for transfer gate parity
+
+**Done when:** repeat `from-candidate` returns same row; advanced pipeline stage preserved on repeat. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

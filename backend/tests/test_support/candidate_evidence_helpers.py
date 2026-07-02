@@ -318,6 +318,7 @@ async def close_driver_ce_requirements(
         f"/api/v1/candidates/{candidate_id}",
         headers=headers,
         json={
+            "phone": "+48123456789",
             "extra": extra,
             "personal_data": {
                 "address": "Warsaw, Test Street 1",

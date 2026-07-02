@@ -149,3 +149,94 @@ async def confirm_all_blocking_documents(
             continue
         panel = await verify_plan_document(client, emp_id, hr_headers, key, panel=panel)
     return panel
+
+
+async def fetch_handoff_hr_panel(
+    client: AsyncClient, handoff_id: str, hr_headers: dict[str, str]
+) -> dict[str, Any]:
+    r = await client.get(
+        f"/api/v1/handoffs/{handoff_id}/hr-review",
+        headers=hr_headers,
+    )
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+async def verify_handoff_plan_document(
+    client: AsyncClient,
+    handoff_id: str,
+    hr_headers: dict[str, str],
+    document_key: str,
+    *,
+    panel: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    panel = panel or await fetch_handoff_hr_panel(client, handoff_id, hr_headers)
+    doc = next(
+        (d for d in (panel.get("documents_for_approval") or []) if d.get("document_key") == document_key),
+        None,
+    )
+    assert doc and doc.get("document_id"), f"missing doc row for {document_key!r}"
+    h = {**hr_headers, "Content-Type": "application/json"}
+    path = (
+        f"/api/v1/handoffs/{handoff_id}/hr-review/document-verifications/"
+        f"{quote(document_key, safe='')}/verify"
+    )
+    r = await client.post(path, headers=h, json={"reviewed_fields": _reviewed_fields_payload(doc)})
+    assert r.status_code == 200, r.text
+    return await fetch_handoff_hr_panel(client, handoff_id, hr_headers)
+
+
+async def confirm_all_blocking_handoff_documents(
+    client: AsyncClient, handoff_id: str, hr_headers: dict[str, str]
+) -> dict[str, Any]:
+    panel = await fetch_handoff_hr_panel(client, handoff_id, hr_headers)
+    for doc in iter_blocking_plan_docs(panel):
+        key = str(doc.get("document_key") or "")
+        if not key or not doc.get("document_id"):
+            continue
+        vs = str(doc.get("verification_status") or "").lower()
+        if vs in ("verified", "not_required"):
+            continue
+        panel = await verify_handoff_plan_document(client, handoff_id, hr_headers, key, panel=panel)
+    return panel
+
+
+async def prepare_handoff_hr_review_for_approve(
+    client: AsyncClient,
+    handoff_id: str,
+    hr_headers: dict[str, str],
+) -> dict[str, Any]:
+    from backend.app.services.hr_document_verification import VERIFICATION_GATED_CHECKLIST
+
+    panel = await confirm_all_blocking_handoff_documents(client, handoff_id, hr_headers)
+    for doc in iter_blocking_plan_docs(panel):
+        key = str(doc.get("document_key") or "")
+        vs = str(doc.get("verification_status") or "").lower()
+        if not key or vs in ("verified", "not_required", "waived"):
+            continue
+        path = (
+            f"/api/v1/handoffs/{handoff_id}/hr-review/document-verifications/"
+            f"{quote(key, safe='')}/waive-requirement"
+        )
+        waived = await client.post(
+            path,
+            headers={**hr_headers, "Content-Type": "application/json"},
+            json={"reason": "E2E — unblock delayed workforce approve"},
+        )
+        if waived.status_code == 200:
+            panel = waived.json()
+
+    for item in panel.get("checklist") or []:
+        code = item.get("item_code")
+        if not code or code in VERIFICATION_GATED_CHECKLIST:
+            continue
+        if str(item.get("status") or "").lower() in ("satisfied", "verified", "complete"):
+            continue
+        patch = await client.patch(
+            f"/api/v1/handoffs/{handoff_id}/hr-review/checklist/{code}",
+            headers={**hr_headers, "Content-Type": "application/json"},
+            json={"satisfied": True},
+        )
+        if patch.status_code == 200:
+            panel = patch.json()
+    return panel

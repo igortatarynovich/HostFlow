@@ -82,9 +82,11 @@ async def internal_hr_handoff_create_and_accept(
     hr_officer_headers: dict[str, str],
     candidate_id: str,
     company_id: str,
+    tenant_id: str | None = None,
 ) -> str:
     """PR-5: materialize HR workforce only via internal HR handoff + accept."""
-    await _ensure_hr_employee_funnel_for_company(tenant_id=DEFAULT_TENANT_ID, company_id=company_id)
+    tid = tenant_id or DEFAULT_TENANT_ID
+    await _ensure_hr_employee_funnel_for_company(tenant_id=tid, company_id=company_id)
     confirm = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
         headers={**recruiter_headers, "Content-Type": "application/json"},

@@ -460,6 +460,8 @@ async def test_recruiter_can_ready_for_hr_but_not_hired_when_handoff_enabled(
     )
     rec_json = {**recruiter_headers, "Content-Type": "application/json"}
 
+    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+
     patch_ok = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
         headers=rec_json,

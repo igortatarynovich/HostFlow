@@ -92,13 +92,6 @@ def _pipeline_stage_update_allowed(
     if entry_order is None or current_order is None:
         return False
     return current_order < entry_order
-    if isinstance(exc, HrModuleNotEnabledError):
-        return HTTPException(status_code=403, detail=str(exc))
-    if isinstance(exc, HrEmployeeFunnelForbiddenError):
-        return HTTPException(status_code=403, detail=str(exc))
-    if isinstance(exc, HrEmployeeFunnelNotFoundError):
-        return HTTPException(status_code=422, detail=str(exc))
-    return HTTPException(status_code=422, detail=str(exc))
 
 
 def first_hr_employee_funnel_stage_code(funnel: Funnel) -> Optional[str]:
