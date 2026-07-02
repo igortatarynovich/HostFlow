@@ -169,14 +169,14 @@ A.** Закрыть GAP P0 (тесты + стадии + выбор пути hand
 
 | # | Критерий (кратко) | Pass / Fail | Примечания (шаги, роли, URL) |
 |---|-------------------|-------------|------------------------------|
-| 1 | Recruitment создаёт Candidate | | |
-| 2 | Document Hub хранит документы | | |
-| 3 | Recruitment только линкует к Candidate, не подменяет владение Hub | | |
-| 4 | Стадии Ready for HR / Hired (или согласованные коды) | | |
-| 5 | HR: Employee + HR Case | | |
-| 6 | Документы не копируются при handoff | | |
-| 7 | HR доступ через links + при необходимости HR review context | | |
-| 8 | Смена ответственности через явный handoff event | | |
+| 1 | Recruitment создаёт Candidate | Pass | `POST /api/v1/candidates`, fixtures + handoff flow tests |
+| 2 | Document Hub хранит документы | Pass | `POST /api/v1/documents/`, `GET /api/v1/db/documents/{id}` |
+| 3 | Recruitment только линкует к Candidate, не подменяет владение Hub | Pass | candidate documents via Hub; recruitment `DocumentCheck` с `review_module=recruitment` |
+| 4 | Стадии Ready for HR / Hired (или согласованные коды) | Pass | `ready_for_handoff` gate + handoff create/accept |
+| 5 | HR: Employee + HR Case | Pass | `GET /workforce/employees`, `GET …/hr-operational-context` → `hr_case` |
+| 6 | Документы не копируются при handoff | Pass | idempotency G4 + один `document_id` в HR reads |
+| 7 | HR доступ через links + при необходимости HR review context | Pass | `document_links` (`reused_for_hr`); `POST …/documents/{id}/hr-review` без смены `Document.status` |
+| 8 | Смена ответственности через явный handoff event | Pass | internal HR handoff create → accept; recruitment write lock после materialization |
 
 ### 6.2 Governance-ревью (8 вопросов)
 
@@ -184,14 +184,14 @@ A.** Закрыть GAP P0 (тесты + стадии + выбор пути hand
 
 | # | Вопрос | OK / Issue | Заметка |
 |---|--------|------------|---------|
-| 1 | Кто владелец lifecycle? | | |
-| 2 | Кто инициировал command? | | |
-| 3 | Кто изменил source of truth? | | |
-| 4 | Кто выпустил event? | | |
-| 5 | Кто consumer? | | |
-| 6 | Прямая запись в чужой домен? | | |
-| 7 | Hidden orchestration (UI / Telegram / automation)? | | |
-| 8 | Копирование документов вместо links? | | |
+| 1 | Кто владелец lifecycle? | OK | Candidate/recruitment до handoff; WorkforceEmployee/HR case после accept |
+| 2 | Кто инициировал command? | OK | recruiter handoff create; hr_officer accept |
+| 3 | Кто изменил source of truth? | OK | Hub owns documents; HR review lane — отдельный `DocumentCheck`, не PATCH status |
+| 4 | Кто выпустил event? | OK | handoff accept → `ensure_hr_operational_context`; ActivityLog на conversion |
+| 5 | Кто consumer? | OK | HR workforce API + hr-review panel; recruiter forbidden на HR document review |
+| 6 | Прямая запись в чужой домен? | OK | HR не пишет в recruitment dossier; links через `document_entity_links` |
+| 7 | Hidden orchestration (UI / Telegram / automation)? | OK | явные API endpoints; lazy backfill links на GET operational context |
+| 8 | Копирование документов вместо links? | OK | `reused_for_hr` links; fulfillment-scoped link + backfill all candidate docs |
 
 ### 6.3 Журнал прогона (фиксация)
 
@@ -209,6 +209,7 @@ A.** Закрыть GAP P0 (тесты + стадии + выбор пути hand
 | 2026-05-06 | repo — static code audit (no new stand session) | — | — | — | — | **Hub vs legacy inventory:** SPA recruitment — `docsApi` (Hub), не `/api/v1/candidates/.../documents`; HR employee documents — workforce list + `downloadDocumentFile` (Hub); legacy candidate routes и `CandDoc.file_url` → `/candidates/.../file` остаются на backend/public intake; contradiction относительно HR file access не найдена. Детали: [`current-separation-status-recruitment-hr-doc-hub.md`](current-separation-status-recruitment-hr-doc-hub.md) § «Document Hub vs legacy — инвентаризация по коду». |
 | 2026-05-08 | repo — code | — | — | — | — | **Workforce documents response:** `GET /workforce/employees/{id}/documents` больше не отдаёт recruitment candidate `/file` URLs (`cand_doc_for_workforce_hr_response`); HR SPA убран `downloadUrl` из `listWorkforceEmployeeDocuments`; регрессионные тесты. См. [`current-separation-status-recruitment-hr-doc-hub.md`](current-separation-status-recruitment-hr-doc-hub.md). |
 | 2026-07-02 | repo — `feat/documents-runtime-expiry-engine` CI/local pytest | agent | да (automated) | да (automated) | да (Direction B) | **Direction B Phase 1 sign-off:** B1 handoff gates 409, B2-G1–G4 pipeline/module/idempotency, B3 PR17 employee enrichment; 45-test regression green; `hr-handoff-runtime-p0.md` §7 CLOSED; PR17 §7 checked. Manual stand UI walkthrough deferred to deploy — API/E2E contract verified. |
+| 2026-07-01 | repo — `feat/documents-runtime-expiry-engine` local pytest | agent | да (automated) | да (automated) | да (API) | **§6.1–6.2 automated sign-off:** реализованы отсутствующие `GET …/hr-operational-context` и `POST …/documents/{id}/hr-review` (HR-only RBAC, `review_module=hr`, без clobber recruitment status); lazy backfill document links; B4 regression **25 passed** (`test_hr_operational_context_after_handoff`, handoff gates, idempotency, requirements workspace). Manual HostFlowDev UI walkthrough — по-прежнему отложен до deploy. |
 
 **Отдельная строка журнала (recruitment write lock — stand verification):**
 

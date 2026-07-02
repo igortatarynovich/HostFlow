@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_case import WorkforceHrCase
+from backend.app.modules.documents import crud as documents_crud
+from backend.app.modules.documents.crud import create_document_check
 from backend.app.services.document_hub_delivery_contract import (
     list_candidate_documents_via_contract,
 )
@@ -156,3 +159,144 @@ async def ensure_hr_document_links(
             )
         )
     await db.flush()
+
+
+def _serialize_hr_case(row: WorkforceHrCase) -> dict[str, Any]:
+    return {
+        "id": str(row.id),
+        "tenant_id": str(row.tenant_id),
+        "employee_id": str(row.employee_id),
+        "source_candidate_id": str(row.source_candidate_id) if row.source_candidate_id else None,
+        "status": str(row.status or "open"),
+        "notes": row.notes,
+        "meta": row.meta if isinstance(row.meta, dict) else {},
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+def _serialize_document_link(row: DocumentEntityLink) -> dict[str, Any]:
+    return {
+        "id": str(row.id),
+        "document_id": str(row.document_id),
+        "linked_entity_type": str(row.linked_entity_type),
+        "linked_entity_id": str(row.linked_entity_id),
+        "relation_type": str(row.relation_type),
+        "module_key": row.module_key,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+async def _list_hr_document_links(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+) -> list[DocumentEntityLink]:
+    return list(
+        (
+            await db.execute(
+                select(DocumentEntityLink).where(
+                    DocumentEntityLink.tenant_id == str(tenant_id).strip(),
+                    DocumentEntityLink.linked_entity_type == "workforce_employee",
+                    DocumentEntityLink.linked_entity_id == str(employee_id).strip(),
+                    DocumentEntityLink.relation_type == "reused_for_hr",
+                )
+            )
+        ).scalars().all()
+    )
+
+
+async def get_hr_operational_context_bundle(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+    *,
+    lazy_backfill_links: bool = True,
+) -> dict[str, Any]:
+    """Return HR case + document links; lazy backfill links all candidate docs on read."""
+    hr_case = await ensure_hr_operational_context(db, tenant_id, employee)
+    cid = str(employee.candidate_id or "").strip() or None
+    if lazy_backfill_links and cid:
+        await ensure_hr_document_links(
+            db,
+            tenant_id=str(tenant_id).strip(),
+            candidate_id=cid,
+            linked_entity_type="workforce_employee",
+            linked_entity_id=str(employee.id).strip(),
+            document_ids=None,
+        )
+    links = await _list_hr_document_links(
+        db,
+        tenant_id=str(tenant_id).strip(),
+        employee_id=str(employee.id).strip(),
+    )
+    return {
+        "hr_case": _serialize_hr_case(hr_case),
+        "document_links": [_serialize_document_link(link) for link in links],
+    }
+
+
+async def submit_employee_document_hr_review(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+    document_id: str,
+    reviewer_id: str | None,
+    decision: str,
+    comment: str | None = None,
+    reason_code: str | None = None,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """HR-only document check lane: does not mutate Document.status."""
+    decision_norm = str(decision or "").strip().lower()
+    if decision_norm not in {"approved", "rejected"}:
+        raise ValueError("INVALID_DECISION")
+
+    tid = str(tenant_id).strip()
+    did = str(document_id).strip()
+    cid = str(employee.candidate_id or "").strip()
+    if not cid:
+        raise ValueError("EMPLOYEE_CANDIDATE_MISSING")
+
+    await ensure_hr_operational_context(db, tid, employee)
+    await ensure_hr_document_links(
+        db,
+        tenant_id=tid,
+        candidate_id=cid,
+        linked_entity_type="workforce_employee",
+        linked_entity_id=str(employee.id).strip(),
+        document_ids=None,
+    )
+
+    doc = await documents_crud.get_document(db, tid, did)
+    if not doc:
+        raise ValueError("DOCUMENT_NOT_FOUND")
+    if str(getattr(doc, "candidate_id", "") or "").strip() != cid:
+        raise ValueError("DOCUMENT_NOT_ACCESSIBLE")
+
+    check_payload = {"review_module": "hr"}
+    if isinstance(payload, dict):
+        check_payload.update(payload)
+
+    check = await create_document_check(
+        db,
+        tid,
+        did,
+        reviewer_id=reviewer_id,
+        decision=decision_norm,
+        reason_code=reason_code,
+        comment=comment,
+        payload=check_payload,
+    )
+    return {
+        "id": str(check.id),
+        "document_id": did,
+        "decision": check.decision,
+        "comment": check.comment,
+        "reason_code": check.reason_code,
+        "payload": check.payload if isinstance(check.payload, dict) else {},
+        "reviewer_id": str(check.reviewer_id) if check.reviewer_id else None,
+        "created_at": check.created_at.isoformat() if check.created_at else None,
+    }
