@@ -12,6 +12,7 @@ import {
 export function useCandidateRequirementsChecklist(
   candidateId: string | null | undefined,
   refreshTrigger = 0,
+  onChanged?: () => void,
 ) {
   const [checklist, setChecklist] = useState<RequirementsChecklistResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -50,6 +51,7 @@ export function useCandidateRequirementsChecklist(
       try {
         const result = await fn()
         await reload()
+        onChanged?.()
         return result
       } catch (err: any) {
         const detail = err?.response?.data?.detail
@@ -59,7 +61,7 @@ export function useCandidateRequirementsChecklist(
         setActionBusy(false)
       }
     },
-    [reload],
+    [reload, onChanged],
   )
 
   const selectEvidence = useCallback(

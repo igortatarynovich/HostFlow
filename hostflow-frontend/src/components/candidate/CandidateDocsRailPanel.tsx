@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useI18n } from '../../i18n'
 import { getSummary } from '../../api/documents'
@@ -113,6 +114,8 @@ type Props = {
   waiverMode?: 'document' | 'requirement'
   /** Blocker lists for waiver eligibility when checklist is hidden (requirements path). */
   externalBlockers?: DocBlockersPayload
+  /** When set with hidden checklist, primary CTA opens requirements workspace. */
+  requirementsWorkspaceHref?: string | null
 }
 
 type RowStatus = 'missing' | 'expiring' | 'valid' | 'in_progress'
@@ -169,6 +172,7 @@ export default function CandidateDocsRailPanel({
   suppressBlockerCallbacks = false,
   waiverMode: waiverModeProp,
   externalBlockers,
+  requirementsWorkspaceHref,
 }: Props) {
   const waiverMode = waiverModeProp ?? (hideDocumentTypeChecklist ? 'requirement' : 'document')
   const { t, locale } = useI18n()
@@ -564,7 +568,11 @@ export default function CandidateDocsRailPanel({
           </div>
 
           <div className="mt-1 text-[11px] text-slate-600">
-            {hideDocumentTypeChecklist
+            {hideDocumentTypeChecklist && requirementsWorkspaceHref
+              ? t('app.candidate_requirements.workspace.docs_rail_hint', {
+                  defaultValue: 'Upload files here — confirm evidence in the requirements workspace.',
+                })
+              : hideDocumentTypeChecklist
               ? t('app.candidate_card.documents.operational_hub_hint', {
                   defaultValue: 'Upload and manage files — confirm requirements in the checklist above.',
                 })
@@ -587,7 +595,7 @@ export default function CandidateDocsRailPanel({
                     values: { percent: percentReady },
                   })}
           </div>
-          {workspace && !hideDocumentTypeChecklist ? (
+          {workspace && (!hideDocumentTypeChecklist || requirementsWorkspaceHref) ? (
             <div className="mt-1 text-[11px] font-medium text-slate-700">
               {t('app.candidate_card.documents.runtime_kpi', {
                 defaultValue: '{ready}/{total} satisfied · {percent}%',
@@ -843,11 +851,18 @@ export default function CandidateDocsRailPanel({
         </div>
       ) : null}
 
-      {onOpenDocs ? (
-        <div className="mt-2">
-          <button type="button" className="btn-secondary btn-sm w-full" onClick={onOpenDocs}>
-            {t('app.candidate_card.docs_panel.open_full', { defaultValue: 'Open full' })}
-          </button>
+      {onOpenDocs || requirementsWorkspaceHref ? (
+        <div className="mt-2 flex flex-col gap-2">
+          {requirementsWorkspaceHref ? (
+            <Link to={requirementsWorkspaceHref} className="btn-primary btn-sm w-full text-center">
+              {t('app.candidate_requirements.workspace.open_workspace', { defaultValue: 'Open workspace' })}
+            </Link>
+          ) : null}
+          {onOpenDocs ? (
+            <button type="button" className="btn-secondary btn-sm w-full" onClick={onOpenDocs}>
+              {t('app.candidate_card.docs_panel.open_full', { defaultValue: 'Open full' })}
+            </button>
+          ) : null}
         </div>
       ) : null}
 

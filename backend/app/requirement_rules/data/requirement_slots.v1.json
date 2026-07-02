@@ -79,6 +79,48 @@
           "any_of": ["work_permit", "oswiadczenie", "zezwolenie_a"]
         }
       ]
+    },
+    {
+      "slot_code": "medical_fitness",
+      "public_name": "Medical fitness certificate",
+      "business_purpose": "driver_qualification",
+      "level": "blocking",
+      "verification": "optional",
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "medical_any",
+          "any_of": ["medical_certificate", "badania_lekarskie", "medical"]
+        }
+      ]
+    },
+    {
+      "slot_code": "psychological_tests",
+      "public_name": "Psychological tests",
+      "business_purpose": "driver_qualification",
+      "level": "blocking",
+      "verification": "optional",
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "psychological_any",
+          "any_of": ["psychotest", "psychological_certificate", "psychological", "psycho_test"]
+        }
+      ]
+    },
+    {
+      "slot_code": "voivodeship_decision",
+      "public_name": "Voivodeship decision",
+      "business_purpose": "legal_stay",
+      "level": "blocking",
+      "verification": "optional",
+      "not_applicable_when": {
+        "citizenship_group": "eu"
+      },
+      "satisfaction_alternatives": [
+        {
+          "alternative_code": "decision_any",
+          "any_of": ["decision", "decyzja", "voivodeship_decision"]
+        }
+      ]
     }
   ]
 }

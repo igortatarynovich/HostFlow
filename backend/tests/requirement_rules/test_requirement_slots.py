@@ -20,6 +20,9 @@ def test_slot_registry_loads() -> None:
     registry = load_slot_registry()
     assert registry["version"] == "1.0.0"
     assert get_slot_definition("driver_license_with_code95") is not None
+    assert get_slot_definition("medical_fitness") is not None
+    assert get_slot_definition("psychological_tests") is not None
+    assert get_slot_definition("voivodeship_decision") is not None
 
 
 def test_legal_stay_requires_candidate_evidence_without_guessing() -> None:
@@ -119,7 +122,63 @@ def test_driver_ce_pack_uses_slots() -> None:
     pack = get_document_pack_manifest("recruitment.driver_ce_documents")
     assert pack is not None
     slots = {row["slot_code"] for row in pack["required_slots"]}
-    assert slots == {"identity_document", "driver_license_with_code95", "tachograph_card"}
+    assert slots == {
+        "identity_document",
+        "legal_stay_confirmation",
+        "driver_license_with_code95",
+        "tachograph_card",
+        "medical_fitness",
+        "psychological_tests",
+        "voivodeship_decision",
+    }
+
+
+def _driver_ce_full_payload(**overrides: str) -> dict[str, str]:
+    payload = {
+        "recruitment.candidate.first_name": "Jan",
+        "recruitment.candidate.last_name": "Kowalski",
+        "recruitment.candidate.contacts.phone": "+48123456789",
+        "platform.identity.address": "Warsaw, Test 1",
+        "platform.identity.citizenship": "UA",
+        "recruitment.candidate.experience.years_ce": "5",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _driver_ce_full_evidence(**overrides: dict) -> dict:
+    base = {
+        "identity_document": _approved_evidence(
+            "identity_any",
+            [{"document_id": "p1", "document_type_code": "passport", "status": "approved", "has_files": True}],
+        ),
+        "legal_stay_confirmation": _approved_evidence(
+            "legal_stay_any",
+            [{"document_id": "l1", "document_type_code": "karta_pobytu", "status": "approved", "has_files": True}],
+        ),
+        "driver_license_with_code95": _approved_evidence(
+            "combined_eu_license",
+            [{"document_id": "d1", "document_type_code": "driver_license_code95", "status": "approved", "has_files": True}],
+        ),
+        "tachograph_card": _approved_evidence(
+            "tacho_any",
+            [{"document_id": "t1", "document_type_code": "tacho_card", "status": "approved", "has_files": True}],
+        ),
+        "medical_fitness": _approved_evidence(
+            "medical_any",
+            [{"document_id": "m1", "document_type_code": "medical_certificate", "status": "approved", "has_files": True}],
+        ),
+        "psychological_tests": _approved_evidence(
+            "psychological_any",
+            [{"document_id": "s1", "document_type_code": "psychotest", "status": "approved", "has_files": True}],
+        ),
+        "voivodeship_decision": _approved_evidence(
+            "decision_any",
+            [{"document_id": "v1", "document_type_code": "decision", "status": "approved", "has_files": True}],
+        ),
+    }
+    base.update(overrides)
+    return base
 
 
 def test_requirement_evaluator_satisfied_with_combined_license() -> None:
@@ -132,28 +191,11 @@ def test_requirement_evaluator_satisfied_with_combined_license() -> None:
         "profile": manifest,
         "fields": manifest["fields"],
     }
-    evidence = {
-        "identity_document": _approved_evidence(
-            "identity_any",
-            [{"document_id": "p1", "document_type_code": "passport", "status": "approved", "has_files": True}],
-        ),
-        "driver_license_with_code95": _approved_evidence(
-            "combined_eu_license",
-            [{"document_id": "d1", "document_type_code": "driver_license_code95", "status": "approved", "has_files": True}],
-        ),
-        "tachograph_card": _approved_evidence(
-            "tacho_any",
-            [{"document_id": "t1", "document_type_code": "tacho_card", "status": "approved", "has_files": True}],
-        ),
-    }
+    evidence = _driver_ce_full_evidence()
     result = evaluate_requirement_rules(
         profile_view,
         context="readiness",
-        normalized_payload={
-            "recruitment.candidate.first_name": "Jan",
-            "recruitment.candidate.last_name": "Kowalski",
-            "recruitment.candidate.contacts.phone": "+48123456789",
-        },
+        normalized_payload=_driver_ce_full_payload(),
         documents=[],
         candidate_evidence_by_requirement=evidence,
     )
@@ -199,31 +241,19 @@ def test_requirement_evaluator_satisfied_with_separate_license_and_code95() -> N
         "profile": manifest,
         "fields": manifest["fields"],
     }
-    evidence = {
-        "identity_document": _approved_evidence(
-            "identity_any",
-            [{"document_id": "p1", "document_type_code": "passport", "status": "approved", "has_files": True}],
-        ),
-        "driver_license_with_code95": _approved_evidence(
+    evidence = _driver_ce_full_evidence(
+        driver_license_with_code95=_approved_evidence(
             "separate_documents",
             [
                 {"document_id": "d1", "document_type_code": "driver_license", "status": "approved", "has_files": True},
                 {"document_id": "d2", "document_type_code": "code95", "status": "approved", "has_files": True},
             ],
         ),
-        "tachograph_card": _approved_evidence(
-            "tacho_any",
-            [{"document_id": "t1", "document_type_code": "tacho_card", "status": "approved", "has_files": True}],
-        ),
-    }
+    )
     result = evaluate_requirement_rules(
         profile_view,
         context="readiness",
-        normalized_payload={
-            "recruitment.candidate.first_name": "Jan",
-            "recruitment.candidate.last_name": "Kowalski",
-            "recruitment.candidate.contacts.phone": "+48123456789",
-        },
+        normalized_payload=_driver_ce_full_payload(),
         documents=[],
         candidate_evidence_by_requirement=evidence,
     )
@@ -243,5 +273,5 @@ def test_requirement_rule_set_readiness_has_slot_rules() -> None:
     rule_set = build_requirement_rule_set(profile_view, context="readiness")
     slot_rules = [r for r in rule_set["rules"] if r["rule_type"] == "document_slot_required"]
     doc_rules = [r for r in rule_set["rules"] if r["rule_type"] == "document_required"]
-    assert len(slot_rules) == 3
+    assert len(slot_rules) == 7
     assert doc_rules == []

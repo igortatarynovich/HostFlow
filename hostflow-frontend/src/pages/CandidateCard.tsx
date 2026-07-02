@@ -62,7 +62,7 @@ import { validateRequiredFields } from '../utils/profileUtils'
 import { getCardSectionOrder, isCardSectionVisible } from '../utils/fieldLayoutUtils'
 import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayout'
 import { buildInboxHubPath } from '../utils/inboxDeepLinks'
-import { isCandidateRecruiterIdCanonEnabled } from '../utils/featureFlags'
+import { isCandidateRecruiterIdCanonEnabled, isDossierLegacyEnabled, isRequirementsWorkspaceEnabled } from '../utils/featureFlags'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { servicesWorkspacePath } from '../modules/services/utils'
@@ -112,9 +112,13 @@ import CandidateNextActionPanel from '../components/candidate/CandidateNextActio
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
 import CandidateRequirementsChecklist from '../components/candidate/CandidateRequirementsChecklist'
+import RequirementsWorkspaceSummaryCard from '../components/candidate/requirements/RequirementsWorkspaceSummaryCard'
 import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
 import RecruitmentDossierChecklist from '../components/candidate/RecruitmentDossierChecklist'
+import TransferReadinessReport from '../components/candidate/TransferReadinessReport'
 import { useTransferReadiness } from '../components/candidate/useTransferReadiness'
+import { useRequirementsWorkspace } from '../hooks/useRequirementsWorkspace'
+import { workspaceTransferReportFromBundle } from '../utils/workspaceTransferReadiness'
 import { useRecruitmentPackage } from '../components/candidate/useRecruitmentPackage'
 import {
   RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY,
@@ -3194,6 +3198,14 @@ export default function CandidateCard(){
     if (first) setHandoffClientLinkId(first.link_id)
   }, [handoffModalOpen, primaryHandoffDestination, handoffClientsForCompany, handoffClientLinkId])
 
+  useEffect(() => {
+    if (isNew || !model?.id || isMasked) return
+    const sp = new URLSearchParams(location.search || '')
+    if (sp.get('handoff') !== '1') return
+    if (!showAgencyHandoffHeader || handoffActiveBlock) return
+    setHandoffModalOpen(true)
+  }, [handoffActiveBlock, isMasked, isNew, location.search, model?.id, showAgencyHandoffHeader])
+
   const handleReminderComplete = useCallback(async (id: string) => {
     try {
       setReminderBusy(id)
@@ -3628,6 +3640,22 @@ export default function CandidateCard(){
     return true
   }, [effectiveStageForDocPolicy, isMasked, operationallyTerminal])
 
+  const useWorkspaceRequirementsRail = isRequirementsWorkspaceEnabled()
+  const showRequirementsSummaryCard = showRequirementsChecklist && useWorkspaceRequirementsRail
+  const showFullRequirementsChecklist = showRequirementsChecklist && !useWorkspaceRequirementsRail
+  const requirementsWorkspaceHref = useMemo(() => {
+    if (!model?.id || !useWorkspaceRequirementsRail) return null
+    return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(String(model.id))}/requirements`
+  }, [model?.id, useWorkspaceRequirementsRail])
+
+  const requirementsWorkspaceCandidateId =
+    useWorkspaceRequirementsRail && !isNew && !isMasked ? String(model?.id || '').trim() || null : null
+  const {
+    workspace: requirementsWorkspace,
+    loading: requirementsWorkspaceLoading,
+    reload: reloadRequirementsWorkspace,
+  } = useRequirementsWorkspace(requirementsWorkspaceCandidateId, docsSummaryRefreshTrigger)
+
   const activePipelineBlockers = showRequirementsChecklist ? requirementBlockers : docsBlockers
   const activePipelineBlockersLoading = showRequirementsChecklist
     ? requirementBlockersLoading
@@ -3807,6 +3835,8 @@ export default function CandidateCard(){
     const stage = String(canonicalStageForOps || '').trim().toLowerCase()
     return ['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage)
   }, [canonicalStageForOps])
+  const showRecruitmentDossierChecklist =
+    showTransferReadinessReport && (!useWorkspaceRequirementsRail || isDossierLegacyEnabled())
   const showOpenInHrLink = useMemo(() => {
     const stage = String(canonicalStageForOps || model?.stage || '').trim().toLowerCase()
     return canViewHrEmployee && stage === 'processing_by_hr'
@@ -3860,8 +3890,20 @@ export default function CandidateCard(){
       confirmedRecruitmentBlocks,
     ],
   )
-  const { report: transferReport, loading: transferReportLoading, reload: reloadTransferReport } =
-    useTransferReadiness(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
+  const { report: transferReportFromApi, loading: transferReportLoadingFromApi, reload: reloadTransferReport } =
+    useTransferReadiness(
+      !isNew && !isMasked && !useWorkspaceRequirementsRail ? String(model?.id || '') : null,
+      recruitmentPackageRefreshKey,
+    )
+  const transferReport = useMemo(() => {
+    if (useWorkspaceRequirementsRail && requirementsWorkspace) {
+      return workspaceTransferReportFromBundle(requirementsWorkspace)
+    }
+    return transferReportFromApi
+  }, [useWorkspaceRequirementsRail, requirementsWorkspace, transferReportFromApi])
+  const transferReportLoading = useWorkspaceRequirementsRail
+    ? requirementsWorkspaceLoading
+    : transferReportLoadingFromApi
   const { pkg: recruitmentPkg, loading: recruitmentPkgLoading, reload: reloadRecruitmentPkg } =
     useRecruitmentPackage(!isNew && !isMasked ? String(model?.id || '') : null, recruitmentPackageRefreshKey)
 
@@ -3872,8 +3914,12 @@ export default function CandidateCard(){
 
   const transferReadinessGateActive = showTransferReadinessReport && !handoffActiveBlock
 
-  const recruitmentHandoffReady = Boolean(transferReport?.transfer_allowed)
-  const recruitmentHandoffCreateReady = Boolean(transferReport?.handoff_create_allowed)
+  const recruitmentHandoffReady = useWorkspaceRequirementsRail
+    ? Boolean(requirementsWorkspace?.summary?.handoff_ready)
+    : Boolean(transferReport?.transfer_allowed)
+  const recruitmentHandoffCreateReady = useWorkspaceRequirementsRail
+    ? Boolean(requirementsWorkspace?.transfer_readiness?.handoff_create_allowed)
+    : Boolean(transferReport?.handoff_create_allowed)
 
   const recruitmentHandoffBlockedReason = useMemo(() => {
     if (!transferReadinessGateActive || recruitmentHandoffReady) return null
@@ -3887,9 +3933,36 @@ export default function CandidateCard(){
       return reasons.map((r) => r.message).filter(Boolean).join(' · ')
     }
     return t('app.candidate_card.transfer_readiness.blocked_generic', {
-      defaultValue: 'Transfer is blocked. See Transfer readiness report below.',
+      defaultValue: useWorkspaceRequirementsRail
+        ? 'Transfer is blocked. Open the requirements workspace for details.'
+        : 'Transfer is blocked. See Transfer readiness report below.',
     })
-  }, [transferReadinessGateActive, recruitmentHandoffReady, transferReport, transferReportLoading, t])
+  }, [transferReadinessGateActive, recruitmentHandoffReady, transferReport, transferReportLoading, t, useWorkspaceRequirementsRail])
+
+  const recruitmentHandoffCreateBlockedReason = useMemo(() => {
+    if (!transferReadinessGateActive || recruitmentHandoffCreateReady) return null
+    if (transferReportLoading) {
+      return t('app.candidate_card.transfer_readiness.checking', {
+        defaultValue: 'Checking transfer readiness…',
+      })
+    }
+    const reasons = transferReport?.blocking_reasons || []
+    if (reasons.length > 0) {
+      return reasons.map((r) => r.message).filter(Boolean).join(' · ')
+    }
+    return t('app.candidate_card.transfer_readiness.blocked_generic', {
+      defaultValue: useWorkspaceRequirementsRail
+        ? 'Transfer is blocked. Open the requirements workspace for details.'
+        : 'Transfer is blocked. See Transfer readiness report below.',
+    })
+  }, [
+    transferReadinessGateActive,
+    recruitmentHandoffCreateReady,
+    transferReport,
+    transferReportLoading,
+    t,
+    useWorkspaceRequirementsRail,
+  ])
 
   const notifyRecruitmentPackageBlocked = useCallback(() => {
     notify({
@@ -3899,12 +3972,18 @@ export default function CandidateCard(){
       description:
         recruitmentHandoffBlockedReason ||
         t('app.candidate_card.transfer_readiness.blocked_generic', {
-          defaultValue: 'Transfer is blocked. See Transfer readiness report below.',
+          defaultValue: useWorkspaceRequirementsRail
+            ? 'Transfer is blocked. Open the requirements workspace for details.'
+            : 'Transfer is blocked. See Transfer readiness report below.',
         }),
       variant: 'warning',
     })
+    if (requirementsWorkspaceHref) {
+      document.getElementById('section-requirements-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      return
+    }
     document.getElementById('section-transfer-readiness')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [notify, recruitmentHandoffBlockedReason, t])
+  }, [notify, recruitmentHandoffBlockedReason, requirementsWorkspaceHref, t, useWorkspaceRequirementsRail])
 
   const isReadyForHandoffStageCode = useCallback((stageCode: string) => {
     const canonical = canonicalStageKey(stageCode, null) || String(stageCode || '').trim().toLowerCase()
@@ -4318,20 +4397,12 @@ export default function CandidateCard(){
         editMode={candidateEditPhase !== 'idle'}
         onOpenHandoff={
           showAgencyHandoffHeader && !handoffActiveBlock
-            ? () => {
-                if (transferReadinessGateActive && !recruitmentHandoffCreateReady) {
-                  notifyRecruitmentPackageBlocked()
-                  return
-                }
-                setHandoffModalOpen(true)
-              }
+            ? () => setHandoffModalOpen(true)
             : undefined
         }
         handoffReadonlyText={showAgencyHandoffHeader ? handoffReadonlySummary : null}
-        handoffDisabled={
-          handoffLoading || (transferReadinessGateActive && !recruitmentHandoffCreateReady)
-        }
-        handoffDisabledTitle={recruitmentHandoffBlockedReason}
+        handoffDisabled={handoffLoading}
+        handoffDisabledTitle={handoffLoading ? t('common.loading') : null}
         handoffLabel={handoffPrimaryActionLabel}
         onDeleteRequest={handleDeleteRequest}
         onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
@@ -4660,7 +4731,7 @@ export default function CandidateCard(){
                 documentsChecklistSibling
               />
 
-              {!isMasked && showTransferReadinessReport ? (
+              {!isMasked && showRecruitmentDossierChecklist ? (
                 <RecruitmentDossierChecklist
                   candidateId={String(model.id)}
                   pkg={recruitmentPkg}
@@ -4678,7 +4749,23 @@ export default function CandidateCard(){
                 />
               ) : null}
 
-              {showRequirementsChecklist ? (
+              {showRequirementsSummaryCard ? (
+                <RequirementsWorkspaceSummaryCard
+                  candidateId={String(model.id)}
+                  workspace={requirementsWorkspace}
+                  workspaceLoading={requirementsWorkspaceLoading}
+                  workspaceReload={reloadRequirementsWorkspace}
+                  refreshTrigger={docsSummaryRefreshTrigger}
+                  canEdit={model.can_edit !== false}
+                  primaryStepHighlight={railPrimaryFocus === 'docs'}
+                  onPipelineBlockersChange={(blockers, loading) => {
+                    setRequirementBlockers(blockers)
+                    setRequirementBlockersLoading(loading)
+                  }}
+                />
+              ) : null}
+
+              {showFullRequirementsChecklist ? (
                 <CandidateRequirementsChecklist
                   candidateId={String(model.id)}
                   refreshTrigger={docsSummaryRefreshTrigger}
@@ -4721,8 +4808,10 @@ export default function CandidateCard(){
                 onCreatePipelineOverride={handleCreatePipelineOverride}
                 onApprovePipelineOverride={handleApprovePipelineOverride}
                 onRejectPipelineOverride={handleRejectPipelineOverride}
-                primaryStepHighlight={showRequirementsChecklist ? false : railPrimaryFocus === 'docs'}
+                primaryStepHighlight={!showRequirementsChecklist && railPrimaryFocus === 'docs'}
                 hideDocumentTypeChecklist={showRequirementsChecklist}
+                suppressBlockerCallbacks={showRequirementsSummaryCard}
+                requirementsWorkspaceHref={showRequirementsSummaryCard ? requirementsWorkspaceHref : null}
                 blockersPresentation={operationallyTerminal ? 'historical' : 'operational'}
               />
 
@@ -4779,7 +4868,7 @@ export default function CandidateCard(){
       {!isNew && model?.id && handoffModalOpen ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={() => setHandoffModalOpen(false)}>
           <div
-            className="mx-auto mt-12 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            className="mx-auto mt-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
@@ -4789,11 +4878,28 @@ export default function CandidateCard(){
               </button>
             </div>
 
+            {transferReadinessGateActive ? (
+              <div className="mt-4">
+                <TransferReadinessReport
+                  report={transferReport}
+                  loading={transferReportLoading}
+                  canConfirm={model.can_edit !== false}
+                  confirmBusy={recruitmentConfirmBusy}
+                  confirmedBlocks={confirmedRecruitmentBlocks}
+                  onConfirmBlock={model.can_edit !== false ? handleConfirmRecruitmentBlock : undefined}
+                  className="shadow-none"
+                />
+              </div>
+            ) : null}
+
             {primaryHandoffDestination === 'internal_hr' ? (
               <>
                 <p className="mt-3 text-sm text-slate-600">
                   {t('app.candidate_card.handoff.internal_hr_modal_hint')}
                 </p>
+                {transferReadinessGateActive && !recruitmentHandoffCreateReady && recruitmentHandoffCreateBlockedReason ? (
+                  <p className="mt-2 text-sm text-amber-900">{recruitmentHandoffCreateBlockedReason}</p>
+                ) : null}
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
                     {t('common.actions.cancel')}
@@ -4825,6 +4931,9 @@ export default function CandidateCard(){
                     ))}
                   </select>
                 </div>
+                {transferReadinessGateActive && !recruitmentHandoffCreateReady && recruitmentHandoffCreateBlockedReason ? (
+                  <p className="mt-2 text-sm text-amber-900">{recruitmentHandoffCreateBlockedReason}</p>
+                ) : null}
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
                     {t('common.actions.cancel')}

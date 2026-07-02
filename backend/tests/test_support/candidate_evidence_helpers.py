@@ -170,6 +170,19 @@ async def get_checklist(
     return resp.json()
 
 
+async def get_requirements_workspace(
+    client: AsyncClient,
+    headers: dict[str, str],
+    candidate_id: str,
+) -> dict[str, Any]:
+    resp = await client.get(
+        f"/api/v1/candidates/{candidate_id}/requirements/workspace",
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
 def checklist_item(checklist: dict[str, Any], requirement_code: str) -> dict[str, Any]:
     for item in checklist.get("requirements") or []:
         if str(item.get("requirement_code") or "") == requirement_code:
@@ -252,6 +265,126 @@ def past_expiry(days: int = 30) -> str:
 
 DRIVER_CE_REQUIREMENTS = (
     "identity_document",
+    "legal_stay_confirmation",
     "driver_license_with_code95",
     "tachograph_card",
+    "medical_fitness",
+    "psychological_tests",
+    "voivodeship_decision",
 )
+
+DRIVER_CE_EVIDENCE_FLOWS = (
+    ("identity_document", "identity_any", "passport"),
+    ("legal_stay_confirmation", "legal_stay_any", "karta_pobytu"),
+    ("driver_license_with_code95", "combined_eu_license", "driver_license_code95"),
+    ("tachograph_card", "tacho_any", "tacho_card"),
+    ("medical_fitness", "medical_any", "medical_certificate"),
+    ("psychological_tests", "psychological_any", "psychotest"),
+    ("voivodeship_decision", "decision_any", "decision"),
+)
+
+RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS = (
+    "Contacts & address",
+    "Passport / ID",
+    "Legal stay",
+    "Red paper",
+    "Work permit",
+    "Driver license",
+    "Code95",
+    "Tacho card",
+    "Medical",
+    "Psychological",
+    "Work experience",
+)
+
+
+async def close_driver_ce_requirements(
+    client: AsyncClient,
+    headers: dict[str, str],
+    *,
+    candidate_id: str,
+    include_dossier_confirmations: bool = True,
+) -> None:
+    """Approve all driver_ce evidence slots and patch data fields for workspace closure."""
+    extra: dict[str, Any] = {
+        "citizenship": "UA",
+        "experience_eu_years": "5",
+        "address": "Warsaw, Test Street 1",
+    }
+    if include_dossier_confirmations:
+        extra["recruitment_dossier_confirmed_blocks"] = list(RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS)
+
+    patch_resp = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=headers,
+        json={
+            "extra": extra,
+            "personal_data": {
+                "address": "Warsaw, Test Street 1",
+                "citizenship": "UA",
+            },
+        },
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+
+    for requirement_code, variant_code, doc_type in DRIVER_CE_EVIDENCE_FLOWS:
+        doc_id = await post_document(client, headers, candidate_id=candidate_id, doc_type=doc_type)
+        evidence = await select_evidence(
+            client,
+            headers,
+            candidate_id=candidate_id,
+            requirement_code=requirement_code,
+            evidence_variant_code=variant_code,
+        )
+        await link_evidence_document(
+            client,
+            headers,
+            candidate_id=candidate_id,
+            evidence_id=evidence["evidence_id"],
+            document_id=doc_id,
+        )
+        await approve_evidence_api(
+            client,
+            headers,
+            candidate_id=candidate_id,
+            evidence_id=evidence["evidence_id"],
+        )
+
+
+async def ensure_tenant_link_internal_hr(
+    client: AsyncClient,
+    *,
+    manager_headers: dict[str, str],
+    tenant_id: str,
+    company_id: str,
+) -> None:
+    lst = await client.get(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+    )
+    assert lst.status_code == 200, lst.text
+    for row in lst.json():
+        if str(row.get("client_company_id") or "") == str(company_id):
+            link_id = row["id"]
+            patch = await client.patch(
+                f"/api/v1/tenants/{tenant_id}/links/{link_id}",
+                headers=manager_headers,
+                json={
+                    "handoff_enabled": True,
+                    "handoff_to_client": True,
+                    "handoff_to_internal_hr": True,
+                },
+            )
+            assert patch.status_code == 200, patch.text
+            return
+    create = await client.post(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+        json={
+            "client_company_id": company_id,
+            "handoff_enabled": True,
+            "handoff_to_client": True,
+            "handoff_to_internal_hr": True,
+        },
+    )
+    assert create.status_code == 201, create.text

@@ -72,6 +72,61 @@ export type RequirementsChecklistResponse = {
   pipeline_blockers?: RequirementPipelineBlockers
 }
 
+export type WorkspaceFieldRequirement = {
+  qualified_code: string
+  level?: string
+  reason_code?: string | null
+  satisfied: boolean
+  current_value?: string | number | boolean | null
+}
+
+export type WorkspaceFieldRequirementsSection = {
+  required_fields: WorkspaceFieldRequirement[]
+  missing_count: number
+  satisfied: boolean
+}
+
+export type WorkspaceSummary = {
+  total_requirements: number
+  fulfilled_count: number
+  blocking_open_count: number
+  pending_review_count: number
+  all_fulfilled: boolean
+  handoff_ready: boolean
+}
+
+export type WorkspaceTransferReadiness = {
+  transfer_allowed: boolean
+  handoff_create_allowed: boolean
+  blocking_reasons: Array<Record<string, unknown>>
+  warnings?: Array<Record<string, unknown>>
+  destinations_allowed?: string[]
+  policy_version?: string | null
+  source_layers?: string[]
+  requirement_engine?: Record<string, unknown> | null
+  requirement_gate?: {
+    applied?: boolean
+    satisfied?: boolean
+    [key: string]: unknown
+  } | null
+}
+
+export type RequirementsWorkspaceResponse = {
+  schema_version: string
+  candidate_id: string
+  entity_profile_code?: string | null
+  vacancy_id?: string | null
+  can_edit: boolean
+  summary: WorkspaceSummary
+  checklist: RequirementsChecklistResponse
+  field_requirements: WorkspaceFieldRequirementsSection
+  requirement_evaluation?: Record<string, unknown> | null
+  transfer_readiness: WorkspaceTransferReadiness
+  pipeline_blockers: RequirementPipelineBlockers
+  operational_requirements: Array<Record<string, unknown>>
+  evaluated_at: string
+}
+
 export type RequirementPipelineBlockers = {
   source?: string
   all_fulfilled?: boolean

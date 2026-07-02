@@ -59,6 +59,16 @@ const FLAG_REGISTRY = {
     description:
       'Use `candidate.recruiter_id` as the canonical assignee field on the FE (filter, PATCH body, helpers). Rollback to `manager` by setting this OFF.',
   },
+  requirementsWorkspace: {
+    envKey: 'VITE_FEATURE_REQUIREMENTS_WORKSPACE',
+    default: true,
+    description: 'Enables full-page Candidate Requirements Workspace (`/candidates/:id/requirements`).',
+  },
+  dossierLegacy: {
+    envKey: 'VITE_FEATURE_DOSSIER_LEGACY',
+    default: false,
+    description: 'Shows legacy RecruitmentDossierChecklist on candidate card rail (superseded by requirements workspace).',
+  },
 } satisfies Record<string, FlagSpec>
 
 export type FeatureFlagKey = keyof typeof FLAG_REGISTRY
@@ -100,4 +110,12 @@ export function isOnboardingWizardEnabled(): boolean {
  */
 export function isCandidateRecruiterIdCanonEnabled(): boolean {
   return getFeatureFlag('candidateRecruiterIdCanon')
+}
+
+export function isRequirementsWorkspaceEnabled(): boolean {
+  return getFeatureFlag('requirementsWorkspace')
+}
+
+export function isDossierLegacyEnabled(): boolean {
+  return getFeatureFlag('dossierLegacy')
 }

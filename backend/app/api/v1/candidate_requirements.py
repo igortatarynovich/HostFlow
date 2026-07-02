@@ -22,6 +22,7 @@ from backend.app.services.candidate_evidence_service import (
     select_evidence_variant,
     serialize_candidate_evidence,
 )
+from backend.app.services.requirements_workspace_service import build_requirements_workspace
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     is_recruitment_recruiter_write_locked_by_handoff,
@@ -96,6 +97,32 @@ async def get_requirements_checklist(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
 
     return await build_requirements_checklist(db, tenant_id=tenant_str, candidate=candidate)
+
+
+@router.get(
+    "/{candidate_id}/requirements/workspace",
+    dependencies=[Depends(require_roles(*WRITE_ROLES, Role.viewer, Role.compliance_officer))],
+)
+async def get_requirements_workspace(
+    candidate_id: uuid.UUID,
+    db_tenant: Tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> dict[str, Any]:
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+    if current_user.role in RESTRICTED_ROLES:
+        await ensure_candidate_access(db, tenant_str, str(candidate_id), current_user)
+
+    candidate = await db.get(Candidate, str(candidate_id))
+    if not candidate or str(candidate.tenant_id) != tenant_str:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
+
+    return await build_requirements_workspace(
+        db,
+        tenant_id=tenant_str,
+        candidate=candidate,
+        user_role=str(getattr(current_user, "role", "") or ""),
+    )
 
 
 @router.post(

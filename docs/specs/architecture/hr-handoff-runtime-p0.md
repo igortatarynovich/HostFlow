@@ -6,6 +6,8 @@
 
 **Owner:** Platform core + HR module + Recruitment handoff contour.
 
+**Operating order (Lead → Candidate requirements → Handoff):** [recruitment-operational-goals-and-order.md](../workflows/recruitment-operational-goals-and-order.md).
+
 **Related:**
 
 - [`handoff-contract.md`](handoff-contract.md) — stage mapping, T1/T2/T3, idempotency (updated for PR-5 canonical path)

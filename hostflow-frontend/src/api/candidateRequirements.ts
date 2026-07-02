@@ -2,6 +2,7 @@ import { api } from './client'
 import type {
   CandidateEvidenceSnapshot,
   RequirementsChecklistResponse,
+  RequirementsWorkspaceResponse,
 } from './types/candidateRequirements'
 
 export type {
@@ -13,6 +14,11 @@ export type {
   RequirementEvidenceDocument,
   RequirementPipelineBlockers,
   RequirementsChecklistResponse,
+  RequirementsWorkspaceResponse,
+  WorkspaceFieldRequirement,
+  WorkspaceFieldRequirementsSection,
+  WorkspaceSummary,
+  WorkspaceTransferReadiness,
 } from './types/candidateRequirements'
 
 export async function getCandidateRequirementsChecklist(
@@ -20,6 +26,15 @@ export async function getCandidateRequirementsChecklist(
 ): Promise<RequirementsChecklistResponse> {
   const { data } = await api.get<RequirementsChecklistResponse>(
     `/candidates/${candidateId}/requirements/checklist`,
+  )
+  return data
+}
+
+export async function getCandidateRequirementsWorkspace(
+  candidateId: string,
+): Promise<RequirementsWorkspaceResponse> {
+  const { data } = await api.get<RequirementsWorkspaceResponse>(
+    `/candidates/${candidateId}/requirements/workspace`,
   )
   return data
 }

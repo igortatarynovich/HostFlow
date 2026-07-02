@@ -2046,6 +2046,10 @@ async def get_candidate(
 )
 async def get_candidate_transfer_readiness(
     candidate_id: UUID,
+    target_stage: Optional[str] = Query(
+        None,
+        description="Evaluate readiness for transition to this stage (e.g. ready_for_handoff)",
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> dict:
@@ -2061,6 +2065,7 @@ async def get_candidate_transfer_readiness(
         module=RECRUITMENT_MODULE,
         entity_type="candidate",
         entity_id=str(candidate_id),
+        target_system_stage=target_stage,
         include_engine_metadata=False,
     )
 

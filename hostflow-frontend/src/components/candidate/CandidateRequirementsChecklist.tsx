@@ -1,26 +1,16 @@
 import clsx from 'clsx'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { listCandidateDocuments } from '../../api/documents'
-import type { Document } from '../../api/types'
-import type {
-  AcceptedEvidenceVariant,
-  RequirementChecklistItem,
-  RequirementsChecklistResponse,
-} from '../../api/candidateRequirements'
+import { useCallback, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import type { RequirementsChecklistResponse } from '../../api/candidateRequirements'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { isRequirementsWorkspaceEnabled } from '../../utils/featureFlags'
 import { useCandidateRequirementsChecklist } from '../../hooks/useCandidateRequirementsChecklist'
+import { useCandidateRequirementDocuments } from '../../hooks/useCandidateRequirementDocuments'
 import { useToast } from '../Toast'
-import {
-  mapRequirementsChecklistToBlockers,
-} from '../../utils/requirementsPipelineBlockers'
-import {
-  documentMatchesVariantTypes,
-  evidenceStatusLabelKey,
-  normDocType,
-  requirementStatusBadgeClass,
-  resolveRequirementRowStatus,
-  variantDocumentTypeCodes,
-} from './requirementsChecklistPresentation'
+import { mapRequirementsChecklistToBlockers } from '../../utils/requirementsPipelineBlockers'
+import { resolveRequirementRowStatus } from './requirementsChecklistPresentation'
+import RequirementDetailPane, { useRequirementLabelForType } from './requirements/RequirementDetailPane'
 
 type Props = {
   candidateId: string
@@ -33,440 +23,6 @@ type Props = {
   onChecklistLoaded?: (checklist: RequirementsChecklistResponse | null) => void
   onChanged?: () => void
   onPipelineBlockersChange?: (blockers: import('../../utils/candidateStageDocPolicy').DocBlockersPayload, loading: boolean) => void
-}
-
-function requirementTitle(
-  t: ReturnType<typeof useI18n>['t'],
-  item: RequirementChecklistItem,
-): string {
-  const code = item.requirement_code
-  const fromApi = String(item.public_name || '').trim()
-  if (fromApi) return fromApi
-  return t(`app.candidate_card.requirements_checklist.requirements.${code}`, {
-    defaultValue: code.replace(/_/g, ' '),
-  })
-}
-
-function variantLabel(
-  t: ReturnType<typeof useI18n>['t'],
-  variant: AcceptedEvidenceVariant,
-  labelForType: (code: string) => string,
-): string {
-  const code = variant.evidence_variant_code
-  const fromKey = t(`app.candidate_card.requirements_checklist.variants.${code}`, { defaultValue: '' }).trim()
-  if (fromKey) return fromKey
-  const types = variantDocumentTypeCodes(variant)
-  if (types.length === 1) return labelForType(types[0])
-  if (variant.all_of?.length) {
-    return types.map(labelForType).join(' + ')
-  }
-  return types.map(labelForType).join(' / ')
-}
-
-function RequirementRow({
-  item,
-  canEdit,
-  actionBusy,
-  labelForType,
-  candidateDocuments,
-  docsLoading,
-  onSelectVariant,
-  onLinkDocument,
-  onApprove,
-  onReject,
-  onReplace,
-  onOpenDocs,
-  onUpload,
-}: {
-  item: RequirementChecklistItem
-  canEdit: boolean
-  actionBusy: boolean
-  labelForType: (code: string) => string
-  candidateDocuments: Document[]
-  docsLoading: boolean
-  onSelectVariant: (variantCode: string) => Promise<unknown>
-  onLinkDocument: (evidenceId: string, documentId: string) => Promise<unknown>
-  onApprove: (evidenceId: string) => Promise<unknown>
-  onReject: (evidenceId: string, reason?: string | null) => Promise<unknown>
-  onReplace: (variantCode: string) => Promise<unknown>
-  onOpenDocs?: (docType?: string) => void
-  onUpload?: () => void
-}) {
-  const { t } = useI18n()
-  const rowStatus = resolveRequirementRowStatus(item)
-  const evidence = item.candidate_evidence
-  const variants = item.accepted_evidence_variants || []
-  const activeVariant =
-    variants.find((v) => v.evidence_variant_code === evidence?.evidence_variant_code) || null
-
-  const [selectedVariantCode, setSelectedVariantCode] = useState(
-    evidence?.evidence_variant_code || variants[0]?.evidence_variant_code || '',
-  )
-  const [linkDocumentId, setLinkDocumentId] = useState('')
-  const [rejectOpen, setRejectOpen] = useState(false)
-  const [rejectReason, setRejectReason] = useState('')
-  const [rowBusy, setRowBusy] = useState(false)
-
-  useEffect(() => {
-    if (evidence?.evidence_variant_code) {
-      setSelectedVariantCode(evidence.evidence_variant_code)
-    }
-  }, [evidence?.evidence_variant_code])
-
-  const allowedTypes = useMemo(
-    () => (activeVariant ? variantDocumentTypeCodes(activeVariant) : []),
-    [activeVariant],
-  )
-
-  const linkableDocuments = useMemo(() => {
-    if (!allowedTypes.length) return candidateDocuments
-    return candidateDocuments.filter((doc) =>
-      documentMatchesVariantTypes(String(doc.doc_type || doc.type || ''), allowedTypes),
-    )
-  }, [allowedTypes, candidateDocuments])
-
-  useEffect(() => {
-    if (!linkDocumentId && linkableDocuments.length) {
-      setLinkDocumentId(String(linkableDocuments[0].id))
-    }
-  }, [linkDocumentId, linkableDocuments])
-
-  const linkedDocIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const doc of evidence?.documents || []) {
-      const id = String(doc.document_id || doc.id || '').trim()
-      if (id) ids.add(id)
-    }
-    return ids
-  }, [evidence?.documents])
-
-  const runRow = useCallback(async (fn: () => Promise<unknown>) => {
-    setRowBusy(true)
-    try {
-      await fn()
-    } finally {
-      setRowBusy(false)
-    }
-  }, [])
-
-  const busy = actionBusy || rowBusy
-  const editable = canEdit && rowStatus !== 'not_applicable'
-  const canLinkOrSelect = editable && rowStatus !== 'approved'
-  const canReview = editable && rowStatus === 'pending_review'
-  const canReplace =
-    canEdit &&
-    rowStatus !== 'not_applicable' &&
-    Boolean(evidence?.evidence_id) &&
-    (rowStatus === 'approved' || rowStatus === 'rejected' || rowStatus === 'pending_review')
-  const showEvidenceActions = Boolean(evidence?.evidence_id) && rowStatus !== 'not_applicable'
-
-  const statusLabel = t(evidenceStatusLabelKey(rowStatus), {
-    defaultValue:
-      rowStatus === 'not_applicable'
-        ? 'Not applicable'
-        : rowStatus === 'pending_review'
-          ? 'Pending review'
-          : rowStatus.charAt(0).toUpperCase() + rowStatus.slice(1).replace(/_/g, ' '),
-  })
-
-  const purposeHint = item.business_purpose
-    ? t(`app.candidate_card.requirements_checklist.purpose.${item.business_purpose}`, {
-        defaultValue: '',
-      }).trim()
-    : ''
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900">{requirementTitle(t, item)}</div>
-          {purposeHint ? (
-            <div className="mt-0.5 text-[11px] text-slate-600">{purposeHint}</div>
-          ) : (
-            <div className="mt-0.5 text-[11px] text-slate-600">
-              {t('app.candidate_card.requirements_checklist.confirm_hint', {
-                defaultValue: 'Choose how you confirm this requirement, then link supporting documents.',
-              })}
-            </div>
-          )}
-        </div>
-        <span
-          className={clsx(
-            'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
-            requirementStatusBadgeClass(rowStatus),
-          )}
-        >
-          {statusLabel}
-        </span>
-      </div>
-
-      {rowStatus === 'not_applicable' ? (
-        <div className="mt-2 text-xs text-slate-500">
-          {t('app.candidate_card.requirements_checklist.not_applicable_hint', {
-            defaultValue: 'Not required for this candidate profile.',
-          })}
-        </div>
-      ) : null}
-
-      {!evidence && canLinkOrSelect ? (
-        <div className="mt-3 space-y-2">
-          <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-            {t('app.candidate_card.requirements_checklist.evidence_picker_label', {
-              defaultValue: 'Confirm with',
-            })}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <select
-              className="input min-w-[12rem] flex-1 text-xs"
-              value={selectedVariantCode}
-              onChange={(e) => setSelectedVariantCode(e.target.value)}
-              disabled={busy}
-            >
-              {variants.map((variant) => (
-                <option key={variant.evidence_variant_code} value={variant.evidence_variant_code}>
-                  {variantLabel(t, variant, labelForType)}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn-primary btn-sm"
-              disabled={busy || !selectedVariantCode}
-              onClick={() => void runRow(() => onSelectVariant(selectedVariantCode))}
-            >
-              {t('app.candidate_card.requirements_checklist.select_evidence', {
-                defaultValue: 'Select evidence',
-              })}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {showEvidenceActions ? (
-        <div className="mt-3 space-y-3">
-          {activeVariant ? (
-            <div className="text-xs text-slate-700">
-              <span className="font-semibold text-slate-800">
-                {t('app.candidate_card.requirements_checklist.selected_variant', {
-                  defaultValue: 'Evidence',
-                })}
-                :{' '}
-              </span>
-              {variantLabel(t, activeVariant, labelForType)}
-            </div>
-          ) : null}
-
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-              {t('app.candidate_card.requirements_checklist.linked_documents', {
-                defaultValue: 'Linked documents',
-              })}
-            </div>
-            {evidence?.documents?.length ? (
-              <ul className="mt-1 space-y-1">
-                {evidence.documents.map((doc) => {
-                  const typeCode = String(doc.document_type_code || doc.type || '')
-                  const docId = String(doc.document_id || doc.id || '')
-                  return (
-                    <li key={docId || typeCode}>
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs hover:bg-slate-100"
-                        onClick={() => onOpenDocs?.(typeCode || undefined)}
-                      >
-                        <span className="font-medium text-slate-900">{labelForType(typeCode)}</span>
-                        <span className="text-[11px] text-slate-600">
-                          {doc.has_files === false
-                            ? t('app.candidate_card.requirements_checklist.no_files', {
-                                defaultValue: 'No files',
-                              })
-                            : t('app.candidate_card.requirements_checklist.linked', {
-                                defaultValue: 'Linked',
-                              })}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <div className="mt-1 text-xs text-slate-600">
-                {t('app.candidate_card.requirements_checklist.no_linked_documents', {
-                  defaultValue: 'No documents linked yet.',
-                })}
-              </div>
-            )}
-          </div>
-
-          {canLinkOrSelect && (rowStatus === 'selected' || rowStatus === 'pending_review' || rowStatus === 'rejected') ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-2 space-y-2">
-              <div className="text-[11px] font-semibold text-slate-700">
-                {t('app.candidate_card.requirements_checklist.link_document', {
-                  defaultValue: 'Link document',
-                })}
-              </div>
-              {docsLoading ? (
-                <div className="text-xs text-slate-500">{t('common.loading')}</div>
-              ) : linkableDocuments.length ? (
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    className="input min-w-[12rem] flex-1 text-xs"
-                    value={linkDocumentId}
-                    onChange={(e) => setLinkDocumentId(e.target.value)}
-                    disabled={busy}
-                  >
-                    {linkableDocuments.map((doc) => {
-                      const id = String(doc.id)
-                      const typeCode = String(doc.doc_type || doc.type || '')
-                      const already = linkedDocIds.has(id)
-                      return (
-                        <option key={id} value={id}>
-                          {labelForType(typeCode)}
-                          {already ? ' ✓' : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    disabled={busy || !linkDocumentId || !evidence?.evidence_id}
-                    onClick={() =>
-                      void runRow(() => onLinkDocument(String(evidence!.evidence_id), linkDocumentId))
-                    }
-                  >
-                    {t('app.candidate_card.requirements_checklist.link_btn', { defaultValue: 'Link' })}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="text-xs text-slate-600">
-                    {t('app.candidate_card.requirements_checklist.upload_first', {
-                      defaultValue: 'Upload a matching document first, then link it here.',
-                    })}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {onUpload ? (
-                      <button type="button" className="btn-primary btn-sm" onClick={onUpload}>
-                        {t('app.candidate_card.documents.upload_btn', { defaultValue: 'Upload' })}
-                      </button>
-                    ) : null}
-                    {onOpenDocs ? (
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        onClick={() => onOpenDocs(allowedTypes[0])}
-                      >
-                        {t('app.candidate_card.docs_panel.open_full', { defaultValue: 'Open full' })}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          {canReview || canReplace ? (
-            <div className="flex flex-wrap gap-2">
-              {canReview ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn-primary btn-sm"
-                    disabled={busy}
-                    onClick={() => void runRow(() => onApprove(String(evidence!.evidence_id)))}
-                  >
-                    {t('app.candidate_card.requirements_checklist.approve', { defaultValue: 'Approve' })}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    disabled={busy}
-                    onClick={() => setRejectOpen((v) => !v)}
-                  >
-                    {t('app.candidate_card.requirements_checklist.reject', { defaultValue: 'Reject' })}
-                  </button>
-                </>
-              ) : null}
-
-              {canReplace ? (
-                <>
-                  {variants.length > 1 ? (
-                    <select
-                      className="input text-xs"
-                      value={selectedVariantCode}
-                      onChange={(e) => setSelectedVariantCode(e.target.value)}
-                      disabled={busy}
-                    >
-                      {variants.map((variant) => (
-                        <option key={variant.evidence_variant_code} value={variant.evidence_variant_code}>
-                          {variantLabel(t, variant, labelForType)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    disabled={busy || !selectedVariantCode}
-                    onClick={() => void runRow(() => onReplace(selectedVariantCode))}
-                  >
-                    {t('app.candidate_card.requirements_checklist.replace', {
-                      defaultValue: 'Replace evidence',
-                    })}
-                  </button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-
-          {rejectOpen ? (
-            <div className="rounded-lg border border-rose-200 bg-rose-50/60 p-2 space-y-2">
-              <textarea
-                className="input w-full text-xs"
-                rows={2}
-                placeholder={t('app.candidate_card.requirements_checklist.reject_reason_placeholder', {
-                  defaultValue: 'Reason (optional)',
-                })}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm"
-                  disabled={busy}
-                  onClick={() =>
-                    void runRow(async () => {
-                      await onReject(String(evidence!.evidence_id), rejectReason.trim() || null)
-                      setRejectOpen(false)
-                      setRejectReason('')
-                    })
-                  }
-                >
-                  {t('app.candidate_card.requirements_checklist.confirm_reject', {
-                    defaultValue: 'Confirm reject',
-                  })}
-                </button>
-                <button type="button" className="btn-ghost btn-sm" onClick={() => setRejectOpen(false)}>
-                  {t('common.actions.cancel', { defaultValue: 'Cancel' })}
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {evidence?.rejection_reason ? (
-            <div className="text-xs text-rose-800">
-              {t('app.candidate_card.requirements_checklist.rejection_reason', {
-                defaultValue: 'Rejection reason: {reason}',
-                values: { reason: evidence.rejection_reason },
-              })}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  )
 }
 
 export default function CandidateRequirementsChecklist({
@@ -493,10 +49,10 @@ export default function CandidateRequirementsChecklist({
     approveEvidence,
     rejectEvidence,
     replaceEvidence,
-  } = useCandidateRequirementsChecklist(candidateId, refreshTrigger)
+  } = useCandidateRequirementsChecklist(candidateId, refreshTrigger, onChanged)
 
-  const [candidateDocuments, setCandidateDocuments] = useState<Document[]>([])
-  const [docsLoading, setDocsLoading] = useState(false)
+  const { candidateDocuments, docsLoading } = useCandidateRequirementDocuments(candidateId, refreshTrigger)
+  const labelForType = useRequirementLabelForType()
 
   useEffect(() => {
     onChecklistLoaded?.(checklist)
@@ -505,37 +61,6 @@ export default function CandidateRequirementsChecklist({
   useEffect(() => {
     onPipelineBlockersChange?.(mapRequirementsChecklistToBlockers(checklist), loading)
   }, [checklist, loading, onPipelineBlockersChange])
-
-  const loadDocuments = useCallback(async () => {
-    const id = String(candidateId || '').trim()
-    if (!id) {
-      setCandidateDocuments([])
-      return
-    }
-    setDocsLoading(true)
-    try {
-      const docs = await listCandidateDocuments(id, { includeLastCheck: true })
-      setCandidateDocuments(docs)
-    } catch {
-      setCandidateDocuments([])
-    } finally {
-      setDocsLoading(false)
-    }
-  }, [candidateId])
-
-  useEffect(() => {
-    void loadDocuments()
-  }, [loadDocuments, refreshTrigger])
-
-  const labelForType = useCallback(
-    (code: string) => {
-      const norm = normDocType(code)
-      const fromTypeCodes = t(`admin.documents.type_codes.${norm}`, { defaultValue: '' }).trim()
-      if (fromTypeCodes) return fromTypeCodes
-      return norm.replace(/_/g, ' ')
-    },
-    [t],
-  )
 
   const applicableRequirements = useMemo(
     () => (checklist?.requirements || []).filter((item) => resolveRequirementRowStatus(item) !== 'not_applicable'),
@@ -600,6 +125,14 @@ export default function CandidateRequirementsChecklist({
               defaultValue: 'Confirm each requirement — choose evidence, link documents, then approve.',
             })}
           </p>
+          {isRequirementsWorkspaceEnabled() && candidateId ? (
+            <Link
+              to={`${CRM_APP_PATHS.candidates}/${encodeURIComponent(candidateId)}/requirements`}
+              className="mt-1 inline-flex text-[11px] font-semibold text-brand-700 hover:text-brand-800"
+            >
+              {t('app.candidate_requirements.workspace.open_from_card', { defaultValue: 'Open workspace' })}
+            </Link>
+          ) : null}
         </div>
         <span
           className={clsx(
@@ -640,7 +173,7 @@ export default function CandidateRequirementsChecklist({
           </div>
         ) : applicableRequirements.length ? (
           applicableRequirements.map((item) => (
-            <RequirementRow
+            <RequirementDetailPane
               key={item.requirement_code}
               item={item}
               canEdit={canEdit}
@@ -648,6 +181,7 @@ export default function CandidateRequirementsChecklist({
               labelForType={labelForType}
               candidateDocuments={candidateDocuments}
               docsLoading={docsLoading}
+              layout="compact"
               onSelectVariant={(variantCode) =>
                 wrapAction(
                   () => selectEvidence(item.requirement_code, variantCode),

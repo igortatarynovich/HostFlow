@@ -180,11 +180,25 @@ export type TransferReadinessReport = {
   ready?: boolean
   stage_gate?: Record<string, unknown>
   tenant_link?: Record<string, boolean>
+  requirement_gate?: {
+    applied?: boolean
+    satisfied?: boolean
+    [key: string]: unknown
+  } | null
+  requirement_engine?: Record<string, unknown> | null
 }
 
-export async function getCandidateTransferReadiness(candidateId: string): Promise<TransferReadinessReport> {
+export async function getCandidateTransferReadiness(
+  candidateId: string,
+  options?: { targetStage?: string },
+): Promise<TransferReadinessReport> {
+  const params: Record<string, string> = {}
+  if (options?.targetStage) {
+    params.target_stage = options.targetStage
+  }
   const { data } = await api.get<TransferReadinessReport>(
     `/candidates/${encodeURIComponent(candidateId)}/transfer-readiness`,
+    { params },
   )
   return data
 }

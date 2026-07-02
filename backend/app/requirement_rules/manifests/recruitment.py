@@ -20,6 +20,12 @@ def recruitment_driver_ce_document_pack() -> dict[str, Any]:
                 "reason_code": "driver_ce_pack_identity",
             },
             {
+                "slot_code": "legal_stay_confirmation",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_legal_stay",
+            },
+            {
                 "slot_code": "driver_license_with_code95",
                 "level": "blocking",
                 "verification": "optional",
@@ -30,6 +36,24 @@ def recruitment_driver_ce_document_pack() -> dict[str, Any]:
                 "level": "blocking",
                 "verification": "optional",
                 "reason_code": "driver_ce_pack_tacho",
+            },
+            {
+                "slot_code": "medical_fitness",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_medical",
+            },
+            {
+                "slot_code": "psychological_tests",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_psychological",
+            },
+            {
+                "slot_code": "voivodeship_decision",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_voivodeship_decision",
             },
         ],
         "required_documents": [
