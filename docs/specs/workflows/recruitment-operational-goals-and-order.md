@@ -213,9 +213,9 @@ HR **не собирает заново** то, что recruitment уже зак
 |---|--------|-------------|
 | A1 | Slice 4 — activity continuity (Lead → Candidate) | Intake 2–3 done | **Done (2026-07-02)** |
 | A2 | Slice 6 — Lead workspace = intake decision first | A1 желательно | **Done (2026-07-02)** |
-| A3 | Requirements workspace UX (checklist-first на Candidate) | Requirement Engine API — **backlog:** [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) |
-| A4 | Закрыть gaps: stage/handoff gates ← engine blockers | A3 |
-| A5 | ADR-013 + выравнивание public intake | После A2 стабилизации |
+| A3 | Requirements workspace UX (checklist-first на Candidate) | Requirement Engine API — **backlog:** [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) | **Done (2026-07-01)** |
+| A4 | Закрыть gaps: stage/handoff gates ← engine blockers | A3 | **Done (2026-07-01)** |
+| A5 | ADR-013 + выравнивание public intake | После A2 стабилизации | **Done (2026-07-02)** |
 | A6 | Application lifecycle I1 / C2b / C3 | После A4 |
 
 ### Направление B — Handoff + Employee flow
@@ -235,7 +235,7 @@ HR **не собирает заново** то, что recruitment уже зак
 
 | # | Работа | Зависимости |
 |---|--------|-------------|
-| C1 | ADR-013 (связка public form → Lead-first) | A5 |
+| C1 | ADR-013 (связка public form → Lead-first) | A5 | **Unblocked (ADR Accepted 2026-07-02)** |
 | C2 | Bridge removal: deprecate `CandidateProfile.config` | C1 |
 | C3 | Mapping / smoke для новых профилей (страна, роль) | Entity Profile seeds |
 | C4 | ADR-007 universal Forms platform | После C2 closure |

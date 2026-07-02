@@ -6,7 +6,11 @@ import {
   intakeWorkspaceHeader,
   leadIntakeColumnStatusKey,
   leadIntakeWorkspaceSuppressesCrmChrome,
+  leadPublicIntakeDraftSession,
+  leadPublicIntakeReadonlyVariant,
+  leadPublicIntakeSourceKind,
   leadQueueIntakeShellOk,
+  leadRecruitmentPublicIntakeReadonly,
   recruitmentAgencyIntakeFirstLayout,
 } from '../leadIntakeWorkspace'
 
@@ -90,5 +94,31 @@ describe('intakeStickyVacancySummary', () => {
   it('shows pending route when vacancy exists but is unconfirmed', () => {
     const lead = metaLead({ vacancy_id: 'v1', vacancy_title: 'CE Driver', vacancy_routing_confirmed: false })
     expect(intakeStickyVacancySummary(lead, t)).toBe('pending:CE Driver')
+  })
+})
+
+describe('leadPublicIntakeSourceKind', () => {
+  it('distinguishes P5C candidate form vs legacy client source', () => {
+    expect(leadPublicIntakeSourceKind(metaLead({ source: 'public_intake' }))).toBe('candidate_form')
+    expect(leadPublicIntakeSourceKind(metaLead({ source: 'public-intake' }))).toBe('client_legacy')
+    expect(leadPublicIntakeSourceKind(metaLead({ source: 'meta' }))).toBeNull()
+  })
+})
+
+describe('leadRecruitmentPublicIntakeReadonly', () => {
+  it('is readonly for public_intake without candidate', () => {
+    const lead = metaLead({ source: 'public_intake', stage: 'questionnaire_submitted', status: 'processed' })
+    expect(leadRecruitmentPublicIntakeReadonly(lead, false)).toBe(true)
+  })
+
+  it('is not readonly after candidate link', () => {
+    const lead = metaLead({ source: 'public_intake', candidate_id: 'c1' })
+    expect(leadRecruitmentPublicIntakeReadonly(lead, false)).toBe(false)
+  })
+
+  it('detects draft session', () => {
+    const lead = metaLead({ source: 'public_intake', stage: 'intake_draft' })
+    expect(leadPublicIntakeDraftSession(lead)).toBe(true)
+    expect(leadPublicIntakeReadonlyVariant(lead)).toBe('draft')
   })
 })

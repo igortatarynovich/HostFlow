@@ -6709,8 +6709,12 @@
         },
         "public_intake_readonly": {
           "title": "Lead z public intake",
-          "body": "Lead powstał z public intake. Odrzucenie, pula, prośba o informacje i ręczny process nie są dostępne dla tego źródła w CRM.",
-          "payload_hint": "Kontynuuj na podstawie danych zgłoszenia (payload / powiązane rekordy) poza tym panelem intake."
+          "body": "Lead powstał z publicznej ankiety kandydata. Decyzja intake nastąpiła przy wysyłce — odrzucenie, pula, prośba o informacje i ręczny process nie są dostępne w tym panelu CRM.",
+          "client_title": "Zapytanie klienta z formularza publicznego",
+          "client_body": "Lead powstał z formularza zapytania klienta. Użyj akcji client lead poza recruitment intake rail.",
+          "draft_title": "Publiczna ankieta w trakcie",
+          "draft_body": "Kandydat wypełnia jeszcze formularz. Akcje CRM intake są dostępne po wysyłce i przetworzeniu outcome.",
+          "payload_hint": "Kontynuuj na podstawie danych zgłoszenia (payload / powiązane rekordy) lub otwórz powiązanego kandydata po utworzeniu."
         },
         "audit": {
           "badge": "Kandydat utworzony",

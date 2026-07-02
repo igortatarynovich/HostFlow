@@ -256,7 +256,7 @@ export default function LeadIntakeResolutionPanel({
   if (leadRecruitmentPublicIntakeReadonly(lead, isServicesTenant)) {
     return (
       <div className={className}>
-        <LeadIntakePublicIntakeReadonlyNotice layout={embedded ? 'embedded' : 'panel'} />
+        <LeadIntakePublicIntakeReadonlyNotice lead={lead} layout={embedded ? 'embedded' : 'panel'} />
       </div>
     )
   }

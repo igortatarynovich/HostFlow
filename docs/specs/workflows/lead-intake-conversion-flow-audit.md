@@ -36,7 +36,8 @@
 | **Meta webhook** | Yes | Via `process_normalized_lead` | When vacancy or explicit pool | Canonical path. |
 | **POST import / bulk / generic JSON** | Yes | Same pipeline | Same | Uses `process_normalized_lead`. |
 | **Manual reroute** | Yes | `create_candidate_from_lead_conversion` | `ensure_recruitment_application_for_converted_lead` | Strong path. |
-| **Public intake (`candidate`)** | **Usually no** until flow-specific side-effects | **Draft Candidate first** (`create_public_intake` / reuse) | **Not** created from Lead conversion (no `lead_id` on that journey) | **Divergence:** domain doc says “Lead always records entry”; **public candidate intake is Candidate-centric**, Lead only for **`client`** kind on submit (`public-intake:{candidate_id}`). |
+| **Public intake (`candidate`, P5C)** | **Yes** (draft on create) | **On submit** via Decision Layer + Outcome Executor | When vacancy/pool after Candidate | **Aligned (2026-07-02):** Lead-first draft (`source=public_intake`, `stage=intake_draft`); CRM audit-only rail. Contract: [ingestion-contract-public-intake.md](ingestion-contract-public-intake.md). Legacy Candidate draft tokens = compatibility only. |
+| **Public intake (`client`)** | Yes on submit | N/A (client lead) | N/A | `source=public-intake` (hyphen), client inquiry branch — separate from candidate form. |
 | **Telegram bootstrap** | Unclear / side paths | Service-based dossier | Tied to Telegram intake, not Meta lead pipeline | Parallel intake rail — continuity with Lead-based flow is **not** unified in one screen. |
 
 **Implication:** doctrine is **true for CRM Meta/import/reroute**; **public/Telegram** need explicit sub-flow documentation or future alignment (optional Lead stub, or accepted exception).
@@ -77,7 +78,7 @@
 
 ## 3. Architectural debt (summary)
 
-1. **Multi-channel intake semantics** (public/Telegram vs Lead-first CRM).  
+1. ~~**Multi-channel intake semantics** (public/Telegram vs Lead-first CRM).~~ Public candidate path **aligned** (ADR-013 Accepted); Telegram still open.  
 2. **Vacancy confirmation** product gap vs routing.  
 3. **Lead UI density** — operational chrome before intake resolution.  
 4. **Intake reject taxonomy** vs CRM `lost` only.  
@@ -104,7 +105,7 @@ Align with [lead-intake-resolution-and-activity-continuity.md](lead-intake-resol
 8. **Rehire spec** — later.  
 9. **Person** — last.
 
-**Parallel decision (architecture):** competing **Lead-first** vs **Candidate-first** public paths — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Proposed**); **canonical ingestion governance:** не расширять канал без записанного contract (conversion boundary, duplicate, intake resolution, ownership) — см. ADR-013.
+**Parallel decision (architecture):** public candidate intake aligned via [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Accepted 2026-07-02**, Decision 2) + [ingestion-contract-public-intake.md](ingestion-contract-public-intake.md). Telegram remains separate until its contract is filled.
 
 ---
 
@@ -126,7 +127,7 @@ From doctrine + domain model:
 
 ## 6. Answer: “Candidate-centric ATS again?”
 
-**Partially.** Applications + duplicate + pool intent **pull** the model toward the right separation. **Residual ATS feel** comes from: **Lead UI** still surfacing candidate-like ops; **public intake** still **Candidate-first**; **vacancy** mismatch; **automation** possibly duplicating work. **Stabilising Intake Resolution MVP (slices 1–6)** above reduces regression into a single overloaded Candidate card.
+**Partially.** Applications + duplicate + pool intent **pull** the model toward the right separation. **Residual ATS feel** comes from: services tenant Lead UI; **Telegram** parallel rail; **vacancy** mismatch on Meta; **automation** possibly duplicating work. **Public candidate intake** no longer Candidate-first (P5C + ADR-013). **Intake Resolution MVP (slices 1–6)** closed for CRM Meta path.
 
 ---
 

@@ -634,4 +634,17 @@ A3-{slice-id}: {title}
 
 ---
 
+### A5 — ADR-013 + public intake alignment — **Done (2026-07-02)**
+
+**Scope:**
+
+- ADR-013 **Accepted** — Decision (2) Lead stub / P5C Lead-first draft session
+- Filled [ingestion-contract-public-intake.md](../workflows/ingestion-contract-public-intake.md)
+- Audit §2.1 updated; CRM readonly rail covers `public_intake` + legacy `public-intake` client path
+- FE: `leadPublicIntakeSourceKind`, notice variants (draft / submitted / client)
+
+**Done when:** public candidate intake documented and CRM-aligned with Lead-first governance; no undocumented Candidate-first path for new traffic. ✅
+
+---
+
 *Обновлять этот backlog при закрытии срезов (менять Status среза на Done + дата).*

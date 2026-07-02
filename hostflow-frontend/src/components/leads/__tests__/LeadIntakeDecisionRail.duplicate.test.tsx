@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 
 import * as apiClient from '../../../api/client'
 import type { Lead } from '../../../api/types'
@@ -38,23 +39,25 @@ function renderRail(opts: {
   const onLeadUpdated = opts.onLeadUpdated ?? vi.fn()
   const onRequestProcess = opts.onRequestProcess ?? vi.fn().mockResolvedValue(undefined)
   return render(
-    <I18nProvider initialLocale="en">
-      <PlanLimitModalProvider>
-        <ToastProvider>
-          <LeadIntakeDecisionRail
-            lead={opts.lead}
-            processing={false}
-            routingBusy={false}
-            poolBusy={false}
-            onLeadUpdated={onLeadUpdated}
-            onRequestProcess={() => void onRequestProcess()}
+    <MemoryRouter>
+      <I18nProvider initialLocale="en">
+        <PlanLimitModalProvider>
+          <ToastProvider>
+            <LeadIntakeDecisionRail
+              lead={opts.lead}
+              processing={false}
+              routingBusy={false}
+              poolBusy={false}
+              onLeadUpdated={onLeadUpdated}
+              onRequestProcess={() => void onRequestProcess()}
             onConfirmRouting={vi.fn()}
             onPool={vi.fn()}
             layout="panel"
           />
         </ToastProvider>
       </PlanLimitModalProvider>
-    </I18nProvider>,
+    </I18nProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -89,8 +92,22 @@ describe('LeadIntakeDecisionRail', () => {
 
     renderRail({ lead })
 
-    expect(await screen.findByText(/Public intake lead/i)).toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent('Public client inquiry')
     expect(screen.queryByRole('button', { name: /Send to pool/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Reject/i })).not.toBeInTheDocument()
+  })
+
+  it('public_intake P5C: shows submitted readonly notice, no intake rail actions', async () => {
+    const lead = baseLead({
+      source: 'public_intake',
+      stage: 'questionnaire_submitted',
+      status: 'processed',
+      normalized: {},
+    })
+
+    renderRail({ lead })
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Public intake lead')
+    expect(screen.queryByRole('button', { name: /Send to pool/i })).not.toBeInTheDocument()
   })
 })

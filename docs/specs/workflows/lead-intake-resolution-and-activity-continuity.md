@@ -286,7 +286,7 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Practical delivery track:** **Intake Resolution MVP** — шесть срезов ниже (в этом порядке). Не путать с «только Lead UI cleanup»: срез 6 — последний, после семантики и guards.
 
-**Параллельно (архитектура):** публичный Candidate-first vs CRM Lead-first — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Proposed**); правило **не расширять новый канал без записанного ingestion contract** — см. ADR § «Ingestion governance».
+**Параллельно (архитектура):** публичный candidate intake — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Accepted 2026-07-02**); contract [ingestion-contract-public-intake.md](ingestion-contract-public-intake.md). Telegram — отдельный contract при расширении.
 
 Порядок срезов совпадает с [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) §4.
 

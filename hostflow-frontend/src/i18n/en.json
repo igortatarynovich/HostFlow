@@ -7003,8 +7003,12 @@
         },
         "public_intake_readonly": {
           "title": "Public intake lead",
-          "body": "This lead came from the public intake flow. Reject, pool, request info, and manual process are not available for this source in CRM.",
-          "payload_hint": "Continue from the submitted data (payload / linked records) outside this intake rail."
+          "body": "This lead came from the public candidate form. Intake was resolved on submit — reject, pool, request info, and manual process are not available in this CRM rail.",
+          "client_title": "Public client inquiry",
+          "client_body": "This lead came from a public client inquiry form. Use client lead actions outside the recruitment intake rail.",
+          "draft_title": "Public form in progress",
+          "draft_body": "The candidate is still filling the public form. CRM intake actions unlock after submit and outcome processing.",
+          "payload_hint": "Continue from the submitted data (payload / linked records) or open the linked candidate when created."
         },
         "audit": {
           "badge": "Candidate created",

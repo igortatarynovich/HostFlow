@@ -304,7 +304,7 @@ export default function LeadIntakeDecisionRail({
   }, [lead.id, notify, onLeadUpdated, planLimitModal, t])
 
   if (leadRecruitmentPublicIntakeReadonly(lead, false)) {
-    return <LeadIntakePublicIntakeReadonlyNotice layout={layout} />
+    return <LeadIntakePublicIntakeReadonlyNotice lead={lead} layout={layout} />
   }
 
   if (!shellOk) {

@@ -2,40 +2,50 @@
 
 ## Status
 
-**Proposed.** Конкурирующие семантики уже есть в продакшене; этот ADR фиксирует **проблему и варианты решения**. Переход в **Accepted** — только после явного продуктового выбора (возможно по каналам, не обязательно один глобальный режим).
+**Accepted (2026-07-02).** Decision **(2) Lead stub on submit** — implemented as **P5C Lead-first draft session** ([entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) P5C). Operational contract: [ingestion-contract-public-intake.md](../workflows/ingestion-contract-public-intake.md).
+
+**Residual exceptions (documented, not accidental):**
+
+- **Legacy in-flight** Candidate-backed draft tokens (compatibility shim until TTL expiry).
+- **Client application kind** — company inquiry Leads (`source=public-intake`, hyphen) remain a separate branch.
+- **Telegram** — parallel bootstrap; not unified in this ADR (separate ingestion contract when extended).
 
 ## Context
 
-Система одновременно поддерживает:
+Система одновременно поддерживала:
 
 | Path | Типичный порядок | Doctrine сегодня |
 |------|------------------|------------------|
 | **Meta / import / manual CRM** | **Lead-first** → intake → conversion → Candidate | Согласовано с [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md): intake decision **до** полноценного dossier-режима. |
-| **Public candidate intake** | **Candidate-first** (draft dossier до явного intake resolution) | Расходится: «Lead всегда фиксирует вход» выполняется **не** для всех сценариев; Lead для `client` и вспомогательных связей — отдельная ветка. |
+| **Public candidate intake** | ~~**Candidate-first**~~ → **Lead-first (P5C)** | Lead draft on create; Candidate on submit via Decision Layer + Outcome Executor. |
 | **Telegram** | Параллельный bootstrap (dossier / сервисный контур) | Не тот же intake workspace, что CRM Meta-pipeline. |
 
 Это **не** баг отдельной фичи, а **две operating models** без зафиксированного контракта. Long-term риск: дублирование правил (duplicate, Application, routing), расхождение analytics («когда считается intake»), и усиление **Candidate-centric ATS** UX на публичных каналах при том, что CRM движется к **Intake Decision Workspace**.
 
-Доказательная база: [lead-intake-conversion-flow-audit.md](../workflows/lead-intake-conversion-flow-audit.md) §2.1.
+Доказательная база: [lead-intake-conversion-flow-audit.md](../workflows/lead-intake-conversion-flow-audit.md) §2.1 (updated 2026-07-02).
 
 Связанные ADR: [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`ADR-007`](ADR-007-forms-platform-capability.md) (формы как capability; не задают сами по себе intake order).
 
 ---
 
-## Decision (to be chosen)
+## Decision
 
-Один из явных исходов (или **комбинация по каналу**):
+**Chosen: (2) Lead stub on submit** — минимальный Lead (intake record) создаётся **на create/reuse** public form session; Candidate создаётся **только** на submit через Decision Layer + Outcome Executor. CRM показывает Lead для audit/navigation; intake-decision rail **не** дублирует form submit.
 
-1. **Documented exception (status quo + контракт)**  
-   Публичный кандидатский intake остаётся Candidate-first; в доменной документации и UI это названо **исключением** с чёткими правилами: когда создаётся Application, как связывается Lead (если есть), как duplicate/replay.
+**Not chosen:**
 
-2. **Lead stub на submit**  
-   Минимальный Lead (или аналог intake record) создаётся **раньше или вместе** с первым Candidate touch, чтобы единообразно кормить intake resolution и analytics без полной перестройки форм.
+- **(1) Documented exception only** — superseded для нового candidate traffic; остаётся только для legacy tokens + client kind.
+- **(3) Full Lead-first alignment** — не требуется: P5C достигает governance/analytics alignment без перестройки public UX в Meta-style manual intake.
 
-3. **Full Lead-first alignment**  
-   Публичный поток перестраивается так, что **сигнал intake** и решение по вакансии/пулу проходят через тот же слой, что Meta — **breaking / дорого**; делать только после явного ROI.
+**Implementation reference:**
 
-Пока ADR в статусе **Proposed**, код **не обязан** меняться: достаточно не расширять расхождение новыми фичами без учёта выбранного исхода.
+```
+POST /public/intake → Lead (stage=intake_draft, source=public_intake)
+PUT  /apply/{token} → update draft on Lead.normalized.public_intake_draft_v1
+POST /apply/{token}/submit → Decision Layer → Outcome Executor → Candidate (optional)
+```
+
+Code: `backend/app/entity_profile/public_intake_draft_session.py`
 
 ### Ingestion governance (emerging rule)
 
@@ -53,13 +63,15 @@ Ingestion — это **governed operational contract**, а не «любой end
 
 Новый канал или крупное расширение существующего — только с явной записью в спеке/ADR (какой из исходов Decision выше применим) и тестами на стыках с Application/duplicate. **Обязательный артефакт:** заполненный [ingestion-contract-template.md](../workflows/ingestion-contract-template.md) (или его копия с именем канала) — contract-review checkpoint, не «документ ради документа». Иначе типичная деградация: «Telegram временно отдельно», «public напрямую», «HR в другом pipeline» → несколько несовместимых ingestion-моделей. Правило продукта: **не расширять без записанной модели** (см. [lead-intake-conversion-flow-audit.md](../workflows/lead-intake-conversion-flow-audit.md) §5).
 
+**Public intake contract (filled):** [ingestion-contract-public-intake.md](../workflows/ingestion-contract-public-intake.md)
+
 ---
 
 ## Consequences
 
-- **Принято (1):** быстрее всего; нужны явные диаграммы «public vs CRM» и тесты на Application/duplicate для обеих веток.  
-- **Принято (2):** лучшее выравнивание analytics и intake UX; потребует миграции/двойной записи на границе форм.  
-- **Принято (3):** максимальное единообразие doctrine; высокая стоимость и регрессионная поверхность.
+- **Accepted (2):** analytics и intake governance выровнены с Lead-first doctrine; CRM — audit mode для public submit; legacy Candidate drafts и client kind явно в §9 contract.
+- **Guardrails сохранены:** не смешивать intake и dossier ops на одном экране без роли; Intake Resolution MVP slices 1–6 закрыты для CRM Meta path.
+- **Direction C (C1):** Form Constructor may treat public forms as Lead-first surfaces — unblocked.
 
 **Guardrails:** (1) не смешивать в одном экране «intake» и «dossier ops» без явного разделения ролей UI; (2) закрывать **Intake Resolution MVP** ([lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8) до масштабного расширения Activities / Rehire / Person. **Canonical Intake Resolution Layer** = архитектурная программа; **Intake Resolution MVP** = поэтапная поставка (6 срезов).
 
@@ -67,7 +79,8 @@ Ingestion — это **governed operational contract**, а не «любой end
 
 ## Links
 
-- [ingestion-contract-template.md](../workflows/ingestion-contract-template.md) — operational checklist для нового ingestion source  
+- [ingestion-contract-public-intake.md](../workflows/ingestion-contract-public-intake.md) — filled contract for this channel  
+- [ingestion-contract-template.md](../workflows/ingestion-contract-template.md) — template for new channels  
 - [lead-intake-conversion-flow-audit.md](../workflows/lead-intake-conversion-flow-audit.md)  
 - [recruitment-domain-model.md](recruitment-domain-model.md)  
 - [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md)
