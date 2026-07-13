@@ -1,0 +1,42 @@
+---
+description: HostFlow product contract — operational platform, money paths, no premature abstraction
+alwaysApply: true
+---
+
+# HostFlow product contract
+
+HostFlow is an **operational platform** (not CRM/ATS/HRM).
+
+## Phase 1 — verify before build (ACTIVE)
+
+**Now:** Manual UI verification of Flow Breaks **#1–#6** on Candidates.
+
+**Not:** «сделай DataTable» or jump to #7.  
+**Yes:** «пройди Decision Flow» — user behavior only, not code review.
+
+> Code merged ≠ break closed. Break closes only when **UI cannot reproduce it**.
+
+**Log:** [`decision-flow-breaks-log.md`](docs/specs/architecture/decision-flow-breaks-log.md)
+
+## Gate
+
+1. Verify #1–#6 in real UI (checkboxes in log).  
+2. Re-rank open breaks **P0 → P1 → P2** (flow impact, not # order).  
+3. Fix highest **P0** next (#9 may beat #7).
+
+## Filters
+
+1. UI verification or fixing a **reproducing** break?  
+2. Are #1–#6 verified? If not — no #7+ work.
+
+## Phase 0 — frozen
+
+Platform Canon — change rarely.
+
+## Product domain
+
+`docs/specs/architecture/ui-constitution-v1.md`
+
+## User-facing language
+
+No "Lead" / "Лиды" in operational UI.

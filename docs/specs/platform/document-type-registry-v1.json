@@ -1,0 +1,362 @@
+{
+  "registry_version": "1.1.0",
+  "effective_from": "2026-07-13",
+  "adr": "ADR-018",
+  "description": "Canonical Document Type Registry — single SSOT for stable document type codes.",
+  "document_types": [
+    {
+      "code": "passport",
+      "public_name": "Passport",
+      "category_code": "identity",
+      "subcategory_code": "passport",
+      "criticality": "required",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["identification"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "national_identity_card",
+      "public_name": "National identity card",
+      "category_code": "identity",
+      "subcategory_code": "national_id",
+      "criticality": "required",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["identification"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "residence_card",
+      "public_name": "Residence card",
+      "category_code": "immigration",
+      "subcategory_code": "residence_permit",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["legal_stay", "right_to_work"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "visa",
+      "public_name": "Visa",
+      "category_code": "immigration",
+      "subcategory_code": "visa",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["legal_stay"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "driver_license",
+      "public_name": "Driver license",
+      "category_code": "driver_qualification",
+      "subcategory_code": "license",
+      "criticality": "work_blocking",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["driver_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "driver_qualification_card",
+      "public_name": "Driver qualification card (Code 95)",
+      "category_code": "driver_qualification",
+      "subcategory_code": "code95",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["driver_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "tachograph_card",
+      "public_name": "Tachograph card",
+      "category_code": "driver_qualification",
+      "subcategory_code": "tachograph",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["driver_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "medical_certificate",
+      "public_name": "Medical certificate",
+      "category_code": "medical",
+      "subcategory_code": "occupational_health",
+      "criticality": "work_blocking",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["driver_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "psychological_certificate",
+      "public_name": "Psychological certificate",
+      "category_code": "medical",
+      "subcategory_code": "psychological",
+      "criticality": "work_blocking",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["driver_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "work_permit",
+      "public_name": "Work permit",
+      "category_code": "work_authorization",
+      "subcategory_code": "permit",
+      "criticality": "work_blocking",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["right_to_work"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "work_permit_decision",
+      "public_name": "Work permit decision",
+      "category_code": "immigration",
+      "subcategory_code": "work_permit_decision",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["right_to_work", "process_generated"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "temporary_residence_decision",
+      "public_name": "Temporary residence decision",
+      "category_code": "immigration",
+      "subcategory_code": "residence_decision",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["legal_stay", "process_generated"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "temporary_residence_and_work_decision",
+      "public_name": "Temporary residence and work decision",
+      "category_code": "immigration",
+      "subcategory_code": "combined_decision",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["legal_stay", "right_to_work", "process_generated"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "eu_residence_registration",
+      "public_name": "EU residence registration",
+      "category_code": "immigration",
+      "subcategory_code": "eu_registration",
+      "criticality": "required",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["legal_stay"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "driver_attestation",
+      "public_name": "Driver attestation (Świadectwo kierowcy)",
+      "category_code": "driver_qualification",
+      "subcategory_code": "attestation",
+      "criticality": "work_blocking",
+      "driver_ce_contour": true,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["transport_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "unclassified",
+      "public_name": "Unclassified upload",
+      "category_code": "other",
+      "subcategory_code": null,
+      "criticality": "informational",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": false,
+      "classification_inbox_only": true,
+      "business_purposes": ["internal_record"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "employment_contract",
+      "public_name": "Employment contract",
+      "category_code": "employment",
+      "subcategory_code": "employment_contract",
+      "criticality": "required",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["employment_formalization"],
+      "entity_applicability": ["employee", "contract"]
+    },
+    {
+      "code": "civil_contract",
+      "public_name": "Civil contract",
+      "category_code": "employment",
+      "subcategory_code": "civil_contract",
+      "criticality": "required",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["employment_formalization"],
+      "entity_applicability": ["employee", "contract"]
+    },
+    {
+      "code": "zus_zua",
+      "public_name": "ZUS ZUA",
+      "category_code": "social_security",
+      "subcategory_code": "zus",
+      "criticality": "required",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["payroll_setup"],
+      "entity_applicability": ["employee", "payroll_profile"]
+    },
+    {
+      "code": "zus_zza",
+      "public_name": "ZUS ZZA",
+      "category_code": "social_security",
+      "subcategory_code": "zus",
+      "criticality": "required",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["payroll_setup"],
+      "entity_applicability": ["employee", "payroll_profile"]
+    },
+    {
+      "code": "tax_declaration",
+      "public_name": "Tax declaration",
+      "category_code": "tax",
+      "subcategory_code": "declaration",
+      "criticality": "required",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["payroll_setup"],
+      "entity_applicability": ["employee", "payroll_profile"]
+    },
+    {
+      "code": "adr_certificate",
+      "public_name": "ADR certificate",
+      "category_code": "driver_qualification",
+      "subcategory_code": "adr",
+      "criticality": "compliance_critical",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["driver_compliance"],
+      "entity_applicability": ["candidate", "employee"]
+    },
+    {
+      "code": "other",
+      "public_name": "Other",
+      "category_code": "other",
+      "subcategory_code": null,
+      "criticality": "informational",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": false,
+      "business_purposes": ["internal_record"],
+      "entity_applicability": ["candidate", "employee", "company", "client", "vehicle"]
+    }
+  ],
+  "module_catalog_bindings": [
+    {
+      "module_code": "passport",
+      "canonical_code": "passport",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "national_id",
+      "canonical_code": "national_identity_card",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "driver_license",
+      "canonical_code": "driver_license",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "driver_license_code95",
+      "canonical_code": "driver_license",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "code95",
+      "canonical_code": "driver_qualification_card",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "tacho_card",
+      "canonical_code": "tachograph_card",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "residence_permit",
+      "canonical_code": "residence_card",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "visa",
+      "canonical_code": "visa",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "decision",
+      "canonical_code": "unclassified",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "medical_certificate",
+      "canonical_code": "medical_certificate",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "psych_tests",
+      "canonical_code": "psychological_certificate",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "work_permit",
+      "canonical_code": "work_permit",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "driver_certificate",
+      "canonical_code": "driver_attestation",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "adr",
+      "canonical_code": "adr_certificate",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "additional_document",
+      "canonical_code": "unclassified",
+      "source": "backend.app.document_types.definitions"
+    }
+  ]
+}

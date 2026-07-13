@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hostflow.local/schemas/visual_assets.schema.json",
+  "title": "HostFlow visual assets catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "catalog_version", "size_tokens", "assets"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "catalog_version": { "type": "string", "minLength": 1 },
+    "size_tokens": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "integer", "minimum": 8, "maximum": 128 }
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "category", "kind"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "label": { "type": "string", "minLength": 1 },
+          "category": {
+            "type": "string",
+            "enum": ["brand", "contact", "source", "flag", "product", "ui"]
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["brand", "glyph", "flag", "logo"]
+          },
+          "tabler": { "type": "string" },
+          "tabler_filled": { "type": "string" },
+          "svg": { "type": "string", "pattern": "^/" },
+          "svg_filled": { "type": "string", "pattern": "^/" },
+          "svg_light": { "type": "string", "pattern": "^/" },
+          "svg_dark": { "type": "string", "pattern": "^/" },
+          "svg_filled_light": { "type": "string", "pattern": "^/" },
+          "svg_filled_dark": { "type": "string", "pattern": "^/" },
+          "svg_light": { "type": "string", "pattern": "^/" },
+          "svg_dark": { "type": "string", "pattern": "^/" },
+          "svg_filled_light": { "type": "string", "pattern": "^/" },
+          "svg_filled_dark": { "type": "string", "pattern": "^/" },
+          "brand_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "aliases": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+          }
+        }
+      }
+    }
+  }
+}

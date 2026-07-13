@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hostflow.local/schemas/workspace_layer_contracts.schema.json",
+  "title": "HostFlow Workspace Layer contracts",
+  "description": "JSON Schema for SectionDeclaration and ReadinessContribution payloads. Canon: docs/specs/platform/workspace-layer-contracts-p0.md",
+  "$defs": {
+    "WorkspaceContextKey": {
+      "type": "string",
+      "enum": [
+        "intake",
+        "recruitment",
+        "hr",
+        "hr_active",
+        "fleet",
+        "finance",
+        "services",
+        "company",
+        "vehicle",
+        "vacancy",
+        "client"
+      ]
+    },
+    "ModuleKey": {
+      "type": "string",
+      "enum": ["recruitment", "hr", "fleet", "services", "finance"]
+    },
+    "WorkspaceStatusSeverity": {
+      "type": "string",
+      "enum": ["ready", "blocked", "warning", "not_applicable", "info"]
+    },
+    "WorkspacePermission": {
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkspaceCapabilityKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+    },
+    "WorkspaceHandlerKind": {
+      "type": "string",
+      "enum": ["api", "navigation", "custom"]
+    },
+    "ActionDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_id", "label_key", "permission", "handler_kind", "handler_ref"],
+      "properties": {
+        "action_id": { "type": "string" },
+        "label_key": { "type": "string" },
+        "permission": { "$ref": "#/$defs/WorkspacePermission" },
+        "handler_kind": { "$ref": "#/$defs/WorkspaceHandlerKind" },
+        "handler_ref": { "type": "string" }
+      }
+    },
+    "SectionDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "section_id",
+        "module_key",
+        "capability_key",
+        "label_key",
+        "order",
+        "contexts",
+        "permissions"
+      ],
+      "properties": {
+        "section_id": { "type": "string" },
+        "module_key": { "$ref": "#/$defs/ModuleKey" },
+        "capability_key": { "$ref": "#/$defs/WorkspaceCapabilityKey" },
+        "label_key": { "type": "string" },
+        "icon": { "type": "string" },
+        "order": { "type": "number" },
+        "contexts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WorkspaceContextKey" },
+          "minItems": 1
+        },
+        "permissions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WorkspacePermission" }
+        },
+        "readiness_contribution": { "type": "boolean" },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ActionDeclaration" }
+        }
+      }
+    },
+    "ReadinessBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id", "label_key", "severity"],
+      "properties": {
+        "block_id": { "type": "string" },
+        "label_key": { "type": "string" },
+        "severity": { "$ref": "#/$defs/WorkspaceStatusSeverity" },
+        "capability_key": { "$ref": "#/$defs/WorkspaceCapabilityKey" },
+        "section_id": { "type": "string" }
+      }
+    },
+    "NextActionDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "module_key",
+        "label_key",
+        "permission",
+        "priority",
+        "handler_kind",
+        "handler_ref"
+      ],
+      "properties": {
+        "action_id": { "type": "string" },
+        "module_key": { "$ref": "#/$defs/ModuleKey" },
+        "label_key": { "type": "string" },
+        "permission": { "$ref": "#/$defs/WorkspacePermission" },
+        "priority": { "type": "number" },
+        "capability_key": { "$ref": "#/$defs/WorkspaceCapabilityKey" },
+        "section_id": { "type": "string" },
+        "handler_kind": { "$ref": "#/$defs/WorkspaceHandlerKind" },
+        "handler_ref": { "type": "string" }
+      }
+    },
+    "ReadinessContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_key",
+        "context",
+        "priority",
+        "severity",
+        "summary_key"
+      ],
+      "properties": {
+        "module_key": { "$ref": "#/$defs/ModuleKey" },
+        "context": { "$ref": "#/$defs/WorkspaceContextKey" },
+        "priority": { "type": "number" },
+        "severity": { "$ref": "#/$defs/WorkspaceStatusSeverity" },
+        "summary_key": { "type": "string" },
+        "blockers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReadinessBlock" }
+        },
+        "next_action": {
+          "oneOf": [
+            { "$ref": "#/$defs/NextActionDeclaration" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}
