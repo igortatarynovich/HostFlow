@@ -139,8 +139,19 @@ RBAC: `admin`, `manager`, `supervisor` for convert; `viewer` read-only on list/g
 
 ---
 
-## 8. References
+## 8. Security & tenant boundaries
+
+| Rule | Requirement |
+|------|-------------|
+| Tenant ownership | Every `ClientAccount` row is scoped by `tenant_id` (RLS) |
+| Cross-tenant access | Forbidden: `Lead`, `Company`, and `ClientAccount` links must share `tenant_id` |
+| Cascade delete | **No** cascade delete from `Company` to `ClientAccount` |
+| RBAC | `viewer` read-only; `admin` / `manager` / `supervisor` for create, update, convert |
+
+---
+
+## 9. References
 
 - [`ADR-020`](../architecture/ADR-020-sales-to-engagement-commercial-model.md)
 - [`ui-constitution-v1.md`](../architecture/ui-constitution-v1.md) — «Клиент» = ClientAccount
-- [`../../services/module-scope.md`](../../services/module-scope.md)
+- [`module-scope.md`](../../services/module-scope.md)
