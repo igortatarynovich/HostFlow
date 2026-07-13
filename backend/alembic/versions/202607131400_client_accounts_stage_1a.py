@@ -1,7 +1,7 @@
-"""Stage 1A: client_accounts table (link columns via ensure_schema).
+"""Stage 1A: client_accounts table.
 
 Revision ID: 202607131400_client_accounts_stage_1a
-Revises: 202608250002_adr019_domain_event_outbox_3a1
+Revises: 202607131399_stage_1a_merge_heads
 Create Date: 2026-07-13
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 
 
 revision: str = "202607131400_client_accounts_stage_1a"
-down_revision: Union[str, Sequence[str], None] = "202608240001_document_expiry_notification_events_p2"
+down_revision: Union[str, Sequence[str], None] = "202607131399_stage_1a_merge_heads"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
