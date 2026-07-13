@@ -114,6 +114,9 @@ MergeDocumentGenerationLog = _load_model_module("merge_document_generation_log")
 CandidateStageHistory = _load_model_module("candidate_stage_history").CandidateStageHistory  # type: ignore[attr-defined]
 CandidateAssigneeHistory = _load_model_module("candidate_assignee_history").CandidateAssigneeHistory  # type: ignore[attr-defined]
 
+CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
+candidate_profile_history_module = _load_model_module("candidate_profile_history")
+CandidateProfileHistory = candidate_profile_history_module.CandidateProfileHistory  # type: ignore[attr-defined]
 
 
 # Документы (новые модели из модуля documents)
@@ -244,6 +247,8 @@ __all__ = [
     "BulkOperationItem",
     "CandidateStageHistory",
     "CandidateAssigneeHistory",
+    "CandidateProfile",
+    "CandidateProfileHistory",
     "CandidateService",
     "CandidateEmployment",
     "CandidateConsent",
