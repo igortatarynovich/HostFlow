@@ -150,6 +150,7 @@ try:
     from backend.app.api.v1.admin import draft_reminders as admin_draft_reminders_router
     from backend.app.api.v1.recruiters.router import router as recruiters_router
     from backend.app.api.v1.leads.router import router as leads_router
+    from backend.app.modules.client_accounts.router import router as client_accounts_router
     from backend.app.api.v1.next_actions import router as next_actions_router
     from backend.app.api.v1.notifications import router as notifications_router
     from backend.app.api.v1.communications import router as communications_router
@@ -240,6 +241,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.admin import draft_reminders as admin_draft_reminders_router  # type: ignore[no-redef]
     from .api.v1.recruiters.router import router as recruiters_router  # type: ignore[no-redef]
     from .api.v1.leads.router import router as leads_router  # type: ignore[no-redef]
+    from backend.app.modules.client_accounts.router import router as client_accounts_router  # type: ignore[no-redef]
     from .api.v1.next_actions import router as next_actions_router  # type: ignore[no-redef]
     from .api.v1.notifications import router as notifications_router  # type: ignore[no-redef]
     from .api.v1.communications import router as communications_router  # type: ignore[no-redef]
@@ -887,6 +889,7 @@ app.include_router(invoices_router, prefix="/api/v1", tags=["invoices"])
 
 # Домен
 app.include_router(companies_router, prefix="/api/v1", tags=["companies"])
+app.include_router(client_accounts_router, prefix="/api/v1")
 app.include_router(vacancies_router, prefix="/api/v1", tags=["vacancies"])
 app.include_router(fleet_router, prefix="/api/v1", tags=["fleet"])
 app.include_router(own_companies_router, prefix="/api/v1", tags=["own-companies"])
