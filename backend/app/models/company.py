@@ -67,6 +67,11 @@ class Company(Base):
     )
     client_stage: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     client_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    client_account_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+    )
 
     # JSON-поля: используем SQLite JSON + PostgreSQL JSONB
     _JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
