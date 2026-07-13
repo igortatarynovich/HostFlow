@@ -1,0 +1,143 @@
+"""Ensure document_ruleset_versions.signature exists before baseline backfill.
+
+Revision ID: 202605121350_ruleset_signature_prerequisite
+Revises: 202605140900_ch_snap
+Create Date: 2026-07-13
+
+Parallel migration branch (candidate-handoff / HR) forked before
+202512010300_ruleset_versioning_foundation. Baseline backfill requires
+signature column; this revision restores the canonical column order:
+create signature → backfill existing rows → NOT NULL constraint.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from typing import Any, Sequence, Union
+
+import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.engine import Connection
+
+revision: str = "202605121350_ruleset_signature_prerequisite"
+down_revision: Union[str, None] = "202605140900_ch_snap"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def _column_exists(conn: Connection, table: str, column: str) -> bool:
+    insp = sa.inspect(conn)
+    if not insp.has_table(table):
+        return False
+    return column in {c["name"] for c in insp.get_columns(table)}
+
+
+def _normalize_payload(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return {"__raw__": raw}
+    return {}
+
+
+def _compute_signature(tenant_id: str, version: int, json_data: Any, comment: str | None) -> str:
+    payload = {
+        "tenant_id": tenant_id,
+        "version": version,
+        "ruleset": _normalize_payload(json_data),
+    }
+    if comment:
+        payload["comment"] = comment
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def upgrade() -> None:
+    conn = op.get_bind()
+    dialect = conn.dialect.name
+    if not sa.inspect(conn).has_table("document_ruleset_versions"):
+        return
+    if _column_exists(conn, "document_ruleset_versions", "signature"):
+        return
+
+    op.add_column(
+        "document_ruleset_versions",
+        sa.Column("signature", sa.String(length=128), nullable=True),
+    )
+    if not _column_exists(conn, "document_ruleset_versions", "origin_version_id"):
+        op.add_column(
+            "document_ruleset_versions",
+            sa.Column("origin_version_id", sa.String(length=36), nullable=True),
+        )
+    if not _column_exists(conn, "document_ruleset_versions", "rollback_comment"):
+        op.add_column(
+            "document_ruleset_versions",
+            sa.Column("rollback_comment", sa.Text(), nullable=True),
+        )
+    if dialect != "sqlite":
+        op.create_foreign_key(
+            "fk_document_ruleset_versions_origin",
+            "document_ruleset_versions",
+            "document_ruleset_versions",
+            ["origin_version_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
+
+    metadata = sa.MetaData()
+    versions = sa.Table("document_ruleset_versions", metadata, autoload_with=conn)
+    rows = conn.execute(
+        sa.select(
+            versions.c.id,
+            versions.c.tenant_id,
+            versions.c.version,
+            versions.c.json_data,
+            versions.c.comment,
+        )
+    ).all()
+    for row in rows:
+        signature = _compute_signature(
+            tenant_id=str(row.tenant_id),
+            version=int(row.version),
+            json_data=row.json_data,
+            comment=row.comment,
+        )
+        conn.execute(
+            versions.update().where(versions.c.id == row.id).values(signature=signature)
+        )
+
+    op.alter_column(
+        "document_ruleset_versions",
+        "signature",
+        existing_type=sa.String(length=128),
+        nullable=False,
+        server_default=sa.text("''"),
+    )
+
+
+def downgrade() -> None:
+    conn = op.get_bind()
+    dialect = conn.dialect.name
+    if not sa.inspect(conn).has_table("document_ruleset_versions"):
+        return
+    if not _column_exists(conn, "document_ruleset_versions", "signature"):
+        return
+    if dialect != "sqlite":
+        op.drop_constraint(
+            "fk_document_ruleset_versions_origin",
+            "document_ruleset_versions",
+            type_="foreignkey",
+        )
+    if _column_exists(conn, "document_ruleset_versions", "rollback_comment"):
+        op.drop_column("document_ruleset_versions", "rollback_comment")
+    if _column_exists(conn, "document_ruleset_versions", "origin_version_id"):
+        op.drop_column("document_ruleset_versions", "origin_version_id")
+    op.drop_column("document_ruleset_versions", "signature")
