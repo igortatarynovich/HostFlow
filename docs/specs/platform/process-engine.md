@@ -755,7 +755,7 @@ When changing stage or handoff behaviour:
 2. Do **not** add new hardcoded gates outside Process Engine registries / evaluator.
 3. Do **not** couple Recruitment services to HR modules — use handoff rules + events.
 4. Prefer extending **registries** over new tenant settings blobs.
-5. UI shows evaluator output only ([`TransferReadinessReport`](../../hostflow-frontend/src/components/candidate/TransferReadinessReport.tsx) pattern).
+5. UI shows evaluator output only ([`TransferReadinessReport`](../../../hostflow-frontend/src/components/candidate/TransferReadinessReport.tsx) pattern).
 
 **Next implementation work (after canon):** P1 registry schema + module manifest for `recruitment` — not UI packs, not new settings screens.
 

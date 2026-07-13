@@ -114,8 +114,8 @@ Notification Center (persist + display)
 
 | Source | Role |
 |--------|------|
-| [`document_runtime/delivery_contract.py`](../../backend/app/document_runtime/delivery_contract.py) | Canonical `document_runtime_v1` per instance / required type |
-| [`document_runtime/evaluator.py`](../../backend/app/document_runtime/evaluator.py) | Lifecycle + expiry evaluation (only place that defines `expiring_soon` / `expired`) |
+| [`document_runtime/delivery_contract.py`](../../../backend/app/document_runtime/delivery_contract.py) | Canonical `document_runtime_v1` per instance / required type |
+| [`document_runtime/evaluator.py`](../../../backend/app/document_runtime/evaluator.py) | Lifecycle + expiry evaluation (only place that defines `expiring_soon` / `expired`) |
 
 **Forbidden upstream sources:**
 
