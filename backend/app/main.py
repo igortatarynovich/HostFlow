@@ -88,6 +88,7 @@ try:
         ensure_service_orders_own_company_id_column,
     )
     from backend.app.services.ensure_automation_rules_schema import ensure_automation_rules_schema
+    from backend.app.services.ensure_domain_events_schema import ensure_domain_events_schema
     from backend.app.services.ensure_communications_schema import ensure_communications_schema
     from backend.app.services.ensure_funnels_schema import ensure_funnels_schema
     from backend.app.services.ensure_global_search_fts import ensure_global_search_fts_function_async
@@ -468,6 +469,11 @@ async def lifespan(app: FastAPI):
             ensure_automation_rules_schema()
         except Exception as e:
             logger.warning("[startup:ensure_automation_rules_schema] skipped (%s)", e)
+
+        try:
+            ensure_domain_events_schema()
+        except Exception as e:
+            logger.warning("[startup:ensure_domain_events_schema] skipped (%s)", e)
 
         try:
             ensure_communications_schema()
