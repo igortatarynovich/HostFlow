@@ -46,7 +46,7 @@ def _to_envelope(row: DomainEventOutbox) -> EventEnvelope:
 @dataclass(frozen=True)
 class DispatchStats:
     claimed: int = 0
-    published: int = 0
+    processed: int = 0
     failed: int = 0
     dead_letter: int = 0
     requeued_stale: int = 0
@@ -120,14 +120,15 @@ def _backoff_seconds(attempt_count: int, base: int = DEFAULT_BACKOFF_BASE_SECOND
     return min(base * (2 ** max(0, attempt_count - 1)), 3600)
 
 
-async def mark_outbox_published(
+async def mark_outbox_processed(
     db: AsyncSession,
     row: DomainEventOutbox,
     *,
     now: Optional[datetime] = None,
 ) -> None:
+    """Mark outbox row consumed successfully (after consumer commit)."""
     ts = now or _utcnow()
-    row.status = OutboxStatus.published.value
+    row.status = OutboxStatus.processed.value
     row.processed_at = ts
     row.last_error = None
     row.locked_at = None
@@ -169,9 +170,15 @@ async def dispatch_outbox_batch(
     processing_timeout_seconds: int = DEFAULT_PROCESSING_TIMEOUT_SECONDS,
 ) -> DispatchStats:
     """
-    Claim a batch, invoke consumer outside long transactions, update row status.
+    Claim a batch, invoke consumer, update row status.
 
-    Consumer.handle(envelope) runs after claim commit; row updates in new flush.
+    Transaction boundaries (at-least-once):
+    1. Claim rows → commit (short TX; lock released before consumer runs).
+    2. Consumer + receipt + outbox `processed` → single commit.
+    3. Consumer failure → rollback (no receipt) → retry/DLQ in fresh TX.
+
+    Long-running consumer work must stay outside the claim transaction. Current
+    skeleton is log-only; business actions in 3A-4+ must respect the same boundary.
     """
     requeued = await requeue_stale_processing_rows(
         db,
@@ -187,7 +194,7 @@ async def dispatch_outbox_batch(
     event_ids = [row.event_id for row in rows]
     await db.commit()
 
-    published = failed = dead = 0
+    processed = failed = dead = 0
     registry = get_event_contract_registry()
 
     for event_id, envelope in zip(event_ids, envelopes):
@@ -201,11 +208,11 @@ async def dispatch_outbox_batch(
                 payload=envelope.payload,
             )
             await consumer.handle(envelope)
-            await mark_outbox_published(db, row)
+            await mark_outbox_processed(db, row)
             await db.commit()
-            published += 1
+            processed += 1
             logger.info(
-                "domain_event.outbox.published event_id=%s type=%s correlation=%s",
+                "domain_event.outbox.processed event_id=%s type=%s correlation=%s",
                 envelope.event_id,
                 envelope.event_type,
                 envelope.correlation_id,
@@ -230,7 +237,7 @@ async def dispatch_outbox_batch(
 
     return DispatchStats(
         claimed=stats.claimed,
-        published=published,
+        processed=processed,
         failed=failed,
         dead_letter=dead,
         requeued_stale=requeued,

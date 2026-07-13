@@ -1,6 +1,6 @@
 """ADR-019 domain event outbox + evaluation results (PR 3A-1).
 
-Revision ID: 202607131402_adr019_domain_event_outbox_3a1
+Revision ID: 202607131402
 Revises: 202606300004
 Create Date: 2026-07-13 15:20:00.000000
 """
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 
 RevisionType = Union[str, Sequence[str], None]
 
-revision: str = "202607131402_adr019_domain_event_outbox_3a1"
+revision: str = "202607131402"
 down_revision: RevisionType = "202606300004"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None
