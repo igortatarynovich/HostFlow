@@ -10,6 +10,7 @@ backend/app/services/hr_expected_documents_resolver.py
 backend/app/services/hr_review_document_resolution.py
 backend/app/services/status_transitions.py
 backend/app/services/handoff_snapshot.py
+backend/app/services/transfer_policy_resolver.py
 backend/app/api/v1/candidates/service.py
 
 # Tests are allowed
