@@ -16,6 +16,7 @@ from backend.app.platform.events.outbox.dispatcher import (
     claim_outbox_batch,
     dispatch_outbox_batch,
     mark_outbox_failed,
+    mark_outbox_processed,
 )
 from backend.app.platform.events.outbox.model import DomainEventConsumerReceipt, DomainEventOutbox, RequirementEvaluationResultRecord
 from backend.app.platform.events.outbox.publisher import build_envelope, publish_domain_event
@@ -308,11 +309,11 @@ async def test_dispatch_publishes_via_consumer_skeleton(db_session: AsyncSession
     consumer = ReactionOrchestratorSkeleton(db_session)
     stats = await dispatch_outbox_batch(db_session, consumer, worker_id="test-worker", batch_size=10)
     assert stats.claimed == 1
-    assert stats.published == 1
+    assert stats.processed == 1
 
     row = await db_session.get(DomainEventOutbox, envelope.event_id)
     assert row is not None
-    assert row.status == OutboxStatus.published.value
+    assert row.status == OutboxStatus.processed.value
     assert row.correlation_id == "corr-dispatch"
     assert row.causation_id == "cause-dispatch"
 
@@ -458,17 +459,119 @@ def test_outbox_flag_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _outbox_enabled() is False
 
 
-def test_ensure_domain_events_schema_skips_postgres(monkeypatch: pytest.MonkeyPatch) -> None:
-    from backend.app.services.ensure_domain_events_schema import should_run_domain_events_schema_fallback
+def test_alembic_has_single_head() -> None:
+    import subprocess
+    from pathlib import Path
 
-    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://hostflow:secret@localhost/hostflow")
-    monkeypatch.setenv("ENVIRONMENT", "development")
-    assert should_run_domain_events_schema_fallback() is False
+    backend_root = Path(__file__).resolve().parents[2]
+    alembic_ini = backend_root / "alembic.ini"
+    alembic_bin = backend_root.parent / ".venv312" / "bin" / "alembic"
+    if not alembic_bin.exists():
+        pytest.skip("alembic executable not found")
+    result = subprocess.run(
+        [str(alembic_bin), "-c", str(alembic_ini), "heads"],
+        cwd=str(backend_root),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    heads = [line.strip() for line in result.stdout.splitlines() if line.strip() and "(head)" in line]
+    assert len(heads) == 1
+    assert "202607131402" in heads[0]
 
 
-def test_ensure_domain_events_schema_skips_production(monkeypatch: pytest.MonkeyPatch) -> None:
-    from backend.app.services.ensure_domain_events_schema import should_run_domain_events_schema_fallback
+@pytest.mark.anyio
+async def test_dlq_preserves_payload_and_correlation(db_session: AsyncSession) -> None:
+    payload = _valid_payload()
+    row = DomainEventOutbox(
+        event_id="evt-dlq-meta",
+        event_type=EVENT_TYPE,
+        event_version=EVENT_VERSION,
+        aggregate_type="candidate",
+        aggregate_id="cand-1",
+        tenant_id="tenant-1",
+        company_id="co-1",
+        payload=payload,
+        occurred_at=datetime.now(timezone.utc),
+        correlation_id="corr-dlq",
+        causation_id="cause-dlq",
+        status=OutboxStatus.processing.value,
+        attempt_count=5,
+        available_at=datetime.now(timezone.utc),
+    )
+    db_session.add(row)
+    await db_session.flush()
 
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("ENVIRONMENT", "production")
-    assert should_run_domain_events_schema_fallback() is False
+    status = await mark_outbox_failed(db_session, row, error="boom", max_attempts=5)
+    assert status == OutboxStatus.dead_letter
+    assert row.status == OutboxStatus.dead_letter.value
+    assert row.payload == payload
+    assert row.correlation_id == "corr-dlq"
+    assert row.causation_id == "cause-dlq"
+
+
+@pytest.mark.anyio
+async def test_consumer_receipt_commits_with_outbox_processed(db_session: AsyncSession) -> None:
+    envelope = build_envelope(
+        event_type=EVENT_TYPE,
+        event_version=EVENT_VERSION,
+        aggregate_type="candidate",
+        aggregate_id="cand-1",
+        tenant_id="tenant-1",
+        payload=_valid_payload(),
+        occurred_at=datetime.now(timezone.utc),
+    )
+    await publish_domain_event(db_session, envelope)
+    await db_session.commit()
+
+    consumer = ReactionOrchestratorSkeleton(db_session)
+    await consumer.handle(envelope)
+    row = await db_session.get(DomainEventOutbox, envelope.event_id)
+    assert row is not None
+    await mark_outbox_processed(db_session, row)
+    await db_session.commit()
+
+    receipt = (
+        await db_session.execute(
+            select(DomainEventConsumerReceipt).where(
+                DomainEventConsumerReceipt.event_id == envelope.event_id,
+            )
+        )
+    ).scalar_one()
+    assert receipt is not None
+    assert row.status == OutboxStatus.processed.value
+
+
+@pytest.mark.anyio
+async def test_redelivery_after_processed_is_idempotent(db_session: AsyncSession) -> None:
+    envelope = build_envelope(
+        event_type=EVENT_TYPE,
+        event_version=EVENT_VERSION,
+        aggregate_type="candidate",
+        aggregate_id="cand-1",
+        tenant_id="tenant-1",
+        payload=_valid_payload(),
+        occurred_at=datetime.now(timezone.utc),
+        correlation_id="corr-redeliver",
+    )
+    await publish_domain_event(db_session, envelope)
+    await db_session.commit()
+
+    consumer = ReactionOrchestratorSkeleton(db_session)
+    stats = await dispatch_outbox_batch(db_session, consumer, worker_id="w1", batch_size=10)
+    assert stats.processed == 1
+
+    row = await db_session.get(DomainEventOutbox, envelope.event_id)
+    assert row is not None
+    assert row.status == OutboxStatus.processed.value
+
+    await consumer.handle(envelope)
+    await db_session.commit()
+    receipts = (
+        await db_session.execute(
+            select(DomainEventConsumerReceipt).where(
+                DomainEventConsumerReceipt.event_id == envelope.event_id,
+            )
+        )
+    ).scalars().all()
+    assert len(receipts) == 1
