@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 
-STAGE_1A_BASE = "202608250002_adr019_domain_event_outbox_3a1"
+STAGE_1A_PRE_MERGE = "202607131399_stage_1a_merge_heads"
 STAGE_1A_TABLE = "202607131400_client_accounts_stage_1a"
 STAGE_1A_LINKS = "202607131401_client_account_link_columns"
 
@@ -25,7 +25,7 @@ def main() -> int:
     _run("alembic", "upgrade", STAGE_1A_LINKS)
     _run("alembic", "downgrade", STAGE_1A_TABLE)
     _run("alembic", "upgrade", STAGE_1A_LINKS)
-    _run("alembic", "downgrade", STAGE_1A_BASE)
+    _run("alembic", "downgrade", STAGE_1A_PRE_MERGE)
     _run("alembic", "upgrade", "head")
     print("Stage 1A migration roundtrip OK")
     return 0
