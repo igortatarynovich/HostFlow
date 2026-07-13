@@ -158,6 +158,7 @@ class LeadOut(BaseModel):
     candidate_id: Optional[UUID] = None
     candidate_name: Optional[str] = None
     converted_client_id: Optional[UUID] = None
+    client_account_id: Optional[UUID] = None
     outcome_entity_type: Optional[str] = None
     outcome_entity_id: Optional[UUID] = None
     outcome_entity_name: Optional[str] = None
