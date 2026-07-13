@@ -8,7 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.reference_foundation import validate_reference_code
-from backend.app.models.ref_document_type import RefDocumentType, RefDocumentTypeVersion
+from backend.app.models.ref_document_type import (
+    RefDocumentType,
+    RefDocumentTypeVersion,
+    RefPack,
+    TenantDocumentPackEnablement,
+)
 from backend.app.reference.core_immutable_catalogs import (
     CATALOG_VERSION as CORE_IMMUTABLE_CATALOG_VERSION,
     get_country_by_alpha2,
@@ -658,6 +663,29 @@ class ReferenceServiceFacade:
             },
             "errors": [],
         }
+
+    @classmethod
+    async def list_enabled_document_pack_codes(
+        cls,
+        db: AsyncSession,
+        *,
+        tenant_id: str,
+    ) -> list[str]:
+        tid = str(tenant_id).strip()
+        rows = (
+            await db.execute(
+                select(RefPack.code)
+                .join(
+                    TenantDocumentPackEnablement,
+                    TenantDocumentPackEnablement.pack_id == RefPack.id,
+                )
+                .where(TenantDocumentPackEnablement.tenant_id == tid)
+                .where(TenantDocumentPackEnablement.enabled.is_(True))
+                .where(RefPack.status == "active")
+                .order_by(RefPack.code.asc())
+            )
+        ).all()
+        return [str(row[0]) for row in rows]
 
     @classmethod
     async def get_document_runtime_profile(

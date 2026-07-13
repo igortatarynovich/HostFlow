@@ -40,7 +40,7 @@ Displayed in verification UI via `fields_to_review[].current_profile_values` and
 
 **Source priority** (`FIELD_SPECS.profile_keys` order):
 
-1. `handoff.candidate.*` — `candidate_handoff_snapshots.payload` ([`hr_handoff_profile_context.py`](../../backend/app/services/hr_handoff_profile_context.py))  
+1. `handoff.candidate.*` — `candidate_handoff_snapshots.payload` ([`hr_handoff_profile_context.py`](../../../backend/app/services/hr_handoff_profile_context.py))  
 2. `employee.*`, `eligibility.*`  
 3. `snapshot.*` — employee `candidate_snapshot`  
 4. `document.*`, `context.*`
