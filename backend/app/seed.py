@@ -139,6 +139,27 @@ async def run_seed(db: AsyncSession) -> None:
                 pass
             logger.warning(f"[seed] Failed to seed Entity Profile defaults for tenant {tenant_id}: {e}")
 
+        # Services tenants — targeted-advertising questionnaire capability (lazy recovery)
+        try:
+            from backend.app.entity_profile.provision_targeted_advertising import (
+                is_services_tenant,
+                recover_targeted_advertising_capability,
+            )
+
+            if is_services_tenant(tenant):
+                result = await recover_targeted_advertising_capability(db, tenant_id)
+                if result.status == "failed":
+                    raise RuntimeError(result.error or "targeted_advertising_recovery_failed")
+                await db.commit()
+        except Exception as e:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning(
+                f"[seed] Failed to seed targeted-advertising capability for tenant {tenant_id}: {e}"
+            )
+
         # P6 — default driver_ce public intake form + intake source binding
         try:
             from backend.app.entity_profile.seed_intake_demo_form import ensure_tenant_default_driver_ce_intake_form
