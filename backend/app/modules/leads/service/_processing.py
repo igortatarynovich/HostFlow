@@ -70,12 +70,12 @@ from ._helpers import (
 )
 from backend.app.modules.leads.schemas import intake_vacancy_confirm_triage_bypass
 from backend.app.modules.leads.service.intake_decision import pool_intake_manual_convert_ready
-from backend.app.modules.leads.intake_route import (
+from backend.app.modules.intake_routing.meta_bridge import (
     is_sales_route_intent,
     lead_type_for_route_intent,
     lead_type_for_target,
-    resolve_intake_route_for_ingest,
 )
+from backend.app.modules.leads.intake_route import resolve_intake_route_for_ingest
 from backend.app.modules.outcome_rules.reference import OutcomeEvent, OutcomeRuleType
 from backend.app.services.outcome_resolver import resolve_outcomes
 

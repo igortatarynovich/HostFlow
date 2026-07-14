@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,9 @@ from backend.app.modules.intake_routing.meta_bridge import (
     route_intent_to_lead_target_type,
 )
 from backend.app.modules.leads.normalizer import extract_meta_lead_form_context
-from backend.app.services.intake_router import IntakeRouter, IntakeRoutingResult
+
+if TYPE_CHECKING:
+    from backend.app.services.intake_router import IntakeRoutingResult
 
 _log = logging.getLogger(__name__)
 
@@ -127,7 +129,7 @@ class IntakeRouteContext:
 
 def _context_from_routing_result(
     *,
-    routing: IntakeRoutingResult,
+    routing: "IntakeRoutingResult",
     source: str,
     form_id: Optional[str],
     page_id: Optional[str],
@@ -198,6 +200,8 @@ async def resolve_intake_route_for_ingest(
 
     external_key = meta_external_key(form_id or "")
     external_key_secondary = meta_external_key_secondary(page_id)
+
+    from backend.app.services.intake_router import IntakeRouter
 
     routing = await IntakeRouter.resolve(
         db,
