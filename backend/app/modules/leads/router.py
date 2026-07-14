@@ -1233,11 +1233,14 @@ async def convert_client_lead_to_client_endpoint(
     own_company_id: str = Depends(resolve_active_own_company_id),
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
 ) -> LeadOut:
+    from backend.app.modules.client_accounts.conversion import convert_client_lead
+    from backend.app.modules.client_accounts import crud as account_crud
     from backend.app.modules.leads import crud
 
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     actor_id = str(current_user.sub or "").strip() or None
+
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -1263,138 +1266,24 @@ async def convert_client_lead_to_client_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Client Lead has no owner company",
         )
-    if getattr(lead, "converted_client_id", None):
-        res = await service.list_leads(
-            db,
-            tenant_id=tenant_id_str,
-            own_company_id=own_company_id,
-            only_lead_id=lead_id,
-            limit=1,
-            offset=0,
-        )
-        if not res.items:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        return res.items[0]
 
-    normalized = _record_or_empty(lead.normalized)
-    payload = _record_or_empty(lead.payload)
-    company_profile = _record_or_empty(normalized.get("company_profile")) or _record_or_empty(payload.get("company"))
-    contact_person = _record_or_empty(normalized.get("contact_person")) or _record_or_empty(payload.get("contact"))
-    if not any(_trim_or_none(contact_person.get(k)) for k in ("full_name", "email", "phone")):
-        contact_person = {
-            **contact_person,
-            "full_name": _trim_or_none(normalized.get("full_name")) or contact_person.get("full_name"),
-            "email": _trim_or_none(normalized.get("email")) or contact_person.get("email"),
-            "phone": _trim_or_none(normalized.get("phone")) or contact_person.get("phone"),
-        }
-    need = _record_or_empty(normalized.get("need")) or _record_or_empty(payload.get("need"))
-    marketing = _record_or_empty(normalized.get("marketing"))
-    meta = _record_or_empty(normalized.get("meta"))
+    locked_lead = await account_crud.get_lead_for_update(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not locked_lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    company_name = (
-        _trim_or_none(company_profile.get("name"))
-        or _trim_or_none(normalized.get("company_name"))
-        or _trim_or_none(payload.get("company_name"))
-    )
-    if not company_name:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Company name is required before converting Client Lead",
-        )
-
-    contacts_payload: Dict[str, Any] = {}
-    primary_contact = {
-        "full_name": _trim_or_none(contact_person.get("full_name")),
-        "role": _trim_or_none(contact_person.get("role")),
-        "email": _trim_or_none(contact_person.get("email")),
-        "phone": _trim_or_none(contact_person.get("phone")),
-        "whatsapp": bool(contact_person.get("whatsapp")) if contact_person.get("whatsapp") is not None else None,
-        "source": "client_lead",
-        "source_lead_id": str(lead.id),
-    }
-    primary_contact = {k: v for k, v in primary_contact.items() if v is not None and v != ""}
-    if any(primary_contact.get(k) for k in ("full_name", "email", "phone")):
-        contacts_payload = {"primary": primary_contact}
-
-    assigned_manager_id = _trim_or_none(meta.get("assigned_manager_id"))
-    assigned_manager_uuid: UUID | None = None
-    if assigned_manager_id:
-        try:
-            assigned_manager_uuid = UUID(assigned_manager_id)
-        except ValueError:
-            assigned_manager_uuid = None
-    company_in = company_schemas.CompanyCreate(
-        name=company_name,
-        legal_name=_trim_or_none(company_profile.get("legal_name")) or company_name,
-        tax_id=_trim_or_none(company_profile.get("tax_id")) or _trim_or_none(company_profile.get("nip")) or _trim_or_none(company_profile.get("vat")),
-        phone=_trim_or_none(contact_person.get("phone")),
-        email=_trim_or_none(contact_person.get("email")),
-        website=_trim_or_none(company_profile.get("website")),
-        country_code=_trim_or_none(company_profile.get("country_code")),
-        country=_trim_or_none(company_profile.get("country")),
-        city=_trim_or_none(company_profile.get("city")),
-        address=_trim_or_none(company_profile.get("address")),
-        company_role="client",
-        party_business_roles="service_client",
-        client_stage="lead_converted",
-        client_source=_trim_or_none(lead.source),
-        manager_user_id=assigned_manager_uuid,
-        contacts=contacts_payload or None,
-        extra={
-            "company_role": "client",
-            "company_kind": "client",
-            "source": lead.source,
-            "source_lead_id": str(lead.id),
-            "source_profile": meta.get("source_profile"),
-            "intake": {
-                "company_profile": company_profile,
-                "contact_person": contact_person,
-                "need": need,
-                "marketing": marketing,
-                "meta": meta,
-            },
-            "needs": [need] if need else [],
-        },
-    )
-
-    client = await create_company_service(db=db, data=company_in, actor_user_id=actor_id)
-
-    from backend.app.services.tenant_links import ensure_client_company_tenant_link
-
-    await ensure_client_company_tenant_link(
+    await convert_client_lead(
         db,
-        agency_tenant_id=tenant_id_str,
-        client_company_id=str(client.id),
-        handoff_enabled=True,
+        tenant_id=tenant_id_str,
+        lead=locked_lead,
+        actor_id=actor_id,
+        conversion_reason="manual_convert_client",
     )
-
-    normalized_updated = dict(normalized)
-    normalized_updated["converted_client_id"] = str(client.id)
-    normalized_updated["converted_client_at"] = datetime.now(timezone.utc).isoformat()
-    normalized_updated["converted_client_by"] = actor_id
-    lead.normalized = normalized_updated
-    lead.converted_client_id = str(client.id)
-    lead.status = "processed"
-    lead.stage = "converted"
-    lead.error = None
-    await db.flush()
-    try:
-        await log_activity(
-            db,
-            tenant_id=tenant_id_str,
-            actor_id=actor_id,
-            action="client_lead.converted_to_client",
-            target_type="lead",
-            target_id=str(lead.id),
-            payload={
-                "client_id": str(client.id),
-                "company_name": company_name,
-                "source": lead.source,
-                "own_company_id": str(getattr(lead, "own_company_id", "") or ""),
-            },
-        )
-    except Exception:
-        pass
+        db,
+        tenant_id=tenant_id_str,
+        lead=locked_lead,
+        actor_id=actor_id,
+        conversion_reason="manual_convert_client",
+    )
     await db.commit()
 
     res = await service.list_leads(

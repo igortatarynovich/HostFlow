@@ -101,6 +101,11 @@ class Lead(Base):
         nullable=True,
         index=True,
     )
+    client_account_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+    )
     external_id: Mapped[Optional[str]] = mapped_column(
         String(128),
         nullable=True,
