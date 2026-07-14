@@ -129,10 +129,18 @@ async def _build_lead_list_filters(
     lost_from_crm_stage: Optional[str] = None,
     pipeline_error: Optional[str] = None,
     created_before_hours: Optional[int] = None,
+    lead_type: Optional[str] = None,
+    lead_target_type: Optional[str] = None,
 ) -> Tuple[List[Any], Any, Any, datetime]:
     filters: List[Any] = [Lead.tenant_id == tenant_id]
     if own_company_id:
         filters.append(Lead.own_company_id == own_company_id)
+    lt = (lead_type or "").strip().lower() or None
+    ltt = (lead_target_type or "").strip().lower() or None
+    if lt:
+        filters.append(func.lower(func.coalesce(Lead.lead_type, "")) == lt)
+    if ltt:
+        filters.append(func.lower(func.coalesce(Lead.lead_target_type, "")) == ltt)
     lrc = (lost_reason_code or "").strip() or None
     lf_crm = (lost_from_crm_stage or "").strip().lower() or None
     lost_focus = bool(lrc or lf_crm)
@@ -409,6 +417,8 @@ async def list_leads(
     pipeline_error: Optional[str] = None,
     created_before_hours: Optional[int] = None,
     search: Optional[str] = None,
+    lead_type: Optional[str] = None,
+    lead_target_type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     only_lead_id: Optional[str] = None,
@@ -440,6 +450,8 @@ async def list_leads(
             lost_from_crm_stage=lost_from_crm_stage,
             pipeline_error=pipeline_error,
             created_before_hours=created_before_hours,
+            lead_type=lead_type,
+            lead_target_type=lead_target_type,
         )
         sq = (search or "").strip().lower()
         text_search_or = _lead_list_text_search_or(sq) if len(sq) >= 2 else None

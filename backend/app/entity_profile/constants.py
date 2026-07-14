@@ -12,6 +12,11 @@ REGISTRY_STATUS_ARCHIVED = "archived"
 RECRUITMENT_MODULE = "recruitment"
 ENTITY_CANDIDATE = "candidate"
 
+SERVICE_SALES_MODULE = "service_sales"
+ENTITY_LEAD = "lead"
+TARGETED_ADVERTISING_PROFILE_CODE = "service_sales.targeted_advertising"
+TARGETED_ADVERTISING_PRESENTATION_CODE = "service_sales.targeted_advertising.public_pl"
+
 DRIVER_CE_PROFILE_CODE = "recruitment.candidate.driver_ce"
 DRIVER_CE_INTAKE_PRESENTATION_CODE = "recruitment.candidate.driver_ce.meta_short"
 

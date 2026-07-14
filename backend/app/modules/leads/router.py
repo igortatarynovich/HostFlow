@@ -46,6 +46,8 @@ from backend.app.modules.leads.schemas import (
     LeadIntakeDecisionIn,
     LeadListResponse,
     LeadOut,
+    LeadQuestionnaireInviteOut,
+    LeadQuestionnaireInviteRequest,
     LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
@@ -1172,6 +1174,57 @@ async def create_service_order_from_lead(
     return ServiceOrderOut.model_validate(order, from_attributes=True)
 
 
+@router.post("/{lead_id}/questionnaire-invite", response_model=LeadQuestionnaireInviteOut)
+async def create_lead_questionnaire_invite_endpoint(
+    lead_id: str,
+    payload: LeadQuestionnaireInviteRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+) -> LeadQuestionnaireInviteOut:
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.lead_questionnaire_invite import attach_questionnaire_invite_to_lead
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Questionnaire invite is only available for client leads",
+        )
+
+    try:
+        invite = await attach_questionnaire_invite_to_lead(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            mark_sent=payload.mark_sent,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    await db.commit()
+    await db.refresh(invite)
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(invite.id)),
+        lead_id=UUID(str(invite.lead_id)),
+        token=invite.token,
+        apply_url=invite.apply_url or f"/public/apply/{invite.token}",
+        status=invite.status,
+        entity_profile_code=invite.entity_profile_code,
+        presentation_code=invite.presentation_code,
+        sent_at=invite.sent_at,
+        opened_at=invite.opened_at,
+        submitted_at=invite.submitted_at,
+        expires_at=invite.expires_at,
+    )
+
+
 @router.post("/{lead_id}/convert-client", response_model=LeadOut)
 async def convert_client_lead_to_client_endpoint(
     lead_id: str,
@@ -1227,6 +1280,13 @@ async def convert_client_lead_to_client_endpoint(
     payload = _record_or_empty(lead.payload)
     company_profile = _record_or_empty(normalized.get("company_profile")) or _record_or_empty(payload.get("company"))
     contact_person = _record_or_empty(normalized.get("contact_person")) or _record_or_empty(payload.get("contact"))
+    if not any(_trim_or_none(contact_person.get(k)) for k in ("full_name", "email", "phone")):
+        contact_person = {
+            **contact_person,
+            "full_name": _trim_or_none(normalized.get("full_name")) or contact_person.get("full_name"),
+            "email": _trim_or_none(normalized.get("email")) or contact_person.get("email"),
+            "phone": _trim_or_none(normalized.get("phone")) or contact_person.get("phone"),
+        }
     need = _record_or_empty(normalized.get("need")) or _record_or_empty(payload.get("need"))
     marketing = _record_or_empty(normalized.get("marketing"))
     meta = _record_or_empty(normalized.get("meta"))
@@ -1253,8 +1313,8 @@ async def convert_client_lead_to_client_endpoint(
         "source_lead_id": str(lead.id),
     }
     primary_contact = {k: v for k, v in primary_contact.items() if v is not None and v != ""}
-    if primary_contact:
-        contacts_payload = {"primary": primary_contact, "items": [primary_contact]}
+    if any(primary_contact.get(k) for k in ("full_name", "email", "phone")):
+        contacts_payload = {"primary": primary_contact}
 
     assigned_manager_id = _trim_or_none(meta.get("assigned_manager_id"))
     assigned_manager_uuid: UUID | None = None

@@ -10,6 +10,7 @@ from backend.app.field_registry.manifests.fleet import fleet_module_manifest
 from backend.app.field_registry.manifests.hr import hr_module_manifest
 from backend.app.field_registry.manifests.platform import platform_module_manifest
 from backend.app.field_registry.manifests.recruitment import recruitment_module_manifest
+from backend.app.field_registry.manifests.service_sales import service_sales_module_manifest
 from backend.app.field_registry.registry import FieldRegistry
 from backend.app.models.field_registry import PLATFORM_TENANT_SCOPE, FrCanonicalField
 
@@ -21,6 +22,7 @@ def _field_manifests() -> list[dict]:
         crm_module_manifest(),
         hr_module_manifest(),
         fleet_module_manifest(),
+        service_sales_module_manifest(),
     ]
 
 
