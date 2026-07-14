@@ -68,7 +68,13 @@ Secondary entry (later):
 [Quote detail — status: Отправлено]
         ↓ external client decision (out of band in PR-1)
 [Manager marks: Принято / Отклонено]
-[Quote detail — terminal status]
+[Quote detail — status: Odrzucono / Wygasło]
+        ↓ «Nowa wersja oferty» (revise)
+[Quote detail — revision_draft, v2]
+        ↓ Send v2
+[Quote detail — sent]
+        ↓ Accept v2
+[Quote detail — accepted, terminal]
 ```
 
 ---
@@ -78,6 +84,7 @@ Secondary entry (later):
 | status | RU label | Color token |
 |--------|----------|-------------|
 | draft | Черновик | neutral |
+| revision_draft | Новая редакция | neutral |
 | sent | Отправлено | info |
 | accepted | Принято | success |
 | rejected | Отклонено | danger |
@@ -89,11 +96,12 @@ Secondary entry (later):
 
 | status | Primary actions | Disabled |
 |--------|-----------------|----------|
-| draft | Save, Send | Accept, Reject |
-| sent | Accept, Reject, Mark expired | Edit line items |
+| draft | Save, Send | Accept, Revise |
+| revision_draft | Save, Send | Accept |
+| sent | Accept, Reject, Expire, Revise | Edit sent version |
 | accepted | View only | All mutations |
-| rejected | View only | Create **new Quote** on same client (new aggregate) |
-| expired | View only | Create **new Quote** on same client (new aggregate) |
+| rejected | Revise, View history | Accept until new send |
+| expired | Revise, View history | Accept until new send |
 
 ---
 
@@ -123,6 +131,7 @@ Secondary entry (later):
 | Create | `POST /api/v1/quotes` |
 | Autosave draft | `PATCH /api/v1/quotes/{id}` |
 | Send | `POST /api/v1/quotes/{id}/send` |
+| Counter-offer | `POST /api/v1/quotes/{id}/revise` |
 | Accept | `POST /api/v1/quotes/{id}/accept` |
 | Reject | `POST /api/v1/quotes/{id}/reject` |
 | List | `GET /api/v1/quotes?client_account_id=` |
