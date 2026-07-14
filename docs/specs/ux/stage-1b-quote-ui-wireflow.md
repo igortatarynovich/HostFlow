@@ -92,8 +92,8 @@ Secondary entry (later):
 | draft | Save, Send | Accept, Reject |
 | sent | Accept, Reject, Mark expired | Edit line items |
 | accepted | View only | All mutations |
-| rejected | View only | All mutations |
-| expired | View only | All mutations |
+| rejected | View only | Create **new Quote** on same client (new aggregate) |
+| expired | View only | Create **new Quote** on same client (new aggregate) |
 
 ---
 

@@ -1,6 +1,6 @@
 # Stage 1B — Quote Foundation Implementation Contract
 
-**Status:** design-first (L3 implementation contract — **no runtime code until merge gate**)  
+**Status:** design-first — **pending review** (no runtime code until contract approved)  
 **Owner:** Services / Sales backend  
 **Parent ADR:** [`ADR-020`](../architecture/ADR-020-sales-to-engagement-commercial-model.md)  
 **Prerequisite:** Stage 1A merged (ClientAccount), auto-seed merged (services intake)  
@@ -61,8 +61,9 @@ Full detail: [`stage-1b-quote-object-model.md`](../architecture/stage-1b-quote-o
 | `quote_number` | string | Human-readable; unique per `(tenant_id, quote_number)` |
 | `title` | string | Product label |
 | `status` | enum | `draft` \| `sent` \| `accepted` \| `rejected` \| `expired` |
-| `currency` | string(3) | ISO 4217, default tenant currency |
-| `current_version_id` | UUID, nullable | Pointer to latest material version |
+| `currency` | string(3) | **Required** ISO 4217; all money uses this currency |
+| `current_version_id` | UUID, nullable | Pointer to active version; FK deferred (see object model §2.3) |
+| `accepted_version_id` | UUID, nullable | Frozen on accept; must equal version sent |
 | `source_lead_id` | UUID, nullable | Traceability to Sales Inquiry transport |
 | `valid_until` | date, nullable | Drives `expired` transition |
 | `sent_at` | timestamptz, nullable | Set on `draft → sent` |
@@ -74,7 +75,7 @@ Full detail: [`stage-1b-quote-object-model.md`](../architecture/stage-1b-quote-o
 
 ### 3.2 `quote_versions`
 
-Immutable commercial revision rows (append-only after `sent`).
+Immutable commercial revision rows. **After send, version row is frozen.**
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -82,53 +83,39 @@ Immutable commercial revision rows (append-only after `sent`).
 | `tenant_id` | UUID | RLS |
 | `quote_id` | UUID | FK → `quotes` |
 | `version_number` | int | Monotonic per quote; starts at 1 |
-| `status` | enum | Mirrors parent at creation time |
-| `scope_snapshot` | JSONB | Frozen commercial scope (see §4) |
-| `line_items` | JSONB | Structured commercial lines (MVP array) |
-| `subtotal` / `tax_total` / `total` | numeric | Denormalized totals for list views |
+| `scope_snapshot` | JSONB | Canonical commercial scope (see §4) — includes `items[]` |
+| `subtotal` / `tax_total` / `total` | `NUMERIC(18,4)` | **No float** — server-computed |
 | `notes_internal` | text, nullable | Not client-visible |
 | `notes_client` | text, nullable | Shown on send |
+| `sent_at` | timestamptz, nullable | Set when this version is sent |
 | `created_by_user_id` | UUID, nullable | |
 | `created_at` | timestamptz | |
 
-**Rule:** editing commercial terms after `sent` creates a **new version** in `draft` on the quote (quote returns to `draft`) OR is forbidden in PR-1 — **PR-1 chooses: forbid mutation after `sent`; only status transitions on frozen version.**
+**Rules (review-approved):**
+
+- Edit commercial terms **only** while `quote.status = draft` on `current_version`.
+- `POST /versions` while `draft` appends a new revision.
+- **No** `sent → draft`. **No** new versions after `sent` on the same aggregate.
+- Further proposals after `rejected` / `expired` → **new Quote** record.
 
 ---
 
 ## 4. `scope_snapshot` contract
 
-JSON document capturing **what** is being sold at a lifecycle boundary.
+Structured document — **not arbitrary JSON**. Full schema: object model §4.
 
-```json
-{
-  "schema_version": 1,
-  "service_family": "targeted_advertising",
-  "offering_code": "meta_lead_gen_monthly",
-  "parameters": {
-    "channels": ["meta_ads"],
-    "markets": ["PL"],
-    "budget_range_pln": {"min": 3000, "max": 8000}
-  },
-  "client_account": {
-    "id": "…",
-    "display_name": "…"
-  },
-  "primary_company_id": "…",
-  "captured_at": "2026-07-14T12:00:00Z"
-}
-```
+Required root keys: `schema_version`, `title`, `service_family`, `offering_code`, `currency`, `items[]`.
 
-**When captured:**
+Each `items[]` element requires: `item_id`, `title`, `quantity`, `unit`, `unit_price` (decimal strings).
 
 | Transition | Snapshot action |
 |------------|-----------------|
-| `draft` edits | Live fields on current draft version only |
-| `draft → sent` | Freeze `scope_snapshot` on current version; immutable thereafter |
-| `sent → accepted` | Copy reference only; no rewrite of sent snapshot |
-| `sent → rejected` | No snapshot change |
-| `sent → expired` | No snapshot change |
+| `draft` edits | Rebuild draft snapshot on current version |
+| `draft → sent` | Inject `client_account`, `captured_at`; freeze row |
+| `sent → accepted` | `accepted_version_id` points to frozen snapshot |
+| `sent → rejected` / `expired` | No mutation |
 
-PR-1 validates `schema_version` and required keys; does not implement offering catalog.
+**Acceptance (Sale layer):** `POST /accept` on `sent` quote where `version_id === current_version_id`. Terminal for Quote; cancellation is Order/Commerce concern.
 
 ---
 
@@ -138,23 +125,25 @@ PR-1 validates `schema_version` and required keys; does not implement offering c
 stateDiagram-v2
     [*] --> draft
     draft --> sent: send()
-    sent --> accepted: accept()
+    sent --> accepted: accept(current_version)
     sent --> rejected: reject()
-    sent --> expired: expire() / valid_until passed
-    rejected --> draft: reopen() [optional PR-1: forbid]
-    expired --> draft: reopen() [optional PR-1: forbid]
+    sent --> expired: expire()
     accepted --> [*]
+    rejected --> [*]
+    expired --> [*]
 ```
 
 | Status | Meaning | Allowed mutations |
 |--------|---------|-------------------|
-| `draft` | Composing proposal | CRUD version fields |
-| `sent` | Delivered to client | Status transitions only |
-| `accepted` | Client agreed (Sale layer) | Read-only |
-| `rejected` | Client declined | Read-only |
-| `expired` | Validity ended | Read-only |
+| `draft` | Composing proposal | PATCH; POST /versions |
+| `sent` | Delivered to client | accept / reject / expire only |
+| `accepted` | Sale layer terminal | Read-only; cancel → Order PR |
+| `rejected` | Declined terminal | Read-only; new proposal → new Quote |
+| `expired` | Validity ended terminal | Read-only; new proposal → new Quote |
 
-**Invariant:** `accepted` does **not** create Service Order (next PR).
+**Forbidden:** `sent → draft`, accepting non-current version, mutating sent snapshot.
+
+**Invariant:** `accepted` does **not** create Service Order (next PR). SO copies `accepted_version.scope_snapshot`.
 
 ---
 
@@ -170,7 +159,7 @@ Prefix: `/api/v1/quotes`
 | POST | `/` | Create draft quote + v1 |
 | GET | `/{id}` | Detail + current version |
 | PATCH | `/{id}` | Update draft metadata only |
-| POST | `/{id}/versions` | New draft version (only while quote.status=draft) |
+| POST | `/{id}/versions` | New draft revision (only while `status=draft`) |
 | POST | `/{id}/send` | `draft → sent`, freeze snapshot |
 | POST | `/{id}/accept` | `sent → accepted` |
 | POST | `/{id}/reject` | `sent → rejected` |
@@ -243,7 +232,11 @@ Full detail: [`stage-1b-quote-lifecycle-sequences.md`](../workflows/stage-1b-quo
 | Cross-tenant read | 404 / forbidden |
 | Delete ClientAccount | Quote preserved (no cascade) |
 | Invalid transition (accept draft) | 409 conflict |
-| Replay send on sent | Idempotent or 409 |
+| Replay send on sent | `200` idempotent same version |
+| Accept with wrong version_id | `409 stale_version` |
+| POST /versions while sent | `409` |
+| New quote after rejected | Allowed (new aggregate) |
+| Optimistic lock stale PATCH | `409 stale_quote` |
 
 ---
 
@@ -253,8 +246,9 @@ Full detail: [`stage-1b-quote-lifecycle-sequences.md`](../workflows/stage-1b-quo
 - [x] PR #19 auto-seed merged
 - [x] Post-merge smoke: services tenant provisioning tests pass
 - [x] Legacy tenant recovery test passes
-- [ ] Integration CI green (or unrelated failure documented)
-- [x] Design contract approved (this document)
+- [ ] **Design PR reviewed and contract status → approved**
+- [ ] Integration CI green — fix SPA path literals in **separate chore PR** (not design / not Stage 1B runtime)
+- [ ] `feat/stage-1b-quote-foundation` branched from updated integration line
 
 ---
 

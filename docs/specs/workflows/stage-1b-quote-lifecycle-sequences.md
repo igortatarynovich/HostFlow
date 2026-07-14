@@ -65,12 +65,14 @@ sequenceDiagram
     Note over SVC: PR-1 stops here — no Service Order
 
     M->>API: POST /api/v1/quotes/{id}/accept
-    API->>SVC: accept_quote(id)
+    API->>SVC: accept_quote(id, version_id?)
     SVC->>DB: SELECT quote FOR UPDATE
     alt status != sent
-        SVC-->>API: 409 Conflict
-    else status = sent
-        SVC->>DB: UPDATE quotes SET status=accepted, accepted_at=now()
+        SVC-->>API: 409 invalid_transition
+    else version_id != current_version_id
+        SVC-->>API: 409 stale_version
+    else
+        SVC->>DB: UPDATE quotes SET status=accepted, accepted_at=now(), accepted_version_id=current_version_id
         SVC-->>API: QuoteOut
         API-->>M: 200 OK
     end
