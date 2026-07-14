@@ -3,8 +3,8 @@ import { listAutomationLog, type AutomationLogEntry } from '../api/automationLog
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
-import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { formatDateTime } from '../utils/dateFormat'
@@ -75,29 +75,28 @@ export default function AutomationLogPage() {
   const shownTo = useMemo(() => Math.min(offset + limit, total), [limit, offset, total])
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
-        <SettingsSubpageHeader
-          backHref={CRM_APP_PATHS.automations}
-          backLabel={t('app.automations.hub.back', { defaultValue: '← Automations' })}
-          kicker={t('app.automation_log.header_kicker')}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          breadcrumbItems={[
+            { label: t('app.automations.hub.title', { defaultValue: 'Automations' }), to: CRM_APP_PATHS.automations },
+            { label: t('app.automation_log.title', { defaultValue: 'Automation log' }) },
+          ]}
           title={t('app.automation_log.title', { defaultValue: 'Automation log' })}
           subtitle={t('app.automation_log.subtitle', {
             defaultValue: 'Why did something happen? Shows automation-triggered actions (v1).',
           })}
-          actions={
+          kind="browse"
+          secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => load()} disabled={loading}>
               {loading ? t('common.loading') : t('common.actions.refresh')}
             </button>
           }
         />
-      </header>
+      </PageShellHeader>
 
-      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
-        <PageBreadcrumb />
-      </div>
-
-      <div className="card space-y-0 gap-0 rounded-none border-x-0 border-t-0 p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <Toolbar>
         <div className="flex flex-wrap gap-3">
           <label className="flex flex-col text-sm gap-1">
             {t('app.automation_log.filters.target_type', { defaultValue: 'Target type' })}
@@ -143,6 +142,7 @@ export default function AutomationLogPage() {
             </button>
           </div>
         </div>
+      </Toolbar>
 
         {error && (
           <ErrorRecoveryBanner
@@ -247,6 +247,6 @@ export default function AutomationLogPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   )
 }

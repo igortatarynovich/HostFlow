@@ -6,6 +6,8 @@ import { TodayPlannerPanel } from '../modules/workHub/TodayPlannerPanel'
 import { HandoffQueuePanel } from '../modules/workHub/HandoffQueuePanel'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { getOpsCounters, type OpsCounters } from '../api/analytics'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { useI18n } from '../i18n'
 
 export default function WorkOrganizerPage() {
@@ -88,15 +90,23 @@ export default function WorkOrganizerPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 p-3 sm:p-4">
-      <section className="sticky top-2 z-20 mb-3 rounded-xl border border-slate-200 bg-white/95 p-3 backdrop-blur">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="text-sm font-semibold text-slate-900">
-            {t('app.work.organizer.top.problems_title', { defaultValue: 'Critical counters' })}
-          </div>
-          <button type="button" onClick={() => void loadOps()} className="btn-secondary btn-xs">
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          </button>
+    <PageShell className="bg-slate-50">
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.work.hub.operational_title', { defaultValue: 'Work' })}
+          subtitle={t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadOps()}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+      <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white/95 p-3 backdrop-blur">
+        <div className="mb-2 text-sm font-semibold text-slate-900">
+          {t('app.work.organizer.top.problems_title', { defaultValue: 'Critical counters' })}
         </div>
         {loadingOps ? (
           <div className="text-xs text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
@@ -150,6 +160,7 @@ export default function WorkOrganizerPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

@@ -12,6 +12,7 @@ import {
 import { acceptHandoff } from '../../api/handoffs'
 import { HrTransferSummaryChips, type HrTransferSummary } from '../../components/hr/HrTransferSummaryChips'
 import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
+import { Toolbar } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 
@@ -182,11 +183,8 @@ export default function HrInboxPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="text-base font-semibold tracking-tight text-slate-900">
-          {t('app.nav.hr.inbox.heading', { defaultValue: 'Inbox' })}
-        </h2>
-        <div className="flex flex-wrap gap-2">
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
           <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
             {t('app.nav.hr.inbox.quick_hub', { defaultValue: 'Documents hub' })}
           </Link>
@@ -194,7 +192,7 @@ export default function HrInboxPage() {
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-      </div>
+      </Toolbar>
 
       {delayedFlag ? (
         <p className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-xs text-indigo-950">

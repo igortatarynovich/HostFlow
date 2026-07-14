@@ -34,7 +34,8 @@ import { useI18n } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useAuth } from '../store/useAuth'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -2310,15 +2311,23 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
   )
   const isDragActive = isCalendarEventDraggable(dragPlannerEvent)
 
-  return (
-    <div className="space-y-4">
-      {!embedded && <WorkspaceTopNav active="calendar" />}
-      {!embedded && <PageBreadcrumb className="max-w-4xl" />}
-      {!embedded && (
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
-        </div>
-      )}
+  const calendarContent = (
+    <>
+      {!embedded ? (
+        <PageShellHeader>
+          <PageHeader
+            title={t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}
+            kind="browse"
+            secondaryActions={
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
+                {t('common.actions.refresh')}
+              </button>
+            }
+          />
+        </PageShellHeader>
+      ) : null}
+
+      <div className={embedded ? 'space-y-4' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4'}>
 
       {showAdvancedTools && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
@@ -3733,6 +3742,18 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
+  )
+
+  if (embedded) {
+    return calendarContent
+  }
+
+  return (
+    <PageShell>
+      <WorkspaceTopNav active="calendar" />
+      {calendarContent}
+    </PageShell>
   )
 }

@@ -9,7 +9,8 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -120,16 +121,23 @@ export default function TimeOffRequestsPage() {
   }, [loadAll, planLimitModal, t])
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.timeoff_title', { defaultValue: 'Time-off Requests' })}</h1>
-        <p className="text-sm text-slate-500">
-          {t('app.communications.ia.timeoff_subtitle', { defaultValue: 'Employee requests (vacation / day off / sick leave) and manager approval workflow.' })}
-        </p>
-      </div>
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.communications.ia.timeoff_title', { defaultValue: 'Time-off Requests' })}
+          subtitle={t('app.communications.ia.timeoff_subtitle', {
+            defaultValue: 'Employee requests (vacation / day off / sick leave) and manager approval workflow.',
+          })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadAll()} disabled={loading}>
+              {t('common.actions.refresh')}
+            </button>
+          }
+        />
+      </PageShellHeader>
 
-      <PageBreadcrumb className="max-w-4xl" />
-
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.timeoff.stats.pending', { defaultValue: 'Pending: {count}', values: { count: summary.pending } })}</div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.timeoff.stats.approved', { defaultValue: 'Approved: {count}', values: { count: summary.approved } })}</div>
@@ -139,8 +147,8 @@ export default function TimeOffRequestsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+      <Toolbar>
+        <div className="flex flex-wrap items-center gap-2">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input">
             <option value="">{t('app.communications.timeoff.filters.all_statuses', { defaultValue: 'All statuses' })}</option>
             <option value="pending">{t('app.communications.timeoff.status.pending', { defaultValue: 'Pending' })}</option>
@@ -148,10 +156,10 @@ export default function TimeOffRequestsPage() {
             <option value="rejected">{t('app.communications.timeoff.status.rejected', { defaultValue: 'Rejected' })}</option>
             <option value="cancelled">{t('app.communications.timeoff.status.cancelled', { defaultValue: 'Cancelled' })}</option>
           </select>
-          <button type="button" onClick={() => void loadAll()} className="btn-secondary">
-            {t('common.actions.refresh')}
-          </button>
         </div>
+      </Toolbar>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
         {error && (
           <div className="mb-3">
             <ErrorRecoveryBanner
@@ -212,6 +220,7 @@ export default function TimeOffRequestsPage() {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

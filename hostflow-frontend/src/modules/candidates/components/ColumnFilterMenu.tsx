@@ -2,7 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { IconFilter } from '@tabler/icons-react'
+import type { Icon as TablerIcon } from '@tabler/icons-react'
 import { useI18n } from '../../../i18n'
+
+type TriggerIcon = TablerIcon
 
 type ColumnFilterMenuProps =
   | {
@@ -11,11 +14,14 @@ type ColumnFilterMenuProps =
       selected: string[]
       onChange: (next: string[]) => void
       count?: number
+      /** Override the default funnel icon (used to disambiguate two filters in one header). */
+      icon?: TriggerIcon
       children?: undefined
     }
   | {
       title: string
       count?: number
+      icon?: TriggerIcon
       children: (close: () => void) => ReactNode
       options?: undefined
       selected?: undefined
@@ -231,9 +237,13 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
           onClick={toggle}
           onMouseDown={(e) => e.stopPropagation()}
           aria-label={props.title}
+          title={props.title}
           aria-pressed={isActive}
         >
-          <IconFilter size={13} className={isActive ? 'text-brand-600' : 'text-slate-500'} />
+          {(() => {
+            const TriggerIconComponent = props.icon ?? IconFilter
+            return <TriggerIconComponent size={13} className={isActive ? 'text-brand-600' : 'text-slate-500'} />
+          })()}
           {badgeCount > 0 && (
             <span className="absolute -right-1.5 -top-1 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700 leading-4">
               {badgeCount}

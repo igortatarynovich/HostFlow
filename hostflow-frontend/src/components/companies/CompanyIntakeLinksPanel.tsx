@@ -79,10 +79,10 @@ function draftFromProfile(row: CompanyIntakeSourceProfile): Draft {
   }
 }
 
-export function CompanyIntakeLinksPanel() {
+export function CompanyIntakeLinksPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useI18n()
   const { notify } = useToast()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(embedded)
   const [profiles, setProfiles] = useState<CompanyIntakeSourceProfile[]>([])
   const [ownCompanies, setOwnCompanies] = useState<OwnCompanyRecord[]>([])
   const [managers, setManagers] = useState<ManagerOption[]>([])
@@ -213,7 +213,8 @@ export function CompanyIntakeLinksPanel() {
   if (forbidden) return null
 
   return (
-    <section className="app-surface border-x-0 border-t-0 p-3">
+    <section className={embedded ? 'p-3' : 'app-surface border-x-0 border-t-0 p-3'}>
+      {!embedded ? (
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -267,6 +268,7 @@ export function CompanyIntakeLinksPanel() {
           </button>
         </div>
       </div>
+      ) : null}
 
       {primaryProfile ? (
         <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">

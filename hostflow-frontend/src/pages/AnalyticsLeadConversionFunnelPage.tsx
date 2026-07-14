@@ -14,7 +14,8 @@ import type { LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
 import { useToast } from '../components/Toast'
 import { computeFunnelSuggestedInsights } from '../utils/funnelSuggestedInsights'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
 
 /** Preset drill-downs for common lost-reason follow-up (§2.12 management loop). */
@@ -147,42 +148,24 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
 
   const funnelSuggested = useMemo(() => computeFunnelSuggestedInsights(funnelData), [funnelData])
 
-  const shellClass = embedded ? 'w-full' : 'w-full max-w-6xl px-4 py-6 sm:px-6'
+  const funnelLinks = (
+    <p className={embedded ? 'mb-4 max-w-3xl text-xs text-slate-600' : 'max-w-3xl text-sm text-slate-600'}>
+      <Link
+        to={CRM_APP_PATHS.settingsFunnels}
+        className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
+      >
+        {t('app.analytics.lead_conversion.configure_funnels')}
+      </Link>
+      {' · '}
+      <Link to={CRM_APP_PATHS.leads} className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
+        {t('app.analytics.lead_conversion.open_leads_workspace')}
+      </Link>
+    </p>
+  )
 
-  return (
-    <div className={shellClass}>
-      {!embedded ? (
-        <>
-          <h1 className="text-xl font-semibold text-slate-900">{t('app.analytics.lead_conversion.title')}</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600">{t('app.analytics.lead_conversion.subtitle')}</p>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            <Link
-              to={CRM_APP_PATHS.settingsFunnels}
-              className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
-            >
-              {t('app.analytics.lead_conversion.configure_funnels')}
-            </Link>
-            {' · '}
-            <Link to={CRM_APP_PATHS.leads} className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
-              {t('app.analytics.lead_conversion.open_leads_workspace')}
-            </Link>
-          </p>
-          <PageBreadcrumb className="mt-4 max-w-4xl" />
-        </>
-      ) : (
-        <p className="mb-4 max-w-3xl text-xs text-slate-600">
-          <Link
-            to={CRM_APP_PATHS.settingsFunnels}
-            className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
-          >
-            {t('app.analytics.lead_conversion.configure_funnels')}
-          </Link>
-          {' · '}
-          <Link to={CRM_APP_PATHS.leads} className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
-            {t('app.analytics.lead_conversion.open_leads_workspace')}
-          </Link>
-        </p>
-      )}
+  const funnelBody = (
+    <>
+      {funnelLinks}
 
       {!loading ? (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -502,6 +485,30 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
           {t('app.analytics.lead_conversion.empty')}
         </div>
       )}
-    </div>
+    </>
+  )
+
+  if (embedded) {
+    return <div className="w-full">{funnelBody}</div>
+  }
+
+  return (
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.analytics.lead_conversion.title')}
+          subtitle={t('app.analytics.lead_conversion.subtitle')}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={refresh} disabled={loading}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
+        {funnelBody}
+      </div>
+    </PageShell>
   )
 }

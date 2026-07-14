@@ -13,7 +13,7 @@ import {
 } from '../../api/workforce'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
-import { PageBreadcrumb } from '../../components/nav/PageBreadcrumb'
+import { PageHeader } from '../../components/nav/PageHeader'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
@@ -244,9 +244,9 @@ export default function HrEmployeeDetailPage() {
   return (
     <div className="hr-employee-workspace w-full min-w-0">
       <div className="w-full min-w-0">
-        <PageBreadcrumb
-          items={[
-            { to: CRM_APP_PATHS.overview, label: t('app.nav.items.overview', { defaultValue: 'Insights' }) },
+        <PageHeader
+          breadcrumbItems={[
+            { label: t('app.nav.hr.workspace.title', { defaultValue: 'HR workspace' }), to: CRM_APP_PATHS.hr },
             {
               to: caseWorkspace ? CRM_APP_PATHS.hrInbox : CRM_APP_PATHS.hrEmployees,
               label: caseWorkspace
@@ -259,24 +259,10 @@ export default function HrEmployeeDetailPage() {
                 : employee.display_name,
             },
           ]}
+          title={employee.display_name}
+          subtitle={caseWorkspace ? t('app.hr.review_case.badge', { defaultValue: 'HR review case' }) : employee.id}
+          kind="browse"
         />
-
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          {caseWorkspace ? (
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900">{employee.display_name}</h1>
-              <p className="mt-1 font-mono text-xs text-slate-500">{employee.id}</p>
-            </div>
-          ) : null}
-          <Link
-            to={caseWorkspace ? CRM_APP_PATHS.hrInbox : CRM_APP_PATHS.hrEmployees}
-            className="text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
-          >
-            {caseWorkspace
-              ? t('app.hr.review_case.back_to_inbox', { defaultValue: '← Back to HR inbox' })
-              : t('app.hr.employee_detail.back_list', { defaultValue: '← Back to employees' })}
-          </Link>
-        </div>
 
         <div
           className={

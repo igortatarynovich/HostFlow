@@ -285,15 +285,12 @@ export default function LegalDocumentsPage() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="mb-1">
-        <SettingsSubpageHeader
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('admin.legal.header_kicker')}
-          title={t('admin.legal.title')}
-          subtitle={t('admin.legal.subtitle')}
-        />
-      </div>
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.legal.header_kicker')}
+      title={t('admin.legal.title')}
+      subtitle={t('admin.legal.subtitle')}
+    >
       {loading ? (
         <section className="settings-panel">
           <p className="text-sm text-slate-500">{t('common.loading')}</p>
@@ -316,6 +313,6 @@ export default function LegalDocumentsPage() {
           </section>
         </>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

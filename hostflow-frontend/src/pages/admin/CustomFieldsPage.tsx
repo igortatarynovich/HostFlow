@@ -289,28 +289,25 @@ export default function CustomFieldsPage() {
   )
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.custom_fields.page.header_kicker')}
+      title={t('admin.custom_fields.page.title')}
+      subtitle={t('admin.custom_fields.page.subtitle')}
+      actions={
+        <button
+          className="btn-primary"
+          type="button"
+          onClick={() => {
+            setNewDefinitionMode(true)
+            setEditingDefinition(null)
+          }}
+        >
+          {t('admin.custom_fields.page.create_field')}
+        </button>
+      }
+    >
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.custom_fields.page.header_kicker')}
-            title={t('admin.custom_fields.page.title')}
-            subtitle={t('admin.custom_fields.page.subtitle')}
-            actions={
-              <button
-                className="btn-primary"
-                type="button"
-                onClick={() => {
-                  setNewDefinitionMode(true)
-                  setEditingDefinition(null)
-                }}
-              >
-                {t('admin.custom_fields.page.create_field')}
-              </button>
-            }
-          />
-        </div>
 
         <div className="mb-4">
           <SelectField
@@ -442,7 +439,7 @@ export default function CustomFieldsPage() {
           </div>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 

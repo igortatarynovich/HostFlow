@@ -18,8 +18,8 @@ import { useI18n } from '../i18n'
 import { usePermissions } from '../hooks/usePermissions'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
-import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 
 type PolicyCard = {
   key: string
@@ -130,21 +130,18 @@ export default function AutomationsHubPage() {
   }, [can, t])
 
   return (
-    <div className="flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-4 sm:px-6">
-      <div className="border-b border-slate-200 pb-4">
-        <SettingsSubpageHeader
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('app.automations.hub.header_kicker')}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
           title={t('app.automations.hub.title', { defaultValue: 'Automations' })}
           subtitle={t('app.automations.hub.subtitle', {
-            defaultValue:
-              'Rules, logs, and lead routing — one place to start; details open on their own screens.',
+            defaultValue: 'Rules, logs, and lead routing — one place to start; details open on their own screens.',
           })}
+          kind="browse"
         />
-      </div>
+      </PageShellHeader>
 
-      <PageBreadcrumb className="max-w-4xl" />
-
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
       <section className="max-w-4xl rounded-xl border border-brand-200/80 bg-brand-50/40 p-4 text-sm text-slate-800 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">
           {t('app.automations.hub.meta_leads_fit_title')}
@@ -340,6 +337,7 @@ export default function AutomationsHubPage() {
           </div>
         </section>
       ) : null}
-    </div>
+      </div>
+    </PageShell>
   )
 }

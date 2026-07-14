@@ -124,14 +124,14 @@ export default function IntegrationsWebhookPage() {
   }, [previewItems.length, settings?.generic_inbound_webhook_enabled, settingsLoading])
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-6 sm:py-8">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.integrations_hub.back_to_hub')}
-        kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
-        title={t('admin.integrations_webhook.title')}
-        subtitle={t('admin.integrations_webhook.intro')}
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.integrations_hub.back_to_hub')}
+      kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+      title={t('admin.integrations_webhook.title')}
+      subtitle={t('admin.integrations_webhook.intro')}
+      contentClassName="mx-auto w-full max-w-4xl gap-8"
+    >
 
       <div className="flex justify-end">
         <button type="button" className="btn-secondary btn-sm" onClick={() => setShowAdvanced((v) => !v)}>
@@ -293,6 +293,6 @@ Content-Type: application/json
           </details>
         </>
       ) : null}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

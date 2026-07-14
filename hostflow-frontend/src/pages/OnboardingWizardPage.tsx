@@ -41,6 +41,8 @@ import {
 import { createVacancy } from '../api/vacancies'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { useSeoMeta } from '../hooks/useSeoMeta'
 
 type StepKey = OnboardingWizardStepKey
@@ -303,7 +305,32 @@ export default function OnboardingWizardPage() {
   }, [loading, wizard, status, currentStep, persistStep, handleSkip, refreshStatus, handleFinish, t])
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl gap-6 px-4 py-8 sm:py-10">
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={currentDef?.title}
+          subtitle={currentDef?.hint}
+          kind="browse"
+          secondaryActions={
+            <>
+              <span className="text-xs text-slate-500">
+                {t('app.onboarding.wizard.step_counter', {
+                  defaultValue: 'Step {n} of {total}',
+                  values: { n: currentVisibleIdx + 1, total: visibleSteps.length },
+                })}
+              </span>
+              <Link
+                to={CRM_APP_PATHS.overview}
+                className="btn-secondary btn-sm inline-flex items-center gap-1"
+              >
+                <IconHome size={14} aria-hidden />
+                {t('app.onboarding.wizard.exit', { defaultValue: 'Exit to dashboard' })}
+              </Link>
+            </>
+          }
+        />
+      </PageShellHeader>
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 gap-6 overflow-y-auto px-4 pb-4">
       <aside className="hidden w-64 shrink-0 lg:block">
         <ProgressRail
           steps={visibleSteps}
@@ -313,37 +340,16 @@ export default function OnboardingWizardPage() {
         />
       </aside>
       <main className="min-w-0 flex-1 space-y-4">
-        <header className="flex items-center justify-between">
-          <Link
-            to={CRM_APP_PATHS.overview}
-            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
-          >
-            <IconHome size={14} aria-hidden />
-            {t('app.onboarding.wizard.exit', { defaultValue: 'Exit to dashboard' })}
-          </Link>
-          <span className="text-xs text-slate-400">
-            {t('app.onboarding.wizard.step_counter', {
-              defaultValue: 'Step {n} of {total}',
-              values: { n: currentVisibleIdx + 1, total: visibleSteps.length },
-            })}
-          </span>
-        </header>
         {error ? (
           <ErrorRecoveryBanner info={error} onRetry={() => setError(null)} retryLabel={t('common.actions.close')} compact />
         ) : null}
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-baseline justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-700">
-                {t('app.onboarding.wizard.kicker', {
-                  defaultValue: 'First value in 5 minutes',
-                })}
-              </p>
-              <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
-                {currentDef?.title}
-              </h1>
-              <p className="mt-1 text-sm text-slate-600">{currentDef?.hint}</p>
-            </div>
+          <div className="mb-4 flex items-center justify-end gap-3">
+            <p className="mr-auto text-xs font-medium uppercase tracking-wide text-brand-700">
+              {t('app.onboarding.wizard.kicker', {
+                defaultValue: 'First value in 5 minutes',
+              })}
+            </p>
             {currentDef?.optional ? (
               <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
                 {t('app.onboarding.wizard.optional', { defaultValue: 'Optional' })}
@@ -374,7 +380,8 @@ export default function OnboardingWizardPage() {
           ) : null}
         </footer>
       </main>
-    </div>
+      </div>
+    </PageShell>
   )
 }
 

@@ -1234,37 +1234,45 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
     if (newest) await patchCommunicationAccount(newest.id, { is_active: true })
   }, [applyChannelPatchFresh, createForSelectedChannel, lockedChannel, selectedChannel])
 
+  const messengerHeaderProps = lockedChannel
+    ? {
+        backHref: CRM_APP_PATHS.settingsIntegrations,
+        backLabel: t('admin.integrations_hub.back_to_hub'),
+        kicker: t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' }),
+        title: t(CHANNEL_META[lockedChannel].titleKey as any, {
+          defaultValue: CHANNEL_META[lockedChannel].titleDefault,
+        }),
+        subtitle: t(CHANNEL_META[lockedChannel].subtitleKey as any, {
+          defaultValue: CHANNEL_META[lockedChannel].subtitleDefault,
+        }),
+        actions: (
+          <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="btn-secondary">
+            {t('admin.communications_messengers.actions.all_messengers', {
+              defaultValue: 'All messengers & shared templates',
+            })}
+          </Link>
+        ),
+      }
+    : {
+        backHref: CRM_APP_PATHS.settingsCommunications,
+        backLabel: t('admin.communications_messengers.actions.all_settings', {
+          defaultValue: 'All communication settings',
+        }),
+        kicker: t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messengers' }),
+        title: t('admin.communications_messengers.title', { defaultValue: 'Messenger settings' }),
+        subtitle: t('admin.communications_messengers.subtitle', {
+          defaultValue:
+            'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.',
+        }),
+        actions: (
+          <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
+            {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
+          </Link>
+        ),
+      }
+
   return (
-    <div className="space-y-4">
-      {lockedChannel ? (
-        <SettingsSubpageHeader
-          backHref={CRM_APP_PATHS.settingsIntegrations}
-          backLabel={t('admin.integrations_hub.back_to_hub')}
-          kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
-          title={t(CHANNEL_META[lockedChannel].titleKey as any, { defaultValue: CHANNEL_META[lockedChannel].titleDefault })}
-          subtitle={t(CHANNEL_META[lockedChannel].subtitleKey as any, { defaultValue: CHANNEL_META[lockedChannel].subtitleDefault })}
-          actions={
-            <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="btn-secondary">
-              {t('admin.communications_messengers.actions.all_messengers', { defaultValue: 'All messengers & shared templates' })}
-            </Link>
-          }
-        />
-      ) : (
-        <SettingsSubpageHeader
-          backHref={CRM_APP_PATHS.settingsCommunications}
-          backLabel={t('admin.communications_messengers.actions.all_settings', { defaultValue: 'All communication settings' })}
-          kicker={t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messengers' })}
-          title={t('admin.communications_messengers.title', { defaultValue: 'Messenger settings' })}
-          subtitle={t('admin.communications_messengers.subtitle', {
-            defaultValue: 'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.',
-          })}
-          actions={
-            <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
-              {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
-            </Link>
-          }
-        />
-      )}
+    <SettingsSubpageHeader {...messengerHeaderProps}>
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
@@ -1862,6 +1870,6 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
       </details>
         </>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

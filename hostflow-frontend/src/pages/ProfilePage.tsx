@@ -24,7 +24,8 @@ import { useI18n, type LocaleCode } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import {
   readStoredDefaultAppHome,
   writeStoredDefaultAppHome,
@@ -600,14 +601,15 @@ export default function ProfilePage() {
   const savedViewsByModule = useMemo(() => (module: SavedViewsModule) => savedViews[module], [savedViews])
 
   return (
-    <div className="flex min-h-0 w-full max-w-none flex-1 flex-col gap-0 p-0">
-      <header>
-        <h1 className="text-3xl font-semibold text-slate-900">{t('app.profile.title')}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t('app.profile.subtitle')}</p>
-      </header>
-
-      <PageBreadcrumb className="max-w-4xl" />
-
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.profile.title')}
+          subtitle={t('app.profile.subtitle')}
+          kind="browse"
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-slate-900">{t('app.profile.sections.profile.title')}</h2>
@@ -980,7 +982,8 @@ export default function ProfilePage() {
           </div>
         </section>
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }
 

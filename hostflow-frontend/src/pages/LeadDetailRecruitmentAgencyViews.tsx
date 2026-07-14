@@ -122,7 +122,7 @@ export function RecruitmentAgencyIntakeDetailView({
         </details>
       </div>
 
-      <div className="flex flex-col gap-6 lg:sticky lg:top-[76px]">
+      <div className="flex flex-col gap-6 lg:sticky lg:top-4 lg:self-start">
         <LeadIntakeDecisionRail
           lead={lead}
           processing={processing}

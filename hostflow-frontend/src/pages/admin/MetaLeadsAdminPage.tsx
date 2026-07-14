@@ -1783,34 +1783,34 @@ export default function MetaLeadsAdminPage() {
   ) : null
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 py-1 sm:py-2">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.integrations_hub.back_to_hub')}
-        kicker={t('admin.integrations_hub.integration_kicker')}
-        title={
-          <span className="inline-flex items-center gap-2">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]"
-              aria-hidden
-            >
-              <IconBrandMeta size={22} stroke={1.75} />
-            </span>
-            {t('admin.meta_leads.title')}
-          </span>
-        }
-        subtitle={t('admin.meta_leads.subtitle')}
-        actions={
-          <button
-            type="button"
-            onClick={() => void refreshAll()}
-            disabled={loading}
-            className="btn-secondary btn-sm disabled:opacity-50"
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.integrations_hub.back_to_hub')}
+      kicker={t('admin.integrations_hub.integration_kicker')}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]"
+            aria-hidden
           >
-            {loading ? t('common.loading') : t('common.actions.refresh')}
-          </button>
-        }
-      />
+            <IconBrandMeta size={22} stroke={1.75} />
+          </span>
+          {t('admin.meta_leads.title')}
+        </span>
+      }
+      subtitle={t('admin.meta_leads.subtitle')}
+      actions={
+        <button
+          type="button"
+          onClick={() => void refreshAll()}
+          disabled={loading}
+          className="btn-secondary btn-sm disabled:opacity-50"
+        >
+          {loading ? t('common.loading') : t('common.actions.refresh')}
+        </button>
+      }
+      contentClassName="mx-auto w-full max-w-6xl"
+    >
 
       {metaContextRedirected && metaContextTenantLabel ? (
         <div
@@ -3970,6 +3970,6 @@ export default function MetaLeadsAdminPage() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

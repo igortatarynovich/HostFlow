@@ -5,7 +5,8 @@
 import type { ReactNode, RefObject } from 'react';
 import clsx from 'clsx';
 import { IconLayoutSidebarLeftExpand, IconX } from '@tabler/icons-react';
-import { PageBreadcrumb } from '../../components/nav/PageBreadcrumb';
+import { PageHeader } from '../../components/nav/PageHeader';
+import { PageShell, PageShellHeader } from '../../components/layout';
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner';
 import { CRM_APP_PATHS } from '../../app/crmAppPaths';
 import type { FriendlyErrorInfo } from '../../utils/friendlyError';
@@ -45,39 +46,43 @@ export function PipelineKanbanWorkspace({
   bulkBar,
   kanban,
 }: PipelineKanbanWorkspaceProps) {
+  const sidebarToggle = (
+    <button
+      type="button"
+      onClick={onToggleSidebar}
+      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+      title={sidebarOpen ? closeSidebarLabel : openSidebarLabel}
+      aria-label={sidebarOpen ? closeSidebarLabel : openSidebarLabel}
+    >
+      {sidebarOpen ? (
+        <>
+          <IconX size={18} stroke={2} />
+          <span className="hidden sm:inline">{closeSidebarLabel}</span>
+        </>
+      ) : (
+        <>
+          <IconLayoutSidebarLeftExpand size={18} stroke={2} />
+          <span className="hidden sm:inline">{openSidebarLabel}</span>
+        </>
+      )}
+    </button>
+  );
+
   return (
     <div
       className={clsx(
-        'flex-1 transition-all duration-300 min-h-0 flex flex-col overflow-hidden',
+        'flex min-h-0 flex-1 flex-col overflow-hidden transition-all duration-300',
         sidebarOpen ? 'mr-0 sm:mr-96' : 'mr-0',
       )}
     >
-      <div
-        ref={tableContainerRef}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
-      >
-        <div className="mx-4 mt-2 mb-1 shrink-0 flex items-center justify-between gap-2">
-          <PageBreadcrumb />
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
-            title={sidebarOpen ? closeSidebarLabel : openSidebarLabel}
-            aria-label={sidebarOpen ? closeSidebarLabel : openSidebarLabel}
-          >
-            {sidebarOpen ? (
-              <>
-                <IconX size={18} stroke={2} />
-                <span className="hidden sm:inline">{closeSidebarLabel}</span>
-              </>
-            ) : (
-              <>
-                <IconLayoutSidebarLeftExpand size={18} stroke={2} />
-                <span className="hidden sm:inline">{openSidebarLabel}</span>
-              </>
-            )}
-          </button>
-        </div>
+      <PageShell data-hf-ui="candidates-pipeline-kanban">
+        <PageShellHeader className="pb-1 pt-2">
+          <PageHeader kind="browse" secondaryActions={sidebarToggle} />
+        </PageShellHeader>
+        <div
+          ref={tableContainerRef}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
         {error && (
           <ErrorRecoveryBanner
             info={error}
@@ -97,7 +102,8 @@ export function PipelineKanbanWorkspace({
         {bulkBar}
 
         {kanban}
-      </div>
+        </div>
+      </PageShell>
     </div>
   );
 }

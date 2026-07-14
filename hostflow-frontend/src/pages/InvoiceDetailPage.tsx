@@ -17,7 +17,8 @@ import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { Modal } from '../components/Modal'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
@@ -409,7 +410,13 @@ export default function InvoiceDetailPage() {
   }, [hasSendErrorNotice, invoice, sendErrorComposerPrefilled])
 
   if (loading) {
-    return <div className="p-6 text-slate-500">{t('common.loading')}</div>
+    return (
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
+        </PageShellHeader>
+      </PageShell>
+    )
   }
 
   if (error || !invoice) {
@@ -420,158 +427,157 @@ export default function InvoiceDetailPage() {
         hint: t('app.common.retry_hint'),
       } satisfies FriendlyErrorInfo)
     return (
-      <div className="p-6">
-        <ErrorRecoveryBanner
-          info={bannerInfo}
-          onRetry={() => setReloadKey((prev) => prev + 1)}
-          retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
-          {...friendlyErrorBannerSecondary(
-            bannerInfo,
-            CRM_APP_PATHS.invoices,
-            t('app.invoices.title', { defaultValue: 'Invoices' }),
-          )}
-        />
-      </div>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbCurrentLabel={t('app.invoices.not_found', { defaultValue: 'Invoice not found' })} kind="browse" />
+          <div className="mt-2">
+            <ErrorRecoveryBanner
+              info={bannerInfo}
+              onRetry={() => setReloadKey((prev) => prev + 1)}
+              retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+              {...friendlyErrorBannerSecondary(
+                bannerInfo,
+                CRM_APP_PATHS.invoices,
+                t('app.invoices.title', { defaultValue: 'Invoices' }),
+              )}
+            />
+          </div>
+        </PageShellHeader>
+      </PageShell>
     )
   }
 
   const isLockedForCompliance = invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
   const correctionPath = `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`
 
+  const invoiceDetailActions = (
+    <>
+      <button
+        type="button"
+        className="btn-secondary btn-sm"
+        onClick={() =>
+          navigate(
+            invoice.status === 'draft'
+              ? `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}`
+              : correctionPath,
+          )
+        }
+      >
+        {t(
+          invoice.status === 'draft' ? 'app.invoices.duplicate' : 'app.invoices.create_correction',
+          { defaultValue: invoice.status === 'draft' ? 'Duplicate' : 'Create correction' },
+        )}
+      </button>
+      {invoice.status === 'draft' ? (
+        <button
+          type="button"
+          className="btn-secondary btn-sm"
+          onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}/edit`)}
+        >
+          {t('app.invoices.edit', { defaultValue: 'Edit Draft' })}
+        </button>
+      ) : null}
+      {invoice.status === 'draft' ? (
+        <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'issue'} onClick={() => void handleIssue()}>
+          {busyAction === 'issue' ? t('common.loading') : t('app.invoices.issue', { defaultValue: 'Issue' })}
+        </button>
+      ) : null}
+      {(invoice.status === 'issued' || invoice.status === 'sent') ? (
+        <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'send'} onClick={openSendComposer}>
+          {busyAction === 'send'
+            ? t('common.loading')
+            : t('app.invoices.compose_send', {
+                defaultValue: invoice.status === 'sent' ? 'Resend with note' : 'Compose & send',
+              })}
+        </button>
+      ) : null}
+      {invoice.status !== 'paid' && invoice.status !== 'cancelled' ? (
+        <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'paid'} onClick={() => void handleMarkPaid()}>
+          {busyAction === 'paid' ? t('common.loading') : t('app.invoices.mark_paid', { defaultValue: 'Mark paid' })}
+        </button>
+      ) : null}
+      {invoice.status !== 'paid' && invoice.status !== 'cancelled' ? (
+        <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'remind'} onClick={() => void handleRemind()}>
+          {busyAction === 'remind' ? t('common.loading') : t('app.invoices.remind', { defaultValue: 'Remind' })}
+        </button>
+      ) : null}
+      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && !isLockedForCompliance ? (
+        <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'cancel'} onClick={() => void handleCancel()}>
+          {busyAction === 'cancel' ? t('common.loading') : t('app.invoices.cancel', { defaultValue: 'Cancel' })}
+        </button>
+      ) : null}
+      <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'pdf'} onClick={() => void handlePdf()}>
+        {busyAction === 'pdf' ? t('common.loading') : t('app.invoices.pdf', { defaultValue: 'PDF' })}
+      </button>
+    </>
+  )
+
   return (
-    <div className="flex h-full w-full flex-col gap-4 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-2">
-          <button
-            type="button"
-            className="text-sm text-brand-700 hover:underline"
-            onClick={() => navigate(CRM_APP_PATHS.invoices)}
-          >
-            {t('app.invoices.back', { defaultValue: 'Back to invoices' })}
-          </button>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{invoice.invoice_number}</h1>
-            <span className="inline-flex rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-              {invoiceKindLabel(invoice, t)}
-            </span>
-            <span className={`inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(invoice.status)}`}>
-              {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
-            </span>
-            {isLockedForCompliance && (
-              <span className="inline-flex rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                {t('app.invoices.locked', { defaultValue: 'LOCKED' })}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          breadcrumbCurrentLabel={invoice.invoice_number}
+          subtitle={
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                {invoiceKindLabel(invoice, t)}
               </span>
-            )}
+              <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(invoice.status)}`}>
+                {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
+              </span>
+              {isLockedForCompliance ? (
+                <span className="inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  {t('app.invoices.locked', { defaultValue: 'LOCKED' })}
+                </span>
+              ) : null}
+              <span>
+                {invoice.billing_details?.email || t('app.invoices.no_recipient', { defaultValue: 'No recipient email' })}
+              </span>
+            </div>
+          }
+          secondaryActions={invoiceDetailActions}
+        />
+        {actionError ? (
+          <div className="mt-2">
+            <ErrorRecoveryBanner
+              info={actionError}
+              onRetry={() => setActionError(null)}
+              retryLabel={t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
+              {...friendlyErrorBannerSecondary(
+                actionError,
+                CRM_APP_PATHS.invoices,
+                t('app.invoices.title', { defaultValue: 'Invoices' }),
+              )}
+              compact
+            />
           </div>
-          <p className="text-sm text-slate-500">
-            {invoice.billing_details?.email || t('app.invoices.no_recipient', { defaultValue: 'No recipient email' })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() =>
-              navigate(
-                invoice.status === 'draft'
-                  ? `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}`
-                  : correctionPath,
-              )
-            }
-          >
-            {t(
-              invoice.status === 'draft' ? 'app.invoices.duplicate' : 'app.invoices.create_correction',
-              { defaultValue: invoice.status === 'draft' ? 'Duplicate' : 'Create correction' },
-            )}
-          </button>
-          {invoice.status === 'draft' && (
+        ) : null}
+        {actionMessage ? (
+          <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{actionMessage}</div>
+        ) : null}
+        {hasSendErrorNotice ? (
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span>
+              {t('app.invoices.send_failed_after_save', {
+                defaultValue: 'Invoice was saved, but sending failed. Open compose/send and retry.',
+              })}
+            </span>
             <button
               type="button"
-              className="btn-secondary btn-sm"
-              onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}/edit`)}
+              className="btn-secondary btn-xs"
+              onClick={() => {
+                const next = new URLSearchParams(searchParams)
+                next.delete('send_error')
+                setSearchParams(next, { replace: true })
+              }}
             >
-              {t('app.invoices.edit', { defaultValue: 'Edit Draft' })}
+              {t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
             </button>
-          )}
-          {invoice.status === 'draft' && (
-            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'issue'} onClick={() => void handleIssue()}>
-              {busyAction === 'issue' ? t('common.loading') : t('app.invoices.issue', { defaultValue: 'Issue' })}
-            </button>
-          )}
-          {(invoice.status === 'issued' || invoice.status === 'sent') && (
-            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'send'} onClick={openSendComposer}>
-              {busyAction === 'send'
-                ? t('common.loading')
-                : t('app.invoices.compose_send', {
-                    defaultValue: invoice.status === 'sent' ? 'Resend with note' : 'Compose & send',
-                  })}
-            </button>
-          )}
-          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'paid'} onClick={() => void handleMarkPaid()}>
-              {busyAction === 'paid'
-                ? t('common.loading')
-                : t('app.invoices.mark_paid', { defaultValue: 'Mark paid' })}
-            </button>
-          )}
-          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'remind'} onClick={() => void handleRemind()}>
-              {busyAction === 'remind'
-                ? t('common.loading')
-                : t('app.invoices.remind', { defaultValue: 'Remind' })}
-            </button>
-          )}
-          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && !isLockedForCompliance && (
-            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'cancel'} onClick={() => void handleCancel()}>
-              {busyAction === 'cancel'
-                ? t('common.loading')
-                : t('app.invoices.cancel', { defaultValue: 'Cancel' })}
-            </button>
-          )}
-          <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'pdf'} onClick={() => void handlePdf()}>
-            {busyAction === 'pdf' ? t('common.loading') : t('app.invoices.pdf', { defaultValue: 'PDF' })}
-          </button>
-        </div>
-      </div>
+          </div>
+        ) : null}
+      </PageShellHeader>
 
-      <PageBreadcrumb className="max-w-4xl" />
-
-      {actionError && (
-        <ErrorRecoveryBanner
-          info={actionError}
-          onRetry={() => setActionError(null)}
-          retryLabel={t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
-          {...friendlyErrorBannerSecondary(
-            actionError,
-            CRM_APP_PATHS.invoices,
-            t('app.invoices.title', { defaultValue: 'Invoices' }),
-          )}
-          compact
-        />
-      )}
-
-      {actionMessage && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{actionMessage}</div>}
-      {hasSendErrorNotice && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <span>
-            {t('app.invoices.send_failed_after_save', {
-              defaultValue: 'Invoice was saved, but sending failed. Open compose/send and retry.',
-            })}
-          </span>
-          <button
-            type="button"
-            className="btn-secondary btn-xs"
-            onClick={() => {
-              const next = new URLSearchParams(searchParams)
-              next.delete('send_error')
-              setSearchParams(next, { replace: true })
-            }}
-          >
-            {t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
-          </button>
-        </div>
-      )}
-
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
       <Modal
         open={sendComposerOpen}
         onClose={() => setSendComposerOpen(false)}
@@ -860,6 +866,7 @@ export default function InvoiceDetailPage() {
           </section>
         </aside>
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

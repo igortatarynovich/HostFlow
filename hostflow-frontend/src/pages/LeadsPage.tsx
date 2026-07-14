@@ -59,7 +59,8 @@ import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
 import {
   leadRodoSatisfied,
   leadRoutingTableAction,
@@ -1647,45 +1648,51 @@ export default function LeadsPage() {
   }, [recruitmentLeadsTable, workspaceView, selectedLeadId, items])
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-5">
+    <PageShell>
       {leadQuotaWarning ? (
-        <QuotaNearLimitBanner kind="leads_monthly" percentUsed={leadQuotaWarning.percentUsed} className="mx-1 sm:mx-0" />
+        <QuotaNearLimitBanner kind="leads_monthly" percentUsed={leadQuotaWarning.percentUsed} className="mx-4 mb-2" />
       ) : null}
-      <header className="space-y-4 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white py-4 shadow-none">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold text-slate-900">{leadWorkspaceTitle}</h1>
-            <Link
-              to={CRM_APP_PATHS.leadsDistribution}
-              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-slate-50"
-            >
-              {t('app.leads.workspace.distribution_cta')}
-            </Link>
-            <Link
-              to={`${CRM_APP_PATHS.overview}#lead-conversion`}
-              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-            >
-              {t('app.leads.workspace.funnel_analytics_link', { defaultValue: 'Conversion funnel (analytics)' })}
-            </Link>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
-            <IconTable size={14} />
-            <span>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</span>
-          </div>
-        </div>
 
+      <PageShellHeader>
+        <PageHeader
+          title={leadWorkspaceTitle}
+          secondaryActions={
+            <>
+              <Link to={CRM_APP_PATHS.leadsDistribution} className="btn-secondary btn-sm">
+                {t('app.leads.workspace.distribution_cta')}
+              </Link>
+              <Link to={`${CRM_APP_PATHS.overview}#lead-conversion`} className="btn-secondary btn-sm">
+                {t('app.leads.workspace.funnel_analytics_link', { defaultValue: 'Conversion funnel (analytics)' })}
+              </Link>
+              <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+                <IconTable size={14} />
+                <span>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</span>
+              </span>
+            </>
+          }
+        />
+      </PageShellHeader>
+
+      <details className="group mx-4 mb-2 shrink-0 rounded-xl border border-slate-200/90 bg-white shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <IconFlame size={16} className="text-rose-500" aria-hidden />
+          {t('app.leads.workspace.block_attention', { defaultValue: 'Needs processing' })}
+          {!leadOpsLoading ? (
+            <span className="text-xs font-normal text-slate-500">
+              · {leadOpsNum(leadOps?.leads_needs_routing)} / {leadOpsNum(leadOps?.leads_overdue)}
+            </span>
+          ) : null}
+          <IconArrowRight size={16} className="ml-auto rotate-90 text-slate-400 transition-transform group-open:-rotate-90" aria-hidden />
+        </summary>
+        <div className="space-y-4 border-t border-slate-200/80 px-3 py-3">
         <section className="space-y-2">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <IconFlame size={16} className="text-rose-500" aria-hidden />
-            {t('app.leads.workspace.block_attention', { defaultValue: 'Needs processing' })}
-          </div>
           {leadOpsLoading ? (
             <p className="text-sm text-slate-500">{t('common.loading')}</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-rose-200 bg-white px-4 py-3 shadow-sm">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-white px-4 py-3 shadow-sm">
                 <div className="min-w-0">
-                  <p className="text-2xl font-bold tabular-nums text-slate-900">
+                  <p className="text-xl font-bold tabular-nums text-slate-900">
                     {leadOpsNum(leadOps?.leads_needs_routing)}
                   </p>
                   <p className="text-sm font-medium text-slate-700">
@@ -1695,25 +1702,25 @@ export default function LeadsPage() {
                 <button
                   type="button"
                   onClick={startLeadTriage}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                  className="btn-primary btn-sm inline-flex shrink-0 items-center gap-1"
                 >
                   {t('app.leads.workspace.start_processing', { defaultValue: 'Start processing' })}
-                  <IconArrowRight size={18} stroke={2} aria-hidden />
+                  <IconArrowRight size={16} stroke={2} aria-hidden />
                 </button>
               </div>
               <Link
                 to={LEADS_HREF_QUEUE_OVERDUE}
-                className="flex items-center justify-between gap-3 rounded-2xl border-2 border-amber-200 bg-white px-4 py-3 shadow-sm transition hover:border-amber-300"
+                className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white px-4 py-3 shadow-sm transition hover:border-amber-300"
               >
                 <div className="min-w-0">
-                  <p className="text-2xl font-bold tabular-nums text-slate-900">{leadOpsNum(leadOps?.leads_overdue)}</p>
+                  <p className="text-xl font-bold tabular-nums text-slate-900">{leadOpsNum(leadOps?.leads_overdue)}</p>
                   <p className="text-sm font-medium text-slate-700">
                     {t('app.leads.workspace.attention_overdue', { defaultValue: 'Overdue follow-ups' })}
                   </p>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                <span className="btn-primary btn-sm inline-flex shrink-0 items-center gap-1">
                   {t('app.leads.workspace.fix_overdue', { defaultValue: 'Fix now' })}
-                  <IconArrowRight size={18} stroke={2} aria-hidden />
+                  <IconArrowRight size={16} stroke={2} aria-hidden />
                 </span>
               </Link>
             </div>
@@ -1727,117 +1734,96 @@ export default function LeadsPage() {
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
             <Link
               to={LEADS_HREF_QUEUE_NEW}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
               {t('app.leads.workspace.queue_new', { defaultValue: 'New' })}
               <IconArrowRight size={16} className="text-slate-400" aria-hidden />
             </Link>
             <Link
               to={LEADS_HREF_QUEUE_IN_PROGRESS}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
               {t('app.leads.workspace.queue_in_progress', { defaultValue: 'In progress' })}
               <IconArrowRight size={16} className="text-slate-400" aria-hidden />
             </Link>
             <Link
               to={LEADS_HREF_QUEUE_WAITING}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
               {t('app.leads.workspace.queue_waiting', { defaultValue: 'Waiting for reply' })}
               <IconArrowRight size={16} className="text-slate-400" aria-hidden />
             </Link>
             <Link
               to={LEADS_HREF_QUEUE_OVERDUE}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
               {t('app.leads.workspace.queue_overdue', { defaultValue: 'Overdue' })}
               <IconArrowRight size={16} className="text-slate-400" aria-hidden />
             </Link>
           </div>
         </section>
+        </div>
+      </details>
 
-        <details className="rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2">
-          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-700">
-            {t('app.leads.workspace.advanced_filters', { defaultValue: 'Advanced filters & view' })}
-          </summary>
-          <div className="mt-3 flex flex-wrap items-end gap-2">
-            <label className="min-w-[170px] text-xs font-medium text-slate-600">
-              <span className="mb-1 inline-flex items-center gap-1">
-                <IconFilter size={12} />
-                {t('app.leads.filters.status')}
-              </span>
-              <select
-                className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value as '' | LeadStatus)
-                  setPage(1)
-                }}
-              >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value || 'all'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="min-w-[170px] text-xs font-medium text-slate-600">
-              <span className="mb-1 inline-flex items-center gap-1">
-                <IconFilter size={12} />
-                {t('app.leads.filters.stage')}
-              </span>
-              <select
-                className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                value={stage}
-                onChange={(event) => {
-                  setStage(event.target.value as '' | LeadStage)
-                  setPage(1)
-                }}
-              >
-                {stageOptions.map((opt) => (
-                  <option key={opt.value || 'all'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="min-w-[190px] text-xs font-medium text-slate-600">
-              <span className="mb-1 inline-flex items-center gap-1">
-                <IconFilter size={12} />
-                {t('app.leads.filters.next_action')}
-              </span>
-              <select
-                className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                value={nextAction}
-                onChange={(event) => {
-                  setNextAction(event.target.value as any)
-                  setPage(1)
-                }}
-              >
-                {nextActionOptions.map((opt) => (
-                  <option key={opt.value || 'all'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="min-w-[200px] flex-1 text-xs font-medium text-slate-600">
-              <span className="mb-1 inline-flex items-center gap-1">
-                <IconSearch size={12} />
-                {t('app.leads.filters.search')}
-              </span>
-              <input
-                type="search"
-                className="input h-9 w-full max-w-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                value={leadSearch}
-                onChange={(e) => {
-                  setLeadSearch(e.target.value)
-                  setPage(1)
-                }}
-                placeholder={t('app.leads.filters.search_placeholder')}
-                autoComplete="off"
-              />
-            </label>
+      <Toolbar>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              value={status}
+              aria-label={t('app.leads.filters.status')}
+              onChange={(event) => {
+                setStatus(event.target.value as '' | LeadStatus)
+                setPage(1)
+              }}
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              value={stage}
+              aria-label={t('app.leads.filters.stage')}
+              onChange={(event) => {
+                setStage(event.target.value as '' | LeadStage)
+                setPage(1)
+              }}
+            >
+              {stageOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              value={nextAction}
+              aria-label={t('app.leads.filters.next_action')}
+              onChange={(event) => {
+                setNextAction(event.target.value as any)
+                setPage(1)
+              }}
+            >
+              {nextActionOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="search"
+              className="input h-9 min-h-[40px] min-w-[200px] flex-1 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              value={leadSearch}
+              aria-label={t('app.leads.filters.search')}
+              onChange={(e) => {
+                setLeadSearch(e.target.value)
+                setPage(1)
+              }}
+              placeholder={t('app.leads.filters.search_placeholder')}
+              autoComplete="off"
+            />
             <button
               type="button"
               onClick={() => {
@@ -1878,47 +1864,40 @@ export default function LeadsPage() {
             </div>
           </div>
           {leadCustomFieldDefs.length > 0 ? (
-            <div className="mt-2 flex flex-wrap items-end gap-2">
-              <label className="min-w-[200px] text-xs font-medium text-slate-600">
-                <span className="mb-1 inline-flex items-center gap-1">
-                  <IconFilter size={12} />
-                  {t('app.leads.filters.custom_field')}
-                </span>
-                <select
-                  className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                  value={customFieldKey}
-                  onChange={(e) => {
-                    setCustomFieldKey(e.target.value)
-                    setCustomFieldValue('')
-                    setPage(1)
-                  }}
-                >
-                  <option value="">{t('app.leads.filters.custom_field_none')}</option>
-                  {leadCustomFieldDefs.map((d) => (
-                    <option key={d.id} value={d.key}>
-                      {d.label || d.key}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="min-w-[200px] flex-1 text-xs font-medium text-slate-600">
-                <span className="mb-1 block">{t('app.leads.filters.custom_field_value')}</span>
-                <input
-                  type="text"
-                  className="input h-9 w-full max-w-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                  value={customFieldValue}
-                  onChange={(e) => {
-                    setCustomFieldValue(e.target.value)
-                    setPage(1)
-                  }}
-                  disabled={!customFieldKey.trim()}
-                  placeholder={t('app.leads.filters.custom_field_value_placeholder')}
-                />
-              </label>
+            <>
+              <select
+                className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                value={customFieldKey}
+                aria-label={t('app.leads.filters.custom_field')}
+                onChange={(e) => {
+                  setCustomFieldKey(e.target.value)
+                  setCustomFieldValue('')
+                  setPage(1)
+                }}
+              >
+                <option value="">{t('app.leads.filters.custom_field')}</option>
+                {leadCustomFieldDefs.map((d) => (
+                  <option key={d.id} value={d.key}>
+                    {d.label || d.key}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                className="input h-9 min-h-[40px] w-40 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                value={customFieldValue}
+                aria-label={t('app.leads.filters.custom_field_value')}
+                onChange={(e) => {
+                  setCustomFieldValue(e.target.value)
+                  setPage(1)
+                }}
+                disabled={!customFieldKey.trim()}
+                placeholder={t('app.leads.filters.custom_field_value_placeholder')}
+              />
               {customFieldKey.trim() ? (
                 <button
                   type="button"
-                  className="btn-secondary mb-0.5 h-9 rounded-lg px-2 text-xs"
+                  className="btn-secondary h-9 rounded-lg px-2 text-xs"
                   onClick={() => {
                     setCustomFieldKey('')
                     setCustomFieldValue('')
@@ -1928,15 +1907,12 @@ export default function LeadsPage() {
                   {t('app.leads.filters.custom_field_clear')}
                 </button>
               ) : null}
-            </div>
+            </>
           ) : null}
-        </details>
-      </header>
-
-      <PageBreadcrumb className="max-w-5xl" />
+      </Toolbar>
 
       {filterBannerVisible && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
+        <div className="mx-4 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-slate-700">
               <span className="font-medium">{t('app.leads.inbox.banner.filtered')}</span>{' '}
@@ -1980,9 +1956,11 @@ export default function LeadsPage() {
         </div>
       )}
 
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(300px,440px)]">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {workspaceView === 'table' && selectedCount > 0 && (
+      <section className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(300px,440px)]">
+        <DataTableFrame
+          className="min-h-0"
+          header={
+            workspaceView === 'table' && selectedCount > 0 ? (
             <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 flex flex-wrap items-center gap-2">
               <div className="font-medium">
                 {t('app.leads.bulk.selected', { values: { count: selectedCount } })}
@@ -2046,18 +2024,45 @@ export default function LeadsPage() {
                 {t('app.leads.bulk.clear')}
               </button>
             </div>
-          )}
-          {workspaceView === 'table' ? (
-            <>
-          {recruitmentLeadsTable ? (
+            ) : null
+          }
+          preScroll={
+            workspaceView === 'table' && recruitmentLeadsTable ? (
             <p className="mb-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600 ring-1 ring-slate-900/[0.05]">
               {t('app.leads.queue_keyboard.hint')}
             </p>
-          ) : null}
-          <div className="overflow-x-auto">
-            <table className="table min-w-full text-sm">
-              <thead className="bg-slate-50/80 text-xs font-medium text-slate-500">
-                <tr>
+            ) : null
+          }
+          footer={
+            workspaceView === 'table' ? (
+          <>
+            <div>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</div>
+            <div className="space-x-2">
+              <button
+                type="button"
+                disabled={!canPrev}
+                onClick={() => canPrev && setPage((prev) => prev - 1)}
+                className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t('app.leads.pagination.prev')}
+              </button>
+              <button
+                type="button"
+                disabled={!canNext}
+                onClick={() => canNext && setPage((prev) => prev + 1)}
+                className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t('app.leads.pagination.next')}
+              </button>
+            </div>
+          </>
+            ) : null
+          }
+        >
+          {workspaceView === 'table' ? (
+            <table className="min-w-full border-separate border-spacing-0 text-sm">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_0_rgb(226_232_240)]">
+                <tr className="h-11 bg-slate-50 text-left text-xs font-semibold text-slate-600">
                   <th className="w-[44px]">
                     <input
                       type="checkbox"
@@ -2634,30 +2639,6 @@ export default function LeadsPage() {
                   })}
               </tbody>
             </table>
-          </div>
-
-          <footer className="flex items-center justify-between border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
-            <div>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</div>
-            <div className="space-x-2">
-              <button
-                type="button"
-                disabled={!canPrev}
-                onClick={() => canPrev && setPage((prev) => prev - 1)}
-                className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {t('app.leads.pagination.prev')}
-              </button>
-              <button
-                type="button"
-                disabled={!canNext}
-                onClick={() => canNext && setPage((prev) => prev + 1)}
-                className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {t('app.leads.pagination.next')}
-              </button>
-            </div>
-          </footer>
-            </>
           ) : (
             <LeadsKanbanBoard
               base={{
@@ -2673,7 +2654,7 @@ export default function LeadsPage() {
               onOpenLead={(id) => setSelectedLeadId(id)}
             />
           )}
-        </div>
+        </DataTableFrame>
 
         <BulkActivitiesModal
           open={nbaBulk.bulkActivitiesOpen}
@@ -2740,7 +2721,7 @@ export default function LeadsPage() {
           onConfirm={submitQuickRequestInfo}
         />
 
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl bg-white shadow-lg shadow-slate-900/[0.05] ring-1 ring-slate-900/[0.05] lg:max-h-[calc(100vh-10rem)]">
+        <aside className="mx-4 mr-4 flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:mx-0 lg:max-h-none">
           {!selectedLead ? (
             <div className="p-4 text-sm text-slate-500">{t('app.leads.inbox.select_hint')}</div>
           ) : (
@@ -2760,6 +2741,7 @@ export default function LeadsPage() {
               onConfirmRouting={(vacancyId, thenProcess) =>
                 void handleConfirmLeadRouting(selectedLead.id, vacancyId, thenProcess)
               }
+              onPickVacancy={() => setVacancyPickLeadId(selectedLead.id)}
               moreSection={
                 (() => {
                   const suppressCrmChrome = leadIntakeWorkspaceSuppressesCrmChrome(selectedLead, isServicesTenant)
@@ -3051,6 +3033,6 @@ export default function LeadsPage() {
           )}
         </aside>
       </section>
-    </div>
+    </PageShell>
   )
 }

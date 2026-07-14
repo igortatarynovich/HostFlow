@@ -176,16 +176,13 @@ export default function MergeDocumentTemplatesPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.documents.merge.header_kicker')}
+      title={t('admin.documents.merge.title')}
+      subtitle={t('admin.documents.merge.description')}
+    >
       <section className="settings-panel">
-        <div className="mb-2">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.documents.merge.header_kicker')}
-            title={t('admin.documents.merge.title')}
-            subtitle={t('admin.documents.merge.description')}
-          />
-        </div>
 
         <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-slate-600">
           <input
@@ -369,6 +366,6 @@ export default function MergeDocumentTemplatesPage() {
           </div>
         </div>
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
