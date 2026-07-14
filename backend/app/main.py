@@ -148,6 +148,7 @@ try:
     from backend.app.api.v1.admin import companies_access as admin_companies_access_router
     from backend.app.api.v1.admin import audit as admin_audit_router
     from backend.app.api.v1.admin import draft_reminders as admin_draft_reminders_router
+    from backend.app.api.v1.admin import org_units as admin_org_units_router
     from backend.app.api.v1.recruiters.router import router as recruiters_router
     from backend.app.api.v1.leads.router import router as leads_router
     from backend.app.modules.client_accounts.router import router as client_accounts_router
@@ -240,6 +241,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.admin import companies_access as admin_companies_access_router  # type: ignore[no-redef]
     from .api.v1.admin import audit as admin_audit_router  # type: ignore[no-redef]
     from .api.v1.admin import draft_reminders as admin_draft_reminders_router  # type: ignore[no-redef]
+    from .api.v1.admin import org_units as admin_org_units_router  # type: ignore[no-redef]
     from .api.v1.recruiters.router import router as recruiters_router  # type: ignore[no-redef]
     from .api.v1.leads.router import router as leads_router  # type: ignore[no-redef]
     from backend.app.modules.client_accounts.router import router as client_accounts_router  # type: ignore[no-redef]
@@ -872,6 +874,7 @@ app.include_router(admin_users_router.router, prefix="/api/v1")
 app.include_router(admin_companies_access_router.router, prefix="/api/v1")
 app.include_router(admin_audit_router.router, prefix="/api/v1")
 app.include_router(admin_draft_reminders_router.router, prefix="/api/v1")
+app.include_router(admin_org_units_router.router, prefix="/api/v1")
 app.include_router(settings_leads_router.router, prefix="/api/v1/settings")
 app.include_router(settings_team_router.router, prefix="/api/v1/settings")
 app.include_router(settings_billing_router.router, prefix="/api/v1/settings")
