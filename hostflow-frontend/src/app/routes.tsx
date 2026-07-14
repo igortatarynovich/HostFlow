@@ -83,6 +83,9 @@ import { CRM_APP_PATHS, crmAppRouteSegment } from './crmAppPaths'
 import { SALES_HOME_PATH } from './salesPaths'
 import { RECRUITMENT_INBOX_PATH } from './recruitmentInboxPaths'
 import EntityListShellDemoPage from '../pages/dev/EntityListShellDemoPage'
+import LaunchpadPage from '../pages/LaunchpadPage'
+import SearchesListPage from '../pages/recruitment/SearchesListPage'
+import ClientChannelsListPage from '../pages/client-acquisition/ClientChannelsListPage'
 
 const seg = crmAppRouteSegment
 const CRM = CRM_APP_PATHS
@@ -585,6 +588,7 @@ export type AppRouteConfig = {
 }
 
 export const APP_ROUTES: AppRouteConfig[] = [
+  { key: 'launchpad', path: seg(CRM.launchpad), Component: LaunchpadPage },
   { key: 'overview', path: seg(CRM.overview), Component: Dashboard },
   {
     key: 'analytics',
@@ -600,6 +604,18 @@ export const APP_ROUTES: AppRouteConfig[] = [
   },
   /** Rendered under nested `path="work"` + index in `App.tsx` (`WorkAreaLayout` + `<Outlet />`). Kept here for nav/permission scripts. */
   { key: 'work', path: seg(CRM.work), Component: WorkHubPage },
+  {
+    key: 'recruitment-searches',
+    path: seg(CRM.recruitmentSearches),
+    Component: SearchesListPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'client-acquisition-channels',
+    path: seg(CRM.clientAcquisitionChannels),
+    Component: ClientChannelsListPage,
+    permission: 'companies.view',
+  },
   { key: 'my-company', path: seg(CRM.myCompany), Component: MyCompanyPage, permission: 'companies.view' },
   { key: 'my-company-detail', path: `${seg(CRM.myCompany)}/:id`, Component: Companies, permission: 'companies.view' },
   { key: 'my-company-tab', path: `${seg(CRM.myCompany)}/:id/:tab`, Component: Companies, permission: 'companies.view' },
