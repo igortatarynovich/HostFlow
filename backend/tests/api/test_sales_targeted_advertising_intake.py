@@ -35,22 +35,6 @@ async def _ensure_questionnaire_invite_table() -> None:
         )
 
 
-@pytest.fixture(autouse=True)
-def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def _noop(*args, **kwargs):  # noqa: ANN002, ANN003
-        return None
-
-    async def _zero(*args, **kwargs):  # noqa: ANN002, ANN003
-        return 0
-
-    monkeypatch.setattr("backend.app.services.intake_form_write_service.ensure_lead_source_limit", _noop)
-    monkeypatch.setattr("backend.app.services.intake_form_write_service.count_tenant_lead_sources", _zero)
-    monkeypatch.setattr(
-        "backend.app.services.intake_form_write_service.ensure_tenant_lead_form_active_count_allows_transition",
-        _noop,
-    )
-
-
 async def _seed_sales_profile(tenant_id: str) -> None:
     async with async_session_maker() as session:
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
@@ -170,3 +154,38 @@ async def test_meta_lead_questionnaire_invite_submit_convert_client(
     assert convert_resp.status_code == 200, convert_resp.text
     converted = convert_resp.json()
     assert converted.get("converted_client_id")
+
+
+@pytest.mark.asyncio
+async def test_questionnaire_invite_mark_sent_false_does_not_create_draft(
+    client: AsyncClient,
+    tenant_id: str,
+    manager_headers: dict,
+) -> None:
+    await _seed_sales_profile(tenant_id)
+    lead = await _create_meta_client_lead(tenant_id)
+    lead_id = str(lead.id)
+
+    missing = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite",
+        headers=manager_headers,
+        json={"mark_sent": False},
+    )
+    assert missing.status_code == 404, missing.text
+
+    invite_resp = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite",
+        headers=manager_headers,
+        json={"mark_sent": True},
+    )
+    assert invite_resp.status_code == 200, invite_resp.text
+    first_token = invite_resp.json()["token"]
+
+    reuse = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite",
+        headers=manager_headers,
+        json={"mark_sent": False},
+    )
+    assert reuse.status_code == 200, reuse.text
+    assert reuse.json()["token"] == first_token
+    assert reuse.json()["status"] == "sent"

@@ -41,6 +41,8 @@ def service_sales_targeted_advertising_fields() -> list[dict[str, Any]]:
         ("recruitment_materials", "multi_select", "Recruitment materials"),
         ("promotion_subject", "single_select", "Promotion subject"),
         ("industry", "single_select", "Industry"),
+        ("target_audience_description", "textarea", "Target audience description"),
+        ("qualified_lead_definition", "textarea", "Qualified lead definition"),
         ("client_geo_scope", "single_select", "Client geography scope"),
         ("client_geo_detail", "text", "Client geography detail"),
         ("conversion_destination", "single_select", "Conversion destination"),

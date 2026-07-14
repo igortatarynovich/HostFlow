@@ -4,6 +4,10 @@ import { buildCountryOptions } from '../data/countries'
 
 export type FieldOption = { value: string; label: string }
 
+export const SERVICE_SALES_QUESTIONNAIRE_PREFIX = 'service_sales.targeted_advertising.'
+
+export type PresentationFieldValue = string | string[]
+
 export type IntakeSectionKey = 'contact' | 'identity' | 'experience' | 'qualifications' | 'legal'
 
 export const INTAKE_SECTION_ORDER: IntakeSectionKey[] = [
@@ -94,7 +98,156 @@ export function resolveFieldWidget(field: Pick<FormPresentationField, 'qualified
   if (fieldType === 'boolean') return 'yes_no'
   if (fieldType === 'integer' || fieldType === 'number') return 'number'
   if (fieldType === 'date') return 'date'
+  if (fieldType === 'single_select') return 'single_select'
+  if (fieldType === 'multi_select') return 'multi_select'
+  if (fieldType === 'textarea') return 'textarea'
   return 'text'
+}
+
+function salesQuestionnaireFieldSuffix(qualifiedCode: string): string | null {
+  const code = String(qualifiedCode || '').trim()
+  if (!code.startsWith(SERVICE_SALES_QUESTIONNAIRE_PREFIX)) return null
+  return code.slice(SERVICE_SALES_QUESTIONNAIRE_PREFIX.length)
+}
+
+function salesQuestionnaireOptions(t: TFn, locale: LocaleCode, suffix: string): FieldOption[] {
+  const pl = (value: string, label: string) => scopedOption(t, locale, `service_sales.${suffix}`, value, label)
+
+  switch (suffix) {
+    case 'need_type':
+      return [
+        pl('employee_recruitment', 'Pozyskiwanie pracowników'),
+        pl('client_acquisition', 'Pozyskiwanie klientów'),
+        pl('product_sales', 'Sprzedaż produktu'),
+        pl('service_promotion', 'Promocja usługi'),
+      ]
+    case 'primary_outcome':
+      return [
+        pl('more_inquiries', 'Więcej zapytań od klientów'),
+        pl('more_applications', 'Więcej aplikacji od kandydatów'),
+        pl('more_sales', 'Więcej sprzedaży'),
+        pl('brand_awareness', 'Większa rozpoznawalność marki'),
+        pl('other', 'Inny wynik'),
+      ]
+    case 'recruitment_roles':
+      return [
+        pl('driver_ce', 'Kierowca CE'),
+        pl('driver_c', 'Kierowca C'),
+        pl('warehouse', 'Pracownik magazynu'),
+        pl('mechanic', 'Mechanik'),
+        pl('dispatcher', 'Dyspozytor'),
+        pl('other', 'Inne stanowisko'),
+      ]
+    case 'recruitment_headcount':
+      return [
+        pl('1_3', '1–3 osoby'),
+        pl('4_10', '4–10 osób'),
+        pl('11_20', '11–20 osób'),
+        pl('21_50', '21–50 osób'),
+        pl('50_plus', 'Powyżej 50 osób'),
+      ]
+    case 'work_location_country':
+      return [
+        pl('poland', 'Polska'),
+        pl('germany', 'Niemcy'),
+        pl('other_eu', 'Inny kraj UE'),
+        pl('other', 'Inny kraj'),
+      ]
+    case 'application_channel':
+      return [
+        pl('phone', 'Telefon'),
+        pl('whatsapp', 'WhatsApp'),
+        pl('form', 'Formularz online'),
+        pl('email', 'E-mail'),
+      ]
+    case 'job_posting_ready':
+      return [
+        pl('ready', 'Tak, gotowe ogłoszenie'),
+        pl('partial', 'Częściowo przygotowane'),
+        pl('need_help', 'Potrzebujemy pomocy'),
+      ]
+    case 'recruitment_materials':
+      return [
+        pl('photos', 'Zdjęcia'),
+        pl('logo', 'Logo firmy'),
+        pl('job_description', 'Opis stanowiska'),
+        pl('video', 'Materiały wideo'),
+        pl('none', 'Brak materiałów'),
+      ]
+    case 'promotion_subject':
+      return [
+        pl('service', 'Usługa'),
+        pl('product', 'Produkt'),
+        pl('company_brand', 'Marka firmy'),
+      ]
+    case 'industry':
+      return [
+        pl('transport', 'Transport i logistyka'),
+        pl('logistics', 'Spedycja'),
+        pl('construction', 'Budownictwo'),
+        pl('manufacturing', 'Produkcja'),
+        pl('services', 'Usługi'),
+        pl('other', 'Inna branża'),
+      ]
+    case 'client_geo_scope':
+      return [
+        pl('poland', 'Cała Polska'),
+        pl('single_city', 'Jedno miasto'),
+        pl('selected_region', 'Wybrany region'),
+        pl('europe', 'Europa'),
+        pl('international', 'Międzynarodowo'),
+      ]
+    case 'conversion_destination':
+      return [
+        pl('whatsapp', 'WhatsApp'),
+        pl('phone', 'Telefon'),
+        pl('form', 'Formularz na stronie'),
+        pl('website', 'Strona internetowa'),
+        pl('messenger', 'Messenger'),
+      ]
+    case 'offer_ready':
+      return [
+        pl('ready', 'Tak, gotowa oferta'),
+        pl('partial', 'Częściowo przygotowana'),
+        pl('need_help', 'Potrzebujemy pomocy'),
+      ]
+    case 'marketing_materials':
+      return [
+        pl('photos', 'Zdjęcia'),
+        pl('logo', 'Logo firmy'),
+        pl('video', 'Materiały wideo'),
+        pl('catalog', 'Katalog / cennik'),
+        pl('none', 'Brak materiałów'),
+      ]
+    case 'prior_ads_experience':
+      return optionGroup(t, locale, 'yes_no', ['yes', 'no'], { yes: 'Tak', no: 'Nie' })
+    case 'monthly_ad_budget':
+      return [
+        pl('under_1000', 'Do 1 000 PLN'),
+        pl('1000_2000', '1 000 – 2 000 PLN'),
+        pl('2000_5000', '2 000 – 5 000 PLN'),
+        pl('5000_10000', '5 000 – 10 000 PLN'),
+        pl('over_10000', 'Powyżej 10 000 PLN'),
+        pl('undecided', 'Jeszcze nie wiem'),
+      ]
+    case 'start_timeline':
+      return [
+        pl('asap', 'Jak najszybciej'),
+        pl('two_weeks', 'W ciągu 2 tygodni'),
+        pl('one_month', 'W ciągu miesiąca'),
+        pl('later', 'Później'),
+        pl('undecided', 'Jeszcze nie wiem'),
+      ]
+    case 'decision_maker':
+      return [
+        pl('owner', 'Właściciel firmy'),
+        pl('manager', 'Kierownik'),
+        pl('marketing', 'Osoba ds. marketingu'),
+        pl('other', 'Inna osoba'),
+      ]
+    default:
+      return []
+  }
 }
 
 export function fieldOptionsForCode(
@@ -103,6 +256,10 @@ export function fieldOptionsForCode(
   locale: LocaleCode,
 ): FieldOption[] {
   const code = String(qualifiedCode || '').trim()
+  const salesSuffix = salesQuestionnaireFieldSuffix(code)
+  if (salesSuffix) {
+    return salesQuestionnaireOptions(t, locale, salesSuffix)
+  }
 
   if (code === 'platform.identity.citizenship') {
     return buildCountryOptions(locale)
@@ -173,7 +330,7 @@ export function fieldOptionsForCode(
   return []
 }
 
-export function normalizeFieldValue(raw: unknown): string | string[] {
+export function normalizeFieldValue(raw: unknown): PresentationFieldValue {
   if (Array.isArray(raw)) {
     return raw.map((item) => String(item).trim()).filter(Boolean)
   }
@@ -182,7 +339,7 @@ export function normalizeFieldValue(raw: unknown): string | string[] {
   return String(raw)
 }
 
-export function serializeValuesForApi(values: Record<string, string | string[]>): Record<string, unknown> {
+export function serializeValuesForApi(values: Record<string, PresentationFieldValue>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, raw] of Object.entries(values)) {
     if (Array.isArray(raw)) {
@@ -204,7 +361,7 @@ export function serializeValuesForApi(values: Record<string, string | string[]>)
   return out
 }
 
-export function isEmptyFieldValue(value: string | string[] | undefined): boolean {
+export function isEmptyFieldValue(value: PresentationFieldValue | undefined): boolean {
   if (value === undefined || value === null) return true
   if (Array.isArray(value)) return value.length === 0
   return !String(value).trim()

@@ -1207,7 +1207,10 @@ async def create_lead_questionnaire_invite_endpoint(
             mark_sent=payload.mark_sent,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        detail = str(exc)
+        if "No questionnaire invite exists" in detail:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail) from exc
 
     await db.commit()
     await db.refresh(invite)

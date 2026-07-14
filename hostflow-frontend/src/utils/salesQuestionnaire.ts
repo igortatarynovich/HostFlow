@@ -1,7 +1,8 @@
 const STATUS_LABELS_PL: Record<string, string> = {
   not_sent: 'Ankieta niewysłana',
   sent: 'Ankieta wysłana',
-  in_progress: 'W trakcie',
+  opened: 'Ankieta otwarta',
+  in_progress: 'W trakcie wypełniania',
   submitted: 'Wypełniona',
   expired: 'Wygasła',
 }
@@ -16,11 +17,26 @@ export function readSalesQuestionnaireStatus(lead: { normalized?: Record<string,
 
 export function salesQuestionnaireStatusLabel(
   lead: { normalized?: Record<string, unknown> | null },
+  inviteStatus?: string | null,
   fallback = 'Ankieta niewysłana',
 ): string {
-  const status = readSalesQuestionnaireStatus(lead)
+  const status = readSalesQuestionnaireStatus(lead) || (inviteStatus && inviteStatus in STATUS_LABELS_PL ? (inviteStatus as SalesQuestionnaireStatus) : null)
   if (!status) return fallback
   return STATUS_LABELS_PL[status] ?? fallback
+}
+
+export function formatSalesQuestionnaireTimestamp(iso: string | null | undefined, locale = 'pl'): string {
+  if (!iso) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  const localeTag = locale === 'pl' ? 'pl-PL' : locale === 'ru' ? 'ru-RU' : 'en-US'
+  return date.toLocaleString(localeTag, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export function readSalesQuestionnaireSummary(lead: { normalized?: Record<string, unknown> | null }): Record<string, unknown> {

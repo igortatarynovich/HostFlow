@@ -1,6 +1,7 @@
 import type { Application } from '../../api/types/application'
 import { useI18n } from '../../i18n'
 import { clientDetailPath } from '../../services/platformHandoff'
+import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
@@ -24,6 +25,7 @@ export type ApplicationSalesDetailPanelProps = {
   onClose: () => void
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
   onConvert: () => void | Promise<void>
+  onQuestionnaireUpdated?: () => void
 }
 
 export function ApplicationSalesDetailPanel({
@@ -33,6 +35,7 @@ export function ApplicationSalesDetailPanel({
   onClose,
   onStage,
   onConvert,
+  onQuestionnaireUpdated,
 }: ApplicationSalesDetailPanelProps) {
   const { t } = useI18n()
   const companyName = application.title
@@ -115,6 +118,15 @@ export function ApplicationSalesDetailPanel({
             <p className="text-sm text-slate-600">{application.contact.name || 'Контакт'}</p>
           </div>
         ),
+        summary: (
+          <SalesInquiryQuestionnaireSection
+            leadId={application.id}
+            onUpdated={onQuestionnaireUpdated}
+          />
+        ),
+      }}
+      contextTitles={{
+        summary: t('app.sales_inquiry.questionnaire_title', { defaultValue: 'Ankieta klienta' }),
       }}
     />
   )

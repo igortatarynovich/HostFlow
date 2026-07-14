@@ -49,7 +49,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         label: t('app.client_inquiry.service_order.open_client', { defaultValue: 'Открыть карточку клиента' }),
         href: clientHref,
       },
-      requiredContext: ['workflow'],
+      requiredContext: ['workflow', 'summary'],
       terminal: false,
       variant: 'success',
     }
@@ -105,7 +105,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         },
       ],
       contactActions,
-      requiredContext: ['workflow'],
+      requiredContext: ['workflow', 'summary'],
       variant: 'default',
     }
   }
@@ -139,7 +139,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         },
       ],
       contactActions,
-      requiredContext: ['workflow'],
+      requiredContext: ['workflow', 'summary'],
     }
   }
 
@@ -167,7 +167,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       },
     ],
     contactActions,
-    requiredContext: ['workflow'],
+    requiredContext: ['workflow', 'summary'],
     afterActionHint: contactPhone
       ? t('app.sales_inquiry.after_call_hint', { defaultValue: 'После звонка отметьте «Позвонил».' })
       : undefined,

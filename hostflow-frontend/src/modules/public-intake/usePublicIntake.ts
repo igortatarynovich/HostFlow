@@ -87,7 +87,7 @@ export type PublicIntakeHook = {
   upsertEmployment: (index: number, value: IntakeEmployment) => void
   removeEmployment: (index: number) => void
   updateAgreements: (next: Partial<IntakeAgreements>) => void
-  updatePresentationValues: (values: Record<string, string>) => void
+  updatePresentationValues: (values: Record<string, unknown>) => void
   submit: (payload: PublicIntakeSubmitPayload) => Promise<void>
 }
 
@@ -217,7 +217,7 @@ export function usePublicIntake(token?: string): PublicIntakeHook {
     })
   }, [markDirty])
 
-  const updatePresentationValues = useCallback((values: Record<string, string>) => {
+  const updatePresentationValues = useCallback((values: Record<string, unknown>) => {
     setFormData((prev) => {
       const updated = {
         ...prev,

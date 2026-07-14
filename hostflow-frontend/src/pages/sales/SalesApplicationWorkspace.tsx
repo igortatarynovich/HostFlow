@@ -127,6 +127,7 @@ export function SalesApplicationWorkspace() {
               setConverting(false)
             }
           }}
+          onQuestionnaireUpdated={onRefresh}
         />
       ),
     }),

@@ -101,3 +101,16 @@ export function evaluatePresentationFields(
     evaluated: evaluatePresentationFieldState(field, values),
   }))
 }
+
+/** Drop values for fields hidden by presentation_rules (e.g. after need_type branch switch). */
+export function pruneHiddenPresentationValues(
+  values: Record<string, unknown>,
+  fields: Array<PresentationFieldWithRules & { evaluated: PresentationFieldEvaluated }>,
+): Record<string, unknown> {
+  const visible = new Set(fields.filter((field) => field.evaluated.visible).map((field) => field.qualified_code))
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(values)) {
+    if (visible.has(key)) out[key] = value
+  }
+  return out
+}

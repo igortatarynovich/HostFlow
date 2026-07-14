@@ -205,14 +205,19 @@ async def attach_questionnaire_invite_to_lead(
 
     if existing is not None:
         invite = existing
-        if mark_sent and invite.status == INVITE_STATUS_NOT_SENT:
-            invite.status = INVITE_STATUS_SENT
-            invite.sent_at = now
-        invite.updated_at = now
+        if mark_sent:
+            if invite.status == INVITE_STATUS_NOT_SENT:
+                invite.status = INVITE_STATUS_SENT
+                invite.sent_at = now
+            invite.updated_at = now
+            _sync_lead_questionnaire_status(lead, invite.status)
         if not invite.apply_url:
             invite.apply_url = _apply_url_for_token(invite.token)
         await db.flush()
         return invite
+
+    if not mark_sent:
+        raise LookupError("No questionnaire invite exists for this lead")
 
     token = _generate_token()
     intake_state = _initial_intake_state(lead=lead, lead_form=lead_form)
@@ -304,6 +309,8 @@ def merge_presentation_into_sales_summary(
             "recruitment_materials",
             "promotion_subject",
             "industry",
+            "target_audience_description",
+            "qualified_lead_definition",
             "client_geo_scope",
             "client_geo_detail",
             "conversion_destination",
