@@ -342,14 +342,13 @@ export default function CandidateProfilesPage() {
   )
 
   return (
-    <div className="space-y-4">
+    
       <SettingsSubpageHeader
         className="mb-2"
         backLabel={t('admin.settings.subpage.back_all')}
         kicker={t('admin.candidate_profiles_page.header_kicker')}
         title={t('admin.candidate_profiles_page.title')}
-        subtitle={t('admin.candidate_profiles_page.subtitle')}
-      />
+        subtitle={t('admin.candidate_profiles_page.subtitle')}>
 
       <div
         className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
@@ -847,7 +846,7 @@ export default function CandidateProfilesPage() {
           onClose={() => setHistoryProfile(null)}
         />
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 

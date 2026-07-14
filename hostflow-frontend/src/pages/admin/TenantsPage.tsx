@@ -992,13 +992,12 @@ export default function TenantsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    
       <SettingsSubpageHeader
         backLabel={t('admin.settings.subpage.back_all')}
         kicker={t('app.platform.tenants.header_kicker')}
         title={t('app.platform.tenants.title')}
-        subtitle={t('app.platform.tenants.subtitle')}
-      />
+        subtitle={t('app.platform.tenants.subtitle')}>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -2127,6 +2126,6 @@ export default function TenantsPage() {
           </div>
         </form>
       </Modal>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
