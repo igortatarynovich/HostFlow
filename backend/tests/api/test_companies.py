@@ -280,6 +280,9 @@ async def test_tenant_link_display_name_sets_client_company_role(
     company = company_resp.json()
     assert company["extra"]["company_role"] == "client"
 
+
+@pytest.mark.anyio
+async def test_client_company_create_auto_tenant_link(
     client: AsyncClient,
     manager_headers: Dict[str, str],
     tenant_id: str,

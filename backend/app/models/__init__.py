@@ -173,6 +173,9 @@ _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
 _load_model_module("activity")
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
+CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
+CommunicationThread = _load_model_module("communication").CommunicationThread  # type: ignore[attr-defined]
+DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
 CandidateService = _load_model_module("service").CandidateService  # type: ignore[attr-defined]
@@ -307,6 +310,9 @@ __all__ = [
     "MergeDocumentGenerationLog",
     "Reminder",
     "UserNotification",
+    "CandidateProfile",
+    "CommunicationThread",
+    "DocumentPolicy",
     "Stage",
     "MagicLink",
     "Invoice",
