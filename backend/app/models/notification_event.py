@@ -39,13 +39,13 @@ class NotificationEvent(TimestampMixin, Base):
     evaluation_version: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        server_default=text(f"'{NOTIFICATION_EVENT_V1}'"),
+        server_default=text("'" + NOTIFICATION_EVENT_V1 + "'"),
     )
     event_code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     source_layer: Mapped[str] = mapped_column(
         String(64),
         nullable=False,
-        server_default=text(f"'{SOURCE_LAYER}'"),
+        server_default=text("'" + SOURCE_LAYER + "'"),
         index=True,
     )
     owner_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
@@ -63,6 +63,6 @@ class NotificationEvent(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(
         String(16),
         nullable=False,
-        server_default=text(f"'{EVENT_STATUS_OPEN}'"),
+        server_default=text("'" + EVENT_STATUS_OPEN + "'"),
         index=True,
     )
