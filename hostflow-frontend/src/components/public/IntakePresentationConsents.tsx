@@ -43,7 +43,7 @@ export function IntakePresentationConsents({ agreements, onChange, showErrors = 
       <label className={labelClass(agreements.general)}>
         <input
           type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.general ? 'outline outline-2 outline-red-500' : ''}`}
+          className={`mt-0.5 ${showErrors && !agreements.general ? 'outline outline-2 outline-rose-500' : ''}`}
           checked={agreements.general}
           onChange={(e) => onChange({ general: e.target.checked })}
         />
@@ -58,7 +58,7 @@ export function IntakePresentationConsents({ agreements, onChange, showErrors = 
       <label className={labelClass(agreements.employer_share)}>
         <input
           type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.employer_share ? 'outline outline-2 outline-red-500' : ''}`}
+          className={`mt-0.5 ${showErrors && !agreements.employer_share ? 'outline outline-2 outline-rose-500' : ''}`}
           checked={agreements.employer_share}
           onChange={(e) => onChange({ employer_share: e.target.checked })}
         />
@@ -68,7 +68,7 @@ export function IntakePresentationConsents({ agreements, onChange, showErrors = 
       <label className={labelClass(agreements.terms_acceptance)}>
         <input
           type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.terms_acceptance ? 'outline outline-2 outline-red-500' : ''}`}
+          className={`mt-0.5 ${showErrors && !agreements.terms_acceptance ? 'outline outline-2 outline-rose-500' : ''}`}
           checked={agreements.terms_acceptance}
           onChange={(e) => onChange({ terms_acceptance: e.target.checked })}
         />
@@ -83,7 +83,7 @@ export function IntakePresentationConsents({ agreements, onChange, showErrors = 
       <label className={labelClass(agreements.rodo_acknowledgment)}>
         <input
           type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.rodo_acknowledgment ? 'outline outline-2 outline-red-500' : ''}`}
+          className={`mt-0.5 ${showErrors && !agreements.rodo_acknowledgment ? 'outline outline-2 outline-rose-500' : ''}`}
           checked={agreements.rodo_acknowledgment}
           onChange={(e) => onChange({ rodo_acknowledgment: e.target.checked })}
         />

@@ -410,7 +410,7 @@ export default function PlatformSetupPage() {
                         {t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
                       </span>
                     ) : null}
-                    <p className="mt-1 pl-7 text-xs text-slate-500">{desc}</p>
+                    <p className="mt-1 pl-6 text-xs text-slate-500">{desc}</p>
                   </button>
                 )
               })}

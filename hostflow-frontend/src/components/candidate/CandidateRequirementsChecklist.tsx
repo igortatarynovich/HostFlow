@@ -575,7 +575,7 @@ export default function CandidateRequirementsChecklist({
   return (
     <section
       className={clsx(
-        'rounded-xl border border-slate-200 bg-white p-3 transition-shadow duration-200',
+        'rounded-xl border border-slate-200 bg-white p-3 transition duration-200',
         primary && 'ring-2 ring-amber-400/95 ring-offset-2 ring-offset-white shadow-sm shadow-amber-500/10',
         className,
       )}

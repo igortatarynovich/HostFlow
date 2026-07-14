@@ -233,7 +233,7 @@ export default function AutomationsHubPage() {
               className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
             >
               <div className="flex items-start gap-4">
-                <span className="rounded-xl bg-blue-50 p-3 text-blue-700 ring-1 ring-violet-100">
+                <span className="rounded-xl bg-blue-50 p-3 text-blue-700 ring-1 ring-blue-100">
                   <IconRoute size={28} stroke={1.6} />
                 </span>
                 <div className="min-w-0 flex-1">

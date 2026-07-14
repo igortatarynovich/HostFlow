@@ -489,7 +489,7 @@ export default function WorkHubPage() {
               className="group flex items-stretch gap-0 transition hover:bg-slate-50/90"
             >
               <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-3.5">
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-3">
                 <span className="truncate text-sm font-medium text-slate-800">
                   {t(row.titleKey, { defaultValue: row.titleDefault })}
                 </span>

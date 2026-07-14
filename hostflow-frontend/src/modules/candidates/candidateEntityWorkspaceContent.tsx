@@ -47,7 +47,7 @@ function MockupWorkspaceSection({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-50/80"
+        className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-slate-50/80"
       >
         <IconGripVertical size={16} className="mt-0.5 shrink-0 text-slate-300" aria-hidden />
         <div className="min-w-0 flex-1">

@@ -3574,7 +3574,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                             }}
                             onPaste={(e) => onParticipantEmailPaste(p.id, e)}
                             onKeyDown={(e) => onParticipantEmailKeyDown(p.id, e)}
-                            className={clsx('input', eventModalParticipantErrors[p.id] && 'border-rose-500 ring-1 ring-red-200')}
+                            className={clsx('input', eventModalParticipantErrors[p.id] && 'border-rose-500 ring-1 ring-rose-200')}
                             placeholder={t('app.communications.calendar.forms.attendee_email', { defaultValue: 'Email' })}
                           />
                           <select

@@ -48,7 +48,7 @@ export default function ClientInquiryLandingPage() {
             <p className="mx-auto max-w-lg text-base leading-relaxed text-slate-600">{landing.subheadline}</p>
             <Link
               to={applyPath}
-              className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-brand-700"
+              className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-700"
               data-testid="client-inquiry-landing-cta"
             >
               {landing.cta}
