@@ -1638,12 +1638,12 @@ export default function MetaLeadsAdminPage() {
     <div className="border-t border-slate-100 px-4 pb-4 pt-3">
       <p className="text-sm text-slate-600">{t('admin.meta_leads.self_serve.intro')}</p>
       {!selfServe.public_api_base_configured && (
-        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {t('admin.meta_leads.self_serve.warn_api_base')}
         </p>
       )}
       {selfServe.public_api_base_configured && !selfServe.webhook_verify_token_configured && (
-        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {t('admin.meta_leads.self_serve.warn_no_verify')}
         </p>
       )}
@@ -1654,7 +1654,7 @@ export default function MetaLeadsAdminPage() {
             : t('admin.meta_leads.self_serve.oauth_team_plan_hint')}
         </p>
       ) : null}
-      <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+      <ol className="mt-3 list-decimal space-y-1 pl-4 text-sm text-slate-700">
         <li>{t('admin.meta_leads.self_serve.step_invite')}</li>
         <li>{t('admin.meta_leads.self_serve.step_webhook')}</li>
         <li>{t('admin.meta_leads.self_serve.step_token')}</li>
@@ -1783,39 +1783,39 @@ export default function MetaLeadsAdminPage() {
   ) : null
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 py-1 sm:py-2">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.integrations_hub.back_to_hub')}
-        kicker={t('admin.integrations_hub.integration_kicker')}
-        title={
-          <span className="inline-flex items-center gap-2">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]"
-              aria-hidden
-            >
-              <IconBrandMeta size={22} stroke={1.75} />
-            </span>
-            {t('admin.meta_leads.title')}
-          </span>
-        }
-        subtitle={t('admin.meta_leads.subtitle')}
-        actions={
-          <button
-            type="button"
-            onClick={() => void refreshAll()}
-            disabled={loading}
-            className="btn-secondary btn-sm disabled:opacity-50"
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.integrations_hub.back_to_hub')}
+      kicker={t('admin.integrations_hub.integration_kicker')}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]"
+            aria-hidden
           >
-            {loading ? t('common.loading') : t('common.actions.refresh')}
-          </button>
-        }
-      />
+            <IconBrandMeta size={22} stroke={1.75} />
+          </span>
+          {t('admin.meta_leads.title')}
+        </span>
+      }
+      subtitle={t('admin.meta_leads.subtitle')}
+      actions={
+        <button
+          type="button"
+          onClick={() => void refreshAll()}
+          disabled={loading}
+          className="btn-secondary btn-sm disabled:opacity-50"
+        >
+          {loading ? t('common.loading') : t('common.actions.refresh')}
+        </button>
+      }
+      contentClassName="mx-auto w-full max-w-6xl"
+    >
 
       {metaContextRedirected && metaContextTenantLabel ? (
         <div
           role="status"
-          className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+          className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950"
         >
           {t('admin.meta_leads.context_redirect_banner', {
             values: { name: metaContextTenantLabel },
@@ -1825,7 +1825,7 @@ export default function MetaLeadsAdminPage() {
 
       {oauthPick && !metaConnected ? (
         <section
-          className="rounded-2xl border border-brand-200 bg-white p-6 shadow-sm sm:p-8"
+          className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm sm:p-8"
           aria-labelledby="meta-oauth-pick-title"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
@@ -1899,7 +1899,7 @@ export default function MetaLeadsAdminPage() {
           ) : null}
           {!metaOperatorBlocked && !disconnectedExpert ? (
             <section
-              className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10"
+              className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10"
               aria-labelledby="meta-simple-connect-title"
             >
               <h2 id="meta-simple-connect-title" className="text-xl font-semibold text-slate-900">
@@ -1983,7 +1983,7 @@ export default function MetaLeadsAdminPage() {
           </button>
           {metaGuidedNeeded ? (
         <section
-          className="rounded-xl border-2 border-brand-500 bg-gradient-to-b from-brand-50/90 to-white p-5 shadow-md"
+          className="rounded-xl border-2 border-brand-500 bg-gradient-to-b from-brand-50/90 to-white p-4 shadow-md"
           aria-labelledby="meta-guided-title"
         >
           <h2 id="meta-guided-title" className="text-xl font-semibold text-slate-900">
@@ -2000,7 +2000,7 @@ export default function MetaLeadsAdminPage() {
               {t('admin.meta_leads.guided.operator_hint')}
             </p>
           ) : (
-            <ol className="mt-5 list-none space-y-3 p-0">
+            <ol className="mt-4 list-none space-y-3 p-0">
               <li
                 className={`rounded-lg border p-4 ${
                   !metaVerifyDone
@@ -2209,7 +2209,7 @@ export default function MetaLeadsAdminPage() {
       ) : null}
 
       {metaConnected && connectSuccessCue ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-950 shadow-sm">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-950 shadow-sm">
           <p className="font-semibold text-emerald-900">
             {t('admin.meta_leads.simple_wizard.done_title')}
           </p>
@@ -2488,7 +2488,7 @@ export default function MetaLeadsAdminPage() {
                   handleSettingsChange('moving_forward_template_id', next.moving_forward_template_id ?? null)
                 }}
               />
-              <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-sm font-semibold text-slate-900">
                   {t('admin.meta_leads.settings.template_hub_title', { defaultValue: 'Lead Email Template Hub' })}
                 </p>
@@ -2680,7 +2680,7 @@ export default function MetaLeadsAdminPage() {
                         {t('common.actions.add')}
                       </button>
                     </div>
-                    <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-800">
+                    <ol className="mt-3 list-decimal space-y-1 pl-4 text-sm text-slate-800">
                       {leadFitOrderIds.map((id, idx) => (
                         <li key={`${String(id)}-${idx}`} className="flex flex-wrap items-center gap-2">
                           <span className="min-w-0 flex-1">
@@ -2704,7 +2704,7 @@ export default function MetaLeadsAdminPage() {
                           </button>
                           <button
                             type="button"
-                            className="btn-secondary btn-xs text-red-700"
+                            className="btn-secondary btn-xs text-rose-700"
                             onClick={() => removeLeadFitVacancy(idx)}
                           >
                             ×
@@ -2814,7 +2814,7 @@ export default function MetaLeadsAdminPage() {
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.credentials.title')}</h2>
             {credentialsAtCap && (
-              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 {t('admin.meta_leads.credentials.plan_limit_reached', {
                   values: { limit: credentialsPlanLimit ?? 1 },
                 })}
@@ -3114,7 +3114,7 @@ export default function MetaLeadsAdminPage() {
               </label>
             )}
             {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
-              <div className="mt-4 rounded-md border border-indigo-100 bg-indigo-50/60 p-4">
+              <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">
                   {t('admin.meta_leads.intake_route.title', { defaultValue: 'Intake route' })}
                 </h3>
@@ -3195,7 +3195,7 @@ export default function MetaLeadsAdminPage() {
               </div>
             )}
             {mappingInheritsTenant && selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
-              <p className="mt-2 rounded-md border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 {t('admin.meta_leads.field_mapping.inherits_tenant_banner')}
               </p>
             )}
@@ -3368,20 +3368,20 @@ export default function MetaLeadsAdminPage() {
             ))}
           </datalist>
           {unknownKeysForLeadField.length > 0 && (
-            <div className="rounded border border-indigo-100 bg-indigo-50/90 p-4 text-sm text-slate-800 shadow-sm">
-              <h3 className="font-semibold text-indigo-950">
+            <div className="rounded border border-blue-100 bg-blue-50/90 p-4 text-sm text-slate-800 shadow-sm">
+              <h3 className="font-semibold text-blue-950">
                 {t('admin.meta_leads.field_mapping.unknown_fields_title')}
               </h3>
-              <p className="mt-1 text-xs text-indigo-900/90">
+              <p className="mt-1 text-xs text-blue-900/90">
                 {t('admin.meta_leads.field_mapping.unknown_fields_subtitle')}
               </p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {unknownKeysForLeadField.map((k) => (
                   <li
                     key={k}
-                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-2 py-1 text-xs shadow-sm"
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-2 py-1 text-xs shadow-sm"
                   >
-                    <code className="font-mono text-indigo-950">{k}</code>
+                    <code className="font-mono text-blue-950">{k}</code>
                     <button
                       type="button"
                       className="btn-primary btn-xs disabled:opacity-50"
@@ -3603,7 +3603,7 @@ export default function MetaLeadsAdminPage() {
                 <button
                   key={src}
                   type="button"
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                  className={`rounded-lg px-3 py-1 text-xs font-medium ${
                     active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                   onClick={() => {
@@ -3878,7 +3878,7 @@ export default function MetaLeadsAdminPage() {
                       <td className="px-4 py-2 text-slate-700">{lead.vacancy_title ?? lead.vacancy_id ?? '—'}</td>
                       <td className="px-4 py-2 text-slate-600">{contact || '—'}</td>
                       <td className="px-4 py-2">
-                        <div className="text-red-500">{lead.error ?? '—'}</div>
+                        <div className="text-rose-500">{lead.error ?? '—'}</div>
                         {suggestion && (
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                             <span>{suggestion.hint}</span>
@@ -3926,7 +3926,7 @@ export default function MetaLeadsAdminPage() {
           onClick={() => !submitting && setAttachModal(null)}
         >
           <div
-            className="rounded border border-slate-200 bg-white p-6 shadow-lg"
+            className="rounded border border-slate-200 bg-white p-6 shadow-md"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-slate-900">
@@ -3970,6 +3970,6 @@ export default function MetaLeadsAdminPage() {
           </div>
         </div>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

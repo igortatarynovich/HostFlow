@@ -16,6 +16,8 @@ import type { WorkHubSection } from '../modules/workHub/profile'
 import { usePermissions } from '../hooks/usePermissions'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 
 function num(n: number | undefined | null): string {
   if (n == null || Number.isNaN(Number(n))) return '—'
@@ -305,8 +307,8 @@ export default function WorkHubPage() {
   const Skeleton = () => (
     <div className="space-y-6" aria-busy="true">
       <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-200" />
-      <div className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white" />
-      <div className="h-32 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+      <div className="h-40 animate-pulse rounded-xl border border-slate-200 bg-white" />
+      <div className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white" />
     </div>
   )
 
@@ -356,7 +358,7 @@ export default function WorkHubPage() {
   const renderHero = () => (
     <section
       key="hero"
-      className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-8"
+      className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
     >
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 space-y-3 lg:max-w-[70%]">
@@ -388,14 +390,14 @@ export default function WorkHubPage() {
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
           <Link
             to={HREF_CANDIDATES_ACTION}
-            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
           >
             {t('app.work.hub.cta_open_candidates', { defaultValue: 'Open candidates' })}
           </Link>
           {calm ? (
             <Link
               to={CRM_APP_PATHS.candidateNew}
-              className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
               {t('app.work.hub.cta_create_candidate', { defaultValue: 'Create candidate' })}
             </Link>
@@ -408,7 +410,7 @@ export default function WorkHubPage() {
                       ? CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting
                       : HREF_LEADS_STALE
                   }
-                  className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   {t('app.work.hub.cta_open_leads', { defaultValue: 'Open leads' })}
                   <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
@@ -417,7 +419,7 @@ export default function WorkHubPage() {
               {showTasks && (ops?.overdue_reminders ?? 0) > 0 ? (
                 <Link
                   to={HREF_TASKS_OVERDUE}
-                  className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   {t('app.work.hub.cta_open_tasks', { defaultValue: 'Open tasks' })}
                   <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
@@ -433,7 +435,7 @@ export default function WorkHubPage() {
   const renderCritical = () => (
     <section
       key="critical"
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
       <div className="border-b border-slate-100 px-6 py-4">
         <h2 className="text-base font-bold text-slate-900">
@@ -445,7 +447,7 @@ export default function WorkHubPage() {
           <li key={row.key} className="group border-b border-slate-100 last:border-b-0">
             <Link to={row.href} className="flex items-stretch gap-0 transition hover:bg-slate-50/90">
               <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-4">
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-4">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900">
                     <span className="tabular-nums">{num(row.count)}</span>{' '}
@@ -472,7 +474,7 @@ export default function WorkHubPage() {
   const renderBottlenecks = () => (
     <section
       key="bottlenecks"
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
       <div className="border-b border-slate-100 px-6 py-4">
         <h2 className="text-base font-bold text-slate-900">
@@ -487,7 +489,7 @@ export default function WorkHubPage() {
               className="group flex items-stretch gap-0 transition hover:bg-slate-50/90"
             >
               <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-3.5">
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-3">
                 <span className="truncate text-sm font-medium text-slate-800">
                   {t(row.titleKey, { defaultValue: row.titleDefault })}
                 </span>
@@ -552,7 +554,7 @@ export default function WorkHubPage() {
         return (
           <section
             key="viewerSummary"
-            className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm"
+            className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm"
           >
             {t('app.work.profile.viewer.body', {
               defaultValue:
@@ -566,19 +568,24 @@ export default function WorkHubPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-slate-50">
-      <div className="mx-auto max-w-[1200px] space-y-6 px-8 py-10">
-        <header className="space-y-1 pb-2">
-          <h1 className="text-[2.25rem] font-bold leading-tight tracking-tight text-slate-900">
-            {t('app.work.hub.operational_title', { defaultValue: 'Work' })}
-          </h1>
-          <p className="text-[15px] text-slate-500">
-            {t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
-          </p>
-        </header>
+    <PageShell className="bg-slate-50">
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.work.hub.operational_title', { defaultValue: 'Work' })}
+          subtitle={t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => reload()}>
+              {t('app.work.hub.reload', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
+        <div className="mx-auto w-full max-w-[1200px] space-y-6">
 
         {loadError && !dataLoading ? (
-          <div className="rounded-2xl border border-rose-200 bg-white px-6 py-5 text-sm text-rose-950 shadow-sm">
+          <div className="rounded-xl border border-rose-200 bg-white px-6 py-4 text-sm text-rose-950 shadow-sm">
             <p className="font-medium">{t('app.work.hub.load_error', { defaultValue: 'Could not load the work panel' })}</p>
             <button
               type="button"
@@ -600,7 +607,8 @@ export default function WorkHubPage() {
             })}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

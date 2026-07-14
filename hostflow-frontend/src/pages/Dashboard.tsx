@@ -9,7 +9,8 @@ import { useTenantInfo } from '../contexts/TenantInfo'
 import { OnboardingWizard } from '../components/OnboardingWizard'
 import { PostWizardWelcomePanel } from '../components/onboarding/PostWizardWelcomePanel'
 import { isOnboardingWizardEnabled } from '../utils/featureFlags'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { DashboardAnalyticsHubLinks } from '../components/dashboard/DashboardAnalyticsHubLinks'
 import { DashboardLeadAutoFixCard } from '../components/dashboard/DashboardLeadAutoFixCard'
 import { DashboardSectionCollapsible } from '../components/dashboard/DashboardSectionCollapsible'
@@ -1034,24 +1035,28 @@ export default function Dashboard() {
   )
 
   return (
-    <section className="h-full min-h-0 w-full flex flex-col">
-      <div className="min-h-0 flex-1 space-y-0 gap-0 overflow-auto px-0 py-0">
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.dashboard.title')}
+          subtitle={t('app.dashboard.page_subtitle')}
+          kind="browse"
+          secondaryActions={
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => load()}
+              disabled={loading || rangeInvalid}
+            >
+              {loading ? t('app.dashboard.refresh.loading') : t('app.dashboard.refresh.action')}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
         {isOnboardingWizardEnabled() ? <PostWizardWelcomePanel /> : null}
         <DashboardLeadAutoFixCard opsCounters={opsCounters} onRefreshOps={loadOpsCounters} />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">{t('app.dashboard.title')}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">{t('app.dashboard.page_subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="btn-secondary" onClick={() => load()} disabled={loading || rangeInvalid}>
-              {loading ? t('app.dashboard.refresh.loading') : t('app.dashboard.refresh.action')}
-            </button>
-          </div>
-        </div>
-
-        <PageBreadcrumb className="mb-1" />
 
         <DashboardFiltersBar
           t={t}
@@ -1246,6 +1251,6 @@ export default function Dashboard() {
           retentionReportRows={retentionReportRows}
         />
       </div>
-    </section>
+    </PageShell>
   )
 }

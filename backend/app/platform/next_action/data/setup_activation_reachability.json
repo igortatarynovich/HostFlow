@@ -1,0 +1,31 @@
+{
+  "$schema": "./setup_activation_reachability.schema.json",
+  "schema_version": 1,
+  "comment": "SSOT for PI-1A setup activation reachability. Mirror: hostflow-frontend/src/app/activationRoutes.ts",
+  "setup_activation_lock": {
+    "allowed_exact": [
+      "/app/onboarding/getting-started",
+      "/app/onboarding/company",
+      "/app/clients/directory",
+      "/app/my-company",
+      "/app/my-availability"
+    ],
+    "allowed_prefixes": [
+      "/app/clients",
+      "/app/vacancies"
+    ],
+    "onboarding_allowed_prefix": "/app/onboarding/",
+    "onboarding_denied_exact": [
+      "/app/onboarding/wizard"
+    ],
+    "onboarding_denied_prefix": "/app/onboarding/wizard/",
+    "settings_allowed_prefix": "/app/settings"
+  },
+  "guided_trial_workspace": {
+    "tenant_status": "trial",
+    "allowed_settings_exact": [
+      "/app/settings/billing",
+      "/app/settings/team"
+    ]
+  }
+}

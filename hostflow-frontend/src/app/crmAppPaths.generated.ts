@@ -42,6 +42,12 @@ export const CRM_APP_PATHS = {
   leads: "/app/leads",
   leadsDistribution: "/app/leads/distribution",
   leadsDistributionRules: "/app/leads/distribution/rules",
+  /** Operational sales workspace for services tenants (inquiries, work session, conversion). */
+  sales: "/app/sales",
+  launchpad: "/app/launchpad",
+  /** Client acquisition channel list and per-channel inquiry workspace. */
+  clientAcquisitionChannels: "/app/client-acquisition/channels",
+  clientAcquisitionChannelsNew: "/app/client-acquisition/channels/new",
   services: "/app/services",
   invoices: "/app/invoices",
   invoiceNew: "/app/invoices/new",
@@ -140,6 +146,14 @@ export const CRM_APP_PATHS = {
   plannerLegacy: "/app/planner",
   remindersLegacy: "/app/reminders",
   activitiesLegacy: "/app/activities",
+  recruitmentSearches: "/app/recruitment/searches",
+  recruitmentSearchesNew: "/app/recruitment/searches/new",
+  setup: "/app/setup",
+  setupClient: "/app/setup/client",
+  setupVacancy: "/app/setup/vacancy",
+  setupProcess: "/app/setup/process",
+  setupIntake: "/app/setup/intake",
+  platformSetup: "/app/platform/setup",
 } as const
 
 export const CRM_APP_DRILLDOWN_HREFS = {

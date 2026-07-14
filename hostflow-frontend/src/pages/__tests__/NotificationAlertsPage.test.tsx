@@ -23,8 +23,8 @@ vi.mock('../../components/Toast', () => ({
   useToast: () => ({ notify: vi.fn() }),
 }))
 
-vi.mock('../../components/nav/PageBreadcrumb', () => ({
-  PageBreadcrumb: () => null,
+vi.mock('../../components/nav/PageHeader', () => ({
+  PageHeader: ({ title }: { title?: string }) => (title ? <h1>{title}</h1> : null),
 }))
 
 const sampleRows: NotificationEventOut[] = [

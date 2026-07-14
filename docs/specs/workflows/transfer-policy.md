@@ -1,7 +1,7 @@
 # Transfer Policy — canonical handoff readiness
 
 **Status:** Implemented (resolver + API + settings hub). **Strategic layer:** [`process-engine.md`](../platform/process-engine.md) — Transfer Policy is the **tactical Recruitment slice** of Process Engine runtime; migrate to platform evaluator without changing product semantics.  
-**Related:** [PR16](../PR16-recruitment-package-pre-hr.md), [handoff-contract.md](specs/architecture/handoff-contract.md), [hr-verification-plan.md](specs/workflows/hr-verification-plan.md).
+**Related:** [PR16](../../PR16-recruitment-package-pre-hr.md), [handoff-contract.md](../architecture/handoff-contract.md), [hr-verification-plan.md](hr-verification-plan.md).
 
 ---
 

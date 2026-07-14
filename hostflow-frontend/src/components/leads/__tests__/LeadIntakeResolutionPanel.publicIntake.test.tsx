@@ -36,7 +36,7 @@ describe('LeadIntakeResolutionPanel — public-intake', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Public client inquiry')
+    expect(await screen.findByText(/Public intake lead/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Send to pool/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Confirm vacancy$/i })).not.toBeInTheDocument()
   })

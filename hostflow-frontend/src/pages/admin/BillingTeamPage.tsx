@@ -509,16 +509,15 @@ export function TeamManagementPanel({
 export default function BillingTeamPage() {
   const { t } = useI18n()
   return (
-    <div className="space-y-4">
+    
       <SettingsSubpageHeader
         backHref={CRM_APP_PATHS.settings}
         backLabel={t('admin.settings.subpage.back_all')}
         kicker={t('admin.settings.subpage.kicker_workspace_setup')}
         title={t('app.settings.team.title')}
-        subtitle={t('app.settings.team.subtitle')}
-      />
+        subtitle={t('app.settings.team.subtitle')}>
       <TeamManagementPanel showHeader={false} />
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 

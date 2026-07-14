@@ -11,3 +11,21 @@ export function stashPendingGmailOAuthCode(code: string) {
   }
 }
 
+export function readPendingGmailOAuthCode(): string | null {
+  try {
+    const raw = sessionStorage.getItem(GMAIL_OAUTH_PENDING_CODE_KEY)
+    const trimmed = String(raw || '').trim()
+    return trimmed || null
+  } catch {
+    return null
+  }
+}
+
+export function clearPendingGmailOAuthCode() {
+  try {
+    sessionStorage.removeItem(GMAIL_OAUTH_PENDING_CODE_KEY)
+  } catch {
+    // ignore quota / private mode
+  }
+}
+

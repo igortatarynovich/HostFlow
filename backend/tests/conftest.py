@@ -461,6 +461,25 @@ async def _init_data() -> Dict[str, str]:
             await ensure_membership(recruiter.id, "recruiter")
             await ensure_membership(hr_officer.id, "hr_officer")
 
+            own_company_row = await session.execute(
+                sa.text("SELECT id FROM own_companies WHERE tenant_id = :tenant LIMIT 1"),
+                {"tenant": DEFAULT_TENANT_ID},
+            )
+            if own_company_row.scalar_one_or_none() is None:
+                await session.execute(
+                    sa.text(
+                        """
+                        INSERT INTO own_companies (id, tenant_id, name)
+                        VALUES (:id, :tenant_id, :name)
+                        """
+                    ),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "tenant_id": DEFAULT_TENANT_ID,
+                        "name": "HostFlow Operating Co",
+                    },
+                )
+
             result = await session.execute(
                 sa.text(
                     "SELECT id FROM companies WHERE tenant_id = :tenant LIMIT 1"
@@ -472,12 +491,14 @@ async def _init_data() -> Dict[str, str]:
                 company_id = str(uuid.uuid4())
                 await session.execute(
                     sa.text(
-                        "INSERT INTO companies (id, tenant_id, name) VALUES (:id, :tenant_id, :name)"
+                        "INSERT INTO companies (id, tenant_id, name, party_entity_type) "
+                        "VALUES (:id, :tenant_id, :name, :party_entity_type)"
                     ),
                     {
                         "id": company_id,
                         "tenant_id": DEFAULT_TENANT_ID,
                         "name": "Test Logistics Sp. z o.o.",
+                        "party_entity_type": "company",
                     },
                 )
 
@@ -506,7 +527,8 @@ async def _init_data() -> Dict[str, str]:
                 {"tenant": DEFAULT_TENANT_ID},
             )
             candidate_id = candidate_row.scalar_one_or_none()
-            now = datetime.now(timezone.utc)
+            # Candidate.created_at/updated_at are naive UTC columns.
+            now = datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None)
             if candidate_id is None:
                 candidate_id = str(uuid.uuid4())
                 await session.execute(
@@ -536,11 +558,40 @@ async def _init_data() -> Dict[str, str]:
                 )
 
             # Shared dev DB may seed tenant_licenses with finite caps; vacancy API then returns 402.
+            tenant_exists = await session.scalar(
+                sa.text("SELECT 1 FROM tenants WHERE id = :id"),
+                {"id": DEFAULT_TENANT_ID},
+            )
+            if tenant_exists is None:
+                await session.execute(
+                    sa.text(
+                        """
+                        INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
+                        VALUES (:id, :name, :slug, :api_key, TRUE, 'agency', 'active')
+                        ON CONFLICT (id) DO NOTHING
+                        """
+                    ),
+                    {
+                        "id": DEFAULT_TENANT_ID,
+                        "name": "HostFlow Test Tenant",
+                        "slug": "hostflow-test",
+                        "api_key": uuid.uuid4().hex[:32],
+                    },
+                )
+
             lic_row = await session.execute(
                 select(TenantLicense).where(TenantLicense.tenant_id == DEFAULT_TENANT_ID).limit(1)
             )
             lic = lic_row.scalar_one_or_none()
-            if lic is not None:
+            if lic is None:
+                session.add(
+                    TenantLicense(
+                        id=str(uuid.uuid4()),
+                        tenant_id=DEFAULT_TENANT_ID,
+                        plan="team",
+                    )
+                )
+            else:
                 lic.max_vacancies_active = 0
                 lic.max_candidates_active = 0
                 # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.

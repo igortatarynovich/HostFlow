@@ -10,24 +10,26 @@ import { CONSENT_DOCUMENT_VERSIONS } from './constants'
 import type { FormPresentationRuntime } from '../../modules/public-intake/types'
 import type { PublicIntakeHook } from '../../modules/public-intake/usePublicIntake'
 import type { PublicIntakeSubmitPayload } from '../../api/publicIntake'
-import { evaluatePresentationFields } from '../../utils/presentationRules'
+import {
+  evaluatePresentationFields,
+  pruneHiddenPresentationValues,
+} from '../../utils/presentationRules'
+import {
+  normalizeFieldValue,
+  serializeValuesForApi,
+  type PresentationFieldValue,
+} from '../../utils/intakePresentationFieldOptions'
+import { PresentationFieldControl, presentationFieldHasValue } from './PresentationFieldControl'
 
 type Props = {
   intake: PublicIntakeHook
   presentation: FormPresentationRuntime
 }
 
-function inputTypeForField(field: FormPresentationRuntime['fields'][number]): string {
-  const hint = String(field.widget_hint || field.field_type || 'text').toLowerCase()
-  if (hint.includes('email')) return 'email'
-  if (hint.includes('phone') || hint.includes('tel')) return 'tel'
-  if (hint.includes('date')) return 'date'
-  if (hint.includes('number')) return 'number'
-  return 'text'
-}
+type ValueState = Record<string, PresentationFieldValue>
 
 export default function PublicIntakePresentationForm({ intake, presentation }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { notify } = useToast()
   const { loading, saving, submitting, error, state, formData, updatePresentationValues, submit } = intake
 
@@ -36,7 +38,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     [presentation.fields],
   )
 
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [values, setValues] = useState<ValueState>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const valueMap = useMemo(() => {
@@ -64,15 +66,29 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     cookies_accepted: Boolean(formData.agreements?.cookies_accepted),
   })
 
+  const syncPresentationValues = useCallback(
+    (nextValues: ValueState) => {
+      const evaluated = evaluatePresentationFields(sortedFields, nextValues)
+      const pruned = pruneHiddenPresentationValues(nextValues, evaluated) as ValueState
+      setValues(pruned)
+      updatePresentationValues(serializeValuesForApi(pruned))
+      return pruned
+    },
+    [sortedFields, updatePresentationValues],
+  )
+
   useEffect(() => {
-    const initial: Record<string, string> = {}
+    if (!formData.presentation_values) return
+    const initial: ValueState = {}
     for (const field of sortedFields) {
-      const raw = formData.presentation_values?.[field.qualified_code]
+      const raw = formData.presentation_values[field.qualified_code]
       if (raw !== undefined && raw !== null) {
-        initial[field.qualified_code] = String(raw)
+        initial[field.qualified_code] = normalizeFieldValue(raw)
       }
     }
-    setValues((prev) => ({ ...initial, ...prev }))
+    const evaluated = evaluatePresentationFields(sortedFields, initial)
+    const pruned = pruneHiddenPresentationValues(initial, evaluated) as ValueState
+    setValues(pruned)
   }, [formData.presentation_values, sortedFields])
 
   useEffect(() => {
@@ -85,12 +101,8 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
   }, [formData.agreements])
 
   const handleChange = useCallback(
-    (qualifiedCode: string, next: string) => {
-      setValues((prev) => {
-        const updated = { ...prev, [qualifiedCode]: next }
-        updatePresentationValues(updated)
-        return updated
-      })
+    (qualifiedCode: string, next: PresentationFieldValue) => {
+      syncPresentationValues({ ...values, [qualifiedCode]: next })
       setFieldErrors((prev) => {
         if (!prev[qualifiedCode]) return prev
         const copy = { ...prev }
@@ -98,7 +110,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
         return copy
       })
     },
-    [updatePresentationValues],
+    [syncPresentationValues, values],
   )
 
   const validateRequired = useCallback(() => {
@@ -106,10 +118,9 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     for (const field of evaluatedFields) {
       if (!field.evaluated.visible) continue
       if (field.evaluated.intake_level !== 'required') continue
-      const val = (values[field.qualified_code] || '').trim()
-      if (!val) {
+      if (!presentationFieldHasValue(values[field.qualified_code])) {
         nextErrors[field.qualified_code] = t('public.intake.presentation.required', {
-          defaultValue: 'Required field',
+          defaultValue: 'Pole wymagane',
         })
       }
     }
@@ -118,10 +129,11 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
   }, [evaluatedFields, values, t])
 
   const handleSubmit = async () => {
+    syncPresentationValues(values)
     if (!validateRequired()) return
     if (!agreements.general || !agreements.employer_share || !agreements.terms_acceptance) {
       notify({
-        title: t('public.intake.presentation.consents_required', { defaultValue: 'Accept required consents' }),
+        title: t('public.intake.presentation.consents_required', { defaultValue: 'Zaakceptuj wymagane zgody' }),
         variant: 'error',
       })
       return
@@ -138,7 +150,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     try {
       await submit(payload)
       notify({
-        title: t('public.intake.presentation.submitted', { defaultValue: 'Application submitted' }),
+        title: t('public.intake.presentation.submitted', { defaultValue: 'Ankieta została wysłana' }),
         variant: 'success',
       })
     } catch {
@@ -162,11 +174,11 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
             ✓
           </div>
           <h1 className="text-xl font-semibold text-slate-900">
-            {t('public.intake.presentation.thank_you', { defaultValue: 'Thank you — your application was received' })}
+            {t('public.intake.presentation.thank_you', { defaultValue: 'Dziękujemy — otrzymaliśmy Państwa ankietę' })}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {t('public.intake.presentation.thank_you_hint', {
-              defaultValue: 'We saved your submission as a lead draft. Our team will review it shortly.',
+              defaultValue: 'Zapisaliśmy odpowiedzi. Nasz zespół wkrótce się z Państwem skontaktuje.',
             })}
           </p>
           {state.status_share_token ? (
@@ -174,7 +186,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
               to={`/public/status/${state.status_share_token}`}
               className="mt-6 inline-flex rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
-              {t('public.intake.presentation.track_status', { defaultValue: 'Track status' })}
+              {t('public.intake.presentation.track_status', { defaultValue: 'Sprawdź status' })}
             </Link>
           ) : null}
         </div>
@@ -187,7 +199,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-            {t('public.intake.presentation.kicker', { defaultValue: 'Application form' })}
+            {t('public.intake.presentation.kicker', { defaultValue: 'Ankieta' })}
           </p>
           <h1 className="text-xl font-semibold text-slate-900">
             {presentation.profile_name || presentation.entity_profile_code}
@@ -198,23 +210,16 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
       <div className="card space-y-5 p-6">
         {visibleFields.map((field) => (
-          <label key={field.qualified_code} className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
-              {field.label}
-              {field.evaluated.intake_level === 'required' ? <span className="text-red-500"> *</span> : null}
-            </span>
-            <input
-              type={inputTypeForField(field)}
-              className="input w-full"
-              value={values[field.qualified_code] || ''}
-              onChange={(e) => handleChange(field.qualified_code, e.target.value)}
-              disabled={submitting || field.evaluated.readonly}
-              readOnly={field.evaluated.readonly}
-            />
-            {fieldErrors[field.qualified_code] ? (
-              <span className="mt-1 block text-xs text-red-600">{fieldErrors[field.qualified_code]}</span>
-            ) : null}
-          </label>
+          <PresentationFieldControl
+            key={field.qualified_code}
+            field={field}
+            value={values[field.qualified_code]}
+            error={fieldErrors[field.qualified_code]}
+            disabled={submitting}
+            locale={locale}
+            t={t}
+            onChange={handleChange}
+          />
         ))}
 
         <div className="space-y-2 border-t border-slate-100 pt-4">
@@ -224,7 +229,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
               checked={agreements.general}
               onChange={(e) => setAgreements((a) => ({ ...a, general: e.target.checked }))}
             />
-            <span>{t('public.intake.presentation.consent_general', { defaultValue: 'I accept the privacy policy' })}</span>
+            <span>{t('public.intake.presentation.consent_general', { defaultValue: 'Akceptuję politykę prywatności' })}</span>
           </label>
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input
@@ -232,7 +237,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
               checked={agreements.employer_share}
               onChange={(e) => setAgreements((a) => ({ ...a, employer_share: e.target.checked }))}
             />
-            <span>{t('public.intake.presentation.consent_share', { defaultValue: 'I agree to share data with employers' })}</span>
+            <span>{t('public.intake.presentation.consent_share', { defaultValue: 'Wyrażam zgodę na udostępnienie danych' })}</span>
           </label>
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input
@@ -240,7 +245,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
               checked={agreements.terms_acceptance}
               onChange={(e) => setAgreements((a) => ({ ...a, terms_acceptance: e.target.checked }))}
             />
-            <span>{t('public.intake.presentation.consent_terms', { defaultValue: 'I accept the terms of service' })}</span>
+            <span>{t('public.intake.presentation.consent_terms', { defaultValue: 'Akceptuję regulamin' })}</span>
           </label>
           <LegalLinksBlock />
         </div>
@@ -253,7 +258,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
           disabled={submitting || saving}
           onClick={() => void handleSubmit()}
         >
-          {submitting ? t('common.loading') : t('public.intake.presentation.submit', { defaultValue: 'Submit application' })}
+          {submitting ? t('common.loading') : t('public.intake.presentation.submit', { defaultValue: 'Wyślij ankietę' })}
         </button>
       </div>
     </PublicPageShell>

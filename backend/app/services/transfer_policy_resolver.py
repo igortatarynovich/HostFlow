@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.field_registry.requirement_evaluator import evaluate_field_requirements_for_candidate
 from backend.app.models.candidate import Candidate
-from backend.app.models.ref_document_type import RefPack, TenantDocumentPackEnablement
 from backend.app.models.tenant import TenantLink
 from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
 from backend.app.services.recruitment_package_readiness import evaluate_recruitment_package
@@ -587,16 +586,10 @@ async def resolve_tenant_transfer_policy_summary(
     """Aggregated tenant-level transfer policy view for Settings → Transfer Policy."""
     gates = await resolve_hiring_pipeline_gates(db, tenant_id)
 
-    enabled_packs = (
-        await db.execute(
-            select(RefPack.code)
-            .join(TenantDocumentPackEnablement, TenantDocumentPackEnablement.pack_id == RefPack.id)
-            .where(TenantDocumentPackEnablement.tenant_id == str(tenant_id).strip())
-            .where(TenantDocumentPackEnablement.enabled.is_(True))
-            .where(RefPack.status == "active")
-            .order_by(RefPack.code.asc())
-        )
-    ).all()
+    enabled_pack_codes = await ReferenceServiceFacade.list_enabled_document_pack_codes(
+        db,
+        tenant_id=str(tenant_id).strip(),
+    )
 
     links = await list_links_for_agency(db, str(tenant_id).strip())
     link_summaries = []
@@ -617,7 +610,7 @@ async def resolve_tenant_transfer_policy_summary(
         "layers": {
             "document_packs": {
                 "storage": "ref_packs + tenant_document_pack_enablements + tenant_document_type_overrides",
-                "enabled_packs": [{"code": row[0]} for row in enabled_packs],
+                "enabled_packs": [{"code": code} for code in enabled_pack_codes],
             },
             "hiring_pipeline_gates": {
                 "storage": 'tenants.settings["hiring_stage_gates_v1"]',

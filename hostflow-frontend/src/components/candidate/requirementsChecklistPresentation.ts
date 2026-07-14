@@ -47,7 +47,7 @@ export function requirementStatusBadgeClass(status: RequirementRowStatus): strin
     case 'pending_review':
       return 'border-amber-200 bg-amber-50 text-amber-950'
     case 'selected':
-      return 'border-sky-200 bg-sky-50 text-sky-900'
+      return 'border-blue-200 bg-blue-50 text-blue-900'
     case 'rejected':
       return 'border-rose-200 bg-rose-50 text-rose-900'
     case 'superseded':
@@ -77,33 +77,4 @@ export function documentMatchesVariantTypes(
   const normalizedAllowed = new Set(allowedTypes.map(normDocType))
   const docNorm = normDocType(docType)
   return normalizedAllowed.has(docNorm)
-}
-
-export function evaluatedAlternatives(item: RequirementChecklistItem): Array<{
-  alternative_code?: string
-  evidence_variant_code?: string
-  status?: string
-  partial?: boolean
-  document_type_codes?: string[]
-}> {
-  const raw = item.evaluation?.alternatives_evaluated
-  if (!Array.isArray(raw)) return []
-  return raw.filter((row): row is NonNullable<typeof row> => typeof row === 'object' && row !== null)
-}
-
-export function hasExtractionBlockers(item: RequirementChecklistItem): boolean {
-  if (item.evaluation?.extraction_incomplete) return true
-  for (const doc of item.candidate_evidence?.documents || []) {
-    const missing = doc.missing_extraction_fields
-    if (Array.isArray(missing) && missing.length > 0) return true
-  }
-  return (item.evaluation?.blockers || []).some(
-    (row) => String(row.code || '') === 'document_extraction_field_missing',
-  )
-}
-
-export function formatExtractionValue(value: unknown): string {
-  if (value == null) return '—'
-  if (Array.isArray(value)) return value.join(', ')
-  return String(value)
 }

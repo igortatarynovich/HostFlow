@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { IconArrowLeft } from '@tabler/icons-react'
+import { useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { PageHeader } from '../../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../../components/layout'
 import { api } from '../../api/client'
 import type { Candidate } from '../../api/types'
 import type { RequirementChecklistItem } from '../../api/candidateRequirements'
@@ -146,50 +147,83 @@ export default function CandidateRequirementsWorkspace() {
     [notify, reload, t],
   )
 
+  const cardPath = candidateId
+    ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(candidateId)}`
+    : CRM_APP_PATHS.candidates
+  const name = candidateDisplayName(candidate)
+  const canEdit = workspace?.can_edit ?? true
+
   if (!isRequirementsWorkspaceEnabled()) {
     return (
-      <div className="mx-auto max-w-4xl p-6 text-sm text-slate-600">
-        {t('app.candidate_requirements.workspace.disabled', {
-          defaultValue: 'Requirements workspace is not enabled in this environment.',
-        })}
-      </div>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader
+            breadcrumbItems={[
+              {
+                label: t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+                to: CRM_APP_PATHS.candidates,
+              },
+              {
+                label: t('app.candidate_requirements.workspace.title', { defaultValue: 'Requirements' }),
+              },
+            ]}
+            kind="browse"
+          />
+        </PageShellHeader>
+        <div className="px-4 pb-4 text-sm text-slate-600">
+          {t('app.candidate_requirements.workspace.disabled', {
+            defaultValue: 'Requirements workspace is not enabled in this environment.',
+          })}
+        </div>
+      </PageShell>
     )
   }
 
   if (!candidateId) {
     return (
-      <div className="mx-auto max-w-4xl p-6 text-sm text-slate-600">
-        {t('common.errors.not_found', { defaultValue: 'Not found' })}
-      </div>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbCurrentLabel={t('common.errors.not_found', { defaultValue: 'Not found' })} kind="browse" />
+        </PageShellHeader>
+        <div className="px-4 pb-4 text-sm text-slate-600">
+          {t('common.errors.not_found', { defaultValue: 'Not found' })}
+        </div>
+      </PageShell>
     )
   }
 
-  const cardPath = `${CRM_APP_PATHS.candidates}/${encodeURIComponent(candidateId)}`
-  const name = candidateDisplayName(candidate)
-  const canEdit = workspace?.can_edit ?? true
-
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-10 sm:p-6">
-      <div className="flex flex-col gap-2">
-        <Link
-          to={cardPath}
-          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-        >
-          <IconArrowLeft size={16} aria-hidden />
-          {t('app.candidate_requirements.workspace.back_to_card', { defaultValue: 'Back to candidate' })}
-        </Link>
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">
-            {t('app.candidate_requirements.workspace.title', { defaultValue: 'Requirements' })}
-          </h1>
-          {name ? <p className="mt-0.5 text-sm text-slate-600">{name}</p> : null}
-          <p className="mt-1 text-xs text-slate-500">
-            {t('app.candidate_requirements.workspace.subtitle', {
-              defaultValue: 'Close each requirement before handoff to HR.',
-            })}
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          breadcrumbItems={[
+            {
+              label: t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+              to: CRM_APP_PATHS.candidates,
+            },
+            ...(name ? [{ label: name, to: cardPath }] : []),
+            {
+              label: t('app.candidate_requirements.workspace.title', { defaultValue: 'Requirements' }),
+            },
+          ]}
+          subtitle={t('app.candidate_requirements.workspace.subtitle', {
+            defaultValue: 'Close each requirement before handoff to HR.',
+          })}
+          kind="browse"
+          secondaryActions={
+            <button
+              type="button"
+              className="btn btn-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              onClick={() => void reload()}
+              disabled={loading}
+            >
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 overflow-y-auto px-4 pb-10 sm:pb-6">
 
       {loading && !workspace ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
@@ -334,6 +368,7 @@ export default function CandidateRequirementsWorkspace() {
         onClose={closeDocsDrawer}
         onDocumentsChanged={bumpRefresh}
       />
-    </div>
+      </div>
+    </PageShell>
   )
 }

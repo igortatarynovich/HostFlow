@@ -2,7 +2,8 @@ import type { FormEvent } from 'react'
 
 import type { AdditionalService } from '../../api/types'
 import { useI18n } from '../../i18n'
-import { formatAmount } from './utils'
+import { DataTable, Toolbar, type DataTableColumn } from '../../components/layout'
+import { catalogExecutionMode } from './serviceOrderBeneficiary'
 import type { NewServiceFormState } from './types'
 
 export type CatalogTabProps = {
@@ -19,6 +20,11 @@ export type CatalogTabProps = {
   onGoToOrders?: () => void
 }
 
+function formatAmount(value: number | null | undefined) {
+  if (value == null || Number.isNaN(Number(value))) return '—'
+  return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 export function CatalogTab({
   services,
   loading,
@@ -33,21 +39,104 @@ export function CatalogTab({
   onGoToOrders,
 }: CatalogTabProps) {
   const { t } = useI18n()
+
+  const columns: DataTableColumn<AdditionalService>[] = [
+    {
+      key: 'code',
+      header: t('app.services.catalog.table.code'),
+      cellClassName: 'font-mono',
+      render: (svc) => svc.code,
+    },
+    {
+      key: 'name',
+      header: t('app.services.catalog.table.name'),
+      render: (svc) => (
+        <>
+          <div>{svc.name}</div>
+          <span className="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+            {catalogExecutionMode(svc as Parameters<typeof catalogExecutionMode>[0]) === 'handoff'
+              ? t('app.services.execution.handoff', { defaultValue: 'Handoff' })
+              : t('app.services.execution.inline', { defaultValue: 'Inline' })}
+          </span>
+        </>
+      ),
+    },
+    {
+      key: 'category',
+      header: t('app.services.catalog.table.category'),
+      cellClassName: 'text-slate-600',
+      render: (svc) => svc.category || '—',
+    },
+    {
+      key: 'price',
+      header: t('app.services.catalog.table.price'),
+      render: (svc) => formatAmount(svc.base_price),
+    },
+    {
+      key: 'orders',
+      header: t('app.services.catalog.table.orders_count'),
+      align: 'right',
+      tabularNums: true,
+      render: (svc) => svc.metrics_orders_count ?? 0,
+    },
+    {
+      key: 'revenue',
+      header: t('app.services.catalog.table.revenue_completed'),
+      align: 'right',
+      tabularNums: true,
+      render: (svc) => formatAmount(svc.metrics_revenue_completed ?? 0),
+    },
+    {
+      key: 'schedule',
+      header: t('app.services.catalog.table.schedule'),
+      render: (svc) => (svc.requires_schedule ? t('app.services.words.yes') : t('app.services.words.no')),
+    },
+    {
+      key: 'candidate',
+      header: t('app.services.catalog.table.candidate'),
+      render: (svc) => (svc.requires_candidate ? t('app.services.words.yes') : t('app.services.words.no')),
+    },
+    {
+      key: 'status',
+      header: t('app.services.catalog.table.status'),
+      render: (svc) => (
+        <span
+          className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${
+            svc.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+          }`}
+        >
+          {svc.is_active ? t('app.services.catalog.table.badges.active') : t('app.services.catalog.table.badges.archived')}
+        </span>
+      ),
+    },
+  ]
+
+  if (canManage) {
+    columns.push({
+      key: 'actions',
+      header: '',
+      align: 'right',
+      render: (svc) => (
+        <button type="button" onClick={() => onToggleActive(svc)} className="btn-secondary btn-xs">
+          {svc.is_active ? t('app.services.catalog.table.actions.archive') : t('app.services.catalog.table.actions.activate')}
+        </button>
+      ),
+    })
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={includeInactive} onChange={onToggleInclude} />
-            {t('app.services.catalog.show_archived')}
-          </label>
-        </div>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <Toolbar>
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          <input type="checkbox" checked={includeInactive} onChange={onToggleInclude} />
+          {t('app.services.catalog.show_archived')}
+        </label>
+      </Toolbar>
 
       {canManage && (
-        <form className="app-surface space-y-3 p-4" onSubmit={onSubmit}>
+        <form id="services-new-service" className="mx-4 mb-2 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" onSubmit={onSubmit}>
           <h2 className="text-lg font-semibold">{t('app.services.catalog.new_service.title')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.code')}</label>
               <input
@@ -149,6 +238,39 @@ export function CatalogTab({
               />
               {t('app.services.catalog.new_service.labels.requires_candidate')}
             </label>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  {t('app.services.catalog.new_service.labels.execution_mode', { defaultValue: 'Исполнение' })}
+                </label>
+                <select
+                  className="input mt-1"
+                  value={formState.executionMode}
+                  onChange={(e) =>
+                    onFormChange({
+                      ...formState,
+                      executionMode: e.target.value === 'handoff' ? 'handoff' : 'inline',
+                    })
+                  }
+                >
+                  <option value="inline">{t('app.services.execution.inline', { defaultValue: 'Inline (в Services)' })}</option>
+                  <option value="handoff">{t('app.services.execution.handoff', { defaultValue: 'Handoff (другой модуль)' })}</option>
+                </select>
+              </div>
+              {formState.executionMode === 'handoff' ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    {t('app.services.catalog.new_service.labels.handoff_action', { defaultValue: 'Handoff action' })}
+                  </label>
+                  <input
+                    className="input mt-1 font-mono text-sm"
+                    value={formState.handoffAction}
+                    onChange={(e) => onFormChange({ ...formState, handoffAction: e.target.value })}
+                    placeholder="recruitment.create_search"
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-500">{t('app.services.catalog.new_service.hint')}</span>
@@ -160,88 +282,25 @@ export function CatalogTab({
         </form>
       )}
 
-      <div className="overflow-auto rounded-lg border border-slate-200">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50/90 text-left">
-            <tr>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.code')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.name')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.category')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.price')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">
-                {t('app.services.catalog.table.orders_count')}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">
-                {t('app.services.catalog.table.revenue_completed')}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.schedule')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.candidate')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.status')}</th>
-              {canManage && <th className="border-b border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600" />}
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {loading ? (
-              <tr>
-                <td colSpan={canManage ? 10 : 9} className="px-4 py-4 text-center text-slate-500">
-                  {t('app.services.catalog.table.loading')}
-                </td>
-              </tr>
-            ) : services.length === 0 ? (
-              <tr>
-                <td colSpan={canManage ? 10 : 9} className="px-4 py-6 text-center text-slate-500">
-                  <div className="flex flex-col items-center gap-3">
-                    <span>{t('app.services.catalog.table.empty')}</span>
-                    {onGoToOrders ? (
-                      <button type="button" className="btn-secondary btn-sm" onClick={onGoToOrders}>
-                        {t('app.services.catalog.table.empty_cta_orders', { defaultValue: 'Go to orders' })}
-                      </button>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              services.map((svc) => (
-                <tr
-                  key={svc.id}
-                  className={[
-                    'border-t border-slate-100 transition',
-                    svc.is_active ? 'hover:bg-brand-50/40' : 'bg-slate-50',
-                  ].join(' ')}
-                >
-                  <td className="border-r border-slate-200 px-4 py-2 font-mono text-sm">{svc.code}</td>
-                  <td className="border-r border-slate-200 px-4 py-2">{svc.name}</td>
-                  <td className="border-r border-slate-200 px-4 py-2 text-slate-600">{svc.category || '—'}</td>
-                  <td className="border-r border-slate-200 px-4 py-2">{formatAmount(svc.base_price)}</td>
-                  <td className="border-r border-slate-200 px-4 py-2 tabular-nums">{svc.metrics_orders_count ?? 0}</td>
-                  <td className="border-r border-slate-200 px-4 py-2 tabular-nums">
-                    {formatAmount(svc.metrics_revenue_completed ?? 0)}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-2">{svc.requires_schedule ? t('app.services.words.yes') : t('app.services.words.no')}</td>
-                  <td className="border-r border-slate-200 px-4 py-2">{svc.requires_candidate ? t('app.services.words.yes') : t('app.services.words.no')}</td>
-                  <td className="border-r border-slate-200 px-4 py-2">
-                    <span
-                      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                        svc.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {svc.is_active ? t('app.services.catalog.table.badges.active') : t('app.services.catalog.table.badges.archived')}
-                    </span>
-                  </td>
-                  {canManage && (
-                    <td className="px-4 py-2 text-right">
-                      <button type="button" onClick={() => onToggleActive(svc)} className="btn-secondary btn-xs">
-                        {svc.is_active ? t('app.services.catalog.table.actions.archive') : t('app.services.catalog.table.actions.activate')}
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      {message && !canManage && <div className="text-sm text-brand-700">{message}</div>}
+      <DataTable
+        columns={columns}
+        rows={services}
+        rowKey={(svc) => svc.id}
+        loading={loading}
+        rowClassName={(svc) => (!svc.is_active ? 'bg-slate-50' : undefined)}
+        emptyState={
+          <div className="flex flex-col items-center gap-3">
+            <span>{t('app.services.catalog.table.empty')}</span>
+            {onGoToOrders ? (
+              <button type="button" className="btn-secondary btn-sm" onClick={onGoToOrders}>
+                {t('app.services.catalog.table.empty_cta_orders', { defaultValue: 'Go to orders' })}
+              </button>
+            ) : null}
+          </div>
+        }
+        ariaLabel={t('app.services.tabs.catalog', { defaultValue: 'Catalog' })}
+      />
+      {message && !canManage && <div className="mx-4 mt-2 text-sm text-brand-700">{message}</div>}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import {
 } from '../../api/workforce'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
+import { Toolbar, DataTableFrame } from '../../components/layout'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
 
@@ -200,29 +201,7 @@ export default function HrEmployeesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            {t('app.nav.hr.employees.heading', { defaultValue: 'Employees' })}
-          </h2>
-          <p className="mt-1 max-w-4xl text-sm text-slate-600">
-            {t('app.nav.hr.employees.subtitle_directory', {
-              defaultValue:
-                'HR directory from GET /api/v1/workforce/employees/directory (read-model: employment, compliance, risk).',
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
-            {t('app.nav.hr.employees.quick_hub', { defaultValue: 'Documents hub' })}
-          </Link>
-          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          </button>
-        </div>
-      </div>
-
-      <div className="sticky top-0 z-20 -mx-1 mb-2 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
+      <Toolbar>
         {!loading && !err ? (
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="badge border border-slate-200 font-medium tabular-nums">
@@ -241,12 +220,17 @@ export default function HrEmployeesPage() {
         ) : null}
         {rangeLabel ? <div className="text-xs text-slate-600">{rangeLabel}</div> : null}
 
-        <section className="card p-4 sm:p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.nav.hr.directory.filters_heading', { defaultValue: 'Filters' })}
-          </div>
-          <div className="mt-3 flex flex-wrap items-end gap-4">
-            <label className="flex min-w-[140px] flex-col gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
+            {t('app.nav.hr.employees.quick_hub', { defaultValue: 'Documents hub' })}
+          </Link>
+          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
+            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end gap-4">
+            <label className="flex min-w-[140px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-status">
                 {t('app.nav.hr.directory.filters_status', { defaultValue: 'Status' })}
               </span>
@@ -259,7 +243,7 @@ export default function HrEmployeesPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[160px] flex-col gap-1.5">
+            <label className="flex min-w-[160px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-compliance">
                 {t('app.nav.hr.directory.filters_compliance', { defaultValue: 'Compliance' })}
               </span>
@@ -272,7 +256,7 @@ export default function HrEmployeesPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[120px] flex-col gap-1.5">
+            <label className="flex min-w-[120px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-risk">
                 {t('app.nav.hr.directory.filters_risk', { defaultValue: 'Risk' })}
               </span>
@@ -285,7 +269,7 @@ export default function HrEmployeesPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[min(100%,220px)] flex-1 flex-col gap-1.5 sm:min-w-[240px]">
+            <label className="flex min-w-[min(100%,220px)] flex-1 flex-col gap-2 sm:min-w-[240px]">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-search">
                 {t('app.nav.hr.directory.filters_search', { defaultValue: 'Search' })}
               </span>
@@ -306,12 +290,11 @@ export default function HrEmployeesPage() {
               {t('app.nav.hr.directory.filters_expiring_only', { defaultValue: 'Only with expiring documents' })}
             </label>
           </div>
-        </section>
-      </div>
+      </Toolbar>
 
       {can('workforce.manage') && (
         <div className="card flex flex-wrap items-end gap-3 p-4">
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="label mb-0 text-xs text-slate-600" htmlFor="hr-emp-name">
               {t('app.nav.hr.employees.add_manual', { defaultValue: 'Add without candidate link' })}
             </span>
@@ -339,7 +322,7 @@ export default function HrEmployeesPage() {
         </div>
       ) : null}
 
-      <div className="card overflow-hidden">
+      <DataTableFrame>
         {loading ? (
           <div className="p-6 text-sm text-slate-600">{t('common.loading', { defaultValue: 'Loading…' })}</div>
         ) : err ? null : items.length === 0 ? (
@@ -436,7 +419,7 @@ export default function HrEmployeesPage() {
             </table>
           </div>
         )}
-      </div>
+      </DataTableFrame>
     </div>
   )
 }

@@ -970,6 +970,32 @@ export async function createLeadServiceOrder(leadId: string) {
   return data;
 }
 
+export type LeadQuestionnaireInviteResult = {
+  id: string
+  lead_id: string
+  token: string
+  apply_url: string
+  status: string
+  entity_profile_code?: string | null
+  presentation_code?: string | null
+  sent_at?: string | null
+  opened_at?: string | null
+  submitted_at?: string | null
+  expires_at?: string | null
+}
+
+/** Stage Sales Intake 1 — personal questionnaire link for client leads (targeted advertising). */
+export async function createLeadQuestionnaireInvite(
+  leadId: string,
+  payload?: { mark_sent?: boolean },
+): Promise<LeadQuestionnaireInviteResult> {
+  const { data } = await api.post<LeadQuestionnaireInviteResult>(
+    `/leads/${leadId}/questionnaire-invite`,
+    payload ?? {},
+  )
+  return data
+}
+
 export async function convertClientLeadToClient(leadId: string): Promise<Lead> {
   const { data } = await api.post<Lead>(`/leads/${leadId}/convert-client`);
   return data;

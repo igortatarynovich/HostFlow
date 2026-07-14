@@ -71,6 +71,10 @@ def _ruleset_required_matrix_empty(json_data: Any) -> bool:
     rt = defaults.get("requiredTypes") or []
     return len(rt) == 0
 
+
+def _column_exists(insp: sa.Inspector, table: str, column: str) -> bool:
+    return column in {c["name"] for c in insp.get_columns(table)}
+
 revision: str = "202605121400_def_ruleset"
 down_revision: Union[str, None] = "202605121350_ruleset_signature_prerequisite"
 branch_labels: Union[str, Sequence[str], None] = None
@@ -123,30 +127,43 @@ def upgrade() -> None:
         {"tid": DEFAULT_TENANT_ID},
     ).scalar()
     next_v = int(mv or 0) + 1
-    signature = _compute_signature(
-        DEFAULT_TENANT_ID,
-        next_v,
-        baseline,
-        BASELINE_RULESET_COMMENT,
-    )
-    conn.execute(
-        sa.text(
-            "INSERT INTO document_ruleset_versions ("
-            "id, tenant_id, own_company_id, version, json_data, comment, "
-            "is_active, signature, created_at"
-            ") VALUES ("
-            ":id, :tid, NULL, :ver, CAST(:js AS JSON), :cm, TRUE, :sig, CURRENT_TIMESTAMP"
-            ")"
-        ),
-        {
-            "id": str(uuid.uuid4()),
-            "tid": DEFAULT_TENANT_ID,
-            "ver": next_v,
-            "js": payload,
-            "cm": BASELINE_RULESET_COMMENT,
-            "sig": signature,
-        },
-    )
+    insert_params = {
+        "id": str(uuid.uuid4()),
+        "tid": DEFAULT_TENANT_ID,
+        "ver": next_v,
+        "js": payload,
+        "cm": BASELINE_RULESET_COMMENT,
+    }
+    if _column_exists(insp, "document_ruleset_versions", "signature"):
+        signature = _compute_signature(
+            DEFAULT_TENANT_ID,
+            next_v,
+            baseline,
+            BASELINE_RULESET_COMMENT,
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO document_ruleset_versions ("
+                "id, tenant_id, own_company_id, version, json_data, comment, "
+                "is_active, signature, created_at"
+                ") VALUES ("
+                ":id, :tid, NULL, :ver, CAST(:js AS JSON), :cm, TRUE, :sig, CURRENT_TIMESTAMP"
+                ")"
+            ),
+            {**insert_params, "sig": signature},
+        )
+    else:
+        conn.execute(
+            sa.text(
+                "INSERT INTO document_ruleset_versions ("
+                "id, tenant_id, own_company_id, version, json_data, comment, "
+                "is_active, created_at"
+                ") VALUES ("
+                ":id, :tid, NULL, :ver, CAST(:js AS JSON), :cm, TRUE, CURRENT_TIMESTAMP"
+                ")"
+            ),
+            insert_params,
+        )
 
 
 def downgrade() -> None:

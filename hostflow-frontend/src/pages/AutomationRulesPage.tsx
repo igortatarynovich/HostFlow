@@ -8,8 +8,8 @@ import {
 } from '../api/automationRules'
 import { listVacancies } from '../api/client'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
-import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { useI18n } from '../i18n'
@@ -232,25 +232,32 @@ export default function AutomationRulesPage() {
   const isLq = newTrigger === 'lead.qualification'
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-      <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <SettingsSubpageHeader
-          backHref={CRM_APP_PATHS.automations}
-          backLabel={t('app.automations.hub.back')}
-          kicker={t('app.automation_rules.header_kicker')}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          breadcrumbItems={[
+            { label: t('app.automations.hub.title', { defaultValue: 'Automations' }), to: CRM_APP_PATHS.automations },
+            { label: t('app.automation_rules.title') },
+          ]}
           title={t('app.automation_rules.title')}
           subtitle={t('app.automation_rules.subtitle')}
+          kind="action"
+          primaryAction={
+            <button type="button" className="btn-primary btn-sm" onClick={() => void handleCreate()} disabled={loading}>
+              {loading ? t('common.loading') : t('common.actions.create')}
+            </button>
+          }
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
+              {loading ? t('common.loading') : t('common.actions.refresh')}
+            </button>
+          }
         />
-        <p className="mt-2 text-xs text-amber-800/90">
-          {t('app.automation_rules.risk_band_hint')}
-        </p>
-        <p className="mt-1 text-xs text-slate-600">
-          {t('app.automation_rules.lq.hint')}
-        </p>
-      </header>
+        <p className="mt-2 text-xs text-amber-800/90">{t('app.automation_rules.risk_band_hint')}</p>
+        <p className="mt-1 text-xs text-slate-600">{t('app.automation_rules.lq.hint')}</p>
+      </PageShellHeader>
 
-      <PageBreadcrumb className="max-w-4xl" />
-
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
       {bannerError ? (
         <ErrorRecoveryBanner
           info={bannerError}
@@ -269,7 +276,7 @@ export default function AutomationRulesPage() {
 
       <section className="card p-4 space-y-3">
         <div className="text-sm font-semibold">{t('app.automation_rules.create')}</div>
-        {error ? <div className="text-sm text-red-600">{String(error)}</div> : null}
+        {error ? <div className="text-sm text-rose-600">{String(error)}</div> : null}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm">
             <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.trigger')}</div>
@@ -429,14 +436,6 @@ export default function AutomationRulesPage() {
             </label>
           </div>
         ) : null}
-        <div className="flex gap-2">
-          <button type="button" className="btn-primary btn-sm" onClick={() => void handleCreate()} disabled={loading}>
-            {loading ? t('common.loading') : t('common.actions.create')}
-          </button>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
-            {t('common.actions.refresh')}
-          </button>
-        </div>
       </section>
 
       <section className="card p-4 space-y-3">
@@ -492,6 +491,7 @@ export default function AutomationRulesPage() {
           </div>
         )}
       </section>
-    </div>
+      </div>
+    </PageShell>
   )
 }

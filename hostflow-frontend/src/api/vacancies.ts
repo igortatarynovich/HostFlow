@@ -1,6 +1,7 @@
 // src/api/vacancies.ts
 import { api } from "./client";
 import type { NextActionDTO } from "./nextAction";
+import type { SearchRole } from "../utils/launchSearchRoleDefaults";
 
 export const EMPLOYMENT_TYPES = ["full_time", "part_time", "b2b"] as const;
 export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
@@ -131,4 +132,20 @@ export async function getVacancyNextAction(vacancyId: string): Promise<VacancyNe
   }
   const { data } = await api.get<VacancyNextActionDTO>(`/vacancies/${vacancyId}/next-action`);
   return data;
+}
+
+/** Bind launch-search defaults (profile + funnel) after vacancy stub creation. */
+export async function setupLaunchSearchVacancy(
+  vacancyId: string,
+  role: SearchRole,
+): Promise<{ funnel_id: string | null }> {
+  const { data } = await api.post<{ funnel_id: string | null }>(
+    `/vacancies/${vacancyId}/launch-search/setup`,
+    { role },
+  );
+  const funnelId = typeof data?.funnel_id === "string" ? data.funnel_id : null;
+  if (!funnelId) {
+    throw new Error("Launch search setup did not return a funnel_id");
+  }
+  return { funnel_id: funnelId };
 }

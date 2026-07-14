@@ -64,6 +64,27 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: alembic upgrade head
+      - name: Stage 1A migration roundtrip (when present)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: |
+          if [ -f scripts/check_stage1a_migrations.py ]; then
+            python scripts/check_stage1a_migrations.py
+          else
+            echo "skip: Stage 1A migration checker not in tree"
+          fi
+      - name: Stage 1A client account tests (PostgreSQL)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: |
+          pip install pytest pytest-asyncio
+          if [ -d tests/modules/client_accounts ]; then
+            pytest -q tests/modules/client_accounts/
+          else
+            echo "skip: no client_accounts tests"
+          fi
       - name: Lint
         continue-on-error: true
         working-directory: backend

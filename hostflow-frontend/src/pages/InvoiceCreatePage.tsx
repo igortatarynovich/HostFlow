@@ -9,7 +9,8 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
@@ -785,37 +786,27 @@ export default function InvoiceCreatePage() {
     }
   }
 
-  return (
-    <div className="flex h-full w-full flex-col gap-4 p-6">
-      <div className="space-y-2">
-        <button
-          type="button"
-          className="text-sm text-brand-700 hover:underline"
-          onClick={() => navigate(CRM_APP_PATHS.invoices)}
-        >
-          {t('app.invoices.back', { defaultValue: 'Back to invoices' })}
-        </button>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {isEditMode
-            ? t('app.invoices.edit', { defaultValue: 'Edit Draft Invoice' })
-            : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
-        </h1>
-        <p className="text-sm text-slate-500">
-          {isEditMode
-            ? t('app.invoices.edit_subtitle', {
-                defaultValue: 'Update draft invoice details, issuer information and line items.',
-              })
-            : invoiceKind === 'correction'
-              ? t('app.invoices.create_correction_subtitle', {
-                  defaultValue: 'Create a correction invoice linked to the original tax document.',
-                })
-            : t('app.invoices.create_subtitle', {
-                defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
-              })}
-        </p>
-      </div>
+  const pageTitle = isEditMode
+    ? t('app.invoices.edit', { defaultValue: 'Edit Draft Invoice' })
+    : t('app.invoices.create', { defaultValue: 'Create Invoice' })
+  const pageSubtitle = isEditMode
+    ? t('app.invoices.edit_subtitle', {
+        defaultValue: 'Update draft invoice details, issuer information and line items.',
+      })
+    : invoiceKind === 'correction'
+      ? t('app.invoices.create_correction_subtitle', {
+          defaultValue: 'Create a correction invoice linked to the original tax document.',
+        })
+      : t('app.invoices.create_subtitle', {
+          defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
+        })
 
-      <PageBreadcrumb className="max-w-4xl" />
+  return (
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader title={pageTitle} subtitle={pageSubtitle} kind="browse" />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
       {error && (
         <ErrorRecoveryBanner
@@ -837,7 +828,7 @@ export default function InvoiceCreatePage() {
       )}
 
       {invoiceKind === 'correction' && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {t(
             'app.invoices.correction_notice',
             { defaultValue: 'Correction invoices preserve the original document. Adjust only the fields that must change for tax reporting.' },
@@ -864,7 +855,7 @@ export default function InvoiceCreatePage() {
       >
         <section className="app-surface space-y-4 p-6">
           {invoiceKind === 'correction' && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
                 {t('app.invoices.correction_context', { defaultValue: 'Correction context' })}
               </div>
@@ -1112,7 +1103,7 @@ export default function InvoiceCreatePage() {
             </div>
 
             {items.map((item, index) => (
-              <div key={item.line_no} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_100px_120px_100px_auto]">
+              <div key={item.line_no} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_100px_120px_100px_auto]">
                 <select
                   className="input"
                   value={item.service_id || ''}
@@ -1265,5 +1256,6 @@ export default function InvoiceCreatePage() {
         </aside>
       </form>
     </div>
+    </PageShell>
   )
 }

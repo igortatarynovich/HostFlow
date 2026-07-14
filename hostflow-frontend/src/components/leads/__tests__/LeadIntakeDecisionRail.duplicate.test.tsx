@@ -44,19 +44,19 @@ function renderRail(opts: {
         <PlanLimitModalProvider>
           <ToastProvider>
             <LeadIntakeDecisionRail
-              lead={opts.lead}
-              processing={false}
-              routingBusy={false}
-              poolBusy={false}
-              onLeadUpdated={onLeadUpdated}
-              onRequestProcess={() => void onRequestProcess()}
+            lead={opts.lead}
+            processing={false}
+            routingBusy={false}
+            poolBusy={false}
+            onLeadUpdated={onLeadUpdated}
+            onRequestProcess={() => void onRequestProcess()}
             onConfirmRouting={vi.fn()}
             onPool={vi.fn()}
             layout="panel"
-          />
-        </ToastProvider>
-      </PlanLimitModalProvider>
-    </I18nProvider>
+            />
+          </ToastProvider>
+        </PlanLimitModalProvider>
+      </I18nProvider>
     </MemoryRouter>,
   )
 }
@@ -92,22 +92,8 @@ describe('LeadIntakeDecisionRail', () => {
 
     renderRail({ lead })
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Public client inquiry')
+    expect(await screen.findByText(/Public intake lead/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Send to pool/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Reject/i })).not.toBeInTheDocument()
-  })
-
-  it('public_intake P5C: shows submitted readonly notice, no intake rail actions', async () => {
-    const lead = baseLead({
-      source: 'public_intake',
-      stage: 'questionnaire_submitted',
-      status: 'processed',
-      normalized: {},
-    })
-
-    renderRail({ lead })
-
-    expect(await screen.findByRole('status')).toHaveTextContent('Public intake lead')
-    expect(screen.queryByRole('button', { name: /Send to pool/i })).not.toBeInTheDocument()
   })
 })

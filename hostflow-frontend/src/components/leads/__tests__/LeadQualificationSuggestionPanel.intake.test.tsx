@@ -113,6 +113,9 @@ describe('LeadQualificationSuggestionPanel intake gating', () => {
       created_at: '2026-01-01T00:00:00.000Z',
       vacancy_id: '00000000-0000-4000-8000-000000000099',
       vacancy_routing_confirmed: true,
+      normalized: {
+        rodo: { status: 'sent' },
+      },
     } as Lead
 
     expect(manualProcessBlockHint(lead)).toBeNull()

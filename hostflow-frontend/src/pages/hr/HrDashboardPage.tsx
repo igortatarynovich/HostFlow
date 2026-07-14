@@ -4,6 +4,7 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { fetchHrDashboardHighRisk, fetchHrDashboardSummary } from '../../api/hrWorkspace'
 import { HrTransferSummaryChips, type HrTransferSummary } from '../../components/hr/HrTransferSummaryChips'
 import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
+import { Toolbar } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { hrEmployeeVerificationPath, hrHandoffPath, hrRiskRowPrimaryHref } from '../../utils/hrEmployeeLinks'
 
@@ -56,30 +57,23 @@ export default function HrDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900">
-          {t('app.nav.hr.dashboard.heading', { defaultValue: 'Dashboard' })}
-        </h2>
-        <div className="flex flex-wrap gap-2">
+      <Toolbar>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrInbox}>
             {t('app.nav.hr.dashboard.open_inbox', { defaultValue: 'HR inbox' })}
           </Link>
           <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
             {t('app.nav.hr.dashboard.open_hub', { defaultValue: 'Documents hub' })}
           </Link>
-          <button
-            type="button"
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-            onClick={() => void load()}
-          >
+          <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-      </div>
+      </Toolbar>
 
       {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
       {err && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
       )}
 
       {counts && (

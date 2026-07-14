@@ -22,6 +22,7 @@ import { HubEmployeeDocumentPacksPreview } from '../../components/hr/HubEmployee
 import { HubEmployeeDocumentActionsPanel } from '../../components/hr/HubEmployeeDocumentActionsPanel'
 import { resolveFocusedEmployeeId } from '../../utils/hrDocumentsHubFocus'
 import { hrEmployeeVerificationPath, hrHandoffPath } from '../../utils/hrEmployeeLinks'
+import { Toolbar } from '../../components/layout'
 
 type HubView = 'all' | 'missing' | 'expiring' | 'verification'
 
@@ -222,22 +223,13 @@ export default function HrDocumentsHubPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            {t('app.hr.documents_hub.title', { defaultValue: 'HR documents hub' })}
-          </h2>
-          <p className="mt-1 max-w-4xl text-sm text-slate-600">
-            {t('app.hr.documents_hub.subtitle', {
-              defaultValue:
-                'Operational legal queues over internal HR handoffs — missing requirements, expiries, and verification follow-ups. Not the recruitment documents screen.',
-            })}
-          </p>
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
+            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          </button>
         </div>
-        <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
-          {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-        </button>
-      </div>
+      </Toolbar>
 
       <div className="sticky top-0 z-20 -mx-1 mb-4 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
       <nav
@@ -275,12 +267,12 @@ export default function HrDocumentsHubPage() {
         </div>
       ) : null}
 
-      <section className="card p-4 sm:p-5">
+      <section className="card p-4 sm:p-4">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('app.hr.documents_hub.filters', { defaultValue: 'Filters' })}
         </div>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="label mb-0 text-xs text-slate-600">
               {t('app.hr.documents_hub.assignee', { defaultValue: 'Assignee scope' })}
             </span>
@@ -293,7 +285,7 @@ export default function HrDocumentsHubPage() {
               <option value="mine">{t('app.hr.documents_hub.scope_mine', { defaultValue: 'Mine' })}</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="label mb-0 text-xs text-slate-600">
               {t('app.hr.documents_hub.document_type', { defaultValue: 'Document type' })}
             </span>
@@ -304,7 +296,7 @@ export default function HrDocumentsHubPage() {
               placeholder={t('app.hr.documents_hub.document_type_ph', { defaultValue: 'e.g. passport' })}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="label mb-0 text-xs text-slate-600">
               {t('app.hr.documents_hub.employee_id', { defaultValue: 'Employee id contains' })}
             </span>
@@ -315,7 +307,7 @@ export default function HrDocumentsHubPage() {
               placeholder="uuid…"
             />
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="label mb-0 text-xs text-slate-600">
               {t('app.hr.documents_hub.status_contains', { defaultValue: 'Status contains' })}
             </span>
@@ -323,7 +315,7 @@ export default function HrDocumentsHubPage() {
           </label>
           {(view === 'expiring' || view === 'all' || view === 'verification') && (
             <>
-              <label className="flex flex-col gap-1.5">
+              <label className="flex flex-col gap-2">
                 <span className="label mb-0 text-xs text-slate-600">
                   {t('app.hr.documents_hub.horizon', { defaultValue: 'Expiry horizon (days)' })}
                 </span>
@@ -339,7 +331,7 @@ export default function HrDocumentsHubPage() {
                 </select>
               </label>
               {view === 'expiring' ? (
-                <label className="flex flex-col gap-1.5">
+                <label className="flex flex-col gap-2">
                   <span className="label mb-0 text-xs text-slate-600">
                     {t('app.hr.documents_hub.expiry_bucket', { defaultValue: 'Expiry bucket' })}
                   </span>
@@ -354,7 +346,7 @@ export default function HrDocumentsHubPage() {
                   </select>
                 </label>
               ) : null}
-              <label className="flex flex-col gap-1.5">
+              <label className="flex flex-col gap-2">
                 <span className="label mb-0 text-xs text-slate-600">
                   {t('app.hr.documents_hub.risk', { defaultValue: 'Risk' })}
                 </span>
@@ -366,7 +358,7 @@ export default function HrDocumentsHubPage() {
               </label>
             </>
           )}
-          <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <label className="flex flex-col gap-2 sm:col-span-2">
             <span className="label mb-0 text-xs text-slate-600">
               {t('app.hr.documents_hub.group_by', { defaultValue: 'Group by' })}
             </span>
@@ -389,7 +381,7 @@ export default function HrDocumentsHubPage() {
       </div>
 
       {focusedEmployeeId ? (
-        <section className="card p-4 sm:p-5">
+        <section className="card p-4 sm:p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('app.hr.document_packs.hub_preview_title', { defaultValue: 'Document packs for filtered employee' })}
           </div>
@@ -400,7 +392,7 @@ export default function HrDocumentsHubPage() {
       ) : null}
 
       {focusedEmployeeId ? (
-        <section className="card p-4 sm:p-5">
+        <section className="card p-4 sm:p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('app.hr.document_actions.section_title', { defaultValue: 'Document actions' })}
           </div>
@@ -581,7 +573,7 @@ function DocumentQueueTable({
                   </span>
                 </td>
                 <td className="align-top">
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     {row.workforce_employee_id ? (
                       <Link
                         className="text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"

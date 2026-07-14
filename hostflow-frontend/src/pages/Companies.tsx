@@ -44,7 +44,9 @@ import type {
 } from '../modules/companies/types'
 import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar, DataTable, type DataTableColumn } from '../components/layout'
+import { IconChevronDown, IconLink } from '@tabler/icons-react'
 import { servicesWorkspacePath } from '../modules/services/utils'
 import {
   asRecord,
@@ -215,9 +217,6 @@ export default function Companies(){
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const isOperatingProfileRoute = location.pathname.startsWith(CRM_APP_PATHS.myCompany)
-  const listBasePath = isOperatingProfileRoute
-    ? CRM_APP_PATHS.myCompany
-    : CRM_APP_PATHS.clientsDirectory
   const sectionFocus = String(searchParams.get('section') || '').trim().toLowerCase()
   const showExtendedSections = String(searchParams.get('extended') || '').trim() === '1'
   const toggleExtendedSections = useCallback(() => {
@@ -1896,12 +1895,12 @@ export default function Companies(){
 
     if (!detailForm) {
       return (
-        <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-          <div className="mb-0 text-xs text-slate-500">
-            <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
-          </div>
-          <div className="card p-4 text-sm text-slate-500">{t('common.loading')}</div>
-        </div>
+        <PageShell>
+          <PageShellHeader>
+            <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
+          </PageShellHeader>
+          <div className="mx-4 text-sm text-slate-500">{t('common.loading')}</div>
+        </PageShell>
       )
     }
 
@@ -1925,99 +1924,6 @@ export default function Companies(){
     const operatingCompanyType = normalizeOperatingCompanyType(
       detailForm.rawExtra?.company_type ?? detailForm.rawExtra?.company_kind,
     )
-
-    const companyKpis = isOperatingCompany
-      ? [
-          {
-            key: 'company_type',
-            label: t('app.my_company.company_type', { defaultValue: 'Company type' }),
-            value: operatingCompanyType,
-            hint: t('app.my_company.company_type_hint', { defaultValue: 'Defines funnels, presets and analytics for this workspace' }),
-          },
-          {
-            key: 'bank_accounts',
-            label: t('app.companies.detail.kpis.bank_accounts', { defaultValue: 'Bank accounts' }),
-            value: detailForm.billing.bank_accounts.filter((account) => Boolean((account.iban || '').trim())).length,
-            hint: t('app.companies.detail.kpis.bank_accounts_hint', { defaultValue: 'Configured payout accounts for invoices' }),
-          },
-          {
-            key: 'invoice_email',
-            label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
-            value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
-            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Sender/finance mailbox used for invoices' }),
-          },
-        ]
-      : [
-          {
-            key: 'contacts_total',
-            label: t('app.companies.detail.kpis.contacts_total', { defaultValue: 'Contacts' }),
-            value: clientContactsCount,
-            hint: t('app.companies.detail.kpis.contacts_total_hint', { defaultValue: 'Client contact persons and channels' }),
-          },
-          {
-            key: 'contracts_total',
-            label: t('app.companies.detail.kpis.contracts_total', { defaultValue: 'Contracts' }),
-            value: clientContractsCount,
-            hint: t('app.companies.detail.kpis.contracts_total_hint', { defaultValue: 'Signed contracts and upcoming renewals' }),
-          },
-          {
-            key: 'orders_total',
-            label: t('app.companies.detail.kpis.orders_total', { defaultValue: 'Orders' }),
-            value: clientOrdersCount,
-            hint: t('app.companies.detail.kpis.orders_total_hint', { defaultValue: 'Active and historical service orders' }),
-          },
-          {
-            key: 'invoice_email',
-            label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
-            value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
-            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Recipient address used for invoice delivery' }),
-          },
-          {
-            key: 'recruitment_vacancies',
-            label: t('app.companies.detail.kpis.recruitment_vacancies', { defaultValue: 'Active vacancies' }),
-            value:
-              currentAny?.recruitment_vacancies_active != null
-                ? String(currentAny.recruitment_vacancies_active)
-                : '—',
-            hint: t('app.companies.detail.kpis.recruitment_vacancies_hint', {
-              defaultValue: 'Open roles tied to this client (employer / both)',
-            }),
-          },
-          {
-            key: 'recruitment_candidates',
-            label: t('app.companies.detail.kpis.recruitment_candidates', { defaultValue: 'Candidates in funnel' }),
-            value:
-              currentAny?.recruitment_candidates_total != null
-                ? String(currentAny.recruitment_candidates_total)
-                : '—',
-            hint: t('app.companies.detail.kpis.recruitment_candidates_hint', {
-              defaultValue: 'Candidates on this client’s vacancies (same scope as Candidates list)',
-            }),
-          },
-          {
-            key: 'service_orders_live',
-            label: t('app.companies.detail.kpis.service_orders_live', { defaultValue: 'Service orders (active)' }),
-            value:
-              currentAny?.service_active_orders != null ? String(currentAny.service_active_orders) : '—',
-            hint: t('app.companies.detail.kpis.service_orders_live_hint', {
-              defaultValue: 'Non-completed service orders for this party',
-            }),
-          },
-          {
-            key: 'service_revenue',
-            label: t('app.companies.detail.kpis.service_revenue', { defaultValue: 'Completed revenue' }),
-            value:
-              currentAny?.service_revenue_completed != null
-                ? Number(currentAny.service_revenue_completed).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })
-                : '—',
-            hint: t('app.companies.detail.kpis.service_revenue_hint', {
-              defaultValue: 'Sum of completed service order totals',
-            }),
-          },
-        ]
 
     const numeric = (value: string | number | null | undefined) => {
       if (value === null || value === undefined) return 0
@@ -2222,104 +2128,87 @@ export default function Companies(){
     ]
 
     return (
-      <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0 pb-0">
-        <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="text-xs text-white/80">
-                <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader
+            breadcrumbCurrentLabel={
+              detailForm.base.name || t('app.companies.detail.header.fallback_name')
+            }
+            subtitle={
+              <div className="flex flex-wrap items-center gap-2">
+                {detailForm.base.legal_name ? <span>{detailForm.base.legal_name}</span> : null}
+                {locationLine ? (
+                  <>
+                    {detailForm.base.legal_name ? <span className="text-slate-300">·</span> : null}
+                    <span>{locationLine}</span>
+                  </>
+                ) : null}
+                {!isOperatingCompany ? (
+                  <>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      {formatPartyBusinessRoleCell(t, detailForm.base.party_business_roles)}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      {formatClientStageCell(t, detailForm.base.client_stage)}
+                    </span>
+                  </>
+                ) : null}
               </div>
-              <h1 className="text-3xl font-semibold">
-                {detailForm.base.name || t('app.companies.detail.header.fallback_name')}
-              </h1>
-              {detailForm.base.legal_name && (
-                <div className="text-sm text-white/80">{detailForm.base.legal_name}</div>
-              )}
-              {locationLine && <div className="text-sm text-white/70">{locationLine}</div>}
-              {!isOperatingCompany && (
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="rounded-full border border-white/35 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/95">
-                    {formatPartyBusinessRoleCell(t, detailForm.base.party_business_roles)}
-                  </span>
-                  <span className="rounded-full border border-white/35 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/95">
-                    {formatClientStageCell(t, detailForm.base.client_stage)}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-2 text-sm text-white/80">
-              <div className="flex flex-wrap gap-2">
+            }
+            secondaryActions={
+              <>
                 {isOperatingCompany ? (
                   <>
-                    <Link
-                      to={CRM_APP_PATHS.invoiceNew}
-                      className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
-                    >
+                    <Link to={CRM_APP_PATHS.invoiceNew} className="btn-secondary btn-sm">
                       {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
                     </Link>
-                    <Link
-                      to={CRM_APP_PATHS.settingsBilling}
-                      className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
-                    >
+                    <Link to={CRM_APP_PATHS.settingsBilling} className="btn-secondary btn-sm">
                       {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
                     </Link>
                   </>
                 ) : (
-                  <>
-                    <Link
-                      to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
-                      className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
-                    >
-                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
-                    </Link>
-                  </>
+                  <Link
+                    to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
+                    className="btn-secondary btn-sm"
+                  >
+                    {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                  </Link>
                 )}
                 <button
-                  className="btn-primary bg-white text-brand-700 hover:bg-white/90"
-                  type="button"
-                  onClick={handleSave}
-                  disabled={!isDirty || saving}
-                >
-                  {saving ? t('common.saving') : t('common.actions.save')}
-                </button>
-                <button
-                  className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
+                  className="btn-secondary btn-sm"
                   type="button"
                   onClick={handleResetDetail}
                   disabled={saving || !isDirty}
                 >
                   {t('app.companies.detail.actions.reset')}
                 </button>
-              </div>
-              {saveSuccess && <div className="text-emerald-50">{t('app.companies.messages.save_success')}</div>}
-              {saveError && <div className="max-w-md text-rose-50">{saveError}</div>}
-            </div>
-          </div>
-          <div
-            className={`mt-6 grid gap-3 sm:grid-cols-2 ${isOperatingCompany ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
-          >
-            {companyKpis.map((card) => (
-              <div key={card.key} className="rounded-2xl border border-white/30 bg-white/10 p-4">
-                <div className="text-sm text-white/80">{card.label}</div>
-                <div className="text-2xl font-semibold">{card.value}</div>
-                <div className="text-xs text-white/70">{card.hint}</div>
-              </div>
-            ))}
-          </div>
-        </section>
+              </>
+            }
+            primaryAction={
+              <button
+                className="btn-primary btn-sm"
+                type="button"
+                onClick={handleSave}
+                disabled={!isDirty || saving}
+              >
+                {saving ? t('common.saving') : t('common.actions.save')}
+              </button>
+            }
+          />
+          {saveSuccess ? (
+            <div className="mt-2 text-sm text-emerald-700">{t('app.companies.messages.save_success')}</div>
+          ) : null}
+          {saveError ? <div className="mt-2 text-sm text-rose-600">{saveError}</div> : null}
+        </PageShellHeader>
 
-        <div className="px-4 pt-3">
-          <PageBreadcrumb />
-        </div>
-
-        {!isOperatingCompany && id && id !== 'new' && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        {!isOperatingCompany && id && id !== 'new' ? (
+          <Toolbar>
+            <div className="flex flex-wrap gap-2">
               {CLIENT_WORKSPACE_TABS.map((key) => (
                 <button
                   key={key}
                   type="button"
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
                     clientWorkspaceTab === key
                       ? 'bg-slate-900 text-white'
                       : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -2330,7 +2219,12 @@ export default function Companies(){
                 </button>
               ))}
             </div>
+          </Toolbar>
+        ) : null}
 
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+        {!isOperatingCompany && id && id !== 'new' ? (
+          <>
             {clientWorkspaceTab === 'overview' && (
               <>
                 <ClientLeadOriginPanel companyExtra={asRecord(currentAny ?? {}).extra as Record<string, unknown> | undefined} />
@@ -2372,7 +2266,7 @@ export default function Companies(){
                     {overviewCards.map((card) => (
                       <div
                         key={card.key}
-                        className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+                        className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
                       >
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
                         <div className="mt-2 text-sm text-slate-600">{card.content}</div>
@@ -2403,7 +2297,7 @@ export default function Companies(){
                       <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
                     )}
                     {vacancyAnalytics.latest.length > 0 && (
-                      <div className="rounded-2xl bg-slate-50/60 p-3">
+                      <div className="rounded-xl bg-slate-50/60 p-3">
                         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                           {t('app.companies.detail.widgets.vacancies.latest_title')}
                         </div>
@@ -2463,7 +2357,7 @@ export default function Companies(){
                     >
                       <ul className="space-y-3 text-sm">
                         {blockingOrders.map((entry) => (
-                          <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+                          <li key={entry.key} className="rounded-xl border border-amber-100 bg-amber-50/50 p-3">
                             <div className="flex items-center justify-between">
                               <span className="font-semibold text-slate-900">{entry.title}</span>
                               <span className="text-xs text-slate-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
@@ -2472,7 +2366,7 @@ export default function Companies(){
                               {entry.reasons.map((reason) => (
                                 <span
                                   key={`${entry.key}-${reason}`}
-                                  className="inline-flex items-center rounded-md bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
+                                  className="inline-flex items-center rounded-lg bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
                                 >
                                   {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
                                 </span>
@@ -2662,8 +2556,8 @@ export default function Companies(){
                 </div>
               </SectionCard>
             )}
-          </div>
-        )}
+          </>
+        ) : null}
 
         {ENABLE_READINESS && showExtendedSections && !isOperatingCompany && (
           <SectionCard title={t('app.companies.readiness.title')}>
@@ -3725,12 +3619,12 @@ export default function Companies(){
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-slate-900">{docTypeName}</span>
                               {policy.required && (
-                                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                                   {t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
                                 </span>
                               )}
                               {!policy.enabled && (
-                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                   {t('app.companies.detail.sections.document_policies.disabled', { defaultValue: 'Disabled' })}
                                 </span>
                               )}
@@ -3795,7 +3689,8 @@ export default function Companies(){
         </>
         )}
 
-      </div>
+        </div>
+      </PageShell>
     )
   } else {
       setCurrent(null)
@@ -3875,189 +3770,255 @@ export default function Companies(){
   }
 
 
-  const companyInsights = useMemo(() => {
-    const visible = filteredItems.length
-    const active = filteredItems.filter((item: any) => !item?.is_archived).length
-    const archived = Math.max(visible - active, 0)
-    const countries = new Set(
-      filteredItems
-        .map((item: any) => (item?.country_code || item?.country || '').trim().toUpperCase())
-        .filter(Boolean)
-    ).size
-    const missingLocation = filteredItems.filter(
-      (item: any) => !(item?.city && (item?.country_code || item?.country))
-    ).length
-    return { visible, active, archived, countries, missingLocation }
-  }, [filteredItems])
-
-  const companyHeroCards = [
+  const clientColumns: DataTableColumn<any>[] = [
     {
-      key: 'visible',
-      label: t('app.companies.list.insights.visible'),
-      value: companyInsights.visible,
-      hint: t('app.companies.list.insights.visible_hint', { values: { count: companyInsights.visible } }),
+      key: 'name',
+      header: t('app.companies.list.table.headers.name'),
+      cellClassName: 'font-medium text-brand-700',
+      render: (it) => (it as any).name,
     },
     {
-      key: 'active',
-      label: t('app.companies.list.insights.active'),
-      value: companyInsights.active,
-      hint: t('app.companies.list.insights.active_hint', { values: { count: companyInsights.archived } }),
+      key: 'access',
+      header: t('app.clients.access_column', { defaultValue: 'Access' }),
+      render: (it) => {
+        const rowId = String((it as any).id)
+        const accessLink = tenantLinksByCompanyId.get(rowId)
+        const contactPolicy = accessLink ? getContactPolicy(accessLink) : null
+        if (!accessLink) {
+          return (
+            <span className="badge bg-amber-50 text-amber-800">
+              {t('app.clients.access_needs_setup', { defaultValue: 'Needs setup' })}
+            </span>
+          )
+        }
+        return contactPolicy?.enabled ? (
+          <span className="badge bg-emerald-50 text-emerald-800">
+            {t('app.clients.access_contact_on', { defaultValue: 'Contact tracking' })}
+          </span>
+        ) : (
+          <span className="badge bg-slate-100 text-slate-700">
+            {t('app.clients.access_ready', { defaultValue: 'Configured' })}
+          </span>
+        )
+      },
     },
     {
-      key: 'countries',
-      label: t('app.companies.list.insights.countries'),
-      value: companyInsights.countries,
-      hint: t('app.companies.list.insights.countries_hint'),
+      key: 'legal_name',
+      header: t('app.companies.list.table.headers.legal_name'),
+      render: (it) => (it as any).legal_name || '—',
     },
     {
-      key: 'location',
-      label: t('app.companies.list.insights.missing_location'),
-      value: companyInsights.missingLocation,
-      hint: t('app.companies.list.insights.missing_location_hint'),
+      key: 'kind',
+      header: t('app.companies.list.table.headers.kind', { defaultValue: 'Type' }),
+      render: (it) =>
+        getCompanyKindFromAny(it) === 'counterparty'
+          ? t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })
+          : t('app.companies.list.kind_client', { defaultValue: 'Client' }),
+    },
+    {
+      key: 'party_role',
+      header: t('app.companies.list.table.headers.party_role', { defaultValue: 'Party role' }),
+      render: (it) => formatPartyBusinessRoleCell(t, (it as any).party_business_roles),
+    },
+    {
+      key: 'stage',
+      header: t('app.companies.list.table.headers.stage', { defaultValue: 'Stage' }),
+      render: (it) => formatClientStageCell(t, (it as any).client_stage),
+    },
+    {
+      key: 'owner',
+      header: t('app.companies.list.table.headers.owner', { defaultValue: 'Owner' }),
+      render: (it) =>
+        (it as any).owner_user_id
+          ? ownerUserLabelMap.get(String((it as any).owner_user_id)) ||
+            String((it as any).owner_user_id).slice(0, 8)
+          : '—',
+    },
+    {
+      key: 'active_orders',
+      header: t('app.companies.list.table.headers.active_orders', { defaultValue: 'Active orders' }),
+      align: 'right',
+      tabularNums: true,
+      render: (it) =>
+        (it as any).service_active_orders != null ? Number((it as any).service_active_orders) : '—',
+    },
+    {
+      key: 'revenue',
+      header: t('app.companies.list.table.headers.revenue', { defaultValue: 'Revenue (completed)' }),
+      align: 'right',
+      tabularNums: true,
+      render: (it) =>
+        (it as any).service_revenue_completed != null
+          ? Number((it as any).service_revenue_completed).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : '—',
+    },
+    {
+      key: 'vacancies',
+      header: t('app.companies.list.table.headers.recruitment_vacancies', { defaultValue: 'Active vacancies' }),
+      align: 'right',
+      tabularNums: true,
+      render: (it) => (
+        <Link
+          className="font-medium text-brand-700 hover:underline"
+          to={`${CRM_APP_PATHS.vacancies}?company=${(it as any).id}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {(it as any).recruitment_vacancies_active != null
+            ? Number((it as any).recruitment_vacancies_active)
+            : '—'}
+        </Link>
+      ),
+    },
+    {
+      key: 'candidates',
+      header: t('app.companies.list.table.headers.recruitment_candidates', { defaultValue: 'Candidates' }),
+      align: 'right',
+      tabularNums: true,
+      render: (it) => (
+        <Link
+          className="font-medium text-brand-700 hover:underline"
+          to={CRM_APP_PATHS.candidates}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {(it as any).recruitment_candidates_total != null
+            ? Number((it as any).recruitment_candidates_total)
+            : '—'}
+        </Link>
+      ),
+    },
+    {
+      key: 'country',
+      header: t('app.companies.list.table.headers.country'),
+      render: (it) => (it as any).country_code || (it as any).country || '—',
+    },
+    {
+      key: 'city',
+      header: t('app.companies.list.table.headers.city'),
+      render: (it) => (it as any).city || '—',
+    },
+    {
+      key: 'archived',
+      header: t('app.companies.list.table.headers.archived'),
+      render: (it) => ((it as any).is_archived ? t('common.words.yes') : t('common.words.no')),
+      compact: true,
     },
   ]
 
-  const companyHero = (
-    <section className="rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-none">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <p className="text-2xl font-semibold">
-            {isOperatingProfileRoute
-              ? t('app.companies.list.title')
-              : t('app.companies.list.clients_title', { defaultValue: 'Clients' })}
-          </p>
-          <p className="text-sm text-white/80">{t('app.companies.list.insights.subtitle')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {isOperatingProfileRoute ? (
-            <button className="btn-secondary border-white/60 bg-white/10 text-white hover:bg-white/20" onClick={handleCreateOperatingCompany}>
-              {t('app.companies.actions.new_operating_company', { defaultValue: 'Create my company' })}
-            </button>
-          ) : null}
-          <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={handleCreateClientCompany}>
-            {t('app.companies.actions.new_client_company', { defaultValue: 'Add client company' })}
-          </button>
-        </div>
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {companyHeroCards.map((card) => (
-          <div key={card.key} className="rounded-2xl border border-white/30 bg-white/10 p-4">
-            <div className="text-sm text-white/80">{card.label}</div>
-            <div className="text-3xl font-semibold">{card.value}</div>
-            <div className="text-xs text-white/70">{card.hint}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-
   // ----- list view (без :id)
   const listView = (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-      {companyHero}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={
+            isOperatingProfileRoute
+              ? t('app.companies.list.title')
+              : t('app.companies.list.clients_title', { defaultValue: 'Clients' })
+          }
+          secondaryActions={
+            isOperatingProfileRoute ? (
+              <button className="btn-secondary btn-sm" onClick={handleCreateOperatingCompany}>
+                {t('app.companies.actions.new_operating_company', { defaultValue: 'Create my company' })}
+              </button>
+            ) : undefined
+          }
+          primaryAction={
+            <button className="btn-primary btn-sm" onClick={handleCreateClientCompany}>
+              {t('app.companies.actions.new_client_company', { defaultValue: 'Add client company' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
 
-      <div className="px-3 pt-2">
-        <PageBreadcrumb />
-      </div>
+      {!isOperatingProfileRoute ? (
+        <details className="group mx-4 mb-2 shrink-0 rounded-xl border border-slate-200/90 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <IconLink size={16} className="text-brand-700" />
+            {t('app.companies.intake_links.summary', { defaultValue: 'Public intake links' })}
+            <IconChevronDown size={16} className="ml-auto text-slate-400 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-slate-200/80">
+            <CompanyIntakeLinksPanel embedded />
+          </div>
+        </details>
+      ) : null}
 
-      {!isOperatingProfileRoute ? <CompanyIntakeLinksPanel /> : null}
-
-      <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
-        <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_minmax(170px,200px)_auto]">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.companies.list.search_label')}
-            </span>
-            <input
-              className="input w-full"
-              placeholder={t('app.companies.list.search_placeholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.companies.list.sort_label')}
-            </span>
-            <select className="input" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-              <option value="name_asc">{t('app.companies.list.sort_options.name_asc')}</option>
-              <option value="name_desc">{t('app.companies.list.sort_options.name_desc')}</option>
-              <option value="city_asc">{t('app.companies.list.sort_options.city_asc')}</option>
-              <option value="city_desc">{t('app.companies.list.sort_options.city_desc')}</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.companies.list.kind_label', { defaultValue: 'Company type' })}
-            </span>
-            <select className="input" value={companyKindFilter} onChange={(e) => setCompanyKindFilter((e.target.value as any) || 'all')}>
-              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
-              <option value="client">{t('app.companies.list.kind_client', { defaultValue: 'Client' })}</option>
-              <option value="counterparty">{t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })}</option>
-            </select>
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+      <Toolbar>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="input min-h-[40px] min-w-[220px] flex-1 rounded-lg border-slate-200/90 bg-white py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15"
+            placeholder={t('app.companies.list.search_placeholder')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label={t('app.companies.list.search_label')}
+          />
+          <select
+            className="input w-auto min-h-[40px] py-2 text-sm"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            aria-label={t('app.companies.list.sort_label')}
+          >
+            <option value="name_asc">{t('app.companies.list.sort_options.name_asc')}</option>
+            <option value="name_desc">{t('app.companies.list.sort_options.name_desc')}</option>
+            <option value="city_asc">{t('app.companies.list.sort_options.city_asc')}</option>
+            <option value="city_desc">{t('app.companies.list.sort_options.city_desc')}</option>
+          </select>
+          <select
+            className="input w-auto min-h-[40px] py-2 text-sm"
+            value={companyKindFilter}
+            onChange={(e) => setCompanyKindFilter((e.target.value as any) || 'all')}
+            aria-label={t('app.companies.list.kind_label', { defaultValue: 'Company type' })}
+          >
+            <option value="all">{t('app.companies.list.kind_label', { defaultValue: 'Company type' })}</option>
+            <option value="client">{t('app.companies.list.kind_client', { defaultValue: 'Client' })}</option>
+            <option value="counterparty">{t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })}</option>
+          </select>
+          <select
+            className="input w-auto min-h-[40px] py-2 text-sm"
+            value={partyRoleListFilter}
+            onChange={(e) => setPartyRoleListFilter(e.target.value as typeof partyRoleListFilter)}
+            aria-label={t('app.companies.list.filters.party_role', { defaultValue: 'Party role' })}
+          >
+            <option value="all">{t('app.companies.list.filters.party_role', { defaultValue: 'Party role' })}</option>
+            <option value="unset">{t('app.companies.list.filters.party_role_unset', { defaultValue: 'Not set' })}</option>
+            <option value="employer">{t('app.companies.party.roles.employer', { defaultValue: 'Employer' })}</option>
+            <option value="service_client">{t('app.companies.party.roles.service_client', { defaultValue: 'Service client' })}</option>
+            <option value="both">{t('app.companies.party.roles.both', { defaultValue: 'Both' })}</option>
+          </select>
+          <select
+            className="input w-auto min-h-[40px] py-2 text-sm"
+            value={clientStageListFilter}
+            onChange={(e) => setClientStageListFilter(e.target.value)}
+            aria-label={t('app.companies.list.filters.client_stage', { defaultValue: 'Client stage' })}
+          >
+            <option value="all">{t('app.companies.list.filters.client_stage', { defaultValue: 'Client stage' })}</option>
+            {clientPipelineStageOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input w-auto min-h-[40px] py-2 text-sm"
+            value={ownerListFilter}
+            onChange={(e) => setOwnerListFilter(e.target.value)}
+            aria-label={t('app.companies.list.filters.owner', { defaultValue: 'Owner' })}
+          >
+            <option value="all">{t('app.companies.list.filters.owner', { defaultValue: 'Owner' })}</option>
+            {companyUsers
+              .filter((u) => u.user_id && u.status !== 'invited')
+              .map((u) => (
+                <option key={u.user_id!} value={u.user_id!}>
+                  {(u.full_name || '').trim() || u.email}
+                </option>
+              ))}
+          </select>
+          <label className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-slate-600">
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
             {t('app.companies.list.show_archived')}
           </label>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.companies.list.filters.party_role', { defaultValue: 'Party role' })}
-            </span>
-            <select
-              className="input"
-              value={partyRoleListFilter}
-              onChange={(e) => setPartyRoleListFilter(e.target.value as typeof partyRoleListFilter)}
-            >
-              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
-              <option value="unset">{t('app.companies.list.filters.party_role_unset', { defaultValue: 'Not set' })}</option>
-              <option value="employer">{t('app.companies.party.roles.employer', { defaultValue: 'Employer' })}</option>
-              <option value="service_client">{t('app.companies.party.roles.service_client', { defaultValue: 'Service client' })}</option>
-              <option value="both">{t('app.companies.party.roles.both', { defaultValue: 'Both' })}</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.companies.list.filters.client_stage', { defaultValue: 'Client stage' })}
-            </span>
-            <select
-              className="input"
-              value={clientStageListFilter}
-              onChange={(e) => setClientStageListFilter(e.target.value)}
-            >
-              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
-              {clientPipelineStageOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.companies.list.filters.owner', { defaultValue: 'Owner' })}
-            </span>
-            <select className="input" value={ownerListFilter} onChange={(e) => setOwnerListFilter(e.target.value)}>
-              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
-              {companyUsers
-                .filter((u) => u.user_id && u.status !== 'invited')
-                .map((u) => (
-                  <option key={u.user_id!} value={u.user_id!}>
-                    {(u.full_name || '').trim() || u.email}
-                  </option>
-                ))}
-            </select>
-          </label>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-          <span>
-            {t('app.companies.list.insights.visible_hint', { values: { count: filteredItems.length } })}
-          </span>
-          <span>
-            {t('app.companies.list.client_only_hint', { defaultValue: 'This workspace shows client companies only.' })}
-          </span>
           {(query ||
             showArchived ||
             companyKindFilter !== 'all' ||
@@ -4066,7 +4027,7 @@ export default function Companies(){
             clientStageListFilter !== 'all' ||
             ownerListFilter !== 'all') && (
             <button
-              className="btn-secondary"
+              className="btn-secondary btn-sm"
               onClick={() => {
                 setQuery('')
                 setShowArchived(false)
@@ -4081,163 +4042,19 @@ export default function Companies(){
             </button>
           )}
         </div>
-      </section>
+      </Toolbar>
 
-      <section className="app-surface overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50/90 text-left">
-            <tr>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.name')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.clients.access_column', { defaultValue: 'Access' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.legal_name')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.kind', { defaultValue: 'Type' })}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.party_role', { defaultValue: 'Party role' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.stage', { defaultValue: 'Stage' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.owner', { defaultValue: 'Owner' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.active_orders', { defaultValue: 'Active orders' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.revenue', { defaultValue: 'Revenue (completed)' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.recruitment_vacancies', { defaultValue: 'Active vacancies' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
-                {t('app.companies.list.table.headers.recruitment_candidates', { defaultValue: 'Candidates' })}
-              </th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.country')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.city')}</th>
-              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.archived')}</th>
-              <th className="w-1 border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={15}>
-                  {t('app.companies.list.table.loading')}
-                </td>
-              </tr>
-            )}
-            {!loading &&
-              filteredItems.map((it) => {
-                const rowId = String((it as any).id)
-                const accessLink = tenantLinksByCompanyId.get(rowId)
-                const contactPolicy = accessLink ? getContactPolicy(accessLink) : null
-                return (
-                <tr key={rowId} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
-                  <td className="border-r border-slate-200 px-4 py-3 font-medium text-brand-700">
-                    <Link
-                      className="hover:underline"
-                      to={`${CRM_APP_PATHS.agencyClients}/${rowId}`}
-                    >
-                      {(it as any).name}
-                    </Link>
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3">
-                    {!accessLink ? (
-                      <span className="badge bg-amber-50 text-amber-800">
-                        {t('app.clients.access_needs_setup', { defaultValue: 'Needs setup' })}
-                      </span>
-                    ) : contactPolicy?.enabled ? (
-                      <span className="badge bg-emerald-50 text-emerald-800">
-                        {t('app.clients.access_contact_on', { defaultValue: 'Contact tracking' })}
-                      </span>
-                    ) : (
-                      <span className="badge bg-slate-100 text-slate-700">
-                        {t('app.clients.access_ready', { defaultValue: 'Configured' })}
-                      </span>
-                    )}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).legal_name || '—'}</td>
-                  <td className="border-r border-slate-200 px-4 py-3">
-                    {getCompanyKindFromAny(it) === 'counterparty'
-                      ? t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })
-                      : t('app.companies.list.kind_client', { defaultValue: 'Client' })}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3">
-                    {formatPartyBusinessRoleCell(t, (it as any).party_business_roles)}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3">
-                    {formatClientStageCell(t, (it as any).client_stage)}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3">
-                    {(it as any).owner_user_id
-                      ? ownerUserLabelMap.get(String((it as any).owner_user_id)) ||
-                        String((it as any).owner_user_id).slice(0, 8)
-                      : '—'}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
-                    {(it as any).service_active_orders != null ? Number((it as any).service_active_orders) : '—'}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
-                    {(it as any).service_revenue_completed != null
-                      ? Number((it as any).service_revenue_completed).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      : '—'}
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
-                    <Link
-                      className="font-medium text-brand-700 hover:underline"
-                      to={`${CRM_APP_PATHS.vacancies}?company=${(it as any).id}`}
-                    >
-                      {(it as any).recruitment_vacancies_active != null
-                        ? Number((it as any).recruitment_vacancies_active)
-                        : '—'}
-                    </Link>
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
-                    <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.candidates}>
-                      {(it as any).recruitment_candidates_total != null
-                        ? Number((it as any).recruitment_candidates_total)
-                        : '—'}
-                    </Link>
-                  </td>
-                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
-                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).city || '—'}</td>
-                  <td className="border-r border-slate-200 px-4 py-3">
-                    {(it as any).is_archived ? t('common.words.yes') : t('common.words.no')}
-                  </td>
-                  <td className="px-4 py-3 space-x-2 text-right">
-                    <button
-                      className="btn-secondary"
-                      onClick={() => navigate(`${CRM_APP_PATHS.agencyClients}/${(it as any).id}`)}
-                    >
-                      {t('app.companies.list.table.actions.edit')}
-                    </button>
-                    <button
-                      className={(it as any).is_archived ? 'btn-secondary' : 'btn-danger'}
-                      onClick={() => toggleArchive(it)}
-                    >
-                      {(it as any).is_archived
-                        ? t('app.companies.list.table.actions.restore')
-                        : t('app.companies.list.table.actions.archive')}
-                    </button>
-                  </td>
-                </tr>
-              )})}
-            {!loading && filteredItems.length === 0 && (
-              <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={15}>
-                  {t('app.companies.list.table.empty')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-    </div>
+      <DataTable
+        columns={clientColumns}
+        rows={filteredItems as any[]}
+        rowKey={(it) => String((it as any).id)}
+        loading={loading}
+        onRowClick={(it) => navigate(`${CRM_APP_PATHS.agencyClients}/${(it as any).id}`)}
+        emptyState={t('app.companies.list.table.empty')}
+        ariaLabel={t('app.companies.list.clients_title', { defaultValue: 'Clients' })}
+        footer={t('app.companies.list.insights.visible_hint', { values: { count: filteredItems.length } })}
+      />
+    </PageShell>
   )
 
   /// единая точка возврата — порядок хуков стабилен
@@ -4326,7 +4143,7 @@ function InfoItem({ label, value, mono }: { label: string; value?: React.ReactNo
 }
 
 const STATUS_TONE_CLASS: Record<StatusTone, string> = {
-  info: 'bg-sky-100 text-sky-800',
+  info: 'bg-blue-100 text-blue-800',
   success: 'bg-emerald-100 text-emerald-800',
   warning: 'bg-amber-100 text-amber-800',
   danger: 'bg-rose-100 text-rose-800',
@@ -4334,7 +4151,7 @@ const STATUS_TONE_CLASS: Record<StatusTone, string> = {
 
 function StatusBadge({ tone = 'info', children }: { tone?: StatusTone; children: React.ReactNode }) {
   return (
-    <span className={['inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
+    <span className={['inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
       {children}
     </span>
   )

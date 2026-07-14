@@ -14,7 +14,8 @@ import type { LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
 import { useToast } from '../components/Toast'
 import { computeFunnelSuggestedInsights } from '../utils/funnelSuggestedInsights'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
 
 /** Preset drill-downs for common lost-reason follow-up (§2.12 management loop). */
@@ -147,42 +148,24 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
 
   const funnelSuggested = useMemo(() => computeFunnelSuggestedInsights(funnelData), [funnelData])
 
-  const shellClass = embedded ? 'w-full' : 'w-full max-w-6xl px-4 py-6 sm:px-6'
+  const funnelLinks = (
+    <p className={embedded ? 'mb-4 max-w-3xl text-xs text-slate-600' : 'max-w-3xl text-sm text-slate-600'}>
+      <Link
+        to={CRM_APP_PATHS.settingsFunnels}
+        className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
+      >
+        {t('app.analytics.lead_conversion.configure_funnels')}
+      </Link>
+      {' · '}
+      <Link to={CRM_APP_PATHS.leads} className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
+        {t('app.analytics.lead_conversion.open_leads_workspace')}
+      </Link>
+    </p>
+  )
 
-  return (
-    <div className={shellClass}>
-      {!embedded ? (
-        <>
-          <h1 className="text-xl font-semibold text-slate-900">{t('app.analytics.lead_conversion.title')}</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600">{t('app.analytics.lead_conversion.subtitle')}</p>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            <Link
-              to={CRM_APP_PATHS.settingsFunnels}
-              className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
-            >
-              {t('app.analytics.lead_conversion.configure_funnels')}
-            </Link>
-            {' · '}
-            <Link to={CRM_APP_PATHS.leads} className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
-              {t('app.analytics.lead_conversion.open_leads_workspace')}
-            </Link>
-          </p>
-          <PageBreadcrumb className="mt-4 max-w-4xl" />
-        </>
-      ) : (
-        <p className="mb-4 max-w-3xl text-xs text-slate-600">
-          <Link
-            to={CRM_APP_PATHS.settingsFunnels}
-            className="font-medium text-brand-700 hover:text-brand-800 hover:underline"
-          >
-            {t('app.analytics.lead_conversion.configure_funnels')}
-          </Link>
-          {' · '}
-          <Link to={CRM_APP_PATHS.leads} className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
-            {t('app.analytics.lead_conversion.open_leads_workspace')}
-          </Link>
-        </p>
-      )}
+  const funnelBody = (
+    <>
+      {funnelLinks}
 
       {!loading ? (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -228,7 +211,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
           <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             {t('app.analytics.lead_conversion.management_chain_presets_title')}
           </div>
-          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-sm">
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-2 text-sm">
             {LOST_REASON_LEAD_PRESETS.map((code) => (
               <Link
                 key={code}
@@ -246,7 +229,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
           <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             {t('app.analytics.lead_conversion.management_chain_combo_title')}
           </div>
-          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-sm">
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-2 text-sm">
             {PRIOR_STAGE_LOST_COMBOS.map((combo) => (
               <Link
                 key={`${combo.lost_from_crm_stage}-${combo.lost_reason_code}`}
@@ -370,7 +353,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                       }
                       setCohortMode(mode)
                     }}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
                       cohortMode === mode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -386,7 +369,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                       type="datetime-local"
                       value={customRange.start}
                       onChange={(e) => setCustomRange((r) => ({ ...r, start: e.target.value }))}
-                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
                     />
                   </label>
                   <label className="flex min-w-[10rem] flex-col gap-0.5 text-[11px] text-slate-600">
@@ -395,7 +378,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                       type="datetime-local"
                       value={customRange.end}
                       onChange={(e) => setCustomRange((r) => ({ ...r, end: e.target.value }))}
-                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
                     />
                   </label>
                   <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-600 sm:pb-1">
@@ -450,10 +433,10 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                 <table className="mt-2 w-full min-w-[280px] border-collapse text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">
-                      <th className="py-1.5 pr-2 font-semibold">{t('app.analytics.lead_conversion.cohort_metric')}</th>
-                      <th className="py-1.5 pr-2 font-semibold">{t('app.analytics.lead_conversion.cohort_current')}</th>
-                      <th className="py-1.5 pr-2 font-semibold">{t('app.analytics.lead_conversion.cohort_prior')}</th>
-                      <th className="py-1.5 font-semibold">{t('app.analytics.lead_conversion.cohort_delta')}</th>
+                      <th className="py-2 pr-2 font-semibold">{t('app.analytics.lead_conversion.cohort_metric')}</th>
+                      <th className="py-2 pr-2 font-semibold">{t('app.analytics.lead_conversion.cohort_current')}</th>
+                      <th className="py-2 pr-2 font-semibold">{t('app.analytics.lead_conversion.cohort_prior')}</th>
+                      <th className="py-2 font-semibold">{t('app.analytics.lead_conversion.cohort_delta')}</th>
                     </tr>
                   </thead>
                   <tbody className="text-slate-800">
@@ -482,10 +465,10 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
                       const delta = row.cur - row.prev
                       return (
                         <tr key={row.key} className="border-b border-slate-100">
-                          <td className="py-1.5 pr-2">{row.label}</td>
-                          <td className="py-1.5 pr-2 tabular-nums">{row.cur}</td>
-                          <td className="py-1.5 pr-2 tabular-nums">{row.prev}</td>
-                          <td className={`py-1.5 tabular-nums ${delta > 0 ? 'text-emerald-700' : delta < 0 ? 'text-rose-700' : 'text-slate-600'}`}>
+                          <td className="py-2 pr-2">{row.label}</td>
+                          <td className="py-2 pr-2 tabular-nums">{row.cur}</td>
+                          <td className="py-2 pr-2 tabular-nums">{row.prev}</td>
+                          <td className={`py-2 tabular-nums ${delta > 0 ? 'text-emerald-700' : delta < 0 ? 'text-rose-700' : 'text-slate-600'}`}>
                             {delta > 0 ? `+${delta}` : String(delta)}
                           </td>
                         </tr>
@@ -502,6 +485,30 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
           {t('app.analytics.lead_conversion.empty')}
         </div>
       )}
-    </div>
+    </>
+  )
+
+  if (embedded) {
+    return <div className="w-full">{funnelBody}</div>
+  }
+
+  return (
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.analytics.lead_conversion.title')}
+          subtitle={t('app.analytics.lead_conversion.subtitle')}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={refresh} disabled={loading}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
+        {funnelBody}
+      </div>
+    </PageShell>
   )
 }

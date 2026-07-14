@@ -256,7 +256,7 @@ export default function LeadIntakeResolutionPanel({
   if (leadRecruitmentPublicIntakeReadonly(lead, isServicesTenant)) {
     return (
       <div className={className}>
-        <LeadIntakePublicIntakeReadonlyNotice lead={lead} layout={embedded ? 'embedded' : 'panel'} />
+        <LeadIntakePublicIntakeReadonlyNotice layout={embedded ? 'embedded' : 'panel'} />
       </div>
     )
   }
@@ -278,7 +278,7 @@ export default function LeadIntakeResolutionPanel({
       <>
         {onRequestProcess && !confirmed && !intakeRejected ? (
           <label
-            className={`flex cursor-pointer items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-900/[0.04] ${embedded ? 'mt-0' : 'mt-4'}`}
+            className={`flex cursor-pointer items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-700 ring-1 ring-slate-900/[0.04] ${embedded ? 'mt-0' : 'mt-4'}`}
           >
             <input
               type="checkbox"
@@ -291,8 +291,8 @@ export default function LeadIntakeResolutionPanel({
           </label>
         ) : null}
 
-        <div className={`flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end ${embedded ? 'mt-4' : 'mt-5'}`}>
-          <label className="flex min-w-[12rem] flex-1 flex-col gap-1.5 text-xs font-medium text-slate-600">
+        <div className={`flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end ${embedded ? 'mt-4' : 'mt-4'}`}>
+          <label className="flex min-w-[12rem] flex-1 flex-col gap-2 text-xs font-medium text-slate-600">
             <span>{t('app.leads.detail.intake_resolution.select_label')}</span>
             <select
               className="input h-10 rounded-xl border-slate-200 bg-white px-3 text-sm shadow-sm ring-0 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/20"
@@ -356,7 +356,7 @@ export default function LeadIntakeResolutionPanel({
           <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             {t('app.leads.detail.intake_resolution.intake_actions.heading')}
           </h3>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+          <p className="mt-2 text-xs leading-relaxed text-slate-500">
             {t('app.leads.detail.intake_resolution.intake_actions.hint')}
           </p>
         </>
@@ -413,7 +413,7 @@ export default function LeadIntakeResolutionPanel({
             <label className="text-xs text-slate-600">
               <span className="block">{t('app.leads.detail.intake_resolution.intake_actions.request_info_label')}</span>
               <textarea
-                className="input mt-1 min-h-[4rem] w-full max-w-lg rounded-lg border-slate-300 bg-white px-2 py-1.5 text-sm"
+                className="input mt-1 min-h-[4rem] w-full max-w-lg rounded-lg border-slate-300 bg-white px-2 py-2 text-sm"
                 value={requestInfoNote}
                 disabled={acting || !rodoOk}
                 placeholder={t('app.leads.detail.intake_resolution.intake_actions.note_placeholder')}
@@ -435,7 +435,7 @@ export default function LeadIntakeResolutionPanel({
             </button>
           </div>
 
-          <div className="mt-5 flex max-w-lg flex-col gap-2 rounded-xl bg-slate-50/80 p-4 ring-1 ring-slate-900/[0.04]">
+          <div className="mt-4 flex max-w-lg flex-col gap-2 rounded-xl bg-slate-50/80 p-4 ring-1 ring-slate-900/[0.04]">
             <p className="text-xs font-medium text-slate-800">{t('app.leads.detail.intake_resolution.intake_actions.reject_title')}</p>
             <label className="text-xs text-slate-600">
               <span className="block">{t('app.leads.detail.intake_resolution.intake_actions.reject_reason')}</span>
@@ -456,7 +456,7 @@ export default function LeadIntakeResolutionPanel({
             <label className="text-xs text-slate-600">
               <span className="block">{t('app.leads.detail.intake_resolution.intake_actions.note_optional')}</span>
               <textarea
-                className="input mt-1 min-h-[3rem] w-full rounded-lg border-slate-300 bg-white px-2 py-1.5 text-sm"
+                className="input mt-1 min-h-[3rem] w-full rounded-lg border-slate-300 bg-white px-2 py-2 text-sm"
                 value={rejectNote}
                 disabled={acting}
                 placeholder={t('app.leads.detail.intake_resolution.intake_actions.note_placeholder')}
@@ -465,7 +465,7 @@ export default function LeadIntakeResolutionPanel({
             </label>
             <button
               type="button"
-              className="btn-secondary h-9 w-fit rounded-lg border-red-200 bg-red-50 px-3 text-xs text-red-900 hover:bg-red-100 disabled:opacity-50"
+              className="btn-secondary h-9 w-fit rounded-lg border-rose-200 bg-rose-50 px-3 text-xs text-rose-900 hover:bg-rose-100 disabled:opacity-50"
               disabled={acting || !rejectReason.trim()}
               onClick={() => void handleReject()}
             >
@@ -479,7 +479,7 @@ export default function LeadIntakeResolutionPanel({
 
   const qualificationSection =
     !hideQualificationLines && qualificationLines.length > 0 ? (
-      <div className="mt-6 border-t border-slate-100 pt-5">
+      <div className="mt-6 border-t border-slate-100 pt-4">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           {t('app.leads.detail.intake_resolution.qualification_title')}
         </h3>
@@ -526,7 +526,7 @@ export default function LeadIntakeResolutionPanel({
 
   return (
     <section
-      className={`card relative overflow-hidden p-5 shadow-md shadow-slate-900/[0.04] sm:p-6 ${className}`}
+      className={`card relative overflow-hidden p-4 shadow-md shadow-slate-900/[0.04] sm:p-6 ${className}`}
       aria-label={t('app.leads.detail.intake_resolution.title')}
     >
       <div
@@ -537,7 +537,7 @@ export default function LeadIntakeResolutionPanel({
         {!composeUnifiedHeader ? (
           <>
             <h2 className="text-base font-semibold tracking-tight text-slate-900">{t('app.leads.detail.intake_resolution.title')}</h2>
-            <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-slate-500">
+            <p className="mt-2 max-w-prose text-sm leading-relaxed text-slate-500">
               {t('app.leads.detail.intake_resolution.subtitle')}
             </p>
           </>

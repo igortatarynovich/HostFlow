@@ -28,17 +28,6 @@ export function getLeadErrorSuggestion(error: string | null | undefined, t: any)
     }
   }
 
-  if (code.startsWith('AD_NOT_MAPPED')) {
-    return {
-      tab: 'advanced',
-      hint: t('admin.meta_leads.logs.suggestions.ad_not_mapped.hint', {
-        defaultValue:
-          'Объявление Meta не замаплено на вакансию. Добавьте ad_id → vacancy в «Mapping объявлений» и повторите.',
-      }),
-      actionLabel: t('admin.meta_leads.logs.suggestions.ad_not_mapped.action', { defaultValue: 'Advanced' }),
-    }
-  }
-
   if (code.startsWith('VACANCY_NOT_RESOLVED')) {
     return {
       tab: 'advanced',

@@ -955,9 +955,9 @@ async def list_candidates(
             filters["intake_application_kind"] = ak
 
     if created_from:
-        filters["dt_from"] = datetime.combine(created_from, datetime.min.time())
+        filters["dt_from"] = datetime.combine(created_from, datetime.min.time(), tzinfo=timezone.utc)
     if created_to:
-        filters["dt_to"] = datetime.combine(created_to, datetime.max.time())
+        filters["dt_to"] = datetime.combine(created_to, datetime.max.time(), tzinfo=timezone.utc)
     insights_payload: dict[str, int] | None = None
     if include_insights:
         try:

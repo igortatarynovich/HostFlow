@@ -16,7 +16,8 @@ import {
   type CommunicationOpsMode,
 } from '../utils/communicationsOpsMode'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
@@ -276,44 +277,48 @@ export default function CommunicationsSlaIncidentsPage() {
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] || enUS
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{t('app.sla_incidents.title')}</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {t('app.sla_incidents.subtitle', {
-                defaultValue: 'Overdue communication dialogs that require a manager response.',
-              })}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
-              {t('app.reminders.actions.refresh', { defaultValue: 'Refresh' })}
-            </button>
-            <button type="button" className="btn-secondary btn-sm" onClick={() => void markAllRead()} disabled={unreadCount <= 0}>
-              {t('app.reminders.actions.mark_all', { defaultValue: 'Mark all read' })}
-            </button>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className="badge bg-rose-100 px-3 py-1 font-medium text-rose-700">
-            {t('app.sla_incidents.unread')}: {unreadCount}
-          </span>
-          <span className="badge bg-slate-100 px-3 py-1 font-medium text-slate-700">
-            {t('app.sla_incidents.total')}: {items.length}
-          </span>
-        </div>
-      </div>
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          kind="browse"
+          title={t('app.sla_incidents.title')}
+          subtitle={
+            <>
+              <p>
+                {t('app.sla_incidents.subtitle', {
+                  defaultValue: 'Overdue communication dialogs that require a manager response.',
+                })}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="badge bg-rose-100 px-3 py-1 font-medium text-rose-700">
+                  {t('app.sla_incidents.unread')}: {unreadCount}
+                </span>
+                <span className="badge bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                  {t('app.sla_incidents.total')}: {items.length}
+                </span>
+              </div>
+            </>
+          }
+          secondaryActions={
+            <>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
+                {t('app.reminders.actions.refresh', { defaultValue: 'Refresh' })}
+              </button>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void markAllRead()} disabled={unreadCount <= 0}>
+                {t('app.reminders.actions.mark_all', { defaultValue: 'Mark all read' })}
+              </button>
+            </>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
-      <PageBreadcrumb className="max-w-4xl" />
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-slate-900">
             {t('app.sla_incidents.trust.title')}
           </h2>
-          <span className="badge bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+          <span className="badge bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
             {t('app.sla_incidents.trust.window')}
           </span>
         </div>
@@ -346,7 +351,7 @@ export default function CommunicationsSlaIncidentsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <input
             value={query}
@@ -474,6 +479,7 @@ export default function CommunicationsSlaIncidentsPage() {
           })}
         </div>
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

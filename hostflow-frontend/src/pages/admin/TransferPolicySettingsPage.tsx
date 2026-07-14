@@ -42,7 +42,7 @@ export default function TransferPolicySettingsPage() {
   const governanceEntries = useMemo(() => Object.entries(policy?.governance || {}), [policy?.governance])
 
   return (
-    <div className="settings-page-shell-narrow">
+    
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
@@ -51,8 +51,7 @@ export default function TransferPolicySettingsPage() {
         subtitle={t('admin.transfer_policy.blurb', {
           defaultValue:
             'Single view of handoff rules. Underlying settings stay in their storage layers; this page aggregates and links them.',
-        })}
-      />
+        })}>
 
       {error ? (
         <ErrorRecoveryBanner
@@ -117,6 +116,6 @@ export default function TransferPolicySettingsPage() {
           </section>
         </div>
       ) : null}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

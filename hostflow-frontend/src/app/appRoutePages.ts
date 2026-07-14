@@ -18,9 +18,6 @@ export const WorkHubPage = lazy(() => loadCrmCore().then((m) => ({ default: m.Wo
 export const Dashboard = lazy(() => loadCrmCore().then((m) => ({ default: m.Dashboard })))
 export const Candidates = lazy(() => loadCandidatesList().then((m) => ({ default: m.Candidates })))
 export const CandidateCard = lazy(() => loadCandidateCard().then((m) => ({ default: m.CandidateCard })))
-export const CandidateRequirementsWorkspace = lazy(() =>
-  loadCandidateCard().then((m) => ({ default: m.CandidateRequirementsWorkspace })),
-)
 export const Companies = lazy(() => loadCrmCore().then((m) => ({ default: m.Companies })))
 export const MyCompanyPage = lazy(() => loadCrmCore().then((m) => ({ default: m.MyCompanyPage })))
 export const Vacancies = lazy(() => loadCrmCore().then((m) => ({ default: m.Vacancies })))

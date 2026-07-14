@@ -7,10 +7,12 @@ RECRUITMENT_MODULE = "recruitment"
 CRM_MODULE = "crm"
 HR_MODULE = "hr"
 FLEET_MODULE = "fleet"
+SERVICE_SALES_MODULE = "service_sales"
 
 ENTITY_CANDIDATE = "candidate"
 ENTITY_VACANCY = "vacancy"
 ENTITY_CLIENT = "client"
+ENTITY_LEAD = "lead"
 ENTITY_HR_EMPLOYEE = "hr.employee"
 ENTITY_FLEET_VEHICLE = "fleet.vehicle"
 

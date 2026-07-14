@@ -87,7 +87,8 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageShell, PageShellHeader } from '../components/layout'
+import { PageHeader } from '../components/nav/PageHeader'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
@@ -4397,12 +4398,58 @@ export default function CandidateCard(){
     ],
   )
 
+  const candidateDisplayName = useMemo(() => {
+    if (!model) return ''
+    const first = String(model.first_name || '').trim()
+    const last = String(model.last_name || '').trim()
+    return [first, last].filter(Boolean).join(' ') || String(model.id || '')
+  }, [model])
+
+  const candidateBreadcrumbItems = useMemo(() => {
+    if (isNew) {
+      return [
+        {
+          label: t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+          to: CRM_APP_PATHS.candidates,
+        },
+        {
+          label: t('app.candidate_card.new_candidate', { defaultValue: 'New candidate' }),
+        },
+      ]
+    }
+    const parent = originPath.includes('/recruitment/searches/')
+      ? {
+          label: t('app.search_home.back_to_search', { defaultValue: 'Back to search' }),
+          to: originPath,
+        }
+      : {
+          label: t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+          to: CRM_APP_PATHS.candidates,
+        }
+    return [
+      parent,
+      ...(candidateDisplayName ? [{ label: candidateDisplayName }] : []),
+    ]
+  }, [candidateDisplayName, isNew, originPath, t])
+
   if (loading || !model) {
-    return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
+    return (
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
+        </PageShellHeader>
+        <div className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4 text-slate-500">
+          {t('common.loading')}
+        </div>
+      </PageShell>
+    )
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-0">
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader breadcrumbItems={candidateBreadcrumbItems} kind="browse" />
+      </PageShellHeader>
       <CandidateHeader
         candidate={model}
         isNew={isNew}
@@ -4438,6 +4485,7 @@ export default function CandidateCard(){
             ? t('app.candidate_card.header.back_to_procesowani')
             : undefined
         }
+        hideBackLink
         onFavoriteToggle={handleFavoriteToggle}
         candidateProfile={candidateProfile}
         profileLoading={profileLoading}
@@ -4479,18 +4527,15 @@ export default function CandidateCard(){
         ) : null}
       />
 
-      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <PageBreadcrumb />
-          {!isNew && model?.id ? (
-            <CandidateOpenInHrLink
-              candidateId={String(model.id)}
-              enabled={showOpenInHrLink}
-              fallbackHandoffId={internalHrHandoffId}
-            />
-          ) : null}
+      {!isNew && model?.id ? (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
+          <CandidateOpenInHrLink
+            candidateId={String(model.id)}
+            enabled={showOpenInHrLink}
+            fallbackHandoffId={internalHrHandoffId}
+          />
         </div>
-      </div>
+      ) : null}
 
       <div className="card p-3">
         <div className="space-y-4">
@@ -4863,7 +4908,7 @@ export default function CandidateCard(){
                 />
               ) : null}
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold text-slate-800">
                     {t('app.candidate_card.control.inbox_title')}
@@ -4904,7 +4949,7 @@ export default function CandidateCard(){
       {!isNew && model?.id && handoffModalOpen ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={() => setHandoffModalOpen(false)}>
           <div
-            className="mx-auto mt-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            className="mx-auto mt-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
@@ -5000,7 +5045,7 @@ export default function CandidateCard(){
           role="presentation"
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -5054,7 +5099,7 @@ export default function CandidateCard(){
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="candidate-override-save-title"
-                className="fixed left-1/2 top-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-300 bg-white p-4 shadow-2xl ring-2 ring-amber-100"
+                className="fixed left-1/2 top-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-300 bg-white p-4 shadow-xl ring-2 ring-amber-100"
               >
                 <div id="candidate-override-save-title" className="text-sm font-semibold text-amber-950">
                   {t('app.candidate_card.override_modal.title')}
@@ -5142,7 +5187,7 @@ export default function CandidateCard(){
                 </button>
               </div>
               {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
-                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
+                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                   <div className="font-medium text-slate-800">
                     {t('app.candidate_card.docs.upload_link_label')}
                   </div>
@@ -5178,7 +5223,7 @@ export default function CandidateCard(){
         </div>
       ) : null}
 
-    </div>
+    </PageShell>
   )
 }
 
@@ -5204,10 +5249,10 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
   const formatItemStatus = (status: string) => itemStatusLabels[status] || status
 
   return (
-    <div className="min-w-0 space-y-2 rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-semibold text-slate-800">{t('app.candidate_card.services.title')}</div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button type="button" className="btn-secondary btn-sm" onClick={reload} disabled={loading}>
             {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
           </button>

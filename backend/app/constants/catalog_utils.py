@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from .catalogs import COUNTRIES, DIAL_CODES, LANGUAGES
 
@@ -104,6 +104,52 @@ def to_options_dial_codes() -> List[Dict[str, Any]]:
     return options
 
 
+def to_options_localized_catalog(items: Iterable[Any]) -> List[Dict[str, Any]]:
+    """Map LocalizedCatalogItem / CityCatalogItem rows to frontend option DTOs."""
+    options: List[Dict[str, Any]] = []
+    for item in items:
+        code = str(getattr(item, "code", "") or "").strip()
+        if not code:
+            continue
+        label_ru = str(getattr(item, "label_ru", "") or code).strip()
+        label_en = str(getattr(item, "label_en", "") or label_ru).strip()
+        meta = dict(getattr(item, "meta", {}) or {})
+        if getattr(item, "country_code", None):
+            meta.setdefault("country_code", str(item.country_code))
+        options.append(
+            {
+                "value": code,
+                "label": label_ru,
+                "meta": {
+                    **meta,
+                    "label_ru": label_ru,
+                    "label_en": label_en,
+                },
+            }
+        )
+    options.sort(key=lambda x: x["label"])
+    return options
+
+
+def to_options_company_setup(
+    *,
+    countries: List[Dict[str, Any]],
+    industries: List[Dict[str, Any]],
+    team_sizes: List[Dict[str, Any]],
+    platform_identities: List[Dict[str, Any]],
+    first_modules: List[Dict[str, Any]],
+    business_types: List[Dict[str, Any]],
+) -> Dict[str, List[Dict[str, Any]]]:
+    return {
+        "countries": countries,
+        "industries": industries,
+        "team_sizes": team_sizes,
+        "platform_identities": platform_identities,
+        "first_modules": first_modules,
+        "business_types": business_types,
+    }
+
+
 # ---------- вспомогательные преобразования ----------
 def as_code_name_list(d: Dict[str, str]) -> List[Dict[str, str]]:
     """
@@ -132,6 +178,8 @@ __all__ = [
     "to_options_countries",
     "to_options_languages",
     "to_options_dial_codes",
+    "to_options_localized_catalog",
+    "to_options_company_setup",
     "as_code_name_list",
     "as_country_dial_list",
 ]

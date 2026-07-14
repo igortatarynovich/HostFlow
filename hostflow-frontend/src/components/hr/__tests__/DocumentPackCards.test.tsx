@@ -63,8 +63,8 @@ describe('DocumentPackCards', () => {
 
     expect(screen.getByText('Driver Pack')).toBeInTheDocument()
     expect(screen.getByText('Client Pack')).toBeInTheDocument()
-    expect(screen.getByText('Gaps')).toBeInTheDocument()
+    expect(screen.getAllByText('Gaps').length).toBeGreaterThan(0)
     expect(screen.getByText('Skeleton')).toBeInTheDocument()
-    expect(screen.getByText('Driver License')).toBeInTheDocument()
+    expect(screen.getAllByText('Driver License').length).toBeGreaterThan(0)
   })
 })

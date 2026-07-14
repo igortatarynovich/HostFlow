@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { ReminderRecord } from '../../api/types/notification'
 import { fetchHrTasks, type HrAssigneeScope } from '../../api/hrWorkspace'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { Toolbar } from '../../components/layout'
 import { useI18n } from '../../i18n'
 
 function formatDue(iso: string | null | undefined): string {
@@ -73,18 +74,8 @@ export default function HrTasksPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            {t('app.nav.hr.tasks.heading', { defaultValue: 'HR tasks' })}
-          </h2>
-          <p className="mt-1 max-w-4xl text-sm text-slate-600">
-            {t('app.nav.hr.tasks.subtitle', {
-              defaultValue: 'Reminder-backed HR task list (assignee scope). Open entity when linked.',
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
           <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrZusWorkspace}>
             {t('app.nav.hr.tasks.quick_zus', { defaultValue: 'ZUS workspace' })}
           </Link>
@@ -92,7 +83,7 @@ export default function HrTasksPage() {
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-      </div>
+      </Toolbar>
 
       <div className="sticky top-0 z-20 -mx-1 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
         {!loading && !err ? (
@@ -111,7 +102,7 @@ export default function HrTasksPage() {
             {t('app.nav.hr.tasks.filters', { defaultValue: 'Scope' })}
           </div>
           <div className="mt-2 flex flex-wrap items-end gap-4">
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.tasks.assignee', { defaultValue: 'Assignee scope' })}</span>
               <select className="input text-sm" value={assigneeScope} onChange={(e) => setAssigneeScope(e.target.value as HrAssigneeScope)}>
                 <option value="team">{t('app.nav.hr.tasks.scope_team', { defaultValue: 'Team' })}</option>

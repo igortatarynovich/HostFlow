@@ -17,6 +17,7 @@ import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary
 import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
 import { isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
 import { useI18n } from '../../i18n'
+import { PageHeader } from '../../components/nav/PageHeader'
 import { useToast } from '../../components/Toast'
 import type { HrReviewPanel } from '../../api/workforce'
 
@@ -97,13 +98,24 @@ export default function HrHandoffDetailPage() {
 
   return (
     <div className="space-y-4">
-      <Link to={CRM_APP_PATHS.hrInbox} className="text-sm font-medium text-brand-700 hover:text-brand-900">
-        ← {t('app.nav.hr.handoff.back_inbox', { defaultValue: 'Back to inbox' })}
-      </Link>
+      <PageHeader
+        breadcrumbItems={[
+          { label: t('app.nav.hr.workspace.title', { defaultValue: 'HR workspace' }), to: CRM_APP_PATHS.hr },
+          { label: t('app.nav.hr.inbox.heading', { defaultValue: 'Inbox' }), to: CRM_APP_PATHS.hrInbox },
+          { label: displayName || id || '…' },
+        ]}
+        title={displayName || t('app.nav.hr.handoff.title', { defaultValue: 'Handoff' })}
+        kind="browse"
+        secondaryActions={
+          <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
+            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          </button>
+        }
+      />
 
       {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
       {err && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
       )}
 
       {row && hrReview && !isPickup ? (

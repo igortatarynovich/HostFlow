@@ -13,6 +13,15 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final
 
 from .catalogs import COUNTRIES, LANGUAGES
+from backend.app.reference.company_setup_catalogs import (
+    list_business_types,
+    list_first_modules,
+    list_industries,
+    list_platform_identities,
+    list_team_sizes,
+    list_vacancy_search_categories,
+)
+from backend.app.reference.geo_cities_catalog import list_cities
 from .operational_risk_reference import (
     COMPLIANCE_DOMAIN_CODES,
     IMPACT_CODES,
@@ -85,6 +94,30 @@ DOMAIN_REGISTRY: Final[dict[str, ReferenceDomainSpec]] = {
         lambda: _codes(COMPLIANCE_DOMAIN_CODES),
         validate_compliance_domain,
     ),
+    "industries": ReferenceDomainSpec("industries", "company_setup_catalogs", list_industries),
+    "team_sizes": ReferenceDomainSpec(
+        "team_sizes",
+        "company_setup_catalogs",
+        lambda: list_team_sizes(onboarding=False),
+    ),
+    "team_sizes_onboarding": ReferenceDomainSpec(
+        "team_sizes_onboarding",
+        "company_setup_catalogs",
+        lambda: list_team_sizes(onboarding=True),
+    ),
+    "business_types": ReferenceDomainSpec("business_types", "company_setup_catalogs", list_business_types),
+    "platform_identities": ReferenceDomainSpec(
+        "platform_identities",
+        "company_setup_catalogs",
+        list_platform_identities,
+    ),
+    "first_modules": ReferenceDomainSpec("first_modules", "company_setup_catalogs", list_first_modules),
+    "vacancy_search_categories": ReferenceDomainSpec(
+        "vacancy_search_categories",
+        "company_setup_catalogs",
+        list_vacancy_search_categories,
+    ),
+    "cities": ReferenceDomainSpec("cities", "geo_cities_catalog", list_cities),
     "lifecycle_statuses": ReferenceDomainSpec(
         "lifecycle_statuses",
         "lifecycle_reference",

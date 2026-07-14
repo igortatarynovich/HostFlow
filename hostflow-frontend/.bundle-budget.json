@@ -6,7 +6,7 @@
     "they dominate first-paint. Values are current baseline + ~8% headroom:",
     "update via PR only — every bump is a perf cost.",
     "",
-    "Current baseline (2026-05-13): larger CRM/HR surface on this branch; totals",
+    "Current baseline (2026-07-14): i18n locale backfill + workspace shell on Stage 1A branch.",
     "raised with headroom. Prior (2026-04-18): total raw ≈ 7.67 MB, gz ≈ 1.50 MB.",
     "Aspirational target: halve the main `index-*` bundle",
     "with route-level code splitting (tracked in docs/SSOT.md)."
@@ -18,8 +18,8 @@
   "entryPoints": [
     {
       "pattern": "^index-",
-      "raw": 3538944,
-      "gzipped": 786432,
+      "raw": 3932160,
+      "gzipped": 950272,
       "note": "Main app entry (SPA shell + router). Shrink by lazy-loading routes."
     },
     {

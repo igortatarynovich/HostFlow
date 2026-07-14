@@ -43,6 +43,14 @@ from backend.app.api.v1.vacancies import next_action_api as _next_action_api  # 
 
 router.include_router(_next_action_api.router)
 
+from backend.app.api.v1.vacancies import launch_search_setup_api as _launch_search_setup_api  # noqa: E402
+from backend.app.api.v1.vacancies import workspace_api as _workspace_api  # noqa: E402
+from backend.app.api.v1.vacancies import acquisition_api as _acquisition_api  # noqa: E402
+
+router.include_router(_launch_search_setup_api.router)
+router.include_router(_workspace_api.router)
+router.include_router(_acquisition_api.router)
+
 
 def _as_bool(value: Optional[str]) -> bool:
     if value is None:

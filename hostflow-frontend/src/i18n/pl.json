@@ -203,7 +203,8 @@
         "doc_col_expires": "Wygasa",
         "doc_col_days_left": "Dni",
         "doc_col_file": "Plik",
-        "doc_open": "Otwórz"
+        "doc_open": "Otwórz",
+        "doc_open_error": "Could not open document file"
       },
       "work_eligibility": {
         "section_title": "Uprawnienia do pracy i opłaty ustawowe",
@@ -356,7 +357,22 @@
           "expiring": "Wygasa",
           "rejected": "Odrzucony",
           "needs_data": "Wymaga danych"
-        }
+        },
+        "request_doc_correction": "Request correction",
+        "replace_doc": "Replace",
+        "status": {
+          "hr_review_in_progress": "HR review in progress",
+          "waiting_documents": "Awaiting documents",
+          "waiting_payments": "Awaiting payments",
+          "waiting_work_permit": "Awaiting work permit",
+          "waiting_red_paper": "Awaiting red paper",
+          "approved_for_employment": "Approved for employment",
+          "returned_to_recruitment": "Returned to recruitment",
+          "rejected_by_hr": "Rejected by HR"
+        },
+        "rail_open": "Open HR review",
+        "rail_blockers": "Resolve HR review blockers",
+        "rail_continue": "Continue HR review"
       },
       "review_case": {
         "badge": "Sprawa HR",
@@ -369,14 +385,59 @@
         "approve_yes": "Zatwierdzenie dozwolone",
         "approve_no": "Zatwierdzenie zablokowane",
         "back_to_inbox": "← Wróć do skrzynki HR",
-        "handoff_summary_hint": "Kontekst tylko do odczytu z rekrutacji. Weryfikuj dokumenty powyżej."
+        "handoff_summary_hint": "Kontekst tylko do odczytu z rekrutacji. Weryfikuj dokumenty powyżej.",
+        "profile_badge": "Employee profile",
+        "untitled": "HR case",
+        "handoff": "Handoff",
+        "transferred": "Transferred",
+        "quick_actions": "Quick actions",
+        "open_eligibility": "Open work eligibility",
+        "recent_history": "Recent history",
+        "no_events": "No events yet.",
+        "full_history": "Open full history",
+        "docs_required": "Documents required for approval",
+        "current_step": "Current step",
+        "step_status": "Status",
+        "blockers": "Blockers",
+        "eligibility_after_employee": "Full eligibility journey is available after workforce employee is linked.",
+        "show_journey": "Show full eligibility journey",
+        "hide_journey": "Hide full eligibility journey",
+        "after_approval": "After employment approval",
+        "open_employee_profile": "Open employee profile",
+        "current_task_kicker": "What to do now",
+        "why_this_task": "Why this task",
+        "task_closes": "This step closes",
+        "after_completion": "After this",
+        "blocks_approval": "Blocks approval",
+        "ready_step": "Ready",
+        "task_take_title": "Take case into HR review",
+        "task_take_desc": "Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.",
+        "task_take_why": "Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.",
+        "task_take_done": "Handoff status becomes accepted and the HR review checklist is active.",
+        "view_handoff": "View handoff summary",
+        "priority_step": "Step {{step}} of {{total}}",
+        "priority_ladder_toggle": "System priority order (v1)"
       },
       "doc_verify": {
         "needs_manual": "Wymaga ręcznego potwierdzenia",
         "request_correction": "Poproś o poprawkę",
         "reject": "Odrzuć dokument",
         "correction_placeholder": "Co należy poprawić?",
-        "reject_placeholder": "Powód odrzucenia"
+        "reject_placeholder": "Powód odrzucenia",
+        "section_hint": "Verify each document against profile data. Checklist items update when all required cards are verified.",
+        "checklist_item": "Checklist",
+        "col_field": "Field",
+        "col_profile": "Profile / snapshot",
+        "col_downstream": "Used for",
+        "col_confirm": "HR confirmation",
+        "confirmed_value": "Confirmed value",
+        "comment": "Comment",
+        "confirmed": "Confirmed",
+        "save_review": "Save field review",
+        "verify": "Verify document",
+        "reject_verification": "Reject verification",
+        "upload_new": "Upload new",
+        "upload_new_note": "Please upload a new version of this document."
       },
       "doc_flow": {
         "title": "Weryfikacja dokumentów",
@@ -427,7 +488,10 @@
           "in_review": "W trakcie",
           "missing_file": "Brak pliku",
           "awaiting": "Oczekuje potwierdzenia"
-        }
+        },
+        "section_title": "Documents verification workspace",
+        "dossier_hint": "One document at a time: compare file to fields, then confirm/correct/replace.",
+        "no_review_context": "HR review context is not available for this employee yet."
       },
       "decisions": {
         "request_correction": "Poproś o poprawkę",
@@ -575,9 +639,6 @@
         "expiring_queue": "Wygasające (kolejka)",
         "queue_truncated": "Pokazano pierwsze 12 wierszy.",
         "linked_documents": "Powiązane dokumenty dossier",
-        "hr_context_status": "Rekord operacyjny: {status}",
-        "hr_context_links": "{count} dokument(ów) powiązanych z rekrutacji",
-        "reused_from_recruitment": "Ponownie użyty z rekrutacji",
         "onboarding_overdue": "Przeterminowanych zadań: {count}"
       },
       "employee_legal": {
@@ -625,6 +686,56 @@
         "ctx_verified": "Zw.",
         "ctx_expires": "Wygasa",
         "no_ctx_items": "Brak wierszy kontekstu dokumentów HR."
+      },
+      "document_packs": {
+        "section_title": "Document packs",
+        "hub_preview_title": "Document packs for filtered employee",
+        "empty": "No document packs for this profile yet.",
+        "no_candidate_link": "This employee has no linked candidate — document packs are unavailable.",
+        "skeleton_hint": "Client-specific requirements will appear here later.",
+        "blockers": "Blockers",
+        "warnings": "Warnings",
+        "gaps": "Gaps",
+        "count": {
+          "missing": "Missing",
+          "expired": "Expired",
+          "expiring": "Expiring",
+          "missing_expiry": "No expiry date"
+        },
+        "status": {
+          "valid": "Valid",
+          "warnings": "Warnings",
+          "gaps": "Gaps",
+          "skeleton": "Skeleton"
+        }
+      },
+      "document_actions": {
+        "section_title": "Document actions",
+        "empty": "No document actions",
+        "no_candidate_link": "This employee has no linked candidate — document actions are unavailable.",
+        "document": "Document",
+        "pack": "Pack",
+        "due": "Due",
+        "action": {
+          "upload_document": "Upload document",
+          "request_update": "Request update",
+          "renew_document": "Renew document",
+          "capture_expiry_date": "Capture expiry date"
+        }
+      },
+      "readiness": {
+        "status_label": "Readiness status",
+        "next_action": "Next action",
+        "reason": "Reason",
+        "blocks": "Blocks",
+        "owner": "Responsible",
+        "due": "Due",
+        "missing": "Missing / affected",
+        "open_documents": "Open documents",
+        "ready_hint": "No document blockers detected. Employment readiness looks clear from current packs.",
+        "ready_next": "Next step: {step}",
+        "remaining": "{count} documents remaining",
+        "verification_progress": "Verified {verified} of {total} uploaded documents"
       }
     },
     "api_errors": {
@@ -772,6 +883,9 @@
         "my_availability": "Moja dostępność",
         "time_off": "Urlopy i nieobecności",
         "reminders": "Przypomnienia",
+        "recruitment_inbox": "Odpowiedzi",
+        "recruitment_searches": "Rekrutacje",
+        "sales": "Zapytania",
         "leads": "Leady",
         "leads_distribution": "Routing leadów",
         "leads_distribution_rules": "Reguły routingu leadów",
@@ -805,7 +919,8 @@
         "automation_log": "Dziennik automatyzacji",
         "automation_rules": "Reguły automatyzacji",
         "settings_hiring_gates": "Bramki lejka rekrutacji",
-        "settings_risk_intel": "Ryzyko operacyjne"
+        "settings_risk_intel": "Ryzyko operacyjne",
+        "hr_inbox": "HR Inbox"
       },
       "hr": {
         "workspace": {
@@ -843,7 +958,34 @@
           "total": "Razem: {{n}}",
           "handoff_row": "Przekazanie {{id}}",
           "view_snapshot": "Migawka",
-          "empty": "Brak przekazań w tej kolejce."
+          "empty": "Brak przekazań w tej kolejce.",
+          "tab_all": "All active",
+          "view_review": "HR review",
+          "open_employee": "Employee profile",
+          "col_queue": "Queue",
+          "col_status": "Status",
+          "col_candidate": "Candidate",
+          "col_handoff": "Handoff",
+          "col_employee": "Workforce",
+          "col_actions": "Actions",
+          "accept_pickup": "Take into HR review",
+          "stat_pending": "Awaiting pickup: {n}",
+          "stat_accepted": "In review: {n}",
+          "stat_tab": "This tab: {n}",
+          "quick_hub": "Documents hub",
+          "tabs_aria": "Inbox queues",
+          "queue_awaiting_hr_pickup": "Awaiting HR pickup",
+          "queue_hr_review_in_progress": "HR review in progress",
+          "queue_awaiting_documents": "Awaiting documents",
+          "queue_awaiting_payments": "Awaiting payments",
+          "queue_awaiting_work_permit": "Awaiting work permit",
+          "queue_awaiting_red_paper": "Awaiting red paper",
+          "queue_approved_for_employment": "Approved for employment",
+          "queue_returned_to_recruitment": "Returned to recruitment",
+          "queue_rejected_by_hr": "Rejected by HR",
+          "filter_queue": "Filter by queue",
+          "delayed_hint": "Workforce is created only after employment approval.",
+          "accepted_unavailable": "Accepted handoff queue is unavailable (backend version mismatch). Pending pickup still loads below."
         },
         "tasks": {
           "heading": "Zadania HR",
@@ -1153,7 +1295,26 @@
       "not_found_dynamic": "Nie znaleziono dynamicznego",
       "quick_defaults": "Szybkie ustawienia domyślne",
       "subtitle_dynamic": "Dynamika napisów",
-      "title_dynamic": "Tytuł dynamiczny"
+      "title_dynamic": "Tytuł dynamiczny",
+      "see_reduced_profiles_label": "Reduced profiles",
+      "settings_desc": "Handoff, client portal, and contact attempt rules.",
+      "add_modal_hint": "Creates the client profile and access settings in one step.",
+      "access_column": "Access",
+      "access_needs_setup": "Needs setup",
+      "access_ready": "Configured",
+      "access_contact_on": "Contact tracking",
+      "access_not_configured": "Access settings are not linked yet. Configure them to enable handoff, portal, and contact attempts.",
+      "configure_access": "Configure access",
+      "access_link_created": "Client access configured.",
+      "contact_policy_active": "Enabled · max {count} attempts",
+      "contact_policy_inactive": "Disabled for this client",
+      "created_from_lead": "Client created from questionnaire",
+      "from_lead_badge": "Created from lead questionnaire",
+      "from_lead_hint": "Data was migrated from the submitted form. Review the profile, configure access, then continue working with this client.",
+      "from_lead_contact": "Contact",
+      "from_lead_reach": "Reach",
+      "open_source_lead": "Open lead",
+      "empty_why": "Clients are companies you place candidates with. Once linked they unlock handoff, portal access, and contact attempts."
     },
     "vacancies": {
       "list": {
@@ -4225,11 +4386,6 @@
       }
     },
     "candidate_card": {
-      "from_lead_badge": "Utworzony z leada",
-      "from_lead_hint": "Kontekst z intake leada jest tutaj — nie zaczynasz od zera.",
-      "from_lead_stage": "Etap leada",
-      "from_lead_intake": "Decyzja intake",
-      "from_lead_intake_summary": "Podsumowanie intake",
       "actions": {
         "delete_request": "Zgłoś usunięcie",
         "delete_request_loading": "Wysyłamy zgłoszenie…",
@@ -4743,7 +4899,9 @@
         "ok": "OK",
         "open": "Otwarte",
         "problematic": "Problematyczny",
-        "title": "Lista dokumentów"
+        "title": "Lista dokumentów",
+        "blockers": "Blockers",
+        "warnings": "Warnings"
       },
       "docs_panel": {
         "kpi": "KPI",
@@ -4752,7 +4910,8 @@
           "blockers": "Blokery",
           "workspace": "Obszar roboczy"
         },
-        "title": "Dokumenty"
+        "title": "Dokumenty",
+        "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%"
       },
       "docs_readiness": {
         "counts": "Liczy się",
@@ -4761,7 +4920,8 @@
         "open": "Otwarte",
         "problem": "Problem",
         "ready": "Gotowy",
-        "title": "Gotowość dokumentów"
+        "title": "Gotowość dokumentów",
+        "required": "Required"
       },
       "docs_workspace": {
         "hint": "Wskazówka",
@@ -4782,7 +4942,8 @@
         },
         "title": "Dokumenty",
         "upload_btn": "Prześlij",
-        "what_blocks_title": "Co blokuje tego kandydata"
+        "what_blocks_title": "Co blokuje tego kandydata",
+        "runtime_kpi": "{ready}/{total} satisfied · {percent}%"
       },
       "stage_blocked_by_docs": {
         "description": "Aby przejść dalej, uzupełnij brakujące lub problematyczne wymagane dokumenty.",
@@ -4853,25 +5014,6 @@
         "reject_reason_placeholder": "Powód (opcjonalnie)",
         "confirm_reject": "Potwierdź odrzucenie",
         "rejection_reason": "Powód odrzucenia: {reason}",
-        "evidence_paths": "Ścieżki dowodu",
-        "extraction_fields": "Dane z dokumentu",
-        "field_missing": "Brak",
-        "approve_blocked_extraction": "Uzupełnij brakujące pola dokumentu przed zatwierdzeniem dowodu.",
-        "alternative_status": {
-          "satisfied": "Kompletne",
-          "pending_verification": "Częściowe",
-          "missing": "Nierozpoczęte"
-        },
-        "field": {
-          "number": "Numer",
-          "country": "Kraj",
-          "issued_at": "Wydano",
-          "expires_at": "Ważne do",
-          "categories": "Kategorie",
-          "type": "Typ",
-          "voivodeship": "Województwo",
-          "issued_by": "Wydawca"
-        },
         "toast_selected": "Dowód wybrany",
         "toast_linked": "Dokument powiązany",
         "toast_approved": "Wymaganie potwierdzone",
@@ -4957,7 +5099,8 @@
         "vacancy_required_chip": "Wakatu / klient",
         "no_blockers": "Brak blokad",
         "required": "Wymagane",
-        "title": "Etap"
+        "title": "Etap",
+        "blocked_title_requirements": "Blocked by unconfirmed requirements"
       },
       "stage_journey": {
         "change_to": "Zmień na",
@@ -4986,6 +5129,10 @@
         "open_inbox": "Otwórz skrzynkę wiadomości",
         "loading_dialogs": "Ładowanie dialogów...",
         "empty_dialogs": "Brak powiązanych dialogów. Otwórz Messages i podłącz tego kandydata w nagłówku dialogu."
+      },
+      "stage_blocked_by_requirements": {
+        "title": "Blocked by requirements",
+        "description_generic": "Confirm all requirements before moving forward."
       }
     },
     "fleet": {
@@ -6542,8 +6689,6 @@
         }
       },
       "pipeline_errors": {
-        "AD_NOT_MAPPED": "Reklama Meta nie jest zmapowana na ofertę — wybierz ofertę ręcznie lub dodaj mapowanie ad_id.",
-        "VACANCY_NOT_RESOLVED": "Nie udało się ustalić oferty — skonfiguruj routing lub wybierz ofertę ręcznie.",
         "LEAD_FIT_NO_MATCH": "Kryteria oferty niespełnione — pominięto autotworzenie kandydata.",
         "LEAD_FIT_NEEDS_INFO": "Za mało danych do oceny fit — uzupełnij lead lub zmień kryteria, potem Process."
       },
@@ -6738,12 +6883,8 @@
         },
         "public_intake_readonly": {
           "title": "Lead z public intake",
-          "body": "Lead powstał z publicznej ankiety kandydata. Decyzja intake nastąpiła przy wysyłce — odrzucenie, pula, prośba o informacje i ręczny process nie są dostępne w tym panelu CRM.",
-          "client_title": "Zapytanie klienta z formularza publicznego",
-          "client_body": "Lead powstał z formularza zapytania klienta. Użyj akcji client lead poza recruitment intake rail.",
-          "draft_title": "Publiczna ankieta w trakcie",
-          "draft_body": "Kandydat wypełnia jeszcze formularz. Akcje CRM intake są dostępne po wysyłce i przetworzeniu outcome.",
-          "payload_hint": "Kontynuuj na podstawie danych zgłoszenia (payload / powiązane rekordy) lub otwórz powiązanego kandydata po utworzeniu."
+          "body": "Lead powstał z public intake. Odrzucenie, pula, prośba o informacje i ręczny process nie są dostępne dla tego źródła w CRM.",
+          "payload_hint": "Kontynuuj na podstawie danych zgłoszenia (payload / powiązane rekordy) poza tym panelem intake."
         },
         "audit": {
           "badge": "Kandydat utworzony",
@@ -8309,6 +8450,79 @@
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID tenanta"
       }
+    },
+    "surfaces": {
+      "blocker": {
+        "title": "What is blocking progress",
+        "hr_review_title": "HR review blockers"
+      },
+      "readiness": {
+        "title": "Readiness",
+        "decision_title": "Before approval"
+      },
+      "document_status": {
+        "missing": "Missing",
+        "pending": "Pending",
+        "verified": "Verified",
+        "expiring": "Expiring",
+        "rejected": "Rejected",
+        "in_review": "In review"
+      }
+    },
+    "notification_alerts": {
+      "title": "Notification Center",
+      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
+      "list_title": "Open alerts ({count})",
+      "empty": "No alerts match the current filters.",
+      "detail_empty": "Select an alert to view details.",
+      "expires_on": "Expires on {{date}}",
+      "errors": {
+        "load": "Failed to load notification alerts",
+        "status": "Failed to update alert status",
+        "sync": "Failed to sync document expiry alerts"
+      },
+      "sync": {
+        "success": "Expiry alerts synced",
+        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+      },
+      "toast": {
+        "resolved": "Alert marked as resolved",
+        "ignored": "Alert marked as ignored"
+      },
+      "filters": {
+        "event_type": "Event type",
+        "event_type_all": "All expiry events",
+        "event_type_expired": "Expired documents",
+        "event_type_expiring_soon": "Expiring soon",
+        "source_layer": "Source",
+        "source_document_expiry": "Document expiry notifications",
+        "source_all": "All sources",
+        "status": {
+          "open": "Open",
+          "resolved": "Resolved",
+          "ignored": "Ignored"
+        }
+      },
+      "event_code": {
+        "document_expired": "Document expired",
+        "document_expiring_soon": "Document expiring soon"
+      },
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning"
+      },
+      "detail": {
+        "document_type": "Document type",
+        "owner": "Owner",
+        "expires_on": "Expires on",
+        "source_layer": "Source layer"
+      },
+      "actions": {
+        "mark_resolved": "Mark resolved",
+        "mark_ignored": "Mark ignored",
+        "open_owner": "Open owner profile",
+        "sync_now": "Sync now"
+      }
     }
   },
   "public": {
@@ -9491,6 +9705,14 @@
         "in_progress": "W trakcie rozwoju",
         "loading": "Ładowanie danych...",
         "saving": "Zapisywanie..."
+      },
+      "presentation": {
+        "fields": {
+          "recruitment.candidate.first_name": "Imię"
+        },
+        "profiles": {
+          "recruitment.candidate.office_worker": "Pracownik biurowy"
+        }
       }
     },
     "status_page": {
@@ -10372,6 +10594,18 @@
       },
       "template": {
         "select": "Wybierać"
+      },
+      "runtime_badges": {
+        "expiring_soon": "Expiring soon",
+        "satisfies_requirement": "Satisfies requirement"
+      },
+      "runtime_filters": {
+        "expired": "Expired",
+        "expiring_soon": "Expiring soon",
+        "missing": "Missing",
+        "pending_review": "Pending review",
+        "rejected": "Rejected",
+        "satisfied": "Satisfied"
       }
     },
     "integrations_hub": {
@@ -11455,7 +11689,8 @@
         "create": "Nie udało się utworzyć formularza",
         "save": "Nie udało się zapisać formularza",
         "copy": "Nie udało się skopiować"
-      }
+      },
+      "configure": "Configure"
     },
     "tenant_links": {
       "header_kicker": "Powiązanie workspace z organizacjami klientów i zasady przekazania.",
@@ -11483,13 +11718,13 @@
       "type_org": "Własny portal klienta",
       "placeholders": {
         "tenant_uuid": "517319d0-b53e-493d-9ac8-40f23091a35d"
-      }
+      },
+      "contact_policy_title": "Contact attempts"
     },
     "candidate_profiles_page": {
       "header_kicker": "Szablony pól, etapów lejka i dokumentów używane przez wakaty.",
       "title": "Profile kandydatów",
       "subtitle": "Twórz i utrzymuj szablony profili, z których korzystają wakaty przy intake i pipeline.",
-      "deprecation_banner": "Macierze pól i dokumentów w config profilu są przestarzałe. Nową semantykę ustawiaj w Entity Profile, formularzach intake i układzie karty Field Registry. Dla mapowanych profili systemowych edycja config jest blokowana.",
       "fix_orphan_vacancies": "Przypisz wakaty bez profilu",
       "import": "Import",
       "bulk_update": "Masowa zmiana",
@@ -11728,6 +11963,62 @@
         "saving": "Zapisywanie…",
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Wpisz opcję i naciśnij Enter"
+      }
+    },
+    "intake_forms": {
+      "header_kicker": "Intake sources",
+      "detail_title": "Intake form",
+      "detail_subtitle": "Read-only view of Entity Profile, presentation fields, public link, and submit pipeline. UI does not create canon.",
+      "back_list": "All intake forms",
+      "copy": "Copy",
+      "open_public": "Open",
+      "open_lead": "Open lead",
+      "preview_empty": "No fields",
+      "preview_hint": "Display-only fields returned by Form Presentation Runtime — not editable in P6.",
+      "inactive_hint": "Activate the form in list settings before sharing or smoke testing.",
+      "smoke_hint": "Creates a test Lead draft using the same pipeline as public intake. Verifies no direct Candidate INSERT.",
+      "smoke_run": "Send test lead draft",
+      "sections": {
+        "form": "Lead form slot",
+        "entity_profile": "Entity Profile",
+        "intake_source": "Intake Source profile",
+        "preview": "Field preview (P5A runtime)",
+        "submit": "Submit destination",
+        "public_link": "Public link",
+        "smoke": "Smoke test submit"
+      },
+      "fields": {
+        "status": "Status",
+        "slug": "Public slug",
+        "profile_code": "Profile code",
+        "profile_name": "Name",
+        "presentation": "Presentation",
+        "route_intent": "Route intent",
+        "provider": "Provider",
+        "assignee": "Default assignee"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "label": "Label",
+        "field": "Field code",
+        "level": "Intake level",
+        "widget": "Widget"
+      },
+      "submit": {
+        "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
+        "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"
+      },
+      "toast": {
+        "copied": "Copied",
+        "smoke_ok": "Smoke test lead draft created"
+      },
+      "errors": {
+        "load_detail": "Failed to load intake form",
+        "copy": "Could not copy",
+        "smoke": "Smoke test failed"
       }
     }
   }

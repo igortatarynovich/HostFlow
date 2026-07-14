@@ -2,7 +2,7 @@
 
 **Status:** Active — backend-only (after PR-INFRA merge recommended for safe pytest).  
 **Branch:** `feat/pr15-hr-approve-readiness`  
-**Depends on:** PR13 hybrid plan. **Not in scope:** PR14 UX, PR16, email mock (see [PR-INFRA](PR-INFRA-pytest-email-mock.md)).
+**Depends on:** PR13 hybrid plan. **Not in scope:** PR14 UX, PR16, email mock (branch `feat/pr-infra-pytest-email-mock`).
 
 ---
 

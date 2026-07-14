@@ -76,7 +76,7 @@ function SortableStageRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`border-t border-slate-100 ${isDragging ? 'bg-white shadow-lg' : 'bg-white'} ${disabled ? 'opacity-50' : ''}`}
+      className={`border-t border-slate-100 ${isDragging ? 'bg-white shadow-md' : 'bg-white'} ${disabled ? 'opacity-50' : ''}`}
     >
       <td className="py-2 pr-2">
         <div
@@ -92,14 +92,14 @@ function SortableStageRow({
       <td className="py-2 pr-2 font-mono text-sm">{stage.code}</td>
       <td className="py-2 pr-2 font-medium">{stage.label}</td>
       <td className="py-2 pr-2">
-        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+        <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
           {stage.system_stage}
         </span>
       </td>
       {showLeadConversionRoot ? (
         <td className="py-2 pr-2 text-xs text-slate-600">
           {stage.conversion_root_v1 ? (
-            <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-800">
+            <span className="rounded-lg bg-blue-50 px-2 py-0.5 font-medium text-blue-800">
               {stage.conversion_root_v1}
             </span>
           ) : (
@@ -110,7 +110,7 @@ function SortableStageRow({
       <td className="py-2 pr-2 text-sm text-slate-500">{stage.order}</td>
       <td className="py-2">
         <span
-          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${stage.is_terminal ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}
+          className={`inline-flex rounded-lg px-2 py-0.5 text-xs font-medium ${stage.is_terminal ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}
         >
           {stage.is_terminal
             ? t('admin.funnels.status_terminal')
@@ -323,7 +323,7 @@ function StageCreateEditModal({
                       setLabel(c)
                     }
                   }}
-                  className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs text-slate-700 hover:border-brand-300 hover:text-brand-700"
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-0.5 text-xs text-slate-700 hover:border-brand-300 hover:text-brand-700"
                 >
                   {c}
                 </button>
@@ -884,9 +884,44 @@ export default function FunnelsPage() {
           ))}
         </select>
       </div>
-      <span className="inline-flex self-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-800">
+      <span className="inline-flex self-center rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800">
         recruitment
       </span>
+    </div>
+  )
+
+  const funnelSubpageHeaderProps = {
+    className: 'mb-2',
+    backLabel: t('admin.settings.subpage.back_all'),
+    kicker: t('admin.funnels.header_kicker'),
+    title: funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title'),
+    subtitle: funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle'),
+  } as const
+
+  const funnelTabButtons = (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => setFunnelTab('candidate')}
+        className={`rounded-lg px-3 py-2 text-sm font-medium ${
+          funnelTab === 'candidate'
+            ? 'bg-brand-600 text-white'
+            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+        }`}
+      >
+        {t('admin.funnels.tab_candidates')}
+      </button>
+      <button
+        type="button"
+        onClick={() => setFunnelTab('lead')}
+        className={`rounded-lg px-3 py-2 text-sm font-medium ${
+          funnelTab === 'lead'
+            ? 'bg-brand-600 text-white'
+            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+        }`}
+      >
+        {t('admin.funnels.tab_leads')}
+      </button>
     </div>
   )
 
@@ -904,18 +939,18 @@ export default function FunnelsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
         {companyScopeBar}
         <div className="text-sm text-slate-500">
           {t('common.loading')}
         </div>
-      </div>
+      </SettingsSubpageHeader>
     )
   }
 
   if (!companyId) {
     return (
-      <div className="space-y-4">
+      <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
         {errorBanner}
         {companyScopeBar}
         <div className="card p-8 text-center text-slate-600">
@@ -923,45 +958,16 @@ export default function FunnelsPage() {
             defaultValue: 'Select a company to manage its recruitment funnels.',
           })}
         </div>
-      </div>
+      </SettingsSubpageHeader>
     )
   }
 
   if (funnels.length === 0) {
     return (
-      <div className="space-y-4">
+      <>
+      <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
         {errorBanner}
-        <SettingsSubpageHeader
-          className="mb-2"
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('admin.funnels.header_kicker')}
-          title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
-          subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
-        />
-        <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-4">
-          <button
-            type="button"
-            onClick={() => setFunnelTab('candidate')}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              funnelTab === 'candidate'
-                ? 'bg-brand-600 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            {t('admin.funnels.tab_candidates')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFunnelTab('lead')}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              funnelTab === 'lead'
-                ? 'bg-brand-600 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            {t('admin.funnels.tab_leads')}
-          </button>
-        </div>
+        <div className="settings-toolbar">{funnelTabButtons}</div>
         {companyScopeBar}
         <div className="card p-8 text-center">
           <p className="text-slate-600 mb-4">
@@ -975,55 +981,25 @@ export default function FunnelsPage() {
             + {t('admin.funnels.create_funnel')}
           </button>
         </div>
-        {showCreateFunnelModal && companyId && (
-          <FunnelCreateModal
-            onClose={() => setShowCreateFunnelModal(false)}
-            onSave={handleCreateFunnel}
-            disabled={saving}
-            funnelType={funnelTab}
-            companyId={companyId}
-          />
-        )}
-      </div>
+      </SettingsSubpageHeader>
+      {showCreateFunnelModal && companyId && (
+        <FunnelCreateModal
+          onClose={() => setShowCreateFunnelModal(false)}
+          onSave={handleCreateFunnel}
+          disabled={saving}
+          funnelType={funnelTab}
+          companyId={companyId}
+        />
+      )}
+      </>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <>
+    <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
       {errorBanner}
-      <SettingsSubpageHeader
-        className="mb-2"
-        backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.funnels.header_kicker')}
-        title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
-        subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
-      />
-      <div className="settings-toolbar">
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setFunnelTab('candidate')}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              funnelTab === 'candidate'
-                ? 'bg-brand-600 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            {t('admin.funnels.tab_candidates')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFunnelTab('lead')}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              funnelTab === 'lead'
-                ? 'bg-brand-600 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            {t('admin.funnels.tab_leads')}
-          </button>
-        </div>
-      </div>
+      <div className="settings-toolbar">{funnelTabButtons}</div>
       {companyScopeBar}
 
       <div className="settings-toolbar">
@@ -1050,7 +1026,7 @@ export default function FunnelsPage() {
         <button
           type="button"
           onClick={() => setShowCreateFunnelModal(true)}
-          className="btn-secondary text-sm mt-5"
+          className="btn-secondary text-sm mt-4"
         >
           + {t('admin.funnels.new_funnel')}
         </button>
@@ -1059,7 +1035,7 @@ export default function FunnelsPage() {
             type="button"
             onClick={() => void handleDeleteFunnel()}
             disabled={saving}
-            className="btn-danger text-sm mt-5"
+            className="btn-danger text-sm mt-4"
           >
             {t('admin.funnels.delete_funnel', { defaultValue: 'Delete funnel' })}
           </button>
@@ -1156,7 +1132,7 @@ export default function FunnelsPage() {
           {DEFAULT_STAGE_CODES.map((code) => (
             <span
               key={code}
-              className="inline-flex rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700"
+              className="inline-flex rounded-lg bg-slate-100 px-3 py-0.5 text-xs font-medium text-slate-700"
             >
               {code}
             </span>
@@ -1192,6 +1168,7 @@ export default function FunnelsPage() {
           companyId={companyId}
         />
       )}
-    </div>
+    </SettingsSubpageHeader>
+    </>
   )
 }

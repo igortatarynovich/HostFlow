@@ -14,7 +14,8 @@ import { listCompanies } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
@@ -149,7 +150,7 @@ export default function ClientLinkDetailPage() {
 
   if (!tenantId || !linkId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
         <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка...' })}</p>
       </div>
     )
@@ -157,7 +158,7 @@ export default function ClientLinkDetailPage() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
         <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка...' })}</p>
       </div>
     )
@@ -175,7 +176,7 @@ export default function ClientLinkDetailPage() {
         <Link to={CRM_APP_PATHS.agencyClients} className="text-sm text-brand-600 hover:underline">
           ← {backToListLabel}
         </Link>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-6">
           <ErrorRecoveryBanner
             info={bannerInfo}
             onRetry={() => void load()}
@@ -200,16 +201,13 @@ export default function ClientLinkDetailPage() {
     : ''
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Link to={CRM_APP_PATHS.agencyClients} className="text-sm text-brand-600 hover:underline">
-          ← {backToListLabel}
-        </Link>
-      </div>
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader title={name} breadcrumbCurrentLabel={name} kind="browse" />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
-      <PageBreadcrumb className="max-w-4xl" />
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             {(link.client_company_id || link.handoff_include_company_id || companyId) ? (
@@ -220,7 +218,7 @@ export default function ClientLinkDetailPage() {
                 {name}
               </Link>
             ) : (
-              <h1 className="text-xl font-semibold text-slate-900">{name}</h1>
+              <p className="text-xl font-semibold text-slate-900">{name}</p>
             )}
             {link.client_tenant_id && (
               <p className="mt-1 text-sm text-slate-500">
@@ -306,5 +304,6 @@ export default function ClientLinkDetailPage() {
         </div>
       </div>
     </div>
+    </PageShell>
   )
 }
