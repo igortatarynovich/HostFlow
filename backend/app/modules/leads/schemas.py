@@ -110,6 +110,31 @@ class LeadDuplicateDecisionRequest(BaseModel):
     note: Optional[str] = Field(default=None, max_length=2000)
 
 
+class LeadQuestionnaireInviteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mark_sent: bool = Field(
+        default=False,
+        description="When true, marks the invite as sent (Wyślij ankietę).",
+    )
+
+
+class LeadQuestionnaireInviteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    lead_id: UUID
+    token: str
+    apply_url: str
+    status: str
+    entity_profile_code: Optional[str] = None
+    presentation_code: Optional[str] = None
+    sent_at: Optional[datetime] = None
+    opened_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+
+
 class LeadOut(BaseModel):
     id: UUID
     tenant_id: UUID

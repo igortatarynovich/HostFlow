@@ -3760,6 +3760,15 @@ async def get_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+        from backend.app.modules.leads.lead_questionnaire_invite import mark_invite_opened
+
+        await mark_invite_opened(
+            db,
+            invite=public_session.invite,
+            lead=public_session.lead,
+        )
+        await db.commit()
     if public_session.kind == "legacy_candidate" and public_session.candidate is not None:
         if _ensure_status_share_token(public_session.candidate):
             await db.commit()
@@ -4170,6 +4179,29 @@ async def update_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            session_intake_state,
+            write_session_intake_state,
+        )
+        from backend.app.modules.leads.lead_questionnaire_invite import (
+            mark_invite_in_progress,
+            merge_presentation_into_sales_summary,
+        )
+
+        state = session_intake_state(public_session)
+        state = _merge_intake_payload_into_state(state, payload.data)
+        write_session_intake_state(public_session, state)
+        merge_presentation_into_sales_summary(public_session.lead, state, submitted=False)
+        await mark_invite_in_progress(
+            db,
+            invite=public_session.invite,
+            lead=public_session.lead,
+        )
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
     if public_session.kind == "lead_draft" and public_session.lead is not None:
         from backend.app.entity_profile.public_intake_draft_session import (
             session_intake_state,
@@ -4216,6 +4248,53 @@ async def submit_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            session_intake_state,
+            write_session_intake_state,
+        )
+        from backend.app.entity_profile.public_intake_presentation_bridge import (
+            resolve_public_session_form_presentation,
+            validate_presentation_required_fields,
+        )
+        from backend.app.modules.leads.lead_questionnaire_invite import mark_invite_submitted
+
+        if not payload.has_all_required():
+            raise HTTPException(status_code=422, detail="Required consents must be accepted before submit")
+        state = session_intake_state(public_session)
+        state["agreements"] = {
+            "general": payload.consents.general,
+            "employer_share": payload.consents.employer_share,
+            "terms_acceptance": payload.consents.terms_acceptance,
+            "cookies_accepted": payload.cookies_accepted,
+        }
+        write_session_intake_state(public_session, state)
+        form_presentation = await resolve_public_session_form_presentation(
+            db,
+            tenant_id=str(tenant_id),
+            intake_state=state,
+        )
+        if form_presentation:
+            missing = validate_presentation_required_fields(form_presentation, state)
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "presentation_required_fields",
+                        "message": "Required presentation fields are missing",
+                        "missing": missing,
+                    },
+                )
+        await mark_invite_submitted(
+            db,
+            invite=public_session.invite,
+            lead=public_session.lead,
+            intake_state=state,
+        )
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
     if public_session.kind == "lead_draft" and public_session.lead is not None:
         from backend.app.entity_profile.public_intake_draft_session import (
             mark_session_submitted,
