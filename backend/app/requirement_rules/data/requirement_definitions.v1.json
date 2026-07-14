@@ -1,0 +1,334 @@
+{
+  "registry_version": "1.1.0",
+  "effective_from": "2026-07-13",
+  "adr": "ADR-018",
+  "description": "Canonical RequirementDefinition registry with separated legal stay, labor market access, and process evidence.",
+  "requirements": [
+    {
+      "requirement_code": "identity_document",
+      "public_name": "Identity document",
+      "business_purpose": "identification",
+      "alternatives": [
+        {
+          "alternative_code": "approved_passport",
+          "kind": "document",
+          "document_type": "passport",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "approved_national_identity_card",
+          "kind": "document",
+          "document_type": "national_identity_card",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "legal_stay_confirmation",
+      "public_name": "Legal stay confirmation",
+      "business_purpose": "legal_stay",
+      "alternatives": [
+        {
+          "alternative_code": "domestic_or_free_movement_stay",
+          "kind": "person_fact",
+          "conditions": [
+            {"kind": "person_citizenship_in", "groups": ["pl", "eu", "eea", "ch"]}
+          ]
+        },
+        {
+          "alternative_code": "approved_visa",
+          "kind": "document",
+          "document_type": "visa",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "approved_residence_card",
+          "kind": "document",
+          "document_type": "residence_card",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "eu_residence_registration",
+          "kind": "document",
+          "document_type": "eu_residence_registration",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "labor_market_access",
+      "public_name": "Labor market access",
+      "business_purpose": "right_to_work",
+      "alternatives": [
+        {
+          "alternative_code": "free_movement_labor_access",
+          "kind": "person_fact",
+          "conditions": [
+            {"kind": "person_citizenship_in", "groups": ["pl", "eu", "eea", "ch"]}
+          ]
+        },
+        {
+          "alternative_code": "work_permit_document",
+          "kind": "document",
+          "document_type": "work_permit",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "residence_card_labor_access",
+          "kind": "document",
+          "document_type": "residence_card",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"},
+            {"kind": "field_in", "field": "work_access", "values": ["limited", "full"]}
+          ]
+        },
+        {
+          "alternative_code": "visa_labor_access",
+          "kind": "document",
+          "document_type": "visa",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"},
+            {"kind": "field_in", "field": "work_access", "values": ["limited", "full"]}
+          ]
+        },
+        {
+          "alternative_code": "combined_residence_work_decision",
+          "kind": "document",
+          "document_type": "temporary_residence_and_work_decision",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "field_in", "field": "decision_category", "values": ["temporary_residence_and_work"]}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "work_authorization_process",
+      "public_name": "Work authorization process",
+      "business_purpose": "work_permit_process",
+      "process_requirement": true,
+      "alternatives": [
+        {
+          "alternative_code": "work_permit_issued",
+          "kind": "document",
+          "document_type": "work_permit",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "work_permit_decision_issued",
+          "kind": "document",
+          "document_type": "work_permit_decision",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "field_in", "field": "decision_category", "values": ["work_permit"]}
+          ]
+        },
+        {
+          "alternative_code": "process_submitted",
+          "kind": "process_state",
+          "conditions": [
+            {"kind": "process_state_in", "states": ["application_submitted", "in_progress"]}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "residence_authorization_process",
+      "public_name": "Residence authorization process",
+      "business_purpose": "residence_permit_process",
+      "process_requirement": true,
+      "alternatives": [
+        {
+          "alternative_code": "residence_card_issued",
+          "kind": "document",
+          "document_type": "residence_card",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "temporary_residence_decision",
+          "kind": "document",
+          "document_type": "temporary_residence_decision",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "field_in", "field": "decision_category", "values": ["temporary_residence"]}
+          ]
+        },
+        {
+          "alternative_code": "process_submitted",
+          "kind": "process_state",
+          "conditions": [
+            {"kind": "process_state_in", "states": ["application_submitted", "in_progress"]}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "driver_entitlement",
+      "public_name": "Driver entitlement (CE)",
+      "business_purpose": "driver_qualification",
+      "alternatives": [
+        {
+          "alternative_code": "approved_driver_license_ce",
+          "kind": "document",
+          "document_type": "driver_license",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"},
+            {"kind": "field_contains_any", "field": "categories", "values": ["CE", "C1E", "DE"]}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "professional_qualification",
+      "public_name": "Professional qualification (Code 95)",
+      "business_purpose": "driver_qualification",
+      "alternatives": [
+        {
+          "alternative_code": "approved_qualification_card",
+          "kind": "document",
+          "document_type": "driver_qualification_card",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        },
+        {
+          "alternative_code": "driver_license_with_code95",
+          "kind": "document",
+          "document_type": "driver_license",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"},
+            {"kind": "field_contains_any", "field": "categories", "values": ["CE", "C1E", "DE"]},
+            {"kind": "document_not_expired", "field": "code_95_valid_to"}
+          ],
+          "also_satisfies": ["driver_entitlement"]
+        }
+      ]
+    },
+    {
+      "requirement_code": "tachograph_eligibility",
+      "public_name": "Tachograph eligibility",
+      "business_purpose": "driver_qualification",
+      "alternatives": [
+        {
+          "alternative_code": "approved_tachograph_card",
+          "kind": "document",
+          "document_type": "tachograph_card",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "psychological_fitness",
+      "public_name": "Psychological fitness",
+      "business_purpose": "driver_qualification",
+      "alternatives": [
+        {
+          "alternative_code": "approved_psychological_certificate",
+          "kind": "document",
+          "document_type": "psychological_certificate",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "medical_fitness",
+      "public_name": "Medical fitness",
+      "business_purpose": "driver_qualification",
+      "alternatives": [
+        {
+          "alternative_code": "approved_medical_certificate",
+          "kind": "document",
+          "document_type": "medical_certificate",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "expiry_date"}
+          ]
+        }
+      ]
+    },
+    {
+      "requirement_code": "driver_attestation",
+      "public_name": "Driver attestation (Świadectwo kierowcy)",
+      "business_purpose": "transport_compliance",
+      "alternatives": [
+        {
+          "alternative_code": "issued_driver_attestation",
+          "kind": "document",
+          "document_type": "driver_attestation",
+          "conditions": [
+            {"kind": "document_review", "status": "approved"},
+            {"kind": "document_schema_valid"},
+            {"kind": "document_not_expired", "field": "valid_to"}
+          ]
+        },
+        {
+          "alternative_code": "application_submitted",
+          "kind": "process_state",
+          "conditions": [
+            {"kind": "process_state_in", "states": ["application_submitted", "in_progress"]}
+          ]
+        }
+      ]
+    }
+  ],
+  "legacy_slot_code_map": {
+    "work_authorization": "labor_market_access",
+    "voivodeship_decision": "residence_authorization_process",
+    "driver_license_with_code95": ["driver_entitlement", "professional_qualification"],
+    "psychological_tests": "psychological_fitness",
+    "tachograph_card": "tachograph_eligibility"
+  }
+}
