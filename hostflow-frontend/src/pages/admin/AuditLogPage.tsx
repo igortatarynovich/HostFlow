@@ -72,72 +72,50 @@ export default function AuditLogPage() {
   // both render trees expose tabs that switch between the two values.
   const currentTab: Tab = tab
 
-  if (currentTab === 'deletion') {
-    return (
-      <div className="space-y-4">
-        <SettingsSubpageHeader
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('admin.settings.audit.header_kicker')}
-          title={t('admin.settings.audit.page_title')}
-          subtitle={t('admin.settings.audit.page_subtitle')}
-        />
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={(currentTab as Tab) === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-            onClick={() => setTab('audit')}
-          >
-            {t('admin.settings.audit.tabs.audit')}
-          </button>
-          <button
-            type="button"
-            className={(currentTab as Tab) === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-            onClick={() => setTab('deletion')}
-          >
-            {t('admin.settings.audit.tabs.deletion')}
-          </button>
-        </div>
-        <DeletionRequestsPage />
-      </div>
-    )
-  }
+  const auditTabs = (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        className={currentTab === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+        onClick={() => setTab('audit')}
+      >
+        {t('admin.settings.audit.tabs.audit')}
+      </button>
+      <button
+        type="button"
+        className={currentTab === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+        onClick={() => setTab('deletion')}
+      >
+        {t('admin.settings.audit.tabs.deletion')}
+      </button>
+    </div>
+  )
 
   return (
-    <div className="space-y-4">
-      <SettingsSubpageHeader
-        backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.settings.audit.header_kicker')}
-        title={t('admin.settings.audit.page_title')}
-        subtitle={t('admin.settings.audit.page_subtitle')}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex gap-2">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.settings.audit.header_kicker')}
+      title={t('admin.settings.audit.page_title')}
+      subtitle={t('admin.settings.audit.page_subtitle')}
+      actions={
+        currentTab === 'audit' ? (
           <button
             type="button"
-            className={(currentTab as Tab) === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-            onClick={() => setTab('audit')}
+            className="btn-secondary btn-sm"
+            onClick={handleRefresh}
+            disabled={loading}
           >
-            {t('admin.settings.audit.tabs.audit')}
+            {loading ? t('admin.settings.audit.refreshing') : t('admin.settings.audit.refresh')}
           </button>
-          <button
-            type="button"
-            className={(currentTab as Tab) === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-            onClick={() => setTab('deletion')}
-          >
-            {t('admin.settings.audit.tabs.deletion')}
-          </button>
-        </div>
-        <button
-          type="button"
-          className="btn-secondary btn-sm"
-          onClick={handleRefresh}
-          disabled={loading}
-        >
-          {loading ? t('admin.settings.audit.refreshing') : t('admin.settings.audit.refresh')}
-        </button>
-      </div>
-
-      <div className="card p-4 space-y-4">
+        ) : undefined
+      }
+    >
+      {auditTabs}
+      {currentTab === 'deletion' ? (
+        <DeletionRequestsPage />
+      ) : (
+        <>
+          <div className="card p-4 space-y-4">
         <div className="flex flex-wrap gap-3">
           <label className="flex flex-col text-sm gap-1">
             {t('admin.settings.audit.filters.user_id')}
@@ -281,7 +259,9 @@ export default function AuditLogPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+    </SettingsSubpageHeader>
   )
 }
