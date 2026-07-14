@@ -1050,7 +1050,17 @@ export default function UsersPage() {
     : null
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('app.admin.users.page.header_kicker')}
+      title={t('app.admin.users.page.title')}
+      subtitle={t('app.admin.users.page.subtitle')}
+      actions={
+        <button className="btn-secondary" onClick={() => void loadUsers()} disabled={loading}>
+          {loading ? t('app.admin.users.page.refresh.loading') : t('app.admin.users.page.refresh.action')}
+        </button>
+      }
+    >
       {forbidden && (
         <div className="rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
           {t('app.admin.users.page.access_denied_forbidden')}
@@ -1138,18 +1148,6 @@ export default function UsersPage() {
           </div>
         </section>
       )}
-
-      <SettingsSubpageHeader
-        backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('app.admin.users.page.header_kicker')}
-        title={t('app.admin.users.page.title')}
-        subtitle={t('app.admin.users.page.subtitle')}
-        actions={
-          <button className="btn-secondary" onClick={() => void loadUsers()} disabled={loading}>
-            {loading ? t('app.admin.users.page.refresh.loading') : t('app.admin.users.page.refresh.action')}
-          </button>
-        }
-      />
 
       {usersListErrorBanner && (
         <ErrorRecoveryBanner
@@ -1416,6 +1414,6 @@ export default function UsersPage() {
           )}
         </div>
       </div>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
