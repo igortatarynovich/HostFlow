@@ -658,6 +658,20 @@ async def create_candidate_full(
     )
     db.add(history_entry)
 
+    await db.flush()
+    row = await db.execute(
+        select(Candidate).where(Candidate.id == cand_id, Candidate.tenant_id == tenant_id)
+    )
+    c = row.scalar_one()
+    from backend.app.services.candidate_creation_service import finalize_new_candidate_record
+
+    await finalize_new_candidate_record(
+        db,
+        tenant_id=tenant_id,
+        candidate=c,
+        source="create_candidate_full",
+    )
+
     await db.commit()
 
     row = await db.execute(
