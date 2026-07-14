@@ -1031,36 +1031,27 @@ export default function BillingWorkspacePage() {
   }, [reloadSummary, t])
 
   return (
-    <div className="space-y-4">
-      <header className="settings-panel">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <IconCreditCard size={18} stroke={1.9} />
-          {t('app.settings.billing.badge')}
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('app.settings.billing.header_kicker')}
+      title={t('app.settings.billing.title')}
+      subtitle={<p className="max-w-3xl">{t('app.settings.billing.subtitle')}</p>}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
+            <IconRefresh size={15} stroke={1.9} />
+            <span>{t('common.actions.refresh')}</span>
+          </button>
+          <button type="button" className="btn-secondary" onClick={openPortal} disabled={isPortalLoading}>
+            <IconExternalLink size={15} stroke={1.9} />
+            <span>{t('app.settings.billing.portal')}</span>
+          </button>
+          <Link to={CRM_APP_PATHS.settingsBillingPlan} className="btn-secondary">
+            <span>Compare plans</span>
+          </Link>
         </div>
-        <div className="mt-3">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('app.settings.billing.header_kicker')}
-            title={t('app.settings.billing.title')}
-            subtitle={<p className="max-w-3xl">{t('app.settings.billing.subtitle')}</p>}
-            actions={
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
-                  <IconRefresh size={15} stroke={1.9} />
-                  <span>{t('common.actions.refresh')}</span>
-                </button>
-                <button type="button" className="btn-secondary" onClick={openPortal} disabled={isPortalLoading}>
-                  <IconExternalLink size={15} stroke={1.9} />
-                  <span>{t('app.settings.billing.portal')}</span>
-                </button>
-                <Link to={CRM_APP_PATHS.settingsBillingPlan} className="btn-secondary">
-                  <span>Compare plans</span>
-                </Link>
-              </div>
-            }
-          />
-        </div>
-      </header>
+      }
+    >
 
       {showWorkspaceBlocked ? (
         <section className="rounded-xl border border-rose-400 bg-rose-50 p-4 shadow-sm">
@@ -2058,6 +2049,6 @@ export default function BillingWorkspacePage() {
           </div>
         ) : null}
       </Modal>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

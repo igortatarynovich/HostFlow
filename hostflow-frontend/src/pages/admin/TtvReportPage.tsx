@@ -58,7 +58,47 @@ export default function TtvReportPage() {
   const steps = ORDER.map((key) => report?.steps.find((s) => s.step_key === key) ?? null)
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.ttv.header_kicker')}
+      title={t('admin.ttv.title', { defaultValue: 'Time To Value (North Star path)' })}
+      subtitle={
+        <div>
+          <p>
+            {t('admin.ttv.subtitle', {
+              defaultValue: 'Median and p90 times between signup and key milestones (per tenant).',
+            })}
+          </p>
+          {report ? (
+            <p className="mt-1 text-xs text-slate-500">
+              {t('admin.ttv.actors', {
+                defaultValue: 'Actors in sample: {count}',
+                values: { count: report.actors },
+              })}
+            </p>
+          ) : null}
+        </div>
+      }
+      actions={
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-slate-600">
+            {t('admin.ttv.days_label', { defaultValue: 'Window (days)' })}
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={180}
+            value={days}
+            onChange={(e) => {
+              const next = Number.parseInt(e.target.value, 10)
+              if (!Number.isFinite(next)) return
+              setDays(Math.min(180, Math.max(1, next)))
+            }}
+            className="input h-8 w-20 px-2 py-1 text-xs"
+          />
+        </div>
+      }
+    >
       {error && (
         <ErrorRecoveryBanner
           info={{ title: error, hint: t('app.common.retry_hint') }}
@@ -67,48 +107,6 @@ export default function TtvReportPage() {
         />
       )}
       <section className="card p-6">
-        <SettingsSubpageHeader
-          className="mb-4"
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('admin.ttv.header_kicker')}
-          title={t('admin.ttv.title', { defaultValue: 'Time To Value (North Star path)' })}
-          subtitle={
-            <div>
-              <p>
-                {t('admin.ttv.subtitle', {
-                  defaultValue: 'Median and p90 times between signup and key milestones (per tenant).',
-                })}
-              </p>
-              {report ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  {t('admin.ttv.actors', {
-                    defaultValue: 'Actors in sample: {count}',
-                    values: { count: report.actors },
-                  })}
-                </p>
-              ) : null}
-            </div>
-          }
-          actions={
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-slate-600">
-                {t('admin.ttv.days_label', { defaultValue: 'Window (days)' })}
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={180}
-                value={days}
-                onChange={(e) => {
-                  const next = Number.parseInt(e.target.value, 10)
-                  if (!Number.isFinite(next)) return
-                  setDays(Math.min(180, Math.max(1, next)))
-                }}
-                className="input h-8 w-20 px-2 py-1 text-xs"
-              />
-            </div>
-          }
-        />
 
         {loading && (
           <p className="text-sm text-slate-500">
@@ -182,6 +180,6 @@ export default function TtvReportPage() {
           </div>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

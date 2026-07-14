@@ -199,23 +199,22 @@ export default function IntakeFormDetailPage() {
   const publicUrl = publicSlug ? publicIntakeUrlForSlug(publicSlug) : ''
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.intake_forms.back_list', { defaultValue: 'All intake forms' })}
+      backHref={CRM_APP_PATHS.settingsLeadForms}
+      kicker={t('admin.intake_forms.header_kicker', { defaultValue: 'Intake sources' })}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <IconForms size={22} stroke={1.9} className="text-brand-600" />
+          {detail?.form.title || t('admin.intake_forms.detail_title', { defaultValue: 'Intake form' })}
+        </span>
+      }
+      subtitle={t('admin.intake_forms.detail_subtitle', {
+        defaultValue:
+          'Configure Entity Profile presentation fields, public link, and submit pipeline. UI selects canon fields only.',
+      })}
+    >
       <section className="settings-panel">
-        <SettingsSubpageHeader
-          backLabel={t('admin.intake_forms.back_list', { defaultValue: 'All intake forms' })}
-          backHref={CRM_APP_PATHS.settingsLeadForms}
-          kicker={t('admin.intake_forms.header_kicker', { defaultValue: 'Intake sources' })}
-          title={
-            <span className="inline-flex items-center gap-2">
-              <IconForms size={22} stroke={1.9} className="text-brand-600" />
-              {detail?.form.title || t('admin.intake_forms.detail_title', { defaultValue: 'Intake form' })}
-            </span>
-          }
-          subtitle={t('admin.intake_forms.detail_subtitle', {
-            defaultValue:
-              'Configure Entity Profile presentation fields, public link, and submit pipeline. UI selects canon fields only.',
-          })}
-        />
 
         {pageError && (
           <div className="mb-4">
@@ -513,6 +512,6 @@ export default function IntakeFormDetailPage() {
           </div>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -14,6 +14,7 @@ import {
 } from '../../constants/workforceOperationalTaxonomy'
 
 import { hrEmployeeVerificationPath, hrHandoffPath } from '../../utils/hrEmployeeLinks'
+import { Toolbar } from '../../components/layout'
 
 function parseIso(value: string | null | undefined): number | null {
   if (!value) return null
@@ -133,18 +134,8 @@ export default function HrComplianceDocumentsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            {t('app.nav.hr.compliance.heading', { defaultValue: 'Compliance documents' })}
-          </h2>
-          <p className="mt-1 max-w-4xl text-sm text-slate-600">
-            {t('app.nav.hr.compliance.subtitle', {
-              defaultValue: 'Team-scoped legal queues (missing + 30-day expiring). Use Documents hub for filters and merged views.',
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
           <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
             {t('app.nav.hr.compliance.open_hub', { defaultValue: 'Documents hub' })}
           </Link>
@@ -152,7 +143,7 @@ export default function HrComplianceDocumentsPage() {
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-      </div>
+      </Toolbar>
 
       <div className="sticky top-0 z-20 -mx-1 space-y-3 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
         {!loading && !err ? (

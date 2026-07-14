@@ -232,29 +232,26 @@ export default function LeadFormsSettingsPage() {
   const sortedForms = useMemo(() => [...forms].sort((a, b) => a.created_at.localeCompare(b.created_at)), [forms])
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.lead_forms.header_kicker')}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
+          {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
+        </span>
+      }
+      subtitle={t('admin.lead_forms.subtitle', {
+        defaultValue:
+          'Intake entry points for the public portal. Configure Entity Profile binding, preview fields, and smoke-test submit.',
+      })}
+      actions={
+        <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
+          {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
+        </Link>
+      }
+    >
       <section className="settings-panel">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.lead_forms.header_kicker')}
-            title={
-              <span className="inline-flex items-center gap-2">
-                <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
-                {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
-              </span>
-            }
-            subtitle={t('admin.lead_forms.subtitle', {
-              defaultValue:
-                'Intake entry points for the public portal. Configure Entity Profile binding, preview fields, and smoke-test submit.',
-            })}
-            actions={
-              <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
-                {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
-              </Link>
-            }
-          />
-        </div>
 
         {pageError && (
           <div className="mb-4">
@@ -449,6 +446,6 @@ export default function LeadFormsSettingsPage() {
           </ul>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -735,14 +735,14 @@ export default function CalendarIntegrationsPage() {
   }, [boardDay, boardMode, calendarItems])
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 py-6 sm:py-8">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.calendar_integrations.header.back_to_hub')}
-        kicker={t('admin.calendar_integrations.header.kicker')}
-        title={t('admin.calendar_integrations.header.title')}
-        subtitle={t('admin.calendar_integrations.header.subtitle')}
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.calendar_integrations.header.back_to_hub')}
+      kicker={t('admin.calendar_integrations.header.kicker')}
+      title={t('admin.calendar_integrations.header.title')}
+      subtitle={t('admin.calendar_integrations.header.subtitle')}
+      contentClassName="mx-auto w-full max-w-5xl"
+    >
 
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div> : null}
       {success ? (
@@ -1351,6 +1351,6 @@ export default function CalendarIntegrationsPage() {
           </pre>
         </section>
       ) : null}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

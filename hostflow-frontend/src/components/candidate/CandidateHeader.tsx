@@ -45,6 +45,8 @@ interface CandidateHeaderProps {
   onCancel: () => void
   backPath?: string
   backLabel?: string
+  /** When true, hides the legacy back link (use PageHeader breadcrumb instead). */
+  hideBackLink?: boolean
   onFavoriteToggle?: () => void
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null
   profileLoading?: boolean
@@ -88,6 +90,7 @@ function CandidateHeader({
   onCancel,
   backPath = CRM_APP_PATHS.candidates,
   backLabel,
+  hideBackLink = false,
   onFavoriteToggle,
   candidateProfile,
   profileLoading,
@@ -109,11 +112,13 @@ function CandidateHeader({
       <div className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-lg">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <div className="text-[11px] text-white/80">
-              <Link className="hover:underline text-white" to={backPath}>
-                {backLabel || t('app.candidate_card.header.back')}
-              </Link>
-            </div>
+            {!hideBackLink && backPath ? (
+              <div className="text-[11px] text-white/80">
+                <Link className="hover:underline text-white" to={backPath}>
+                  {backLabel || t('app.candidate_card.header.back')}
+                </Link>
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2">
               {candidate && <StageTag code={candidate.stage || 'new'} />}
               {!isNew && candidate?.id ? (

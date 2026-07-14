@@ -23,7 +23,8 @@ import type { TenantModuleSettings } from '../../api/types'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { useAuth } from '../../store/useAuth'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { PageBreadcrumb } from '../../components/nav/PageBreadcrumb'
+import { PageHeader } from '../../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../../components/layout'
 
 type SettingsSectionKey =
   | 'workspace'
@@ -424,13 +425,16 @@ export default function SettingsLandingPage() {
   )
 
   return (
-    <div className="space-y-4">
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('admin.settings.title')}
+          subtitle={t('admin.settings.subtitle')}
+          kind="browse"
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
       <section className="card p-6">
-        <header className="mb-4">
-          <PageBreadcrumb className="mb-3" />
-          <h2 className="text-xl font-semibold text-slate-900">{t('admin.settings.title')}</h2>
-          <p className="text-sm text-slate-500">{t('admin.settings.subtitle')}</p>
-        </header>
         <div className="space-y-6">
           <p className="text-sm text-slate-600">{t('admin.settings.areas_intro')}</p>
           {grouped.map((section) => (
@@ -444,6 +448,7 @@ export default function SettingsLandingPage() {
           ))}
         </div>
       </section>
-    </div>
+      </div>
+    </PageShell>
   )
 }

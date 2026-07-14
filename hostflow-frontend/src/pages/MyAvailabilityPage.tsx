@@ -15,7 +15,8 @@ import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -240,15 +241,24 @@ export default function MyAvailabilityPage() {
   }, [loadMine, planLimitModal, t])
 
   return (
-    <div className="space-y-4">
+    <PageShell>
       <WorkspaceTopNav active="calendar" />
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.my_availability_title', { defaultValue: 'My Availability' })}</h1>
-        <p className="text-sm text-slate-500">
-          {t('app.communications.ia.my_availability_subtitle', { defaultValue: 'Personal work schedule, availability status, breaks, and leave requests. Employee-facing self-service.' })}
-        </p>
-      </div>
-      <PageBreadcrumb className="max-w-4xl" />
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.communications.ia.my_availability_title', { defaultValue: 'My Availability' })}
+          subtitle={t('app.communications.ia.my_availability_subtitle', {
+            defaultValue: 'Personal work schedule, availability status, breaks, and leave requests. Employee-facing self-service.',
+          })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadMine()} disabled={loading}>
+              {t('common.actions.refresh')}
+            </button>
+          }
+        />
+      </PageShellHeader>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
         <div>{t('app.profile.labels.user', { defaultValue: 'User' })}: <strong>{me?.full_name || me?.email || me?.id || '—'}</strong></div>
         <div className="mt-2 text-xs text-slate-500">Pending requests: {pendingCount}</div>
@@ -419,6 +429,7 @@ export default function MyAvailabilityPage() {
           </Link>
         </div>
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

@@ -28,21 +28,21 @@ export default function IntegrationsSourcePlaceholderPage() {
     source === 'google' ? 'admin.integrations_hub.google_desc' : 'admin.integrations_hub.webhook_desc'
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-6 sm:py-8">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.integrations_hub.back_to_hub')}
-        kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
-        title={
-          <span className="inline-flex flex-wrap items-center gap-3">
-            {t(titleKey)}
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-              {t('admin.integrations_placeholder.badge')}
-            </span>
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.integrations_hub.back_to_hub')}
+      kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+      title={
+        <span className="inline-flex flex-wrap items-center gap-3">
+          {t(titleKey)}
+          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+            {t('admin.integrations_placeholder.badge')}
           </span>
-        }
-        subtitle={t(descKey)}
-      />
+        </span>
+      }
+      subtitle={t(descKey)}
+      contentClassName="mx-auto w-full max-w-4xl gap-8"
+    >
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm leading-relaxed text-slate-700 shadow-sm">
         <p>{t('admin.integrations_placeholder.body')}</p>
@@ -53,6 +53,6 @@ export default function IntegrationsSourcePlaceholderPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -23,7 +23,6 @@ import LeadQualificationSummaryCard from '../components/leads/LeadQualificationS
 import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
 import { NextActionBadge } from '../components/candidate/NextActionBadge'
 import { useLeadNextAction } from '../components/lead/useLeadNextAction'
-import LeadIntakeWorkspaceStickyHeader from '../components/leads/LeadIntakeWorkspaceStickyHeader'
 import ClientLeadDetailView from '../components/leads/ClientLeadDetailView'
 import {
   RecruitmentAgencyAuditDetailView,
@@ -44,11 +43,12 @@ import {
   parseProcessBlockedCodeFromAxios,
 } from '../utils/intakeResolution'
 import { CRM_STAGE_VALUES, leadAssignmentLocked, leadSupportsManualProcess } from '../utils/leadCrm'
-import { intakeStickyVacancySummary, leadIntakeColumnStatusKey } from '../utils/leadIntakeWorkspace'
+import { leadIntakeColumnStatusKey } from '../utils/leadIntakeWorkspace'
 import { leadIntakeResolutionRejected } from '../utils/intakeResolution'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useAuth } from '../store/auth'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 
@@ -467,7 +467,8 @@ export default function LeadDetailPage() {
       const companyProfile = profile && typeof profile === 'object' && !Array.isArray(profile) ? (profile as Record<string, unknown>) : {}
       const fromProfile = typeof companyProfile.name === 'string' ? companyProfile.name.trim() : ''
       if (fromProfile) return fromProfile
-      const cn = typeof (normalized as Record<string, unknown>).company_name === 'string' ? (normalized as Record<string, unknown>).company_name.trim() : ''
+      const cnRaw = (normalized as Record<string, unknown>).company_name
+      const cn = typeof cnRaw === 'string' ? cnRaw.trim() : ''
       if (cn) return cn
       if (lead.company_name) return lead.company_name
     }
@@ -477,9 +478,11 @@ export default function LeadDetailPage() {
     const last = typeof (normalized as Record<string, unknown>).last_name === 'string' ? (normalized as Record<string, unknown>).last_name : ''
     const composed = `${first} ${last}`.trim()
     if (composed) return composed
-    const em = typeof (normalized as Record<string, unknown>).email === 'string' ? (normalized as Record<string, unknown>).email.trim() : ''
+    const emRaw = (normalized as Record<string, unknown>).email
+    const em = typeof emRaw === 'string' ? emRaw.trim() : ''
     if (em) return em
-    const ph = typeof (normalized as Record<string, unknown>).phone === 'string' ? (normalized as Record<string, unknown>).phone.trim() : ''
+    const phRaw = (normalized as Record<string, unknown>).phone
+    const ph = typeof phRaw === 'string' ? phRaw.trim() : ''
     if (ph) return ph
     return t('app.leads.detail.title')
   }, [lead?.company_name, lead?.lead_target_type, lead?.lead_type, normalized, t])
@@ -791,58 +794,197 @@ export default function LeadDetailPage() {
 
   if (!leadId) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <p className="text-slate-600">{t('app.leads.detail.missing_id')}</p>
-        <Link to={CRM_APP_PATHS.leads} className="mt-4 inline-block text-brand-700 hover:underline">
-          {t('app.leads.detail.back_to_list')}
-        </Link>
-      </div>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbCurrentLabel={t('app.leads.detail.missing_id')} kind="browse" />
+        </PageShellHeader>
+        <div className="mx-4 text-sm text-slate-600">
+          <Link to={CRM_APP_PATHS.leads} className="text-brand-700 hover:underline">
+            {t('app.leads.detail.back_to_list')}
+          </Link>
+        </div>
+      </PageShell>
     )
   }
 
+  const clientLeadConvertedId =
+    lead?.converted_client_id != null ? String(lead.converted_client_id).trim() : ''
+
+  const clientLeadSecondaryActions =
+    lead && isClientLead && !loading && !notFound ? (
+      <>
+        {!leadRejected && !clientLeadConvertedId ? (
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            disabled={convertingClientLead || patching}
+            onClick={() => void handleConvertClientLead()}
+          >
+            {convertingClientLead ? 'Создаём…' : 'Создать клиента'}
+          </button>
+        ) : null}
+        {!leadRejected && !clientLeadConvertedId ? (
+          <>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={patching || convertingClientLead}
+              onClick={() => void handleDetailStageSelect('contacted')}
+            >
+              Позвонил
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={patching || convertingClientLead}
+              onClick={() => void handleDetailStageSelect('qualified')}
+            >
+              Заинтересован
+            </button>
+            <button
+              type="button"
+              className="btn-danger btn-sm"
+              disabled={patching || convertingClientLead}
+              onClick={() => void handleDetailStageSelect('lost')}
+            >
+              Закрыть запрос
+            </button>
+          </>
+        ) : null}
+        {canDeleteLead ? (
+          <button
+            type="button"
+            className="btn-danger btn-sm"
+            disabled={deletingLead || patching || convertingClientLead}
+            onClick={() => void handleDeleteLead()}
+          >
+            {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
+          </button>
+        ) : null}
+      </>
+    ) : null
+
+  const leadDetailSecondaryActions =
+    lead && !loading && !notFound && !isClientLead ? (
+      <>
+        {canManualProcessLead && !isServicesTenant && !lead.candidate_id ? (
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            disabled={processing || Boolean(processBlockCode)}
+            title={processBlockCode ? manualProcessBlockedUserMessage(t, processBlockCode) : undefined}
+            onClick={() => void handleProcess()}
+          >
+            {processing ? t('common.loading') : t('app.leads.actions.process')}
+          </button>
+        ) : null}
+        {!intakeWorkspaceBlocking && !recruitmentLeadConverted && !isClientLead ? (
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            disabled={quickRemindBusy || patching || processing || deletingLead}
+            onClick={() => void handleQuickRemindClient()}
+            title={t('app.leads.detail.remind_client.hint')}
+          >
+            {quickRemindBusy ? t('app.leads.detail.remind_client.busy') : t('app.leads.detail.remind_client.cta')}
+          </button>
+        ) : null}
+        {!isServicesTenant && lead.candidate_id ? (
+          <Link to={`${CRM_APP_PATHS.candidates}/${lead.candidate_id}`} className="btn-secondary btn-sm">
+            {t('app.leads.table.candidate')}
+          </Link>
+        ) : null}
+        {isServicesTenant && lead.outcome_entity_id ? (
+          <Link to={`${CRM_APP_PATHS.agencyClients}/${lead.outcome_entity_id}`} className="btn-secondary btn-sm">
+            {lead.outcome_entity_name || companyLabel}
+          </Link>
+        ) : null}
+        {isServicesTenant && lead.service_order_id ? (
+          <Link
+            to={serviceOrderWorkspacePath(String(lead.service_order_id), lead.company_id)}
+            className="btn-secondary btn-sm"
+          >
+            {t('app.leads.actions.open_service_order')}
+          </Link>
+        ) : null}
+        {canDeleteLead ? (
+          <button
+            type="button"
+            className="btn-danger btn-sm"
+            disabled={deletingLead || patching || processing}
+            onClick={() => void handleDeleteLead()}
+          >
+            {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
+          </button>
+        ) : null}
+      </>
+    ) : null
+
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-slate-50 via-white to-brand-50/25">
-      <div
-        className={`mx-auto space-y-6 px-4 py-6 sm:px-6 sm:py-8 ${!isServicesTenant ? 'max-w-7xl' : 'max-w-4xl'}`}
-      >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          to={CRM_APP_PATHS.leads}
-          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
-        >
-          <span aria-hidden>←</span>
-          {t('app.leads.detail.back_to_list')}
-        </Link>
-      </div>
+    <PageShell>
+      <PageShellHeader>
+        {loading ? (
+          <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
+        ) : lead ? (
+          <PageHeader
+            breadcrumbCurrentLabel={leadDisplayName}
+            subtitle={
+              <div className="flex flex-wrap items-center gap-2">
+                {!isClientLead && contactLine !== '—' ? <span>{contactLine}</span> : null}
+                {[lead.company_name, lead.vacancy_title].filter(Boolean).join(' · ') ? (
+                  <span>{[lead.company_name, lead.vacancy_title].filter(Boolean).join(' · ')}</span>
+                ) : null}
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  {statusLabels[lead.status] ?? lead.status}
+                </span>
+                {!recruitmentLeadConverted && !isClientLead ? (
+                  <NextActionBadge
+                    dto={leadNextAction}
+                    loading={leadNextActionLoading}
+                    error={leadNextActionError}
+                  />
+                ) : null}
+                {intakeStatusLabel && !isServicesTenant && !isClientLead ? (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                    {intakeStatusLabel}
+                  </span>
+                ) : null}
+              </div>
+            }
+            secondaryActions={isClientLead ? clientLeadSecondaryActions : leadDetailSecondaryActions}
+          />
+        ) : notFound ? (
+          <PageHeader breadcrumbCurrentLabel={t('app.leads.detail.not_found')} kind="browse" />
+        ) : null}
+        {!loading && loadError ? (
+          <div className="mt-2">
+            <ErrorRecoveryBanner
+              info={loadError}
+              onRetry={() => void loadLead()}
+              retryLabel={t('common.retry')}
+              {...friendlyErrorBannerSecondary(
+                loadError,
+                CRM_APP_PATHS.settingsIntegrationsMeta,
+                t('app.leads.states.empty_cta_connect'),
+              )}
+            />
+          </div>
+        ) : null}
+      </PageShellHeader>
 
-      <PageBreadcrumb className="max-w-4xl" />
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+        {!loading && notFound ? (
+          <div className="card p-6 shadow-md shadow-slate-900/[0.04]">
+            <h1 className="text-lg font-semibold text-slate-900">{t('app.leads.detail.not_found')}</h1>
+            <p className="mt-2 text-sm text-slate-600">{t('app.leads.detail.not_found_hint')}</p>
+          </div>
+        ) : null}
 
-      {loading && <p className="text-slate-600">{t('common.loading')}</p>}
-
-      {!loading && loadError && (
-        <ErrorRecoveryBanner
-          info={loadError}
-          onRetry={() => void loadLead()}
-          retryLabel={t('common.retry')}
-          {...friendlyErrorBannerSecondary(
-            loadError,
-            CRM_APP_PATHS.settingsIntegrationsMeta,
-            t('app.leads.states.empty_cta_connect'),
-          )}
-        />
-      )}
-
-      {!loading && notFound && (
-        <div className="card p-6 shadow-md shadow-slate-900/[0.04]">
-          <h1 className="text-lg font-semibold text-slate-900">{t('app.leads.detail.not_found')}</h1>
-          <p className="mt-2 text-sm text-slate-600">{t('app.leads.detail.not_found_hint')}</p>
-        </div>
-      )}
-
-      {!loading && !notFound && lead && (
+        {!loading && !notFound && lead ? (
         <>
           {isClientLead ? (
             <ClientLeadDetailView
+              embedded
               lead={lead}
               formatDate={(iso) => formatDateValue(iso, locale)}
               converting={convertingClientLead}
@@ -963,112 +1105,11 @@ export default function LeadDetailPage() {
                       </pre>
                     </details>
                   </section>
-                  {canDeleteLead ? (
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
-                      disabled={deletingLead || patching || processing}
-                      onClick={() => void handleDeleteLead()}
-                    >
-                      {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
-                    </button>
-                  ) : null}
                 </div>
               }
             />
           ) : isServicesTenant ? (
           <>
-          <header className="card relative overflow-hidden p-5 shadow-md shadow-slate-900/[0.04] sm:p-6">
-            <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600/90"
-              aria-hidden
-            />
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1 space-y-3">
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{leadDisplayName}</h1>
-                <p className="mt-1.5 line-clamp-2 text-sm text-slate-600">
-                  {[lead.company_name, lead.vacancy_title].filter(Boolean).join(' · ') || '—'}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                  {statusLabels[lead.status] ?? lead.status}
-                </span>
-                {!recruitmentLeadConverted ? (
-                  <NextActionBadge
-                    dto={leadNextAction}
-                    loading={leadNextActionLoading}
-                    error={leadNextActionError}
-                    inverse={false}
-                  />
-                ) : null}
-              </div>
-              <p className="font-mono text-[11px] leading-relaxed text-slate-400 break-all sm:max-w-xl">
-                ID · {lead.id}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-100 pt-4 sm:border-t-0 sm:border-l sm:pl-5 sm:pt-0">
-              {canManualProcessLead && !isServicesTenant && !lead.candidate_id ? (
-                <button
-                  type="button"
-                  className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
-                  disabled={processing || Boolean(processBlockCode)}
-                  title={processBlockCode ? manualProcessBlockedUserMessage(t, processBlockCode) : undefined}
-                  onClick={() => void handleProcess()}
-                >
-                  {processing ? t('common.loading') : t('app.leads.actions.process')}
-                </button>
-              ) : null}
-              {!intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
-                <button
-                  type="button"
-                  className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
-                  disabled={quickRemindBusy || patching || processing || deletingLead}
-                  onClick={() => void handleQuickRemindClient()}
-                  title={t('app.leads.detail.remind_client.hint')}
-                >
-                  {quickRemindBusy ? t('app.leads.detail.remind_client.busy') : t('app.leads.detail.remind_client.cta')}
-                </button>
-              ) : null}
-              {!isServicesTenant && lead.candidate_id ? (
-                <Link
-                  to={`${CRM_APP_PATHS.candidates}/${lead.candidate_id}`}
-                  className="btn-secondary inline-flex rounded-lg px-3 py-1.5 text-sm"
-                >
-                  {t('app.leads.table.candidate')}
-                </Link>
-              ) : null}
-              {isServicesTenant && lead.outcome_entity_id ? (
-                <Link
-                  to={`${CRM_APP_PATHS.agencyClients}/${lead.outcome_entity_id}`}
-                  className="btn-secondary inline-flex rounded-lg px-3 py-1.5 text-sm"
-                >
-                  {lead.outcome_entity_name || companyLabel}
-                </Link>
-              ) : null}
-              {isServicesTenant && lead.service_order_id ? (
-                <Link
-                  to={serviceOrderWorkspacePath(String(lead.service_order_id), lead.company_id)}
-                  className="btn-secondary inline-flex rounded-lg px-3 py-1.5 text-sm"
-                >
-                  {t('app.leads.actions.open_service_order')}
-                </Link>
-              ) : null}
-              {canDeleteLead ? (
-                <button
-                  type="button"
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
-                  disabled={deletingLead || patching || processing}
-                  onClick={() => void handleDeleteLead()}
-                >
-                  {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
-                </button>
-              ) : null}
-            </div>
-            </div>
-          </header>
-
           {recruitmentLeadConverted ? (
             <div className="card border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm sm:p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
@@ -1437,7 +1478,7 @@ export default function LeadDetailPage() {
             <h2 className="mb-4 text-sm font-semibold text-slate-900">
               {t('app.leads.detail.followup_title')}
             </h2>
-            <div className="rounded-xl border border-slate-100 bg-gradient-to-br from-brand-50/40 to-slate-50/80 p-4 ring-1 ring-slate-900/[0.04]">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <div className="space-y-3">
                 <input
                   className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
@@ -1547,14 +1588,6 @@ export default function LeadDetailPage() {
           </>
           ) : recruitmentLeadConverted ? (
             <>
-              <LeadIntakeWorkspaceStickyHeader
-                variant="audit"
-                displayName={leadDisplayName}
-                source={lead.source}
-                vacancySummary={intakeStickyVacancySummary(lead, t)}
-                statusLabel={t('app.leads.intake_workspace.audit.badge')}
-                createdLabel={formatDateValue(lead.created_at, locale)}
-              />
               <RecruitmentAgencyAuditDetailView
                 lead={lead}
                 leadDisplayName={leadDisplayName}
@@ -1617,30 +1650,12 @@ export default function LeadDetailPage() {
                         ) : null}
                       </dl>
                     </section>
-                    {canDeleteLead ? (
-                      <button
-                        type="button"
-                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
-                        disabled={deletingLead || patching || processing}
-                        onClick={() => void handleDeleteLead()}
-                      >
-                        {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
-                      </button>
-                    ) : null}
                   </>
                 }
               />
             </>
           ) : (
             <>
-              <LeadIntakeWorkspaceStickyHeader
-                variant="intake"
-                displayName={leadDisplayName}
-                source={lead.source}
-                vacancySummary={intakeStickyVacancySummary(lead, t)}
-                statusLabel={intakeStatusLabel}
-                createdLabel={formatDateValue(lead.created_at, locale)}
-              />
               <RecruitmentAgencyIntakeDetailView
                 lead={lead}
                 leadDisplayName={leadDisplayName}
@@ -1839,16 +1854,6 @@ export default function LeadDetailPage() {
                       </details>
                     </div>
                   </section>
-                  {canDeleteLead ? (
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
-                      disabled={deletingLead || patching || processing}
-                      onClick={() => void handleDeleteLead()}
-                    >
-                      {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
-                    </button>
-                  ) : null}
                 </div>
               </details>
             </>
@@ -1861,8 +1866,8 @@ export default function LeadDetailPage() {
             onConfirm={(p) => void confirmLostStageFromModal(p)}
           />
         </>
-      )}
+        ) : null}
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -57,17 +57,12 @@ export default function DocumentTypesPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <section className="settings-panel">
-        <div className="mb-2">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.documents.types.header_kicker')}
-            title={t('admin.documents.types.title')}
-            subtitle={t('admin.documents.types.description')}
-          />
-        </div>
-
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.documents.types.header_kicker')}
+      title={t('admin.documents.types.title')}
+      subtitle={t('admin.documents.types.description')}
+    >
         {error ? (
           <ErrorRecoveryBanner
             info={error}
@@ -131,7 +126,6 @@ export default function DocumentTypesPage() {
             </tbody>
           </table>
         </div>
-      </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

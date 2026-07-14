@@ -13,7 +13,8 @@ import {
 } from '../api/communications'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -172,15 +173,23 @@ export default function CommunicationsPlannerPage() {
   }, [load, planLimitModal, t])
 
   return (
-    <div className="space-y-4">
+    <PageShell>
       <WorkspaceTopNav active="calendar" />
-      <PageBreadcrumb className="max-w-4xl" />
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.planner_title', { defaultValue: 'Planner' })}</h1>
-        <p className="text-sm text-slate-500">
-          {t('app.communications.ia.planner_subtitle', { defaultValue: 'Operational planning for managers and tasks. Separate from email/messages inboxes.' })}
-        </p>
-      </div>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.communications.ia.planner_title', { defaultValue: 'Planner' })}
+          subtitle={t('app.communications.ia.planner_subtitle', {
+            defaultValue: 'Operational planning for managers and tasks. Separate from email/messages inboxes.',
+          })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading || busy}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.planner.stats.total', { defaultValue: 'Total' })}: <strong>{stats.total}</strong></div>
@@ -310,5 +319,6 @@ export default function CommunicationsPlannerPage() {
         </div>
       </div>
     </div>
+    </PageShell>
   )
 }

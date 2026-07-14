@@ -9,7 +9,8 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
@@ -785,37 +786,27 @@ export default function InvoiceCreatePage() {
     }
   }
 
-  return (
-    <div className="flex h-full w-full flex-col gap-4 p-6">
-      <div className="space-y-2">
-        <button
-          type="button"
-          className="text-sm text-brand-700 hover:underline"
-          onClick={() => navigate(CRM_APP_PATHS.invoices)}
-        >
-          {t('app.invoices.back', { defaultValue: 'Back to invoices' })}
-        </button>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {isEditMode
-            ? t('app.invoices.edit', { defaultValue: 'Edit Draft Invoice' })
-            : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
-        </h1>
-        <p className="text-sm text-slate-500">
-          {isEditMode
-            ? t('app.invoices.edit_subtitle', {
-                defaultValue: 'Update draft invoice details, issuer information and line items.',
-              })
-            : invoiceKind === 'correction'
-              ? t('app.invoices.create_correction_subtitle', {
-                  defaultValue: 'Create a correction invoice linked to the original tax document.',
-                })
-            : t('app.invoices.create_subtitle', {
-                defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
-              })}
-        </p>
-      </div>
+  const pageTitle = isEditMode
+    ? t('app.invoices.edit', { defaultValue: 'Edit Draft Invoice' })
+    : t('app.invoices.create', { defaultValue: 'Create Invoice' })
+  const pageSubtitle = isEditMode
+    ? t('app.invoices.edit_subtitle', {
+        defaultValue: 'Update draft invoice details, issuer information and line items.',
+      })
+    : invoiceKind === 'correction'
+      ? t('app.invoices.create_correction_subtitle', {
+          defaultValue: 'Create a correction invoice linked to the original tax document.',
+        })
+      : t('app.invoices.create_subtitle', {
+          defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
+        })
 
-      <PageBreadcrumb className="max-w-4xl" />
+  return (
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader title={pageTitle} subtitle={pageSubtitle} kind="browse" />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
       {error && (
         <ErrorRecoveryBanner
@@ -1265,5 +1256,6 @@ export default function InvoiceCreatePage() {
         </aside>
       </form>
     </div>
+    </PageShell>
   )
 }

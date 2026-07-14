@@ -5,6 +5,8 @@ import { listDocuments } from '../api/documents'
 import type { Document } from '../api/types'
 import type { DocumentProcessType } from '../api/types/document'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
@@ -448,71 +450,65 @@ export default function DocumentsRegistryPage() {
   const currentDocs = filteredDocs.slice(pageStart, pageStart + PAGE_SIZE)
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-4 lg:gap-6">
-      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 px-5 py-4 text-white shadow-none sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-lg font-semibold sm:text-xl">
-              {registryMode ? t('admin.documents.registry.title') : t('admin.documents.registry.work.title')}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 md:justify-end">
-            {registryMode ? (
-              <button
-                type="button"
-                className="rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
-                onClick={openMyWork}
-              >
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={
+            registryMode ? t('admin.documents.registry.title') : t('admin.documents.registry.work.title')
+          }
+          kind="action"
+          primaryAction={
+            registryMode ? (
+              <button type="button" className="btn-secondary btn-sm" onClick={openMyWork}>
                 {t('admin.documents.registry.work.back_to_my_work')}
               </button>
             ) : (
-              <button
-                type="button"
-                className="rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
-                onClick={openFullRegistry}
-              >
+              <button type="button" className="btn-primary btn-sm" onClick={openFullRegistry}>
                 {t('admin.documents.registry.work.open_full_registry')}
               </button>
-            )}
-          </div>
-        </div>
-        {registryMode ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {[
-              { label: t('admin.documents.registry.stats.process_all'), value: processQueueStats.process },
-              { label: t('admin.documents.registry.stats.process_mine'), value: processQueueStats.my },
-              { label: t('admin.documents.registry.stats.process_sla_due'), value: processQueueStats.overdue },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-xs sm:text-sm">
-                <div className="text-white/75">{item.label}</div>
-                <div className="text-xl font-semibold tabular-nums">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {[
-              { label: t('admin.documents.registry.work.stats.attention'), value: workQueueStats.attention },
-              { label: t('admin.documents.registry.work.stats.mine_total'), value: workQueueStats.mine },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs sm:text-sm">
-                <div className="text-white/75">{item.label}</div>
-                <div className="text-xl font-semibold tabular-nums">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <div className="px-5 sm:px-6 lg:px-8">
+            )
+          }
+          secondaryActions={
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setReloadKey((prev) => prev + 1)}
+              disabled={loading}
+            >
+              {loading ? t('admin.documents.registry.loading') : t('common.actions.refresh')}
+            </button>
+          }
+        />
         {storageQuotaWarning ? (
-          <div className="mt-3">
+          <div className="mt-2">
             <QuotaNearLimitBanner kind="storage" percentUsed={storageQuotaWarning.percentUsed} />
           </div>
         ) : null}
-      </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {(registryMode
+            ? [
+                { label: t('admin.documents.registry.stats.process_all'), value: processQueueStats.process },
+                { label: t('admin.documents.registry.stats.process_mine'), value: processQueueStats.my },
+                { label: t('admin.documents.registry.stats.process_sla_due'), value: processQueueStats.overdue },
+              ]
+            : [
+                { label: t('admin.documents.registry.work.stats.attention'), value: workQueueStats.attention },
+                { label: t('admin.documents.registry.work.stats.mine_total'), value: workQueueStats.mine },
+              ]
+          ).map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm"
+            >
+              <div className="text-slate-500">{item.label}</div>
+              <div className="text-xl font-semibold tabular-nums text-slate-900">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </PageShellHeader>
 
-      <section className="app-surface flex flex-col gap-3 border-x-0 border-t-0 border-b border-slate-200 px-5 py-3 sm:px-6 lg:px-8">
+      <Toolbar>
+        <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -528,14 +524,6 @@ export default function DocumentsRegistryPage() {
               aria-label={t('admin.documents.registry.search_label')}
             />
           </div>
-          <button
-            type="button"
-            className="btn-secondary btn-sm shrink-0"
-            onClick={() => setReloadKey((prev) => prev + 1)}
-            disabled={loading}
-          >
-            {loading ? t('admin.documents.registry.loading') : t('common.actions.refresh')}
-          </button>
         </div>
 
         {registryMode ? (
@@ -637,9 +625,11 @@ export default function DocumentsRegistryPage() {
             </button>
           </div>
         )}
-      </section>
+        </div>
+      </Toolbar>
 
-      <section className="flex flex-col gap-4 px-5 pb-8 sm:px-6 lg:flex-row lg:items-start lg:gap-6 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="order-1 min-w-0 flex-1 space-y-4">
         <div className="card space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -950,7 +940,8 @@ export default function DocumentsRegistryPage() {
           </div>
         </aside>
       </section>
-    </div>
+      </div>
+    </PageShell>
   )
 }
 

@@ -5,7 +5,8 @@ import { getLeadDistribution, patchLeadDistribution, type LeadDistributionOut } 
 import { useI18n } from '../i18n'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 function statusDot(status: string) {
   if (status === 'available') return '🟢'
   if (status === 'busy') return '🟡'
@@ -61,9 +62,18 @@ export default function LeadsDistributionPage() {
 
   if (loading || !data) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8 text-sm text-slate-600">
-        {loading ? t('common.loading') : error || '—'}
-      </div>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader
+            title={t('app.leads.distribution.title')}
+            subtitle={t('app.leads.distribution.subtitle')}
+            kind="browse"
+          />
+        </PageShellHeader>
+        <div className="px-4 pb-4 text-sm text-slate-600">
+          {loading ? t('common.loading') : error || '—'}
+        </div>
+      </PageShell>
     )
   }
 
@@ -74,22 +84,20 @@ export default function LeadsDistributionPage() {
       : data.assignment_detail_lines ?? []
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link to={CRM_APP_PATHS.leads} className="text-xs font-medium text-brand-700 hover:underline">
-            ← {t('app.leads.distribution.back')}
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-            {t('app.leads.distribution.title')}
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {t('app.leads.distribution.subtitle')}
-          </p>
-        </div>
-      </div>
-
-      <PageBreadcrumb className="max-w-4xl" />
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.leads.distribution.title')}
+          subtitle={t('app.leads.distribution.subtitle')}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
 
       {error ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{String(error)}</div> : null}
 
@@ -302,5 +310,6 @@ export default function LeadsDistributionPage() {
         </div>
       </section>
     </div>
+    </PageShell>
   )
 }

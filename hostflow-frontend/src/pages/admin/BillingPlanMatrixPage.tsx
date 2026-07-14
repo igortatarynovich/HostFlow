@@ -67,17 +67,17 @@ export default function BillingPlanMatrixPage() {
   }, [])
 
   return (
-    <section className="space-y-6">
-      <SettingsSubpageHeader
-        title="Plan comparison"
-        subtitle="What you have now and what you get on upgrade."
-        actions={(
-          <Link className="btn-secondary inline-flex items-center gap-2" to={CRM_APP_PATHS.settingsBilling}>
-            Back to billing
-          </Link>
-        )}
-      />
-
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsBilling}
+      backLabel="Back to billing"
+      title="Plan comparison"
+      subtitle="What you have now and what you get on upgrade."
+      actions={(
+        <Link className="btn-secondary inline-flex items-center gap-2" to={CRM_APP_PATHS.settingsBilling}>
+          Back to billing
+        </Link>
+      )}
+    >
       {error ? <ErrorRecoveryBanner error={error} onRetry={() => void load()} /> : null}
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -157,6 +157,6 @@ export default function BillingPlanMatrixPage() {
           </tbody>
         </table>
       </div>
-    </section>
+    </SettingsSubpageHeader>
   )
 }

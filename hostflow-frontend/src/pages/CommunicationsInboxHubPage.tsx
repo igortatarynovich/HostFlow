@@ -30,7 +30,8 @@ import {
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import { stashPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -724,12 +725,27 @@ export default function CommunicationsInboxHubPage() {
   const showLoading = accessLoading || loading
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-auto">
-        <h1 className="sr-only">{t('app.communications_inbox_hub.title')}</h1>
+    <PageShell className="bg-slate-50">
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.communications_inbox_hub.title')}
+          kind="browse"
+          secondaryActions={
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => void load()}
+              disabled={showLoading}
+            >
+              {showLoading ? t('app.communications_inbox_hub.loading') : t('app.communications_inbox_hub.retry')}
+            </button>
+          }
+        />
+      </PageShellHeader>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {oauthRedirectNotice && (
-          <div className="max-w-4xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
             <div className="font-medium">
               {t('app.communications.email.oauth_redirect_title')}
             </div>
@@ -748,7 +764,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!commSetup.loading && !commSetup.isComplete && anyChannel && (
-          <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">{t('app.communications.setup.banner_incomplete')}</div>
             <div className="mt-2">
               <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-secondary btn-xs">
@@ -759,7 +775,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!commSetup.loading && commSetup.isComplete && effectiveChannel === 'email' && serverIncomingEnabled === false && hasEmail && (
-          <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">
               {t('app.communications.email.incoming_disabled_title')}
             </div>
@@ -781,10 +797,9 @@ export default function CommunicationsInboxHubPage() {
           </div>
         )}
 
-        <PageBreadcrumb className="max-w-6xl" />
-
         {hasMessages && hasEmail && anyChannel && (
-          <div className="max-w-5xl flex flex-wrap gap-1">
+          <Toolbar>
+          <div className="flex flex-wrap gap-1">
             {(['all', 'messages', 'email'] as const).map((c) => (
               <button
                 key={c}
@@ -801,12 +816,13 @@ export default function CommunicationsInboxHubPage() {
               </button>
             ))}
           </div>
+          </Toolbar>
         )}
 
         {showLoading && <p className="text-sm text-slate-500">{t('app.communications_inbox_hub.loading')}</p>}
 
         {!showLoading && error && (
-          <div className="max-w-4xl rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-800">
+          <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-800">
             <p className="font-medium">{error.title}</p>
             {error.detail ? <p className="mt-1 text-xs text-rose-900/90">{error.detail}</p> : null}
             <p className="mt-2 text-xs text-rose-800/85">{error.hint}</p>
@@ -817,7 +833,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!showLoading && !error && anyChannel && (
-          <div className={clsx('max-w-6xl', effectiveChannel === 'email' && hasEmail && 'flex flex-col gap-4 lg:flex-row lg:items-start')}>
+          <div className={clsx(effectiveChannel === 'email' && hasEmail && 'flex flex-col gap-4 lg:flex-row lg:items-start')}>
             {effectiveChannel === 'email' && hasEmail && (
               <div className="w-full shrink-0 lg:w-64">
                 <InboxEmailFolderRail threads={threads} activeFolder={listQuery.folder} onFolderChange={onEmailFolderChange} />
@@ -1039,7 +1055,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!showLoading && !error && anyChannel && (
-          <div className="max-w-5xl">
+          <div>
             <Link
               to={CRM_APP_PATHS.slaIncidents}
               className="text-xs font-medium text-rose-700 hover:text-rose-800"
@@ -1052,6 +1068,6 @@ export default function CommunicationsInboxHubPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -134,16 +134,13 @@ export default function TenantLinksSettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.tenant_links.header_kicker')}
+      title={t('admin.tenant_links.title')}
+      subtitle={t('admin.tenant_links.subtitle')}
+    >
       <section className="settings-panel">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.tenant_links.header_kicker')}
-            title={t('admin.tenant_links.title')}
-            subtitle={t('admin.tenant_links.subtitle')}
-          />
-        </div>
 
         {loading ? (
           <p className="text-sm text-slate-500">{t('common.loading')}</p>
@@ -226,7 +223,7 @@ export default function TenantLinksSettingsPage() {
           </>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 

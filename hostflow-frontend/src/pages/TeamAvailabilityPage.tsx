@@ -5,7 +5,8 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -110,15 +111,19 @@ export default function TeamAvailabilityPage() {
   }), [activeTimeOffByUser, items])
 
   return (
-    <div className="space-y-4">
+    <PageShell>
       <WorkspaceTopNav active="calendar" />
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.team_availability_title', { defaultValue: 'Team Availability' })}</h1>
-        <p className="text-sm text-slate-500">
-          {t('app.communications.ia.team_availability_subtitle', { defaultValue: 'Supervisor/Admin view: manager schedules, occupancy, availability states, and queue readiness.' })}
-        </p>
-      </div>
-      <PageBreadcrumb className="max-w-4xl" />
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.communications.ia.team_availability_title', { defaultValue: 'Team Availability' })}
+          subtitle={t('app.communications.ia.team_availability_subtitle', {
+            defaultValue: 'Supervisor/Admin view: manager schedules, occupancy, availability states, and queue readiness.',
+          })}
+          kind="browse"
+        />
+      </PageShellHeader>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
       <div className="grid grid-cols-4 gap-3">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.team_availability.stats.available', { defaultValue: 'Available: {count}', values: { count: summary.available } })}</div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.team_availability.stats.busy', { defaultValue: 'Busy: {count}', values: { count: summary.busy } })}</div>
@@ -213,6 +218,7 @@ export default function TeamAvailabilityPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

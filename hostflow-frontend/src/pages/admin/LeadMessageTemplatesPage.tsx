@@ -161,6 +161,7 @@ export default function LeadMessageTemplatesPage() {
   return (
     <div className="space-y-4">
       <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
         title={t('admin.meta_leads.settings.template_hub_title', { defaultValue: 'Lead Email Template Hub' })}
         subtitle={t('admin.meta_leads.settings.template_hub_hint', {
           defaultValue: 'Create shared templates once and reuse them in RODO and operational lead emails.',

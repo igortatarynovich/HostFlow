@@ -12,6 +12,7 @@ import {
 import { listWorkforceEmployees, type WorkforceEmployee } from '../../api/workforce'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
+import { Toolbar } from '../../components/layout'
 
 const LANES: { value: ZusWorkspaceLane; i18n: string }[] = [
   { value: 'task_queue', i18n: 'lane_task_queue' },
@@ -154,19 +155,8 @@ export default function HrZusWorkspacePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            {t('app.nav.hr.zus_workspace.heading', { defaultValue: 'ZUS workspace' })}
-          </h2>
-          <p className="mt-1 max-w-4xl text-sm text-slate-600">
-            {t('app.nav.hr.zus_workspace.subtitle', {
-              defaultValue:
-                'Operational queue: registrations, deregistrations, ZUA/ZZA/ZWUA, monthly settlement, export placeholders. No ZUS API or Płatnik export in this MVP.',
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
           <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrTasks}>
             {t('app.nav.hr.zus_workspace.quick_tasks', { defaultValue: 'HR tasks' })}
           </Link>
@@ -174,7 +164,7 @@ export default function HrZusWorkspacePage() {
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-      </div>
+      </Toolbar>
 
       <div className="sticky top-0 z-20 -mx-1 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
         {!loading && !err ? (

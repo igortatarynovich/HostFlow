@@ -16,6 +16,8 @@ import type { WorkHubSection } from '../modules/workHub/profile'
 import { usePermissions } from '../hooks/usePermissions'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 
 function num(n: number | undefined | null): string {
   if (n == null || Number.isNaN(Number(n))) return '—'
@@ -566,16 +568,21 @@ export default function WorkHubPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-slate-50">
-      <div className="mx-auto max-w-[1200px] space-y-6 px-8 py-10">
-        <header className="space-y-1 pb-2">
-          <h1 className="text-[2.25rem] font-bold leading-tight tracking-tight text-slate-900">
-            {t('app.work.hub.operational_title', { defaultValue: 'Work' })}
-          </h1>
-          <p className="text-[15px] text-slate-500">
-            {t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
-          </p>
-        </header>
+    <PageShell className="bg-slate-50">
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.work.hub.operational_title', { defaultValue: 'Work' })}
+          subtitle={t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => reload()}>
+              {t('app.work.hub.reload', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
+        <div className="mx-auto w-full max-w-[1200px] space-y-6">
 
         {loadError && !dataLoading ? (
           <div className="rounded-2xl border border-rose-200 bg-white px-6 py-5 text-sm text-rose-950 shadow-sm">
@@ -600,7 +607,8 @@ export default function WorkHubPage() {
             })}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

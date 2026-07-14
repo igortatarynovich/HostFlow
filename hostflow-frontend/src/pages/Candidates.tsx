@@ -68,7 +68,8 @@ import {
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type {
   DateRangeFilter,
   ColumnTextFilters,
@@ -2279,6 +2280,33 @@ export default function Candidates(){
       </button>
     </div>
   )
+
+  const workPanelToggle = (
+    <button
+      type="button"
+      onClick={() => {
+        const next = !workPanelOpen
+        setSidebarOpen(next)
+        if (!next) setSelectedCandidateId(null)
+      }}
+      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+      title={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
+      aria-label={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
+    >
+      {workPanelOpen ? (
+        <>
+          <IconX size={18} stroke={2} />
+          <span className="hidden sm:inline">{t('app.candidates.menu.close')}</span>
+        </>
+      ) : (
+        <>
+          <IconLayoutSidebarLeftExpand size={18} stroke={2} />
+          <span className="hidden sm:inline">{t('app.candidates.menu.open')}</span>
+        </>
+      )}
+    </button>
+  )
+
   const {
     heroExpanded,
     setHeroExpanded,
@@ -2383,10 +2411,7 @@ export default function Candidates(){
 
 
   return (
-    <div
-      data-hf-ui="candidates-native-table-v7-grid-rail"
-      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
-    >
+    <PageShell data-hf-ui="candidates-native-table-v7-grid-rail">
       {/* R1.P0: отдельная grid-колонка под rail, без absolute — стабильный hit-testing. Ширина: `CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX`. */}
       <div
         className="grid min-h-0 min-w-0 flex-1"
@@ -2488,32 +2513,9 @@ export default function Candidates(){
             </div>
           ) : null}
 
-          <div className="mx-4 mb-1.5 shrink-0 flex items-center justify-between gap-2">
-            <PageBreadcrumb />
-            <button
-              type="button"
-              onClick={() => {
-                const next = !workPanelOpen
-                setSidebarOpen(next)
-                if (!next) setSelectedCandidateId(null)
-              }}
-              className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
-              title={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
-              aria-label={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
-            >
-              {workPanelOpen ? (
-                <>
-                  <IconX size={18} stroke={2} />
-                  <span className="hidden sm:inline">{t('app.candidates.menu.close')}</span>
-                </>
-              ) : (
-                <>
-                  <IconLayoutSidebarLeftExpand size={18} stroke={2} />
-                  <span className="hidden sm:inline">{t('app.candidates.menu.open')}</span>
-                </>
-              )}
-            </button>
-          </div>
+          <PageShellHeader className="shrink-0 pb-1 pt-2">
+            <PageHeader kind="browse" secondaryActions={workPanelToggle} />
+          </PageShellHeader>
 
           {candidatesQuotaWarning ? (
             <div className="mx-4 mb-2 shrink-0">
@@ -2525,6 +2527,7 @@ export default function Candidates(){
           ) : null}
 
           <CandidatesFiltersToolbar
+            hideQuickViews={workPanelOpen}
             t={t}
             locale={locale}
             q={q}
@@ -3278,6 +3281,6 @@ export default function Candidates(){
         activitiesModalRefresh={activitiesModalRefresh}
       />
 
-    </div>
+    </PageShell>
   )
 }

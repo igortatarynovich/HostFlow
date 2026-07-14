@@ -22,6 +22,7 @@ import { HubEmployeeDocumentPacksPreview } from '../../components/hr/HubEmployee
 import { HubEmployeeDocumentActionsPanel } from '../../components/hr/HubEmployeeDocumentActionsPanel'
 import { resolveFocusedEmployeeId } from '../../utils/hrDocumentsHubFocus'
 import { hrEmployeeVerificationPath, hrHandoffPath } from '../../utils/hrEmployeeLinks'
+import { Toolbar } from '../../components/layout'
 
 type HubView = 'all' | 'missing' | 'expiring' | 'verification'
 
@@ -222,22 +223,13 @@ export default function HrDocumentsHubPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            {t('app.hr.documents_hub.title', { defaultValue: 'HR documents hub' })}
-          </h2>
-          <p className="mt-1 max-w-4xl text-sm text-slate-600">
-            {t('app.hr.documents_hub.subtitle', {
-              defaultValue:
-                'Operational legal queues over internal HR handoffs — missing requirements, expiries, and verification follow-ups. Not the recruitment documents screen.',
-            })}
-          </p>
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
+            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          </button>
         </div>
-        <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
-          {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-        </button>
-      </div>
+      </Toolbar>
 
       <div className="sticky top-0 z-20 -mx-1 mb-4 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
       <nav
