@@ -33,10 +33,6 @@ export default defineConfig({
       "@hooks": path.resolve(__dirname, "./src/hooks"),
       "@store": path.resolve(__dirname, "./src/store"),
       "@i18n": path.resolve(__dirname, "./src/i18n"),
-      "@hostflow/workspace": path.resolve(
-        __dirname,
-        "./src/platform/workspace/hostflow-workspace/index.ts",
-      ),
     },
   },
   server: {
