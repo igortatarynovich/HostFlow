@@ -85,22 +85,20 @@ async def resolve_lead_form_for_targeted_advertising(
     *,
     tenant_id: str,
 ) -> tuple[TenantLeadForm, IntakeSourceProfile]:
-    await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
-    lead_form = await db.scalar(
-        select(TenantLeadForm).where(
-            TenantLeadForm.tenant_id == str(tenant_id),
-            TenantLeadForm.public_slug == TARGETED_ADVERTISING_FORM_SLUG,
-            TenantLeadForm.is_active.is_(True),
-        )
+    from backend.app.entity_profile.provision_targeted_advertising import (
+        INTAKE_PROFILE_CODE,
+        find_tenant_targeted_advertising_lead_form,
     )
+
+    await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
+    lead_form = await find_tenant_targeted_advertising_lead_form(db, str(tenant_id))
     if lead_form is None:
         raise LookupError("Targeted advertising lead form is not configured for tenant")
 
-    profile_code = f"public-form-{TARGETED_ADVERTISING_FORM_SLUG}"
     intake_profile = await db.scalar(
         select(IntakeSourceProfile).where(
             IntakeSourceProfile.tenant_id == str(tenant_id),
-            IntakeSourceProfile.code == profile_code,
+            IntakeSourceProfile.code == INTAKE_PROFILE_CODE,
             IntakeSourceProfile.is_active.is_(True),
         )
     )
