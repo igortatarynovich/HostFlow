@@ -49,7 +49,6 @@ import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useAuth } from '../store/auth'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
-import { inquiryNeedSummary } from '../utils/clientInquiryLead'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 
@@ -808,8 +807,6 @@ export default function LeadDetailPage() {
     )
   }
 
-  const clientLeadNeedSummary = lead && isClientLead ? inquiryNeedSummary(lead) : ''
-
   const clientLeadConvertedId =
     lead?.converted_client_id != null ? String(lead.converted_client_id).trim() : ''
 
@@ -933,7 +930,6 @@ export default function LeadDetailPage() {
             breadcrumbCurrentLabel={leadDisplayName}
             subtitle={
               <div className="flex flex-wrap items-center gap-2">
-                {isClientLead && clientLeadNeedSummary ? <span>{clientLeadNeedSummary}</span> : null}
                 {!isClientLead && contactLine !== '—' ? <span>{contactLine}</span> : null}
                 {[lead.company_name, lead.vacancy_title].filter(Boolean).join(' · ') ? (
                   <span>{[lead.company_name, lead.vacancy_title].filter(Boolean).join(' · ')}</span>
