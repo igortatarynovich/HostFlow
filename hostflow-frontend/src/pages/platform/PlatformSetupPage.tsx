@@ -200,7 +200,6 @@ export default function PlatformSetupPage() {
     const activity = resolvePlatformIdentityFromCatalog(identity, platformIdentityOptions)
     const businessType = activity.business_type
     const trimmed = companyName.trim()
-    const country =
     const countryOpt = countryOptions.find((c) => c.value === countryCode)
     const country = catalogCountryLabel(
       countryOpt ?? { value: countryCode, label: countryCode },

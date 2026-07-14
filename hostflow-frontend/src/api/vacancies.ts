@@ -1,6 +1,7 @@
 // src/api/vacancies.ts
 import { api } from "./client";
 import type { NextActionDTO } from "./nextAction";
+import { launchSearchRoleDefaults, type SearchRole } from "../utils/launchSearchRoleDefaults";
 
 export const EMPLOYMENT_TYPES = ["full_time", "part_time", "b2b"] as const;
 export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
@@ -131,4 +132,27 @@ export async function getVacancyNextAction(vacancyId: string): Promise<VacancyNe
   }
   const { data } = await api.get<VacancyNextActionDTO>(`/vacancies/${vacancyId}/next-action`);
   return data;
+}
+
+/** Bind launch-search defaults (profile + metadata) after vacancy stub creation. */
+export async function setupLaunchSearchVacancy(
+  vacancyId: string,
+  role: SearchRole,
+): Promise<{ funnel_id: string | null }> {
+  const spec = launchSearchRoleDefaults(role);
+  const updated = await updateVacancy(vacancyId, {
+    extra: {
+      launch_search: true,
+      search_role: role,
+      entity_profile_code: spec.entityProfileCode,
+      candidate_profile_code: spec.candidateProfileCode,
+      funnel_name: spec.funnelName,
+    },
+  });
+  const row = updated as { funnel_id?: string; extra?: Record<string, unknown> };
+  const funnelId =
+    (typeof row.funnel_id === "string" && row.funnel_id) ||
+    (typeof row.extra?.funnel_id === "string" ? row.extra.funnel_id : null) ||
+    vacancyId;
+  return { funnel_id: funnelId };
 }
