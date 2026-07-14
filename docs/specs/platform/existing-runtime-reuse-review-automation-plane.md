@@ -465,4 +465,4 @@ Minimal scope — **no cross-module actions**:
 - ADR-004: Billing Events
 - ADR-012: Activity & Notification Operating Layer
 - ADR-002: Recruitment ↔ HR boundary
-- PR 2B reuse audit: [`existing-runtime-reuse-review-pr2b.md`](existing-runtime-reuse-review-pr2b.md)
+- PR 2B reuse audit: [`requirement-evidence-model-p0.md`](requirement-evidence-model-p0.md)

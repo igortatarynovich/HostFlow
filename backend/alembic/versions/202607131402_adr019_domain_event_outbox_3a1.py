@@ -1,7 +1,7 @@
 """ADR-019 domain event outbox + evaluation results (PR 3A-1).
 
 Revision ID: 202607131402
-Revises: 202606300004
+Revises: 202607131500_lqi
 Create Date: 2026-07-13 15:20:00.000000
 """
 
@@ -17,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 RevisionType = Union[str, Sequence[str], None]
 
 revision: str = "202607131402"
-down_revision: RevisionType = "202606300004"
+down_revision: RevisionType = "202607131500_lqi"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None
 
@@ -25,6 +25,11 @@ JSONType = postgresql.JSONB(astext_type=sa.Text()).with_variant(sa.JSON(), "sqli
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if "domain_event_outbox" in insp.get_table_names():
+        return
+
     op.create_table(
         "domain_event_outbox",
         sa.Column("event_id", sa.String(length=36), nullable=False),

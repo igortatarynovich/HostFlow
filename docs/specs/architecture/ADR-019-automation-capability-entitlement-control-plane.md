@@ -5,7 +5,7 @@
 **Layer of change:** Domain | Life Cycle | Constitution  
 **Start / Optimize / Scale:** Start (first vertical slice), then Optimize  
 **Authors:** Platform architecture  
-**Related:** [ADR-018](ADR-018-requirement-policy-evaluation-model.md), [ADR-004](ADR-004-five-product-modules-and-billing-events.md), [ADR-012](ADR-012-activity-notification-operating-layer.md), [ADR-002](ADR-002-modular-recruitment-hr-boundary.md), [ADR-005](ADR-005-three-level-settings-hierarchy.md), [existing-runtime-reuse-review-automation-plane.md](../platform/existing-runtime-reuse-review-automation-plane.md)
+**Related:** [ADR-016](ADR-016-requirement-evidence-document-separation.md), [ADR-004](ADR-004-five-product-modules-and-billing-events.md), [ADR-012](ADR-012-activity-notification-operating-layer.md), [ADR-002](ADR-002-modular-recruitment-hr-boundary.md), [ADR-005](ADR-005-three-level-settings-hierarchy.md), [existing-runtime-reuse-review-automation-plane.md](../platform/existing-runtime-reuse-review-automation-plane.md)
 
 > **Prerequisite:** ADR-018 PR 2B-3 (Requirement Evaluation cutover).  
 > **Terminology (обязательно):** компонент, исторически называемый «Automation Engine», — это **Reaction Orchestrator** (оркестратор реакций). Он **не** управляет бизнес-логикой и **не** вычисляет domain truth. Он получает уже опубликованные факты и решает, какую зарегистрированную реакцию выполнить.
@@ -714,13 +714,13 @@ COMMIT;
 
 ## Ссылки
 
-- Constitution: [`hostflow-constitution.md`](../platform/hostflow-constitution.md)  
+- Constitution: [`ui-constitution-v1.md`](ui-constitution-v1.md)  
 - ADR-018: Requirement Policy & Evaluation  
 - ADR-004: Billing Events  
 - ADR-012: Activity & Notification Operating Layer  
 - ADR-002: Recruitment ↔ HR boundary  
 - Reuse audit: [`existing-runtime-reuse-review-automation-plane.md`](../platform/existing-runtime-reuse-review-automation-plane.md)  
-- PR 2B audit: [`existing-runtime-reuse-review-pr2b.md`](../platform/existing-runtime-reuse-review-pr2b.md)  
+- PR 2B audit: [`requirement-evidence-model-p0.md`](../platform/requirement-evidence-model-p0.md)  
 - Module catalog: [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md)  
 - Existing automation service: `backend/app/services/automation_rules.py`  
 - Plan gates: `backend/app/services/plan_feature_gates.py`  
