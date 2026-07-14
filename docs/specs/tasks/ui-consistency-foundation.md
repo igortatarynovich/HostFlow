@@ -2,9 +2,9 @@
 
 **Status:** Phase 0–1 **completed (engineering)** — visual sign-off pending → then Phase 2  
 **Label:** PR14 — UI Consistency Foundation (**not** [`docs/PR14-hr-verification-ux.md`](../../PR14-hr-verification-ux.md))  
-**ADR:** [`ADR-015-ui-person-surfaces-and-table-taxonomy.md`](../architecture/ADR-015-ui-person-surfaces-and-table-taxonomy.md)  
-**Canon:** [`../frontend/ui-consistency-foundation.md`](../frontend/ui-consistency-foundation.md)  
-**Parity gate:** [`../frontend/document-row-parity-gate.md`](../frontend/document-row-parity-gate.md)
+**ADR:** [`ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md)  
+**Canon:** [`../frontend/entity-table-governance.md`](../frontend/entity-table-governance.md)  
+**UI standard:** [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md)
 
 ## Goal
 
@@ -53,13 +53,13 @@
 
 ## Parity gate — **completed (engineering)**
 
-- [x] [`document-row-parity-gate.md`](../frontend/document-row-parity-gate.md)
+- [x] [`ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md)
 - [x] `documentStatusParity.test.ts` (14 tests)
 - [ ] **Formal visual screenshot sign-off** (tables in gate doc) — **blocks closing PR14 Phase 0–1 in process**
 
 ## Closing step (before Phase 2 kickoff)
 
-1. Run visual pass per [`document-row-parity-gate.md`](../frontend/document-row-parity-gate.md) § Visual screenshot sign-off.  
+1. Run visual pass per [`ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md) § Visual screenshot sign-off.  
 2. Check **Sign-off record** in that doc.  
 3. Start **Phase 2 — Entity/table normalization** only after step 1–2.
 

@@ -168,5 +168,5 @@ Phase 1 закрыл **document row / blocker** presentation. Phase 2 не см�
 ## References
 
 - [`ADR-010-unified-resource-list-shell.md`](../architecture/ADR-010-unified-resource-list-shell.md)  
-- [`ui-consistency-foundation.md`](ui-consistency-foundation.md) §2  
-- [`document-row-parity-gate.md`](document-row-parity-gate.md)
+- [`../tasks/ui-consistency-foundation.md`](../tasks/ui-consistency-foundation.md) §2  
+- [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md)
