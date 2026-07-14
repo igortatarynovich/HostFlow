@@ -558,11 +558,40 @@ async def _init_data() -> Dict[str, str]:
                 )
 
             # Shared dev DB may seed tenant_licenses with finite caps; vacancy API then returns 402.
+            tenant_exists = await session.scalar(
+                sa.text("SELECT 1 FROM tenants WHERE id = :id"),
+                {"id": DEFAULT_TENANT_ID},
+            )
+            if tenant_exists is None:
+                await session.execute(
+                    sa.text(
+                        """
+                        INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
+                        VALUES (:id, :name, :slug, :api_key, TRUE, 'agency', 'active')
+                        ON CONFLICT (id) DO NOTHING
+                        """
+                    ),
+                    {
+                        "id": DEFAULT_TENANT_ID,
+                        "name": "HostFlow Test Tenant",
+                        "slug": "hostflow-test",
+                        "api_key": uuid.uuid4().hex[:32],
+                    },
+                )
+
             lic_row = await session.execute(
                 select(TenantLicense).where(TenantLicense.tenant_id == DEFAULT_TENANT_ID).limit(1)
             )
             lic = lic_row.scalar_one_or_none()
-            if lic is not None:
+            if lic is None:
+                session.add(
+                    TenantLicense(
+                        id=str(uuid.uuid4()),
+                        tenant_id=DEFAULT_TENANT_ID,
+                        plan="team",
+                    )
+                )
+            else:
                 lic.max_vacancies_active = 0
                 lic.max_candidates_active = 0
                 # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.

@@ -26,11 +26,11 @@ async def _ensure_company(session, tenant_id: str) -> str:
     await session.execute(
         sa.text(
             """
-            INSERT INTO companies (id, tenant_id, name)
-            VALUES (:id, :tenant_id, :name)
+            INSERT INTO companies (id, tenant_id, name, party_entity_type)
+            VALUES (:id, :tenant_id, :name, :party_entity_type)
             """
         ),
-        {"id": company_id, "tenant_id": tenant_id, "name": "Meta Admin Co"},
+        {"id": company_id, "tenant_id": tenant_id, "name": "Meta Admin Co", "party_entity_type": "company"},
     )
     await session.commit()
     return company_id
