@@ -587,6 +587,13 @@ async def create_tenant_with_license(
     license_values["tenant_id"] = tenant.id
     license_entry = TenantLicense(**license_values)
     db.add(license_entry)
+
+    from backend.app.entity_profile.provision_targeted_advertising import (
+        provision_targeted_advertising_on_tenant_create,
+    )
+
+    await provision_targeted_advertising_on_tenant_create(db, tenant)
+
     try:
         await db.commit()
     except IntegrityError as exc:

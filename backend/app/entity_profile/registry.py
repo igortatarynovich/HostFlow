@@ -61,6 +61,80 @@ class EntityProfileRegistry:
         }
 
     @classmethod
+    async def register_profile_if_absent(
+        cls,
+        db: AsyncSession,
+        profile: dict[str, Any],
+        *,
+        tenant_id: str,
+        registry_version: str = "entity_profile_v1",
+    ) -> dict[str, Any]:
+        """Create tenant profile from manifest only when the profile row is missing."""
+        profile_code = str(profile.get("profile_code") or "").strip()
+        if not profile_code:
+            raise ValueError("profile.profile_code is required")
+        tenant_scope = str(tenant_id)
+        existing = await cls.get_entity_profile(
+            db,
+            tenant_id=tenant_scope,
+            profile_code=profile_code,
+        )
+        if existing is not None:
+            return {
+                "profile_code": profile_code,
+                "tenant_id": tenant_scope,
+                "created": False,
+                "field_count": 0,
+                "presentation_count": 0,
+            }
+        result = await cls.register_profile(
+            db,
+            profile,
+            tenant_id=tenant_scope,
+            registry_version=registry_version,
+        )
+        return {**result, "created": True}
+
+    @classmethod
+    async def ensure_intake_presentation_if_absent(
+        cls,
+        db: AsyncSession,
+        entity: EpEntityProfile,
+        presentation: dict[str, Any],
+        *,
+        tenant_scope: str,
+    ) -> bool:
+        """Insert a canonical presentation row without replacing tenant-owned instances."""
+        code = str(presentation.get("presentation_code") or "").strip()
+        if not code:
+            return False
+        existing = (
+            await db.execute(
+                select(EpIntakePresentation).where(
+                    EpIntakePresentation.tenant_id == tenant_scope,
+                    EpIntakePresentation.entity_profile_id == entity.id,
+                    EpIntakePresentation.presentation_code == code,
+                ).limit(1)
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return False
+        db.add(
+            EpIntakePresentation(
+                id=str(uuid4()),
+                tenant_id=tenant_scope,
+                entity_profile_id=entity.id,
+                intake_source_binding_id=presentation.get("intake_source_binding_id"),
+                presentation_code=code,
+                field_subset=list(presentation.get("field_subset") or []),
+                presentation_overrides=dict(presentation.get("presentation_overrides") or {}),
+                is_active=bool(presentation.get("is_active", True)),
+            )
+        )
+        await db.flush()
+        return True
+
+    @classmethod
     async def _validate_fields_exist(
         cls,
         db: AsyncSession,
