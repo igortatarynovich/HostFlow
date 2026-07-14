@@ -36,6 +36,8 @@ import { useI18n } from '../i18n'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import LeadIntakeResolutionPanel from '../components/leads/LeadIntakeResolutionPanel'
+import SalesQuestionnairePanel from '../components/leads/SalesQuestionnairePanel'
+import SalesQuestionnaireSummaryRail from '../components/leads/SalesQuestionnaireSummaryRail'
 import {
   leadIntakeWorkspaceBlocking,
   manualProcessBlockHint,
@@ -51,6 +53,7 @@ import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
+import { readSalesQuestionnaireSummary } from '../utils/salesQuestionnaire'
 
 const LOCALE_TO_DATE = {
   en: 'en-US',
@@ -449,6 +452,9 @@ export default function LeadDetailPage() {
 
   const normalized = lead?.normalized && typeof lead.normalized === 'object' && !Array.isArray(lead.normalized) ? lead.normalized : {}
   const isClientLead = Boolean(lead && lead.lead_type === 'client' && lead.lead_target_type === 'client_lead')
+  const showSalesQuestionnaire = Boolean(isServicesTenant && lead && lead.lead_type === 'client')
+  const salesQuestionnaireSummary = lead ? readSalesQuestionnaireSummary(lead) : {}
+  const showSalesQuestionnaireSummary = showSalesQuestionnaire && Object.keys(salesQuestionnaireSummary).length > 0
   const leadRejected = Boolean(lead && leadIntakeResolutionRejected(lead))
   const crmStageValues = useMemo(
     () => (leadRejected ? CRM_STAGE_VALUES.filter((v) => v !== 'lost') : CRM_STAGE_VALUES),
@@ -983,6 +989,17 @@ export default function LeadDetailPage() {
         {!loading && !notFound && lead ? (
         <>
           {isClientLead ? (
+            <>
+            {showSalesQuestionnaire ? (
+              <SalesQuestionnairePanel
+                lead={lead}
+                onLeadUpdated={(updated) => {
+                  setLead(updated)
+                  bumpNextActionTick()
+                }}
+              />
+            ) : null}
+            {showSalesQuestionnaireSummary ? <SalesQuestionnaireSummaryRail lead={lead} /> : null}
             <ClientLeadDetailView
               embedded
               lead={lead}
@@ -1108,8 +1125,19 @@ export default function LeadDetailPage() {
                 </div>
               }
             />
+            </>
           ) : isServicesTenant ? (
           <>
+          {showSalesQuestionnaire ? (
+            <SalesQuestionnairePanel
+              lead={lead}
+              onLeadUpdated={(updated) => {
+                setLead(updated)
+                bumpNextActionTick()
+              }}
+            />
+          ) : null}
+          {showSalesQuestionnaireSummary ? <SalesQuestionnaireSummaryRail lead={lead} /> : null}
           {recruitmentLeadConverted ? (
             <div className="card border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm sm:p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
