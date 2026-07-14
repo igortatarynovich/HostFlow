@@ -42,7 +42,7 @@
 - [x] В `hostflow-frontend` есть команда `ui:adr011:check` (layout arbitrary `px`, **`--fail`** в CI).
 - [x] `eslint-plugin-jsx-a11y` в ESLint (пресет **`strict`** + кастом **`anchor-is-valid`** для Router).
 - [x] В ADR-011 §13 п.4 — ссылка на эту задачу.
-- [x] В [`ci_gates.md`](../../quality/ci_gates.md) — актуализировано описание гейта.
+- [x] В [`ci_gates.md`](../quality/ci_gates.md) — актуализировано описание гейта.
 - [x] CI: `qa:static` падает при новых layout arbitrary `px` (регрессия ADR-011 §3).
 
 ## Заметки по реализации

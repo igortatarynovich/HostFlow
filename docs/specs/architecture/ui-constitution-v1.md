@@ -4,18 +4,18 @@
 **Status:** canonical (L1 — **domain** product surface).  
 **Owner:** Product + Platform UX + Architecture.
 
-**Platform canon (how UI is built):** [`hostflow-platform-canon-v1.md`](hostflow-platform-canon-v1.md) — **HostFlow Platform Canon** — supreme entry point.  
-**Interaction Rules:** [`hostflow-interaction-rules-v1.md`](hostflow-interaction-rules-v1.md)  
-**Layer spec:** [`hostflow-interaction-platform-v1.md`](hostflow-interaction-platform-v1.md)  
-**Entity deep work:** [`hostflow-entity-workspace-v1.md`](hostflow-entity-workspace-v1.md)
+**Platform canon (how UI is built):** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) — **HostFlow UI Platform Standard** — supreme entry point.  
+**Interaction Rules:** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)  
+**Layer spec:** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)  
+**Entity deep work:** [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)
 
 This document covers **what** the user works on (objects, ownership, handoffs).  
 **HostFlow Platform Canon** covers **how** every surface looks, behaves, and is composed.
 
-**Parent:** [`hostflow-operational-model.md`](hostflow-operational-model.md)  
+**Parent:** [`applications-operating-model.md`](applications-operating-model.md)  
 **Hierarchy:** [`hierarchy-of-truth.md`](../../governance/hierarchy-of-truth.md)
 
-**Build roadmap:** [`ui-primitives-roadmap.md`](ui-primitives-roadmap.md)
+**Build roadmap:** [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)
 
 > **There are no screens. There are compositions of primitives.** See HostFlow Platform Canon §4.
 
@@ -249,7 +249,7 @@ Admin/integration diagnostics: separate Monitoring surfaces (not primary CRM nav
 | Mutations via `/leads` in module pages | **DONE** (2026-07-09) | `/sales/inquiries`, `/recruitment/applications` facades |
 | Dual reference (Search Home + Sales) | **RESOLVED** | Sales Application Workspace only |
 
-Track progress in [`operational-model-adoption-register.md`](operational-model-adoption-register.md).
+Track progress in [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md).
 
 ---
 
@@ -287,7 +287,7 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`hostflow-platform-canon-v1.md`](hostflow-platform-canon-v1.md). Build phases: [`ui-primitives-roadmap.md`](ui-primitives-roadmap.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md).
 
 **Frozen until Phase 2:** candidate entity page layout refactor; Application Workspace rewrite; Search Home.
 
@@ -311,19 +311,19 @@ If any answer fails — stop and fix design before coding.
 
 | Document | Role |
 |----------|------|
-| [`hostflow-operational-model.md`](hostflow-operational-model.md) | L1 — operational work model |
-| [`hostflow-interaction-architecture.md`](hostflow-interaction-architecture.md) | List → Workspace → Capabilities |
+| [`applications-operating-model.md`](applications-operating-model.md) | L1 — operational work model |
+| [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) | List → Workspace → Capabilities |
 | [`ADR-010`](ADR-010-unified-resource-list-shell.md) | Collection Workspace |
-| [`ADR-017`](ADR-017-workspace-layer.md) | Entity Workspace |
-| [`.cursor/rules/hostflow-product-contract.mdc`](../../.cursor/rules/hostflow-product-contract.mdc) | Product contract (references this doc) |
-| [`operational-model-adoption-register.md`](operational-model-adoption-register.md) | Migration progress |
-| [`hostflow-platform-canon-v1.md`](hostflow-platform-canon-v1.md) | **HostFlow Platform Canon** — supreme; five layers |
-| [`hostflow-interaction-rules-v1.md`](hostflow-interaction-rules-v1.md) | Interaction Rules — click, keyboard, selection, … |
-| [`hostflow-interaction-platform-v1.md`](hostflow-interaction-platform-v1.md) | Primitives, Compositions, Workspaces |
-| [`hostflow-entity-workspace-v1.md`](hostflow-entity-workspace-v1.md) | Universal Entity Workspace |
-| [`ui-primitives-roadmap.md`](ui-primitives-roadmap.md) | Build order Phase 1–5 |
-| [`design-system-constitution-v1.md`](design-system-constitution-v1.md) | Superseded — redirect to Platform Canon |
-| [`canonical-workspaces-roadmap.md`](canonical-workspaces-roadmap.md) | Superseded — workspace types reference only |
+| [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md) | Entity Workspace |
+| Product contract | See this document (UI Constitution) |
+| [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md) | Migration progress |
+| [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) | **UI Platform Standard** — supreme; five layers |
+| [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) | Interaction Rules — click, keyboard, selection, … |
+| [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) | Primitives, Compositions, Workspaces |
+| [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md) | Universal Entity Workspace |
+| [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md) | Build order Phase 1–5 |
+| [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) | Superseded — redirect to Platform Canon |
+| [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md) | Superseded — workspace types reference only |
 
 ---
 

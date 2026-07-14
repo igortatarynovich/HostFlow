@@ -42,4 +42,4 @@ On candidate card at `docs_got` / `ready_for_handoff` / `processing_by_hr`:
 
 ## References
 
-- [PR17-candidate-to-employee-handoff-spec.md](../PR17-candidate-to-employee-handoff-spec.md)
+- [PR17-candidate-to-employee-handoff-spec.md](../../PR17-candidate-to-employee-handoff-spec.md)
