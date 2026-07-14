@@ -707,9 +707,6 @@
         "expiring_queue": "Expiring (queue)",
         "queue_truncated": "Showing first 12 rows.",
         "linked_documents": "Linked dossier documents",
-        "hr_context_status": "Operational record: {status}",
-        "hr_context_links": "{count} document(s) linked from recruitment",
-        "reused_from_recruitment": "Reused from recruitment",
         "onboarding_overdue": "{count} task(s) overdue"
       },
       "employee_legal": {
@@ -905,6 +902,9 @@
         "my_availability": "My availability",
         "time_off": "Time-off",
         "reminders": "Reminders",
+        "recruitment_inbox": "Applications",
+        "recruitment_searches": "Searches",
+        "sales": "Inquiries",
         "leads": "Leads",
         "leads_distribution": "Lead routing",
         "leads_distribution_rules": "Lead routing rules",
@@ -4986,66 +4986,7 @@
         "validation_rate": "Stage forward rate"
       }
     },
-    "candidate_requirements": {
-      "workspace": {
-        "title": "Requirements",
-        "subtitle": "Close each requirement before handoff to HR.",
-        "back_to_card": "Back to candidate",
-        "summary_progress": "{fulfilled} of {total} closed",
-        "pending_review": "{count} pending review",
-        "open_blockers": "{count} open",
-        "all_fulfilled": "All requirements closed",
-        "handoff_ready": "Ready for handoff",
-        "handoff_blocked": "Handoff blocked",
-        "requirements_closed": "Requirements closed — handoff may need extra confirmations",
-        "read_only": "Recruitment locked — view only",
-        "filter_all": "All",
-        "filter_open": "Open only",
-        "checklist_title": "Checklist",
-        "section_data": "Required data",
-        "section_documents": "Documents & evidence",
-        "data_ok": "Filled",
-        "data_missing": "Missing",
-        "no_open_requirements": "No open document requirements.",
-        "profile_hint": "Profile: {profile}",
-        "load_failed": "Could not load requirements workspace.",
-        "disabled": "Requirements workspace is not enabled in this environment.",
-        "open_from_card": "Open workspace",
-        "select_requirement": "Select a requirement from the list to review and confirm evidence.",
-        "data_fields_title": "Required data",
-        "data_fields_subtitle": "Fill missing candidate fields — requirements engine re-evaluates after save.",
-        "data_field_save": "Save",
-        "data_open_count": "{count} missing",
-        "all_data_filled": "All filled",
-        "card_title": "Requirements",
-        "card_subtitle": "Close data fields and document evidence in the requirements workspace.",
-        "open_workspace": "Open workspace",
-        "card_data_missing": "{count} required data field(s) still open",
-        "docs_rail_hint": "Upload files here — confirm evidence in the requirements workspace.",
-        "handoff_title": "Handoff readiness",
-        "handoff_subtitle": "Transfer Policy decision — same data as the handoff modal on the candidate card.",
-        "handoff_ready_hint": "Requirements and policy checks passed — you can create a handoff.",
-        "handoff_blocked_hint": "Handoff is blocked until all blockers above are resolved.",
-        "create_handoff": "Create handoff",
-        "section_operational": "Operational actions",
-        "activity_subtitle": "Record a call or contact attempt to close this operational requirement.",
-        "activity_open": "Open",
-        "activity_satisfied": "Completed",
-        "activity_record_call": "Record call",
-        "activity_call_title": "Call candidate",
-        "activity_lead_continuity": "Already satisfied from lead intake — no duplicate first-contact task needed.",
-        "activity_linked": "Linked activity: {id}",
-        "operational": {
-          "first_contact_completed": "First contact completed"
-        }
-      }
-    },
     "candidate_card": {
-      "from_lead_badge": "Converted from lead",
-      "from_lead_hint": "Context from the lead intake is carried here so you do not start from scratch.",
-      "from_lead_stage": "Lead stage",
-      "from_lead_intake": "Intake decision",
-      "from_lead_intake_summary": "Intake summary",
       "actions": {
         "delete_request": "Request deletion",
         "delete_request_loading": "Sending request…",
@@ -5678,25 +5619,6 @@
         "reject_reason_placeholder": "Reason (optional)",
         "confirm_reject": "Confirm reject",
         "rejection_reason": "Rejection reason: {reason}",
-        "evidence_paths": "Evidence paths",
-        "extraction_fields": "Document data",
-        "field_missing": "Missing",
-        "approve_blocked_extraction": "Fill missing document fields before approving evidence.",
-        "alternative_status": {
-          "satisfied": "Complete",
-          "pending_verification": "Partial",
-          "missing": "Not started"
-        },
-        "field": {
-          "number": "Number",
-          "country": "Country",
-          "issued_at": "Issued",
-          "expires_at": "Expires",
-          "categories": "Categories",
-          "type": "Type",
-          "voivodeship": "Voivodeship",
-          "issued_by": "Issued by"
-        },
         "toast_selected": "Evidence selected",
         "toast_linked": "Document linked",
         "toast_approved": "Requirement approved",
@@ -6847,8 +6769,6 @@
         }
       },
       "pipeline_errors": {
-        "AD_NOT_MAPPED": "Meta ad is not mapped to a vacancy — pick a vacancy manually or add an ad_id mapping.",
-        "VACANCY_NOT_RESOLVED": "Vacancy could not be resolved — configure routing or pick a vacancy manually.",
         "LEAD_FIT_NO_MATCH": "Does not meet vacancy criteria — automatic candidate creation was skipped.",
         "LEAD_FIT_NEEDS_INFO": "Not enough data to verify fit — complete the lead or relax criteria, then Process."
       },
@@ -7043,12 +6963,8 @@
         },
         "public_intake_readonly": {
           "title": "Public intake lead",
-          "body": "This lead came from the public candidate form. Intake was resolved on submit — reject, pool, request info, and manual process are not available in this CRM rail.",
-          "client_title": "Public client inquiry",
-          "client_body": "This lead came from a public client inquiry form. Use client lead actions outside the recruitment intake rail.",
-          "draft_title": "Public form in progress",
-          "draft_body": "The candidate is still filling the public form. CRM intake actions unlock after submit and outcome processing.",
-          "payload_hint": "Continue from the submitted data (payload / linked records) or open the linked candidate when created."
+          "body": "This lead came from the public intake flow. Reject, pool, request info, and manual process are not available for this source in CRM.",
+          "payload_hint": "Continue from the submitted data (payload / linked records) outside this intake rail."
         },
         "audit": {
           "badge": "Candidate created",
@@ -11864,7 +11780,6 @@
       "header_kicker": "Reusable templates of fields, funnel stages, and documents for vacancies.",
       "title": "Candidate profiles",
       "subtitle": "Create and maintain profile templates that vacancies use for intake and pipeline.",
-      "deprecation_banner": "Field and document matrices in profile config are deprecated. Use Entity Profile, intake forms, and the Field Registry card layout for new semantics. Mapped system profiles reject config edits here.",
       "fix_orphan_vacancies": "Link vacancies without a profile",
       "import": "Import",
       "bulk_update": "Bulk update",

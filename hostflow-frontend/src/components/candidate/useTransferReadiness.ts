@@ -13,7 +13,7 @@ export function useTransferReadiness(candidateId: string | null | undefined, ref
     }
     setLoading(true)
     try {
-      const data = await getCandidateTransferReadiness(id, { targetStage: 'ready_for_handoff' })
+      const data = await getCandidateTransferReadiness(id)
       setReport(data)
     } catch {
       setReport(null)

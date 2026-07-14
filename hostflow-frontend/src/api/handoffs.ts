@@ -54,11 +54,7 @@ export async function createHandoff(
 export type HandoffBulkResult = {
   created: number
   failed: number
-  errors: Array<{
-    candidate_id: string
-    error: string
-    detail?: Record<string, unknown>
-  }>
+  errors: Array<{ candidate_id: string; error: string }>
 }
 
 export async function createBulkHandoff(

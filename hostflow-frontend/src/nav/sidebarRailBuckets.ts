@@ -8,8 +8,8 @@ export const SIDEBAR_CLIENT_FLAT_ORDER = [
   'overview',
   'work-hub',
   'inbox',
+  'recruitment-searches',
   'candidates',
-  'do-procesowania',
   'tasks',
   'notification-alerts',
   'settings-integrations',
@@ -20,14 +20,15 @@ export const SIDEBAR_AGENCY_DASHBOARD_ORDER = ['overview'] as const
 export const SIDEBAR_AGENCY_WORK_HUB_ORDER = ['work-hub'] as const
 export const SIDEBAR_AGENCY_INBOX_ORDER = ['inbox'] as const
 export const SIDEBAR_AGENCY_PIPELINE_ORDER = [
+  'recruitment-searches',
+  'recruitment-inbox',
   'candidates',
   'hr-workspace',
+  'sales',
   'clients',
-  'vacancies',
-  'leads',
 ] as const
 export const SIDEBAR_AGENCY_TASKS_ORDER = ['tasks', 'notification-alerts', 'calendar'] as const
-export const SIDEBAR_AGENCY_PROCESSING_ORDER = ['do-procesowania'] as const
+export const SIDEBAR_AGENCY_PROCESSING_ORDER = [] as const
 export const SIDEBAR_AGENCY_TEAM_ORDER = ['team-availability', 'my-availability', 'time-off'] as const
 export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const
 export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations'] as const

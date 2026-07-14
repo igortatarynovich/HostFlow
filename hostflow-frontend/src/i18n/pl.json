@@ -575,9 +575,6 @@
         "expiring_queue": "Wygasające (kolejka)",
         "queue_truncated": "Pokazano pierwsze 12 wierszy.",
         "linked_documents": "Powiązane dokumenty dossier",
-        "hr_context_status": "Rekord operacyjny: {status}",
-        "hr_context_links": "{count} dokument(ów) powiązanych z rekrutacji",
-        "reused_from_recruitment": "Ponownie użyty z rekrutacji",
         "onboarding_overdue": "Przeterminowanych zadań: {count}"
       },
       "employee_legal": {
@@ -772,6 +769,9 @@
         "my_availability": "Moja dostępność",
         "time_off": "Urlopy i nieobecności",
         "reminders": "Przypomnienia",
+        "recruitment_inbox": "Odpowiedzi",
+        "recruitment_searches": "Rekrutacje",
+        "sales": "Zapytania",
         "leads": "Leady",
         "leads_distribution": "Routing leadów",
         "leads_distribution_rules": "Reguły routingu leadów",
@@ -4225,11 +4225,6 @@
       }
     },
     "candidate_card": {
-      "from_lead_badge": "Utworzony z leada",
-      "from_lead_hint": "Kontekst z intake leada jest tutaj — nie zaczynasz od zera.",
-      "from_lead_stage": "Etap leada",
-      "from_lead_intake": "Decyzja intake",
-      "from_lead_intake_summary": "Podsumowanie intake",
       "actions": {
         "delete_request": "Zgłoś usunięcie",
         "delete_request_loading": "Wysyłamy zgłoszenie…",
@@ -4853,25 +4848,6 @@
         "reject_reason_placeholder": "Powód (opcjonalnie)",
         "confirm_reject": "Potwierdź odrzucenie",
         "rejection_reason": "Powód odrzucenia: {reason}",
-        "evidence_paths": "Ścieżki dowodu",
-        "extraction_fields": "Dane z dokumentu",
-        "field_missing": "Brak",
-        "approve_blocked_extraction": "Uzupełnij brakujące pola dokumentu przed zatwierdzeniem dowodu.",
-        "alternative_status": {
-          "satisfied": "Kompletne",
-          "pending_verification": "Częściowe",
-          "missing": "Nierozpoczęte"
-        },
-        "field": {
-          "number": "Numer",
-          "country": "Kraj",
-          "issued_at": "Wydano",
-          "expires_at": "Ważne do",
-          "categories": "Kategorie",
-          "type": "Typ",
-          "voivodeship": "Województwo",
-          "issued_by": "Wydawca"
-        },
         "toast_selected": "Dowód wybrany",
         "toast_linked": "Dokument powiązany",
         "toast_approved": "Wymaganie potwierdzone",
@@ -6542,8 +6518,6 @@
         }
       },
       "pipeline_errors": {
-        "AD_NOT_MAPPED": "Reklama Meta nie jest zmapowana na ofertę — wybierz ofertę ręcznie lub dodaj mapowanie ad_id.",
-        "VACANCY_NOT_RESOLVED": "Nie udało się ustalić oferty — skonfiguruj routing lub wybierz ofertę ręcznie.",
         "LEAD_FIT_NO_MATCH": "Kryteria oferty niespełnione — pominięto autotworzenie kandydata.",
         "LEAD_FIT_NEEDS_INFO": "Za mało danych do oceny fit — uzupełnij lead lub zmień kryteria, potem Process."
       },
@@ -6738,12 +6712,8 @@
         },
         "public_intake_readonly": {
           "title": "Lead z public intake",
-          "body": "Lead powstał z publicznej ankiety kandydata. Decyzja intake nastąpiła przy wysyłce — odrzucenie, pula, prośba o informacje i ręczny process nie są dostępne w tym panelu CRM.",
-          "client_title": "Zapytanie klienta z formularza publicznego",
-          "client_body": "Lead powstał z formularza zapytania klienta. Użyj akcji client lead poza recruitment intake rail.",
-          "draft_title": "Publiczna ankieta w trakcie",
-          "draft_body": "Kandydat wypełnia jeszcze formularz. Akcje CRM intake są dostępne po wysyłce i przetworzeniu outcome.",
-          "payload_hint": "Kontynuuj na podstawie danych zgłoszenia (payload / powiązane rekordy) lub otwórz powiązanego kandydata po utworzeniu."
+          "body": "Lead powstał z public intake. Odrzucenie, pula, prośba o informacje i ręczny process nie są dostępne dla tego źródła w CRM.",
+          "payload_hint": "Kontynuuj na podstawie danych zgłoszenia (payload / powiązane rekordy) poza tym panelem intake."
         },
         "audit": {
           "badge": "Kandydat utworzony",
@@ -11489,7 +11459,6 @@
       "header_kicker": "Szablony pól, etapów lejka i dokumentów używane przez wakaty.",
       "title": "Profile kandydatów",
       "subtitle": "Twórz i utrzymuj szablony profili, z których korzystają wakaty przy intake i pipeline.",
-      "deprecation_banner": "Macierze pól i dokumentów w config profilu są przestarzałe. Nową semantykę ustawiaj w Entity Profile, formularzach intake i układzie karty Field Registry. Dla mapowanych profili systemowych edycja config jest blokowana.",
       "fix_orphan_vacancies": "Przypisz wakaty bez profilu",
       "import": "Import",
       "bulk_update": "Masowa zmiana",

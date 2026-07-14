@@ -13,35 +13,10 @@ import {
   leadSupportsManualProcess,
 } from './leadCrm'
 
-/** Normalize public intake source variants (`public_intake` P5C vs legacy `public-intake` client). */
-export function leadPublicIntakeSourceKind(lead: Pick<Lead, 'source'> | null): 'candidate_form' | 'client_legacy' | null {
-  const src = String(lead?.source || '').trim().toLowerCase()
-  if (src === 'public_intake') return 'candidate_form'
-  if (src === 'public-intake') return 'client_legacy'
-  return null
-}
-
-/** Lead-first public form session still being filled (no CRM intake-decision API). */
-export function leadPublicIntakeDraftSession(lead: Pick<Lead, 'source' | 'stage'> | null): boolean {
-  if (!lead || leadPublicIntakeSourceKind(lead) !== 'candidate_form') return false
-  return String(lead.stage || '').trim().toLowerCase() === 'intake_draft'
-}
-
-/** Public intake leads where CRM intake rail must stay read-only (decision on form submit or client branch). */
+/** Public-intake leads: no backend support for intake-decision / manual process — show read-only guidance only. */
 export function leadRecruitmentPublicIntakeReadonly(lead: Lead | null, isServicesTenant: boolean): boolean {
   if (!lead || isServicesTenant || lead.candidate_id) return false
-  const kind = leadPublicIntakeSourceKind(lead)
-  if (kind === 'client_legacy') return true
-  if (kind === 'candidate_form') return true
-  return false
-}
-
-export type LeadPublicIntakeReadonlyVariant = 'client_legacy' | 'draft' | 'submitted'
-
-export function leadPublicIntakeReadonlyVariant(lead: Lead | null): LeadPublicIntakeReadonlyVariant {
-  if (leadPublicIntakeDraftSession(lead)) return 'draft'
-  if (leadPublicIntakeSourceKind(lead) === 'client_legacy') return 'client_legacy'
-  return 'submitted'
+  return String(lead.source || '').trim().toLowerCase() === 'public-intake'
 }
 
 /** One-line vacancy line for compact sticky header on lead intake workspace. */
@@ -173,11 +148,6 @@ export function intakeWorkspaceHeader(lead: Lead, isServicesTenant: boolean): In
   if (hint === 'INTAKE_IDENTITY_UNCLEAR') return { tone: 'identity_unclear' }
   if (st === 'needs_routing') return { tone: 'needs_routing' }
   return { tone: 'ready' }
-}
-
-/** Recruitment agency CRM uses intake-first workspace (list rail + detail page), not services/client chrome. */
-export function recruitmentAgencyIntakeFirstLayout(isServicesTenant: boolean, isClientLead: boolean): boolean {
-  return !isServicesTenant && !isClientLead
 }
 
 /** True when CRM noise (call/write, stage, reminders…) should stay under “More”, not in the main workspace. */

@@ -23,18 +23,6 @@ export type RequirementEvidenceDocument = {
   has_files?: boolean
   expires_on?: string | null
   document_runtime?: Record<string, unknown> | null
-  extracted_fields?: Record<string, unknown>
-  required_extraction_fields?: string[]
-  missing_extraction_fields?: string[]
-}
-
-export type EvaluatedEvidenceAlternative = {
-  alternative_code?: string
-  evidence_variant_code?: string
-  status?: string
-  partial?: boolean
-  document_type_codes?: string[]
-  satisfying_document_ids?: string[]
 }
 
 export type CandidateEvidenceSnapshot = {
@@ -73,8 +61,6 @@ export type RequirementChecklistItem = {
     blockers?: Array<Record<string, unknown>>
     evidence_status?: string | null
     evidence_variant_code?: string | null
-    alternatives_evaluated?: EvaluatedEvidenceAlternative[]
-    extraction_incomplete?: boolean
     [key: string]: unknown
   }
 }
@@ -84,77 +70,6 @@ export type RequirementsChecklistResponse = {
   requirements: RequirementChecklistItem[]
   all_fulfilled: boolean
   pipeline_blockers?: RequirementPipelineBlockers
-}
-
-export type WorkspaceFieldRequirement = {
-  qualified_code: string
-  level?: string
-  reason_code?: string | null
-  satisfied: boolean
-  current_value?: string | number | boolean | null
-}
-
-export type WorkspaceFieldRequirementsSection = {
-  required_fields: WorkspaceFieldRequirement[]
-  missing_count: number
-  satisfied: boolean
-}
-
-export type WorkspaceSummary = {
-  total_requirements: number
-  fulfilled_count: number
-  blocking_open_count: number
-  pending_review_count: number
-  all_fulfilled: boolean
-  handoff_ready: boolean
-}
-
-export type WorkspaceTransferReadiness = {
-  transfer_allowed: boolean
-  handoff_create_allowed: boolean
-  blocking_reasons: Array<Record<string, unknown>>
-  warnings?: Array<Record<string, unknown>>
-  destinations_allowed?: string[]
-  policy_version?: string | null
-  source_layers?: string[]
-  requirement_engine?: Record<string, unknown> | null
-  requirement_gate?: {
-    applied?: boolean
-    satisfied?: boolean
-    [key: string]: unknown
-  } | null
-}
-
-export type OperationalRequirementRow = {
-  requirement_code: string
-  type: string
-  public_name?: string
-  level?: string
-  status: 'open' | 'satisfied' | string
-  activity_id?: string | null
-  satisfied_via?: string | null
-  continuity_reasons?: string[]
-  completed_at?: string | null
-  cta?: {
-    action?: string
-    default_activity_type?: string
-  }
-}
-
-export type RequirementsWorkspaceResponse = {
-  schema_version: string
-  candidate_id: string
-  entity_profile_code?: string | null
-  vacancy_id?: string | null
-  can_edit: boolean
-  summary: WorkspaceSummary
-  checklist: RequirementsChecklistResponse
-  field_requirements: WorkspaceFieldRequirementsSection
-  requirement_evaluation?: Record<string, unknown> | null
-  transfer_readiness: WorkspaceTransferReadiness
-  pipeline_blockers: RequirementPipelineBlockers
-  operational_requirements: OperationalRequirementRow[]
-  evaluated_at: string
 }
 
 export type RequirementPipelineBlockers = {

@@ -7,6 +7,7 @@ import {
   IconBolt,
   IconBriefcase,
   IconBuilding,
+  IconBuildingStore,
   IconChartBar,
   IconCalendarEvent,
   IconCalendarOff,
@@ -24,6 +25,7 @@ import {
   IconMessageCircle,
   IconPlugConnected,
   IconRoute,
+  IconSearch,
   IconSettings,
   IconShield,
   IconUsers,
@@ -84,7 +86,10 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   overview: IconDashboard,
   analytics: IconChartBar,
   'work-hub': IconBriefcase,
+  'recruitment-searches': IconSearch,
+  'recruitment-inbox': IconInbox,
   'hr-workspace': IconUsersGroup,
+  sales: IconBuildingStore,
   candidates: IconUsers,
   'candidates-no-next-action': IconUserQuestion,
   clients: IconBuilding,
@@ -218,6 +223,7 @@ export function Sidebar({
 
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
+      'recruitment-searches': 'vacancies',
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
       'hr-workspace': 'hr',
@@ -295,7 +301,6 @@ export function Sidebar({
       'overview',
       'work-hub',
       'candidates',
-      'do-procesowania',
       'tasks',
       'inbox',
       'settings-integrations',
@@ -413,6 +418,9 @@ export function Sidebar({
 
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
+    if (item.key === 'recruitment-searches') {
+      return location.pathname.startsWith(p.recruitmentSearches)
+    }
     if (item.key === 'work-hub') return location.pathname.startsWith(p.work) || location.pathname.startsWith(`${p.work}/`)
     if (item.key === 'hr-workspace') return location.pathname === p.hr || location.pathname.startsWith(`${p.hr}/`)
     if (
@@ -558,14 +566,6 @@ export function Sidebar({
                 <ItemIcon size={16} stroke={1.8} />
                 <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
               </span>
-              {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
-                <span
-                  className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white"
-                  aria-label={t('app.handoff.badge_new', { count: pendingHandoffsCount })}
-                >
-                  {pendingHandoffsCount}
-                </span>
-              )}
             </span>
           )
         })()}
