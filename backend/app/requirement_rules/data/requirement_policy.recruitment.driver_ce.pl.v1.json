@@ -1,0 +1,360 @@
+{
+  "policy_code": "recruitment.driver_ce.pl",
+  "policy_version": "v1",
+  "policy_ref": "recruitment.driver_ce.pl/v1",
+  "effective_from": "2026-07-13",
+  "adr": "ADR-018",
+  "schema_version": "rule_graph.v1",
+  "description": "Poltrakt / Driver CE / Recruitment / Poland — applicability, alternatives, dependencies, stage ownership.",
+  "immutable": true,
+  "scope": {
+    "module": "recruitment",
+    "entity_profile_codes": [
+      "recruitment.candidate.driver_ce",
+      "recruitment.candidate.driver_ce_ua"
+    ],
+    "country_of_employment": "PL",
+    "position_category": "driver"
+  },
+  "decision_tree": [
+    "determine_citizenship_segment",
+    "assess_legal_stay",
+    "assess_labor_market_access",
+    "assess_transport_compliance",
+    "assess_driver_qualification",
+    "apply_stage_ownership"
+  ],
+  "applicability_rules": [
+    {
+      "rule_id": "poland_excludes_immigration_requirements",
+      "when": {"citizenship_segment": "poland"},
+      "effect": "not_applicable",
+      "requirements": [
+        "legal_stay_confirmation",
+        "labor_market_access",
+        "work_authorization_process",
+        "residence_authorization_process",
+        "driver_attestation"
+      ],
+      "reason": "Polish citizen — domestic stay and labor access"
+    },
+    {
+      "rule_id": "eu_eea_swiss_excludes_work_permit_process",
+      "when": {"citizenship_segment": "eu_eea_swiss"},
+      "effect": "not_applicable",
+      "requirements": [
+        "work_authorization_process",
+        "residence_authorization_process",
+        "driver_attestation"
+      ],
+      "reason": "EU/EEA/Swiss free movement — no work permit process"
+    },
+    {
+      "rule_id": "eu_eea_swiss_legal_stay_via_free_movement",
+      "when": {"citizenship_segment": "eu_eea_swiss"},
+      "effect": "applicable",
+      "requirements": ["legal_stay_confirmation", "labor_market_access"],
+      "reason": "Assessed via free movement facts, not third-country documents"
+    },
+    {
+      "rule_id": "third_country_immigration_applicable",
+      "when": {"citizenship_segment": "third_country"},
+      "effect": "applicable",
+      "requirements": [
+        "legal_stay_confirmation",
+        "labor_market_access",
+        "work_authorization_process",
+        "residence_authorization_process"
+      ],
+      "reason": "Third-country citizenship requires stay and labor assessment"
+    },
+    {
+      "rule_id": "driver_attestation_third_country_haulage",
+      "when": {
+        "citizenship_segment": "third_country",
+        "international_haulage": true,
+        "community_licence_carrier": true
+      },
+      "effect": "applicable",
+      "requirements": ["driver_attestation"],
+      "reason": "International Community-licence haulage for third-country driver"
+    }
+  ],
+  "dependency_rules": [
+    {
+      "rule_id": "free_movement_satisfies_labor_market_access",
+      "kind": "satisfies",
+      "when": {"free_movement": true},
+      "requirements": ["labor_market_access"],
+      "alternative_code": "free_movement_labor_access",
+      "reason": "PL/EU/EEA/CH citizens have labor market access without work permit"
+    },
+    {
+      "rule_id": "free_movement_satisfies_legal_stay",
+      "kind": "satisfies",
+      "when": {"free_movement": true},
+      "requirements": ["legal_stay_confirmation"],
+      "alternative_code": "domestic_or_free_movement_stay",
+      "reason": "Domestic or free-movement stay basis"
+    },
+    {
+      "rule_id": "visa_matched_excludes_residence_card_alternative",
+      "kind": "excludes",
+      "when": {
+        "matched_alternative": {
+          "requirement_code": "legal_stay_confirmation",
+          "alternative_code": "approved_visa"
+        }
+      },
+      "exclude_alternatives": [
+        {
+          "requirement_code": "legal_stay_confirmation",
+          "alternative_codes": ["approved_residence_card"]
+        }
+      ],
+      "reason": "Valid visa selected — residence card not required for same requirement"
+    },
+    {
+      "rule_id": "residence_card_matched_excludes_visa_alternative",
+      "kind": "excludes",
+      "when": {
+        "matched_alternative": {
+          "requirement_code": "legal_stay_confirmation",
+          "alternative_code": "approved_residence_card"
+        }
+      },
+      "exclude_alternatives": [
+        {
+          "requirement_code": "legal_stay_confirmation",
+          "alternative_codes": ["approved_visa"]
+        }
+      ],
+      "reason": "Residence card selected — visa not required for same requirement"
+    },
+    {
+      "rule_id": "residence_card_full_labor_access_excludes_work_permit_process",
+      "kind": "excludes",
+      "when": {
+        "matched_alternative": {
+          "requirement_code": "labor_market_access",
+          "alternative_code": "residence_card_labor_access"
+        }
+      },
+      "requirements": ["work_authorization_process"],
+      "effect": "not_applicable",
+      "reason": "Residence card confirms labor access — separate work permit process not applicable"
+    },
+    {
+      "rule_id": "embedded_code95_satisfies_driver_entitlement",
+      "kind": "satisfies",
+      "when": {
+        "matched_alternative": {
+          "requirement_code": "professional_qualification",
+          "alternative_code": "driver_license_with_code95"
+        }
+      },
+      "requirements": ["driver_entitlement"],
+      "alternative_code": "approved_driver_license_ce",
+      "also_satisfies": ["driver_entitlement"],
+      "exclude_alternatives": [
+        {
+          "requirement_code": "professional_qualification",
+          "alternative_codes": ["approved_qualification_card"]
+        }
+      ],
+      "reason": "Single licence with embedded Code 95 closes entitlement and qualification"
+    },
+    {
+      "rule_id": "separate_qualification_requires_both_documents",
+      "kind": "requires",
+      "when": {
+        "matched_alternative": {
+          "requirement_code": "professional_qualification",
+          "alternative_code": "approved_qualification_card"
+        }
+      },
+      "requirements": ["driver_entitlement"],
+      "reason": "Separate qualification card path still requires CE licence entitlement"
+    },
+    {
+      "rule_id": "labor_access_missing_activates_work_permit_process",
+      "kind": "activates",
+      "when": {"third_country": true, "requirement_not_matched": "labor_market_access"},
+      "requirements": ["work_authorization_process"],
+      "reason": "Third country without confirmed labor access may require work permit process"
+    },
+    {
+      "rule_id": "unclassified_decision_satisfies_nothing",
+      "kind": "excludes",
+      "when": {
+        "matched_alternative": {
+          "requirement_code": "residence_authorization_process",
+          "alternative_code": "unclassified_administrative_decision"
+        }
+      },
+      "requirements": [
+        "work_authorization_process",
+        "residence_authorization_process",
+        "labor_market_access"
+      ],
+      "effect": "not_applicable",
+      "reason": "Unclassified voivodeship decision cannot satisfy process requirements"
+    }
+  ],
+  "requirement_bindings": [
+    {
+      "requirement_code": "identity_document",
+      "definition_ref": "identity_document",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "recruiter",
+        "verification_role": "document_reviewer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "docs_received",
+        "blocks_stage": "docs_received",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "driver_entitlement",
+      "definition_ref": "driver_entitlement",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "recruiter",
+        "verification_role": "document_reviewer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "docs_received",
+        "blocks_stage": "docs_received",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "professional_qualification",
+      "definition_ref": "professional_qualification",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "recruiter",
+        "verification_role": "document_reviewer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "docs_received",
+        "blocks_stage": "docs_received",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "tachograph_eligibility",
+      "definition_ref": "tachograph_eligibility",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "recruiter",
+        "verification_role": "document_reviewer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "docs_received",
+        "blocks_stage": "docs_received",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "psychological_fitness",
+      "definition_ref": "psychological_fitness",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "recruiter",
+        "verification_role": "document_reviewer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "docs_received",
+        "blocks_stage": "docs_received",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "legal_stay_confirmation",
+      "definition_ref": "legal_stay_confirmation",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "legalization_specialist",
+        "verification_role": "hr_officer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "permit_ordered",
+        "blocks_stage": "permit_ordered",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "labor_market_access",
+      "definition_ref": "labor_market_access",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "legalization_specialist",
+        "verification_role": "hr_officer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "ready_for_hire",
+        "blocks_stage": "ready_for_hire",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "work_authorization_process",
+      "definition_ref": "work_authorization_process",
+      "stage_ownership": {
+        "source_responsibility": "company",
+        "operational_owner": "legalization_specialist",
+        "verification_role": "hr_officer",
+        "acquisition_mode": "issued_during_process",
+        "document_role": "process",
+        "required_by_stage": "permit_ordered",
+        "blocks_stage": "employment_start",
+        "completion_event": "decision_received"
+      }
+    },
+    {
+      "requirement_code": "residence_authorization_process",
+      "definition_ref": "residence_authorization_process",
+      "stage_ownership": {
+        "source_responsibility": "company",
+        "operational_owner": "legalization_specialist",
+        "verification_role": "hr_officer",
+        "acquisition_mode": "issued_during_process",
+        "document_role": "process",
+        "required_by_stage": "permit_ordered",
+        "blocks_stage": "employment_start",
+        "completion_event": "decision_received"
+      }
+    },
+    {
+      "requirement_code": "medical_fitness",
+      "definition_ref": "medical_fitness",
+      "stage_ownership": {
+        "source_responsibility": "candidate",
+        "operational_owner": "recruiter",
+        "verification_role": "document_reviewer",
+        "acquisition_mode": "uploaded_by_candidate",
+        "document_role": "input",
+        "required_by_stage": "ready_for_hire",
+        "blocks_stage": "ready_for_hire",
+        "completion_event": "document_approved"
+      }
+    },
+    {
+      "requirement_code": "driver_attestation",
+      "definition_ref": "driver_attestation",
+      "stage_ownership": {
+        "source_responsibility": "company",
+        "operational_owner": "transport_compliance",
+        "verification_role": "compliance_officer",
+        "acquisition_mode": "received_from_authority",
+        "document_role": "process_output",
+        "required_by_stage": "ready_for_dispatch",
+        "blocks_stage": "ready_for_dispatch",
+        "completion_event": "document_issued"
+      }
+    }
+  ]
+}
