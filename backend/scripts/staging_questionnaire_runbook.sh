@@ -31,6 +31,12 @@ AUTH=(-H "Authorization: Bearer $TOKEN" -H "X-Tenant-Id: $TENANT" -H "X-Own-Comp
 
 log() { echo "EVIDENCE|$1|$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1], ensure_ascii=False))' "$2")"; }
 
+mask_token() {
+  local t="$1"
+  if [ "${#t}" -le 10 ]; then echo "***"; return; fi
+  echo "${t:0:6}…${t: -4}"
+}
+
 log run_at_utc "\"$RUN_AT\""
 log tenant_id "\"$TENANT\""
 
@@ -40,8 +46,8 @@ INSERT INTO leads (
   status, stage, lead_type, lead_target_type
 ) VALUES (
   '$LEAD_ID', '$TENANT', '$OWN_COMPANY', 'meta_ads', '$EXT_ID',
-  '{\"phone\": \"+48111222333\", \"full_name\": \"Staging Runbook\"}'::jsonb,
-  '{\"full_name\": \"Staging Runbook\", \"phone\": \"+48111222333\", \"company_name\": \"Staging Runbook Sp. z o.o.\", \"email\": \"staging-runbook@example.com\"}'::jsonb,
+  '{\"phone\": \"+48***\", \"full_name\": \"Staging Runbook\"}'::jsonb,
+  '{\"full_name\": \"Staging Runbook\", \"phone\": \"+48***\", \"company_name\": \"Staging Runbook Sp. z o.o.\", \"email\": \"staging-***@example.com\"}'::jsonb,
   'new', 'new', 'client', 'client_lead'
 );
 "
@@ -57,8 +63,8 @@ SEND_CODE=$(curl -s -o /tmp/send.json -w '%{http_code}' -X POST "$BASE/api/v1/le
 INVITE_TOKEN=$(python3 -c 'import json; print(json.load(open("/tmp/send.json")).get("token",""))')
 APPLY_URL=$(python3 -c 'import json; b=json.load(open("/tmp/send.json")); print(b.get("apply_url") or ("/public/apply/" + str(b.get("token",""))))')
 log step4_send_status "$SEND_CODE"
-log step4_invite_token "\"$INVITE_TOKEN\""
-log step4_apply_url "\"$APPLY_URL\""
+log step4_invite_token "\"$(mask_token "$INVITE_TOKEN")\""
+log step4_apply_url "\"/public/apply/{token}\""
 log step4_invite_status "$(python3 -c 'import json; print(json.dumps(json.load(open("/tmp/send.json")).get("status")))' )"
 log step4_sent_at "$(python3 -c 'import json; print(json.dumps(json.load(open("/tmp/send.json")).get("sent_at")))' )"
 
@@ -66,7 +72,7 @@ REFRESH_CODE=$(curl -s -o /tmp/refresh.json -w '%{http_code}' -X POST "$BASE/api
 REFRESH_TOKEN=$(python3 -c 'import json; print(json.load(open("/tmp/refresh.json")).get("token",""))')
 log step5_refresh_post_status "$REFRESH_CODE"
 log step5_token_stable "$( [ "$REFRESH_TOKEN" = "$INVITE_TOKEN" ] && echo true || echo false )"
-log step5_refresh_token "\"$REFRESH_TOKEN\""
+log step5_refresh_token "\"$(mask_token "$REFRESH_TOKEN")\""
 
 curl -s -o /tmp/public.json "$BASE/api/v1/public/apply/$INVITE_TOKEN"
 FIELD_COUNT=$(python3 -c 'import json; print(len(json.load(open("/tmp/public.json")).get("form_presentation",{}).get("fields",[])))')
@@ -103,8 +109,8 @@ values = {
     f"{prefix}decision_maker": "owner",
     f"{prefix}contact_full_name": "Staging Runbook",
     f"{prefix}contact_company_name": "Staging Runbook Sp. z o.o.",
-    f"{prefix}contact_phone": "+48111222333",
-    f"{prefix}contact_email": "staging-runbook@example.com",
+    f"{prefix}contact_phone": "+48***",
+    f"{prefix}contact_email": "staging-***@example.com",
 }
 print(json.dumps(values))
 PY

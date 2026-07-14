@@ -38,6 +38,13 @@ def log(key: str, value: object) -> None:
     print(f"EVIDENCE|{key}|{json.dumps(value, ensure_ascii=False, default=str)}")
 
 
+def _mask_token(token: str) -> str:
+    token = str(token or "")
+    if len(token) <= 10:
+        return "***"
+    return f"{token[:6]}…{token[-4:]}"
+
+
 async def main() -> None:
     headers = await manager_headers()
     run_at = datetime.now(timezone.utc).isoformat()
@@ -58,12 +65,12 @@ async def main() -> None:
             vacancy_id=None,
             source="meta_ads",
             external_id=f"staging-runbook-{uuid4().hex[:10]}",
-            payload={"phone": "+48111222333", "full_name": "Staging Runbook"},
+            payload={"phone": "+48***", "full_name": "Staging Runbook"},
             normalized={
                 "full_name": "Staging Runbook",
-                "phone": "+48111222333",
+                "phone": "+48***",
                 "company_name": "Staging Runbook Sp. z o.o.",
-                "email": "staging-runbook@example.com",
+                "email": "staging-***@example.com",
             },
             lead_type="client",
             lead_target_type="client_lead",
@@ -96,8 +103,8 @@ async def main() -> None:
         token = send_body["token"]
         apply_url = send_body.get("apply_url") or f"/public/apply/{token}"
         log("step4_send_status", send.status_code)
-        log("step4_invite_token", token)
-        log("step4_apply_url", apply_url)
+        log("step4_invite_token", _mask_token(token))
+        log("step4_apply_url", "/public/apply/{token}")
         log("step4_invite_status", send_body.get("status"))
         log("step4_sent_at", send_body.get("sent_at"))
 
@@ -109,7 +116,7 @@ async def main() -> None:
         refresh_body = refresh.json()
         log("step5_refresh_post_status", refresh.status_code)
         log("step5_token_stable", refresh_body.get("token") == token)
-        log("step5_refresh_token", refresh_body.get("token"))
+        log("step5_refresh_token", _mask_token(refresh_body.get("token", "")))
 
         public_get = await client.get(f"/api/v1/public/apply/{token}")
         fp = public_get.json().get("form_presentation") or {}
@@ -155,8 +162,8 @@ async def main() -> None:
             f"{PREFIX}decision_maker": "owner",
             f"{PREFIX}contact_full_name": "Staging Runbook",
             f"{PREFIX}contact_company_name": "Staging Runbook Sp. z o.o.",
-            f"{PREFIX}contact_phone": "+48111222333",
-            f"{PREFIX}contact_email": "staging-runbook@example.com",
+            f"{PREFIX}contact_phone": "+48***",
+            f"{PREFIX}contact_email": "staging-***@example.com",
             f"{PREFIX}recruitment_roles": ["driver_ce"],
         }
         log("step9_submit_payload_presentation_values", presentation_values)
