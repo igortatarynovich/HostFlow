@@ -1278,12 +1278,6 @@ async def convert_client_lead_to_client_endpoint(
         actor_id=actor_id,
         conversion_reason="manual_convert_client",
     )
-        db,
-        tenant_id=tenant_id_str,
-        lead=locked_lead,
-        actor_id=actor_id,
-        conversion_reason="manual_convert_client",
-    )
     await db.commit()
 
     res = await service.list_leads(
