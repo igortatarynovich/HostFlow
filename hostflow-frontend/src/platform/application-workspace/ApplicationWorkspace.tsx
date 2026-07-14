@@ -265,11 +265,11 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-50/80">
-      <div className="shrink-0 space-y-4 border-b border-slate-200 bg-white px-5 py-4">
+      <div className="shrink-0 space-y-4 border-b border-slate-200 bg-white px-4 py-4">
         <h1 className="text-lg font-bold text-slate-900">{config.objectNamePlural}</h1>
 
         {newToContactCount > 0 ? (
-          <section className="rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50/80 to-white px-5 py-4">
+          <section className="rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50/80 to-white px-4 py-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
@@ -284,7 +284,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
               <button
                 type="button"
                 onClick={() => void startCallSession()}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
               >
                 Начать работу
                 <IconArrowRight size={16} stroke={2} />
@@ -292,7 +292,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             </div>
           </section>
         ) : (
-          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600">
+          <section className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
             <span className="inline-flex items-center gap-2">
               <IconInbox size={18} stroke={1.9} className="text-slate-400" />
               {config.heroEmptyText}
@@ -308,7 +308,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                 type="button"
                 onClick={() => setTab(def.id)}
                 className={clsx(
-                  'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+                  'rounded-lg px-3 py-2 text-sm font-medium transition',
                   tab === def.id ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
                 )}
               >
@@ -318,7 +318,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
           </div>
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
           >
             <IconFilter size={14} stroke={1.9} />
             Сначала новые
@@ -329,7 +329,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
       {loading ? (
         <p className="p-6 text-sm text-slate-500">{t('common.loading')}</p>
       ) : error ? (
-        <section className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</section>
+        <section className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</section>
       ) : (
         <div
           className="grid min-h-0 flex-1"

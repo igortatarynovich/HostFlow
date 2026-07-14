@@ -2208,7 +2208,7 @@ export default function Companies(){
                 <button
                   key={key}
                   type="button"
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
                     clientWorkspaceTab === key
                       ? 'bg-slate-900 text-white'
                       : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -2266,7 +2266,7 @@ export default function Companies(){
                     {overviewCards.map((card) => (
                       <div
                         key={card.key}
-                        className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+                        className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
                       >
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
                         <div className="mt-2 text-sm text-slate-600">{card.content}</div>
@@ -2297,7 +2297,7 @@ export default function Companies(){
                       <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
                     )}
                     {vacancyAnalytics.latest.length > 0 && (
-                      <div className="rounded-2xl bg-slate-50/60 p-3">
+                      <div className="rounded-xl bg-slate-50/60 p-3">
                         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                           {t('app.companies.detail.widgets.vacancies.latest_title')}
                         </div>
@@ -2357,7 +2357,7 @@ export default function Companies(){
                     >
                       <ul className="space-y-3 text-sm">
                         {blockingOrders.map((entry) => (
-                          <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+                          <li key={entry.key} className="rounded-xl border border-amber-100 bg-amber-50/50 p-3">
                             <div className="flex items-center justify-between">
                               <span className="font-semibold text-slate-900">{entry.title}</span>
                               <span className="text-xs text-slate-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
@@ -2366,7 +2366,7 @@ export default function Companies(){
                               {entry.reasons.map((reason) => (
                                 <span
                                   key={`${entry.key}-${reason}`}
-                                  className="inline-flex items-center rounded-md bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
+                                  className="inline-flex items-center rounded-lg bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
                                 >
                                   {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
                                 </span>
@@ -3619,12 +3619,12 @@ export default function Companies(){
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-slate-900">{docTypeName}</span>
                               {policy.required && (
-                                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                                   {t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
                                 </span>
                               )}
                               {!policy.enabled && (
-                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                   {t('app.companies.detail.sections.document_policies.disabled', { defaultValue: 'Disabled' })}
                                 </span>
                               )}
@@ -4143,7 +4143,7 @@ function InfoItem({ label, value, mono }: { label: string; value?: React.ReactNo
 }
 
 const STATUS_TONE_CLASS: Record<StatusTone, string> = {
-  info: 'bg-sky-100 text-sky-800',
+  info: 'bg-blue-100 text-blue-800',
   success: 'bg-emerald-100 text-emerald-800',
   warning: 'bg-amber-100 text-amber-800',
   danger: 'bg-rose-100 text-rose-800',
@@ -4151,7 +4151,7 @@ const STATUS_TONE_CLASS: Record<StatusTone, string> = {
 
 function StatusBadge({ tone = 'info', children }: { tone?: StatusTone; children: React.ReactNode }) {
   return (
-    <span className={['inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
+    <span className={['inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
       {children}
     </span>
   )

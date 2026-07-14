@@ -484,7 +484,7 @@ export function Sidebar({
             onClick={handleNavigate}
             className={() =>
               clsx(
-                'block rounded-md px-3 py-2.5 text-sm font-medium transition',
+                'block rounded-lg px-3 py-3 text-sm font-medium transition',
                 inboxNavActive
                   ? 'bg-white text-brand-900 shadow-sm'
                   : 'text-white hover:bg-white/15 hover:text-white',
@@ -507,7 +507,7 @@ export function Sidebar({
                   onClick={handleNavigate}
                   className={() =>
                     clsx(
-                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+                      'inline-flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] font-medium transition',
                       location.pathname.startsWith(p.messages) ||
                         (location.pathname.startsWith(p.inbox) && inboxChannelParam === 'messages')
                         ? 'bg-white/20 text-white'
@@ -526,7 +526,7 @@ export function Sidebar({
                   onClick={handleNavigate}
                   className={() =>
                     clsx(
-                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+                      'inline-flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] font-medium transition',
                       location.pathname.startsWith(p.email) ||
                         (location.pathname.startsWith(p.inbox) && inboxChannelParam === 'email')
                         ? 'bg-white/20 text-white'
@@ -551,7 +551,7 @@ export function Sidebar({
         onClick={handleNavigate}
         className={({ isActive }) =>
           clsx(
-            'block rounded-md px-3 py-2.5 text-sm font-medium transition',
+            'block rounded-lg px-3 py-3 text-sm font-medium transition',
             navItemActive(item, isActive)
               ? 'bg-white text-brand-900 shadow-sm'
               : 'text-white hover:bg-white/15 hover:text-white',
@@ -594,7 +594,7 @@ export function Sidebar({
               <div className="text-xs font-medium text-white/65" title={t('app.shell.sidebar.workspace')}>
                 {t('app.shell.sidebar.workspace')}
               </div>
-              <div className="truncate text-base font-semibold leading-snug text-white" title={tenantLabel}>
+              <div className="truncate text-base font-semibold leading-tight text-white" title={tenantLabel}>
                 {tenantLabel}
               </div>
             </div>
@@ -607,7 +607,7 @@ export function Sidebar({
               <>
                 {dashboardNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_dashboard')}
                     </div>
                     <div className="space-y-1">{dashboardNavItems.map(renderPrimaryNavItem)}</div>
@@ -615,7 +615,7 @@ export function Sidebar({
                 )}
                 {workHubNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.work')}
                     </div>
                     <div className="space-y-1">{workHubNavItems.map(renderPrimaryNavItem)}</div>
@@ -623,7 +623,7 @@ export function Sidebar({
                 )}
                 {inboxNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_inbox')}
                     </div>
                     <div className="space-y-1">{inboxNavItems.map(renderPrimaryNavItem)}</div>
@@ -633,7 +633,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_pipeline')}
                       </div>
                       <div className="space-y-1">{pipelineNavItems.map(renderPrimaryNavItem)}</div>
@@ -644,7 +644,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_tasks_calendar')}
                       </div>
                       <div className="space-y-1">{tasksNavItems.map(renderPrimaryNavItem)}</div>
@@ -655,7 +655,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_processing')}
                       </div>
                       <div className="space-y-1">{processingNavItems.map(renderPrimaryNavItem)}</div>
@@ -666,7 +666,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_team')}
                       </div>
                       <div className="space-y-1">{teamNavItems.map(renderPrimaryNavItem)}</div>
@@ -677,7 +677,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_finance')}
                       </div>
                       <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
@@ -688,7 +688,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_documents')}
                       </div>
                       <div className="space-y-1">{documentsNavItems.map(renderPrimaryNavItem)}</div>
@@ -699,7 +699,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_automations')}
                       </div>
                       <div className="space-y-1">{automationsNavItems.map(renderPrimaryNavItem)}</div>
@@ -708,7 +708,7 @@ export function Sidebar({
                 )}
                 {integrationsNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_integrations')}
                     </div>
                     <div className="space-y-1">{integrationsNavItems.map(renderPrimaryNavItem)}</div>
@@ -717,7 +717,7 @@ export function Sidebar({
                 {analyticsNavItems.length > 0 && (
                   <div className="mb-4">
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_analytics')}
                     </div>
                     <div className="space-y-1">{analyticsNavItems.map(renderPrimaryNavItem)}</div>
@@ -728,7 +728,7 @@ export function Sidebar({
                 )}
                 {organizationNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_organization')}
                     </div>
                     <div className="space-y-1">{organizationNavItems.map(renderPrimaryNavItem)}</div>
@@ -736,7 +736,7 @@ export function Sidebar({
                 )}
                 {settingsHubNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_settings')}
                     </div>
                     <div className="space-y-1">{settingsHubNavItems.map(renderPrimaryNavItem)}</div>
@@ -744,7 +744,7 @@ export function Sidebar({
                 )}
                 {profileNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_personal')}
                     </div>
                     <div className="space-y-1">{profileNavItems.map(renderPrimaryNavItem)}</div>
@@ -753,7 +753,7 @@ export function Sidebar({
               </>
             ) : (
               <div className="mb-4">
-                <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                   {t('app.shell.sidebar.section_menu')}
                 </div>
                 <div className="space-y-1">{coreNavItems.map(renderPrimaryNavItem)}</div>

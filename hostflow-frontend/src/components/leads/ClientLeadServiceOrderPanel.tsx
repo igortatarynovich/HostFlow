@@ -125,7 +125,7 @@ export function ClientLeadServiceOrderPanel({
 
   if (activeOrderId) {
     return (
-      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 shadow-sm">
+      <section className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
         <p className="text-sm font-semibold text-emerald-900">
           {t('app.client_inquiry.service_order.linked_title', { defaultValue: 'Заказ услуги создан' })}
         </p>
@@ -138,13 +138,13 @@ export function ClientLeadServiceOrderPanel({
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             to={serviceOrderWorkspacePath(activeOrderId, clientId)}
-            className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
             {t('app.client_inquiry.service_order.open_order', { defaultValue: 'Открыть заказ' })}
           </Link>
           <Link
             to={clientDetailPath(clientId)}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
             {t('app.client_inquiry.service_order.open_client', { defaultValue: 'Карточка клиента' })}
           </Link>
@@ -157,7 +157,7 @@ export function ClientLeadServiceOrderPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
           {t('app.client_inquiry.service_order.title', { defaultValue: 'Что покупает клиент' })}
@@ -169,7 +169,7 @@ export function ClientLeadServiceOrderPanel({
           })}
         </p>
         {preselectCode ? (
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800">
+          <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800">
             {t('app.client_inquiry.service_order.from_inquiry', {
               defaultValue: 'Услуга из заявки Meta: {code}',
               values: { code: preselectCode },
@@ -195,7 +195,7 @@ export function ClientLeadServiceOrderPanel({
               <li key={service.id}>
                 <label
                   className={[
-                    'flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition',
+                    'flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition',
                     checked ? 'border-brand-300 bg-brand-50/50' : 'border-slate-200 bg-slate-50/40 hover:bg-slate-50',
                   ].join(' ')}
                 >
@@ -211,7 +211,7 @@ export function ClientLeadServiceOrderPanel({
                       <span
                         className={[
                           'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                          mode === 'handoff' ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-700',
+                          mode === 'handoff' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700',
                         ].join(' ')}
                       >
                         {mode === 'handoff'
@@ -239,12 +239,12 @@ export function ClientLeadServiceOrderPanel({
         </p>
       ) : null}
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+          className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           disabled={submitting || catalog.length === 0}
           onClick={() => void handleSubmit()}
         >

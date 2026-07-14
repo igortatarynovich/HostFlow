@@ -65,7 +65,7 @@ export function ApplicationSalesDetailPanel({
         subtitle,
         meta,
         statusLabel: APPLICATION_STATUS_TEXT[statusKey as keyof typeof APPLICATION_STATUS_TEXT] || statusKey,
-        statusClassName: `rounded-full px-2.5 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey as keyof typeof APPLICATION_STATUS_BADGE] || APPLICATION_STATUS_BADGE.new}`,
+        statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey as keyof typeof APPLICATION_STATUS_BADGE] || APPLICATION_STATUS_BADGE.new}`,
         entityWorkspaceHref: clientHref,
         entityWorkspaceLabel: openCardLabel,
       }}

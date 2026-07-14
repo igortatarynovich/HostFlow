@@ -1078,7 +1078,7 @@ export default function TenantsPage() {
                       <div className="text-xs text-slate-500">{tenant.slug}</div>
                       <span
                         className={[
-                          'mt-2 inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold',
+                          'mt-2 inline-flex rounded-lg px-2 py-0.5 text-[11px] font-semibold',
                           TYPE_BADGE[tenant.type],
                         ].join(' ')}
                       >
@@ -1087,7 +1087,7 @@ export default function TenantsPage() {
                     </div>
                     <span
                       className={[
-                        'inline-flex rounded-md px-2 py-0.5 text-xs font-semibold',
+                        'inline-flex rounded-lg px-2 py-0.5 text-xs font-semibold',
                         STATUS_BADGE[tenant.status],
                       ].join(' ')}
                     >
@@ -1095,7 +1095,7 @@ export default function TenantsPage() {
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                       {tenant.license?.plan || '—'}
                     </span>
                     <span>
@@ -1139,7 +1139,7 @@ export default function TenantsPage() {
                     </p>
                   )}
                 </div>
-                <span className={['inline-flex rounded-md px-2 py-0.5 text-xs font-semibold', STATUS_BADGE[selected.status]].join(' ')}>
+                <span className={['inline-flex rounded-lg px-2 py-0.5 text-xs font-semibold', STATUS_BADGE[selected.status]].join(' ')}>
                   {t(`app.platform.tenants.status.${selected.status}`)}
                 </span>
               </div>
@@ -1149,7 +1149,7 @@ export default function TenantsPage() {
                     key={tab.key}
                     type="button"
                     className={[
-                      'rounded-md border px-3 py-1 transition',
+                      'rounded-lg border px-3 py-1 transition',
                       detailTab === tab.key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 hover:border-brand-300 hover:text-brand-700',
                     ].join(' ')}
                     onClick={() => setDetailTab(tab.key)}
@@ -1466,7 +1466,7 @@ export default function TenantsPage() {
                     <p className="mt-1 text-xs text-slate-500">{t('app.platform.tenants.founder.subtitle')}</p>
                     {founderBanner && (
                       <p
-                        className={`mt-2 text-xs ${founderBanner.kind === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}
+                        className={`mt-2 text-xs ${founderBanner.kind === 'ok' ? 'text-emerald-700' : 'text-rose-600'}`}
                       >
                         {founderBanner.text}
                       </p>
@@ -1515,7 +1515,7 @@ export default function TenantsPage() {
                             <div key={request.id} className="rounded border border-slate-100 p-3 text-sm text-slate-700">
                               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                                 <span>{new Date(request.created_at).toLocaleString()}</span>
-                                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${SEAT_STATUS_BADGE[request.status]}`}>
+                                <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ${SEAT_STATUS_BADGE[request.status]}`}>
                                   {t(`app.platform.tenants.seat_requests.status.${request.status}`)}
                                 </span>
                               </div>
@@ -1571,7 +1571,7 @@ export default function TenantsPage() {
                         <p className="text-xs text-slate-500">{t('app.platform.tenants.access.subtitle')}</p>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                        <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                           {t('app.platform.tenants.access.counter', formatValues({ count: vacancyAccess.length }))}
                         </span>
                         <button

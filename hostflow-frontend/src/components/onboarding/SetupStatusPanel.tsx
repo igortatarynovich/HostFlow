@@ -57,7 +57,7 @@ export function SetupStatusPanel({ snapshot, loading, className = '', onActionNa
   if (loading && !snapshot) {
     return (
       <section
-        className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ${className}`}
+        className={`rounded-xl border border-slate-200 bg-white p-6 shadow-sm ${className}`}
         aria-busy="true"
       >
         <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -70,7 +70,7 @@ export function SetupStatusPanel({ snapshot, loading, className = '', onActionNa
 
   if (!snapshot) {
     return (
-      <section className={`rounded-2xl border border-rose-200 bg-rose-50/60 p-6 shadow-sm ${className}`}>
+      <section className={`rounded-xl border border-rose-200 bg-rose-50/60 p-6 shadow-sm ${className}`}>
         <p className="text-sm text-rose-800">
           {t('app.onboarding.setup_status.load_error', {
             defaultValue: 'Could not load setup status. Refresh the page or try again later.',
@@ -95,13 +95,13 @@ export function SetupStatusPanel({ snapshot, loading, className = '', onActionNa
 
   return (
     <section
-      className={`rounded-2xl border bg-white p-6 shadow-sm ${className} ${snapshot.ready ? 'border-emerald-200' : 'border-slate-200'}`}
+      className={`rounded-xl border bg-white p-6 shadow-sm ${className} ${snapshot.ready ? 'border-emerald-200' : 'border-slate-200'}`}
       data-testid="m1-health-check"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div
-            className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide ${
+            className={`inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold uppercase tracking-wide ${
               snapshot.ready
                 ? 'bg-emerald-50 text-emerald-800'
                 : 'bg-amber-50 text-amber-900'
@@ -135,7 +135,7 @@ export function SetupStatusPanel({ snapshot, loading, className = '', onActionNa
         </div>
       </div>
 
-      <ul className="mt-5 space-y-2" aria-label={t('app.onboarding.setup_status.gates_aria', { defaultValue: 'Setup gates' })}>
+      <ul className="mt-4 space-y-2" aria-label={t('app.onboarding.setup_status.gates_aria', { defaultValue: 'Setup gates' })}>
         {GATE_ORDER.map((gateId) => {
           const gate = gatesById.get(gateId)
           if (!gate) return null

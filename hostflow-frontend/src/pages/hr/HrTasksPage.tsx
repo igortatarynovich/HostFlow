@@ -102,7 +102,7 @@ export default function HrTasksPage() {
             {t('app.nav.hr.tasks.filters', { defaultValue: 'Scope' })}
           </div>
           <div className="mt-2 flex flex-wrap items-end gap-4">
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.tasks.assignee', { defaultValue: 'Assignee scope' })}</span>
               <select className="input text-sm" value={assigneeScope} onChange={(e) => setAssigneeScope(e.target.value as HrAssigneeScope)}>
                 <option value="team">{t('app.nav.hr.tasks.scope_team', { defaultValue: 'Team' })}</option>

@@ -25,7 +25,7 @@ export { useSearchWorkspace } from './searchWorkspaceContext'
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
-    'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+    'rounded-lg px-3 py-2 text-sm font-medium transition',
     isActive ? 'bg-white text-brand-800 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',
   )
 
@@ -169,7 +169,7 @@ export default function SearchWorkspaceLayout() {
             </NavLink>
             <Link
               to={candidatesHref}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-white/80 hover:text-slate-900"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white/80 hover:text-slate-900"
             >
               {t('app.search_workspace.tab_candidates', { defaultValue: 'Кандидаты' })}
             </Link>

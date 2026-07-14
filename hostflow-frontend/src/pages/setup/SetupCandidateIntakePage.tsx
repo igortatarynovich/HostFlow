@@ -162,7 +162,7 @@ export default function SetupCandidateIntakePage() {
                       {t(card.titleKey, { defaultValue: card.titleDefault })}
                     </span>
                     {card.soon ? (
-                      <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+                      <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
                         {t('app.onboarding.setup.intake.soon', { defaultValue: 'Скоро' })}
                       </span>
                     ) : null}

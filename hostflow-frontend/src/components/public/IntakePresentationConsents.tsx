@@ -34,8 +34,8 @@ export function IntakePresentationConsents({ agreements, onChange, showErrors = 
   const { t } = useI18n()
 
   const labelClass = (checked: boolean) =>
-    `flex items-start gap-2 rounded-lg border px-2 py-1.5 text-sm transition ${
-      showErrors && !checked ? 'border-red-400 bg-red-50 text-red-900' : 'border-transparent text-slate-700'
+    `flex items-start gap-2 rounded-lg border px-2 py-2 text-sm transition ${
+      showErrors && !checked ? 'border-rose-400 bg-rose-50 text-rose-900' : 'border-transparent text-slate-700'
     }`
 
   return (

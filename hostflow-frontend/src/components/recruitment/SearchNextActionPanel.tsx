@@ -40,7 +40,7 @@ export function SearchNextActionPanel({ pulse, searchId, loading }: SearchNextAc
 
   if (loading) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
       </section>
     )
@@ -64,7 +64,7 @@ export function SearchNextActionPanel({ pulse, searchId, loading }: SearchNextAc
 
   if (!next && later.length === 0) {
     return (
-      <section className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 shadow-sm">
+      <section className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">
           {t('app.search_next.all_clear_title', { defaultValue: 'На сегодня всё сделано' })}
         </h2>
@@ -80,7 +80,7 @@ export function SearchNextActionPanel({ pulse, searchId, loading }: SearchNextAc
   return (
     <section className="space-y-4" data-testid="m1-search-next-action">
       {next ? (
-        <div className="rounded-2xl border border-brand-200 bg-brand-50/60 p-5 shadow-sm">
+        <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">
             {t('app.search_next.title', { defaultValue: 'Следующее действие' })}
           </p>
@@ -94,7 +94,7 @@ export function SearchNextActionPanel({ pulse, searchId, loading }: SearchNextAc
           <button
             type="button"
             onClick={handleStart}
-            className="mt-4 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
             {next.action_label || t('app.search_next.start', { defaultValue: 'Начать' })}
           </button>
@@ -102,7 +102,7 @@ export function SearchNextActionPanel({ pulse, searchId, loading }: SearchNextAc
       ) : null}
 
       {afterThat.length > 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-900">
             {t('app.search_next.after_that', { defaultValue: 'После этого' })}
           </h3>
@@ -113,7 +113,7 @@ export function SearchNextActionPanel({ pulse, searchId, loading }: SearchNextAc
       ) : null}
 
       {later.length > 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-5">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
           <h3 className="text-sm font-semibold text-slate-700">
             {t('app.search_day.later_title', { defaultValue: 'Потом' })}
           </h3>

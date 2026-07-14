@@ -128,7 +128,7 @@ export default function SearchHomePage() {
       ) : null}
 
       {pendingApplications > 0 ? (
-        <section className="rounded-2xl border border-brand-200 bg-brand-50/50 p-4">
+        <section className="rounded-xl border border-brand-200 bg-brand-50/50 p-4">
           <p className="text-sm font-semibold text-slate-900">
             {pendingApplications === 1
               ? '1 отклик ждёт обработки'
@@ -147,7 +147,7 @@ export default function SearchHomePage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <IconUsers size={18} className="text-brand-700" />
@@ -200,7 +200,7 @@ export default function SearchHomePage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600">
+      <section className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600">
         <p>
           {t('app.search_home.process_hint', {
             defaultValue:

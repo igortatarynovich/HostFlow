@@ -297,7 +297,7 @@ export default function CommunicationsSlaSettingsPage() {
                         type="button"
                         onClick={() => removeEscalationTarget(target)}
                         disabled={saveBusy}
-                        className="btn-secondary btn-xs px-1.5 py-0 disabled:opacity-50"
+                        className="btn-secondary btn-xs px-2 py-0 disabled:opacity-50"
                         aria-label={t('common.actions.delete', { defaultValue: 'Delete' })}
                       >
                         ×

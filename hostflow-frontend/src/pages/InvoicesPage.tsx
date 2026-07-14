@@ -60,9 +60,9 @@ function statusBadgeClass(status: InvoiceStatus): string {
   const classes: Record<InvoiceStatus, string> = {
     draft: 'bg-slate-100 text-slate-700',
     issued: 'bg-blue-100 text-blue-700',
-    sent: 'bg-indigo-100 text-indigo-700',
-    paid: 'bg-green-100 text-green-700',
-    overdue: 'bg-red-100 text-red-700',
+    sent: 'bg-blue-100 text-blue-700',
+    paid: 'bg-emerald-100 text-emerald-700',
+    overdue: 'bg-rose-100 text-rose-700',
     cancelled: 'bg-slate-100 text-slate-700',
     refunded: 'bg-amber-100 text-amber-700',
   }
@@ -76,7 +76,7 @@ function deliveryBadgeClass(status: string | null | undefined): string {
     case 'skipped':
       return 'bg-amber-100 text-amber-700'
     case 'failed':
-      return 'bg-red-100 text-red-700'
+      return 'bg-rose-100 text-rose-700'
     default:
       return 'bg-slate-100 text-slate-600'
   }
@@ -459,11 +459,11 @@ export default function InvoicesPage() {
               </div>
               <div className="mt-2 text-xl font-semibold text-amber-900">{invoiceSnapshot.needsFollowUp}</div>
             </div>
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-red-700">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-rose-700">
                 {t('app.invoices.snapshot.overdue', { defaultValue: 'Overdue' })}
               </div>
-              <div className="mt-2 text-xl font-semibold text-red-900">{invoiceSnapshot.overdue}</div>
+              <div className="mt-2 text-xl font-semibold text-rose-900">{invoiceSnapshot.overdue}</div>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
@@ -490,7 +490,7 @@ export default function InvoicesPage() {
       <Toolbar>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+            className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
             value={statusFilter}
             aria-label={t('app.invoices.filter_status', { defaultValue: 'Status' })}
             onChange={(e) => setStatusFilter(e.target.value as InvoiceStatus | '')}
@@ -507,7 +507,7 @@ export default function InvoicesPage() {
               {activeFilterChips.map((chip) => (
                 <span
                   key={chip.key}
-                  className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs text-brand-800"
+                  className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1 text-xs text-brand-800"
                 >
                   {chip.label}
                   <button
@@ -673,40 +673,40 @@ export default function InvoicesPage() {
             <table className="min-w-full border-separate border-spacing-0 text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_0_rgb(226_232_240)]">
                 <tr className="h-11 bg-slate-50 text-left">
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 align-middle">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 align-middle">
                     <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} />
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.number', { defaultValue: 'Number' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.issue_date', { defaultValue: 'Issue Date' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.due_date', { defaultValue: 'Due Date' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.col_days_overdue', { defaultValue: 'Days overdue' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.total', { defaultValue: 'Total' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.fields.outstanding', { defaultValue: 'Outstanding' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.context', { defaultValue: 'Context' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.delivery', { defaultValue: 'Delivery' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.paid', { defaultValue: 'Paid' })}
                   </th>
-                  <th className="border-b border-r border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.status', { defaultValue: 'Status' })}
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600">
+                  <th className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                     {t('app.invoices.actions', { defaultValue: 'Actions' })}
                   </th>
                 </tr>
@@ -717,7 +717,7 @@ export default function InvoicesPage() {
                   const daysOverdue = invoiceDaysPastDue(invoice.due_date, outstanding)
                   return (
                   <tr key={invoice.id} className="border-t border-slate-100 hover:bg-brand-50/50">
-                    <td className="px-4 py-2.5 align-middle">
+                    <td className="px-4 py-3 align-middle">
                       <input type="checkbox" checked={selectedIds.includes(invoice.id)} onChange={() => toggleOne(invoice.id)} />
                     </td>
                     <td className="py-3 px-4">
@@ -728,7 +728,7 @@ export default function InvoicesPage() {
                         {invoice.invoice_number}
                       </a>
                       <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
+                        <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
                           {invoiceKindLabel(invoice, t)}
                         </span>
                         {invoice.billing_details?.correction_of_invoice_number && (
@@ -746,7 +746,7 @@ export default function InvoicesPage() {
                     <td className="py-3 px-4 text-sm text-slate-700">{formatDate(invoice.due_date)}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">
                       {daysOverdue != null ? (
-                        <span className="font-semibold text-red-700">{daysOverdue}</span>
+                        <span className="font-semibold text-rose-700">{daysOverdue}</span>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
@@ -788,7 +788,7 @@ export default function InvoicesPage() {
                       {invoice.latest_delivery_status ? (
                         <div className="space-y-1">
                           <span
-                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${deliveryBadgeClass(
+                            className={`inline-flex items-center rounded-lg px-3 py-0.5 text-xs font-medium ${deliveryBadgeClass(
                               invoice.latest_delivery_status,
                             )}`}
                           >
@@ -816,14 +816,14 @@ export default function InvoicesPage() {
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap items-center gap-1">
                         <span
-                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
+                          className={`inline-flex items-center rounded-lg px-3 py-0.5 text-xs font-medium ${statusBadgeClass(
                             invoice.status
                           )}`}
                         >
                           {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
                         </span>
                         {isLockedForCompliance(invoice.status) && (
-                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                          <span className="inline-flex items-center rounded-lg bg-amber-100 px-3 py-0.5 text-xs font-semibold text-amber-800">
                             {t('app.invoices.locked', { defaultValue: 'LOCKED' })}
                           </span>
                         )}

@@ -36,8 +36,8 @@ export default function SetupHubPage() {
         />
       </PageShellHeader>
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
-      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-        <div className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
+      <section className="rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+        <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
           <IconChecklist size={14} stroke={1.9} />
           {t('app.onboarding.setup_status.hub_badge', { defaultValue: 'Setup' })}
         </div>
@@ -53,7 +53,7 @@ export default function SetupHubPage() {
 
       {ready && snapshot ? (
         <section
-          className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-sm"
+          className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-sm"
           data-testid="m1-route-summary"
         >
           <h2 className="text-sm font-semibold text-slate-900">
@@ -77,7 +77,7 @@ export default function SetupHubPage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs text-slate-500">
           {t('app.onboarding.setup_status.health_check_hint', {
             defaultValue: 'Health Check is this screen — gate status and one next action below.',

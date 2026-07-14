@@ -23,7 +23,7 @@ const WORKFLOW_STEPS = [
 const STATUS_BADGE: Record<string, string> = {
   new: 'bg-emerald-50 text-emerald-700',
   in_progress: 'bg-amber-50 text-amber-700',
-  waiting: 'bg-sky-50 text-sky-700',
+  waiting: 'bg-blue-50 text-blue-700',
   completed: 'bg-slate-100 text-slate-600',
 }
 
@@ -110,19 +110,19 @@ export function SalesInquiryDetailPanel({
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-white">
-      <div className="border-b border-slate-100 p-5">
+      <div className="border-b border-slate-100 p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-slate-900">{companyName}</h2>
             <p className="mt-0.5 text-sm text-slate-500">{inquiryRequestTitle(lead)}</p>
           </div>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[statusKey] || STATUS_BADGE.new}`}>
+          <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${STATUS_BADGE[statusKey] || STATUS_BADGE.new}`}>
             {STATUS_TEXT[statusKey] || statusKey}
           </span>
         </div>
       </div>
 
-      <div className="border-b border-slate-100 p-5">
+      <div className="border-b border-slate-100 p-4">
         <div className="flex items-start gap-3">
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-100 text-base font-bold text-brand-800">
             {initial}
@@ -138,7 +138,7 @@ export function SalesInquiryDetailPanel({
             {contactPhone ? (
               <a
                 href={`tel:${contactPhone.replace(/\s/g, '')}`}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
               >
                 <IconPhone size={16} stroke={2} />
                 Позвонить
@@ -149,7 +149,7 @@ export function SalesInquiryDetailPanel({
                 href={whatsappHref}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
                 <IconBrandWhatsapp size={16} stroke={2} />
                 WhatsApp
@@ -158,7 +158,7 @@ export function SalesInquiryDetailPanel({
             {contactEmail ? (
               <a
                 href={`mailto:${contactEmail}`}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
                 <IconMail size={16} stroke={2} />
                 Email
@@ -168,7 +168,7 @@ export function SalesInquiryDetailPanel({
         ) : null}
       </div>
 
-      <div className="border-b border-slate-100 px-5 py-4">
+      <div className="border-b border-slate-100 px-4 py-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('app.sales_inquiry.workflow_title', { defaultValue: 'Что делать дальше?' })}
         </p>
@@ -207,8 +207,8 @@ export function SalesInquiryDetailPanel({
       </div>
 
       {!terminal && !convertedId ? (
-        <div className="flex-1 p-5">
-          <section className="rounded-2xl border border-brand-200 bg-brand-50/50 p-5">
+        <div className="flex-1 p-4">
+          <section className="rounded-xl border border-brand-200 bg-brand-50/50 p-4">
             <p className="font-semibold text-slate-900">{stepGuidance.title}</p>
             <p className="mt-1 text-sm text-slate-600">{stepGuidance.body}</p>
             {stepGuidance.primary ? (
@@ -216,7 +216,7 @@ export function SalesInquiryDetailPanel({
                 type="button"
                 disabled={patching || converting}
                 onClick={stepGuidance.primary.action}
-                className="mt-4 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                className="mt-4 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
               >
                 {stepGuidance.primary.label}
               </button>
@@ -231,7 +231,7 @@ export function SalesInquiryDetailPanel({
             type="button"
             disabled={patching || converting}
             onClick={() => void onStage('qualified')}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             <IconClock size={16} stroke={2} />
             {t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' })}
@@ -240,7 +240,7 @@ export function SalesInquiryDetailPanel({
             type="button"
             disabled={patching || converting}
             onClick={() => void onStage('lost')}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60"
           >
             <IconX size={16} stroke={2} />
             {t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' })}

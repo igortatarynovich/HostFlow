@@ -206,7 +206,7 @@ export default function TeamAvailabilityPage() {
                 {activeTimeOffByUser.has(String(item.managerId)) && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(activeTimeOffByUser.get(String(item.managerId)) || []).map((row) => (
-                      <span key={row.id} className="inline-flex rounded-md bg-rose-100 px-2 py-0.5 text-xs text-rose-700">
+                      <span key={row.id} className="inline-flex rounded-lg bg-rose-100 px-2 py-0.5 text-xs text-rose-700">
                         {row.request_type}{row.partial_day ? ` (${row.partial_day})` : ''}{row.payload?.time_window?.from && row.payload?.time_window?.to ? ` ${row.payload.time_window.from}-${row.payload.time_window.to}` : ''}
                       </span>
                     ))}

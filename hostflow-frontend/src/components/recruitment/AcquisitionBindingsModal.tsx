@@ -73,7 +73,7 @@ export function AcquisitionBindingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
         <h3 className="text-base font-semibold text-slate-900">
           {t('app.acquisition.bindings_title', { defaultValue: 'Привязка к подборам' })}
         </h3>
@@ -107,7 +107,7 @@ export function AcquisitionBindingsModal({
             )
           })}
         </ul>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}

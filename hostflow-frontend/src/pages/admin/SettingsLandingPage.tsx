@@ -408,7 +408,7 @@ export default function SettingsLandingPage() {
   )
 
   const renderCard = (item: CardDef) => (
-    <li key={item.target} className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
+    <li key={item.target} className="rounded-xl border border-brand-100 bg-brand-50/30 p-4">
       <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
         {(() => {
           const CardIcon = CARD_ICONS[item.key] || DEFAULT_CARD_ICON

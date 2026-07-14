@@ -164,7 +164,7 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
       {/* Без full-screen fixed inset-0: перекрывал всю страницу (в т.ч. таблицу кандидатов) и ломал клики. Закрытие по клику снаружи — document mousedown capture ниже. */}
       <div
         ref={menuRef}
-        className="fixed z-[50] w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-2xl"
+        className="fixed z-[50] w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"
         style={{
           top: `${menuPosition.top}px`,
           left: `${menuPosition.left}px`,
@@ -245,7 +245,7 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
             return <TriggerIconComponent size={13} className={isActive ? 'text-brand-600' : 'text-slate-500'} />
           })()}
           {badgeCount > 0 && (
-            <span className="absolute -right-1.5 -top-1 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700 leading-4">
+            <span className="absolute -right-1.5 -top-1 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700 leading-tight">
               {badgeCount}
             </span>
           )}

@@ -29,7 +29,7 @@ export function EntityWorkspaceContextRail({
   const blocks: Partial<Record<EntityContextRailBlockId, ReactNode>> = {}
 
   const nextActionBlock = model.decisionTitle || model.actions?.primary ? (
-    <div className="rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-sm">
+    <div className="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-sm">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-700/80">
         {labels?.next_actions ?? 'Следующее действие'}
       </p>
@@ -57,7 +57,7 @@ export function EntityWorkspaceContextRail({
         <button
           type="button"
           onClick={model.onCreateTask}
-          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           {model.createTaskLabel ?? 'Создать задачу'}
         </button>
@@ -136,8 +136,8 @@ export function EntityWorkspaceContextRail({
           <li
             key={t.id}
             className={clsx(
-              'flex items-start gap-2.5 rounded-xl border px-3 py-2.5',
-              t.overdue ? 'border-red-200 bg-red-50/60' : 'border-slate-200 bg-white',
+              'flex items-start gap-3 rounded-xl border px-3 py-3',
+              t.overdue ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200 bg-white',
             )}
           >
             <span
@@ -163,7 +163,7 @@ export function EntityWorkspaceContextRail({
     blocks.reminders = (
       <ul className="space-y-2 text-sm">
         {model.reminders.map((t) => (
-          <li key={t.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+          <li key={t.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
             <p className="font-medium text-slate-900">{t.title}</p>
           </li>
         ))}
@@ -175,7 +175,7 @@ export function EntityWorkspaceContextRail({
     blocks.processes = (
       <ul className="space-y-2 text-sm">
         {model.processes.map((p) => (
-          <li key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+          <li key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3">
             <span className="font-medium text-slate-900">{p.label}</span>
             {p.statusLabel ? <span className="text-xs text-slate-500">{p.statusLabel}</span> : null}
           </li>
@@ -189,7 +189,7 @@ export function EntityWorkspaceContextRail({
       <>
         <ul className="space-y-2 text-sm">
           {model.recentEvents.map((ev) => (
-            <li key={ev.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+            <li key={ev.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
               <p className="font-medium text-slate-800">{ev.title}</p>
               {ev.description ? <p className="text-xs text-slate-600">{ev.description}</p> : null}
               <p className="mt-1 text-[10px] text-slate-400">{ev.at}</p>

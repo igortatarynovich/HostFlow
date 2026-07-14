@@ -136,7 +136,7 @@ function LeadIngestProcessingCallout({ normalized }: { normalized: Record<string
   const modeBody = modeSentence === modeLineKey ? mode : modeSentence
 
   return (
-    <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+    <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
       <p>
         <span className="font-semibold text-slate-800">{t('app.leads.detail.ingest_processing.title')}</span>{' '}
         {modeBody}
@@ -1017,7 +1017,7 @@ export default function LeadDetailPage() {
                     <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.followup_title')}</h2>
                     <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-4">
                       <input
-                        className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                        className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-3 text-sm"
                         value={reminderTitle}
                         onChange={(e) => setReminderTitle(e.target.value)}
                         placeholder={t('app.reminders.fields.title')}
@@ -1027,7 +1027,7 @@ export default function LeadDetailPage() {
                           <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
                           <input
                             type="datetime-local"
-                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                             value={reminderDueAt}
                             onChange={(e) => setReminderDueAt(e.target.value)}
                           />
@@ -1037,7 +1037,7 @@ export default function LeadDetailPage() {
                           <input
                             type="number"
                             min={0}
-                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                             value={reminderOffset}
                             onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
                           />
@@ -1051,7 +1051,7 @@ export default function LeadDetailPage() {
                       >
                         {t('app.reminders.actions.create')}
                       </button>
-                      {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                      {remindersError ? <div className="text-xs text-rose-600">{remindersError}</div> : null}
                     </div>
                   </section>
                   <section>
@@ -1086,7 +1086,7 @@ export default function LeadDetailPage() {
                   <section>
                     <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.timeline')}</h2>
                     {timelineLoading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
-                    {timelineError && <p className="text-sm text-red-600">{timelineError}</p>}
+                    {timelineError && <p className="text-sm text-rose-600">{timelineError}</p>}
                     {!timelineLoading && !timelineError && timelineItems.length === 0 && (
                       <p className="text-sm text-slate-500">{t('app.leads.detail.timeline_empty')}</p>
                     )}
@@ -1094,7 +1094,7 @@ export default function LeadDetailPage() {
                       <ul className="space-y-3 border-l-2 border-slate-200 pl-4">
                         {timelineItems.map((item, idx) => (
                           <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
-                            <span className="absolute -left-[calc(0.5rem+2px)] top-1.5 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
+                            <span className="absolute -left-[calc(0.5rem+2px)] top-2 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
                             <div className="text-xs text-slate-500">{formatDateValue(item.at, locale)}</div>
                             <div className="text-sm font-medium text-slate-900">{item.title || item.kind || '—'}</div>
                             {item.description ? <div className="text-sm text-slate-600">{item.description}</div> : null}
@@ -1105,7 +1105,7 @@ export default function LeadDetailPage() {
                   </section>
                   <section>
                     <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
-                    <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                    <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                         {t('app.leads.detail.normalized_json')}
                       </summary>
@@ -1113,7 +1113,7 @@ export default function LeadDetailPage() {
                         {jsonPreview(normalized)}
                       </pre>
                     </details>
-                    <details className="group mt-2 rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                    <details className="group mt-2 rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                         {t('app.leads.detail.raw_payload')}
                       </summary>
@@ -1139,7 +1139,7 @@ export default function LeadDetailPage() {
           ) : null}
           {showSalesQuestionnaireSummary ? <SalesQuestionnaireSummaryRail lead={lead} /> : null}
           {recruitmentLeadConverted ? (
-            <div className="card border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm sm:p-5">
+            <div className="card border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
                 {t('app.leads.intake_workspace.audit.badge')}
               </p>
@@ -1210,7 +1210,7 @@ export default function LeadDetailPage() {
               <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 marker:content-none hover:bg-slate-50/80 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
                 {t('app.leads.intake_workspace.section.more')}
               </summary>
-              <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-5">
+              <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
                     <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
@@ -1247,7 +1247,7 @@ export default function LeadDetailPage() {
               <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 marker:content-none hover:bg-slate-50/80 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
                 {t('app.leads.routing.expand_crm_tools')}
               </summary>
-              <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-5">
+              <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
                     <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
@@ -1280,7 +1280,7 @@ export default function LeadDetailPage() {
               </div>
             </details>
           ) : (
-            <div className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-5">
+            <div className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
                   <span className="shrink-0 font-medium">{t('app.leads.table.stage')}</span>
@@ -1313,7 +1313,7 @@ export default function LeadDetailPage() {
             </div>
           )}
 
-          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6" aria-labelledby="lead-detail-fields-heading">
+          <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6" aria-labelledby="lead-detail-fields-heading">
             <h2 id="lead-detail-fields-heading" className="mb-4 text-sm font-semibold text-slate-900">
               {t('app.leads.detail.details_heading')}
             </h2>
@@ -1331,7 +1331,7 @@ export default function LeadDetailPage() {
                 <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.stage')}</dt>
                 <dd className="mt-0.5 text-sm text-slate-900">
                   {lead.stage ? (
-                    <span className="inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-800">
+                    <span className="inline-flex items-center rounded-lg bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-800">
                       {stageLabels[lead.stage] ?? lead.stage}
                     </span>
                   ) : (
@@ -1363,13 +1363,13 @@ export default function LeadDetailPage() {
             {lead.error ? (
               <div className="sm:col-span-2">
                 <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.error')}</dt>
-                <dd className="mt-0.5 text-sm text-red-600">{formatLeadPipelineError(lead.error, t)}</dd>
+                <dd className="mt-0.5 text-sm text-rose-600">{formatLeadPipelineError(lead.error, t)}</dd>
               </div>
             ) : null}
           </dl>
           </section>
 
-          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+          <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6">
             {recruitmentLeadConverted ? (
               <details>
                 <summary className="cursor-pointer text-sm font-semibold text-slate-900">
@@ -1396,7 +1396,7 @@ export default function LeadDetailPage() {
                     {customFieldsEntries.length === 0 ? (
                       <p className="text-sm text-slate-500">{t('app.leads.detail.mapped_custom_fields_empty')}</p>
                     ) : (
-                      <div className="overflow-x-auto rounded-md border border-slate-200">
+                      <div className="overflow-x-auto rounded-lg border border-slate-200">
                         <table className="min-w-full text-left text-sm">
                           <thead className="bg-slate-50 text-xs font-medium uppercase text-slate-600">
                             <tr>
@@ -1417,7 +1417,7 @@ export default function LeadDetailPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                    <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                         {t('app.leads.detail.normalized_json')}
                       </summary>
@@ -1425,7 +1425,7 @@ export default function LeadDetailPage() {
                         {jsonPreview(normalized)}
                       </pre>
                     </details>
-                    <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                    <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                         {t('app.leads.detail.raw_payload')}
                       </summary>
@@ -1459,7 +1459,7 @@ export default function LeadDetailPage() {
                   {customFieldsEntries.length === 0 ? (
                     <p className="text-sm text-slate-500">{t('app.leads.detail.mapped_custom_fields_empty')}</p>
                   ) : (
-                    <div className="overflow-x-auto rounded-md border border-slate-200">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                       <table className="min-w-full text-left text-sm">
                         <thead className="bg-slate-50 text-xs font-medium uppercase text-slate-600">
                           <tr>
@@ -1480,7 +1480,7 @@ export default function LeadDetailPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                  <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                     <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                       {t('app.leads.detail.normalized_json')}
                     </summary>
@@ -1488,7 +1488,7 @@ export default function LeadDetailPage() {
                       {jsonPreview(normalized)}
                     </pre>
                   </details>
-                  <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                  <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                     <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                       {t('app.leads.detail.raw_payload')}
                     </summary>
@@ -1502,14 +1502,14 @@ export default function LeadDetailPage() {
           </section>
 
           {!intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
-          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+          <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6">
             <h2 className="mb-4 text-sm font-semibold text-slate-900">
               {t('app.leads.detail.followup_title')}
             </h2>
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <div className="space-y-3">
                 <input
-                  className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                  className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-3 text-sm"
                   value={reminderTitle}
                   onChange={(e) => setReminderTitle(e.target.value)}
                   placeholder={t('app.reminders.fields.title')}
@@ -1519,7 +1519,7 @@ export default function LeadDetailPage() {
                     <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
                     <input
                       type="datetime-local"
-                      className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                      className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                       value={reminderDueAt}
                       onChange={(e) => setReminderDueAt(e.target.value)}
                     />
@@ -1529,7 +1529,7 @@ export default function LeadDetailPage() {
                     <input
                       type="number"
                       min={0}
-                      className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                      className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                       value={reminderOffset}
                       onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
                     />
@@ -1543,7 +1543,7 @@ export default function LeadDetailPage() {
                 >
                   {t('app.reminders.actions.create')}
                 </button>
-                {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                {remindersError ? <div className="text-xs text-rose-600">{remindersError}</div> : null}
               </div>
             </div>
             <div className="mt-4">
@@ -1587,10 +1587,10 @@ export default function LeadDetailPage() {
           ) : null}
 
           {isServicesTenant && !intakeWorkspaceBlocking && !recruitmentLeadConverted ? (
-          <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+          <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6">
             <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.timeline')}</h2>
             {timelineLoading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
-            {timelineError && <p className="text-sm text-red-600">{timelineError}</p>}
+            {timelineError && <p className="text-sm text-rose-600">{timelineError}</p>}
             {!timelineLoading && !timelineError && timelineItems.length === 0 && (
               <p className="text-sm text-slate-500">{t('app.leads.detail.timeline_empty')}</p>
             )}
@@ -1598,7 +1598,7 @@ export default function LeadDetailPage() {
               <ul className="space-y-3 border-l-2 border-slate-200 pl-4">
                 {timelineItems.map((item, idx) => (
                   <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
-                    <span className="absolute -left-[calc(0.5rem+2px)] top-1.5 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
+                    <span className="absolute -left-[calc(0.5rem+2px)] top-2 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
                     <div className="text-xs text-slate-500">{formatDateValue(item.at, locale)}</div>
                     <div className="text-sm font-medium text-slate-900">{item.title || item.kind || '—'}</div>
                     {item.description ? <div className="text-sm text-slate-600">{item.description}</div> : null}
@@ -1713,7 +1713,7 @@ export default function LeadDetailPage() {
                 <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 marker:content-none hover:bg-slate-50/80 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
                   {t('app.leads.intake_workspace.section.more')}
                 </summary>
-                <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-5 space-y-6">
+                <div className="border-t border-slate-100 bg-white/95 p-4 sm:p-4 space-y-6">
                   <LeadMetaProblemPanel lead={lead} onRefreshed={refreshLeadAndTimeline} />
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                     <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
@@ -1745,12 +1745,12 @@ export default function LeadDetailPage() {
                   </div>
                   <LeadLostReasonReadonly lead={lead} formatAt={(iso) => formatDateValue(iso, locale)} />
                   <LeadNextActionPlaybook lead={lead} formatDueAt={(iso) => formatDateValue(iso, locale)} />
-                  <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+                  <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6">
                     <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.followup_title')}</h2>
                     <div className="rounded-xl border border-slate-100 bg-gradient-to-br from-brand-50/40 to-slate-50/80 p-4 ring-1 ring-slate-900/[0.04]">
                       <div className="space-y-3">
                         <input
-                          className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                          className="input h-9 w-full max-w-xl rounded-lg border-slate-300 bg-white px-3 text-sm"
                           value={reminderTitle}
                           onChange={(e) => setReminderTitle(e.target.value)}
                           placeholder={t('app.reminders.fields.title')}
@@ -1760,7 +1760,7 @@ export default function LeadDetailPage() {
                             <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
                             <input
                               type="datetime-local"
-                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                               value={reminderDueAt}
                               onChange={(e) => setReminderDueAt(e.target.value)}
                             />
@@ -1770,7 +1770,7 @@ export default function LeadDetailPage() {
                             <input
                               type="number"
                               min={0}
-                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                               value={reminderOffset}
                               onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
                             />
@@ -1784,7 +1784,7 @@ export default function LeadDetailPage() {
                         >
                           {t('app.reminders.actions.create')}
                         </button>
-                        {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                        {remindersError ? <div className="text-xs text-rose-600">{remindersError}</div> : null}
                       </div>
                     </div>
                     <div className="mt-4">
@@ -1825,7 +1825,7 @@ export default function LeadDetailPage() {
                       )}
                     </div>
                   </section>
-                  <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6" aria-labelledby="lead-rec-intake-fields-heading">
+                  <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6" aria-labelledby="lead-rec-intake-fields-heading">
                     <h2 id="lead-rec-intake-fields-heading" className="mb-4 text-sm font-semibold text-slate-900">
                       {t('app.leads.detail.details_heading')}
                     </h2>
@@ -1848,7 +1848,7 @@ export default function LeadDetailPage() {
                       </div>
                     </dl>
                   </section>
-                  <section className="card p-5 shadow-md shadow-slate-900/[0.03] sm:p-6">
+                  <section className="card p-4 shadow-md shadow-slate-900/[0.03] sm:p-6">
                     <h2 className="mb-4 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
                     <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
                     <dl className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -1864,7 +1864,7 @@ export default function LeadDetailPage() {
                       ) : null}
                     </dl>
                     <div className="space-y-2">
-                      <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                      <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                         <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                           {t('app.leads.detail.normalized_json')}
                         </summary>
@@ -1872,7 +1872,7 @@ export default function LeadDetailPage() {
                           {jsonPreview(normalized)}
                         </pre>
                       </details>
-                      <details className="group rounded-md border border-slate-200 bg-slate-50 open:bg-white">
+                      <details className="group rounded-lg border border-slate-200 bg-slate-50 open:bg-white">
                         <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-800">
                           {t('app.leads.detail.raw_payload')}
                         </summary>

@@ -88,7 +88,7 @@ export default function SearchesListPage() {
           primaryAction={
             <Link
               to={CRM_APP_PATHS.recruitmentSearchesNew}
-              className="btn-primary btn-sm inline-flex items-center gap-1.5"
+              className="btn-primary btn-sm inline-flex items-center gap-2"
               data-testid="m1-searches-list-create"
             >
               <IconPlus size={16} stroke={1.9} />
@@ -108,7 +108,7 @@ export default function SearchesListPage() {
       {loading ? (
         <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
       ) : rows.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">
+        <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
             {t('app.searches_list.empty_title', { defaultValue: 'Пока нет подборов' })}
           </h2>
@@ -119,7 +119,7 @@ export default function SearchesListPage() {
           </p>
           <Link
             to={CRM_APP_PATHS.recruitmentSearchesNew}
-            className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             <IconPlus size={16} stroke={1.9} />
             {t('app.searches_list.create', { defaultValue: 'Создать подбор' })}
@@ -141,7 +141,7 @@ export default function SearchesListPage() {
                 <Link
                   to={recruitmentSearchPath(row.id)}
                   onClick={() => handleOpen(row.id)}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-200 hover:shadow-md"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:shadow-md"
                   data-testid={`m1-searches-list-row-${row.id}`}
                 >
                   <div className="min-w-0">

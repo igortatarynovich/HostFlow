@@ -48,17 +48,17 @@ export function ColumnManagerPanel({
   })()
 
   return (
-    <div className="rounded-lg border border-slate-200/90 bg-white px-2.5 py-2.5 shadow-sm">
+    <div className="rounded-lg border border-slate-200/90 bg-white px-3 py-3 shadow-sm">
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-      <p className="mb-2 text-[11px] leading-snug text-slate-600">{hint}</p>
+      <p className="mb-2 text-[11px] leading-tight text-slate-600">{hint}</p>
 
-      <div className="mb-2 flex flex-wrap gap-1.5">
+      <div className="mb-2 flex flex-wrap gap-2">
         <button
           type="button"
           className={
             layoutCustomize
-              ? 'inline-flex items-center gap-1.5 rounded-md border border-brand-500 bg-brand-50 px-2 py-1.5 text-[11px] font-semibold text-brand-900 hover:bg-brand-100'
-              : 'inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50'
+              ? 'inline-flex items-center gap-2 rounded-lg border border-brand-500 bg-brand-50 px-2 py-2 text-[11px] font-semibold text-brand-900 hover:bg-brand-100'
+              : 'inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px] font-medium text-slate-700 hover:bg-slate-50'
           }
           onClick={() => onLayoutCustomizeChange(!layoutCustomize)}
         >
@@ -66,14 +66,14 @@ export function ColumnManagerPanel({
         </button>
         <button
           type="button"
-          className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2 py-2 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
           onClick={onResetLayout}
         >
           {resetLabel}
         </button>
       </div>
 
-      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{columnsTitle}</div>
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{columnsTitle}</div>
       <ul className="space-y-1 pr-0.5">
         {orderedKeysForPicker.map((fieldId) => {
           const visible = !!visibility[fieldId]
@@ -83,7 +83,7 @@ export function ColumnManagerPanel({
           return (
             <li
               key={fieldId}
-              className="flex items-center gap-1 rounded-md border border-transparent px-0.5 py-0.5 hover:border-slate-100 hover:bg-slate-50/80"
+              className="flex items-center gap-1 rounded-lg border border-transparent px-0.5 py-0.5 hover:border-slate-100 hover:bg-slate-50/80"
             >
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-xs">
                 <input

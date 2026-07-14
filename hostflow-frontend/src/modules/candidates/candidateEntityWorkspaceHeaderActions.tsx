@@ -19,7 +19,7 @@ export function CandidateEntityWorkspaceHeaderActions({ actions }: CandidateEnti
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         Действия
         <IconChevronDown size={16} className={clsx('transition', open && 'rotate-180')} />
@@ -32,7 +32,7 @@ export function CandidateEntityWorkspaceHeaderActions({ actions }: CandidateEnti
             aria-label="Закрыть меню"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-20 mt-1 min-w-[200px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+          <div className="absolute right-0 z-20 mt-1 min-w-[200px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-md">
             {primaryActions.map((action) =>
               action.href ? (
                 <a

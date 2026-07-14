@@ -301,7 +301,7 @@ export default function LeadFormsSettingsPage() {
         )}
 
         {canMutate && showProfileCreate && (
-          <div className="mb-6 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+          <div className="mb-6 rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900">
               {t('admin.intake_forms.create_with_profile', { defaultValue: 'New public form (Entity Profile)' })}
             </h3>
@@ -358,7 +358,7 @@ export default function LeadFormsSettingsPage() {
               const shareUrl = slugOk ? publicIntakeUrlForSlug(d.public_slug.trim()) : ''
               const dirty = isDirty(row)
               return (
-                <li key={row.id} className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                <li key={row.id} className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
                   <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                     <label className="block">
                       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">

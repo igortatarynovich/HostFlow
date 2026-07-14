@@ -111,11 +111,11 @@ export default function DocumentTypesPage() {
                     <td className="px-3 py-2">{summary.processDocs}</td>
                   <td className="px-3 py-2">
                     {template.is_active ? (
-                      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                      <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
                         {t('common.active')}
                       </span>
                     ) : (
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                         {t('common.inactive')}
                       </span>
                     )}

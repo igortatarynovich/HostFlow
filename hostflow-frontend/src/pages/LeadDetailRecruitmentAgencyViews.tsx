@@ -146,7 +146,7 @@ export function RecruitmentAgencyIntakeDetailView({
           </summary>
           <div className="border-t border-slate-200/60 px-4 py-3">
             {timelineLoading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
-            {timelineError && <p className="text-sm text-red-600">{timelineError}</p>}
+            {timelineError && <p className="text-sm text-rose-600">{timelineError}</p>}
             {!timelineLoading && !timelineError && timelineItems.length === 0 && (
               <p className="text-sm text-slate-500">{t('app.leads.detail.timeline_empty')}</p>
             )}
@@ -154,7 +154,7 @@ export function RecruitmentAgencyIntakeDetailView({
               <ul className="space-y-3 border-l-2 border-slate-200 pl-4">
                 {timelineItems.map((item, idx) => (
                   <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
-                    <span className="absolute -left-[calc(0.5rem+2px)] top-1.5 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
+                    <span className="absolute -left-[calc(0.5rem+2px)] top-2 h-2 w-2 rounded-full bg-brand-500" aria-hidden />
                     <div className="text-xs text-slate-500">{formatDateValue(item.at, locale)}</div>
                     <div className="text-sm font-medium text-slate-900">{item.title || item.kind || '—'}</div>
                     {item.description ? <div className="text-sm text-slate-600">{item.description}</div> : null}
@@ -217,7 +217,7 @@ export function RecruitmentAgencyAuditDetailView({
     <div className="space-y-2">
       <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{t('app.leads.intake_workspace.audit.history')}</h3>
       {timelineLoading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
-      {timelineError && <p className="text-sm text-red-600">{timelineError}</p>}
+      {timelineError && <p className="text-sm text-rose-600">{timelineError}</p>}
       {!timelineLoading && !timelineError && timelineItems.length === 0 && (
         <p className="text-sm text-slate-500">{t('app.leads.detail.timeline_empty')}</p>
       )}
@@ -225,7 +225,7 @@ export function RecruitmentAgencyAuditDetailView({
         <ul className="space-y-2 border-l-2 border-slate-200 pl-3">
           {timelineItems.map((item, idx) => (
             <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
-              <span className="absolute -left-[calc(0.75rem+2px)] top-1.5 h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
+              <span className="absolute -left-[calc(0.75rem+2px)] top-2 h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
               <div className="text-[11px] text-slate-500">{formatDateValue(item.at, locale)}</div>
               <div className="text-sm font-medium text-slate-900">{item.title || item.kind || '—'}</div>
               {item.description ? <div className="text-xs text-slate-600">{item.description}</div> : null}
@@ -255,7 +255,7 @@ export function RecruitmentAgencyAuditDetailView({
       </ul>
 
       <details className="rounded-xl bg-slate-500/[0.05] ring-1 ring-slate-900/[0.05]">
-        <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-semibold text-slate-600 marker:content-none [&::-webkit-details-marker]:hidden">
           {t('app.leads.intake_workspace.audit.trace_expand')}
         </summary>
         <div className="space-y-5 border-t border-slate-200/70 px-3 py-4">

@@ -38,7 +38,7 @@ export function DataTableEngine<TRow>({
   const renderDraggableHeader = (fieldId: string) => {
     const width = layout.getFieldWidth(fieldId)
     const className = clsx(
-      'group relative cursor-default border-r border-slate-200 py-2.5 align-middle whitespace-nowrap pointer-events-auto',
+      'group relative cursor-default border-r border-slate-200 py-3 align-middle whitespace-nowrap pointer-events-auto',
       layoutCustomize ? 'pl-2 pr-4' : 'px-4',
       layoutCustomize &&
         layout.dragOverFieldId === fieldId &&
@@ -51,7 +51,7 @@ export function DataTableEngine<TRow>({
     if (!layoutCustomize) {
       return (
         <th key={fieldId} className={className} style={style}>
-          <div className="flex h-5 min-w-0 w-full items-center gap-1.5 overflow-hidden whitespace-nowrap">
+          <div className="flex h-5 min-w-0 w-full items-center gap-2 overflow-hidden whitespace-nowrap">
             {renderFieldHeader(fieldId)}
           </div>
         </th>
@@ -92,12 +92,12 @@ export function DataTableEngine<TRow>({
         }}
       >
         <div className="flex min-h-[34px] items-stretch justify-between gap-1">
-          <div className="flex min-h-[34px] min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+          <div className="flex min-h-[34px] min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <span
               role="button"
               tabIndex={0}
               draggable
-              className="inline-flex h-8 w-7 shrink-0 cursor-grab select-none items-center justify-center rounded-md border border-slate-200 bg-slate-100/95 text-slate-600 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 active:cursor-grabbing"
+              className="inline-flex h-8 w-7 shrink-0 cursor-grab select-none items-center justify-center rounded-lg border border-slate-200 bg-slate-100/95 text-slate-600 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 active:cursor-grabbing"
               onDragStart={(e) => {
                 layout.setDraggingFieldId(fieldId)
                 layout.setDragOverFieldId(null)
@@ -128,7 +128,7 @@ export function DataTableEngine<TRow>({
                 <circle cx="10" cy="14.5" r="1.35" />
               </svg>
             </span>
-            <div className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+            <div className="flex min-h-8 min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap">
               {renderFieldHeader(fieldId)}
             </div>
           </div>
@@ -145,7 +145,7 @@ export function DataTableEngine<TRow>({
       data-datatable-engine="v1"
     >
       {layoutCustomize && customizeBanner ? (
-        <div className="border-b border-brand-200/80 bg-brand-50 px-3 py-1.5 text-[11px] font-medium text-brand-900">
+        <div className="border-b border-brand-200/80 bg-brand-50 px-3 py-2 text-[11px] font-medium text-brand-900">
           {customizeBanner}
         </div>
       ) : null}
@@ -156,7 +156,7 @@ export function DataTableEngine<TRow>({
             <tr className="h-11 bg-slate-50 text-left">
               {renderLeadingHeader ? (
                 <th
-                  className="border-r border-slate-200 px-4 py-2.5 align-middle whitespace-nowrap"
+                  className="border-r border-slate-200 px-4 py-3 align-middle whitespace-nowrap"
                   style={{ width: CHECKBOX_WIDTH, minWidth: CHECKBOX_WIDTH, maxWidth: CHECKBOX_WIDTH }}
                 >
                   {renderLeadingHeader()}
@@ -209,7 +209,7 @@ export function DataTableEngine<TRow>({
                           return (
                             <td
                               key={fieldId}
-                              className="border-r border-slate-200 align-middle px-4 py-2.5"
+                              className="border-r border-slate-200 align-middle px-4 py-3"
                               style={{ width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }}
                             >
                               {renderFieldCell(fieldId, row, index)}
@@ -226,7 +226,7 @@ export function DataTableEngine<TRow>({
         </table>
       </div>
       {footer ? (
-        <div className="shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-6 text-slate-600">{footer}</div>
+        <div className="shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-relaxed text-slate-600">{footer}</div>
       ) : null}
     </div>
   )

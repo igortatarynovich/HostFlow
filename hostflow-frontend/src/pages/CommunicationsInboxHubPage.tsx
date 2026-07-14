@@ -858,7 +858,7 @@ export default function CommunicationsInboxHubPage() {
             )}
             <div className="min-w-0 flex-1 space-y-3">
               {listQuery.candidateId ? (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-sm text-sky-950">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50/90 px-3 py-2 text-sm text-blue-950">
                   <span>{t('app.communications_inbox_hub.scoped_candidate_hint')}</span>
                   <Link
                     to={`${CRM_APP_PATHS.inbox}${inboxContextQueryString({ ...listQueryForLinks, candidateId: '' })}`}
@@ -873,7 +873,7 @@ export default function CommunicationsInboxHubPage() {
                 <input
                   value={qDraft}
                   onChange={(e) => setQDraft(e.target.value)}
-                  className="input min-w-[12rem] flex-1 py-1.5 text-sm"
+                  className="input min-w-[12rem] flex-1 py-2 text-sm"
                   placeholder={t('app.communications_inbox_hub.search_placeholder')}
                 />
                 {effectiveChannel === 'email' && hasEmail && (
@@ -881,7 +881,7 @@ export default function CommunicationsInboxHubPage() {
                     type="button"
                     onClick={() => void fetchInboundNow()}
                     disabled={pollBusy}
-                    className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                     title={t('app.communications.email.sync.title')}
                     aria-label={t('app.communications.email.sync.title')}
                   >
@@ -918,7 +918,7 @@ export default function CommunicationsInboxHubPage() {
 
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <select
-                  className="input min-w-[12rem] py-1.5 text-sm"
+                  className="input min-w-[12rem] py-2 text-sm"
                   value={selectedCommandId}
                   onChange={(e) => setSelectedCommandId(e.target.value)}
                 >
@@ -988,7 +988,7 @@ export default function CommunicationsInboxHubPage() {
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(Array.isArray(selectedCommand.actions) ? selectedCommand.actions : []).map((action, idx) => (
-                      <span key={`${selectedCommand.id}_action_${idx}`} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px]">
+                      <span key={`${selectedCommand.id}_action_${idx}`} className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px]">
                         {bulkActionPreviewLabel(String(action?.type || ''), String(action?.value || '').trim() || null)}
                       </span>
                     ))}

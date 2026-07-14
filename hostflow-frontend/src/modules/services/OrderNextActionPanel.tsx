@@ -212,7 +212,7 @@ export function OrderNextActionPanel({
 
       {canManage && handoffItems.length > 0 ? (
         <div className="mt-4 border-t border-brand-100 pt-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+          <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
             {t('app.services.orders.handoff.title', { defaultValue: 'Запуск исполнителей' })}
           </div>
           <p className="mt-0.5 text-xs text-slate-600">
@@ -229,7 +229,7 @@ export function OrderNextActionPanel({
               return (
                 <div
                   key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-violet-200 bg-white px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2"
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-slate-900">
@@ -239,7 +239,7 @@ export function OrderNextActionPanel({
                   </div>
                   <button
                     type="button"
-                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                     disabled={!action || busy === `handoff:${item.id}` || blockedNoClient}
                     title={
                       blockedNoClient
@@ -270,7 +270,7 @@ export function OrderNextActionPanel({
         </div>
       ) : null}
 
-      {error ? <div className="mt-3 text-sm text-red-600">{error}</div> : null}
+      {error ? <div className="mt-3 text-sm text-rose-600">{error}</div> : null}
     </section>
   )
 }

@@ -38,7 +38,7 @@ export default function WorkspaceStatusRail({ snapshot, loading, className }: Pr
       : aggregated_severity === 'blocked'
         ? 'border-amber-200 bg-amber-50'
         : aggregated_severity === 'warning'
-          ? 'border-sky-200 bg-sky-50'
+          ? 'border-blue-200 bg-blue-50'
           : 'border-slate-200 bg-white'
 
   const nextActionLabel = displayed_next_action

@@ -206,7 +206,7 @@ export default function SetupFirstClientPage() {
             data-testid="m1-setup-client-continue"
             disabled={loading}
             onClick={() => void onAudienceContinue()}
-            className="btn-primary w-full rounded-lg py-2.5 font-medium disabled:opacity-50"
+            className="btn-primary w-full rounded-lg py-3 font-medium disabled:opacity-50"
           >
             {loading ? t('common.loading') : t('common.continue', { defaultValue: 'Продолжить' })}
           </button>
@@ -284,7 +284,7 @@ export default function SetupFirstClientPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="btn-secondary rounded-lg px-4 py-2.5 text-sm"
+              className="btn-secondary rounded-lg px-4 py-3 text-sm"
               onClick={() => setStep('audience')}
               disabled={loading}
             >
@@ -294,7 +294,7 @@ export default function SetupFirstClientPage() {
               type="submit"
               data-testid="m1-client-save"
               disabled={loading}
-              className="btn-primary flex-1 rounded-lg py-2.5 font-medium disabled:opacity-50"
+              className="btn-primary flex-1 rounded-lg py-3 font-medium disabled:opacity-50"
             >
               {loading
                 ? t('common.saving')

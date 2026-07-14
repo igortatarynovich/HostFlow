@@ -42,7 +42,7 @@ export default function ClientInquiryLandingPage() {
           <p className="text-center text-sm text-slate-500">Загрузка…</p>
         ) : (
           <div className="space-y-6 text-center">
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
               {landing.headline}
             </h1>
             <p className="mx-auto max-w-lg text-base leading-relaxed text-slate-600">{landing.subheadline}</p>

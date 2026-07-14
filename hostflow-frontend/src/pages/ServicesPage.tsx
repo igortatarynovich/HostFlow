@@ -859,14 +859,14 @@ export function ServicesPage() {
             <div className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                 onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}
               >
                 {t('common.actions.open', { defaultValue: 'Open' })}
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
                 disabled={billingRowAction === `send:${inv.id}`}
                 onClick={() =>
                   void runRowAction(`send:${inv.id}`, () => sendInvoice(String(inv.id)))
@@ -878,7 +878,7 @@ export function ServicesPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                 disabled={billingRowAction === `paid:${inv.id}` || isPaid}
                 onClick={() =>
                   void runRowAction(`paid:${inv.id}`, async () => {
@@ -915,7 +915,7 @@ export function ServicesPage() {
         <button
           key={key}
           type="button"
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+          className={`rounded-lg px-3 py-2 text-sm font-medium ${
             tab === key ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
           }`}
           onClick={() => setTabAndUrl(key)}
@@ -1092,10 +1092,10 @@ export function ServicesPage() {
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     {col.step} · {col.title}
                   </div>
-                  <p className="mt-1 flex-1 text-xs leading-snug text-slate-600">{col.desc}</p>
+                  <p className="mt-1 flex-1 text-xs leading-tight text-slate-600">{col.desc}</p>
                   <button
                     type="button"
-                    className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                    className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50"
                     onClick={col.onClick}
                   >
                     {col.cta}
@@ -1150,7 +1150,7 @@ export function ServicesPage() {
                 {Number((analyticsOverview as any)?.totals?.invoices_overdue_count || 0) > 0 ? (
                   <button
                     type="button"
-                    className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800 hover:bg-red-50/80"
+                    className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-left text-rose-800 hover:bg-rose-50/80"
                     onClick={() => {
                       setTabAndUrl('billing')
                       setBillingStatusFilterAndUrl('overdue')
@@ -1321,7 +1321,7 @@ export function ServicesPage() {
                   type="button"
                   className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
                     billingStatusFilter === 'overdue'
-                      ? 'border-red-200 bg-red-50 text-red-700'
+                      ? 'border-rose-200 bg-rose-50 text-rose-700'
                       : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                   }`}
                   onClick={() => setBillingStatusFilterAndUrl('overdue')}
@@ -1386,7 +1386,7 @@ export function ServicesPage() {
           </Toolbar>
 
           {billingError && !billingLoading ? (
-            <div className="mx-4 mb-2 text-sm text-red-600">{String(billingError)}</div>
+            <div className="mx-4 mb-2 text-sm text-rose-600">{String(billingError)}</div>
           ) : null}
 
           <DataTable
@@ -1395,7 +1395,7 @@ export function ServicesPage() {
             rowKey={(inv) => String(inv.id)}
             loading={billingLoading}
             rowClassName={(inv) =>
-              String(inv.status || '').toLowerCase() === 'overdue' ? 'bg-red-50/40' : undefined
+              String(inv.status || '').toLowerCase() === 'overdue' ? 'bg-rose-50/40' : undefined
             }
             onRowClick={(inv) => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}
             ariaLabel={t('app.services.billing.title', { defaultValue: 'Billing' })}
@@ -2455,7 +2455,7 @@ function OrdersTab({
                         </button>
                         <button
                           type="button"
-                          className="text-slate-400 hover:text-red-600"
+                          className="text-slate-400 hover:text-rose-600"
                           aria-label={t('common.actions.delete', { defaultValue: 'Delete' })}
                           onClick={() => deleteSavedFilter(view.id)}
                         >
@@ -2579,7 +2579,7 @@ function OrdersTab({
                     </div>
                   </div>
                 )}
-                {orderBillingError ? <div className="mt-1 text-xs text-red-600">{orderBillingError}</div> : null}
+                {orderBillingError ? <div className="mt-1 text-xs text-rose-600">{orderBillingError}</div> : null}
               </div>
               {drilldown ? (
                 <div className="border-b border-slate-200/80 bg-brand-50 px-4 py-2 text-xs text-brand-800">
@@ -2638,7 +2638,7 @@ function OrdersTab({
                       type="button"
                       onClick={() => onSelectOrder(ord.id)}
                       className={[
-                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        'w-full rounded-xl border px-4 py-3 text-left transition',
                         selectedOrderId === ord.id
                           ? 'border-brand-200 bg-brand-50'
                           : 'border-slate-100 bg-white hover:bg-brand-50/40',
@@ -3272,7 +3272,7 @@ function OrderDetail({
           {canManage && (
             <button
               type="button"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
               disabled={creatingInvoice}
               onClick={async () => {
                 setInvoiceError(null)
@@ -3308,15 +3308,15 @@ function OrderDetail({
           )}
         </div>
       </div>
-      {invoiceError && <div className="text-sm text-red-600">{invoiceError}</div>}
+      {invoiceError && <div className="text-sm text-rose-600">{invoiceError}</div>}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs text-slate-700">
-        <span className="max-w-full rounded-full border border-brand-200 bg-white px-2.5 py-1 font-semibold text-brand-900">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-3 text-xs text-slate-700">
+        <span className="max-w-full rounded-full border border-brand-200 bg-white px-3 py-1 font-semibold text-brand-900">
           {t('app.services.orders.ops.next_label', { defaultValue: 'Next step' })}:{' '}
           {formatServiceOrderNextAction(resolveServiceOrderNextAction(order, invoiceSummary), t)}
         </span>
         {summary && summary.blocking_items.length > 0 ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-900">
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-900">
             {t('app.services.orders.ops.blocking', {
               defaultValue: 'Blocking: {{count}}',
               values: { count: summary.blocking_items.length },
@@ -3324,7 +3324,7 @@ function OrderDetail({
           </span>
         ) : null}
         {missingDocCount > 0 ? (
-          <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 font-medium text-rose-900">
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-900">
             {t('app.services.orders.ops.missing_docs', {
               defaultValue: 'Missing docs: {{count}}',
               values: { count: missingDocCount },
@@ -3332,7 +3332,7 @@ function OrderDetail({
           </span>
         ) : null}
         {invoiceOverdueDays != null ? (
-          <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 font-medium text-red-900">
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-900">
             {t('app.services.orders.ops.invoice_overdue', {
               defaultValue: '{{days}}d past due',
               values: { days: invoiceOverdueDays },

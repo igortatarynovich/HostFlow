@@ -230,7 +230,7 @@ export default function HrEmployeesPage() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-end gap-4">
-            <label className="flex min-w-[140px] flex-col gap-1.5">
+            <label className="flex min-w-[140px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-status">
                 {t('app.nav.hr.directory.filters_status', { defaultValue: 'Status' })}
               </span>
@@ -243,7 +243,7 @@ export default function HrEmployeesPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[160px] flex-col gap-1.5">
+            <label className="flex min-w-[160px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-compliance">
                 {t('app.nav.hr.directory.filters_compliance', { defaultValue: 'Compliance' })}
               </span>
@@ -256,7 +256,7 @@ export default function HrEmployeesPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[120px] flex-col gap-1.5">
+            <label className="flex min-w-[120px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-risk">
                 {t('app.nav.hr.directory.filters_risk', { defaultValue: 'Risk' })}
               </span>
@@ -269,7 +269,7 @@ export default function HrEmployeesPage() {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[min(100%,220px)] flex-1 flex-col gap-1.5 sm:min-w-[240px]">
+            <label className="flex min-w-[min(100%,220px)] flex-1 flex-col gap-2 sm:min-w-[240px]">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-search">
                 {t('app.nav.hr.directory.filters_search', { defaultValue: 'Search' })}
               </span>
@@ -294,7 +294,7 @@ export default function HrEmployeesPage() {
 
       {can('workforce.manage') && (
         <div className="card flex flex-wrap items-end gap-3 p-4">
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="label mb-0 text-xs text-slate-600" htmlFor="hr-emp-name">
               {t('app.nav.hr.employees.add_manual', { defaultValue: 'Add without candidate link' })}
             </span>

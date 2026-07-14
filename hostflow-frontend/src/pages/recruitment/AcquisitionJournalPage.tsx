@@ -44,7 +44,7 @@ export default function AcquisitionJournalPage() {
 
   if (entries.length === 0) {
     return (
-      <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+      <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
         <p className="text-sm text-slate-600">
           {t('app.acquisition.journal_empty', {
             defaultValue: 'Журнал пока пуст. Здесь будут синхронизации, новые активности и изменения метрик.',
@@ -57,7 +57,7 @@ export default function AcquisitionJournalPage() {
   const groups = groupEntries(entries)
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-testid="m1-acquisition-journal">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="m1-acquisition-journal">
       <h3 className="text-sm font-semibold text-slate-900">
         {t('app.acquisition.journal_title', { defaultValue: 'Журнал изменений' })}
       </h3>

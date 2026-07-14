@@ -16,7 +16,7 @@ export default function LeadIntakePublicIntakeReadonlyNotice({ layout = 'panel',
       className={
         embedded
           ? `space-y-2 text-sm leading-relaxed text-slate-700 ${className}`.trim()
-          : `rounded-2xl bg-slate-50/90 px-4 py-4 text-sm leading-relaxed text-slate-800 ring-1 ring-slate-900/[0.06] ${className}`.trim()
+          : `rounded-xl bg-slate-50/90 px-4 py-4 text-sm leading-relaxed text-slate-800 ring-1 ring-slate-900/[0.06] ${className}`.trim()
       }
     >
       <p className="font-semibold text-slate-900">{t('app.leads.intake_workspace.public_intake_readonly.title')}</p>

@@ -82,7 +82,7 @@ export default function AcquisitionAudiencePage() {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" data-testid="m1-acquisition-audience">
+    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" data-testid="m1-acquisition-audience">
       <h3 className="text-base font-semibold text-slate-900">
         {t('app.acquisition.audience_title', { defaultValue: 'Кого мы сейчас ищем?' })}
       </h3>

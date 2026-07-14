@@ -79,7 +79,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         </div>
         <button
           type="button"
-          className="btn-primary inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold"
+          className="btn-primary inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold"
           disabled={busy}
           onClick={() => void sendInvite()}
         >
@@ -91,15 +91,15 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-white p-3">
           <p className="break-all font-mono text-xs text-slate-600">{applyUrl}</p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs" onClick={() => void copyLink()}>
+            <button type="button" className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs" onClick={() => void copyLink()}>
               <IconCopy size={14} stroke={1.75} aria-hidden />
               Kopiuj link
             </button>
-            <button type="button" className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs" onClick={openWhatsApp}>
+            <button type="button" className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs" onClick={openWhatsApp}>
               <IconBrandWhatsapp size={14} stroke={1.75} aria-hidden />
               WhatsApp
             </button>
-            <span className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800">
+            <span className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-50 px-3 text-xs font-medium text-emerald-800">
               <IconCheck size={14} stroke={1.75} aria-hidden />
               Wysłano
             </span>

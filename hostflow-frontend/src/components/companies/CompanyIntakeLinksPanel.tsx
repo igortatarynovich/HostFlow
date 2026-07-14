@@ -271,7 +271,7 @@ export function CompanyIntakeLinksPanel({ embedded = false }: { embedded?: boole
       ) : null}
 
       {primaryProfile ? (
-        <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <span className="font-semibold text-slate-700">{primaryProfile.name}</span>
             <span className="font-mono break-all">{primaryUrl}</span>
@@ -538,7 +538,7 @@ export function CompanyIntakeLinksPanel({ embedded = false }: { embedded?: boole
                       </span>
                     </div>
 
-                    <div className="mt-3 rounded-md border border-slate-100 bg-slate-50 p-3">
+                    <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
                       <div className="flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
                         <IconLink size={15} className="shrink-0 text-slate-500" />
                         <span className="flex-1">{url}</span>

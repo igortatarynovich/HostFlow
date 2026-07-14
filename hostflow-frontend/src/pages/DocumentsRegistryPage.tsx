@@ -553,7 +553,7 @@ export default function DocumentsRegistryPage() {
                   className={[
                     'rounded border px-2 py-1 text-xs font-medium transition',
                     queueFilter === q
-                      ? 'border-teal-600 bg-teal-600 text-white'
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
                   ].join(' ')}
                 >
@@ -587,7 +587,7 @@ export default function DocumentsRegistryPage() {
                 </option>
               ))}
             </select>
-            <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-700">
+            <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-xs text-slate-700">
               <input
                 type="checkbox"
                 className="rounded border-slate-300"
@@ -603,9 +603,9 @@ export default function DocumentsRegistryPage() {
               type="button"
               onClick={() => setWorkTabParam('attention')}
               className={[
-                'rounded-lg border px-2.5 py-1 text-sm font-medium transition',
+                'rounded-lg border px-3 py-1 text-sm font-medium transition',
                 workTab === 'attention'
-                  ? 'border-teal-600 bg-teal-600 text-white'
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               ].join(' ')}
             >
@@ -615,9 +615,9 @@ export default function DocumentsRegistryPage() {
               type="button"
               onClick={() => setWorkTabParam('mine')}
               className={[
-                'rounded-lg border px-2.5 py-1 text-sm font-medium transition',
+                'rounded-lg border px-3 py-1 text-sm font-medium transition',
                 workTab === 'mine'
-                  ? 'border-teal-600 bg-teal-600 text-white'
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               ].join(' ')}
             >
@@ -639,7 +639,7 @@ export default function DocumentsRegistryPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {registryMode ? (
-                <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs font-medium">
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs font-medium">
                   <button
                     type="button"
                     className={[
@@ -695,7 +695,7 @@ export default function DocumentsRegistryPage() {
                         }
                       }}
                       className={[
-                        'rounded-2xl border bg-white/90 p-4 text-left shadow-sm outline-none transition',
+                        'rounded-xl border bg-white/90 p-4 text-left shadow-sm outline-none transition',
                         isSel ? 'border-brand-400 ring-1 ring-brand-200' : 'border-slate-100',
                       ].join(' ')}
                     >
@@ -859,7 +859,7 @@ export default function DocumentsRegistryPage() {
               </table>
             )
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
               {!registryMode && !me?.id
                 ? t('admin.documents.registry.work.empty.no_session')
                 : !registryMode && workTab === 'attention'
@@ -957,9 +957,9 @@ const SearchIcon = ({ className }: { className?: string }) => (
 
 const STATUS_TONES: Record<string, string> = {
   missing: 'bg-slate-100 text-slate-700',
-  requested: 'bg-sky-100 text-sky-700',
-  in_progress: 'bg-sky-100 text-sky-700',
-  received: 'bg-indigo-100 text-indigo-700',
+  requested: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  received: 'bg-blue-100 text-blue-700',
   approved: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-rose-100 text-rose-700',
   expired: 'bg-amber-100 text-amber-800',
@@ -968,7 +968,7 @@ const STATUS_TONES: Record<string, string> = {
 function StatusChip({ label, tone }: { label: string; tone: string }) {
   const toneClass = STATUS_TONES[tone] ?? 'bg-slate-100 text-slate-700'
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>
+    <span className={`inline-flex shrink-0 items-center rounded-lg px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>
       {label}
     </span>
   )

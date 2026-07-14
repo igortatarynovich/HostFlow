@@ -41,7 +41,7 @@ export function ClientChannelReadyPanel({ channelId, channelName, publicUrl }: C
         </p>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-brand-100 bg-brand-50/40 p-5">
+      <div className="space-y-4 rounded-xl border border-brand-100 bg-brand-50/40 p-4">
         <p className="text-sm font-medium text-slate-900">Ссылка для компаний</p>
         <p className="break-all text-xs text-slate-600">{publicUrl}</p>
         <div className="flex flex-wrap gap-2">

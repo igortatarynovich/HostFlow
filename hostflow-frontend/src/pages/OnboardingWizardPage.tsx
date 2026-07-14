@@ -343,7 +343,7 @@ export default function OnboardingWizardPage() {
         {error ? (
           <ErrorRecoveryBanner info={error} onRetry={() => setError(null)} retryLabel={t('common.actions.close')} compact />
         ) : null}
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-end gap-3">
             <p className="mr-auto text-xs font-medium uppercase tracking-wide text-brand-700">
               {t('app.onboarding.wizard.kicker', {
@@ -361,7 +361,7 @@ export default function OnboardingWizardPage() {
         <footer className="flex items-center justify-between text-xs text-slate-500">
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition hover:bg-slate-100 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 transition hover:bg-slate-100 disabled:opacity-40"
             onClick={() => void handleBack()}
             disabled={!prevStepFor(currentStep, businessType)}
           >
@@ -371,7 +371,7 @@ export default function OnboardingWizardPage() {
           {currentDef?.optional && !isLast ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-600 transition hover:bg-slate-100"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 transition hover:bg-slate-100"
               onClick={() => void handleSkip(currentStep)}
             >
               {t('app.onboarding.wizard.skip', { defaultValue: 'Skip for now' })}
@@ -410,7 +410,7 @@ function ProgressRail({
         return (
           <li
             key={step.key}
-            className={`rounded-xl border px-3 py-2.5 transition ${
+            className={`rounded-xl border px-3 py-3 transition ${
               isCurrent
                 ? 'border-brand-500 bg-brand-50/60 shadow-sm'
                 : isDone
@@ -595,7 +595,7 @@ function StepChannel({
                 {opt.icon}
               </span>
               <div className="mt-3 text-sm font-semibold text-slate-900">{opt.title}</div>
-              <p className="mt-1 text-xs leading-snug text-slate-600">{opt.description}</p>
+              <p className="mt-1 text-xs leading-tight text-slate-600">{opt.description}</p>
               {opt.to ? (
                 <Link
                   to={opt.to}
@@ -1072,7 +1072,7 @@ function StepFirstLead({ onFinish }: { onFinish: () => Promise<void> }) {
 
   return (
     <div className="space-y-4">
-      <article className="rounded-xl border border-brand-200 bg-brand-50/40 p-5 shadow-sm">
+      <article className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-brand-700">

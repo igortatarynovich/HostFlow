@@ -25,7 +25,7 @@ export function AcquisitionChannelCard({ channel, metaHref }: AcquisitionChannel
   const cpl = week.cpl ?? null
 
   const body = (
-    <article className={`rounded-2xl border p-5 shadow-sm ${statusTone(channel.status)}`}>
+    <article className={`rounded-xl border p-4 shadow-sm ${statusTone(channel.status)}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-slate-900">{channel.name}</h3>
@@ -98,10 +98,10 @@ export function AcquisitionChannelCard({ channel, metaHref }: AcquisitionChannel
 
       {channel.type === 'meta' && metaHref ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700">
+          <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700">
             {t('app.acquisition.action_view', { defaultValue: 'Посмотреть рекламу' })}
           </span>
-          <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-500">
+          <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-500">
             {t('app.acquisition.action_edit_soon', { defaultValue: 'Изменить — скоро' })}
           </span>
         </div>

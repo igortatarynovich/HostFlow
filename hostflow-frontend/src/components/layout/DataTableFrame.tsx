@@ -9,7 +9,7 @@ export const DATA_TABLE_SCROLL_CLASS =
   'min-h-0 flex-1 overflow-auto overscroll-contain rounded-b-lg'
 
 export const DATA_TABLE_FOOTER_CLASS =
-  'shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-6 text-slate-600'
+  'shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-relaxed text-slate-600'
 
 /**
  * Card + scroll + optional header/footer shell for bespoke tables (Candidates,

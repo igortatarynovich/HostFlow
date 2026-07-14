@@ -47,10 +47,10 @@ export function buildCandidateEntityWorkspaceSectionRenderers(
     outcome: () => {
       const outcome = passport.sections.outcome
       if (!outcome) {
-        return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Процесс активен</p>
+        return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Процесс активен</p>
       }
       return (
-        <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-lg font-bold text-slate-900">{outcome.title}</p>
           {outcome.body ? <p className="text-sm text-slate-600">{outcome.body}</p> : null}
           {outcome.why ? <p className="border-l-2 border-slate-300 pl-3 text-sm text-slate-700">{outcome.why}</p> : null}

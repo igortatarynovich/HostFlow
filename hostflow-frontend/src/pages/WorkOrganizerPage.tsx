@@ -120,10 +120,10 @@ export default function WorkOrganizerPage() {
               <Link
                 key={row.key}
                 to={row.href}
-                className={`flex items-center justify-between rounded border px-2 py-1.5 text-xs hover:opacity-90 ${severityClass(row.severity)}`}
+                className={`flex items-center justify-between rounded border px-2 py-2 text-xs hover:opacity-90 ${severityClass(row.severity)}`}
               >
                 <span className="truncate">{row.label}</span>
-                <span className="ml-2 rounded bg-white/80 px-1.5 py-0.5 font-semibold">{row.count}</span>
+                <span className="ml-2 rounded bg-white/80 px-2 py-0.5 font-semibold">{row.count}</span>
               </Link>
             ))}
           </div>

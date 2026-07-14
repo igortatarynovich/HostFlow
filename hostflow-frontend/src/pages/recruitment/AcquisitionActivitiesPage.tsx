@@ -63,7 +63,7 @@ export default function AcquisitionActivitiesPage() {
 
   if (sorted.length === 0) {
     return (
-      <section className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+      <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
         <p className="text-sm text-slate-600">
           {t('app.acquisition.empty_activities', {
             defaultValue: 'Пока нет рекламных активностей. Запустите рекламу или используйте публичную ссылку.',

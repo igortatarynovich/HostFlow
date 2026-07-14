@@ -43,7 +43,7 @@ export function EntityWorkspaceHeaderZone({
       {extension?.backHref ? (
         <Link
           to={extension.backHref}
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-brand-700"
+          className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-brand-700"
         >
           <IconArrowLeft size={16} />
           {extension.backLabel ?? 'Назад'}
@@ -52,7 +52,7 @@ export function EntityWorkspaceHeaderZone({
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 text-lg font-bold text-brand-800 ring-1 ring-brand-200">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 text-lg font-bold text-brand-800 ring-1 ring-brand-200">
             {extension?.avatarUrl ? (
               <img src={extension.avatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -81,7 +81,7 @@ export function EntityWorkspaceHeaderZone({
                 {extension.chips.map((chip) => (
                   <span
                     key={chip.id}
-                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700"
                   >
                     {chip.label}
                   </span>
@@ -98,7 +98,7 @@ export function EntityWorkspaceHeaderZone({
                 type="button"
                 disabled={!navigationPeers.hasPrevious}
                 onClick={navigationPeers.onPrevious}
-                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-30"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-30"
                 aria-label="Previous"
               >
                 <IconChevronLeft size={18} />
@@ -107,7 +107,7 @@ export function EntityWorkspaceHeaderZone({
                 type="button"
                 disabled={!navigationPeers.hasNext}
                 onClick={navigationPeers.onNext}
-                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-50 disabled:opacity-30"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-30"
                 aria-label="Next"
               >
                 <IconChevronRight size={18} />
@@ -120,7 +120,7 @@ export function EntityWorkspaceHeaderZone({
               key={action.id}
               type="button"
               onClick={action.onClick}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               {action.label}
             </button>
@@ -129,7 +129,7 @@ export function EntityWorkspaceHeaderZone({
       </div>
 
       {extension?.footerMeta?.length ? (
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
           {extension.footerMeta.map((item) => (
             <span key={item.label}>
               {item.label}: <span className="font-medium text-slate-700">{item.value}</span>

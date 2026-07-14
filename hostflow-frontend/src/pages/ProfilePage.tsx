@@ -972,7 +972,7 @@ export default function ProfilePage() {
                       <p className="text-xs text-slate-500">{t('app.profile.sessions.ip', { values: { value: session.ip_address || '—' } })}</p>
                       <p className="text-xs text-slate-500">{t('app.profile.sessions.created', { values: { value: session.created_at ? new Date(session.created_at).toLocaleString() : '—' } })}</p>
                       <p className="text-xs text-slate-500">{t('app.profile.sessions.last_seen', { values: { value: session.last_seen_at ? new Date(session.last_seen_at).toLocaleString() : '—' } })}</p>
-                      {session.revoked_at && <p className="text-xs text-red-600">{t('app.profile.sessions.revoked_at', { values: { value: new Date(session.revoked_at).toLocaleString() } })}</p>}
+                      {session.revoked_at && <p className="text-xs text-rose-600">{t('app.profile.sessions.revoked_at', { values: { value: new Date(session.revoked_at).toLocaleString() } })}</p>}
                     </div>
                     {session.id === sessionId && <span className="badge text-brand-700">{t('app.profile.sessions.current_badge')}</span>}
                   </div>

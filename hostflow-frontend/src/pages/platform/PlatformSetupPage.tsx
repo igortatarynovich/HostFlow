@@ -320,8 +320,8 @@ export default function PlatformSetupPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4" data-testid="m1-platform-setup">
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
           <IconChecklist size={14} stroke={1.9} />
           {t('app.platform_setup.badge', { defaultValue: 'Настройка платформы' })}
         </div>
@@ -337,7 +337,7 @@ export default function PlatformSetupPage() {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm" data-testid="m1-company-setup-step">
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm" data-testid="m1-company-setup-step">
         <h2 className="text-lg font-semibold text-slate-900">{stepTitle}</h2>
         <p className="mt-1 text-sm text-slate-600">{stepSubtitle}</p>
 
@@ -370,7 +370,7 @@ export default function PlatformSetupPage() {
               })}
             </div>
             {error ? <ErrorRecoveryBanner info={error} compact /> : null}
-            <button type="button" className="btn-primary w-full py-2.5" onClick={onIdentityContinue}>
+            <button type="button" className="btn-primary w-full py-3" onClick={onIdentityContinue}>
               {t('common.continue', { defaultValue: 'Продолжить' })}
             </button>
           </div>
@@ -417,10 +417,10 @@ export default function PlatformSetupPage() {
             </div>
             {error ? <ErrorRecoveryBanner info={error} compact /> : null}
             <div className="flex gap-2">
-              <button type="button" className="btn-secondary px-4 py-2.5" onClick={() => setStep('identity')}>
+              <button type="button" className="btn-secondary px-4 py-3" onClick={() => setStep('identity')}>
                 {t('common.back', { defaultValue: 'Назад' })}
               </button>
-              <button type="button" className="btn-primary flex-1 py-2.5" onClick={onIntentContinue}>
+              <button type="button" className="btn-primary flex-1 py-3" onClick={onIntentContinue}>
                 {t('common.continue', { defaultValue: 'Продолжить' })}
               </button>
             </div>
@@ -485,7 +485,7 @@ export default function PlatformSetupPage() {
                 {teamSizeOptions.map((opt) => (
                   <label
                     key={opt.value}
-                    className={`inline-flex cursor-pointer items-center rounded-full border px-3 py-1.5 text-xs font-medium ${
+                    className={`inline-flex cursor-pointer items-center rounded-full border px-3 py-2 text-xs font-medium ${
                       teamSize === opt.value
                         ? 'border-brand-500 bg-brand-50 text-brand-900'
                         : 'border-slate-200 bg-white text-slate-700'
@@ -540,14 +540,14 @@ export default function PlatformSetupPage() {
             ) : null}
 
             <div className="flex gap-2">
-              <button type="button" className="btn-secondary px-4 py-2.5" onClick={() => setStep('intent')} disabled={loading}>
+              <button type="button" className="btn-secondary px-4 py-3" onClick={() => setStep('intent')} disabled={loading}>
                 {t('common.back', { defaultValue: 'Назад' })}
               </button>
               <button
                 type="submit"
                 data-testid="m1-company-save"
                 disabled={loading || (!slotGuardLoading && !hasAvailableOperatingSlots)}
-                className="btn-primary flex-1 py-2.5 disabled:opacity-50"
+                className="btn-primary flex-1 py-3 disabled:opacity-50"
               >
                 {loading ? t('common.saving') : t('app.platform_setup.finish', { defaultValue: 'Открыть Launchpad' })}
               </button>

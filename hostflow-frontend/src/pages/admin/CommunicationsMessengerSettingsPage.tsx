@@ -217,7 +217,7 @@ function MessengerHubWizardPanel({
   const testKey = pa ? `hub-test-${pa.id}` : ''
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1603,7 +1603,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
             <summary className="cursor-pointer text-sm font-semibold">
               {t('admin.communications_messengers.templates.how_used', { defaultValue: 'How templates are used' })}
             </summary>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">
           <li>
             {t('admin.communications_messengers.templates.how_used_1', {
               defaultValue: 'Message templates appear as quick buttons in composer on',
@@ -1696,7 +1696,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
             defaultValue: 'What are Command templates',
           })}
         </summary>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-900">
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-900">
           <li>
             {t('admin.communications_messengers.templates.command_desc_1', {
               defaultValue: 'Saved batch action (example: add tag + archive + set priority).',

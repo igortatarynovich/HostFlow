@@ -132,7 +132,7 @@ export function FacetFilterMenu(props: FacetFilterMenuProps) {
   const menuContent = open && menuPosition && (
     <div
       ref={menuRef}
-      className="fixed z-[50] w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-2xl"
+      className="fixed z-[50] w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"
       style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
@@ -197,7 +197,7 @@ export function FacetFilterMenu(props: FacetFilterMenuProps) {
         >
           <TriggerIconComponent size={13} className={isActive ? 'text-brand-600' : 'text-slate-500'} />
           {badgeCount > 0 ? (
-            <span className="absolute -right-1.5 -top-1 rounded bg-brand-50 px-1 text-[10px] font-semibold leading-4 text-brand-700">
+            <span className="absolute -right-1.5 -top-1 rounded bg-brand-50 px-1 text-[10px] font-semibold leading-tight text-brand-700">
               {badgeCount}
             </span>
           ) : null}

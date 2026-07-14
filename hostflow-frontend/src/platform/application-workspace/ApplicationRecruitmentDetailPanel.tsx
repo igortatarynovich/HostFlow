@@ -149,7 +149,7 @@ export function ApplicationRecruitmentDetailPanel({
           subtitle: vacancyTitle || 'Новый отклик',
           meta,
           statusLabel: APPLICATION_STATUS_TEXT[statusKey],
-          statusClassName: `rounded-full px-2.5 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey]}`,
+          statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey]}`,
           entityWorkspaceHref: candidateHref,
           entityWorkspaceLabel: openCardLabel,
         }}
@@ -180,7 +180,7 @@ export function ApplicationRecruitmentDetailPanel({
                     notify({ title: 'Подбор привязан', variant: 'success' })
                   })
                 }
-                className="mt-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+                className="mt-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
               >
                 Привязать к подбору
               </button>
@@ -227,7 +227,7 @@ export function ApplicationRecruitmentDetailPanel({
 
       {showReject ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-xl">
             <h3 className="font-semibold text-slate-900">Отклонить отклик</h3>
             <select
               value={rejectCode}
@@ -265,7 +265,7 @@ export function ApplicationRecruitmentDetailPanel({
                     notify({ title: 'Отклик отклонён', variant: 'success' })
                   })
                 }
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
               >
                 Отклонить
               </button>
@@ -276,7 +276,7 @@ export function ApplicationRecruitmentDetailPanel({
 
       {showFollowUp ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-xl">
             <h3 className="font-semibold text-slate-900">Follow-up</h3>
             <input
               value={followUpTitle}

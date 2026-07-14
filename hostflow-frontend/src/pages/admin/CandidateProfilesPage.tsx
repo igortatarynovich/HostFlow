@@ -613,26 +613,26 @@ export default function CandidateProfilesPage() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-900">{profile.name}</span>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
+                            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
                               {profile.code}
                             </span>
                             {!profile.is_active && (
-                              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {t('admin.candidate_profiles_page.badge_inactive')}
                               </span>
                             )}
                             {profile.is_system && (
-                              <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                              <span className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                                 {t('admin.candidate_profiles_page.badge_system')}
                               </span>
                             )}
                             {profile.code === 'driver_ce_default' && (
-                              <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                                 {t('admin.candidate_profiles_page.badge_default')}
                               </span>
                             )}
                             {(profile.usage_count ?? 0) > 0 && (
-                              <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                              <span className="rounded-lg bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
                                 {t('admin.candidate_profiles_page.usage_in_vacancies', {
                                   values: { count: profile.usage_count ?? 0 },
                                 })}
@@ -653,7 +653,7 @@ export default function CandidateProfilesPage() {
                                     },
                                   })}
                                   {profile.config.field_configs.filter((f: any) => f.required === true).length > 0 && (
-                                    <span className="ml-1 text-red-600">
+                                    <span className="ml-1 text-rose-600">
                                       {t('admin.candidate_profiles_page.stats_required', {
                                         values: {
                                           count: profile.config.field_configs.filter((f: any) => f.required === true)

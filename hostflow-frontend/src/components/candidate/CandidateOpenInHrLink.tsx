@@ -41,7 +41,7 @@ export default function CandidateOpenInHrLink({ candidateId, enabled = true }: P
   return (
     <Link
       to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(employee.id)}#hr-verification`}
-      className="inline-flex items-center rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-900 hover:bg-brand-100"
+      className="inline-flex items-center rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-900 hover:bg-brand-100"
     >
       {t('app.candidate_card.open_in_hr', { defaultValue: 'Open in HR dossier →' })}
     </Link>

@@ -98,7 +98,7 @@ export default function ClientChannelHomePage() {
 
   return (
     <div className="space-y-4" data-testid="m1-client-channel-home">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         {audienceHint ? <p className="text-sm text-slate-600">{audienceHint}</p> : null}
 
         {pulse?.status?.today_inquiries ? (
@@ -120,7 +120,7 @@ export default function ClientChannelHomePage() {
               type="button"
               onClick={() => void copyLink()}
               disabled={!publicUrl}
-              className="mt-3 inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
               data-testid="m1-client-channel-home-copy"
             >
               <IconCopy size={14} />
@@ -138,7 +138,7 @@ export default function ClientChannelHomePage() {
               type="button"
               onClick={() => void downloadQr()}
               disabled={!publicUrl}
-              className="mt-3 inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
             >
               <IconDownload size={14} />
               {t('app.client_channel_home.download_qr', { defaultValue: 'Скачать' })}

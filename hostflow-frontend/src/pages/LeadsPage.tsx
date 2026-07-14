@@ -1664,7 +1664,7 @@ export default function LeadsPage() {
               <Link to={`${CRM_APP_PATHS.overview}#lead-conversion`} className="btn-secondary btn-sm">
                 {t('app.leads.workspace.funnel_analytics_link', { defaultValue: 'Conversion funnel (analytics)' })}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 <IconTable size={14} />
                 <span>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</span>
               </span>
@@ -1768,7 +1768,7 @@ export default function LeadsPage() {
       <Toolbar>
           <div className="flex flex-wrap items-center gap-2">
             <select
-              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
               value={status}
               aria-label={t('app.leads.filters.status')}
               onChange={(event) => {
@@ -1783,7 +1783,7 @@ export default function LeadsPage() {
               ))}
             </select>
             <select
-              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
               value={stage}
               aria-label={t('app.leads.filters.stage')}
               onChange={(event) => {
@@ -1798,7 +1798,7 @@ export default function LeadsPage() {
               ))}
             </select>
             <select
-              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
               value={nextAction}
               aria-label={t('app.leads.filters.next_action')}
               onChange={(event) => {
@@ -1814,7 +1814,7 @@ export default function LeadsPage() {
             </select>
             <input
               type="search"
-              className="input h-9 min-h-[40px] min-w-[200px] flex-1 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              className="input h-9 min-h-[40px] min-w-[200px] flex-1 rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
               value={leadSearch}
               aria-label={t('app.leads.filters.search')}
               onChange={(e) => {
@@ -1844,7 +1844,7 @@ export default function LeadsPage() {
               <button
                 type="button"
                 onClick={() => setWorkspaceView('table')}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium ${
                   workspaceView === 'table' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -1854,7 +1854,7 @@ export default function LeadsPage() {
               <button
                 type="button"
                 onClick={() => setWorkspaceView('kanban')}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium ${
                   workspaceView === 'kanban' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -1866,7 +1866,7 @@ export default function LeadsPage() {
           {leadCustomFieldDefs.length > 0 ? (
             <>
               <select
-                className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
                 value={customFieldKey}
                 aria-label={t('app.leads.filters.custom_field')}
                 onChange={(e) => {
@@ -1884,7 +1884,7 @@ export default function LeadsPage() {
               </select>
               <input
                 type="text"
-                className="input h-9 min-h-[40px] w-40 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                className="input h-9 min-h-[40px] w-40 rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
                 value={customFieldValue}
                 aria-label={t('app.leads.filters.custom_field_value')}
                 onChange={(e) => {
@@ -1993,7 +1993,7 @@ export default function LeadsPage() {
               </select>
               <button
                 type="button"
-                className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
+                className="btn-secondary rounded-lg px-3 py-1 text-xs"
                 onClick={() => void doBulkUpdateLeads()}
                 disabled={bulkUpdating || (!bulkStage && !bulkStatus)}
               >
@@ -2002,7 +2002,7 @@ export default function LeadsPage() {
               {selectedMetaProblemLeadIds.length > 0 && (
                 <button
                   type="button"
-                  className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
+                  className="btn-secondary rounded-lg px-3 py-1 text-xs"
                   onClick={() => void doBulkRetryMetaLeads()}
                   disabled={bulkRetryingMetaLeads}
                 >
@@ -2015,12 +2015,12 @@ export default function LeadsPage() {
               )}
               <button
                 type="button"
-                className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
+                className="btn-secondary rounded-lg px-3 py-1 text-xs"
                 onClick={() => nbaBulk.openSelectionBulkActivities()}
               >
                 {t('app.leads.bulk.activities.action')}
               </button>
-              <button type="button" className="btn-secondary rounded-lg px-2.5 py-1 text-xs" onClick={() => setChecked({})}>
+              <button type="button" className="btn-secondary rounded-lg px-3 py-1 text-xs" onClick={() => setChecked({})}>
                 {t('app.leads.bulk.clear')}
               </button>
             </div>
@@ -2042,7 +2042,7 @@ export default function LeadsPage() {
                 type="button"
                 disabled={!canPrev}
                 onClick={() => canPrev && setPage((prev) => prev - 1)}
-                className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t('app.leads.pagination.prev')}
               </button>
@@ -2050,7 +2050,7 @@ export default function LeadsPage() {
                 type="button"
                 disabled={!canNext}
                 onClick={() => canNext && setPage((prev) => prev + 1)}
-                className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t('app.leads.pagination.next')}
               </button>
@@ -2104,7 +2104,7 @@ export default function LeadsPage() {
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={tableColCount} className="px-3 py-5 text-center text-slate-500">
+                    <td colSpan={tableColCount} className="px-3 py-4 text-center text-slate-500">
                       {t('common.loading')}
                     </td>
                   </tr>
@@ -2197,7 +2197,7 @@ export default function LeadsPage() {
                         <td className="w-[52px]" onClick={(e) => e.stopPropagation()}>
                           <Link
                             to={`${CRM_APP_PATHS.leads}/${lead.id}`}
-                            className="inline-flex rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-700"
+                            className="inline-flex rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-700"
                             title={t('app.leads.table.full_page')}
                             aria-label={t('app.leads.table.full_page')}
                             onClick={(e) => e.stopPropagation()}
@@ -2214,7 +2214,7 @@ export default function LeadsPage() {
                             </td>
                             <td className="text-slate-700">{lead.source || '—'}</td>
                             <td>
-                              <span className="inline-flex max-w-[11rem] items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800">
+                              <span className="inline-flex max-w-[11rem] items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800">
                                 <span className="truncate">{t(leadIntakeColumnStatusKey(lead, isServicesTenant))}</span>
                               </span>
                             </td>
@@ -2222,7 +2222,7 @@ export default function LeadsPage() {
                             <td className="max-w-[200px]">
                               {rowMetaProblem ? (
                                 <div className="flex flex-col items-start gap-1">
-                                  <div className="text-xs text-red-500">{metaErrorCode}</div>
+                                  <div className="text-xs text-rose-500">{metaErrorCode}</div>
                                   <div className="flex flex-wrap items-center gap-2">
                                     <button
                                       type="button"
@@ -2289,7 +2289,7 @@ export default function LeadsPage() {
                                     return (
                                       <button
                                         type="button"
-                                        className="inline-flex w-full max-w-[14rem] items-center justify-center rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="inline-flex w-full max-w-[14rem] items-center justify-center rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                                         disabled={routingBusy || processingLeadId === lead.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
@@ -2306,7 +2306,7 @@ export default function LeadsPage() {
                                     return (
                                       <button
                                         type="button"
-                                        className="inline-flex w-full max-w-[14rem] items-center justify-center rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="inline-flex w-full max-w-[14rem] items-center justify-center rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                                         disabled={routingBusy || processingLeadId === lead.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
@@ -2321,7 +2321,7 @@ export default function LeadsPage() {
                                     return (
                                       <button
                                         type="button"
-                                        className="btn-secondary w-full max-w-[14rem] rounded-lg px-3 py-1.5 text-xs font-semibold"
+                                        className="btn-secondary w-full max-w-[14rem] rounded-lg px-3 py-2 text-xs font-semibold"
                                         disabled={intakeKeyboardBusyLeadId === lead.id}
                                         onClick={(e) => {
                                           e.stopPropagation()
@@ -2336,7 +2336,7 @@ export default function LeadsPage() {
                                     return (
                                       <button
                                         type="button"
-                                        className="inline-flex w-full max-w-[14rem] items-center justify-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="inline-flex w-full max-w-[14rem] items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                         disabled={processingLeadId === lead.id || Boolean(manualProcessBlockHint(lead))}
                                         title={
                                           manualProcessBlockHint(lead)
@@ -2391,14 +2391,14 @@ export default function LeadsPage() {
                             <td className="text-slate-700">{lead.source || '—'}</td>
                             <td className="max-w-[160px] truncate text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
                             <td>
-                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                              <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                                 {statusLabels[lead.status] ?? lead.status}
                               </span>
                             </td>
                             <td>
                               {lead.next_action_status === 'overdue' ? (
                                 <div className="flex flex-col items-start gap-0.5">
-                                  <span className="inline-flex items-center rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-800">
+                                  <span className="inline-flex items-center rounded-lg bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-800">
                                     {t('app.leads.next_action.overdue')}
                                   </span>
                                   {lead.next_action_due_at ? (
@@ -2407,7 +2407,7 @@ export default function LeadsPage() {
                                 </div>
                               ) : lead.next_action_status === 'scheduled' ? (
                                 <div className="flex flex-col items-start gap-0.5">
-                                  <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                  <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                                     {t('app.leads.next_action.scheduled')}
                                   </span>
                                   {lead.next_action_due_at ? (
@@ -2415,7 +2415,7 @@ export default function LeadsPage() {
                                   ) : null}
                                 </div>
                               ) : (
-                                <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                                <span className="inline-flex items-center rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
                                   {t('app.leads.next_action.no_next_action')}
                                 </span>
                               )}
@@ -2423,7 +2423,7 @@ export default function LeadsPage() {
                             <td className="max-w-[220px]">
                               {rowMetaProblem ? (
                                 <div className="flex flex-col items-start gap-1">
-                                  <div className="text-xs text-red-500">{metaErrorCode}</div>
+                                  <div className="text-xs text-rose-500">{metaErrorCode}</div>
                                   <div className="flex flex-wrap items-center gap-2">
                                     <button
                                       type="button"
@@ -2548,13 +2548,13 @@ export default function LeadsPage() {
                                     if (routingAct.kind === 'confirm_suggested' || routingAct.kind === 'confirm_current') {
                                       return (
                                         <>
-                                          <p className="max-w-[15rem] text-[11px] leading-snug text-slate-500">
+                                          <p className="max-w-[15rem] text-[11px] leading-tight text-slate-500">
                                             {t('app.leads.routing.next_step_hint')}
                                           </p>
-                                          <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center">
+                                          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                                             <button
                                               type="button"
-                                              className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-3 py-1.5 text-center text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                              className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-3 py-2 text-center text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                                               disabled={routingBusy || processingLeadId === lead.id}
                                               title={
                                                 routingAct.kind === 'confirm_suggested'
@@ -2589,7 +2589,7 @@ export default function LeadsPage() {
                                       return (
                                         <button
                                           type="button"
-                                          className="inline-flex w-full items-center justify-center rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                                          className="inline-flex w-full items-center justify-center rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                                           disabled={routingBusy || processingLeadId === lead.id}
                                           onClick={(e) => {
                                             e.stopPropagation()
@@ -2606,7 +2606,7 @@ export default function LeadsPage() {
                                         {leadSupportsManualProcess(lead) ? (
                                           <button
                                             type="button"
-                                            className="inline-flex items-center rounded-lg bg-white px-2.5 py-1 text-[11px] font-medium text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="inline-flex items-center rounded-lg bg-white px-3 py-1 text-[11px] font-medium text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                             disabled={processingLeadId === lead.id || Boolean(manualProcessBlockHint(lead))}
                                             title={
                                               manualProcessBlockHint(lead)
@@ -2629,7 +2629,7 @@ export default function LeadsPage() {
                                 </div>
                               )}
                               {lead.error ? (
-                                <div className="mt-1 text-[11px] text-red-600">{formatLeadPipelineError(lead.error, t)}</div>
+                                <div className="mt-1 text-[11px] text-rose-600">{formatLeadPipelineError(lead.error, t)}</div>
                               ) : null}
                             </td>
                           </>
@@ -2770,13 +2770,13 @@ export default function LeadsPage() {
                             leadRodoSatisfied(selectedLead) ? (
                               <a
                                 href={`tel:${String(selectedLead.normalized.phone).replace(/\s/g, '')}`}
-                                className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold"
+                                className="btn-primary inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold"
                               >
                                 <IconPhone size={18} stroke={1.75} aria-hidden />
                                 {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
                               </a>
                             ) : (
-                              <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
+                              <span className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
                                 <IconPhone size={18} stroke={1.75} aria-hidden />
                                 {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
                               </span>
@@ -2786,13 +2786,13 @@ export default function LeadsPage() {
                             leadRodoSatisfied(selectedLead) ? (
                               <a
                                 href={`mailto:${encodeURIComponent(String(selectedLead.normalized.email))}`}
-                                className="btn-secondary inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold"
+                                className="btn-secondary inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold"
                               >
                                 <IconMail size={18} stroke={1.75} aria-hidden />
                                 {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
                               </a>
                             ) : (
-                              <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
+                              <span className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
                                 <IconMail size={18} stroke={1.75} aria-hidden />
                                 {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
                               </span>
@@ -2885,7 +2885,7 @@ export default function LeadsPage() {
                     </summary>
                     <div className="mt-2 space-y-2">
                       <input
-                        className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                        className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                         value={reminderTitle}
                         onChange={(e) => setReminderTitle(e.target.value)}
                         placeholder={t('app.reminders.fields.title')}
@@ -2895,7 +2895,7 @@ export default function LeadsPage() {
                           <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
                           <input
                             type="datetime-local"
-                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                             value={reminderDueAt}
                             onChange={(e) => setReminderDueAt(e.target.value)}
                           />
@@ -2905,7 +2905,7 @@ export default function LeadsPage() {
                           <input
                             type="number"
                             min={0}
-                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-3 text-sm"
                             value={reminderOffset}
                             onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
                           />
@@ -2919,7 +2919,7 @@ export default function LeadsPage() {
                       >
                         {t('app.reminders.actions.create')}
                       </button>
-                      {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                      {remindersError ? <div className="text-xs text-rose-600">{remindersError}</div> : null}
                     </div>
                   </details>
 
@@ -2967,7 +2967,7 @@ export default function LeadsPage() {
                           ))}
                         </div>
                       )}
-                      {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
+                      {remindersError ? <div className="text-xs text-rose-600">{remindersError}</div> : null}
                     </div>
                   </details>
 

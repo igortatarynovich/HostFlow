@@ -33,10 +33,10 @@ function trialDaysRemaining(trialEndsAt: string | null | undefined): number | nu
 function FindStaffIllustration() {
   return (
     <div
-      className="relative mx-auto flex h-36 w-full max-w-[220px] items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-slate-50 sm:h-40"
+      className="relative mx-auto flex h-36 w-full max-w-[220px] items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-slate-50 sm:h-40"
       aria-hidden
     >
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-brand-700">
             <IconUser size={20} stroke={1.8} />
@@ -57,10 +57,10 @@ function FindStaffIllustration() {
 function CompanyInquiriesIllustration() {
   return (
     <div
-      className="relative mx-auto flex h-28 w-full max-w-[180px] items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 sm:h-32"
+      className="relative mx-auto flex h-28 w-full max-w-[180px] items-center justify-center rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 sm:h-32"
       aria-hidden
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white text-brand-700 shadow-sm">
+      <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-slate-200 bg-white text-brand-700 shadow-sm">
         <IconBuildingSkyscraper size={30} stroke={1.5} />
       </div>
     </div>
@@ -97,7 +97,7 @@ function ModuleCard({
     <article
       data-testid={testId}
       data-module-status={status}
-      className={`flex h-full flex-col rounded-2xl border p-5 shadow-sm transition ${
+      className={`flex h-full flex-col rounded-xl border p-4 shadow-sm transition ${
         locked
           ? 'border-slate-200 bg-slate-50/80 opacity-80'
           : 'border-slate-200 bg-white hover:border-slate-300'
@@ -112,7 +112,7 @@ function ModuleCard({
           {icon}
         </div>
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          className={`rounded-full px-3 py-0.5 text-xs font-medium ${
             ready
               ? 'bg-emerald-50 text-emerald-700'
               : locked
@@ -214,14 +214,14 @@ export default function LaunchpadPage() {
       </header>
 
       <section
-        className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-5"
+        className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-4"
         data-testid="m1-launchpad-tasks"
       >
         <article
-          className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-[1.35]"
+          className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:flex-[1.35]"
           data-testid="m1-launchpad-task-find-staff"
         >
-          <div className="flex flex-1 flex-col gap-5 md:flex-row md:items-center">
+          <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-center">
             <div className="shrink-0 md:w-[220px]">
               <FindStaffIllustration />
             </div>
@@ -255,7 +255,7 @@ export default function LaunchpadPage() {
                 : CRM_APP_PATHS.recruitmentSearchesNew
             }
             data-testid="m1-launchpad-create-search"
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:mt-6 sm:w-auto sm:self-start sm:text-base"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:mt-6 sm:w-auto sm:self-start sm:text-base"
           >
             {lastSearchId && hasActiveSearch
               ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
@@ -265,7 +265,7 @@ export default function LaunchpadPage() {
         </article>
 
         <article
-          className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:max-w-sm lg:flex-1"
+          className="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:max-w-sm lg:flex-1"
           data-testid="m1-launchpad-task-company-inquiries"
         >
           <CompanyInquiriesIllustration />
@@ -279,11 +279,11 @@ export default function LaunchpadPage() {
               defaultValue: 'Компании сами оставляют заявки на подбор персонала — вы получаете готовую ссылку и QR.',
             })}
           </p>
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-3">
             <Link
               to={CRM_APP_PATHS.clientAcquisitionChannelsNew}
               data-testid="m1-launchpad-create-client-channel"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-300 bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 hover:bg-brand-50 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-300 bg-white px-4 py-3 text-sm font-semibold text-brand-800 hover:bg-brand-50 sm:w-auto"
             >
               {t('app.launchpad.create_client_channel', {
                 defaultValue: 'Начать привлечение клиентов',
@@ -372,11 +372,11 @@ export default function LaunchpadPage() {
       </section>
 
       <section
-        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-4"
         data-testid="m1-launchpad-status-footer"
       >
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="grid flex-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.launchpad.platform_title', { defaultValue: 'Платформа' })}
@@ -444,7 +444,7 @@ export default function LaunchpadPage() {
           <Link
             to={setupContinuePath}
             data-testid="m1-launchpad-continue-setup"
-            className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 lg:w-auto"
+            className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 lg:w-auto"
           >
             {t('app.launchpad.continue_setup', { defaultValue: 'Продолжить настройку' })}
           </Link>

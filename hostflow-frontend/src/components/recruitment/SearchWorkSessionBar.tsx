@@ -53,7 +53,7 @@ export function SearchWorkSessionBar() {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-200 bg-brand-50/95 px-4 py-3 shadow-lg backdrop-blur-sm"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-200 bg-brand-50/95 px-4 py-3 shadow-md backdrop-blur-sm"
       data-testid="m1-search-work-session-bar"
     >
       <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
@@ -69,14 +69,14 @@ export function SearchWorkSessionBar() {
           <button
             type="button"
             onClick={handleStop}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             {t('app.search_next.session_stop', { defaultValue: 'К подбору' })}
           </button>
           <button
             type="button"
             onClick={handleNext}
-            className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             {current < total
               ? t('app.search_next.session_next', { defaultValue: 'Готово — следующий' })

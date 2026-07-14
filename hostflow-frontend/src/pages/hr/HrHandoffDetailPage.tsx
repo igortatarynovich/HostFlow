@@ -115,7 +115,7 @@ export default function HrHandoffDetailPage() {
 
       {loading && <p className="text-sm text-slate-500">{t('common.loading')}</p>}
       {err && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{err}</div>
       )}
 
       {row && hrReview && !isPickup ? (

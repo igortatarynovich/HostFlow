@@ -80,7 +80,7 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
           {s.documents.missing.length ? (
             <div>
               <p className="text-xs font-semibold uppercase text-slate-500">Не хватает</p>
-              <ul className="mt-1 list-disc pl-5 text-slate-700">
+              <ul className="mt-1 list-disc pl-4 text-slate-700">
                 {s.documents.missing.map((code) => (
                   <li key={code}>{code}</li>
                 ))}

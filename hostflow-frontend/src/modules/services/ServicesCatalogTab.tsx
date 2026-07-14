@@ -101,8 +101,8 @@ export function CatalogTab({
       header: t('app.services.catalog.table.status'),
       render: (svc) => (
         <span
-          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-            svc.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-700'
+          className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${
+            svc.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
           }`}
         >
           {svc.is_active ? t('app.services.catalog.table.badges.active') : t('app.services.catalog.table.badges.archived')}

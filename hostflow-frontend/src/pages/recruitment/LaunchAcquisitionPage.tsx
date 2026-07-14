@@ -43,7 +43,7 @@ export default function LaunchAcquisitionPage() {
 
   return (
     <div className="space-y-5" data-testid="m1-launch-acquisition">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-slate-900">
           {t('app.acquisition.launch_title', { defaultValue: 'Запуск новой рекламы' })}
         </h2>

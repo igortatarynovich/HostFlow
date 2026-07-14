@@ -450,7 +450,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Pay type
           <select
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={pay_type}
             onChange={(e) => setPayType(e.target.value)}
@@ -465,7 +465,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Base rate
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={base_rate}
             onChange={(e) => setBaseRate(e.target.value)}
@@ -475,7 +475,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Currency
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -484,7 +484,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Payroll status
           <select
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={payroll_status}
             onChange={(e) => setPayrollStatus(e.target.value)}
@@ -499,7 +499,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           Bank account
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono"
+            className="border border-slate-200 rounded px-2 py-2 text-sm font-mono"
             disabled={!manage}
             value={bank_account}
             onChange={(e) => setBankAccount(e.target.value)}
@@ -508,7 +508,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           Tax status
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={tax_status}
             onChange={(e) => setTaxStatus(e.target.value)}
@@ -517,7 +517,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           {t('app.hr.employee_detail.payroll_calculation_system', { defaultValue: 'Calculation system' })}
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={calculation_system}
             onChange={(e) => setCalculationSystem(e.target.value)}
@@ -529,7 +529,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           {t('app.hr.employee_detail.payroll_pay_day_note', { defaultValue: 'Pay day note' })}
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={pay_day_note}
             onChange={(e) => setPayDayNote(e.target.value)}
@@ -541,7 +541,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           {t('app.hr.employee_detail.payroll_pit_json', { defaultValue: 'PIT declarations (JSON object)' })}
           <textarea
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono min-h-[5rem]"
+            className="border border-slate-200 rounded px-2 py-2 text-sm font-mono min-h-[5rem]"
             disabled={!manage}
             value={pit_json}
             onChange={(e) => setPitJson(e.target.value)}
@@ -551,7 +551,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           {t('app.hr.employee_detail.payroll_allowances_json', { defaultValue: 'Allowances (JSON object)' })}
           <textarea
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono min-h-[5rem]"
+            className="border border-slate-200 rounded px-2 py-2 text-sm font-mono min-h-[5rem]"
             disabled={!manage}
             value={allowances_json}
             onChange={(e) => setAllowancesJson(e.target.value)}
@@ -561,7 +561,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           {t('app.hr.employee_detail.payroll_deductions_json', { defaultValue: 'Deductions (JSON object)' })}
           <textarea
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono min-h-[5rem]"
+            className="border border-slate-200 rounded px-2 py-2 text-sm font-mono min-h-[5rem]"
             disabled={!manage}
             value={deductions_json}
             onChange={(e) => setDeductionsJson(e.target.value)}
@@ -571,7 +571,7 @@ function PayrollSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
           {t('app.hr.employee_detail.payroll_external_refs_json', { defaultValue: 'External refs (JSON object)' })}
           <textarea
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm font-mono min-h-[5rem]"
+            className="border border-slate-200 rounded px-2 py-2 text-sm font-mono min-h-[5rem]"
             disabled={!manage}
             value={external_refs_json}
             onChange={(e) => setExternalRefsJson(e.target.value)}
@@ -583,7 +583,7 @@ function PayrollSection({
         <button
           type="button"
           disabled={saving}
-          className="mt-3 px-3 py-1.5 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
+          className="mt-3 px-3 py-2 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
           onClick={() => {
             const pitLabel = t('app.hr.employee_detail.payroll_pit_json', { defaultValue: 'PIT declarations' })
             const pit = parseOptionalJsonObject(pit_json, pitLabel, notify)
@@ -660,7 +660,7 @@ function ZusSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Registration status
           <select
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={registration_status}
             onChange={(e) => setRegStatus(e.target.value)}
@@ -676,7 +676,7 @@ function ZusSection({
           Submitted at
           <input
             type="date"
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={submitted_at ? submitted_at.slice(0, 10) : ''}
             onChange={(e) => setSubmittedAt(e.target.value)}
@@ -685,7 +685,7 @@ function ZusSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Employment basis
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={employment_basis}
             onChange={(e) => setBasis(e.target.value)}
@@ -695,7 +695,7 @@ function ZusSection({
         <label className="flex flex-col gap-1 text-xs text-slate-600">
           Responsible party
           <input
-            className="border border-slate-200 rounded px-2 py-1.5 text-sm"
+            className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={responsible_party}
             onChange={(e) => setParty(e.target.value)}
@@ -707,7 +707,7 @@ function ZusSection({
         <button
           type="button"
           disabled={saving}
-          className="mt-3 px-3 py-1.5 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
+          className="mt-3 px-3 py-2 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
           onClick={() =>
             onSave({
               registration_status,

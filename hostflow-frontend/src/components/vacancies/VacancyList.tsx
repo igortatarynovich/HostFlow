@@ -631,7 +631,7 @@ export default function VacancyList() {
     return (
       <button
         type="button"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 transition hover:text-slate-900"
         onClick={() => setSort(field)}
       >
         {label}
@@ -765,7 +765,7 @@ export default function VacancyList() {
             <button
               key={s.value || 'all'}
               type="button"
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                 status === s.value
                   ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
@@ -820,7 +820,7 @@ export default function VacancyList() {
               ⋯
             </button>
             {actionsMenuOpen && (
-              <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+              <div className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-3 shadow-md">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   {t('app.vacancies.list.columns')}
                 </div>
@@ -875,7 +875,7 @@ export default function VacancyList() {
       </Toolbar>
 
       {selected.length > 0 && (
-        <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-2.5 text-sm shadow-sm">
+        <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-3 text-sm shadow-sm">
           <div>{t('app.vacancies.list.bulk_selected', { values: { count: selected.length } })}</div>
           <div className="flex items-center gap-1">
             <span className="text-slate-500">{t('app.vacancies.list.bulk_set_status')}</span>
@@ -894,7 +894,7 @@ export default function VacancyList() {
           {views.map((v) => (
             <div key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm shadow-sm">
               <button className="hover:underline" onClick={()=>applyView(v)}>{v.name || t('app.vacancies.list.untitled')}</button>
-              <button className="text-slate-400 hover:text-red-500" onClick={()=>removeView(v.id)} title={t('app.vacancies.list.delete_view')}>×</button>
+              <button className="text-slate-400 hover:text-rose-500" onClick={()=>removeView(v.id)} title={t('app.vacancies.list.delete_view')}>×</button>
             </div>
           ))}
         </div>

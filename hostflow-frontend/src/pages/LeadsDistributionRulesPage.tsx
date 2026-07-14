@@ -219,7 +219,7 @@ export default function LeadsDistributionRulesPage() {
 
       {error ? <div className="text-sm text-rose-700">{String(error)}</div> : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.strategy')}</h2>
         <div className="mt-3 space-y-2 text-sm">
           {(
@@ -244,7 +244,7 @@ export default function LeadsDistributionRulesPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.priority')}</h2>
         <p className="mt-1 text-xs text-slate-500">{t('app.leads.distribution.rules.priority_hint')}</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -278,7 +278,7 @@ export default function LeadsDistributionRulesPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.limits')}</h2>
         <label className="mt-3 block text-sm text-slate-700">
           {t('app.leads.distribution.rules.max')}
@@ -289,7 +289,7 @@ export default function LeadsDistributionRulesPage() {
             disabled={!canEdit}
             value={maxLeads}
             onChange={(e) => setMaxLeads(Number(e.target.value) || 1)}
-            className="mt-1 block w-32 rounded-lg border border-slate-300 px-2 py-1.5"
+            className="mt-1 block w-32 rounded-lg border border-slate-300 px-2 py-2"
           />
         </label>
         <label className="mt-3 flex items-center gap-2 text-sm">
@@ -299,7 +299,7 @@ export default function LeadsDistributionRulesPage() {
         <label className="mt-3 block text-sm text-slate-700">
           {t('app.leads.distribution.rules.preview_lang')}
           <select
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-2 py-1.5"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-2 py-2"
             value={previewLang}
             disabled={!canEdit}
             onChange={(e) => setPreviewLang(e.target.value)}
@@ -311,7 +311,7 @@ export default function LeadsDistributionRulesPage() {
         </label>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.lang_route_title')}</h2>
         <p className="mt-1 text-xs text-slate-500">{t('app.leads.distribution.rules.lang_route_hint')}</p>
         <div className="mt-4 space-y-4">

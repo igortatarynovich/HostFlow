@@ -170,7 +170,7 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
   } = props
 
   return (
-    <div className="mx-4 mb-1.5 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm">
+    <div className="mx-4 mb-2 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-3 shadow-sm">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <input
           id="candidates-search"

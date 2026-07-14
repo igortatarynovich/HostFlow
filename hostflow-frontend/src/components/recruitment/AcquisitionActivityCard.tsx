@@ -56,7 +56,7 @@ export function AcquisitionActivityCard({
   return (
     <article
       id={`activity-${activity.id}`}
-      className={`rounded-2xl border p-5 shadow-sm transition ${statusTone(activity.status, lifecycle)} ${
+      className={`rounded-xl border p-4 shadow-sm transition ${statusTone(activity.status, lifecycle)} ${
         highlighted ? 'ring-2 ring-brand-500' : ''
       }`}
     >
@@ -109,7 +109,7 @@ export function AcquisitionActivityCard({
             href={activity.meta_external_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             {t('app.acquisition.action_open_meta', { defaultValue: 'Открыть в Meta' })}
           </a>
@@ -119,7 +119,7 @@ export function AcquisitionActivityCard({
             type="button"
             disabled={busy}
             onClick={onEditBindings}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {t('app.acquisition.action_bindings', { defaultValue: 'Изменить привязку к подборам' })}
           </button>
@@ -129,7 +129,7 @@ export function AcquisitionActivityCard({
             type="button"
             disabled={busy}
             onClick={onPause}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {t('app.acquisition.action_pause', { defaultValue: 'Приостановить' })}
           </button>
@@ -139,7 +139,7 @@ export function AcquisitionActivityCard({
             type="button"
             disabled={busy}
             onClick={onResume}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {t('app.acquisition.action_resume', { defaultValue: 'Возобновить' })}
           </button>
@@ -149,7 +149,7 @@ export function AcquisitionActivityCard({
             type="button"
             disabled={busy}
             onClick={onDuplicate}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {t('app.acquisition.action_duplicate', { defaultValue: 'Дублировать' })}
           </button>
@@ -159,7 +159,7 @@ export function AcquisitionActivityCard({
             type="button"
             disabled={busy}
             onClick={onArchive}
-            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
           >
             {t('app.acquisition.action_archive', { defaultValue: 'Архивировать' })}
           </button>
@@ -169,7 +169,7 @@ export function AcquisitionActivityCard({
             href={activity.public_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             {t('app.acquisition.action_open_link', { defaultValue: 'Открыть ссылку' })}
           </a>

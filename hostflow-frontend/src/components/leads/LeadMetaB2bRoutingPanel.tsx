@@ -152,10 +152,10 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
     <button
       type="button"
       className={
-        'inline-flex rounded-lg border px-3 py-1.5 text-sm font-medium transition ' +
+        'inline-flex rounded-lg border px-3 py-2 text-sm font-medium transition ' +
         (choice === key
-          ? 'border-indigo-600 bg-indigo-600 text-white'
-          : 'border-indigo-300 bg-white text-indigo-900 hover:bg-indigo-50')
+          ? 'border-blue-600 bg-blue-600 text-white'
+          : 'border-blue-300 bg-white text-blue-900 hover:bg-blue-50')
       }
       aria-pressed={choice === key}
       disabled={busy}
@@ -166,33 +166,33 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
   )
 
   return (
-    <div className="rounded-lg border border-indigo-200 bg-indigo-50/80 p-4">
-      <p className="text-sm font-semibold text-indigo-950">
+    <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-4">
+      <p className="text-sm font-semibold text-blue-950">
         {t('app.leads.needs_routing.title', { defaultValue: 'Куда направить эту заявку?' })}
       </p>
-      <p className="mt-1 text-sm text-indigo-900">
+      <p className="mt-1 text-sm text-blue-900">
         {t('app.leads.needs_routing.body', {
           defaultValue:
             'Форма Meta пришла без маршрута. Выберите поток один раз — решение можно применить ко всей форме, чтобы такие заявки больше не попадали в подбор без вакансии.',
         })}
       </p>
 
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-indigo-800/90 sm:grid-cols-3">
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-blue-800/90 sm:grid-cols-3">
         {formId ? (
           <div>
-            <dt className="text-indigo-700/70">Form ID</dt>
+            <dt className="text-blue-700/70">Form ID</dt>
             <dd className="font-medium">{formId}</dd>
           </div>
         ) : null}
         {adId != null && String(adId).trim() ? (
           <div>
-            <dt className="text-indigo-700/70">Ad ID</dt>
+            <dt className="text-blue-700/70">Ad ID</dt>
             <dd className="font-medium">{String(adId)}</dd>
           </div>
         ) : null}
         {formName ? (
           <div>
-            <dt className="text-indigo-700/70">{t('app.leads.needs_routing.form_name', { defaultValue: 'Форма' })}</dt>
+            <dt className="text-blue-700/70">{t('app.leads.needs_routing.form_name', { defaultValue: 'Форма' })}</dt>
             <dd className="font-medium">{formName}</dd>
           </div>
         ) : null}
@@ -205,10 +205,10 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
       </div>
 
       {choice === 'service_order_lead' ? (
-        <label className="mt-3 block max-w-md text-xs font-medium text-indigo-900">
+        <label className="mt-3 block max-w-md text-xs font-medium text-blue-900">
           <div className="mb-1">{t('app.leads.needs_routing.pick_service', { defaultValue: 'Услуга из каталога' })}</div>
           <select
-            className="input h-9 w-full rounded-lg border-indigo-300 bg-white px-2.5 text-sm"
+            className="input h-9 w-full rounded-lg border-blue-300 bg-white px-3 text-sm"
             value={serviceCode}
             onChange={(e) => setServiceCode(e.target.value)}
             disabled={servicesLoading || busy}
@@ -225,10 +225,10 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
         </label>
       ) : null}
 
-      <label className="mt-3 flex items-center gap-2 text-sm text-indigo-900">
+      <label className="mt-3 flex items-center gap-2 text-sm text-blue-900">
         <input
           type="checkbox"
-          className="h-4 w-4 rounded border-indigo-300"
+          className="h-4 w-4 rounded border-blue-300"
           checked={applyToForm}
           onChange={(e) => setApplyToForm(e.target.checked)}
           disabled={busy}
@@ -239,7 +239,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="inline-flex rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="inline-flex rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           disabled={busy || !choice || !formId || (choice === 'service_order_lead' && !serviceCode)}
           onClick={() => void handleApply()}
         >
@@ -247,7 +247,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
             ? t('common.loading')
             : t('app.leads.needs_routing.apply', { defaultValue: 'Применить маршрут и переобработать' })}
         </button>
-        <Link to={settingsHref} className="text-xs text-indigo-700 hover:text-indigo-900 hover:underline">
+        <Link to={settingsHref} className="text-xs text-blue-700 hover:text-blue-900 hover:underline">
           {t('app.leads.needs_routing.open_settings', { defaultValue: 'Открыть настройки маршрута' })}
         </Link>
       </div>

@@ -27,10 +27,10 @@ export default function LaunchSearchHomePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6" data-testid="launch-search-home">
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
+            <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
               <IconSearch size={14} stroke={1.9} />
               Recruitment
             </div>
@@ -51,7 +51,7 @@ export default function LaunchSearchHomePage() {
       </section>
 
       {searches.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center">
+        <section className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center">
           <p className="text-sm text-slate-600">Пока нет активных поисков.</p>
           <p className="mt-1 text-sm text-slate-500">
             Запустите первый поиск водителей — это займёт около 10 минут.
@@ -69,7 +69,7 @@ export default function LaunchSearchHomePage() {
           {searches.map((search) => (
             <article
               key={search.id}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
               data-testid="launch-search-card"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -102,7 +102,7 @@ export default function LaunchSearchHomePage() {
       )}
 
       {previewSearch ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-900">Как выглядит заявка</h3>
             <button

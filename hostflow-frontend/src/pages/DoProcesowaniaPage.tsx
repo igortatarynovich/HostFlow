@@ -850,7 +850,7 @@ export default function DoProcesowaniaPage() {
                   <select
                     value={selectedCompanyId ?? ''}
                     onChange={(e) => setSelectedCompanyId(e.target.value || null)}
-                    className="input h-9 w-auto py-1.5 text-sm"
+                    className="input h-9 w-auto py-2 text-sm"
                     aria-label={t('app.handoff.filter_by_company')}
                   >
                     <option value="">—</option>
@@ -866,7 +866,7 @@ export default function DoProcesowaniaPage() {
               <select
                 value={selectedCompanyId ?? ''}
                 onChange={(e) => setSelectedCompanyId(e.target.value || null)}
-                className="input h-9 w-auto py-1.5 text-sm"
+                className="input h-9 w-auto py-2 text-sm"
                 aria-label={t('app.handoff.company')}
               >
                 <option value="">—</option>
@@ -884,7 +884,7 @@ export default function DoProcesowaniaPage() {
                   type="button"
                   onClick={() => setActiveTab(tab)}
                   className={clsx(
-                    'rounded-lg px-3 py-1.5',
+                    'rounded-lg px-3 py-2',
                     activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600',
                   )}
                 >

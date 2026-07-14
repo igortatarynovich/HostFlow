@@ -60,15 +60,15 @@ function ChecklistRow({ item }: { item: ClientPreparationCheckItem }) {
   const content = (
     <div className="flex min-w-0 flex-1 items-start gap-2">
       <span
-        className={clsx('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', statusTone(item.status))}
+        className={clsx('mt-2 h-2.5 w-2.5 shrink-0 rounded-full', statusTone(item.status))}
         aria-hidden
       />
       <div className="min-w-0">
-        <div className={clsx('flex items-center gap-1.5 text-sm font-medium', textClass)}>
+        <div className={clsx('flex items-center gap-2 text-sm font-medium', textClass)}>
           {statusIcon(item.status)}
           <span className="truncate">{title}</span>
           {item.soft ? (
-            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+            <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
               {t('app.client_preparation.soft_badge', { defaultValue: 'мягкий чек' })}
             </span>
           ) : null}

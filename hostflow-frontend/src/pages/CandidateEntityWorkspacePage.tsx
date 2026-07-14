@@ -125,7 +125,7 @@ export function CandidateEntityWorkspacePage() {
   if (error) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-        <p className="text-sm text-red-700">{error}</p>
+        <p className="text-sm text-rose-700">{error}</p>
         <Link to={CRM_APP_PATHS.candidates} className="text-sm font-medium text-brand-700 hover:underline">
           {t('app.candidates.back_to_list', { defaultValue: 'К списку кандидатов' })}
         </Link>

@@ -167,7 +167,7 @@ export default function SearchMetaSourcePage() {
 
   return (
     <div className="space-y-5" data-testid="m1-search-meta-source">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0081FB]/10 text-[#0081FB]">
             <IconBrandMeta size={24} stroke={1.75} />
@@ -190,7 +190,7 @@ export default function SearchMetaSourcePage() {
         <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
       ) : (
         <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               {t('app.search_meta.checklist_title', { defaultValue: 'Что сделать' })}
             </h3>
@@ -213,7 +213,7 @@ export default function SearchMetaSourcePage() {
             </ol>
 
             {!metaConnected ? (
-              <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
+              <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
                 <p className="text-sm text-slate-600">
                   {t('app.search_meta.connect_prompt', {
                     defaultValue: 'Начните с подключения Meta — дальше выберете рекламу для этого подбора.',
@@ -224,7 +224,7 @@ export default function SearchMetaSourcePage() {
                     type="button"
                     disabled={oauthBusy}
                     onClick={() => void handleConnectMeta()}
-                    className="mt-4 inline-flex rounded-lg bg-[#0081FB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#006FE0] disabled:opacity-50"
+                    className="mt-4 inline-flex rounded-lg bg-[#0081FB] px-4 py-3 text-sm font-semibold text-white hover:bg-[#006FE0] disabled:opacity-50"
                     data-testid="m1-search-meta-connect"
                   >
                     {oauthBusy
@@ -247,7 +247,7 @@ export default function SearchMetaSourcePage() {
           </section>
 
           {metaConnected ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -340,12 +340,12 @@ export default function SearchMetaSourcePage() {
               ) : null}
 
               {(inventory?.campaigns?.length ?? 0) > 0 ? (
-                <div className="mt-5 flex flex-wrap gap-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     type="button"
                     disabled={bindBusy || selectedCampaignIds.length === 0}
                     onClick={() => void handleBindCampaigns()}
-                    className="inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                    className="inline-flex rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
                   >
                     {bindBusy
                       ? t('common.loading', { defaultValue: 'Загрузка…' })
@@ -354,7 +354,7 @@ export default function SearchMetaSourcePage() {
                   {setupDone ? (
                     <Link
                       to={recruitmentSearchAcquisitionPath(searchId)}
-                      className="inline-flex rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      className="inline-flex rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       {t('app.search_meta.back_to_acquisition', { defaultValue: 'К привлечению' })}
                     </Link>

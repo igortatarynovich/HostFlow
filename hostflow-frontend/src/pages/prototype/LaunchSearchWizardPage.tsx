@@ -60,7 +60,7 @@ function OptionCard({
       <div className="flex items-center justify-between gap-2">
         <span>{children}</span>
         {soon ? (
-          <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">Скоро</span>
+          <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-500">Скоро</span>
         ) : null}
       </div>
     </button>

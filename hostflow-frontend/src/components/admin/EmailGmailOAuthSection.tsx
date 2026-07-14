@@ -237,7 +237,7 @@ export function EmailGmailOAuthSection() {
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={clsx(
-            'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            'rounded-full px-3 py-0.5 text-xs font-semibold',
             oauthStatus === 'connected' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800',
           )}
         >

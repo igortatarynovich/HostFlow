@@ -82,7 +82,7 @@ export function SearchReadyPanel({ searchId, searchName, publicUrl }: SearchRead
       <Link
         to={recruitmentSearchPath(searchId)}
         data-testid="m1-search-open"
-        className="inline-flex w-full items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+        className="inline-flex w-full items-center justify-center rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
       >
         Открыть подбор
       </Link>

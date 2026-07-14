@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n'
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
-    'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+    'rounded-lg px-3 py-2 text-sm font-medium transition',
     isActive ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:bg-white/60 hover:text-slate-900',
   )
 

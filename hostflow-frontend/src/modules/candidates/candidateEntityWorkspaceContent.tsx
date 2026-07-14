@@ -43,7 +43,7 @@ function MockupWorkspaceSection({
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -295,7 +295,7 @@ export function CandidateContactsContent({ passport, candidate }: { passport: En
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">{passport.sections.contacts.displayName}</h3>
         {passport.sections.contacts.citizenship ? (
           <p className="mt-1 text-sm text-slate-600">Гражданство: {passport.sections.contacts.citizenship}</p>
@@ -309,7 +309,7 @@ export function CandidateContactsContent({ passport, candidate }: { passport: En
 
       <div className="grid gap-3 sm:grid-cols-2">
         {channels.map((ch) => (
-          <div key={`${ch.kind}-${ch.value}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div key={`${ch.kind}-${ch.value}`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{ch.kind}</p>
             {ch.href && !candidate.masked ? (
               <a href={ch.href} className="mt-2 block text-base font-semibold text-brand-700 hover:underline">
@@ -331,13 +331,13 @@ export function CandidateTimelineContent({ passport }: { passport: EntityPasspor
   const items = passport.sections.timeline.items
 
   if (!items.length) {
-    return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет событий</p>
+    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет событий</p>
   }
 
   return (
     <ul className="space-y-2">
       {items.map((ev) => (
-        <li key={ev.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <li key={ev.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <p className="text-sm font-semibold text-slate-900">{ev.title}</p>
           {ev.description ? <p className="mt-1 text-sm text-slate-600">{ev.description}</p> : null}
           {ev.at ? <p className="mt-2 text-xs text-slate-400">{ev.at}</p> : null}
@@ -351,13 +351,13 @@ export function CandidateRelationsContent({ passport }: { passport: EntityPasspo
   const items = passport.sections.relations.items
 
   if (!items.length) {
-    return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет связей</p>
+    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет связей</p>
   }
 
   return (
     <ul className="space-y-2">
       {items.map((rel) => (
-        <li key={rel.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <li key={rel.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
               {rel.kind === 'vacancy' ? 'Вакансия' : rel.kind === 'hr' ? 'Handoff' : 'Связь'}
@@ -380,7 +380,7 @@ export function CandidateTasksContent({ passport }: { passport: EntityPassport }
   const items = passport.sections.tasks.items
 
   if (!items.length) {
-    return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет задач</p>
+    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет задач</p>
   }
 
   return (
@@ -389,8 +389,8 @@ export function CandidateTasksContent({ passport }: { passport: EntityPassport }
         <li
           key={task.id}
           className={clsx(
-            'flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-sm',
-            task.overdue ? 'border-red-200 bg-red-50/40' : 'border-slate-200 bg-white',
+            'flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm',
+            task.overdue ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-white',
           )}
         >
           <span

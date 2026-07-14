@@ -337,11 +337,11 @@ export default function RulesetVersionsPage() {
                   <td className="px-3 py-2 font-medium text-slate-900">v{version.version}</td>
                   <td className="px-3 py-2">
                     {version.is_active ? (
-                      <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                      <span className="rounded-lg bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                         {t('app.admin.ruleset.history.status.active')}
                       </span>
                     ) : (
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
                         {t('app.admin.ruleset.history.status.draft')}
                       </span>
                     )}
@@ -403,15 +403,15 @@ export default function RulesetVersionsPage() {
       </section>
 
       {diffState.versionId && (
-        <section className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
+        <section className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-medium text-indigo-900">
+              <h2 className="text-lg font-medium text-blue-900">
                 {t('app.admin.ruleset.diff.title', {
                   values: { version: versions.find((v) => v.id === diffState.versionId)?.version ?? '' },
                 })}
               </h2>
-              <p className="text-sm text-indigo-700">
+              <p className="text-sm text-blue-700">
                 {diffState.payload?.computed_with
                   ? t('app.admin.ruleset.diff.subtitle_engine', { values: { engine: diffState.payload.computed_with } })
                   : t('app.admin.ruleset.diff.subtitle_previous')}
@@ -426,7 +426,7 @@ export default function RulesetVersionsPage() {
             </button>
           </div>
 
-          {diffState.loading && <p className="mt-3 text-sm text-indigo-700">{t('app.admin.ruleset.diff.loading')}</p>}
+          {diffState.loading && <p className="mt-3 text-sm text-blue-700">{t('app.admin.ruleset.diff.loading')}</p>}
           {diffState.error && (
             <div className="mt-3">
               <ErrorRecoveryBanner
@@ -447,7 +447,7 @@ export default function RulesetVersionsPage() {
           {!diffState.loading && diffState.payload && (
             <div className="mt-4 space-y-4 text-sm">
               {diffSummary && (
-                <div className="flex flex-wrap gap-4 text-indigo-900">
+                <div className="flex flex-wrap gap-4 text-blue-900">
                   <span>{t('app.admin.ruleset.diff.summary.added', { values: { count: diffSummary.added } })}</span>
                   <span>{t('app.admin.ruleset.diff.summary.removed', { values: { count: diffSummary.removed } })}</span>
                   <span>{t('app.admin.ruleset.diff.summary.changed', { values: { count: diffSummary.changed } })}</span>
@@ -531,7 +531,7 @@ export default function RulesetVersionsPage() {
                       <span>{formatDate(item.used_at)}</span>
                     </div>
                     {item.meta && Object.keys(item.meta).length > 0 && (
-                      <pre className="mt-1 overflow-auto rounded bg-white/70 p-2 text-[11px] leading-snug text-slate-700">
+                      <pre className="mt-1 overflow-auto rounded bg-white/70 p-2 text-[11px] leading-tight text-slate-700">
                         {JSON.stringify(item.meta, null, 2)}
                       </pre>
                     )}
@@ -571,7 +571,7 @@ function DiffList({ title, entries, emptyLabel }: { title: string; entries?: Rec
         {pairs.map(([key, value]) => (
           <li key={key}>
             <span className="font-semibold text-slate-900">{key}</span>
-            <pre className="mt-1 overflow-auto rounded bg-slate-50 px-2 py-1 text-[11px] leading-snug text-slate-700">
+            <pre className="mt-1 overflow-auto rounded bg-slate-50 px-2 py-1 text-[11px] leading-tight text-slate-700">
               {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
             </pre>
           </li>

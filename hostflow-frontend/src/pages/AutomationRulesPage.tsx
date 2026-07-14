@@ -276,7 +276,7 @@ export default function AutomationRulesPage() {
 
       <section className="card p-4 space-y-3">
         <div className="text-sm font-semibold">{t('app.automation_rules.create')}</div>
-        {error ? <div className="text-sm text-red-600">{String(error)}</div> : null}
+        {error ? <div className="text-sm text-rose-600">{String(error)}</div> : null}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm">
             <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.trigger')}</div>

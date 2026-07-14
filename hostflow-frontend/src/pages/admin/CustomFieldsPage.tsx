@@ -150,7 +150,7 @@ function ArrayInputField({ label, value, onChange, placeholder, addButtonLabel }
           {value.map((item, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-xs text-blue-800"
+              className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-xs text-blue-800"
             >
               {item}
               <button
@@ -373,27 +373,27 @@ export default function CustomFieldsPage() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-900">{def.label}</span>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
+                            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
                               {def.key}
                             </span>
-                            <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            <span className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                               {scopeOptions.find((o) => o.value === def.scope)?.label ?? def.scope}
                             </span>
-                            <span className="rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                            <span className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                               {fieldTypeOptions.find((opt) => opt.value === def.field_type)?.label || def.field_type}
                             </span>
                             {def.required && (
-                              <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                                 {t('admin.custom_fields.list.badge_required')}
                               </span>
                             )}
                             {!def.is_active && (
-                              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {t('admin.custom_fields.list.badge_inactive')}
                               </span>
                             )}
                             {def.is_system && (
-                              <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                              <span className="rounded-lg bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
                                 {t('admin.custom_fields.list.badge_system')}
                               </span>
                             )}

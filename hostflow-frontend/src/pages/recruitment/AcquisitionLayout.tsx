@@ -13,7 +13,7 @@ import { AcquisitionSyncStatus } from '../../components/recruitment/AcquisitionS
 
 const subTabClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
-    'rounded-md px-3 py-1.5 text-xs font-medium transition',
+    'rounded-lg px-3 py-2 text-xs font-medium transition',
     isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100',
   )
 
@@ -30,7 +30,7 @@ export default function AcquisitionLayout() {
           <AcquisitionSyncStatus snapshot={snapshot} syncing={syncing} />
           <Link
             to={recruitmentSearchAcquisitionNewPath(searchId)}
-            className="btn-primary btn-sm inline-flex items-center gap-1.5"
+            className="btn-primary btn-sm inline-flex items-center gap-2"
           >
             <IconPlus size={16} stroke={1.9} />
             {t('app.acquisition.launch', { defaultValue: 'Запустить рекламу' })}

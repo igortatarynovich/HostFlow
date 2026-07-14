@@ -313,12 +313,12 @@ export default function CommunicationsSlaIncidentsPage() {
       </PageShellHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-slate-900">
             {t('app.sla_incidents.trust.title')}
           </h2>
-          <span className="badge bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+          <span className="badge bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
             {t('app.sla_incidents.trust.window')}
           </span>
         </div>
@@ -351,7 +351,7 @@ export default function CommunicationsSlaIncidentsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <input
             value={query}

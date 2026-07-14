@@ -51,7 +51,7 @@ function mergeSubtitle(kicker: string | undefined, subtitle: ReactNode | undefin
     return (
       <>
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{kicker}</p>
-        <div className="max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-6">{subtitle}</div>
+        <div className="max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-relaxed">{subtitle}</div>
       </>
     )
   }
@@ -61,7 +61,7 @@ function mergeSubtitle(kicker: string | undefined, subtitle: ReactNode | undefin
     )
   }
   if (subtitle) {
-    return <div className="max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-6">{subtitle}</div>
+    return <div className="max-w-3xl text-xs leading-relaxed text-slate-600 sm:text-sm sm:leading-relaxed">{subtitle}</div>
   }
   return undefined
 }

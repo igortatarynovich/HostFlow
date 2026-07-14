@@ -245,11 +245,11 @@ export default function MergeDocumentTemplatesPage() {
                       <td className="px-3 py-2 text-xs text-slate-600">{row.output_mime}</td>
                       <td className="px-3 py-2">
                         {row.is_active ? (
-                          <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                          <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
                             {t('common.active')}
                           </span>
                         ) : (
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                             {t('common.inactive')}
                           </span>
                         )}
@@ -257,7 +257,7 @@ export default function MergeDocumentTemplatesPage() {
                       <td className="space-x-2 px-3 py-2">
                         <button
                           type="button"
-                          className="text-xs text-indigo-600 hover:underline"
+                          className="text-xs text-blue-600 hover:underline"
                           onClick={() => startEdit(row)}
                         >
                           {t('common.actions.edit')}
@@ -271,7 +271,7 @@ export default function MergeDocumentTemplatesPage() {
                         </button>
                         <button
                           type="button"
-                          className="text-xs text-red-600 hover:underline"
+                          className="text-xs text-rose-600 hover:underline"
                           onClick={() => onDelete(row.id)}
                         >
                           {t('common.actions.delete')}
@@ -292,7 +292,7 @@ export default function MergeDocumentTemplatesPage() {
             <label className="block text-xs font-medium text-slate-600">
               {t('admin.documents.merge.field_code')}
               <input
-                className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-slate-200 px-2 py-2 text-sm"
                 value={draftCode}
                 onChange={(e) => setDraftCode(e.target.value)}
                 disabled={Boolean(editingId)}
@@ -301,7 +301,7 @@ export default function MergeDocumentTemplatesPage() {
             <label className="block text-xs font-medium text-slate-600">
               {t('admin.documents.merge.field_name')}
               <input
-                className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-slate-200 px-2 py-2 text-sm"
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
               />
@@ -309,7 +309,7 @@ export default function MergeDocumentTemplatesPage() {
             <label className="block text-xs font-medium text-slate-600">
               {t('admin.documents.merge.field_mime')}
               <input
-                className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-slate-200 px-2 py-2 text-sm"
                 value={draftMime}
                 onChange={(e) => setDraftMime(e.target.value)}
               />
@@ -317,7 +317,7 @@ export default function MergeDocumentTemplatesPage() {
             <label className="block text-xs font-medium text-slate-600">
               {t('admin.documents.merge.field_oc')}
               <input
-                className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm font-mono text-xs"
+                className="mt-1 w-full rounded border border-slate-200 px-2 py-2 text-sm font-mono text-xs"
                 value={draftOc}
                 onChange={(e) => setDraftOc(e.target.value)}
               />
@@ -326,7 +326,7 @@ export default function MergeDocumentTemplatesPage() {
           <label className="block text-xs font-medium text-slate-600">
             {t('admin.documents.merge.field_filename')}
             <input
-              className="mt-1 w-full rounded border border-slate-200 px-2 py-1.5 text-sm font-mono text-xs"
+              className="mt-1 w-full rounded border border-slate-200 px-2 py-2 text-sm font-mono text-xs"
               value={draftFilenamePattern}
               onChange={(e) => setDraftFilenamePattern(e.target.value)}
               placeholder="{{ candidate.last_name }}_contract.txt"

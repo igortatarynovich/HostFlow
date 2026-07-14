@@ -36,7 +36,7 @@ export function CandidateQuickContactBar({
         {telHref ? (
           <a
             href={telHref}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <IconPhone size={16} stroke={1.8} />
             Позвонить
@@ -47,7 +47,7 @@ export function CandidateQuickContactBar({
             href={`https://wa.me/${waDigits}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
           >
             WhatsApp
           </a>
@@ -55,7 +55,7 @@ export function CandidateQuickContactBar({
         {emailTrimmed ? (
           <a
             href={`mailto:${emailTrimmed}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
             <IconMail size={16} stroke={1.8} />
             Email

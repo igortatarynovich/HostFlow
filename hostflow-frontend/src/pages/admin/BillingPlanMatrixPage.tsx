@@ -80,7 +80,7 @@ export default function BillingPlanMatrixPage() {
     >
       {error ? <ErrorRecoveryBanner error={error} onRetry={() => void load()} /> : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50">
             <tr>

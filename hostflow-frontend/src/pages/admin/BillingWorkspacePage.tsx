@@ -1287,7 +1287,7 @@ export default function BillingWorkspacePage() {
               <p className="mt-1 text-sm text-slate-600">{statusMeta.description}</p>
             </div>
             <span
-              className={`rounded-md px-3 py-1 text-xs font-semibold ${
+              className={`rounded-lg px-3 py-1 text-xs font-semibold ${
                 statusMeta.tone === 'success'
                   ? 'bg-emerald-100 text-emerald-800'
                   : statusMeta.tone === 'warning'
@@ -1301,7 +1301,7 @@ export default function BillingWorkspacePage() {
             </span>
           </div>
 
-          <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-slate-200 p-3">
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.settings.billing.labels.paid_plan')}
@@ -1336,7 +1336,7 @@ export default function BillingWorkspacePage() {
             </div>
           </dl>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {subscription?.cancel_at_period_end ? (
               <button type="button" className="btn-primary" onClick={handleReactivate} disabled={isMutationLoading}>
                 {t('app.settings.billing.reactivate')}
@@ -1396,7 +1396,7 @@ export default function BillingWorkspacePage() {
             <li>{t('app.settings.billing.actions_help.cancel')}</li>
             <li>{t('app.settings.billing.actions_help.resume')}</li>
           </ul>
-          <div className="mt-5 rounded-lg border border-slate-200 p-3 text-sm">
+          <div className="mt-4 rounded-lg border border-slate-200 p-3 text-sm">
             <p className="font-medium text-slate-900">
               {t('app.settings.billing.references.title')}
             </p>
@@ -1444,14 +1444,14 @@ export default function BillingWorkspacePage() {
           return (
             <article
               key={plan.code}
-              className={`rounded-xl border p-5 shadow-sm ${
+              className={`rounded-xl border p-4 shadow-sm ${
                 isActive ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-slate-900">{plan.name}</h2>
                 {isActive ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
                     <IconCheck size={14} stroke={2} />
                     {t('app.settings.billing.active_plan')}
                   </span>
@@ -1460,10 +1460,10 @@ export default function BillingWorkspacePage() {
               <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
                 {t('app.settings.billing.billing_cycle.label')}
               </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
                     iv === 'month'
                       ? 'border-brand-500 bg-brand-50 text-brand-900'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1481,7 +1481,7 @@ export default function BillingWorkspacePage() {
                 </button>
                 <button
                   type="button"
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
                     iv === 'year'
                       ? 'border-brand-500 bg-brand-50 text-brand-900'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1597,7 +1597,7 @@ export default function BillingWorkspacePage() {
                 summary.portal_candidates.warning_level === 'warn_100'
                   ? 'border-amber-300 bg-amber-50 text-amber-950'
                   : summary.portal_candidates.warning_level === 'warn_80'
-                    ? 'border-yellow-200 bg-yellow-50 text-yellow-950'
+                    ? 'border-amber-200 bg-amber-50 text-amber-950'
                     : 'border-slate-200'
               }`}
             >
@@ -1779,7 +1779,7 @@ export default function BillingWorkspacePage() {
               </div>
             ) : null}
             {operatingSlotsOverflow ? (
-              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
                 {t('app.settings.billing.usage.companies_overflow', { values: { count: operatingSlotsMissing },
                 })}
               </div>
@@ -1882,9 +1882,9 @@ export default function BillingWorkspacePage() {
                       <p className="mt-1 text-xs opacity-80">{formatDateTime(item.occurred_at, notAvailableLabel)}</p>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs">
-                      {item.plan_code ? <span className="rounded-md bg-white/70 px-2 py-1">{item.plan_code.toUpperCase()}</span> : null}
+                      {item.plan_code ? <span className="rounded-lg bg-white/70 px-2 py-1">{item.plan_code.toUpperCase()}</span> : null}
                       {item.amount_minor != null ? (
-                        <span className="rounded-md bg-white/70 px-2 py-1">{formatAmount(item.amount_minor, item.currency)}</span>
+                        <span className="rounded-lg bg-white/70 px-2 py-1">{formatAmount(item.amount_minor, item.currency)}</span>
                       ) : null}
                     </div>
                   </div>

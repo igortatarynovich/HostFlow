@@ -113,7 +113,7 @@ export default function LeadsDistributionPage() {
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           {t('app.leads.distribution.mode.title')}
         </h2>
@@ -193,7 +193,7 @@ export default function LeadsDistributionPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">
           {t('app.leads.distribution.flow')}
         </h2>
@@ -201,14 +201,14 @@ export default function LeadsDistributionPage() {
           {data.flow_steps.map((step, i) => (
             <span key={`${step}-${i}`} className="inline-flex items-center gap-2">
               {i > 0 ? <IconChevronRight size={16} className="text-slate-400" /> : null}
-              <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">{step}</span>
+              <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">{step}</span>
             </span>
           ))}
         </div>
       </section>
 
       {data.next_preview && data.next_preview.reason_codes.length > 0 ? (
-        <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-emerald-950">
             {t('app.leads.distribution.why_title')}
           </h2>
@@ -223,7 +223,7 @@ export default function LeadsDistributionPage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">
           {t('app.leads.distribution.team')}
         </h2>
@@ -270,7 +270,7 @@ export default function LeadsDistributionPage() {
       </section>
 
       {data.alerts.length > 0 ? (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6">
+        <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-6">
           <h2 className="text-sm font-semibold text-amber-950">
             {t('app.leads.distribution.alerts')}
           </h2>

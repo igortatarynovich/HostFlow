@@ -132,7 +132,7 @@ export function AddClientServiceModal({
               <li key={service.id}>
                 <label
                   className={[
-                    'flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition',
+                    'flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition',
                     checked ? 'border-brand-300 bg-brand-50/50' : 'border-slate-200 bg-slate-50/40 hover:bg-slate-50',
                   ].join(' ')}
                 >
@@ -148,7 +148,7 @@ export function AddClientServiceModal({
                       <span
                         className={[
                           'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                          mode === 'handoff' ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-700',
+                          mode === 'handoff' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700',
                         ].join(' ')}
                       >
                         {mode === 'handoff'
@@ -167,19 +167,19 @@ export function AddClientServiceModal({
         </ul>
       )}
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
 
-      <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
-          className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
           onClick={onClose}
         >
           {t('common.actions.cancel', { defaultValue: 'Отмена' })}
         </button>
         <button
           type="button"
-          className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+          className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           disabled={submitting || catalogEmpty || selectedCount === 0}
           onClick={() => void handleSubmit()}
         >

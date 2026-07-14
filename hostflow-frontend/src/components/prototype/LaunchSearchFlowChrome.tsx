@@ -33,9 +33,9 @@ export function LaunchSearchFlowChrome({
         {backLabel}
       </Link>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
+          <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
             <IconSearch size={14} stroke={1.9} />
             Запустить поиск
           </div>
@@ -55,7 +55,7 @@ export function LaunchSearchFlowChrome({
         {subtitle ? <p className="mt-2 text-sm text-slate-600">{subtitle}</p> : null}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">{children}</section>
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">{children}</section>
 
       <p className="text-center text-xs text-slate-400">Прототип · без подключения к серверу</p>
     </div>

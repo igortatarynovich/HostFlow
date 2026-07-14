@@ -48,7 +48,7 @@ export default function IntakePresentationField({
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-slate-700">
           {label}
-          {required ? <span className="text-red-500"> *</span> : null}
+          {required ? <span className="text-rose-500"> *</span> : null}
         </span>
         <div className="grid gap-2 sm:grid-cols-2">
           {options.map((opt) => {
@@ -71,7 +71,7 @@ export default function IntakePresentationField({
             )
           })}
         </div>
-        {error ? <span className="mt-1 block text-xs text-red-600">{error}</span> : null}
+        {error ? <span className="mt-1 block text-xs text-rose-600">{error}</span> : null}
       </label>
     )
   }
@@ -81,7 +81,7 @@ export default function IntakePresentationField({
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-slate-700">
           {label}
-          {required ? <span className="text-red-500"> *</span> : null}
+          {required ? <span className="text-rose-500"> *</span> : null}
         </span>
         <select
           className="input w-full"
@@ -96,7 +96,7 @@ export default function IntakePresentationField({
             </option>
           ))}
         </select>
-        {error ? <span className="mt-1 block text-xs text-red-600">{error}</span> : null}
+        {error ? <span className="mt-1 block text-xs text-rose-600">{error}</span> : null}
       </label>
     )
   }
@@ -108,7 +108,7 @@ export default function IntakePresentationField({
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">
         {label}
-        {required ? <span className="text-red-500"> *</span> : null}
+        {required ? <span className="text-rose-500"> *</span> : null}
       </span>
       <input
         type={inputType}
@@ -118,7 +118,7 @@ export default function IntakePresentationField({
         readOnly={Boolean(field.evaluated.readonly)}
         onChange={(e) => onChange(code, e.target.value)}
       />
-      {error ? <span className="mt-1 block text-xs text-red-600">{error}</span> : null}
+      {error ? <span className="mt-1 block text-xs text-rose-600">{error}</span> : null}
     </label>
   )
 }

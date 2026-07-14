@@ -828,7 +828,7 @@ export default function InvoiceCreatePage() {
       )}
 
       {invoiceKind === 'correction' && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {t(
             'app.invoices.correction_notice',
             { defaultValue: 'Correction invoices preserve the original document. Adjust only the fields that must change for tax reporting.' },
@@ -855,7 +855,7 @@ export default function InvoiceCreatePage() {
       >
         <section className="app-surface space-y-4 p-6">
           {invoiceKind === 'correction' && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
                 {t('app.invoices.correction_context', { defaultValue: 'Correction context' })}
               </div>
@@ -1103,7 +1103,7 @@ export default function InvoiceCreatePage() {
             </div>
 
             {items.map((item, index) => (
-              <div key={item.line_no} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_100px_120px_100px_auto]">
+              <div key={item.line_no} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_100px_120px_100px_auto]">
                 <select
                   className="input"
                   value={item.service_id || ''}

@@ -3,9 +3,9 @@ import type { Application, ApplicationStatus, ApplicationTab } from '../../api/t
 export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   new: 'bg-emerald-50 text-emerald-700',
   in_progress: 'bg-amber-50 text-amber-700',
-  waiting: 'bg-sky-50 text-sky-700',
+  waiting: 'bg-blue-50 text-blue-700',
   completed: 'bg-slate-100 text-slate-600',
-  rejected: 'bg-red-50 text-red-700',
+  rejected: 'bg-rose-50 text-rose-700',
 }
 
 export const APPLICATION_STATUS_TEXT: Record<ApplicationStatus, string> = {

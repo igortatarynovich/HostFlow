@@ -53,7 +53,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
 
   if (loading) {
     return (
-      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
+      <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
         <p className="text-sm text-emerald-900">Загрузка…</p>
       </section>
     )
@@ -61,7 +61,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
 
   if (!resolution) {
     return (
-      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
+      <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
         <div className="flex items-start gap-3">
           <IconCircleCheck size={24} className="shrink-0 text-emerald-600" aria-hidden />
           <div>
@@ -77,7 +77,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
   const channelId = String(context.channel_id || '').trim()
 
   return (
-    <section className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm" data-testid="platform-completion">
+    <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm" data-testid="platform-completion">
       <div className="flex items-start gap-3">
         <IconCircleCheck size={24} className="shrink-0 text-emerald-600" aria-hidden />
         <div className="min-w-0 flex-1">
@@ -85,13 +85,13 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
           <p className="mt-1 text-sm text-emerald-800">{resolution.completion.message}</p>
 
           {resolution.handoffs && resolution.handoffs.length > 1 ? (
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3">
               <p className="text-sm font-medium text-slate-800">Следующие действия по договору</p>
               {resolution.handoffs.map((ho) => (
                 <button
                   key={ho.action}
                   type="button"
-                  className="flex w-full items-center justify-center rounded-xl border border-brand-200 bg-white px-5 py-3 text-sm font-semibold text-brand-800 hover:bg-brand-50 disabled:opacity-60"
+                  className="flex w-full items-center justify-center rounded-xl border border-brand-200 bg-white px-4 py-3 text-sm font-semibold text-brand-800 hover:bg-brand-50 disabled:opacity-60"
                   disabled={handoffRunning}
                   onClick={async () => {
                     setHandoffRunning(true)
@@ -112,14 +112,14 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
           ) : null}
 
           {resolution.handoff && (!resolution.handoffs || resolution.handoffs.length <= 1) ? (
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3">
               {resolution.handoff.hint ? (
                 <p className="text-sm text-slate-700">{resolution.handoff.hint}</p>
               ) : null}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
-                  className="inline-flex flex-1 items-center justify-center rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                  className="inline-flex flex-1 items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
                   disabled={handoffRunning}
                   onClick={() => void handleHandoff()}
                 >
@@ -128,7 +128,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
                 {clientId ? (
                   <Link
                     to={clientDetailPath(clientId)}
-                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   >
                     Открыть клиента
                   </Link>
@@ -138,13 +138,13 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
           ) : null}
 
           {!resolution.handoff && resolution.done ? (
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3">
               <p className="text-sm text-slate-700">{resolution.done.message}</p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 {clientId ? (
                   <Link
                     to={clientDetailPath(clientId)}
-                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   >
                     {resolution.done.action_label || 'Открыть клиента'}
                   </Link>
@@ -152,7 +152,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
                 {channelId ? (
                   <Link
                     to={clientAcquisitionChannelPath(channelId)}
-                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-50/80"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-50/80"
                   >
                     К привлечению клиентов
                   </Link>

@@ -335,7 +335,7 @@ export default function RiskIntelSettingsPage() {
             </div>
             <p className="mt-1 text-xs text-slate-600">
               {t('admin.risk_intel.settings.automations_hint', {
-                defaultValue: 'Runs after hourly scoring when shadow rows exist; uses automation rules for candidate risk bands.',
+                defaultValue: 'Runs after hourly scoring when shadow-sm rows exist; uses automation rules for candidate risk bands.',
               })}
             </p>
             <label className="mt-3 flex items-center gap-2">

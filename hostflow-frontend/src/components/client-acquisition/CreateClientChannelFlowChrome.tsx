@@ -30,7 +30,7 @@ export function CreateClientChannelFlowChrome({
         Launchpad
       </Link>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs font-medium uppercase tracking-wide text-brand-700">Привлечение клиентов</p>
           <span className="text-xs text-slate-500">
@@ -49,7 +49,7 @@ export function CreateClientChannelFlowChrome({
         {subtitle ? <p className="mt-2 text-sm text-slate-600">{subtitle}</p> : null}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">{children}</section>
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">{children}</section>
     </div>
   )
 }

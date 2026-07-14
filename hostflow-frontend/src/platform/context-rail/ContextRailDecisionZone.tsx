@@ -27,7 +27,7 @@ function DecisionActionButton({
     size === 'primary'
       ? 'w-full justify-center rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60'
       : size === 'danger'
-        ? 'rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60'
+        ? 'rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60'
         : 'rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60'
   if (action.href) {
     return (
@@ -60,7 +60,7 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
     return (
       <div
         className={clsx(
-          'rounded-2xl border p-4',
+          'rounded-xl border p-4',
           o.variant === 'terminal' && 'border-slate-200 bg-slate-100/80',
           o.variant === 'success' && 'border-emerald-200 bg-emerald-50/50',
           (!o.variant || o.variant === 'default') && 'border-slate-200 bg-slate-50/80',
@@ -68,8 +68,8 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
         data-decision-state={decision.stateId}
       >
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Итог</p>
-        <p className="mt-2 text-base font-bold leading-snug text-slate-900">{o.title}</p>
-        {o.body ? <p className="mt-1.5 text-sm text-slate-600">{o.body}</p> : null}
+        <p className="mt-2 text-base font-bold leading-tight text-slate-900">{o.title}</p>
+        {o.body ? <p className="mt-2 text-sm text-slate-600">{o.body}</p> : null}
         {o.why ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
@@ -83,7 +83,7 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
   return (
     <div
       className={clsx(
-        'rounded-2xl border p-4',
+        'rounded-xl border p-4',
         variant === 'blocker' && 'border-amber-200 bg-amber-50/60',
         variant === 'success' && 'border-emerald-200 bg-emerald-50/50',
         variant === 'terminal' && 'border-slate-200 bg-slate-100/80',
@@ -92,7 +92,7 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
       data-decision-state={decision.stateId}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Следующее действие</p>
-      <p className="mt-2 text-base font-bold leading-snug text-slate-900">{decision.currentState}</p>
+      <p className="mt-2 text-base font-bold leading-tight text-slate-900">{decision.currentState}</p>
       {decision.why ? (
         <div className="mt-3 border-l-2 border-slate-300 pl-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
@@ -119,7 +119,7 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
         </div>
       ) : null}
       {decision.contactActions?.length ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {decision.contactActions.map((action) => {
             const cls =
               action.variant === 'primary'
@@ -136,7 +136,7 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
                 <a
                   key={action.id}
                   href={action.href}
-                  className={clsx('inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium', cls)}
+                  className={clsx('inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-medium', cls)}
                 >
                   {inner}
                 </a>
@@ -147,7 +147,7 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
                 key={action.id}
                 type="button"
                 onClick={action.onClick}
-                className={clsx('inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium', cls)}
+                className={clsx('inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-medium', cls)}
               >
                 {inner}
               </button>

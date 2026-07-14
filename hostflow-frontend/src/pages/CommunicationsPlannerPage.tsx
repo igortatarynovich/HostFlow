@@ -194,7 +194,7 @@ export default function CommunicationsPlannerPage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.planner.stats.total', { defaultValue: 'Total' })}: <strong>{stats.total}</strong></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.planner.stats.planned', { defaultValue: 'Planned' })}: <strong>{stats.planned}</strong></div>
-        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">{t('app.communications.planner.stats.in_progress', { defaultValue: 'In progress' })}: <strong>{stats.inProgress}</strong></div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{t('app.communications.planner.stats.in_progress', { defaultValue: 'In progress' })}: <strong>{stats.inProgress}</strong></div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.planner.stats.done', { defaultValue: 'Done' })}: <strong>{stats.done}</strong></div>
       </div>
 

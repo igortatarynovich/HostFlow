@@ -33,7 +33,7 @@ import {
 } from '../../utils/vacancyLayoutUtils'
 
 const primaryBtn = 'btn-primary'
-const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
+const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
 
 // Phase 2.6.D Stage C — single source of truth for status options;
 // see `docs/specs/vacancy-statuses.md`. Backend `VacancyOut` already
@@ -214,9 +214,9 @@ const DATE_FNS_LOCALES: Record<LocaleCode, typeof enUS> = {
 
 function StatPill({ stageCode, value }:{ stageCode: string; value: React.ReactNode }){
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-2">
       <StageTag code={stageCode} />
-      <span className="inline-flex min-w-[22px] items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700">
+      <span className="inline-flex min-w-[22px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
         {value}
       </span>
     </span>
@@ -613,7 +613,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="title" className="block">
               <div className="label">
                 {vacancyFieldLabel('title', 'Название', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <input className="input" {...register('title')} />
               {errors.title && <p className="text-sm text-rose-600 mt-1">{errors.title.message}</p>}
@@ -624,7 +624,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="employment_type" className="block">
               <div className="label">
                 {vacancyFieldLabel('employment_type', 'Тип занятости', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <select className="input" {...register('employment_type')}>
                 {EMPLOYMENT_TYPES.map((option) => (
@@ -643,7 +643,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="company_id" className="block">
               <div className="label">
                 {vacancyFieldLabel('company_id', 'Компания', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <select className="input" {...register('company_id')}>
                 <option value="">— выберите компанию —</option>
@@ -663,7 +663,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="headcount_target" className="block">
               <div className="label">
                 {vacancyFieldLabel('headcount_target', t('app.vacancies.detail.fields.headcount_target'), effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <input
                 type="number"
@@ -682,7 +682,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="location" className="block">
               <div className="label">
                 {vacancyFieldLabel('location', 'Локация', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <input className="input" {...register('location')} />
             </label>
@@ -693,7 +693,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               <label className="block">
                 <div className="label">
                   {vacancyFieldLabel('description', 'Описание', effectiveLayout)}
-                  {requiredMark ? <span className="text-red-600"> *</span> : null}
+                  {requiredMark ? <span className="text-rose-600"> *</span> : null}
                 </div>
                 <textarea
                   className="input w-full bg-muted/60 resize-none overflow-hidden min-h-[140px] max-h-none"
@@ -917,7 +917,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <button
               key={key}
               type="button"
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
                 tab === key
                   ? 'bg-slate-900 text-white'
                   : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1046,7 +1046,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               {requirementsPresets.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <select
-                    className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                    className="input h-9 rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
                     value={selectedPresetId}
                     onChange={(e) => setSelectedPresetId(e.target.value)}
                   >

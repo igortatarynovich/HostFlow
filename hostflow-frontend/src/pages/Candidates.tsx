@@ -1707,7 +1707,7 @@ export default function Candidates(){
     stickyLeft?: string
   }) => {
     const className = clsx(
-      'group py-2.5 border-r border-slate-200 align-middle whitespace-nowrap',
+      'group py-3 border-r border-slate-200 align-middle whitespace-nowrap',
       columnKey === 'checkbox' ? 'px-4' : tableLayoutCustomize ? 'pl-2 pr-4' : 'px-4',
       isSticky ? 'sticky bg-slate-50 z-[25]' : 'relative',
       'cursor-default',
@@ -1754,7 +1754,7 @@ export default function Candidates(){
     if (!tableLayoutCustomize) {
       return (
         <th className={className} style={dynamicStyle}>
-          <div className="flex h-5 min-w-0 w-full items-center gap-1.5 overflow-hidden whitespace-nowrap">{content}</div>
+          <div className="flex h-5 min-w-0 w-full items-center gap-2 overflow-hidden whitespace-nowrap">{content}</div>
         </th>
       )
     }
@@ -1793,12 +1793,12 @@ export default function Candidates(){
         }}
       >
         <div className="flex min-h-[34px] items-stretch justify-between gap-1">
-          <div className="flex min-h-[34px] min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+          <div className="flex min-h-[34px] min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <span
               role="button"
               tabIndex={0}
               draggable
-              className="inline-flex h-8 w-7 shrink-0 cursor-grab select-none items-center justify-center rounded-md border border-slate-200 bg-slate-100/95 text-slate-600 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 active:cursor-grabbing"
+              className="inline-flex h-8 w-7 shrink-0 cursor-grab select-none items-center justify-center rounded-lg border border-slate-200 bg-slate-100/95 text-slate-600 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 active:cursor-grabbing"
               title={t('app.candidates.table.reorder_column') || 'Перетащите, чтобы поменять порядок колонок'}
               onDragStart={(e) => {
                 setDraggingColumn(columnKey)
@@ -1843,7 +1843,7 @@ export default function Candidates(){
                 <circle cx="10" cy="14.5" r="1.35" />
               </svg>
             </span>
-            <div className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+            <div className="flex min-h-8 min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap">
               {content}
             </div>
           </div>
@@ -2206,7 +2206,7 @@ export default function Candidates(){
   })
 
   // Reusable secondary button style for top/filter actions
-  const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
+  const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
 
   const hasFilterBadges =
     Boolean(q) ||
@@ -2248,7 +2248,7 @@ export default function Candidates(){
   }
 
   const viewToggle = (
-    <div className="inline-flex rounded-md border border-brand-200 bg-white p-0.5 shadow-sm">
+    <div className="inline-flex rounded-lg border border-brand-200 bg-white p-0.5 shadow-sm">
       <button
         type="button"
         className={clsx(
@@ -2289,7 +2289,7 @@ export default function Candidates(){
         setSidebarOpen(next)
         if (!next) setSelectedCandidateId(null)
       }}
-      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+      className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
       title={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
       aria-label={workPanelOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
     >
@@ -2444,7 +2444,7 @@ export default function Candidates(){
           )}
 
           {digestShadowBucket ? (
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-sm text-slate-800">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2 text-sm text-slate-800">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <span className="font-medium">
                   {t('app.candidates.digest_shadow.banner', { defaultValue: 'Risk digest cohort' })}
@@ -2455,12 +2455,12 @@ export default function Candidates(){
                     values: { t: new Date(digestShadowBucket).toLocaleString(locale) },
                   })}
                 </span>
-                <label className="flex items-center gap-1.5 text-xs text-slate-700">
+                <label className="flex items-center gap-2 text-xs text-slate-700">
                   <span className="shrink-0">
                     {t('app.candidates.digest_shadow.min_band', { defaultValue: 'Band floor' })}
                   </span>
                   <select
-                    className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs"
+                    className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs"
                     value={digestShadowMinBand ?? 'high'}
                     onChange={(e) => {
                       const next = new URLSearchParams(searchParams)
@@ -2607,8 +2607,8 @@ export default function Candidates(){
 
           {/* Bulk actions appear only when there is a selection */}
           {canManage && Object.values(checked).some(Boolean) && (
-            <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-2.5 shadow-sm">
-              <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-200/60">
+            <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-3 shadow-sm">
+              <span className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-200/60">
                 {t('app.candidates.bulk.selected', { values: { count: Object.values(checked).filter(Boolean).length } })}
               </span>
               <button
@@ -2623,7 +2623,7 @@ export default function Candidates(){
                 {t('app.candidates.bulk.stage.action')}
               </button>
               <button
-                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.manager.title')}
                 onClick={() => {
                   setBulkManagerId(preferredManagerId)
@@ -2633,7 +2633,7 @@ export default function Candidates(){
                 {t('app.candidates.bulk.manager.action')}
               </button>
               <button
-                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.vacancy.title')}
                 onClick={() => {
                   setBulkVacancyId(vacancies[0]?.id || '')
@@ -2643,14 +2643,14 @@ export default function Candidates(){
                 {t('app.candidates.bulk.vacancy.action')}
               </button>
               <button
-                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.handoff.title', { defaultValue: 'Przekaż wybranych do klienta' })}
                 onClick={() => setBulkHandoffOpen(true)}
               >
                 {t('app.candidates.bulk.handoff.action', { defaultValue: 'Przekaż do klienta (wybrani)' })}
               </button>
               <button
-                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.tags.title')}
                 onClick={() => {
                   setBulkTagsOperation('add')
@@ -2661,7 +2661,7 @@ export default function Candidates(){
                 {t('app.candidates.bulk.tags.action')}
               </button>
               <button
-                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.activities.title', { defaultValue: 'Create activities for selected' })}
                 onClick={() => {
                   setBulkActivityTitle(t('app.candidates.bulk.activities.default_title', { defaultValue: 'Follow up' }))
@@ -2673,7 +2673,7 @@ export default function Candidates(){
                 {t('app.candidates.bulk.activities.action', { defaultValue: 'Create activity' })}
               </button>
               <button
-                className="inline-flex items-center rounded-lg border border-red-200/90 bg-white px-2.5 py-2 text-xs font-medium text-red-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50"
+                className="inline-flex items-center rounded-lg border border-rose-200/90 bg-white px-3 py-2 text-xs font-medium text-rose-700 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50"
                 title={t('app.candidates.bulk.delete.title')}
                 onClick={() => {
                   setBulkDeleteOpen(true)
@@ -2683,7 +2683,7 @@ export default function Candidates(){
               </button>
               <div className="min-w-[1rem] flex-1" />
               <button
-                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100"
                 title={t('app.candidates.bulk.clear_title')}
                 onClick={() => setChecked({})}
               >
@@ -2709,7 +2709,7 @@ export default function Candidates(){
 
           <div className="card m-0 relative flex-1 min-h-0 flex flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
         {tableLayoutCustomize ? (
-          <div className="border-b border-brand-200/80 bg-brand-50 px-3 py-1.5 text-[11px] font-medium text-brand-900">
+          <div className="border-b border-brand-200/80 bg-brand-50 px-3 py-2 text-[11px] font-medium text-brand-900">
             {t('app.candidates.table.customize_banner', {
               defaultValue:
                 'Layout mode: drag the dotted grip on the left of each header to reorder columns; drag the right edge of a header to resize width.',
@@ -2717,7 +2717,7 @@ export default function Candidates(){
           </div>
         ) : null}
         {loading && displayedItems.length > 0 && (
-          <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-1.5 shadow-lg">
+          <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 shadow-md">
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-brand-600"></div>
               <span className="font-medium">{t('app.candidates.table.updating') || 'Обновление...'}</span>
@@ -2795,7 +2795,7 @@ export default function Candidates(){
                         (items.find((row) => row.id === id)?.is_favorite) &&
                         !isFocused &&
                         !isWorkPanelRow &&
-                        'bg-yellow-50/40 border-l-2 border-l-yellow-400',
+                        'bg-amber-50/40 border-l-2 border-l-yellow-400',
                     )}
                   >
                     <CandidatesTableRowCells index={index} c={c} ctx={tableRowCellsCtx} />
@@ -2882,7 +2882,7 @@ export default function Candidates(){
             )}
           </div>
         )}
-          <div className="text-sm leading-6 text-slate-600 px-4 pt-3 pb-4 border-t border-slate-200/80">
+          <div className="text-sm leading-relaxed text-slate-600 px-4 pt-3 pb-4 border-t border-slate-200/80">
             {showsFilteredCount
               ? t('app.candidates.table.total_filtered', {
                   values: { shown: visibleCandidatesCount, total },
@@ -2978,7 +2978,7 @@ export default function Candidates(){
               return (
                 <div className="space-y-1">
                   <button
-                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    className="btn-secondary w-full justify-start text-left text-xs py-2 px-2"
                     onClick={() => {
                       handleCandidateOpen(candidate.id)
                       navigate(`${CRM_APP_PATHS.candidates}/${candidate.id}`)
@@ -2988,7 +2988,7 @@ export default function Candidates(){
                     {t('app.candidates.context.open_card')}
                   </button>
                   <button
-                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    className="btn-secondary w-full justify-start text-left text-xs py-2 px-2"
                     title={t('app.candidates.context.preview_next_action_hint', {
                       defaultValue: 'Open preview and the reminders window.',
                     })}
@@ -3004,7 +3004,7 @@ export default function Candidates(){
                     })}
                   </button>
                   <button
-                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    className="btn-secondary w-full justify-start text-left text-xs py-2 px-2"
                     onClick={() => {
                       toggle(candidate.id)
                       setContextMenu(null)
@@ -3017,7 +3017,7 @@ export default function Candidates(){
                   </button>
                   <div className="border-t border-slate-200 my-1" />
                   <button
-                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    className="btn-secondary w-full justify-start text-left text-xs py-2 px-2"
                     onClick={() => {
                       setChecked({ [candidate.id]: true })
                       setBulkStage(stageOptions[0] || 'new')
@@ -3029,7 +3029,7 @@ export default function Candidates(){
                     {t('app.candidates.context.change_stage')}
                   </button>
                   <button
-                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    className="btn-secondary w-full justify-start text-left text-xs py-2 px-2"
                     onClick={() => {
                       setChecked({ [candidate.id]: true })
                       setBulkManagerId(preferredManagerId)
@@ -3040,7 +3040,7 @@ export default function Candidates(){
                     {t('app.candidates.context.assign_manager')}
                   </button>
                   <button
-                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    className="btn-secondary w-full justify-start text-left text-xs py-2 px-2"
                     onClick={() => {
                       setChecked({ [candidate.id]: true })
                       setBulkVacancyId(vacancies[0]?.id || '')

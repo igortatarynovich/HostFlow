@@ -44,9 +44,9 @@ function BlockSection({
 function ActionButton({ action, size }: { action: { id: string; label: string; onClick?: () => void; href?: string }; size: 'primary' | 'secondary' | 'link' }) {
   const cls =
     size === 'primary'
-      ? 'w-full justify-center rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800'
+      ? 'w-full justify-center rounded-lg bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800'
       : size === 'secondary'
-        ? 'rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50'
+        ? 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50'
         : 'text-sm text-brand-700 hover:underline'
   const inner = action.label
   if (action.href) {
@@ -94,7 +94,7 @@ export function DetailRail({
                   type="button"
                   disabled={!navigation.hasPrevious}
                   onClick={navigation.onPrevious}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
                   aria-label={navigation.previousLabel ?? 'Предыдущий'}
                   title={navigation.previousLabel ?? 'Предыдущий'}
                 >
@@ -104,7 +104,7 @@ export function DetailRail({
                   type="button"
                   disabled={!navigation.hasNext}
                   onClick={navigation.onNext}
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
                   aria-label={navigation.nextLabel ?? 'Следующий'}
                   title={navigation.nextLabel ?? 'Следующий'}
                 >
@@ -117,7 +117,7 @@ export function DetailRail({
                 type="button"
                 onClick={pin.onTogglePin}
                 className={clsx(
-                  'rounded-lg p-1.5 transition-colors',
+                  'rounded-lg p-2 transition-colors',
                   pin.pinned ? 'bg-amber-100 text-amber-800' : 'text-slate-500 hover:bg-slate-100',
                 )}
                 aria-pressed={pin.pinned}
@@ -130,7 +130,7 @@ export function DetailRail({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             aria-label="Закрыть"
           >
             <IconX size={18} stroke={2} />
@@ -159,7 +159,7 @@ export function DetailRail({
               {h.entityWorkspaceLabel ?? 'Открыть полную карточку'}
             </Link>
           ) : null}
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-2">
             {h.statusLabel ? (
               <SemanticBadge label={h.statusLabel} semanticRole={h.statusSemantic ?? 'status'} size="sm" />
             ) : null}
@@ -185,7 +185,7 @@ export function DetailRail({
           </>
         ) : null}
         {c.actions?.length ? (
-          <div className={clsx('flex flex-wrap gap-1.5', !c.compact && 'pt-1')}>
+          <div className={clsx('flex flex-wrap gap-2', !c.compact && 'pt-1')}>
             {c.actions.map((action) => {
               const cls =
                 action.variant === 'primary'
@@ -199,13 +199,13 @@ export function DetailRail({
               )
               if (action.href) {
                 return (
-                  <a key={action.id} href={action.href} className={clsx('inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium', cls)}>
+                  <a key={action.id} href={action.href} className={clsx('inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-medium', cls)}>
                     {inner}
                   </a>
                 )
               }
               return (
-                <button key={action.id} type="button" onClick={action.onClick} className={clsx('inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium', cls)}>
+                <button key={action.id} type="button" onClick={action.onClick} className={clsx('inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-medium', cls)}>
                   {inner}
                 </button>
               )
@@ -222,7 +222,7 @@ export function DetailRail({
     blocks.next_action = (
       <div
         className={clsx(
-          'rounded-2xl border p-4',
+          'rounded-xl border p-4',
           variant === 'terminal' && 'border-slate-200 bg-slate-100/80',
           variant === 'blocker' && 'border-amber-200 bg-amber-50/60',
           variant === 'success' && 'border-emerald-200 bg-emerald-50/50',
@@ -247,8 +247,8 @@ export function DetailRail({
             ))}
           </div>
         ) : null}
-        <p className="mt-3 text-base font-bold leading-snug text-slate-900">{n.title}</p>
-        {n.body ? <p className="mt-1.5 text-sm text-slate-600">{n.body}</p> : null}
+        <p className="mt-3 text-base font-bold leading-tight text-slate-900">{n.title}</p>
+        {n.body ? <p className="mt-2 text-sm text-slate-600">{n.body}</p> : null}
         {n.whyBody ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
@@ -284,15 +284,15 @@ export function DetailRail({
     blocks.outcome = (
       <div
         className={clsx(
-          'rounded-2xl border p-4',
+          'rounded-xl border p-4',
           variant === 'terminal' && 'border-slate-200 bg-slate-100/80',
           variant === 'success' && 'border-emerald-200 bg-emerald-50/50',
           variant === 'default' && 'border-brand-200 bg-brand-50/50',
         )}
       >
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Итог процесса</p>
-        <p className="mt-3 text-base font-bold leading-snug text-slate-900">{o.title}</p>
-        {o.body ? <p className="mt-1.5 text-sm text-slate-600">{o.body}</p> : null}
+        <p className="mt-3 text-base font-bold leading-tight text-slate-900">{o.title}</p>
+        {o.body ? <p className="mt-2 text-sm text-slate-600">{o.body}</p> : null}
         {o.whyLabel ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
@@ -329,7 +329,7 @@ export function DetailRail({
       <div className="space-y-3">
         {primary ? <ActionButton action={primary} size="primary" /> : null}
         {secondary.length ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {secondary.map((a) => (
               <ActionButton key={a.id} action={a} size="secondary" />
             ))}

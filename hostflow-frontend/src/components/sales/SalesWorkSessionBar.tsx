@@ -74,14 +74,14 @@ export function SalesWorkSessionBar() {
           <button
             type="button"
             onClick={handleNext}
-            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             {t('app.sales_work_session.next', { defaultValue: 'Готово — следующий' })}
           </button>
           <button
             type="button"
             onClick={handleStop}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             {t('app.sales_work_session.back_list', { defaultValue: 'Вернуться к списку' })}
           </button>

@@ -174,7 +174,7 @@ export default function ClientInquiryFormPage() {
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="Название компании"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
         </fieldset>
 
@@ -186,21 +186,21 @@ export default function ClientInquiryFormPage() {
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
             placeholder="Имя"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Телефон"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
         </fieldset>
 
@@ -227,11 +227,11 @@ export default function ClientInquiryFormPage() {
             onChange={(e) => setComment(e.target.value)}
             rows={3}
             placeholder="Дополнительные детали"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
         </label>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
         <button
           type="submit"

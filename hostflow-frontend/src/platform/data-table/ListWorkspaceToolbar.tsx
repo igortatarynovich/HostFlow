@@ -29,7 +29,7 @@ export function ListWorkspaceToolbar({
         <button
           type="button"
           onClick={onConfigureTable}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <IconSettings size={16} />
           {configureLabel}
@@ -56,8 +56,8 @@ export function ListWorkspaceStatusTabs({ tabs, activeId, onChange }: ListWorksp
           onClick={() => onChange(tab.id)}
           className={
             activeId === tab.id
-              ? 'rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white'
-              : 'rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+              ? 'rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white'
+              : 'rounded-lg bg-white px-3 py-2 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
           }
         >
           {tab.label}

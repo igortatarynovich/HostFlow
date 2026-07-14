@@ -90,13 +90,13 @@ export function ContextRail({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               aria-label={closeLabel}
             >
               <IconX size={18} stroke={2} />
             </button>
             {header.statusLabel ? (
-              <span className={header.statusClassName ?? 'rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600'}>
+              <span className={header.statusClassName ?? 'rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold text-slate-600'}>
                 {header.statusLabel}
               </span>
             ) : null}

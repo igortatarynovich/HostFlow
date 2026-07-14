@@ -195,7 +195,7 @@ export default function HrInboxPage() {
       </Toolbar>
 
       {delayedFlag ? (
-        <p className="rounded-lg border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-xs text-indigo-950">
+        <p className="rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs text-blue-950">
           {t('app.nav.hr.inbox.delayed_hint', {
             defaultValue: 'Workforce is created only after employment approval.',
           })}
@@ -245,7 +245,7 @@ export default function HrInboxPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           <span className="self-center text-[10px] font-semibold uppercase text-slate-500">
             {t('app.nav.hr.inbox.filter_queue', { defaultValue: 'Filter by queue' })}
           </span>
@@ -256,7 +256,7 @@ export default function HrInboxPage() {
               className={clsx(
                 'rounded-full border px-2 py-0.5 text-[11px] font-medium',
                 queueFilter === q
-                  ? 'border-indigo-300 bg-indigo-50 text-indigo-950'
+                  ? 'border-blue-300 bg-blue-50 text-blue-950'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               )}
               onClick={() => setQueueFilter(q)}

@@ -498,20 +498,20 @@ function ReminderTaskRow({
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={clsx('rounded-md px-2.5 py-1 text-[11px] font-semibold', statusPill)}>
+            <span className={clsx('rounded-lg px-3 py-1 text-[11px] font-semibold', statusPill)}>
               {reminderStatusLabel(item.status)}
             </span>
-            <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
+            <span className={clsx('rounded-lg px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
               {t(`app.reminders.priority.${item.priority || 'normal'}`, { defaultValue: item.priority || 'normal' })}
             </span>
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{entityTypeLabel}</span>
+            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{entityTypeLabel}</span>
             {item._source === 'planner' && (
               // G-7 stage 2: small visual differentiator for planner-derived
               // rows. Operators need to know this row mutates the planner
               // table (so it'll also appear on the calendar) — without the
               // badge it would feel like a phantom row.
               <span
-                className="rounded-md bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700"
+                className="rounded-lg bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700"
                 title={t('app.reminders.source.planner_hint', {
                   defaultValue: 'From Calendar planner ({kind})',
                   values: { kind: item._plannerKind || 'task' },
@@ -521,7 +521,7 @@ function ReminderTaskRow({
               </span>
             )}
             {item.sla_due_at && item.sla_status && slaPill && (
-              <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-semibold', slaPill)} title={formatTs(item.slaDate)}>
+              <span className={clsx('rounded-lg px-2 py-0.5 text-[11px] font-semibold', slaPill)} title={formatTs(item.slaDate)}>
                 {t(`app.reminders.sla.status.${slaSt}`, { defaultValue: item.sla_status })} · {formatTs(item.slaDate)}
               </span>
             )}
@@ -1701,14 +1701,14 @@ export default function RemindersPage() {
             <>
               <button
                 type="button"
-                className={clsx('btn btn-sm rounded-lg border px-3 py-1.5 text-sm font-medium transition', activeTab === 'tasks' ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+                className={clsx('btn btn-sm rounded-lg border px-3 py-2 text-sm font-medium transition', activeTab === 'tasks' ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
                 onClick={() => setActiveTab('tasks')}
               >
                 {t('app.reminders.tab.tasks')} ({taskCounts.active})
               </button>
               <button
                 type="button"
-                className={clsx('btn btn-sm rounded-lg border px-3 py-1.5 text-sm font-medium transition', activeTab === 'events' ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+                className={clsx('btn btn-sm rounded-lg border px-3 py-2 text-sm font-medium transition', activeTab === 'events' ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
                 onClick={() => setActiveTab('events')}
               >
                 {t('app.reminders.tab.events')} ({notificationCounts.unread})
@@ -1860,7 +1860,7 @@ export default function RemindersPage() {
                   <option value="normal">{t('app.reminders.priority.normal')}</option>
                   <option value="high">{t('app.reminders.priority.high')}</option>
                 </select>
-                <label className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700">
+                <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
                   <input
                     type="checkbox"
                     className="h-3.5 w-3.5"
@@ -1886,7 +1886,7 @@ export default function RemindersPage() {
                   type="button"
                   onClick={() => setTaskFilters((prev) => ({ ...prev, status }))}
                   className={clsx(
-                    'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                    'btn rounded-lg border px-3 py-2 text-xs font-medium transition',
                     taskFilters.status === status
                       ? 'border-brand-600 bg-brand-600 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1907,7 +1907,7 @@ export default function RemindersPage() {
                     }))
                   }
                   className={clsx(
-                    'btn rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    'btn rounded-lg border px-3 py-2 text-xs font-semibold transition',
                     taskFilters.dueBucket === 'overdue'
                       ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
                       : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
@@ -1931,7 +1931,7 @@ export default function RemindersPage() {
                     }))
                   }
                   className={clsx(
-                    'btn rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    'btn rounded-lg border px-3 py-2 text-xs font-semibold transition',
                     taskFilters.unlinkedOnly
                       ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
                       : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
@@ -1952,7 +1952,7 @@ export default function RemindersPage() {
                     type="button"
                     onClick={() => setAssigneeScope('mine')}
                     className={clsx(
-                      'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      'btn rounded-lg border px-3 py-2 text-xs font-medium transition',
                       assigneeScope === 'mine'
                         ? 'border-brand-600 bg-brand-600 text-white'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1964,7 +1964,7 @@ export default function RemindersPage() {
                     type="button"
                     onClick={() => setAssigneeScope('team')}
                     className={clsx(
-                      'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      'btn rounded-lg border px-3 py-2 text-xs font-medium transition',
                       assigneeScope === 'team'
                         ? 'border-brand-600 bg-brand-600 text-white'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1985,7 +1985,7 @@ export default function RemindersPage() {
                 </label>
                 <select
                   id="hf-task-list-mode"
-                  className="input max-w-xs py-1.5 text-sm"
+                  className="input max-w-xs py-2 text-sm"
                   value={taskListMode}
                   onChange={(e) => setTaskListMode(e.target.value as TaskListMode)}
                 >
@@ -2120,7 +2120,7 @@ export default function RemindersPage() {
                             <span className="truncate">{section.label}</span>
                             {section.key === '__unlinked' ? (
                               <span
-                                className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
+                                className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
                                 title={t('app.reminders.layout.groups_unlinked_entities_hint')}
                               >
                                 {t('app.reminders.layout.unlinked_badge')}
@@ -2133,7 +2133,7 @@ export default function RemindersPage() {
                         {section.key === '__unlinked' ? (
                           <button
                             type="button"
-                            className="btn rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                            className="btn rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
                             onClick={() => void copyTaskIds(section.items.map((i) => i.id), section.key)}
                           >
                             {copiedSectionKey === section.key
@@ -2257,11 +2257,11 @@ export default function RemindersPage() {
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           {!item.is_read && (
-                            <span className="rounded-md bg-brand-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                            <span className="rounded-lg bg-brand-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                               {t('app.reminders.states.badge_new')}
                             </span>
                           )}
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                          <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                             {item.event_type}
                           </span>
                         </div>
@@ -2323,7 +2323,7 @@ export default function RemindersPage() {
           }
         >
           <div
-            className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
             role="presentation"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => activateClickOnSpaceEnter(e, (ev) => ev.stopPropagation())}

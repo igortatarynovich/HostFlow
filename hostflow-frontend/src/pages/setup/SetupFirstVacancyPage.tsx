@@ -295,7 +295,7 @@ export default function SetupFirstVacancyPage() {
             type="submit"
             data-testid="m1-vacancy-save"
             disabled={loading}
-            className="btn-primary w-full rounded-lg py-2.5 font-medium disabled:opacity-50"
+            className="btn-primary w-full rounded-lg py-3 font-medium disabled:opacity-50"
           >
             {loading
               ? t('common.saving')

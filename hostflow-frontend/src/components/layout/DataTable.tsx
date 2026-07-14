@@ -63,7 +63,7 @@ const CHECKBOX_WIDTH = 56
  * - Card surface: `card m-0 flex-1` (full-bleed inside `PageShell`).
  * - Scroll: single `overflow-auto` viewport (horizontal + vertical).
  * - Header: sticky `h-11` slate row, `text-xs font-semibold`.
- * - Cells: `px-4 py-2.5` (`px-3` for `compact` columns), `text-sm`.
+ * - Cells: `px-4 py-3` (`px-3` for `compact` columns), `text-sm`.
  * - Rows: `border-t`, `hover:bg-brand-50/50`, active row highlighted.
  */
 export function DataTable<T>({
@@ -99,7 +99,7 @@ export function DataTable<T>({
               {selection ? (
                 <th
                   scope="col"
-                  className="border-b border-r border-slate-200 px-4 py-2.5 align-middle"
+                  className="border-b border-r border-slate-200 px-4 py-3 align-middle"
                   style={{ width: CHECKBOX_WIDTH, minWidth: CHECKBOX_WIDTH, maxWidth: CHECKBOX_WIDTH }}
                 >
                   <input
@@ -122,7 +122,7 @@ export function DataTable<T>({
                     style={{ width: col.width, minWidth: col.minWidth }}
                     className={clsx(
                       'border-b border-slate-200 align-middle whitespace-nowrap text-xs font-semibold text-slate-600',
-                      col.compact ? 'px-3 py-2.5' : 'px-4 py-2.5',
+                      col.compact ? 'px-3 py-3' : 'px-4 py-3',
                       !isLast && 'border-r',
                       alignClass(col.align),
                       col.headerClassName,
@@ -169,7 +169,7 @@ export function DataTable<T>({
                   >
                     {selection ? (
                       <td
-                        className="border-r border-slate-200 px-4 py-2.5 align-middle"
+                        className="border-r border-slate-200 px-4 py-3 align-middle"
                         style={{ width: CHECKBOX_WIDTH, minWidth: CHECKBOX_WIDTH, maxWidth: CHECKBOX_WIDTH }}
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -189,7 +189,7 @@ export function DataTable<T>({
                           style={{ width: col.width, minWidth: col.minWidth }}
                           className={clsx(
                             'border-slate-200 align-middle',
-                            col.compact ? 'px-3 py-2.5' : 'px-4 py-2.5',
+                            col.compact ? 'px-3 py-3' : 'px-4 py-3',
                             !isLast && 'border-r',
                             alignClass(col.align),
                             col.tabularNums && 'tabular-nums',
@@ -208,7 +208,7 @@ export function DataTable<T>({
         </table>
       </div>
       {footer ? (
-        <div className="shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-6 text-slate-600">
+        <div className="shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-relaxed text-slate-600">
           {footer}
         </div>
       ) : null}

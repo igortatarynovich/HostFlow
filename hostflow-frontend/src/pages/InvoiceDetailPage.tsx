@@ -72,9 +72,9 @@ function statusBadgeClass(status: InvoiceStatus): string {
   const classes: Record<InvoiceStatus, string> = {
     draft: 'bg-slate-100 text-slate-700',
     issued: 'bg-blue-100 text-blue-700',
-    sent: 'bg-indigo-100 text-indigo-700',
-    paid: 'bg-green-100 text-green-700',
-    overdue: 'bg-red-100 text-red-700',
+    sent: 'bg-blue-100 text-blue-700',
+    paid: 'bg-emerald-100 text-emerald-700',
+    overdue: 'bg-rose-100 text-rose-700',
     cancelled: 'bg-slate-100 text-slate-700',
     refunded: 'bg-amber-100 text-amber-700',
   }
@@ -519,14 +519,14 @@ export default function InvoiceDetailPage() {
           breadcrumbCurrentLabel={invoice.invoice_number}
           subtitle={
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                 {invoiceKindLabel(invoice, t)}
               </span>
-              <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(invoice.status)}`}>
+              <span className={`inline-flex rounded-lg px-2 py-0.5 text-xs font-medium ${statusBadgeClass(invoice.status)}`}>
                 {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
               </span>
               {isLockedForCompliance ? (
-                <span className="inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                <span className="inline-flex rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
                   {t('app.invoices.locked', { defaultValue: 'LOCKED' })}
                 </span>
               ) : null}
@@ -618,26 +618,26 @@ export default function InvoiceDetailPage() {
       </Modal>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.total', { defaultValue: 'Total' })}</div>
           <div className="mt-2 text-xl font-semibold text-slate-900">{formatAmount(Number(invoice.total_amount || 0))}</div>
         </div>
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t('app.invoices.paid', { defaultValue: 'Paid' })}</div>
           <div className="mt-2 text-xl font-semibold text-emerald-900">{formatAmount(Number(invoice.paid_amount || 0))}</div>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">{t('app.invoices.snapshot.outstanding', { defaultValue: 'Outstanding' })}</div>
           <div className="mt-2 text-xl font-semibold text-amber-900">{formatAmount(outstandingAmount)}</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.last_activity', { defaultValue: 'Last activity' })}</div>
           <div className="mt-2 text-sm font-medium text-slate-900">{formatDateTime(invoice.payment_date || invoice.updated_at)}</div>
         </div>
       </div>
 
       {invoice.status !== 'draft' && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <div>
             {t(
               'app.invoices.immutable_notice',
@@ -667,7 +667,7 @@ export default function InvoiceDetailPage() {
           </div>
           <div className="space-y-3">
             {timelineItems.map((item) => (
-              <div key={item.key} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div key={item.key} className="rounded-xl border border-slate-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div
@@ -698,7 +698,7 @@ export default function InvoiceDetailPage() {
             </div>
             <div className="space-y-3">
               {invoice.items.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="font-medium text-slate-900">{item.description}</div>
@@ -849,10 +849,10 @@ export default function InvoiceDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 pl-3">
-                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(entry.status)}`}>
+                        <span className={`inline-flex rounded-lg px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(entry.status)}`}>
                           {t(`app.invoices.status.${entry.status}`, { defaultValue: entry.status })}
                         </span>
-                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                        <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                           {isOriginal
                             ? t('app.invoices.original', { defaultValue: 'Original' })
                             : t('app.invoices.correction', { defaultValue: 'Correction' })}

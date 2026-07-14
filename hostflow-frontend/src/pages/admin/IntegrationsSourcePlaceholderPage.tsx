@@ -35,7 +35,7 @@ export default function IntegrationsSourcePlaceholderPage() {
       title={
         <span className="inline-flex flex-wrap items-center gap-3">
           {t(titleKey)}
-          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+          <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-medium text-amber-900">
             {t('admin.integrations_placeholder.badge')}
           </span>
         </span>

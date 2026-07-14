@@ -116,17 +116,17 @@ export default function MyCompanyPage() {
         />
       </PageShellHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
-      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white shadow-lg">
+      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white shadow-md">
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.operating_count', { defaultValue: 'Operating companies' })}</div>
             <div className="text-3xl font-semibold">{managedOperatingCompanies.length}</div>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.limit', { defaultValue: 'Plan limit' })}</div>
             <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : effectiveOperatingLimit}</div>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.available', { defaultValue: 'Available slots' })}</div>
             <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : availableOperatingSlots}</div>
           </div>

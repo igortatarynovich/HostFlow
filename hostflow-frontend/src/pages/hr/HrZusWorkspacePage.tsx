@@ -190,12 +190,12 @@ export default function HrZusWorkspacePage() {
           </div>
         ) : null}
 
-        <section className="card p-4 sm:p-5">
+        <section className="card p-4 sm:p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('app.nav.hr.zus_workspace.filters', { defaultValue: 'Filters' })}
           </div>
           <div className="mt-3 flex flex-wrap items-end gap-4">
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_status', { defaultValue: 'Status' })}</span>
               <input
                 className="input w-36 text-sm"
@@ -204,7 +204,7 @@ export default function HrZusWorkspacePage() {
                 placeholder="open"
               />
             </label>
-            <label className="flex min-w-[11rem] flex-col gap-1.5">
+            <label className="flex min-w-[11rem] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}</span>
               <select className="input text-sm" value={fLane} onChange={(e) => setFLane(e.target.value)}>
                 <option value="">{t('app.nav.hr.zus_workspace.f_all', { defaultValue: 'All' })}</option>
@@ -215,7 +215,7 @@ export default function HrZusWorkspacePage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_form', { defaultValue: 'Form (ZUA/ZZA/ZWUA)' })}</span>
               <select className="input text-sm" value={fFormKind} onChange={(e) => setFFormKind(e.target.value)}>
                 <option value="">{t('app.nav.hr.zus_workspace.f_all', { defaultValue: 'All' })}</option>
@@ -226,15 +226,15 @@ export default function HrZusWorkspacePage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_assignee', { defaultValue: 'Assigned HR (user id)' })}</span>
               <input className="input w-44 font-mono text-sm" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_due_after', { defaultValue: 'Due from (date)' })}</span>
               <input type="date" className="input text-sm" value={fDueAfter} onChange={(e) => setFDueAfter(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_due_before', { defaultValue: 'Due to (date)' })}</span>
               <input type="date" className="input text-sm" value={fDueBefore} onChange={(e) => setFDueBefore(e.target.value)} />
             </label>
@@ -254,7 +254,7 @@ export default function HrZusWorkspacePage() {
             {t('app.nav.hr.zus_workspace.create_heading', { defaultValue: 'Add queue row' })}
           </h3>
           <div className="flex flex-wrap items-end gap-4">
-            <label className="flex min-w-[14rem] flex-col gap-1.5">
+            <label className="flex min-w-[14rem] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_employee', { defaultValue: 'Employee' })}</span>
               <select className="input text-sm" value={cEmployee} onChange={(e) => setCEmployee(e.target.value)}>
                 <option value="">{t('app.nav.hr.zus_workspace.pick_employee', { defaultValue: 'Select…' })}</option>
@@ -265,7 +265,7 @@ export default function HrZusWorkspacePage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}</span>
               <select className="input text-sm" value={cLane} onChange={(e) => setCLane(e.target.value as ZusWorkspaceLane)}>
                 {LANES.map((l) => (
@@ -275,11 +275,11 @@ export default function HrZusWorkspacePage() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_kind', { defaultValue: 'Task kind' })}</span>
               <input className="input w-52 text-sm" value={cTaskKind} onChange={(e) => setCTaskKind(e.target.value)} />
             </label>
-            <label className="flex min-w-[14rem] flex-1 flex-col gap-1.5">
+            <label className="flex min-w-[14rem] flex-1 flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_title', { defaultValue: 'Title' })}</span>
               <input
                 className="input text-sm"
