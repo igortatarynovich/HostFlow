@@ -255,7 +255,7 @@ export default function CommunicationsInboxHubPage() {
     void load()
   }, [load])
 
-  const { pollBusy, fetchInboundNow } = useEmailInboundSync({
+  const { pollBusy, pollErrors, fetchInboundNow } = useEmailInboundSync({
     enabled: effectiveChannel === 'email' && hasEmail && !accessLoading,
     listLoading: loading,
     busy: false,
@@ -753,11 +753,28 @@ export default function CommunicationsInboxHubPage() {
               {t('app.communications.email.oauth_redirect_body')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-primary btn-xs">
+              <Link to={CRM_APP_PATHS.settingsEmail} className="btn-primary btn-xs">
                 {t('app.communications.email.oauth_redirect_open_setup')}
               </Link>
               <button type="button" className="btn-secondary btn-xs" onClick={() => setOauthRedirectNotice(false)}>
                 {t('common.actions.dismiss')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {pollErrors.length > 0 && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
+            <div className="font-medium">
+              {t('app.communications.email.poll_error_title', { defaultValue: 'Не удалось обновить входящую почту' })}
+            </div>
+            <p className="mt-1 text-xs text-rose-900/90">{pollErrors[pollErrors.length - 1]}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Link to={CRM_APP_PATHS.settingsEmail} className="btn-primary btn-xs">
+                {t('app.communications.email.oauth_redirect_open_setup', { defaultValue: 'Открыть настройки почты' })}
+              </Link>
+              <button type="button" className="btn-secondary btn-xs" onClick={() => void fetchInboundNow()}>
+                {t('common.actions.retry', { defaultValue: 'Повторить' })}
               </button>
             </div>
           </div>

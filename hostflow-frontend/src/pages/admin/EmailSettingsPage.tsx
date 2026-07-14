@@ -9,6 +9,7 @@ import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorI
 import { recordTtvStepCompleted } from '../../api/analytics'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { EmailGmailOAuthSection } from '../../components/admin/EmailGmailOAuthSection'
 
 export default function EmailSettingsPage() {
   const { t } = useI18n()
@@ -221,6 +222,8 @@ export default function EmailSettingsPage() {
           )}
         />
       )}
+
+      <EmailGmailOAuthSection />
 
       <section className="settings-panel">
         <div className="mt-4 flex justify-end">

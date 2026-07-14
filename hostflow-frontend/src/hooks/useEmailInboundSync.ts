@@ -32,6 +32,7 @@ export function useEmailInboundSync(opts: {
   onAfterPollRef.current = opts.onAfterPoll
   const commSetup = useCommunicationsSetupStatus()
   const [pollBusy, setPollBusy] = useState(false)
+  const [pollErrors, setPollErrors] = useState<string[]>([])
   const [lastPollAt, setLastPollAt] = useState<string | null>(() => {
     try {
       const raw = window.localStorage.getItem(LS_POLL_KEY)
@@ -67,9 +68,14 @@ export function useEmailInboundSync(opts: {
       await runCommunicationEmailPollWorker({ limit_per_account: 50 })
       if (!mountedRef.current) return
       setLastPollAt(nowIso())
+      setPollErrors([])
       pollCooldownUntilRef.current = 0
       await onAfterPollRef.current()
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (mountedRef.current) {
+        setPollErrors((prev) => [...prev.slice(-4), message])
+      }
       if (silent) pollCooldownUntilRef.current = Date.now() + 120_000
     } finally {
       setPollBusy(false)
@@ -101,5 +107,5 @@ export function useEmailInboundSync(opts: {
     return () => window.clearInterval(timer)
   }, [commSetup.isComplete, commSetup.loading, fetchInboundNow, lastPollAt, opts.busy, opts.enabled, pollBusy])
 
-  return { pollBusy, lastPollAt, fetchInboundNow: () => void fetchInboundNow(false) }
+  return { pollBusy, lastPollAt, pollErrors, fetchInboundNow: () => void fetchInboundNow(false) }
 }

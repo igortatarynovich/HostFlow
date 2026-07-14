@@ -9,7 +9,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from backend.app.constants.spa_paths import LEADS as SPA_LEADS
 
 
-LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing", "rejected"]
+LeadStatus = Literal[
+    "new",
+    "processed",
+    "duplicated",
+    "failed",
+    "needs_routing",
+    "duplicate_review",
+    "rejected",
+]
 LeadType = Literal["candidate", "client"]
 LeadTargetType = Literal["candidate", "client_lead", "service_order_lead", "partner_lead"]
 LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
