@@ -77,7 +77,24 @@ Implementation contract: [`stage-1a-client-account-implementation-contract.md`](
 
 ---
 
-## 4. References
+## 4. Stage 1B — Quote Foundation (design-first)
+
+After Stage 1A (identity) and services intake auto-seed, the next vertical slice is **Quote only** — not Service Order, Commercial Confirmation, or Invoice.
+
+| Deliverable | Document |
+|-------------|----------|
+| Implementation contract | [`stage-1b-quote-foundation-implementation-contract.md`](../tasks/stage-1b-quote-foundation-implementation-contract.md) |
+| Object model | [`stage-1b-quote-object-model.md`](stage-1b-quote-object-model.md) |
+| API contract | [`stage-1b-quote-api-contract.md`](../api/stage-1b-quote-api-contract.md) |
+| UI wireflow | [`stage-1b-quote-ui-wireflow.md`](../ux/stage-1b-quote-ui-wireflow.md) |
+| Sequences | [`stage-1b-quote-lifecycle-sequences.md`](../workflows/stage-1b-quote-lifecycle-sequences.md) |
+
+**PR-1 scope:** `quotes` + `quote_versions`, lifecycle `draft → sent → accepted | rejected | expired`, `client_account_id`, `scope_snapshot`, backend CRUD.  
+**Follow-on PRs:** Quote → Service Order → Commercial Confirmation → Billing.
+
+---
+
+## 5. References
 
 - [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) — Services vs Finance
 - [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md) — tenant vs company
@@ -85,3 +102,4 @@ Implementation contract: [`stage-1a-client-account-implementation-contract.md`](
 - [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) — module routing
 - [`../../services/module-scope.md`](../../services/module-scope.md) — Services module scope
 - [`stage-1a-client-account-implementation-contract.md`](../tasks/stage-1a-client-account-implementation-contract.md) — Stage 1A implementation contract
+- [`stage-1b-quote-foundation-implementation-contract.md`](../tasks/stage-1b-quote-foundation-implementation-contract.md) — Stage 1B Quote Foundation (design-first)
