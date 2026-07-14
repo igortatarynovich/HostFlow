@@ -72,6 +72,7 @@ import {
 } from './constants/signupContext'
 import { DefaultAppEntryNavigate } from './components/nav/DefaultAppEntryNavigate'
 import { CRM_APP_PATHS } from './app/crmAppPaths'
+import EntityListShellDemoPublicPage from './pages/dev/EntityListShellDemoPublicPage'
 
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
@@ -141,6 +142,10 @@ export default function App(){
       <Route path="/public/scan-sessions" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
       <Route path="/client-portal" element={<LazyRoute loadingLabel={t('common.loading')}><ClientPortalPage /></LazyRoute>} />
+
+      {import.meta.env.DEV ? (
+        <Route path="/dev/entity-list-shell" element={<EntityListShellDemoPublicPage />} />
+      ) : null}
 
       {!me && (
         <>

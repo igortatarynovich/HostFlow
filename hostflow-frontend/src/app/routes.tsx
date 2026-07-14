@@ -82,6 +82,7 @@ import {
 import { CRM_APP_PATHS, crmAppRouteSegment } from './crmAppPaths'
 import { SALES_HOME_PATH } from './salesPaths'
 import { RECRUITMENT_INBOX_PATH } from './recruitmentInboxPaths'
+import EntityListShellDemoPage from '../pages/dev/EntityListShellDemoPage'
 
 const seg = crmAppRouteSegment
 const CRM = CRM_APP_PATHS
@@ -842,5 +843,14 @@ export const APP_ROUTES: AppRouteConfig[] = [
     Component: HrHandoffDetailPage,
     permission: 'workforce.view',
   },
+  ...(import.meta.env.DEV
+    ? [
+        {
+          key: 'dev-entity-list-shell',
+          path: 'dev/entity-list-shell',
+          Component: EntityListShellDemoPage,
+        },
+      ]
+    : []),
   { key: 'not-found', path: '*', Component: NotFoundRedirect },
 ]
