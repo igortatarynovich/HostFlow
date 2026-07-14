@@ -794,7 +794,7 @@ export default function VacancyList() {
                   <button
                     key={s.value || 'all'}
                     type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                       status === s.value
                         ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm'
                         : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
@@ -849,7 +849,7 @@ export default function VacancyList() {
                     ⋯
                   </button>
                   {actionsMenuOpen && (
-                    <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+                    <div className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-3 shadow-md">
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                         {t('app.vacancies.list.columns')}
                       </div>
@@ -911,7 +911,7 @@ export default function VacancyList() {
                     <button className="hover:underline" onClick={() => applyView(v)}>
                       {v.name || t('app.vacancies.list.untitled')}
                     </button>
-                    <button className="text-slate-400 hover:text-red-500" onClick={() => removeView(v.id)} title={t('app.vacancies.list.delete_view')}>
+                    <button className="text-slate-400 hover:text-rose-700" onClick={() => removeView(v.id)} title={t('app.vacancies.list.delete_view')}>
                       ×
                     </button>
                   </div>
