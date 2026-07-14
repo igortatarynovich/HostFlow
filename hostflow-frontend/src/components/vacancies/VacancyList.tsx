@@ -16,6 +16,10 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { useCurrentTenantId } from '../../contexts/CurrentTenant'
 import { PageHeader } from '../nav/PageHeader'
 import { PageShell, PageShellHeader, Toolbar, DataTable, type DataTableColumn } from '../layout'
+import EntityListBulkBar from '../surfaces/EntityListBulkBar'
+import EntityListPagination from '../surfaces/EntityListPagination'
+import EntityListShell from '../surfaces/EntityListShell'
+import EntityListTableFrame from '../surfaces/EntityListTableFrame'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -734,6 +738,22 @@ export default function VacancyList() {
   }
   // Row click opens detail — no separate actions column (matches Candidates / Clients lists).
 
+  const tableStatus = loading ? 'loading' : error ? 'error' : items.length === 0 ? 'empty' : 'ready'
+
+  const errorBanner = error ? (
+    <ErrorRecoveryBanner
+      info={error}
+      onRetry={() => refresh()}
+      retryLabel={t('common.actions.retry')}
+      {...friendlyErrorBannerSecondary(
+        error,
+        CRM_APP_PATHS.vacancies,
+        t('app.nav.items.vacancies', { defaultValue: 'Vacancies' }),
+      )}
+      compact
+    />
+  ) : null
+
   return (
     <PageShell>
       <PageShellHeader>
@@ -746,202 +766,227 @@ export default function VacancyList() {
         />
       </PageShellHeader>
 
-      <Toolbar>
-        <form onSubmit={onSearch} className="flex flex-wrap items-center gap-2">
-          <input
-            name="q"
-            ref={searchRef}
-            defaultValue={q}
-            placeholder={t('app.vacancies.list.search_placeholder')}
-            className="input min-h-[40px] min-w-[200px] flex-1 rounded-lg border-slate-200/90 bg-white py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15"
-          />
-          <input
-            name="company"
-            defaultValue={company}
-            placeholder={t('app.vacancies.list.company_placeholder')}
-            className="input min-h-[40px] w-48 py-2 text-sm"
-          />
-          {statusOptions.map((s) => (
-            <button
-              key={s.value || 'all'}
-              type="button"
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                status === s.value
-                  ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
-              }`}
-              onClick={() => {
-                const next = new URLSearchParams(search)
-                if (!s.value) next.delete('status')
-                else next.set('status', s.value)
-                next.set('page', '1')
-                setSearch(next, { replace: true })
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-          <button type="submit" className={secondaryBtn}>
-            {t('common.actions.apply')}
-          </button>
-          <button
-            type="button"
-            className={secondaryBtn}
-            onClick={resetFilters}
-            disabled={resetDisabled}
-            title={t('app.vacancies.list.reset_filters_title')}
-          >
-            {t('common.actions.reset')}
-          </button>
-          <button
-            type="button"
-            className={secondaryBtn}
-            onClick={refresh}
-            disabled={loading}
-            title={t('app.vacancies.list.refresh_title')}
-          >
-            {loading ? t('common.loading') : t('common.actions.refresh')}
-          </button>
-          <button
-            type="button"
-            className={secondaryBtn}
-            onClick={exportCSV}
-            title={t('app.vacancies.list.export_csv_title')}
-          >
-            {t('app.vacancies.list.export_csv')}
-          </button>
-          <div className="relative" ref={actionsMenuRef}>
-            <button
-              type="button"
-              className={secondaryBtn}
-              onClick={() => setActionsMenuOpen((prev) => !prev)}
-              title={t('common.actions.more')}
-            >
-              ⋯
-            </button>
-            {actionsMenuOpen && (
-              <div className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-3 shadow-md">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  {t('app.vacancies.list.columns')}
-                </div>
-                <div className="mt-2 space-y-1">
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.title} onChange={() => toggleCol('title')} />{' '}
-                    {t('app.vacancies.list.col_title')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.company} onChange={() => toggleCol('company')} />{' '}
-                    {t('app.vacancies.list.col_company')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.status} onChange={() => toggleCol('status')} />{' '}
-                    {t('app.vacancies.list.col_status')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.updated} onChange={() => toggleCol('updated')} />{' '}
-                    {t('app.vacancies.list.col_updated')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.candidates} onChange={() => toggleCol('candidates')} />{' '}
-                    {t('app.vacancies.list.col_candidates')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.headcount} onChange={() => toggleCol('headcount')} />{' '}
-                    {t('app.vacancies.list.col_headcount')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.profile} onChange={() => toggleCol('profile')} />{' '}
-                    {t('app.vacancies.list.col_profile')}
-                  </label>
-                  <label className="flex items-center gap-2 py-1 text-sm">
-                    <input type="checkbox" checked={visibleCols.lastActivity} onChange={() => toggleCol('lastActivity')} />{' '}
-                    {t('app.vacancies.list.col_last_activity')}
-                  </label>
-                </div>
+      <EntityListShell
+        className="min-h-0 flex-1"
+        resourceLabel={t('app.nav.items.vacancies', { defaultValue: 'Vacancies' })}
+        selection={{
+          selectedCount: selected.length,
+          onClearSelection: () => setSelected([]),
+        }}
+        zones={{
+          toolbar: (
+            <Toolbar>
+              <form onSubmit={onSearch} className="flex flex-wrap items-center gap-2">
+                <input
+                  name="q"
+                  ref={searchRef}
+                  defaultValue={q}
+                  placeholder={t('app.vacancies.list.search_placeholder')}
+                  className="input min-h-[40px] min-w-[200px] flex-1 rounded-lg border-slate-200/90 bg-white py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15"
+                />
+                <input
+                  name="company"
+                  defaultValue={company}
+                  placeholder={t('app.vacancies.list.company_placeholder')}
+                  className="input min-h-[40px] w-48 py-2 text-sm"
+                />
+                {statusOptions.map((s) => (
+                  <button
+                    key={s.value || 'all'}
+                    type="button"
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                      status === s.value
+                        ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
+                    }`}
+                    onClick={() => {
+                      const next = new URLSearchParams(search)
+                      if (!s.value) next.delete('status')
+                      else next.set('status', s.value)
+                      next.set('page', '1')
+                      setSearch(next, { replace: true })
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+                <button type="submit" className={secondaryBtn}>
+                  {t('common.actions.apply')}
+                </button>
                 <button
                   type="button"
-                  className="btn-primary mt-3 w-full"
-                  onClick={() => {
-                    setActionsMenuOpen(false)
-                    saveView()
-                  }}
+                  className={secondaryBtn}
+                  onClick={resetFilters}
+                  disabled={resetDisabled}
+                  title={t('app.vacancies.list.reset_filters_title')}
                 >
-                  {t('app.vacancies.list.save_view')}
+                  {t('common.actions.reset')}
                 </button>
+                <button
+                  type="button"
+                  className={secondaryBtn}
+                  onClick={refresh}
+                  disabled={loading}
+                  title={t('app.vacancies.list.refresh_title')}
+                >
+                  {loading ? t('common.loading') : t('common.actions.refresh')}
+                </button>
+                <button
+                  type="button"
+                  className={secondaryBtn}
+                  onClick={exportCSV}
+                  title={t('app.vacancies.list.export_csv_title')}
+                >
+                  {t('app.vacancies.list.export_csv')}
+                </button>
+                <div className="relative" ref={actionsMenuRef}>
+                  <button
+                    type="button"
+                    className={secondaryBtn}
+                    onClick={() => setActionsMenuOpen((prev) => !prev)}
+                    title={t('common.actions.more')}
+                  >
+                    ⋯
+                  </button>
+                  {actionsMenuOpen && (
+                    <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {t('app.vacancies.list.columns')}
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.title} onChange={() => toggleCol('title')} />{' '}
+                          {t('app.vacancies.list.col_title')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.company} onChange={() => toggleCol('company')} />{' '}
+                          {t('app.vacancies.list.col_company')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.status} onChange={() => toggleCol('status')} />{' '}
+                          {t('app.vacancies.list.col_status')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.updated} onChange={() => toggleCol('updated')} />{' '}
+                          {t('app.vacancies.list.col_updated')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.candidates} onChange={() => toggleCol('candidates')} />{' '}
+                          {t('app.vacancies.list.col_candidates')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.headcount} onChange={() => toggleCol('headcount')} />{' '}
+                          {t('app.vacancies.list.col_headcount')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.profile} onChange={() => toggleCol('profile')} />{' '}
+                          {t('app.vacancies.list.col_profile')}
+                        </label>
+                        <label className="flex items-center gap-2 py-1 text-sm">
+                          <input type="checkbox" checked={visibleCols.lastActivity} onChange={() => toggleCol('lastActivity')} />{' '}
+                          {t('app.vacancies.list.col_last_activity')}
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-primary mt-3 w-full"
+                        onClick={() => {
+                          setActionsMenuOpen(false)
+                          saveView()
+                        }}
+                      >
+                        {t('app.vacancies.list.save_view')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </form>
+            </Toolbar>
+          ),
+          activeFilters:
+            views.length > 0 ? (
+              <div className="mx-4 flex flex-wrap items-center gap-2">
+                {views.map((v) => (
+                  <div key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm shadow-sm">
+                    <button className="hover:underline" onClick={() => applyView(v)}>
+                      {v.name || t('app.vacancies.list.untitled')}
+                    </button>
+                    <button className="text-slate-400 hover:text-red-500" onClick={() => removeView(v.id)} title={t('app.vacancies.list.delete_view')}>
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        </form>
-      </Toolbar>
-
-      {selected.length > 0 && (
-        <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-3 text-sm shadow-sm">
-          <div>{t('app.vacancies.list.bulk_selected', { values: { count: selected.length } })}</div>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">{t('app.vacancies.list.bulk_set_status')}</span>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('open')}>{t('app.vacancies.list.status.open')}</button>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('on_hold')}>{t('app.vacancies.list.status.on_hold')}</button>
-            <button className={secondaryBtn} onClick={()=>bulkSetStatus('closed')}>{t('app.vacancies.list.status.closed')}</button>
-          </div>
-          <div className="flex-1" />
-          <button className={secondaryBtn} onClick={bulkArchive}>{t('app.vacancies.list.bulk_archive')}</button>
-          <button className="btn-secondary" onClick={()=>setSelected([])}>{t('app.vacancies.list.bulk_clear_selection')}</button>
-        </div>
-      )}
-
-      {views.length > 0 && (
-        <div className="mx-4 mb-2 flex flex-wrap items-center gap-2">
-          {views.map((v) => (
-            <div key={v.id} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm shadow-sm">
-              <button className="hover:underline" onClick={()=>applyView(v)}>{v.name || t('app.vacancies.list.untitled')}</button>
-              <button className="text-slate-400 hover:text-rose-500" onClick={()=>removeView(v.id)} title={t('app.vacancies.list.delete_view')}>×</button>
+            ) : undefined,
+          table: (
+            <EntityListTableFrame
+              status={tableStatus}
+              loading={<div className="px-4 py-8 text-center text-sm text-slate-500">{t('common.loading')}</div>}
+              empty={<p className="px-4 py-8 text-center text-sm text-slate-500">{t('app.vacancies.list.not_found')}</p>}
+              error={errorBanner}
+              table={
+                <DataTable
+                  columns={vacancyColumns}
+                  rows={items}
+                  rowKey={(v) => v.id}
+                  loading={false}
+                  onRowClick={(v) => navigate(`${CRM_APP_PATHS.vacancies}/${v.id}`)}
+                  selection={{
+                    isSelected: (id) => selected.includes(id),
+                    onToggle: (id, checked) =>
+                      setSelected((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id))),
+                    onToggleAll: (checked) => setSelected(checked ? (data.items || []).map((i) => i.id) : []),
+                    allSelected,
+                    someSelected: selected.length > 0,
+                  }}
+                  emptyState={t('app.vacancies.list.not_found')}
+                  ariaLabel={t('app.nav.items.vacancies')}
+                />
+              }
+            />
+          ),
+          bulkBar: (
+            <EntityListBulkBar
+              selectedCount={selected.length}
+              onClearSelection={() => setSelected([])}
+              selectedLabel={(count) => t('app.vacancies.list.bulk_selected', { values: { count } })}
+              clearLabel={t('app.vacancies.list.bulk_clear_selection')}
+              actions={
+                <>
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500">{t('app.vacancies.list.bulk_set_status')}</span>
+                    <button className={secondaryBtn} onClick={() => bulkSetStatus('open')}>
+                      {t('app.vacancies.list.status.open')}
+                    </button>
+                    <button className={secondaryBtn} onClick={() => bulkSetStatus('on_hold')}>
+                      {t('app.vacancies.list.status.on_hold')}
+                    </button>
+                    <button className={secondaryBtn} onClick={() => bulkSetStatus('closed')}>
+                      {t('app.vacancies.list.status.closed')}
+                    </button>
+                  </div>
+                  <button className={secondaryBtn} onClick={bulkArchive}>
+                    {t('app.vacancies.list.bulk_archive')}
+                  </button>
+                </>
+              }
+            />
+          ),
+          pagination: (
+            <div className="mx-4 flex items-center justify-between gap-3">
+              <div className="text-slate-500">{t('app.vacancies.list.total', { values: { total: data.total } })}</div>
+              <EntityListPagination
+                page={page}
+                pageSize={limit}
+                total={data.total || 0}
+                onPageChange={goPage}
+                previousLabel="←"
+                nextLabel={NEXT_PAGE_GLYPH}
+                pageLabel={(p, tp) => t('app.vacancies.list.page', { values: { page: p, total: tp } })}
+              />
             </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <div className="mx-4 mb-2">
-          <ErrorRecoveryBanner
-            info={error}
-            onRetry={() => refresh()}
-            retryLabel={t('common.actions.retry')}
-            {...friendlyErrorBannerSecondary(
-              error,
-              CRM_APP_PATHS.vacancies,
-              t('app.nav.items.vacancies', { defaultValue: 'Vacancies' }),
-            )}
-            compact
-          />
-        </div>
-      )}
-
-      <DataTable
-        columns={vacancyColumns}
-        rows={items}
-        rowKey={(v) => v.id}
-        loading={loading}
-        onRowClick={(v) => navigate(`${CRM_APP_PATHS.vacancies}/${v.id}`)}
-        selection={{
-          isSelected: (id) => selected.includes(id),
-          onToggle: (id, checked) =>
-            setSelected((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id))),
-          onToggleAll: (checked) => setSelected(checked ? (data.items || []).map((i) => i.id) : []),
-          allSelected,
-          someSelected: selected.length > 0,
+          ),
         }}
-        emptyState={t('app.vacancies.list.not_found')}
-        ariaLabel={t('app.nav.items.vacancies')}
-        footer={
-          <div className="flex items-center justify-between">
-            <div className="text-slate-500">{t('app.vacancies.list.total', { values: { total: data.total } })}</div>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => goPage(Math.max(1, page - 1))} disabled={page <= 1} className="btn-secondary btn-sm">←</button>
-              <span className="px-2 text-sm text-slate-600">{t('app.vacancies.list.page', { values: { page, total: Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))) } })}</span>
-              <button type="button" onClick={() => goPage(Math.min(Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))), page + 1))} disabled={page >= Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))} className="btn-secondary btn-sm">{NEXT_PAGE_GLYPH}</button>
-            </div>
-          </div>
-        }
       />
     </PageShell>
   )

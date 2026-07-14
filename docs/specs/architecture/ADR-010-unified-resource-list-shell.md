@@ -2,6 +2,7 @@
 
 **Статус:** Accepted (целевая модель).  
 **Область:** SPA (React), все «рабочие» списки сущностей в модулях и на платформе.  
+**Phase 2 governance (не giant abstraction):** [`../frontend/entity-table-governance.md`](../frontend/entity-table-governance.md).  
 **Родительский стандарт UI:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) (кнопки, сетка, типографика, формы, таблицы, i18n, даты — едино для всего приложения).  
 **Связано с:** [`platform-architecture-principles.md`](platform-architecture-principles.md) (модули), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга).
 
@@ -99,11 +100,23 @@
 
 ### 8. Миграция (поэтапно)
 
-1. Зафиксировать **дизайн-токены** строки таблицы, тулбара, чипов фильтра в `pipedesign` / UI-kit (если отдельный файл — ссылка сюда).  
-2. Выделить **`ResourceListShell`** + **`ColumnDef` / `FilterDef`** типы; первый пилот — один простой список (например заказы или вакансии).  
-3. Перенести **кандидатов** (самый богатый кейс) на Shell с сохранением поведения.  
-4. Выровнять **компании, вакансии, workforce, заказы**.  
-5. Удалить дублирующие одноразовые тулбары после паритета.
+См. детальный порядок PR14 Phase 2: [`../frontend/entity-table-governance.md`](../frontend/entity-table-governance.md).
+
+1. **Shell only** — layout zones, filter bar, bulk bar, loading/empty/pagination (**без** rewrite list pages).  
+2. **`ResourceListShell`** + **`ListDefinition` / `ColumnDef` / `FilterDef`** типы — governance layer, domain cells остаются в модуле.  
+3. **Один пилот** — простой список (vacancies / companies / orders), **не** `Candidates.tsx` целиком.  
+4. Дальше — migration-by-touch по одному ресурсу.  
+5. **Кандидаты** — последний (самый богатый кейс), отдельный slice.  
+6. Удалить дублирующие one-off toolbars после паритета.
+
+### 9. Anti-patterns (запрещено)
+
+- **Giant abstraction** — одна таблица со всей бизнес-логикой, колонками и API внутри shell.  
+- **Boolean prop explosion** — `compact`, `dense`, `showFilters`, `selectable`, … на shell root; использовать zones, slots, render props, controlled state (см. [`entity-table-governance.md`](../frontend/entity-table-governance.md)).  
+- **Bulk «later»** — bulk bar + selection — часть 2A, не отложенная фича.  
+- **Big-bang Candidates** — первый PR Phase 2 не мигрирует весь `Candidates.tsx`.  
+- **Universal cell renderer** — stage pipeline, doc gates и т.д. остаются domain column renderers.  
+- **Второй toolbar** под таблицей (ADR-010 §2).
 
 ## Consequences
 
@@ -119,4 +132,5 @@
 
 ## История
 
+- **2026-05-20:** §8 пересортирован (shell → pilot → candidates last); §9 anti-patterns; ссылка на `entity-table-governance.md`.
 - **2026-05:** первичная фиксация единого List Shell, field kinds, rail/modal, дорожная карта миграции.

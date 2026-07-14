@@ -65,6 +65,7 @@ import SalesInquiriesEntryPage from './pages/sales/SalesInquiriesEntryPage'
 import SalesWorkspaceLayout from './pages/sales/SalesWorkspaceLayout'
 import RecruitmentInboxEntryPage from './pages/recruitment/RecruitmentInboxEntryPage'
 import SignupPage from './pages/SignupPage'
+import EntityListShellDemoPublicPage from './pages/dev/EntityListShellDemoPublicPage'
 import { useI18n } from './i18n'
 import {
   readSignupSuccessContextFromSessionStorage,
@@ -141,6 +142,10 @@ export default function App(){
       <Route path="/public/scan-sessions" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
       <Route path="/client-portal" element={<LazyRoute loadingLabel={t('common.loading')}><ClientPortalPage /></LazyRoute>} />
+
+      {import.meta.env.DEV ? (
+        <Route path="/dev/entity-list-shell" element={<EntityListShellDemoPublicPage />} />
+      ) : null}
 
       {!me && (
         <>
