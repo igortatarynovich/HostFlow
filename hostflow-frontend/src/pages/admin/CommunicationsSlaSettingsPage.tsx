@@ -181,21 +181,20 @@ export default function CommunicationsSlaSettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsCommunications}
-        backLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
-        kicker={t('admin.communications_sla.header_kicker')}
-        title={t('admin.communications_sla.title', { defaultValue: 'SLA settings' })}
-        subtitle={t('admin.communications_sla.subtitle', {
-          defaultValue: 'Escalation policy for overdue communication threads.',
-        })}
-        actions={
-          <Link to={CRM_APP_PATHS.settingsCommunicationsQueue} className="btn-secondary">
-            {t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' })}
-          </Link>
-        }
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsCommunications}
+      backLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
+      kicker={t('admin.communications_sla.header_kicker')}
+      title={t('admin.communications_sla.title', { defaultValue: 'SLA settings' })}
+      subtitle={t('admin.communications_sla.subtitle', {
+        defaultValue: 'Escalation policy for overdue communication threads.',
+      })}
+      actions={
+        <Link to={CRM_APP_PATHS.settingsCommunicationsQueue} className="btn-secondary">
+          {t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' })}
+        </Link>
+      }
+    >
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
@@ -373,6 +372,6 @@ export default function CommunicationsSlaSettingsPage() {
           <div className="text-sm text-slate-500">{t('common.loading')}</div>
         )}
       </div>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

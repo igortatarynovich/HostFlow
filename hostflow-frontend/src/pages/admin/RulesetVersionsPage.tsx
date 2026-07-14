@@ -216,25 +216,24 @@ export default function RulesetVersionsPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <SettingsSubpageHeader
-        backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('app.admin.ruleset.header.kicker')}
-        title={t('app.admin.ruleset.header.title')}
-        subtitle={t('app.admin.ruleset.header.subtitle')}
-        actions={
-          <div className="flex gap-2">
-            <button type="button" className="btn-secondary" onClick={refreshVersions} disabled={loading}>
-              {loading ? t('app.admin.ruleset.header.refresh.loading') : t('app.admin.ruleset.header.refresh.action')}
-            </button>
-            <button type="button" className="btn-secondary" onClick={refreshUsage} disabled={usageLoading}>
-              {usageLoading
-                ? t('app.admin.ruleset.header.usage_refresh.loading')
-                : t('app.admin.ruleset.header.usage_refresh.action')}
-            </button>
-          </div>
-        }
-      />
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('app.admin.ruleset.header.kicker')}
+      title={t('app.admin.ruleset.header.title')}
+      subtitle={t('app.admin.ruleset.header.subtitle')}
+      actions={
+        <div className="flex gap-2">
+          <button type="button" className="btn-secondary" onClick={refreshVersions} disabled={loading}>
+            {loading ? t('app.admin.ruleset.header.refresh.loading') : t('app.admin.ruleset.header.refresh.action')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={refreshUsage} disabled={usageLoading}>
+            {usageLoading
+              ? t('app.admin.ruleset.header.usage_refresh.loading')
+              : t('app.admin.ruleset.header.usage_refresh.action')}
+          </button>
+        </div>
+      }
+    >
 
       {rulesetLoadErrorBanner && (
         <ErrorRecoveryBanner
@@ -546,7 +545,7 @@ export default function RulesetVersionsPage() {
           </div>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 

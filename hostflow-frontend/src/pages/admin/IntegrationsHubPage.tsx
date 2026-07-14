@@ -141,14 +141,13 @@ export default function IntegrationsHubPage() {
   }
 
   return (
-    <div className="settings-page-shell py-6 sm:py-8">
+    
       <SettingsSubpageHeader
         backHref={CRM_APP_PATHS.settings}
         backLabel={t('admin.settings.subpage.back_all', { defaultValue: '← All settings' })}
         kicker={t('admin.integrations_hub.header_kicker', { defaultValue: 'Integrations' })}
         title={t('admin.integrations_hub.title')}
-        subtitle={t('admin.integrations_hub.subtitle_v3')}
-      />
+        subtitle={t('admin.integrations_hub.subtitle_v3')}>
 
       <section aria-labelledby="integrations-hub-connections-heading">
         <h2 id="integrations-hub-connections-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -206,6 +205,6 @@ export default function IntegrationsHubPage() {
       </section>
 
       
-    </div>
+    </SettingsSubpageHeader>
   )
 }

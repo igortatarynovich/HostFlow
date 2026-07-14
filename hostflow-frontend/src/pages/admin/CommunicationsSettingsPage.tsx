@@ -40,20 +40,18 @@ export default function CommunicationsSettingsPage() {
   ]
 
   return (
-    <div className="space-y-6">
-      <SettingsSubpageHeader
-        backHref={P.settings}
-        backLabel={t('admin.communications_settings.back_all_settings')}
-        kicker={t('admin.communications_settings.header_kicker')}
-        title={t('admin.communications_settings.page_title')}
-        subtitle={t('admin.communications_settings.subtitle')}
-        actions={
-          <Link to={P.settingsIntegrations} className="btn-secondary">
-            {t('admin.communications_settings.open_integrations_hub')}
-          </Link>
-        }
-      />
-
+    <SettingsSubpageHeader
+      backHref={P.settings}
+      backLabel={t('admin.communications_settings.back_all_settings')}
+      kicker={t('admin.communications_settings.header_kicker')}
+      title={t('admin.communications_settings.page_title')}
+      subtitle={t('admin.communications_settings.subtitle')}
+      actions={
+        <Link to={P.settingsIntegrations} className="btn-secondary">
+          {t('admin.communications_settings.open_integrations_hub')}
+        </Link>
+      }
+    >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <section className="rounded-lg border border-slate-200 bg-white p-4">
           <h2 className="text-base font-semibold text-slate-900">{t('admin.settings.cards.communications_messengers.label')}</h2>
@@ -79,6 +77,6 @@ export default function CommunicationsSettingsPage() {
           </section>
         ))}
       </div>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
