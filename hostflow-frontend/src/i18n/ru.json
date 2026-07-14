@@ -203,7 +203,8 @@
         "doc_col_expires": "Истекает",
         "doc_col_days_left": "Дней",
         "doc_col_file": "Файл",
-        "doc_open": "Открыть"
+        "doc_open": "Открыть",
+        "doc_open_error": "Could not open document file"
       },
       "work_eligibility": {
         "section_title": "Право на работу и обязательные сборы",
@@ -356,7 +357,22 @@
           "expiring": "Истекает",
           "rejected": "Отклонён",
           "needs_data": "Нужны данные"
-        }
+        },
+        "request_doc_correction": "Request correction",
+        "replace_doc": "Replace",
+        "status": {
+          "hr_review_in_progress": "HR review in progress",
+          "waiting_documents": "Awaiting documents",
+          "waiting_payments": "Awaiting payments",
+          "waiting_work_permit": "Awaiting work permit",
+          "waiting_red_paper": "Awaiting red paper",
+          "approved_for_employment": "Approved for employment",
+          "returned_to_recruitment": "Returned to recruitment",
+          "rejected_by_hr": "Rejected by HR"
+        },
+        "rail_open": "Open HR review",
+        "rail_blockers": "Resolve HR review blockers",
+        "rail_continue": "Continue HR review"
       },
       "review_case": {
         "badge": "Дело HR",
@@ -369,14 +385,59 @@
         "approve_yes": "Утверждение разрешено",
         "approve_no": "Утверждение заблокировано",
         "back_to_inbox": "← Назад в inbox HR",
-        "handoff_summary_hint": "Контекст из рекрутинга только для чтения. Проверяйте документы выше."
+        "handoff_summary_hint": "Контекст из рекрутинга только для чтения. Проверяйте документы выше.",
+        "profile_badge": "Employee profile",
+        "untitled": "HR case",
+        "handoff": "Handoff",
+        "transferred": "Transferred",
+        "quick_actions": "Quick actions",
+        "open_eligibility": "Open work eligibility",
+        "recent_history": "Recent history",
+        "no_events": "No events yet.",
+        "full_history": "Open full history",
+        "docs_required": "Documents required for approval",
+        "current_step": "Current step",
+        "step_status": "Status",
+        "blockers": "Blockers",
+        "eligibility_after_employee": "Full eligibility journey is available after workforce employee is linked.",
+        "show_journey": "Show full eligibility journey",
+        "hide_journey": "Hide full eligibility journey",
+        "after_approval": "After employment approval",
+        "open_employee_profile": "Open employee profile",
+        "current_task_kicker": "What to do now",
+        "why_this_task": "Why this task",
+        "task_closes": "This step closes",
+        "after_completion": "After this",
+        "blocks_approval": "Blocks approval",
+        "ready_step": "Ready",
+        "task_take_title": "Take case into HR review",
+        "task_take_desc": "Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.",
+        "task_take_why": "Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.",
+        "task_take_done": "Handoff status becomes accepted and the HR review checklist is active.",
+        "view_handoff": "View handoff summary",
+        "priority_step": "Step {{step}} of {{total}}",
+        "priority_ladder_toggle": "System priority order (v1)"
       },
       "doc_verify": {
         "needs_manual": "Требуется ручное подтверждение",
         "request_correction": "Запросить исправление",
         "reject": "Отклонить документ",
         "correction_placeholder": "Что нужно исправить?",
-        "reject_placeholder": "Причина отклонения"
+        "reject_placeholder": "Причина отклонения",
+        "section_hint": "Verify each document against profile data. Checklist items update when all required cards are verified.",
+        "checklist_item": "Checklist",
+        "col_field": "Field",
+        "col_profile": "Profile / snapshot",
+        "col_downstream": "Used for",
+        "col_confirm": "HR confirmation",
+        "confirmed_value": "Confirmed value",
+        "comment": "Comment",
+        "confirmed": "Confirmed",
+        "save_review": "Save field review",
+        "verify": "Verify document",
+        "reject_verification": "Reject verification",
+        "upload_new": "Upload new",
+        "upload_new_note": "Please upload a new version of this document."
       },
       "doc_flow": {
         "title": "Проверка документов",
@@ -427,7 +488,10 @@
           "in_review": "На проверке",
           "missing_file": "Нет файла",
           "awaiting": "Ожидает подтверждения"
-        }
+        },
+        "section_title": "Documents verification workspace",
+        "dossier_hint": "One document at a time: compare file to fields, then confirm/correct/replace.",
+        "no_review_context": "HR review context is not available for this employee yet."
       },
       "decisions": {
         "request_correction": "Запросить доработку",
@@ -622,6 +686,56 @@
         "ctx_verified": "Пров.",
         "ctx_expires": "Истекает",
         "no_ctx_items": "Строк контекста HR-документов пока нет."
+      },
+      "document_packs": {
+        "section_title": "Document packs",
+        "hub_preview_title": "Document packs for filtered employee",
+        "empty": "No document packs for this profile yet.",
+        "no_candidate_link": "This employee has no linked candidate — document packs are unavailable.",
+        "skeleton_hint": "Client-specific requirements will appear here later.",
+        "blockers": "Blockers",
+        "warnings": "Warnings",
+        "gaps": "Gaps",
+        "count": {
+          "missing": "Missing",
+          "expired": "Expired",
+          "expiring": "Expiring",
+          "missing_expiry": "No expiry date"
+        },
+        "status": {
+          "valid": "Valid",
+          "warnings": "Warnings",
+          "gaps": "Gaps",
+          "skeleton": "Skeleton"
+        }
+      },
+      "document_actions": {
+        "section_title": "Document actions",
+        "empty": "No document actions",
+        "no_candidate_link": "This employee has no linked candidate — document actions are unavailable.",
+        "document": "Document",
+        "pack": "Pack",
+        "due": "Due",
+        "action": {
+          "upload_document": "Upload document",
+          "request_update": "Request update",
+          "renew_document": "Renew document",
+          "capture_expiry_date": "Capture expiry date"
+        }
+      },
+      "readiness": {
+        "status_label": "Readiness status",
+        "next_action": "Next action",
+        "reason": "Reason",
+        "blocks": "Blocks",
+        "owner": "Responsible",
+        "due": "Due",
+        "missing": "Missing / affected",
+        "open_documents": "Open documents",
+        "ready_hint": "No document blockers detected. Employment readiness looks clear from current packs.",
+        "ready_next": "Next step: {step}",
+        "remaining": "{count} documents remaining",
+        "verification_progress": "Verified {verified} of {total} uploaded documents"
       }
     },
     "api_errors": {
@@ -805,7 +919,8 @@
         "automation_log": "Журнал автоматизаций",
         "automation_rules": "Правила автоматизаций",
         "settings_hiring_gates": "Барьеры воронки найма",
-        "settings_risk_intel": "Операционный риск"
+        "settings_risk_intel": "Операционный риск",
+        "hr_inbox": "HR Inbox"
       },
       "hr": {
         "workspace": {
@@ -843,7 +958,34 @@
           "total": "Всего: {{n}}",
           "handoff_row": "Handoff {{id}}",
           "view_snapshot": "Снимок",
-          "empty": "В этой очереди нет handoff."
+          "empty": "В этой очереди нет handoff.",
+          "tab_all": "All active",
+          "view_review": "HR review",
+          "open_employee": "Employee profile",
+          "col_queue": "Queue",
+          "col_status": "Status",
+          "col_candidate": "Candidate",
+          "col_handoff": "Handoff",
+          "col_employee": "Workforce",
+          "col_actions": "Actions",
+          "accept_pickup": "Take into HR review",
+          "stat_pending": "Awaiting pickup: {n}",
+          "stat_accepted": "In review: {n}",
+          "stat_tab": "This tab: {n}",
+          "quick_hub": "Documents hub",
+          "tabs_aria": "Inbox queues",
+          "queue_awaiting_hr_pickup": "Awaiting HR pickup",
+          "queue_hr_review_in_progress": "HR review in progress",
+          "queue_awaiting_documents": "Awaiting documents",
+          "queue_awaiting_payments": "Awaiting payments",
+          "queue_awaiting_work_permit": "Awaiting work permit",
+          "queue_awaiting_red_paper": "Awaiting red paper",
+          "queue_approved_for_employment": "Approved for employment",
+          "queue_returned_to_recruitment": "Returned to recruitment",
+          "queue_rejected_by_hr": "Rejected by HR",
+          "filter_queue": "Filter by queue",
+          "delayed_hint": "Workforce is created only after employment approval.",
+          "accepted_unavailable": "Accepted handoff queue is unavailable (backend version mismatch). Pending pickup still loads below."
         },
         "tasks": {
           "heading": "HR задачи",
@@ -1171,7 +1313,8 @@
       "not_found_dynamic": "{entity} не найден",
       "quick_defaults": "Базовые настройки применяются автоматически. Расширенные — по необходимости.",
       "subtitle_dynamic": "Управление {entityPlural} и настройками доступа.",
-      "title_dynamic": "{entityPlural}"
+      "title_dynamic": "{entityPlural}",
+      "see_reduced_profiles_label": "Reduced profiles"
     },
     "vacancies": {
       "list": {
@@ -5277,7 +5420,9 @@
         "ok": "Хорошо",
         "open": "Открыть",
         "problematic": "Проблемный",
-        "title": "Чеклист документов"
+        "title": "Чеклист документов",
+        "blockers": "Blockers",
+        "warnings": "Warnings"
       },
       "docs_panel": {
         "kpi": "КПЭ",
@@ -5286,7 +5431,8 @@
           "blockers": "Блокаторы",
           "workspace": "Рабочая область"
         },
-        "title": "Документы"
+        "title": "Документы",
+        "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%"
       },
       "docs_readiness": {
         "counts": "имеет значение",
@@ -5295,7 +5441,8 @@
         "open": "Открыть",
         "problem": "Проблема",
         "ready": "Готовый",
-        "title": "Готовность документов"
+        "title": "Готовность документов",
+        "required": "Required"
       },
       "docs_workspace": {
         "hint": "Намекать",
@@ -5316,7 +5463,8 @@
         },
         "title": "Документы",
         "upload_btn": "Загрузить",
-        "what_blocks_title": "Что блокирует этого кандидата"
+        "what_blocks_title": "Что блокирует этого кандидата",
+        "runtime_kpi": "{ready}/{total} satisfied · {percent}%"
       },
       "stage_blocked_by_docs": {
         "description": "Чтобы перейти дальше, закройте обязательные отсутствующие или проблемные документы.",
@@ -5472,7 +5620,8 @@
         "vacancy_required_chip": "Вакансия / клиент",
         "no_blockers": "Нет блокеров",
         "required": "Обязательно",
-        "title": "Этап"
+        "title": "Этап",
+        "blocked_title_requirements": "Blocked by unconfirmed requirements"
       },
       "stage_journey": {
         "change_to": "Изменить на",
@@ -5501,6 +5650,10 @@
         "open_inbox": "Открыть входящие сообщений",
         "loading_dialogs": "Загрузка диалогов...",
         "empty_dialogs": "Связанных диалогов пока нет. Откройте Messages и привяжите кандидата в заголовке диалога."
+      },
+      "stage_blocked_by_requirements": {
+        "title": "Blocked by requirements",
+        "description_generic": "Confirm all requirements before moving forward."
       }
     },
     "fleet": {
@@ -8297,6 +8450,79 @@
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID тенанта"
       }
+    },
+    "surfaces": {
+      "blocker": {
+        "title": "What is blocking progress",
+        "hr_review_title": "HR review blockers"
+      },
+      "readiness": {
+        "title": "Readiness",
+        "decision_title": "Before approval"
+      },
+      "document_status": {
+        "missing": "Missing",
+        "pending": "Pending",
+        "verified": "Verified",
+        "expiring": "Expiring",
+        "rejected": "Rejected",
+        "in_review": "In review"
+      }
+    },
+    "notification_alerts": {
+      "title": "Notification Center",
+      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
+      "list_title": "Open alerts ({count})",
+      "empty": "No alerts match the current filters.",
+      "detail_empty": "Select an alert to view details.",
+      "expires_on": "Expires on {{date}}",
+      "errors": {
+        "load": "Failed to load notification alerts",
+        "status": "Failed to update alert status",
+        "sync": "Failed to sync document expiry alerts"
+      },
+      "sync": {
+        "success": "Expiry alerts synced",
+        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+      },
+      "toast": {
+        "resolved": "Alert marked as resolved",
+        "ignored": "Alert marked as ignored"
+      },
+      "filters": {
+        "event_type": "Event type",
+        "event_type_all": "All expiry events",
+        "event_type_expired": "Expired documents",
+        "event_type_expiring_soon": "Expiring soon",
+        "source_layer": "Source",
+        "source_document_expiry": "Document expiry notifications",
+        "source_all": "All sources",
+        "status": {
+          "open": "Open",
+          "resolved": "Resolved",
+          "ignored": "Ignored"
+        }
+      },
+      "event_code": {
+        "document_expired": "Document expired",
+        "document_expiring_soon": "Document expiring soon"
+      },
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning"
+      },
+      "detail": {
+        "document_type": "Document type",
+        "owner": "Owner",
+        "expires_on": "Expires on",
+        "source_layer": "Source layer"
+      },
+      "actions": {
+        "mark_resolved": "Mark resolved",
+        "mark_ignored": "Mark ignored",
+        "open_owner": "Open owner profile",
+        "sync_now": "Sync now"
+      }
     }
   },
   "public": {
@@ -10368,6 +10594,18 @@
       },
       "template": {
         "select": "Выбирать"
+      },
+      "runtime_badges": {
+        "expiring_soon": "Expiring soon",
+        "satisfies_requirement": "Satisfies requirement"
+      },
+      "runtime_filters": {
+        "expired": "Expired",
+        "expiring_soon": "Expiring soon",
+        "missing": "Missing",
+        "pending_review": "Pending review",
+        "rejected": "Rejected",
+        "satisfied": "Satisfied"
       }
     },
     "integrations_hub": {
@@ -11451,7 +11689,8 @@
         "create": "Не удалось создать форму",
         "save": "Не удалось сохранить форму",
         "copy": "Не удалось скопировать"
-      }
+      },
+      "configure": "Configure"
     },
     "tenant_links": {
       "header_kicker": "Связь вашего воркспейса с организациями клиентов и правила передачи.",
@@ -11724,6 +11963,62 @@
         "saving": "Сохранение…",
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Введите вариант и нажмите Enter"
+      }
+    },
+    "intake_forms": {
+      "header_kicker": "Intake sources",
+      "detail_title": "Intake form",
+      "detail_subtitle": "Read-only view of Entity Profile, presentation fields, public link, and submit pipeline. UI does not create canon.",
+      "back_list": "All intake forms",
+      "copy": "Copy",
+      "open_public": "Open",
+      "open_lead": "Open lead",
+      "preview_empty": "No fields",
+      "preview_hint": "Display-only fields returned by Form Presentation Runtime — not editable in P6.",
+      "inactive_hint": "Activate the form in list settings before sharing or smoke testing.",
+      "smoke_hint": "Creates a test Lead draft using the same pipeline as public intake. Verifies no direct Candidate INSERT.",
+      "smoke_run": "Send test lead draft",
+      "sections": {
+        "form": "Lead form slot",
+        "entity_profile": "Entity Profile",
+        "intake_source": "Intake Source profile",
+        "preview": "Field preview (P5A runtime)",
+        "submit": "Submit destination",
+        "public_link": "Public link",
+        "smoke": "Smoke test submit"
+      },
+      "fields": {
+        "status": "Status",
+        "slug": "Public slug",
+        "profile_code": "Profile code",
+        "profile_name": "Name",
+        "presentation": "Presentation",
+        "route_intent": "Route intent",
+        "provider": "Provider",
+        "assignee": "Default assignee"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "label": "Label",
+        "field": "Field code",
+        "level": "Intake level",
+        "widget": "Widget"
+      },
+      "submit": {
+        "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
+        "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"
+      },
+      "toast": {
+        "copied": "Copied",
+        "smoke_ok": "Smoke test lead draft created"
+      },
+      "errors": {
+        "load_detail": "Failed to load intake form",
+        "copy": "Could not copy",
+        "smoke": "Smoke test failed"
       }
     }
   }
