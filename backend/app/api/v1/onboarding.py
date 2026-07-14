@@ -20,6 +20,7 @@ from backend.app.services.onboarding_demo_seed import (
     onboarding_demo_still_active,
     seed_onboarding_demo_if_needed,
 )
+from backend.app.services.recruitment_setup_readiness import evaluate_recruitment_setup_readiness
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -629,4 +630,82 @@ async def get_onboarding_wizard_first_lead(
         nba_id=nba_id,
         leads_url=f"{LEADS}/?focus={lead.id}",
         demo_seeded=demo_active,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Recruitment setup readiness (Flow 1 gates G0–G8)
+# ---------------------------------------------------------------------------
+
+
+class SetupReadinessGateOut(BaseModel):
+    id: str
+    status: Literal["pass", "fail", "not_applicable"]
+    applicable: bool
+    blocker_text: str | None = None
+
+
+class SetupReadinessNextActionOut(BaseModel):
+    gate_id: str
+    label_key: str
+    handler_ref: str
+
+
+class SetupReadinessSnapshotOut(BaseModel):
+    scope: str
+    ready: bool
+    business_type: Literal["agency", "employer", "services"]
+    gates: list[SetupReadinessGateOut]
+    blockers: list[str]
+    next_action: SetupReadinessNextActionOut | None = None
+
+
+class CandidateIntakeManualOut(BaseModel):
+    manual_intake_declared: bool
+    setup_ready: bool
+
+
+@router.get("/setup-readiness", response_model=SetupReadinessSnapshotOut)
+async def get_setup_readiness(
+    _user: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+    own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
+):
+    db, tenant_uuid = db_tenant
+    snapshot = await evaluate_recruitment_setup_readiness(
+        db,
+        tenant_id=str(tenant_uuid),
+        own_company_id=own_company_id,
+    )
+    return SetupReadinessSnapshotOut.model_validate(snapshot.to_dict())
+
+
+@router.post("/setup/candidate-intake/manual", response_model=CandidateIntakeManualOut)
+async def declare_manual_candidate_intake(
+    _user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    db_tenant=Depends(get_db_with_tenant),
+    own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant_row = await db.execute(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+    tenant = tenant_row.scalar_one_or_none()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    settings = dict(tenant.settings or {})
+    setup = dict(settings.get("setup") or {})
+    setup["manual_intake_declared"] = True
+    settings["setup"] = setup
+    tenant.settings = settings
+    await db.commit()
+
+    snapshot = await evaluate_recruitment_setup_readiness(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+    )
+    return CandidateIntakeManualOut(
+        manual_intake_declared=True,
+        setup_ready=snapshot.ready,
     )
