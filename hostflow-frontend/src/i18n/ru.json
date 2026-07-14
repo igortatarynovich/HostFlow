@@ -9479,6 +9479,14 @@
         "next_step": "Следующий шаг",
         "next_step_hint": "Мы подсказали, куда перейти в первую очередь.",
         "start_step": "Перейти"
+      },
+      "presentation": {
+        "fields": {
+          "recruitment.candidate.first_name": "Имя"
+        },
+        "profiles": {
+          "recruitment.candidate.office_worker": "Офисный сотрудник"
+        }
       }
     },
     "status_page": {

@@ -9461,6 +9461,14 @@
         "in_progress": "W trakcie rozwoju",
         "loading": "Ładowanie danych...",
         "saving": "Zapisywanie..."
+      },
+      "presentation": {
+        "fields": {
+          "recruitment.candidate.first_name": "Imię"
+        },
+        "profiles": {
+          "recruitment.candidate.office_worker": "Pracownik biurowy"
+        }
       }
     },
     "status_page": {

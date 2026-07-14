@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 
 import * as apiClient from '../../../api/client'
 import type { Lead } from '../../../api/types'
@@ -38,10 +39,11 @@ function renderRail(opts: {
   const onLeadUpdated = opts.onLeadUpdated ?? vi.fn()
   const onRequestProcess = opts.onRequestProcess ?? vi.fn().mockResolvedValue(undefined)
   return render(
-    <I18nProvider initialLocale="en">
-      <PlanLimitModalProvider>
-        <ToastProvider>
-          <LeadIntakeDecisionRail
+    <MemoryRouter>
+      <I18nProvider initialLocale="en">
+        <PlanLimitModalProvider>
+          <ToastProvider>
+            <LeadIntakeDecisionRail
             lead={opts.lead}
             processing={false}
             routingBusy={false}
@@ -51,10 +53,11 @@ function renderRail(opts: {
             onConfirmRouting={vi.fn()}
             onPool={vi.fn()}
             layout="panel"
-          />
-        </ToastProvider>
-      </PlanLimitModalProvider>
-    </I18nProvider>,
+            />
+          </ToastProvider>
+        </PlanLimitModalProvider>
+      </I18nProvider>
+    </MemoryRouter>,
   )
 }
 

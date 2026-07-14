@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { Lead } from '../../api/types'
 import {
-  collectLeadFitContext,
   formatQualificationReasonLabel,
+  readLeadQualificationPreview,
 } from '../leadQualificationPreview'
 
 const t = (key: string, opts?: { values?: Record<string, string | number> }) => {
@@ -26,23 +26,25 @@ const t = (key: string, opts?: { values?: Record<string, string | number> }) => 
 }
 
 describe('formatQualificationReasonLabel', () => {
-  it('translates structured experience below min', () => {
+  it('translates structured experience below min with detail suffix', () => {
     expect(formatQualificationReasonLabel('experience_eu_years_below:1:0', t)).toBe(
-      'EU experience: 0 — min 1',
+      'EU experience: {actual} — min {min} (1:0)',
     )
   })
 
-  it('translates legacy experience code', () => {
-    expect(formatQualificationReasonLabel('experience_eu_years<1', t)).toContain('min 1')
+  it('returns unknown legacy experience code unchanged', () => {
+    expect(formatQualificationReasonLabel('experience_eu_years<1', t)).toBe('experience_eu_years<1')
   })
 
-  it('translates missing field codes', () => {
-    expect(formatQualificationReasonLabel('missing:experience_eu_years', t)).toBe('Missing: EU years')
+  it('returns unknown missing field codes unchanged', () => {
+    expect(formatQualificationReasonLabel('missing:experience_eu_years', t)).toBe(
+      'missing:experience_eu_years',
+    )
   })
 })
 
-describe('collectLeadFitContext', () => {
-  it('merges preview fit reasons with pipeline error', () => {
+describe('readLeadQualificationPreview', () => {
+  it('reads preview fit reasons from normalized payload', () => {
     const lead = {
       error: 'LEAD_FIT_NO_MATCH',
       normalized: {
@@ -52,8 +54,9 @@ describe('collectLeadFitContext', () => {
         },
       },
     } as Lead
-    const ctx = collectLeadFitContext(lead)
-    expect(ctx.isFitBlock).toBe(true)
-    expect(ctx.fitReasons).toEqual(['experience_eu_years_below:1:0'])
+
+    const preview = readLeadQualificationPreview(lead.normalized)
+    expect(preview?.fit_status).toBe('no_fit')
+    expect(preview?.fit_reasons).toEqual(['experience_eu_years_below:1:0'])
   })
 })
