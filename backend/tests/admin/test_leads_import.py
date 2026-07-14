@@ -46,7 +46,12 @@ async def test_leads_import_sync_creates_leads(client, manager_headers, tenant_i
     )
     assert response.status_code == 202, response.text
     body = response.json()
-    assert body["status"] == "completed"
+    assert body["status"] == "completed", {
+        "status": body.get("status"),
+        "error_report": body.get("error_report"),
+        "failed_rows": body.get("failed_rows"),
+        "body": body,
+    }
     assert body["success_rows"] == 2
     assert body["duplicate_rows"] == 0
     assert body["failed_rows"] == 0
@@ -89,7 +94,11 @@ async def test_leads_import_sync_idempotent(client, manager_headers, tenant_id):
     )
     assert first.status_code == 202, first.text
     first_body = first.json()
-    assert first_body["status"] == "completed", first_body
+    assert first_body["status"] == "completed", {
+        "status": first_body.get("status"),
+        "error_report": first_body.get("error_report"),
+        "body": first_body,
+    }
     assert first_body["success_rows"] == 2, first_body
 
     files = {"file": ("leads.csv", csv_body, "text/csv")}

@@ -67,7 +67,7 @@ async def get_db_with_meta_leads_effective_tenant(
 
     if str(effective_uuid) != raw:
         er = require_elevated_reason_or_raise(
-            elevated_reason,
+            reason=elevated_reason,
             detail=(
                 "X-HostFlow-Elevated-Reason is required when Meta leads DB tenant "
                 "differs from X-Tenant-Id (operational remap)"

@@ -27,6 +27,9 @@ class UserInvite(Base, TimestampMixin):
     supervisor_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    org_unit_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("org_units.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     companies: Mapped[Optional[list[str]]] = mapped_column(
         JSONType, nullable=True, default=list
     )

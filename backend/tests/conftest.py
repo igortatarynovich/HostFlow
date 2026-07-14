@@ -186,7 +186,51 @@ from backend.app.main import app  # noqa: E402
 from backend.app.models.user import Role as UserRole  # noqa: E402
 from backend.app.models.user import User  # noqa: E402
 from backend.app.models import Candidate  # noqa: E402
+from backend.app.models.lead import MetaLeadCredential, MetaLeadSettings  # noqa: E402
 from backend.app.models.tenant import TenantLicense  # noqa: E402
+from backend.app.models.tenant_lead_form import TenantLeadForm  # noqa: E402
+
+# users._ensure_role_seat_available treats limit<=0 as "no seats"; tenant_limits DTO uses 0 as unlimited.
+_TEST_TENANT_SEAT_ENTITLEMENTS: Dict[str, int] = {
+    "max_recruiters": 50,
+    "max_supervisors": 20,
+    "max_client_managers": 20,
+    "max_viewers": 20,
+}
+
+
+def _apply_test_tenant_license_entitlements(lic: TenantLicense) -> None:
+    """Generous seat caps + pro bucket for integration tests (not testing billing gates)."""
+    lic.plan = (lic.plan or "pro").strip() or "pro"
+    for attr, floor in _TEST_TENANT_SEAT_ENTITLEMENTS.items():
+        if int(getattr(lic, attr, 0) or 0) <= 0:
+            setattr(lic, attr, floor)
+    lic.max_vacancies_active = 0
+    lic.max_candidates_active = 0
+    lic.max_documents = 0
+
+
+async def _reset_default_tenant_lead_sources(session) -> None:
+    """Isolate DEFAULT_TENANT_ID lead-source count across the full pytest session."""
+    tid = DEFAULT_TENANT_ID
+    await session.execute(
+        sa.delete(MetaLeadCredential).where(MetaLeadCredential.tenant_id == tid)
+    )
+    await session.execute(
+        sa.delete(TenantLeadForm).where(TenantLeadForm.tenant_id == tid)
+    )
+    await session.execute(
+        sa.update(MetaLeadSettings)
+        .where(MetaLeadSettings.tenant_id == tid)
+        .values(generic_inbound_webhook_secret=None)
+    )
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _isolate_default_tenant_lead_sources() -> None:
+    async with async_session_maker() as session:
+        await _reset_default_tenant_lead_sources(session)
+        await session.commit()
 
 
 @pytest.fixture(autouse=True)
@@ -528,7 +572,7 @@ async def _init_data() -> Dict[str, str]:
             )
             candidate_id = candidate_row.scalar_one_or_none()
             # Candidate.created_at/updated_at are naive UTC columns.
-            now = datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None)
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             if candidate_id is None:
                 candidate_id = str(uuid.uuid4())
                 await session.execute(
@@ -584,18 +628,18 @@ async def _init_data() -> Dict[str, str]:
             )
             lic = lic_row.scalar_one_or_none()
             if lic is None:
-                session.add(
-                    TenantLicense(
-                        id=str(uuid.uuid4()),
-                        tenant_id=DEFAULT_TENANT_ID,
-                        plan="team",
-                    )
+                lic = TenantLicense(
+                    id=str(uuid.uuid4()),
+                    tenant_id=DEFAULT_TENANT_ID,
+                    plan="pro",
+                    **_TEST_TENANT_SEAT_ENTITLEMENTS,
                 )
+                _apply_test_tenant_license_entitlements(lic)
+                session.add(lic)
             else:
-                lic.max_vacancies_active = 0
-                lic.max_candidates_active = 0
-                # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.
-                lic.max_documents = 0
+                _apply_test_tenant_license_entitlements(lic)
+
+            await _reset_default_tenant_lead_sources(session)
 
             await session.commit()
 

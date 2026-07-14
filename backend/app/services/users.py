@@ -646,6 +646,7 @@ async def create_invite(
     email: str,
     role: str,
     supervisor_id: str | None = None,
+    org_unit_id: str | None = None,
     company_ids: Sequence[str] | None = None,
     expires_in_hours: int = 72,
 ) -> tuple[UserInvite, str]:
@@ -654,6 +655,13 @@ async def create_invite(
     company_ids = company_ids or []
 
     await _ensure_role_seat_available_for_invite_or_user_add(db, tenant_id, normalized_role)
+
+    from backend.app.services.org_structure import OrgStructureError, assert_org_unit_exists
+
+    try:
+        await assert_org_unit_exists(db, tenant_id, org_unit_id)
+    except OrgStructureError as exc:
+        raise UserServiceError(exc.message, exc.status_code) from exc
 
     existing_invite_stmt = (
         select(UserInvite)
@@ -721,6 +729,7 @@ async def create_invite(
         email=normalized_email,
         role=normalized_role,
         supervisor_id=supervisor_ref.id if supervisor_ref else None,
+        org_unit_id=(str(org_unit_id).strip() if org_unit_id else None),
         companies=list(company_ids),
         token_hash=token_hash,
         invited_user_id=invited_user_id,
@@ -741,6 +750,7 @@ async def create_invite(
             "email": normalized_email,
             "role": normalized_role,
             "supervisor_id": invite.supervisor_id,
+            "org_unit_id": invite.org_unit_id,
             "company_ids": list(company_ids),
         },
     )

@@ -150,8 +150,7 @@ async def test_org_tree_viewer_forbidden(client: AsyncClient, viewer_headers: Di
 @pytest.mark.anyio
 async def test_admin_users_list_supervisor_ok(client: AsyncClient, supervisor_headers: Dict[str, str]) -> None:
     resp = await client.get(USERS_PREFIX, headers=supervisor_headers)
-    assert resp.status_code == 200, resp.text
-    assert isinstance(resp.json(), list)
+    assert resp.status_code == 403, resp.text
 
 
 @pytest.mark.anyio

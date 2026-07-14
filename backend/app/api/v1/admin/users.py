@@ -24,7 +24,10 @@ from backend.app.schemas.user import (
     UserUpdateRole,
     UserAuditOut,
 )
+from backend.app.schemas.org_structure import UserOrgUnitsAssign
 from backend.app.services import billing_restrictions, users as users_service
+from backend.app.services.org_structure import OrgStructureError
+from backend.app.services import org_structure as org_structure_service
 from backend.app.services.users import UserServiceError
 
 router = APIRouter(
@@ -44,6 +47,10 @@ def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
 
 def _handle_service_error(exc: UserServiceError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _handle_org_structure_error(exc: OrgStructureError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
 @router.get(
@@ -157,6 +164,7 @@ async def create_invite(
             email=payload.email,
             role=payload.role.value,
             supervisor_id=payload.supervisor_id,
+            org_unit_id=payload.org_unit_id,
             company_ids=payload.company_ids,
             expires_in_hours=payload.expires_in_hours,
         )
@@ -198,6 +206,7 @@ async def create_invite(
         status="pending",
         invited_user_id=invite.invited_user_id,
         supervisor_id=invite.supervisor_id,
+        org_unit_id=invite.org_unit_id,
         company_ids=list(invite.companies or []),
     )
 
@@ -256,6 +265,38 @@ async def update_role(
         await db.rollback()
         _handle_service_error(exc)
     return UserOut(**entry)
+
+
+@router.patch(
+    "/{user_id}/org-units",
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def update_user_org_units(
+    user_id: str,
+    payload: UserOrgUnitsAssign,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    try:
+        await users_service.get_user_detail(db, tenant_id=tenant_id, user_id=user_id)
+        await org_structure_service.set_user_org_units(
+            db,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            org_unit_ids=payload.org_unit_ids,
+        )
+        await db.commit()
+    except UserServiceError as exc:
+        await db.rollback()
+        _handle_service_error(exc)
+    except OrgStructureError as exc:
+        await db.rollback()
+        _handle_org_structure_error(exc)
+    units = await org_structure_service.list_user_org_units(db, tenant_id=tenant_id, user_id=user_id)
+    return {"org_units": units}
 
 
 @router.patch(

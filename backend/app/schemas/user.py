@@ -22,6 +22,7 @@ class UserCreateInvite(BaseModel):
     email: EmailStr
     role: UserRole
     supervisor_id: str | None = Field(default=None)
+    org_unit_id: str | None = Field(default=None)
     company_ids: Sequence[str] = Field(default_factory=list)
     expires_in_hours: int = Field(
         default=72,
@@ -87,6 +88,7 @@ class UserInviteOut(BaseModel):
     status: Literal["pending", "accepted", "revoked"]
     invited_user_id: str | None = None
     supervisor_id: str | None = None
+    org_unit_id: str | None = None
     company_ids: list[str] = Field(default_factory=list)
 
 
