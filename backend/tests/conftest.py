@@ -461,6 +461,25 @@ async def _init_data() -> Dict[str, str]:
             await ensure_membership(recruiter.id, "recruiter")
             await ensure_membership(hr_officer.id, "hr_officer")
 
+            own_company_row = await session.execute(
+                sa.text("SELECT id FROM own_companies WHERE tenant_id = :tenant LIMIT 1"),
+                {"tenant": DEFAULT_TENANT_ID},
+            )
+            if own_company_row.scalar_one_or_none() is None:
+                await session.execute(
+                    sa.text(
+                        """
+                        INSERT INTO own_companies (id, tenant_id, name)
+                        VALUES (:id, :tenant_id, :name)
+                        """
+                    ),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "tenant_id": DEFAULT_TENANT_ID,
+                        "name": "HostFlow Operating Co",
+                    },
+                )
+
             result = await session.execute(
                 sa.text(
                     "SELECT id FROM companies WHERE tenant_id = :tenant LIMIT 1"
