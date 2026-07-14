@@ -160,7 +160,7 @@ def main() -> None:
             )
         )
     elif batch_mode or args.audit_only:
-        if not args.tenant_id and not args.candidate_ids:
+        if not args.tenant_id and not args.candidate_ids and args.apply:
             raise SystemExit("Batch mode requires --tenant-id or --candidate-ids")
         payload = asyncio.run(_run_batch_cli(args))
     else:
