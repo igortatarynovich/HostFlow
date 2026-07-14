@@ -5,7 +5,7 @@
 **Owner (engineering):** Platform / Entity Profile + Recruitment module  
 **Owner (product / ops):** Recruitment agency intake
 
-**Related:** [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) P5C, [public_intake_draft_session.py](../../backend/app/entity_profile/public_intake_draft_session.py)
+**Related:** [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) P5C, [public_intake_draft_session.py](../../../backend/app/entity_profile/public_intake_draft_session.py)
 
 ---
 
