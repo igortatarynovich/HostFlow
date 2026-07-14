@@ -472,12 +472,14 @@ async def _init_data() -> Dict[str, str]:
                 company_id = str(uuid.uuid4())
                 await session.execute(
                     sa.text(
-                        "INSERT INTO companies (id, tenant_id, name) VALUES (:id, :tenant_id, :name)"
+                        "INSERT INTO companies (id, tenant_id, name, party_entity_type) "
+                        "VALUES (:id, :tenant_id, :name, :party_entity_type)"
                     ),
                     {
                         "id": company_id,
                         "tenant_id": DEFAULT_TENANT_ID,
                         "name": "Test Logistics Sp. z o.o.",
+                        "party_entity_type": "company",
                     },
                 )
 
