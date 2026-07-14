@@ -59,7 +59,7 @@ Secondary entry (later):
   - service_family: targeted_advertising (preset)
   - line items table
   - notes_client
-  - valid_until picker
+  - valid_until picker (draft version — frozen on send)
         ↓ «Отправить клиенту»
 [Send confirmation modal]
   - shows scope_snapshot summary
@@ -98,7 +98,7 @@ Secondary entry (later):
 |--------|-----------------|----------|
 | draft | Save, Send | Accept, Revise |
 | revision_draft | Save, Send | Accept |
-| sent | Accept, Reject, Expire, Revise | Edit sent version |
+| sent | Accept (latest only), Reject, Expire, Revise | Edit sent version; accept older round blocked |
 | accepted | View only | All mutations |
 | rejected | Revise, View history | Accept until new send |
 | expired | Revise, View history | Accept until new send |

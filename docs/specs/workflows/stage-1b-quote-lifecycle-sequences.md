@@ -1,124 +1,49 @@
 # Stage 1B — Quote Lifecycle Sequences
 
-**Status:** design-first (revision 2)  
-**Parent:** [`stage-1b-quote-foundation-implementation-contract.md`](../tasks/stage-1b-quote-foundation-implementation-contract.md)
+**Status:** design-first (revision 3)
 
 ---
 
-## 1. Create draft quote
+## 1. Send v2 after revise (valid_until + supersede)
 
 ```mermaid
 sequenceDiagram
-    actor M as Manager
-    participant API as Quotes API
     participant SVC as QuoteService
     participant DB as PostgreSQL
 
-    M->>API: POST /api/v1/quotes
-    API->>SVC: create_quote()
-    SVC->>DB: INSERT quote (status=draft, lock_version=1)
-    SVC->>DB: INSERT quote_version (v1, version_status=draft)
-    SVC->>DB: UPDATE quote.current_version_id (deferred FK)
-    SVC-->>API: QuoteOut
-    API-->>M: 201
+    Note over SVC,DB: v1 already sent with valid_until=T1
+
+    SVC->>DB: send v2
+    SVC->>DB: v2.valid_until=T2 frozen, v2.sent_at=now
+    SVC->>DB: v1.version_status=superseded (valid_until T1 unchanged)
+    SVC->>DB: quote.last_sent_at, current_valid_until=T2
 ```
 
 ---
 
-## 2. Send quote (freeze version)
-
-```mermaid
-sequenceDiagram
-    actor M as Manager
-    participant API as Quotes API
-    participant SVC as QuoteService
-    participant DB as PostgreSQL
-
-    M->>API: POST /quotes/{id}/send  If-Match: lock_version
-    API->>SVC: send_quote()
-    SVC->>DB: SELECT quote FOR UPDATE
-    SVC->>SVC: assert own_company_id, currency, money rules
-    SVC->>DB: UPDATE version SET version_status=sent, sent_at=now(), snapshot frozen
-    SVC->>DB: UPDATE quote SET status=sent, lock_version++
-    API-->>M: 200 QuoteOut
-```
-
----
-
-## 3. Counter-offer (revise)
-
-```mermaid
-sequenceDiagram
-    actor M as Manager
-    participant API as Quotes API
-    participant SVC as QuoteService
-    participant DB as PostgreSQL
-
-    Note over M,DB: Quote status sent | rejected | expired
-
-    M->>API: POST /quotes/{id}/revise  If-Match: lock_version
-    API->>SVC: revise_quote()
-    SVC->>DB: SELECT quote FOR UPDATE
-    SVC->>DB: INSERT quote_version (vN+1, version_status=draft)
-    SVC->>DB: UPDATE quote SET status=revision_draft, current_version_id=vN+1
-    API-->>M: 200 QuoteOut (v1..vN sent rows unchanged)
-```
-
----
-
-## 4. Accept specific sent version
-
-```mermaid
-sequenceDiagram
-    actor M as Manager
-    participant API as Quotes API
-    participant SVC as QuoteService
-    participant DB as PostgreSQL
-
-    M->>API: POST /quotes/{id}/accept {version_id, acceptance_source}
-    API->>SVC: accept_quote()
-    SVC->>DB: SELECT quote FOR UPDATE
-    alt version not sent or wrong quote
-        API-->>M: 409 stale_version
-    else
-        SVC->>DB: UPDATE quote SET status=accepted, accepted_version_id, accepted_by_user_id
-        API-->>M: 200 (Sale terminal — no Service Order)
-    end
-```
-
----
-
-## 5. Reject → revise (same thread)
+## 2. Accept — latest sent only
 
 ```mermaid
 sequenceDiagram
     actor M as Manager
     participant API as Quotes API
 
-    M->>API: POST /quotes/{id}/reject
-    API-->>M: 200 status=rejected
-    M->>API: POST /quotes/{id}/revise
-    API-->>M: 200 status=revision_draft, new draft version
-    Note over M,API: Same quote_id — negotiation continues
+    M->>API: POST /accept {version_id: v1_id}
+    Note over API: v2 is latest sent
+    API-->>M: 409 stale_version
+
+    M->>API: POST /accept {version_id: v2_id}
+    API-->>M: 200 accepted_version_id=v2
 ```
 
 ---
 
-## 6. Quote → Service Order (next PR)
+## 3. Expire
 
-```mermaid
-sequenceDiagram
-    participant API as Orders API
-    participant DB as PostgreSQL
-
-    Note over API,DB: Preconditions: status=accepted, accepted_version_id set
-
-    API->>DB: COPY accepted_version.scope_snapshot → service_order
-    Note over API,DB: Quote row unchanged
-```
+Checks `latest_sent_version.valid_until`, sets `last_expired_at`.
 
 ---
 
-## 7. Vertical isolation
+## 4. Reject → revise (same quote_id)
 
-Quote sequences do not touch intake/provisioning (`provision_targeted_advertising_*`, questionnaire invite).
+Negotiation continues without new Quote aggregate.
