@@ -508,7 +508,8 @@ async def _init_data() -> Dict[str, str]:
                 {"tenant": DEFAULT_TENANT_ID},
             )
             candidate_id = candidate_row.scalar_one_or_none()
-            now = datetime.now(timezone.utc)
+            # Candidate.created_at/updated_at are naive UTC columns.
+            now = datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None)
             if candidate_id is None:
                 candidate_id = str(uuid.uuid4())
                 await session.execute(
