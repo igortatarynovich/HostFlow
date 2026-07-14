@@ -420,6 +420,18 @@ async def create_or_reuse_public_intake_lead_draft(
     if is_client and not own_company_id:
         raise ValueError("own_company_id is required for client intake draft")
 
+    if not is_client and company_id:
+        from backend.app.services.launch_search_vacancy_setup import ensure_recruitment_funnels_for_company
+
+        try:
+            await ensure_recruitment_funnels_for_company(
+                db,
+                tenant_id=str(tenant_id),
+                company_id=str(company_id),
+            )
+        except Exception:
+            pass
+
     token = _generate_token()
     block = {
         "intake_token": token,

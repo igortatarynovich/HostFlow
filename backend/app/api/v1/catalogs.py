@@ -5,29 +5,32 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.reference.company_setup_catalogs import (
+    list_business_types,
+    list_first_modules,
+    list_industries,
+    list_platform_identities,
+    list_team_sizes,
+    list_vacancy_search_categories,
+)
+from backend.app.reference.geo_cities_catalog import list_cities
 from backend.app.constants.catalog_utils import (
     as_code_name_list,
     as_country_dial_list,
+    to_options_company_setup,
     to_options_countries,
     to_options_dial_codes,
     to_options_languages,
+    to_options_localized_catalog,
 )
-
-# константы и утилиты справочников
 from backend.app.constants.catalogs import COUNTRIES, LANGUAGES
 from backend.app.db.deps import get_db_with_tenant as get_db
 from backend.app.services import users as users_service
 from fastapi import APIRouter, Depends, Query
 
-
-# backend/app/api/v1/catalogs.py
-
-
-
-
 router = APIRouter()
 
-# ===================== Countries =====================
+
 @router.get("/catalogs/countries")
 async def list_countries():
     return as_code_name_list(COUNTRIES)
@@ -38,7 +41,6 @@ async def list_countries_options():
     return to_options_countries()
 
 
-# ===================== Languages =====================
 @router.get("/catalogs/languages")
 async def list_languages():
     return [{"code": x["code"], "name": x["name"]} for x in LANGUAGES]
@@ -49,7 +51,6 @@ async def list_languages_options():
     return to_options_languages()
 
 
-# ===================== Dial codes =====================
 @router.get("/catalogs/dial-codes")
 async def list_dial_codes():
     return as_country_dial_list()
@@ -60,7 +61,61 @@ async def list_dial_codes_options():
     return to_options_dial_codes()
 
 
-# ===================== Managers (через memberships, кросс-СУБД) =====================
+@router.get("/catalogs/industries/options")
+async def list_industries_options():
+    return to_options_localized_catalog(list_industries())
+
+
+@router.get("/catalogs/team-sizes/options")
+async def list_team_sizes_options(
+    onboarding: bool = Query(False, description="Use onboarding wizard bucket sizes"),
+):
+    return to_options_localized_catalog(list_team_sizes(onboarding=onboarding))
+
+
+@router.get("/catalogs/business-types/options")
+async def list_business_types_options():
+    return to_options_localized_catalog(list_business_types())
+
+
+@router.get("/catalogs/platform-identities/options")
+async def list_platform_identities_options():
+    return to_options_localized_catalog(list_platform_identities())
+
+
+@router.get("/catalogs/first-modules/options")
+async def list_first_modules_options():
+    return to_options_localized_catalog(list_first_modules())
+
+
+@router.get("/catalogs/vacancy-categories/options")
+async def list_vacancy_categories_options(
+    launch_search_only: bool = Query(False, description="Only categories supported by launch-search wizard"),
+):
+    return to_options_localized_catalog(
+        list_vacancy_search_categories(launch_search_only=launch_search_only)
+    )
+
+
+@router.get("/catalogs/cities/options")
+async def list_cities_options(
+    country: str | None = Query(None, description="ISO alpha-2 country code"),
+):
+    return to_options_localized_catalog(list_cities(country_code=country))
+
+
+@router.get("/catalogs/company-setup/options")
+async def list_company_setup_options():
+    return to_options_company_setup(
+        countries=to_options_countries(),
+        industries=to_options_localized_catalog(list_industries()),
+        team_sizes=to_options_localized_catalog(list_team_sizes(onboarding=False)),
+        platform_identities=to_options_localized_catalog(list_platform_identities()),
+        first_modules=to_options_localized_catalog(list_first_modules()),
+        business_types=to_options_localized_catalog(list_business_types()),
+    )
+
+
 @router.get("/catalogs/managers")
 async def list_managers(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db),
@@ -73,10 +128,6 @@ async def list_managers(
         ),
     ),
 ):
-    """
-    Менеджеры/рекрутеры в текущем тенанте (X-Tenant-Id).
-    Источник: user_memberships; только пользователи без deleted_at и с is_active.
-    """
     db, tenant_uuid = db_tenant
     role_list = (
         [p.strip() for p in roles.split(",") if p.strip()] if roles and roles.strip() else None
