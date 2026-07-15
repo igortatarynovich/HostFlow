@@ -187,6 +187,73 @@ Living ledger. Update on every Foundation merge.
 
 ---
 
+### §0.4 Product B walkthrough gaps (G-B-*)
+
+Walkthrough-specific gaps discovered during §20-style staging verification. Each gap → **one PR** → full walkthrough re-run. Do **not** paper over with frontend API suppression.
+
+| Gap | Step(s) | Summary | Status |
+|-----|---------|---------|--------|
+| G-B-01 | F3-B-01 | Channel id meta vs `intake_routing_v1` | **closed** |
+| G-B-02 | F3-B-01 | Channel inbox filter | **closed** |
+| G-B-03 | F3-B-05 / A12 | Structured answers UI on inquiry work page | **closed** (#24) |
+| G-B-04 | F3-B-06 / A13 | Submission attribution panel | **closed** (#25) |
+| **G-B-05** | Form editor / provisioning | **Targeted-advertising Entity Profile registry on services tenants** | **open** |
+
+#### G-B-05 — targeted-advertising Entity Profile available for every services tenant
+
+**Symptom (staging, 2026-07-15):** Manager opens form editor from inquiry attribution link and clicks **Load platform preset**. Console shows:
+
+```text
+GET …/settings/intake-forms/entity-profiles/service_sales.targeted_advertising/fields → 404
+GET …/settings/intake-forms/entity-profiles/service_sales.targeted_advertising/presentation-preset → 404
+```
+
+**Not a G-B-04 regression:** form title and attribution work via `listLeadForms` fallback; answers panel tolerates missing registry via submission snapshot. **Form constructor** (`IntakeFormPresentationEditor`) requires registry-backed catalog + preset.
+
+**Observed state on affected tenant:**
+
+| Artifact | Present? |
+|----------|------------|
+| `TenantLeadForm` (e.g. B1 Acceptance Form) | yes |
+| Submission snapshot (`submissions_v1`, answers) | yes |
+| `EpEntityProfile` `service_sales.targeted_advertising` for tenant | **no** → `resolution_source: not_found` |
+| Presentation preset in registry | **no** |
+| Field catalog API | **404** |
+
+**Root cause (investigation):**
+
+1. **Deployment drift — auto-seed not on Product B integration line.** Full provisioning lives on branch `feat/targeted-advertising-auto-seed` (commit `30edbcc2`), **not merged** into `feat/adr022-intake-policy-phase1-backend`. Integration line only has partial `ensure_tenant_targeted_advertising_intake_form` (creates `TenantLeadForm` + `IntakeSourceProfile` bindings) — it does **not** register Entity Profile + presentation into `EpEntityProfile` / `EpIntakePresentation` for the tenant.
+
+2. **Partial lazy seed on questionnaire list.** `list_questionnaire_forms_for_targeted_advertising` calls `ensure_tenant_targeted_advertising_intake_form` but that path never invokes `EntityProfileRegistry.register_profile*`.
+
+3. **Legacy / manually created forms.** Tenants with constructor-created forms (e.g. inactive B1 Acceptance Form) have form rows without registry rows — expected until recovery runs.
+
+**Implementation path (reuse — do not invent new mechanism):**
+
+| Asset | Location |
+|-------|----------|
+| `provision_targeted_advertising_capability` | `backend/app/entity_profile/provision_targeted_advertising.py` on `feat/targeted-advertising-auto-seed` |
+| `recover_targeted_advertising_capability` | same module (lazy ensure / repair) |
+| Repair CLI | `backend/scripts/repair_targeted_advertising_capability.py` — `python …/repair_targeted_advertising_capability.py <tenant_id>` |
+| Tenant-create hook | `provision_targeted_advertising_on_tenant_create` in same module |
+| Tests | `backend/tests/entity_profile/test_targeted_advertising_auto_seed.py` on auto-seed branch |
+
+**PR scope:** merge or cherry-pick auto-seed onto integration line; run repair on staging tenant; verify — **not** a frontend suppression PR.
+
+**Acceptance**
+
+1. New **services** tenant (onboarding) receives automatically: Entity Profile `service_sales.targeted_advertising`, presentation preset, field catalog, canonical targeted-advertising form (create-only).
+2. Existing tenant restored by **`repair_targeted_advertising_capability.py <tenant_id>`** without duplicating user-owned forms.
+3. `GET …/entity-profiles/service_sales.targeted_advertising/fields` → **200**.
+4. `GET …/entity-profiles/service_sales.targeted_advertising/presentation-preset` → **200**.
+5. **Load platform preset** in form editor UI succeeds (fields populated, success toast).
+6. Re-run provisioning/repair is **idempotent**: no duplicate slug forms, no overwrite of tenant-customized form title/presentation.
+7. After repair + page refresh: **no** 404 on the two endpoints above (browser extension noise excluded — verify incognito).
+
+**Walkthrough verify:** open inquiry → attribution form link → form editor → Load platform preset → save optional smoke.
+
+---
+
 | Step | User action | Foundation dependency | Operator gain (yesterday → today) | Status |
 |------|-------------|----------------------|-----------------------------------|--------|
 | **F1-A-01** | Signal in recruitment inbox | Intake + ADR-021 | Lead/candidate in correct inbox | **partial** |
@@ -566,6 +633,7 @@ MONETIZATION:
 
 | Date | Change |
 |------|--------|
+| 2026-07-15 | **G-B-05** opened — staging Entity Profile registry drift; auto-seed on `feat/targeted-advertising-auto-seed` not merged to integration line (§0.4) |
 | 2026-07-15 | Proven blocker rule + Foundation Debt register (§0.3); paydown within 1–2 PRs; max 2 consecutive Foundation |
 | 2026-07-15 | Agent rule `.cursor/rules/scenario-first-development.mdc` — proven blocker only, no "just in case" |
 | 2026-07-15 | Three-level model (Foundation / Scenario Step / Revenue Flow); Operator gain column; Foundation ≠ product progress rule |
