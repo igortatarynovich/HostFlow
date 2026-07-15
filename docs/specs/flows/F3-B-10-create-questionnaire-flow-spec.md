@@ -1,7 +1,7 @@
-# Flow Spec — F3-B-10: Create questionnaire (manager)
+# Flow Spec — F3-B-10: First working questionnaire (manager)
 
 **Status:** Draft — **user scenario first** (no implementation commitments)  
-**Date:** 2026-07-15  
+**Date:** 2026-07-15 (rev. 2)  
 **Persona:** Services tenant manager (Sales / client acquisition)  
 **Prerequisite:** Product B send → submit → answers path passable (F3-B-02..07)  
 **Related:** [release-revenue-flow-audit.md](../release-revenue-flow-audit.md), [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md), G-B-05 (Entity Profile registry on tenant)
@@ -10,269 +10,229 @@
 
 ## 1. Goal (user language)
 
-**Create a working questionnaire in 2–3 minutes** without learning platform concepts.
+**Real goal:** not «save a form record» — a **working tool** the manager can send to a client today.
+
+> **Менеджер создаёт первую рабочую анкету за 2–3 минуты, не понимая внутренних сущностей платформы.**
+
+**PR pass/fail rule:** if walkthrough requires explaining Entity Profile, Preset, Purpose, or Submission Policy — **PR failed**, even when backend is correct.
 
 | Yesterday | Today (target) |
 |-----------|----------------|
-| Manager sees Entity Profile, Purpose, preset, routing, slug — and closes the screen | Manager picks *what business case the form is for*, edits ready-made questions, saves |
-| «Did I land in the right place?» after choosing B2B | Each choice visibly changes the suggested questions |
-| Mixed EN/RU/keys in labels | One locale; human labels only |
+| Platform assembly kit (Purpose → Profile → preset → fields → routing) | Pick **direction** → tweak questions → save → **see what to do next** |
+| «Save» and silence — «what now?» | Post-save **questionnaire card** with obvious actions |
+| «Create form» from empty catalog | **Capability** spawns pre-filled questionnaire; custom path is advanced |
+| Mixed locales / field keys | One locale; human labels only |
 
-**Success criteria (walkthrough):**
+**End-to-end success (F3-B-10 walkthrough):**
 
-1. Manager opens Settings → Forms → **Create questionnaire**.
-2. Picks business intent in plain language (no «Purpose»).
-3. If needed, picks **service line** (one card = one bundled capability).
-4. Lands in editor **with questions already selected** (not empty catalog).
-5. Adjusts title, toggles/adds/removes questions, previews, saves.
-6. Form appears in Sales picker and can be sent on an inquiry (reuse F3-B-02..04).
+1. «Создать анкету» → pick **Таргетированная реклама** (not «create from scratch»).
+2. Editor opens **with questions already on**; manager adjusts title if needed.
+3. Preview → Save.
+4. **Questionnaire card** opens automatically — status Active, clear actions.
+5. Manager copies link or goes to Sales → sends on inquiry (F3-B-02).
+6. Client submits; answers on same inquiry (F3-B-04..06).
 
-**Non-goals for this flow:**
-
-- Designing Entity Profile manifests
-- Configuring submission policy / match rules manually
-- Choosing technical slug (auto-generated; advanced override optional later)
+**Non-goals:** manual policy/profile design; slug entry; empty-form wizard for 90% path.
 
 ---
 
-## 2. How the manager thinks (mental model)
+## 2. Primary object: Capability (not Form)
 
-The manager does **not** think:
+Manager never thinks «form». They think:
 
-- Entity Profile, Purpose, preset, routing, inbox, module, submission policy
+> «Мне нужна анкета для продажи таргетированной рекламы.»
 
-The manager **does** think:
+**Product chain (user-visible):**
 
-1. «I need a form clients will fill out»
-2. «Is this for a **company** or a **candidate**?»
-3. «**What are we selling / collecting?**» (targeted ads, drivers, survey, extra info on existing deal)
-4. «What questions should we ask?» (edit defaults)
-5. «Will answers show up where I work?» → yes, in **Sales inquiries** (one sentence, no paths)
+```text
+Capability (направление / услуга)
+    → Questionnaire (анкета — рабочий инструмент)
+    → Invite / public link (отправка)
+    → Submission (ответ клиента)
+    → Sales Inquiry (где менеджер работает)
+```
 
-**One user decision = one business capability**, not five platform knobs.
+**Platform chain (hidden):**
 
----
+```text
+Capability bundle
+    → entity_profile_code + presentation preset + purpose + submission_policy + routing
+    → TenantLeadForm + IntakeSourceProfile + presentation (implementation detail)
+```
 
-## 3. User flow (canonical steps)
-
-### Step 0 — Entry
-
-**Screen:** Settings → Lead forms / Questionnaires  
-**Action:** «Создать анкету» / «Create questionnaire»
-
----
-
-### Step 1 — What do you need the form for?
-
-Single question. Four options (manager language):
-
-| Option ID (internal) | User sees (RU example) | User sees (EN) |
-|----------------------|------------------------|----------------|
-| `company_inquiry` | Получить заявку от компании | Get an inquiry from a company |
-| `candidate_application` | Получить заявку от кандидата | Get an application from a candidate |
-| `follow_up_info` | Собрать дополнительную информацию | Collect additional information |
-| `survey` | Провести опрос | Run a survey |
-
-No word «Purpose». No cards with English-only hints.
-
-**System:** maps selection → internal `purpose` axis (ADR-022) **silently**.
+**Rule:** **Capability spawns the questionnaire** — not the other way around.  
+Form rows in DB are persistence; **Capability is the product noun** in UI.
 
 ---
 
-### Step 2 — What are you collecting? (conditional)
+## 3. Entry — no «create from scratch» by default
 
-Shown only when Step 1 needs a **service line** (e.g. `company_inquiry`, `follow_up_info` on services tenant).
+**Forbidden as primary CTA:** `Create form` (empty constructor).
 
-**Question:** «Какую услугу продаёте?» / «What service is this for?»
+**Primary CTA:** «Создать анкету» → **Выберите направление**
 
-Examples (capability catalog — business names only):
+| Card (Capability) | Who uses it |
+|-------------------|-------------|
+| Таргетированная реклама | services / B2B sales |
+| Найм водителей (C+E) | recruitment |
+| Другая услуга… | tenant catalog (filtered) |
+| **Создать свою** *(advanced)* | power users only — explicit secondary path |
 
-| Capability (user label) | Hidden bundle (platform) |
-|---------------------------|---------------------------|
-| Таргетированная реклама | `service_sales.targeted_advertising` + preset + sales routing |
-| Поиск водителей (C+E) | `recruitment.candidate.driver_ce` + preset + recruitment routing |
-| … | tenant-visible capabilities only |
+**90–95% path:** pick a ready Capability → system does the rest.  
+**«Создать свою»:** labeled advanced; may expose more controls later — **out of F3-B-10 v1** unless explicitly scoped.
 
-If Step 1 = `candidate_application` → skip to driver/recruitment capabilities (no B2B services list).
+Optional **Step A (type)** only when Capability catalog is ambiguous — e.g. same tenant sells services + recruitment:
 
-If Step 1 = `survey` → optional short path: «Краткий опрос» with minimal default template.
+- Получить заявку от **компании**
+- Получить заявку от **кандидата**
+- …  
 
-**System:** resolves **Capability** record (see §4). User never sees profile codes.
-
----
-
-### Step 3 — System configures everything (invisible)
-
-No screen. Automatic on entering Step 4:
-
-| Platform artifact | Source |
-|-------------------|--------|
-| Entity Profile | Capability → `entity_profile_code` |
-| Presentation preset | `GET …/presentation-preset` |
-| Purpose | Capability → `purpose` |
-| Submission policy | `default_submission_policy_for_entity_profile()` |
-| Route intent / inbox | `_intake_routing_for_entity_profile()` |
-| Default form title | Capability → suggested title (editable in Step 4) |
-| Public slug | auto from title (hidden; collision-safe) |
-
-User sees optional **one-line reassurance** (not a spec table):
-
-> «Ответы появятся в разделе **Обращения → Sales**. При отправке с заявки — прикрепятся к этой заявке.»
-
-No Module, Inbox path, Submission Policy, Match policy.
+Then filter Capability cards. Prefer **one screen** (direction = Capability) when tenant type is clear.
 
 ---
 
-### Step 4 — Editor (pre-filled)
+## 4. User flow — Part A: Create (F3-B-10a)
 
-**Not empty.** Preset fields already **included** (checkboxes on, sensible order).
+| # | Step | User sees | System (silent) |
+|---|------|-----------|-----------------|
+| 1 | Entry | «Создать анкету» | — |
+| 2 | Direction | Capability cards (§3) | Resolve capability bundle |
+| 3 | Questions | Editor, **pre-filled** preset | `presentation-preset`, auto-select fields |
+| 4 | Quality hint | 🟢/🟡/🔴 by question count (§7) | count selected fields |
+| 5 | Preview | Client view | public renderer / smoke token |
+| 6 | Save | «Сохранить» | `createIntakeForm`, activate |
 
-| Block | User sees |
-|-------|-----------|
-| Title | «Анкета — таргетированная реклама» (editable) |
-| Questions | Company, contact, phone, email, need, … — toggle, reorder, label edit, show-if (advanced collapsed) |
-| Add question | From catalog of **same capability** only (filtered) |
+**One-line reassurance** (editor only, not routing table):
 
-**Forbidden in default UX:**
+> «Ответы — в обращениях Sales. Если отправите с заявки — прикрепятся к ней.»
 
-- Second Entity Profile dropdown
-- «Load preset» button (preset already applied)
-- Column «Field code» / `qualified_code` (developer mode only)
-- Raw i18n keys as labels
-
----
-
-### Step 5 — Preview
-
-Client-facing preview (same renderer as public apply / invite). Language switch if form supports it.
+**Forbidden in default path:** Entity Profile, Purpose, Load preset, field codes, public slug, Module/Inbox/Policy rows.
 
 ---
 
-### Step 6 — Save
+## 5. User flow — Part B: Questionnaire card (F3-B-10b)
 
-**Primary:** «Сохранить и активировать»  
-**Result:** toast + redirect to form detail or back to list; form in Sales picker.
+**Trigger:** immediately after successful save — **auto-navigate**, no dead-end list.
 
-**On limit (402):** human message — what limit, what to do (deactivate unused form / billing), link to lead forms list + billing. Never «402» or internal codes alone.
+**Never ask:** «What now?»
+
+### Header
+
+```text
+Анкета «Таргетированная реклама»
+Статус: Активна
+```
+
+(Optional one line: «Направление: таргетированная реклама» — capability label, not profile code.)
+
+### Primary actions (large buttons)
+
+| Action | Behavior |
+|--------|----------|
+| **Отправить клиенту** | Deep link to Sales: pick recent inquiry or «choose inquiry» — reuses F3-B-02 send |
+| **Открыть публичную ссылку** | Opens public intake URL in new tab |
+| **Скопировать ссылку** | Clipboard + toast |
+| **Предпросмотр** | Same as wizard preview |
+| **Редактировать вопросы** | Back to editor (wizardMode off OK here — user already committed) |
+
+**Not on this card:** Policy, Profile, Routing, slug editor (advanced/settings collapse).
+
+### Secondary (footer / menu)
+
+- Деактивировать анкету  
+- Billing / limits (if near cap)
+
+**Walkthrough minimum for F3-B-10 PASS:** card visible + **Copy link** OR **Send from Sales** works without docs.
 
 ---
 
-### Step 7 — Done
-
-Manager can immediately open Sales inquiry → send this form (F3-B-02).
-
----
-
-## 4. Capability (product concept)
-
-**Capability** = one manager-facing choice that bundles everything the platform already splits today.
+## 6. Capability bundle (implementation map)
 
 ```text
 Capability (user-facing)
-  ├── label, description, icon
-  ├── business_type filter (services | recruitment | …)
-  ├── purpose (ADR-022)
-  ├── entity_profile_code
-  ├── presentation_code (preset)
-  ├── default_submission_policy
-  ├── routing defaults (sales vs recruitment)
-  ├── default_title, default_slug_prefix
-  ├── post_save_outcome_hint (one sentence)
-  └── entitlement / plan gate (optional)
+  ├── id, label, description, icon
+  ├── tenant_filter (business_type, entitlements)
+  ├── purpose (ADR-022) — hidden
+  ├── entity_profile_code — hidden
+  ├── presentation_code / preset — hidden
+  ├── default_submission_policy — hidden
+  ├── routing defaults — hidden
+  ├── default_title — suggested in editor
+  ├── default_slug_prefix — auto on save
+  ├── post_save_card_copy — card subtitle
+  └── spawns → Questionnaire (TenantLeadForm + intake stack)
 ```
 
-**Example — «Таргетированная реклама»:**
+**Example — Таргетированная реклама:** same bundle as `provision_targeted_advertising_capability` / G-B-05 auto-seed.
 
-| User picks once | Platform resolves |
-|-----------------|-------------------|
-| Таргетированная реклама | `service_sales.targeted_advertising`, `public_pl` preset, `inquiry`, `match_or_create`, Sales inbox, convert/reject actions |
-
-This is the same bundle `provision_targeted_advertising_capability` already creates for auto-seed — exposed as **one catalog row**, not eight decisions.
-
-**v1 catalog (minimal):**
-
-| Capability ID | User label | Tenant filter |
-|---------------|------------|---------------|
-| `targeted_advertising` | Targeted advertising / Таргетированная реклама | `business_type=services` |
-| `driver_ce` | Driver C+E application | recruitment / agency |
-| … | from tenant `listIntakeFormEntityProfiles` + manifest metadata | filtered |
-
-Catalog can start as **frontend registry** mapping to existing API; later move to backend `GET /capabilities/intake-forms` without changing user flow.
+**v1 catalog:** frontend registry → existing APIs; later `GET /capabilities/intake-forms` without UX change.
 
 ---
 
-## 5. Reuse audit (flow step → existing code)
+## 7. Questionnaire quality indicator (product rule)
 
-**Principle:** no new architecture; reorder UI and auto-call existing APIs.
+**Principle:** don’t block long forms — **educate**.
 
-| User step | Existing reuse | Change type |
-|-----------|----------------|-------------|
-| Entry | `LeadFormsSettingsPage`, `createIntakeForm` API | UX only |
-| Step 1 intent | ADR-022 `purpose` values | Map 4 UI options → `purpose` |
-| Step 2 service | `listIntakeFormEntityProfiles`, capability registry | New **catalog layer** (thin); filter by intent |
-| Step 3 auto-config | `getEntityProfilePresentationPreset`, `default_submission_policy_for_entity_profile`, `_intake_routing_for_entity_profile`, `create_public_intake_form` | **Auto-invoke** on mount; hide UI |
-| Step 4 editor | `IntakeFormPresentationEditor`, `upsert_public_intake_form_presentation` fields shape | `wizardMode`: no profile select, no preset btn, preset on load, hide codes |
-| Step 5 preview | Public apply renderer / smoke-test token | Wire or reuse existing preview |
-| Step 6 save | `POST /settings/intake-forms`, `ensure_lead_source_limit`, `ensure_tenant_lead_form_active_count_allows_transition` | Slug auto; friendly 402 for `lead_sources_limit_reached` |
-| Send → answers | F3-B-02..07 (done) | No change |
+Show while editing (live count of **included** questions):
 
-**Already provisioned on services tenant (G-B-05):**
+| Count | Indicator | Copy (RU example) |
+|-------|-----------|-------------------|
+| ≤ 8 | 🟢 | «6 вопросов — оптимально» |
+| 9–12 | 🟡 | «10 вопросов — длинная анкета» |
+| ≥ 13 | 🔴 | «16 вопросов — возможна низкая конверсия» |
 
-- `recover_targeted_advertising_capability` — same bundle as Capability `targeted_advertising`
-- New tenant walkthrough should **not** require repair CLI if tenant create hook + catalog align
-
-**Do not reuse as user-facing concepts:**
-
-- `PURPOSE_WIZARD_OPTIONS` English strings as-is
-- `IntakeFormAnswersRoutingCard` technical rows (Module, Inbox path)
-- Duplicate profile `<select>` inside editor
+Thresholds tunable per Capability later; v1 global bands OK.
 
 ---
 
-## 6. Anti-patterns (explicit)
+## 8. Reuse audit
 
-| Show | Why forbidden |
-|------|----------------|
-| `recruitment.candidate.driver_ce` in UI | Developer identifier |
-| Purpose + Entity Profile + Load preset + Fields as separate decisions | One Capability |
-| Empty field catalog after intent | Breaks trust («wrong place») |
-| `fields.recruitment_*` keys as labels | Unfinished product signal |
-| `/app/sales` as inbox hint | Internal route |
-| Public slug on create | Technical; auto-generate |
+| User step | Existing reuse | Change |
+|-----------|----------------|--------|
+| Capability pick | `listIntakeFormEntityProfiles`, provision bundles | **Catalog layer**; Capability-first entry |
+| Auto-config | `presentation-preset`, `default_submission_policy_for_entity_profile`, `_intake_routing_for_entity_profile` | Auto on editor mount |
+| Editor | `IntakeFormPresentationEditor`, `createIntakeForm` | wizardMode; preset applied; quality indicator |
+| Preview | public apply / smoke-test | reuse |
+| Save | `POST /settings/intake-forms`, quota gates | auto slug; friendly 402 |
+| **Questionnaire card** | `IntakeFormDetailPage` partial, public URL copy, Sales send panel | **New composition** — action-first layout |
+| Send → answers | F3-B-02..07 ✓ | no backend change |
 
----
-
-## 7. Scenario registration
-
-| ID | Step | Status |
-|----|------|--------|
-| **F3-B-10** | Manager creates questionnaire (capability wizard) | **not_started** |
-| **F3-B-11** | New services tenant: create → send → submit without repair | **not_started** (acceptance for catalog + auto-provision) |
-
-**Gap registry name:** **G-B-07** — Form creation UX (Capability wizard).  
-**Implementation gate:** this Flow Spec approved → one Scenario Step PR (F3-B-10) → walkthrough → then F3-B-11 on clean tenant.
+**Do not surface:** `IntakeFormAnswersRoutingCard` technical rows, duplicate profile `<select>`, `PURPOSE_WIZARD_OPTIONS` EN hardcode.
 
 ---
 
-## 8. i18n requirement
+## 9. Scenario registration
 
-All wizard copy: **ru / pl / en** via `admin.intake_forms.wizard.*` and `admin.capabilities.*`.
+| ID | Scope | Status |
+|----|-------|--------|
+| **F3-B-10** | Create path + **questionnaire card** (Parts A+B) | not_started |
+| **F3-B-11** | New services tenant: Capability → card → send → submit (no repair CLI) | not_started |
 
-Field labels in editor: resolve via presentation/API label, fallback to field registry i18n — **never** show raw `qualified_code` or unresolved `fields.*` keys in default mode.
+**Gap:** **G-B-07** — first working questionnaire without platform concepts.
 
----
-
-## 9. Open questions (product, not blockers for spec)
-
-1. **Capability catalog source:** static frontend map vs `GET /capabilities` — start frontend for speed?
-2. **Follow-up info** vs **company inquiry** — same capabilities or subset?
-3. **Preview** in v1: inline modal vs link to smoke-test token?
-4. **Plan limits:** show remaining active forms / lead sources before create?
+**Implementation gate:** approve this spec → **one Scenario Step PR** with acceptance quote in §1 → F3-B-10 walkthrough → F3-B-11 on clean tenant.
 
 ---
 
-## 10. Changelog
+## 10. i18n
+
+All wizard + card copy: **ru / pl / en** (`admin.capabilities.*`, `admin.questionnaire_card.*`).  
+Field labels: resolved human text — never raw `fields.*` keys in default UI.
+
+---
+
+## 11. Open questions
+
+1. **Send from card:** open inquiry picker modal vs navigate to Sales inbox?  
+2. **F3-B-10a type step:** skip for pure services tenants?  
+3. **«Создать свою»:** defer to G-B-08 or hide until catalog stable?  
+4. Show remaining lead-source quota before save?
+
+---
+
+## 12. Changelog
 
 | Date | Change |
 |------|--------|
-| 2026-07-15 | Initial Flow Spec — manager-first, Capability model, reuse audit (post F3-B-02..07 PASS) |
+| 2026-07-15 | **Rev 2** — Capability-first entry; flow extends to questionnaire card; no default empty create; quality indicator; PR acceptance rule |
+| 2026-07-15 | Initial Flow Spec — manager-first, reuse audit |

@@ -198,15 +198,19 @@ Walkthrough-specific gaps discovered during §20-style staging verification. Eac
 | G-B-03 | F3-B-05 / A12 | Structured answers UI on inquiry work page | **closed** (#24) |
 | G-B-04 | F3-B-06 / A13 | Submission attribution panel | **closed** (#25) |
 | **G-B-05** | Form editor / provisioning | **Targeted-advertising Entity Profile registry on services tenants** | **closed** (#26 + staging repair 2026-07-15) |
-| **G-B-07** | F3-B-10 | **Form creation — Capability wizard (manager-first UX)** | **open** — [Flow Spec](flows/F3-B-10-create-questionnaire-flow-spec.md) |
+| **G-B-07** | F3-B-10 | **First working questionnaire — Capability-first create + post-save card** | **open** — [Flow Spec](flows/F3-B-10-create-questionnaire-flow-spec.md) |
 
-#### G-B-07 — manager creates questionnaire without platform concepts
+#### G-B-07 — manager gets a working questionnaire, not a platform assembly kit
 
-**Symptom (2026-07-15 walkthrough):** Create wizard exposes Purpose, Entity Profile, Load preset, routing table, field codes, mixed locales. Manager cannot complete «create form» in user language; Purpose change does not change questions.
+**Symptom (2026-07-15):** Create flow exposes internal platform (Purpose, Entity Profile, preset, routing); ends at Save with no «what now»; primary CTA is empty «Create form». Manager closes screen.
 
-**Not an architecture gap.** Backend (profile, preset, policy, routing) is reused as-is.
+**Product goal (PR acceptance):** *Менеджер создаёт первую рабочую анкету за 2–3 минуты без понимания Entity Profile / Preset / Submission Policy.* If walkthrough needs those terms — PR failed.
 
-**Next:** Approve [F3-B-10 Flow Spec](flows/F3-B-10-create-questionnaire-flow-spec.md) → Scenario Step PR (Capability catalog + auto-preset wizard) → F3-B-11 walkthrough on **new services tenant** without repair CLI.
+**Scope (Flow Spec rev 2):** Capability-first entry (no default blank create) → pre-filled editor → save → **questionnaire card** (send / copy link / preview). Form is persistence; Capability is UI primary object.
+
+**Not architecture.** Reuse existing APIs; UX + card composition only.
+
+**Next:** Approve spec → one Scenario Step PR → F3-B-10 walkthrough → F3-B-11 on **new services tenant** without repair CLI.
 
 
 #### G-B-05 — targeted-advertising Entity Profile available for every services tenant
@@ -643,7 +647,8 @@ MONETIZATION:
 
 | Date | Change |
 |------|--------|
-| 2026-07-15 | **G-B-07 opened** — F3-B-10 Flow Spec: Capability-based form creation (manager-first); reuse audit in [flows/F3-B-10-create-questionnaire-flow-spec.md](flows/F3-B-10-create-questionnaire-flow-spec.md) |
+| 2026-07-15 | **F3-B-10 Flow Spec rev 2** — Capability-first; flow through questionnaire card; PR acceptance rule; [flows/F3-B-10-create-questionnaire-flow-spec.md](flows/F3-B-10-create-questionnaire-flow-spec.md) |
+| 2026-07-15 | **G-B-07 opened** — F3-B-10 Flow Spec: first working questionnaire (manager-first); reuse audit |
 | 2026-07-15 | **G-B-05 closed** — PR #26 merged; staging repair for demo tenant; `/fields` + `/presentation-preset` → 200 (27 fields); send + public apply verified on hostflow.cc |
 | 2026-07-15 | **G-B-05** opened — staging Entity Profile registry drift; auto-seed on `feat/targeted-advertising-auto-seed` not merged to integration line (§0.4) |
 | 2026-07-15 | Proven blocker rule + Foundation Debt register (§0.3); paydown within 1–2 PRs; max 2 consecutive Foundation |
