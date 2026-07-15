@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 import {
   getEntityProfileFields,
+  getEntityProfilePresentationPreset,
   listIntakeFormEntityProfiles,
   type EntityProfileFieldOption,
   type PresentationFieldInput,
@@ -21,6 +22,8 @@ export type PresentationFieldDraft = {
 }
 
 const RULE_KEYS = ['show_if', 'hide_if', 'required_if', 'readonly_if'] as const
+
+const B2B_SALES_PROFILE_CODE = 'service_sales.targeted_advertising'
 
 function fieldsToPayload(rows: PresentationFieldDraft[]): PresentationFieldInput[] {
   return rows
@@ -62,6 +65,7 @@ export function IntakeFormPresentationEditor({
   const [catalog, setCatalog] = useState<EntityProfileFieldOption[]>([])
   const [rows, setRows] = useState<PresentationFieldDraft[]>(initialFields ?? [])
   const [loading, setLoading] = useState(true)
+  const [loadingPreset, setLoadingPreset] = useState(false)
 
   const loadCatalog = useCallback(
     async (code: string) => {
@@ -126,6 +130,58 @@ export function IntakeFormPresentationEditor({
     [rows],
   )
 
+  const loadPlatformPreset = async () => {
+    if (!profileCode || disabled) return
+    setLoadingPreset(true)
+    try {
+      const preset = await getEntityProfilePresentationPreset(profileCode)
+      const presetByCode = new Map(preset.fields.map((field) => [field.qualified_code, field]))
+      setRows((prev) => {
+        const prevByCode = new Map(prev.map((row) => [row.qualified_code, row]))
+        return catalog.map((field, index) => {
+          const presetField = presetByCode.get(field.qualified_code)
+          const existing = prevByCode.get(field.qualified_code)
+          if (presetField) {
+            return {
+              qualified_code: field.qualified_code,
+              label_override: presetField.label_override || field.label,
+              intake_level: (presetField.intake_level === 'required'
+                ? 'required'
+                : presetField.intake_level === 'hidden'
+                  ? 'hidden'
+                  : 'optional') as 'required' | 'optional' | 'hidden',
+              sort_order: presetField.sort_order ?? (index + 1) * 10,
+              selected: true,
+              presentation_rules: presetField.presentation_rules,
+            }
+          }
+          if (existing) return { ...existing, selected: false }
+          return {
+            qualified_code: field.qualified_code,
+            label_override: field.label,
+            intake_level: (field.intake_level === 'required' ? 'required' : 'optional') as
+              | 'required'
+              | 'optional'
+              | 'hidden',
+            sort_order: (index + 1) * 10,
+            selected: false,
+          }
+        })
+      })
+      notify({
+        title: t('admin.intake_forms.toast.preset_loaded', { defaultValue: 'Platform preset loaded' }),
+        variant: 'success',
+      })
+    } catch {
+      notify({
+        title: t('admin.intake_forms.errors.load_preset', { defaultValue: 'Failed to load platform preset' }),
+        variant: 'error',
+      })
+    } finally {
+      setLoadingPreset(false)
+    }
+  }
+
   const moveRow = (qualifiedCode: string, direction: -1 | 1) => {
     const ordered = selectedRows
     const index = ordered.findIndex((row) => row.qualified_code === qualifiedCode)
@@ -166,6 +222,18 @@ export function IntakeFormPresentationEditor({
             </option>
           ))}
         </select>
+        {profileCode === B2B_SALES_PROFILE_CODE && (
+          <button
+            type="button"
+            className="btn-secondary mt-2"
+            disabled={disabled || loadingPreset || loading}
+            onClick={() => void loadPlatformPreset()}
+          >
+            {loadingPreset
+              ? t('common.loading')
+              : t('admin.intake_forms.load_b2b_preset', { defaultValue: 'Load B2B sales questionnaire preset' })}
+          </button>
+        )}
       </div>
 
       {loading ? (
