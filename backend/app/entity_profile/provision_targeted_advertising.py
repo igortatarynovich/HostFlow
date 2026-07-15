@@ -142,6 +142,26 @@ async def _default_own_company_id(db: AsyncSession, tenant_id: str) -> str | Non
     return str(row) if row else None
 
 
+async def _ensure_default_own_company_id(db: AsyncSession, tenant_id: str) -> str:
+    existing = await _default_own_company_id(db, str(tenant_id))
+    if existing:
+        return existing
+    row = OwnCompany(
+        id=str(uuid4()),
+        tenant_id=str(tenant_id),
+        name="HostFlow",
+        is_archived=False,
+    )
+    db.add(row)
+    await db.flush()
+    return str(row.id)
+
+
+def _tenant_scoped_public_slug(tenant_id: str) -> str:
+    suffix = str(tenant_id).replace("-", "")[:10]
+    return f"{TARGETED_ADVERTISING_FORM_SLUG}-{suffix}"
+
+
 async def _ensure_entity_profile_template(db: AsyncSession, tenant_id: str) -> tuple[bool, bool]:
     """Ensure canonical entity profile + presentation exist without overwriting tenant instances."""
     existing_profile = await EntityProfileRegistry.get_entity_profile(
@@ -250,8 +270,8 @@ async def _ensure_intake_form_stack(
     if lead_form is None:
         public_slug: str | None = TARGETED_ADVERTISING_FORM_SLUG
         if await _global_lead_form_public_slug_taken(db, TARGETED_ADVERTISING_FORM_SLUG, tenant_id=tenant_id):
-            public_slug = None
-            created["public_slug_internal_only"] = True
+            public_slug = _tenant_scoped_public_slug(tenant_id)
+            created["public_slug_tenant_scoped"] = True
         lead_form = TenantLeadForm(
             id=str(uuid4()),
             tenant_id=str(tenant_id),
@@ -354,17 +374,7 @@ async def provision_targeted_advertising_capability(
             skipped=True,
         )
 
-    own_company_id = await _default_own_company_id(db, tid)
-    if not own_company_id:
-        logger.info(
-            "targeted_advertising capability pending for tenant %s: own company not ready",
-            tid,
-        )
-        return TargetedAdvertisingProvisionResult(
-            status=CAPABILITY_PENDING,
-            tenant_id=tid,
-            error="own_company_missing",
-        )
+    own_company_id = await _ensure_default_own_company_id(db, tid)
 
     created: dict[str, bool] = {}
     repaired: dict[str, bool] = {}
