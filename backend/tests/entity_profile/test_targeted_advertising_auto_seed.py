@@ -367,6 +367,33 @@ async def test_tenant_create_hook_provisions_services_capability() -> None:
 
 
 @pytest.mark.asyncio
+async def test_inactive_slug_form_is_reactivated_not_duplicated() -> None:
+    tenant_id, _ = await _create_tenant_bundle(business_type="services")
+    legacy_form_id = str(uuid4())
+    async with async_session_maker() as session:
+        session.add(
+            TenantLeadForm(
+                id=legacy_form_id,
+                tenant_id=tenant_id,
+                title="Inactive canonical slug",
+                public_slug=TARGETED_ADVERTISING_FORM_SLUG,
+                is_active=False,
+            )
+        )
+        await session.commit()
+
+    async with async_session_maker() as session:
+        result = await recover_targeted_advertising_capability(session, tenant_id)
+        await session.commit()
+
+    assert result.lead_form_id == legacy_form_id
+    async with async_session_maker() as session:
+        form = await session.get(TenantLeadForm, legacy_form_id)
+        assert form is not None
+        assert form.is_active is True
+
+
+@pytest.mark.asyncio
 async def test_services_tenant_without_own_company_stays_pending() -> None:
     tag = uuid4().hex[:8]
     async with async_session_maker() as session:
