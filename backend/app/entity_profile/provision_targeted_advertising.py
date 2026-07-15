@@ -96,6 +96,16 @@ async def find_tenant_targeted_advertising_lead_form(
     if by_slug is not None:
         return by_slug
 
+    inactive_by_slug = await db.scalar(
+        select(TenantLeadForm).where(
+            TenantLeadForm.tenant_id == tid,
+            TenantLeadForm.public_slug == TARGETED_ADVERTISING_FORM_SLUG,
+            TenantLeadForm.is_active.is_(False),
+        ).limit(1)
+    )
+    if inactive_by_slug is not None:
+        return inactive_by_slug
+
     intake_profile = await db.scalar(
         select(IntakeSourceProfile).where(
             IntakeSourceProfile.tenant_id == tid,
@@ -134,7 +144,13 @@ async def _default_own_company_id(db: AsyncSession, tenant_id: str) -> str | Non
 
 async def _ensure_entity_profile_template(db: AsyncSession, tenant_id: str) -> tuple[bool, bool]:
     """Ensure canonical entity profile + presentation exist without overwriting tenant instances."""
-    await ensure_tenant_field_registry_defaults(db, tenant_id)
+    existing_profile = await EntityProfileRegistry.get_entity_profile(
+        db,
+        tenant_id=str(tenant_id),
+        profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+    )
+    if existing_profile is None:
+        await ensure_tenant_field_registry_defaults(db, tenant_id)
     manifest = service_sales_targeted_advertising_profile()
     profile_result = await EntityProfileRegistry.register_profile_if_absent(
         db,
@@ -248,6 +264,10 @@ async def _ensure_intake_form_stack(
         created["lead_form"] = True
     else:
         created["lead_form"] = False
+        if not lead_form.is_active:
+            lead_form.is_active = True
+            repaired["lead_form"] = True
+            await db.flush()
 
     intake_profile = await db.scalar(
         select(IntakeSourceProfile).where(
