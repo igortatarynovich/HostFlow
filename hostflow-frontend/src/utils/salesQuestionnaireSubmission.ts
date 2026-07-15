@@ -8,6 +8,14 @@ export type LeadSubmissionV1 = {
   normalized_values?: Record<string, unknown> | null
   submitted_at?: string | null
   submission_id?: string | null
+  purpose?: string | null
+  publication_id?: string | null
+  published_version?: number | null
+  invite_id?: string | null
+  source?: { entry?: string | null; invite_id?: string | null } | null
+  effective_submission_policy?: {
+    submission_policy?: { mode?: string | null } | null
+  } | null
 }
 
 const DEFAULT_ENTITY_PROFILE_CODE = 'service_sales.targeted_advertising'

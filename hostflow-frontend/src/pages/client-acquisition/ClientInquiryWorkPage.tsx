@@ -7,6 +7,7 @@ import { clientAcquisitionChannelPath } from '../../app/clientAcquisitionPaths'
 import ClientLeadDetailView from '../../components/leads/ClientLeadDetailView'
 import SalesQuestionnairePanel from '../../components/leads/SalesQuestionnairePanel'
 import SalesQuestionnaireSummaryRail from '../../components/leads/SalesQuestionnaireSummaryRail'
+import SalesQuestionnaireAttributionRail from '../../components/leads/SalesQuestionnaireAttributionRail'
 import LostReasonForLostStageModal from '../../components/leads/LostReasonForLostStageModal'
 import { useToast } from '../../components/Toast'
 import { useI18n, type LocaleCode } from '../../i18n'
@@ -14,7 +15,7 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
 import { leadSourceProfileId } from '../../utils/clientInquiryLead'
-import { submissionHasDisplayableAnswers } from '../../utils/salesQuestionnaireSubmission'
+import { readLatestSubmission, submissionHasDisplayableAnswers } from '../../utils/salesQuestionnaireSubmission'
 import { advanceSalesWorkSession, getSalesWorkSession, leadHref } from '../../services/salesWorkSession'
 
 const LOCALE_TO_DATE: Record<LocaleCode, string> = {
@@ -153,6 +154,7 @@ export default function ClientInquiryWorkPage() {
   }
 
   const showQuestionnaireSummary = lead ? submissionHasDisplayableAnswers(lead) : false
+  const showQuestionnaireAttribution = lead ? readLatestSubmission(lead) != null : false
 
   return (
     <div className="space-y-4" data-testid="m1-sales-inquiry-work">
@@ -178,6 +180,11 @@ export default function ClientInquiryWorkPage() {
       {!loading && lead ? (
         <>
           <SalesQuestionnairePanel lead={lead} onLeadUpdated={setLead} />
+          {showQuestionnaireAttribution ? (
+            <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="sales-questionnaire-attribution-panel">
+              <SalesQuestionnaireAttributionRail lead={lead} />
+            </section>
+          ) : null}
           {showQuestionnaireSummary ? (
             <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="sales-questionnaire-summary">
               <SalesQuestionnaireSummaryRail lead={lead} />
