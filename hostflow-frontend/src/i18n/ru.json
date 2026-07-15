@@ -8297,6 +8297,34 @@
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID тенанта"
       }
+    },
+    "sales_questionnaire": {
+      "attribution_title": "Атрибуция ответа",
+      "attribution_hint": "Откуда пришёл ответ и как он был прикреплён.",
+      "attribution": {
+        "form": "Форма",
+        "version": "Опубликованная версия",
+        "source": "Источник",
+        "publication": "Публикация",
+        "submitted_at": "Отправлено",
+        "submission": "Ответ",
+        "attach_mode": "Режим прикрепления",
+        "profile": "Профиль сущности",
+        "purpose": "Назначение",
+        "presentation": "Презентация",
+        "invite": "Приглашение",
+        "behavior": "Маршрутизация ответа",
+        "entry": {
+          "questionnaire_invite": "Персональное приглашение к анкете",
+          "public_form": "Публичная форма"
+        },
+        "policy": {
+          "attach": "Добавлено к этой заявке",
+          "create": "Создана новая заявка",
+          "match_or_create": "Найдена или создана заявка",
+          "review": "Отправлено в очередь проверки"
+        }
+      }
     }
   },
   "public": {

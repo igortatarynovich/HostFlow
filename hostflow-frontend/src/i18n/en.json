@@ -8530,6 +8530,34 @@
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "Tenant UUID"
       }
+    },
+    "sales_questionnaire": {
+      "attribution_title": "Submission attribution",
+      "attribution_hint": "Where this response came from and how it was attached.",
+      "attribution": {
+        "form": "Form",
+        "version": "Published version",
+        "source": "Source",
+        "publication": "Publication",
+        "submitted_at": "Submitted at",
+        "submission": "Submission",
+        "attach_mode": "Attach mode",
+        "profile": "Entity profile",
+        "purpose": "Purpose",
+        "presentation": "Presentation",
+        "invite": "Invite",
+        "behavior": "Routing behavior",
+        "entry": {
+          "questionnaire_invite": "Personal questionnaire invite",
+          "public_form": "Public form"
+        },
+        "policy": {
+          "attach": "Added to this inquiry",
+          "create": "Created a new inquiry",
+          "match_or_create": "Matched or created inquiry",
+          "review": "Sent to review queue"
+        }
+      }
     }
   },
   "public": {
