@@ -85,6 +85,12 @@ export type FormPresentationField = {
   label: string;
   field_type?: string | null;
   widget_hint?: string | null;
+  options?: Array<{ value: string; label: string }>;
+  reference_domain?: string | null;
+  reference_meta?: {
+    depends_on_field?: string;
+    query_param?: string;
+  } | null;
   presentation_rules?: import('../../utils/presentationRules').PresentationRules;
   evaluated?: import('../../utils/presentationRules').PresentationFieldEvaluated;
 };

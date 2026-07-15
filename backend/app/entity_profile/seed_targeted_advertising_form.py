@@ -19,10 +19,12 @@ from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceP
 from backend.app.models.intake_routing_enums import IntakeChannel, IntakeProvider, RouteIntent
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant_lead_form import TenantLeadForm
+from backend.app.entity_profile.manifests.service_sales import service_sales_targeted_advertising_profile
+from backend.app.entity_profile.registry import EntityProfileRegistry
 
 
 TARGETED_ADVERTISING_FORM_SLUG = "targeted-advertising"
-TARGETED_ADVERTISING_FORM_TITLE = "Ankieta — reklama targetowana"
+TARGETED_ADVERTISING_FORM_TITLE = "Таргетированная реклама"
 
 
 async def _default_own_company_id(db: AsyncSession, tenant_id: str) -> str | None:
@@ -35,12 +37,35 @@ async def _default_own_company_id(db: AsyncSession, tenant_id: str) -> str | Non
     return str(row) if row else None
 
 
+async def sync_targeted_advertising_presentation_from_manifest(db: AsyncSession, tenant_id: str) -> None:
+    """Re-register canonical Flow Spec presentation (manifest → ep_intake_presentations)."""
+    await EntityProfileRegistry.register_profile(
+        db,
+        service_sales_targeted_advertising_profile(),
+        tenant_id=str(tenant_id),
+    )
+
+
+async def _ensure_default_own_company_id(db: AsyncSession, tenant_id: str) -> str:
+    """Return tenant default own company, creating a minimal row when missing (capability bootstrap)."""
+    existing = await _default_own_company_id(db, str(tenant_id))
+    if existing:
+        return existing
+    row = OwnCompany(
+        id=str(uuid4()),
+        tenant_id=str(tenant_id),
+        name="HostFlow",
+        is_archived=False,
+    )
+    db.add(row)
+    await db.flush()
+    return str(row.id)
+
+
 async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenant_id: str) -> None:
     """Idempotent: TenantLeadForm + IntakeSourceProfile for service_sales.targeted_advertising."""
-    own_company_id = await _default_own_company_id(db, str(tenant_id))
-    if not own_company_id:
-        return
-
+    await sync_targeted_advertising_presentation_from_manifest(db, str(tenant_id))
+    own_company_id = await _ensure_default_own_company_id(db, str(tenant_id))
     lead_form = await db.scalar(
         select(TenantLeadForm).where(
             TenantLeadForm.tenant_id == str(tenant_id),

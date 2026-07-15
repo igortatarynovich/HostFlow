@@ -79,6 +79,10 @@ async def get_lead_timeline(
             from_stage = (payload or {}).get("from_stage") if isinstance(payload, dict) else None
             to_stage = (payload or {}).get("to_stage") if isinstance(payload, dict) else None
             descr = f"{from_stage or '—'} → {to_stage or '—'}"
+        elif str(action or "").startswith("lead.questionnaire_sms"):
+            kind = "communication_delivery"
+            if isinstance(payload, dict):
+                descr = str(payload.get("status") or payload.get("error_code") or "")
         elif str(action or "").startswith("analytics.next_action."):
             kind = "next_action_warning"
         elif str(action or "").startswith("analytics.perf."):

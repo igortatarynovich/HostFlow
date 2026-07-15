@@ -37,6 +37,13 @@ export default function PublicIntakeNew() {
   const { t, locale, setLocale } = useI18n()
   const navigate = useNavigate()
   const { notify } = useToast()
+  const langParam = (searchParams.get('lang') || '').trim().toLowerCase()
+  const lockedFormLocale =
+    langParam === 'ru' || langParam === 'pl' || langParam === 'en' ? (langParam as 'ru' | 'pl' | 'en') : undefined
+
+  useEffect(() => {
+    if (lockedFormLocale) setLocale(lockedFormLocale)
+  }, [lockedFormLocale, setLocale])
   const telegramBotUrl = (import.meta.env.VITE_TELEGRAM_BOT_URL as string | undefined)?.trim() || 'https://t.me/HostFlow_asystent_bot'
   
   // Интеграция с API
@@ -917,6 +924,7 @@ export default function PublicIntakeNew() {
           submit: apiSubmit,
         }}
         presentation={presentationRuntime}
+        lockedLocale={lockedFormLocale}
       />
     )
   }

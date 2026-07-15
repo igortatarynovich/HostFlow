@@ -104,6 +104,29 @@ async def list_cities_options(
     return to_options_localized_catalog(list_cities(country_code=country))
 
 
+@router.get("/catalogs/regions/options")
+async def list_regions_options(
+    country: str | None = Query(None, description="ISO alpha-2 country code"),
+):
+    from backend.app.reference.questionnaire_catalogs import list_regions
+
+    return to_options_localized_catalog(list_regions(country_code=country))
+
+
+@router.get("/catalogs/professions/options")
+async def list_professions_options():
+    from backend.app.reference.questionnaire_catalogs import list_professions
+
+    return to_options_localized_catalog(list_professions())
+
+
+@router.get("/catalogs/services/options")
+async def list_advertised_services_options():
+    from backend.app.reference.questionnaire_catalogs import list_advertised_services
+
+    return to_options_localized_catalog(list_advertised_services())
+
+
 @router.get("/catalogs/company-setup/options")
 async def list_company_setup_options():
     return to_options_company_setup(

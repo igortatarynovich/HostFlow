@@ -49,6 +49,7 @@ from backend.app.modules.leads.schemas import (
     LeadQuestionnaireInviteOut,
     LeadQuestionnaireInviteRequest,
     LeadQuestionnaireFormOptionOut,
+    QuestionnaireInviteConfirmSentRequest,
     LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
@@ -1265,6 +1266,7 @@ async def create_lead_questionnaire_invite_endpoint(
             lead=lead,
             mark_sent=payload.mark_sent,
             lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            form_locale=payload.form_locale,
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
@@ -1288,6 +1290,67 @@ async def create_lead_questionnaire_invite_endpoint(
         submitted_at=out.get("submitted_at"),
         expires_at=out.get("expires_at"),
     )
+
+
+def _questionnaire_invite_out_from_payload(out: dict) -> LeadQuestionnaireInviteOut:
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(out["id"])),
+        lead_id=UUID(str(out["lead_id"])),
+        lead_form_id=UUID(str(out["lead_form_id"])) if out.get("lead_form_id") else None,
+        token=str(out["token"]),
+        apply_url=str(out["apply_url"]),
+        status=str(out["status"]),
+        entity_profile_code=out.get("entity_profile_code"),
+        presentation_code=out.get("presentation_code"),
+        sent_at=out.get("sent_at"),
+        opened_at=out.get("opened_at"),
+        submitted_at=out.get("submitted_at"),
+        expires_at=out.get("expires_at"),
+    )
+
+
+@router.post("/{lead_id}/questionnaire-invite/confirm-sent", response_model=LeadQuestionnaireInviteOut)
+async def confirm_lead_questionnaire_invite_sent_endpoint(
+    lead_id: str,
+    payload: QuestionnaireInviteConfirmSentRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+) -> LeadQuestionnaireInviteOut:
+    from backend.app.models.lead_questionnaire_invite import LeadQuestionnaireInvite
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.lead_questionnaire_invite import (
+        mark_invite_sent_after_manual_delivery,
+        questionnaire_invite_out_payload,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Questionnaire invite is only available for client leads",
+        )
+
+    invite = await db.get(LeadQuestionnaireInvite, str(payload.invite_id))
+    if invite is None or str(invite.lead_id) != str(lead.id) or str(invite.tenant_id) != tenant_id_str:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active questionnaire invite")
+
+    await mark_invite_sent_after_manual_delivery(
+        db,
+        invite=invite,
+        lead=lead,
+        channel=str(payload.channel),
+    )
+    await db.commit()
+    await db.refresh(invite)
+    out = questionnaire_invite_out_payload(invite)
+    return _questionnaire_invite_out_from_payload(out)
 
 
 @router.post("/{lead_id}/convert-client", response_model=LeadOut)

@@ -97,18 +97,14 @@ async def _create_meta_client_lead(tenant_id: str) -> Lead:
 def _sales_presentation_values() -> dict[str, str | list[str]]:
     prefix = "service_sales.targeted_advertising."
     return {
-        f"{prefix}need_type": "client_acquisition",
-        f"{prefix}primary_outcome": "more_inquiries",
-        f"{prefix}promotion_subject": "service",
-        f"{prefix}industry": "transport",
-        f"{prefix}client_geo_scope": "poland",
+        f"{prefix}need_type": "services",
+        f"{prefix}advertised_services": ["targeted_advertising"],
+        f"{prefix}client_geo_country": "PL",
+        f"{prefix}client_geo_region": "PL-MZ",
+        f"{prefix}client_geo_city": "warsaw",
         f"{prefix}conversion_destination": "whatsapp",
-        f"{prefix}offer_ready": "ready",
-        f"{prefix}marketing_materials": ["photos", "logo"],
-        f"{prefix}prior_ads_experience": "no",
-        f"{prefix}monthly_ad_budget": "2000_5000",
-        f"{prefix}start_timeline": "two_weeks",
-        f"{prefix}decision_maker": "owner",
+        f"{prefix}has_website": "yes",
+        f"{prefix}marketing_materials": "yes",
         f"{prefix}contact_full_name": "Jan Kowalski",
         f"{prefix}contact_company_name": "Test Firma",
         f"{prefix}contact_phone": "+48123456789",
@@ -161,7 +157,7 @@ async def test_meta_lead_questionnaire_invite_submit_convert_client(
         normalized = refreshed.normalized or {}
         assert normalized.get("sales_questionnaire_status") == "submitted"
         assert isinstance(normalized.get("sales_questionnaire"), dict)
-        assert normalized["sales_questionnaire"].get("need_type") == "client_acquisition"
+        assert normalized["sales_questionnaire"].get("need_type") == "services"
 
         lead_count = await session.scalar(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id))
         assert lead_count is not None and lead_count >= 1
@@ -228,7 +224,9 @@ async def test_constructor_b2b_form_questionnaire_invite_flow(
     assert get_resp.status_code == 200, get_resp.text
     body = get_resp.json()
     assert body.get("form_presentation", {}).get("entity_profile_code") == TARGETED_ADVERTISING_PROFILE_CODE
-    assert body.get("form_presentation", {}).get("presentation_code") == expected_presentation
+    from backend.app.entity_profile.constants import TARGETED_ADVERTISING_PRESENTATION_CODE
+
+    assert body.get("form_presentation", {}).get("presentation_code") == TARGETED_ADVERTISING_PRESENTATION_CODE
 
     async with async_session_maker() as session:
         intake_profile = await session.scalar(
