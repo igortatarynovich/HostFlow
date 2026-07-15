@@ -1,0 +1,49 @@
+---
+description: Scenario-first development — no architecture for its own sake; operator gain per PR
+alwaysApply: true
+---
+
+# Scenario-first development (HostFlow)
+
+**North star:** We do not optimize architecture for architecture's sake. We improve only what is a **proven blocker** for the next sellable scenario.
+
+**Operational doc:** `docs/specs/release-revenue-flow-audit.md` (§0 step registry, §0.2 PR template).
+
+## Before any task
+
+1. Name the **nearest revenue scenario** and **step ID** (e.g. `F3-B-02`).
+2. Identify the **proven blocker** — from walkthrough failure, not speculation.
+3. Classify work: **Foundation** (unblocks) vs **Scenario Step** (operator gain).
+
+If no step ID and no proven blocker → **backlog**.
+
+## Five principles
+
+1. **Scenario first** — nearest money scenario, then what blocks it. Never reverse.
+2. **Reuse-first** — before new entity/service/ADR, prove existing code cannot be extended without worse architecture. Document reuse audit for Foundation work.
+3. **Foundation only when necessary** — new foundation (e.g. ADR-022) only if the next step cannot pass without it.
+4. **Operator gain per PR** — after each **Scenario Step** PR, the operator must gain a **new real capability** without curl, manual URLs, JSON, or DB edits. Full Flow completion not required; one step is.
+5. **No "just in case"** — no universal mechanisms for hypothetical futures. Build when the **next walkthrough** hits the wall.
+
+## Product progress
+
+- **Counts:** passable Scenario Steps + completed Revenue Flow walkthroughs.
+- **Does not count:** Foundation merges, ADRs, refactors, tests alone, "platform completeness".
+
+## Current proven chain (Product B)
+
+Blockers in order — do not skip:
+
+1. B2B inquiry handling → Intake/Submission Policy (**Foundation**, in review)
+2. Manager sends questionnaire → **`F3-B-02`, `F3-B-03`** (next Scenario Step PR)
+3. Response on existing application → **`F3-B-04`..`F3-B-07`**
+4. Decision on application → part of B-2
+
+**Backlog until walkthrough proves blocker:** Publication CRUD, visual policy editor, universal entity matching, Review Queue UI, Form Definition admin editor.
+
+## Agent behavior
+
+- Propose minimal diff that unblocks or passes **one** step.
+- Refuse or defer work that improves architecture without naming **Unblocks** or **Operator gain**.
+- Prefer extending `Decision Layer`, `Outcome Executor`, `IntakeRouter`, Entity Profile over new parallel systems.
+- Update step status in `release-revenue-flow-audit.md` after walkthroughs.

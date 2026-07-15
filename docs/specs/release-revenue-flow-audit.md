@@ -16,6 +16,8 @@ If vague or does not move Product A/B toward money — **lower backlog**.
 
 **Related canon:** [`personas.md`](personas.md), [`tenant-types.md`](tenant-types.md), [`plans-matrix.md`](plans-matrix.md), [`SSOT.md`](../SSOT.md) §2.1 / §2.16–§2.18, [`ADR-021`](architecture/ADR-021-unified-intake-resolution-model.md), [`ADR-022`](architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md), [`ADR-020`](architecture/ADR-020-sales-to-engagement-commercial-model.md), [`entity-profile-definition-registry.md`](platform/entity-profile-definition-registry.md), [`process-engine.md`](platform/process-engine.md), [`document-hub/module-scope.md`](../document-hub/module-scope.md).
 
+**Agent rules:** [`.cursor/rules/scenario-first-development.mdc`](../../.cursor/rules/scenario-first-development.mdc) — enforce scenario-first, reuse-first, no architecture for its own sake.
+
 **Out of scope for this audit:** global Driver/Person outside tenant, portable identity — see product-discovery gate (§7).
 
 ---
@@ -497,6 +499,7 @@ MONETIZATION:
 
 | Date | Change |
 |------|--------|
+| 2026-07-15 | Agent rule `.cursor/rules/scenario-first-development.mdc` — proven blocker only, no "just in case" |
 | 2026-07-15 | Three-level model (Foundation / Scenario Step / Revenue Flow); Operator gain column; Foundation ≠ product progress rule |
 | 2026-07-15 | Scenario Step Registry §0; PR template §0.1; Product B split PR B-1/B-2; scenario-first work order |
 | 2026-07-15 | Initial audit — Products A/B, 8 flows, money matrix, 3 platforms, release blockers |
