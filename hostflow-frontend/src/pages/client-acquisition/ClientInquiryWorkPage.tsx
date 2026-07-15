@@ -5,6 +5,7 @@ import { convertClientLeadToClient, getLead, updateLeadStage } from '../../api/c
 import type { Lead } from '../../api/types'
 import { clientAcquisitionChannelPath } from '../../app/clientAcquisitionPaths'
 import ClientLeadDetailView from '../../components/leads/ClientLeadDetailView'
+import SalesQuestionnairePanel from '../../components/leads/SalesQuestionnairePanel'
 import LostReasonForLostStageModal from '../../components/leads/LostReasonForLostStageModal'
 import { useToast } from '../../components/Toast'
 import { useI18n, type LocaleCode } from '../../i18n'
@@ -171,14 +172,17 @@ export default function ClientInquiryWorkPage() {
       ) : null}
 
       {!loading && lead ? (
-        <ClientLeadDetailView
-          lead={lead}
-          formatDate={(iso) => formatDateValue(iso, locale)}
-          converting={converting}
-          patching={patching}
-          onConvert={() => void handleConvert()}
-          onStage={(stage) => void handleStage(stage)}
-        />
+        <>
+          <SalesQuestionnairePanel lead={lead} onLeadUpdated={setLead} />
+          <ClientLeadDetailView
+            lead={lead}
+            formatDate={(iso) => formatDateValue(iso, locale)}
+            converting={converting}
+            patching={patching}
+            onConvert={() => void handleConvert()}
+            onStage={(stage) => void handleStage(stage)}
+          />
+        </>
       ) : null}
 
       {lostStagePrompt ? (

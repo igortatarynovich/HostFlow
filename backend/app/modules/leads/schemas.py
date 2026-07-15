@@ -125,6 +125,17 @@ class LeadQuestionnaireInviteRequest(BaseModel):
         default=False,
         description="When true, marks the invite as sent (Wyślij ankietę).",
     )
+    lead_form_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional B2B questionnaire form; defaults to tenant targeted-advertising form.",
+    )
+
+
+class LeadQuestionnaireFormOptionOut(BaseModel):
+    id: UUID
+    title: str
+    public_slug: Optional[str] = None
+    is_system_preset: bool = False
 
 
 class LeadQuestionnaireInviteOut(BaseModel):
@@ -132,6 +143,7 @@ class LeadQuestionnaireInviteOut(BaseModel):
 
     id: UUID
     lead_id: UUID
+    lead_form_id: Optional[UUID] = None
     token: str
     apply_url: str
     status: str

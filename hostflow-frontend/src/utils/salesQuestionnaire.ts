@@ -1,26 +1,63 @@
 const STATUS_LABELS_PL: Record<string, string> = {
   not_sent: 'Ankieta niewysłana',
-  sent: 'Ankieta wysłana',
-  in_progress: 'W trakcie',
+  sent: 'Oczekujemy na odpowiedź',
+  opened: 'Oczekujemy na odpowiedź',
+  in_progress: 'Oczekujemy na odpowiedź',
   submitted: 'Wypełniona',
   expired: 'Wygasła',
 }
 
-export type SalesQuestionnaireStatus = keyof typeof STATUS_LABELS_PL
+const STATUS_LABELS_EN: Record<string, string> = {
+  not_sent: 'Questionnaire not sent',
+  sent: 'Waiting for response',
+  opened: 'Waiting for response',
+  in_progress: 'Waiting for response',
+  submitted: 'Response received',
+  expired: 'Expired',
+}
+
+const STATUS_LABELS_RU: Record<string, string> = {
+  not_sent: 'Анкета не отправлена',
+  sent: 'Ожидаем ответ',
+  opened: 'Ожидаем ответ',
+  in_progress: 'Ожидаем ответ',
+  submitted: 'Ответ получен',
+  expired: 'Истекла',
+}
+
+export type SalesQuestionnaireStatus = keyof typeof STATUS_LABELS_EN
+
+export function isWaitingForQuestionnaireResponse(status: string | null | undefined): boolean {
+  return status === 'sent' || status === 'opened' || status === 'in_progress'
+}
 
 export function readSalesQuestionnaireStatus(lead: { normalized?: Record<string, unknown> | null }): SalesQuestionnaireStatus | null {
   const raw = lead.normalized?.sales_questionnaire_status
   if (typeof raw !== 'string' || !raw.trim()) return null
-  return raw in STATUS_LABELS_PL ? (raw as SalesQuestionnaireStatus) : null
+  return raw in STATUS_LABELS_EN ? (raw as SalesQuestionnaireStatus) : null
+}
+
+type StatusLabelOptions = {
+  locale?: string
+  fallback?: string
+}
+
+function statusLabelsForLocale(locale?: string): Record<string, string> {
+  const code = String(locale || 'en').slice(0, 2).toLowerCase()
+  if (code === 'pl') return STATUS_LABELS_PL
+  if (code === 'ru') return STATUS_LABELS_RU
+  return STATUS_LABELS_EN
 }
 
 export function salesQuestionnaireStatusLabel(
   lead: { normalized?: Record<string, unknown> | null },
-  fallback = 'Ankieta niewysłana',
+  options?: StatusLabelOptions,
 ): string {
+  const labels = statusLabelsForLocale(options?.locale)
+  const fallback = options?.fallback ?? labels.not_sent ?? 'Questionnaire not sent'
   const status = readSalesQuestionnaireStatus(lead)
   if (!status) return fallback
-  return STATUS_LABELS_PL[status] ?? fallback
+  return labels[status] ?? fallback
 }
 
 export function readSalesQuestionnaireSummary(lead: { normalized?: Record<string, unknown> | null }): Record<string, unknown> {
