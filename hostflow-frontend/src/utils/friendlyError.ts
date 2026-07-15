@@ -509,6 +509,20 @@ function _getFriendlyErrorInfoInner(
         t,
       )
     }
+    if (detailCode === 'LEAD_SOURCES_LIMIT_REACHED') {
+      return withBillingCta(
+        {
+          title: tr('Lead source limit reached', 'app.api_errors.quota.lead_sources_title', t),
+          detail,
+          hint: tr(
+            'Remove an unused intake source, deactivate a form, or upgrade in Settings → Billing.',
+            'app.api_errors.quota.lead_sources_hint',
+            t,
+          ),
+        },
+        t,
+      )
+    }
     if (detailCode === 'PORTAL_ACTIVE_CANDIDATES_LIMIT_REACHED') {
       return withBillingCta(
         {

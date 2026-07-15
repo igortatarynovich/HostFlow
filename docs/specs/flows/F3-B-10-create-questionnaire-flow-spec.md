@@ -1,7 +1,7 @@
 # Flow Spec — F3-B-10: First working questionnaire (manager)
 
-**Status:** Draft — **user scenario first** (no implementation commitments)  
-**Date:** 2026-07-15 (rev. 2)  
+**Status:** Approved for implementation  
+**Date:** 2026-07-15 (rev. 3)  
 **Persona:** Services tenant manager (Sales / client acquisition)  
 **Prerequisite:** Product B send → submit → answers path passable (F3-B-02..07)  
 **Related:** [release-revenue-flow-audit.md](../release-revenue-flow-audit.md), [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md), G-B-05 (Entity Profile registry on tenant)
@@ -62,6 +62,40 @@ Capability bundle
 
 **Rule:** **Capability spawns the questionnaire** — not the other way around.  
 Form rows in DB are persistence; **Capability is the product noun** in UI.
+
+---
+
+## 2.1 Product rule — questionnaire is never an orphan
+
+An questionnaire must **not exist as a dead record** after save.
+
+**Invariant:** after «Сохранить» the manager lands on **this questionnaire’s card** with obvious next actions — never on a bare list wondering «what now?».
+
+| Pass | Fail |
+|------|------|
+| Card opens with send / copy / open / preview / edit | Save → list or silent redirect |
+| Status **Активна** visible immediately | User must hunt settings to use the form |
+| At least one action works without docs | User asks «what do I do next?» |
+
+If the user asks «what now?» after save — **the scenario is incomplete**, not the user.
+
+---
+
+## 2.2 Product rule — Capability is the only user decision
+
+Backend may keep Entity Profile, Purpose, Submission Policy, Routing, Preset — **unchanged**.
+
+**Invariant:** in the create flow the manager makes **one** choice:
+
+> «Какое направление / услугу я хочу использовать?»
+
+Everything else is resolved **silently** from the Capability bundle.
+
+| User decides | System decides (hidden) |
+|--------------|-------------------------|
+| Direction card (Capability) | `entity_profile_code`, `purpose`, preset fields, `submission_policy`, routing defaults, slug prefix |
+
+**Platform evolution rule:** new platform knobs **must not** appear in the create wizard. They attach to **Capability bundles** (or advanced-only paths), never to the default 90% path.
 
 ---
 
@@ -208,6 +242,28 @@ Thresholds tunable per Capability later; v1 global bands OK.
 | **F3-B-10** | Create path + **questionnaire card** (Parts A+B) | not_started |
 | **F3-B-11** | New services tenant: Capability → card → send → submit (no repair CLI) | not_started |
 
+### F3-B-11 — naive-user acceptance (mandatory)
+
+**Tester:** someone who has **never** used HostFlow.
+
+**Task (given verbally, no docs):**
+
+> «Создай анкету для продажи таргетированной рекламы и отправь её клиенту.»
+
+**Pass — all required:**
+
+| # | Criterion |
+|---|-----------|
+| 1 | Completes without asking «what is Entity Profile / Purpose / Policy?» |
+| 2 | Does not open documentation |
+| 3 | Does not need hand-holding on platform concepts |
+| 4 | Finishes in **2–3 minutes** |
+| 5 | Questionnaire card visible after save; send or copy link works |
+
+**Fail interpretation:** if explanation is required, **the product failed** — not the tester.
+
+**Environment:** new **services** tenant, **no** repair CLI, **no** pre-seeded forms.
+
 **Gap:** **G-B-07** — first working questionnaire without platform concepts.
 
 **Implementation gate:** approve this spec → **one Scenario Step PR** with acceptance quote in §1 → F3-B-10 walkthrough → F3-B-11 on clean tenant.
@@ -234,5 +290,6 @@ Field labels: resolved human text — never raw `fields.*` keys in default UI.
 
 | Date | Change |
 |------|--------|
+| 2026-07-15 | **Rev 3** — orphan questionnaire rule; single Capability decision rule; F3-B-11 naive-user acceptance; approved for implementation |
 | 2026-07-15 | **Rev 2** — Capability-first entry; flow extends to questionnaire card; no default empty create; quality indicator; PR acceptance rule |
 | 2026-07-15 | Initial Flow Spec — manager-first, reuse audit |

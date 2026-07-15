@@ -210,7 +210,7 @@ Walkthrough-specific gaps discovered during §20-style staging verification. Eac
 
 **Not architecture.** Reuse existing APIs; UX + card composition only.
 
-**Next:** Approve spec → one Scenario Step PR → F3-B-10 walkthrough → F3-B-11 on **new services tenant** without repair CLI.
+**Next:** Scenario Step PR (spec rev 3 approved) → F3-B-10 walkthrough → **F3-B-11 naive-user test** on new services tenant without repair CLI.
 
 
 #### G-B-05 — targeted-advertising Entity Profile available for every services tenant

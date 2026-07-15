@@ -10,6 +10,7 @@ import {
   type PresentationFieldInput,
 } from '../../api/intakeForms'
 
+import { QuestionnaireQualityIndicator } from './QuestionnaireQualityIndicator'
 import type { PresentationRules } from '../../utils/presentationRules'
 
 export type PresentationFieldDraft = {
@@ -49,6 +50,11 @@ type Props = {
   onEntityProfileChange?: (code: string) => void
   onChange: (fields: PresentationFieldInput[]) => void
   disabled?: boolean
+  /** Manager create flow — hide platform controls, auto-load preset. */
+  wizardMode?: boolean
+  autoLoadPreset?: boolean
+  /** When true with wizardMode, list only included questions (create flow). */
+  selectedQuestionsOnly?: boolean
 }
 
 export function IntakeFormPresentationEditor({
@@ -57,6 +63,9 @@ export function IntakeFormPresentationEditor({
   onEntityProfileChange,
   onChange,
   disabled = false,
+  wizardMode = false,
+  autoLoadPreset = false,
+  selectedQuestionsOnly = false,
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -66,6 +75,62 @@ export function IntakeFormPresentationEditor({
   const [rows, setRows] = useState<PresentationFieldDraft[]>(initialFields ?? [])
   const [loading, setLoading] = useState(true)
   const [loadingPreset, setLoadingPreset] = useState(false)
+  const [presetLoadedFor, setPresetLoadedFor] = useState<string | null>(null)
+
+  const applyPreset = useCallback(
+    async (code: string, fields: EntityProfileFieldOption[], silent = false) => {
+      if (!code || disabled) return
+      setLoadingPreset(true)
+      try {
+        const preset = await getEntityProfilePresentationPreset(code)
+        const presetByCode = new Map(preset.fields.map((field) => [field.qualified_code, field]))
+        setRows(
+          fields.map((field, index) => {
+            const presetField = presetByCode.get(field.qualified_code)
+            if (presetField) {
+              return {
+                qualified_code: field.qualified_code,
+                label_override: presetField.label_override || field.label,
+                intake_level: (presetField.intake_level === 'required'
+                  ? 'required'
+                  : presetField.intake_level === 'hidden'
+                    ? 'hidden'
+                    : 'optional') as 'required' | 'optional' | 'hidden',
+                sort_order: presetField.sort_order ?? (index + 1) * 10,
+                selected: true,
+                presentation_rules: presetField.presentation_rules,
+              }
+            }
+            return {
+              qualified_code: field.qualified_code,
+              label_override: field.label,
+              intake_level: (field.intake_level === 'required' ? 'required' : 'optional') as
+                | 'required'
+                | 'optional'
+                | 'hidden',
+              sort_order: (index + 1) * 10,
+              selected: false,
+            }
+          }),
+        )
+        setPresetLoadedFor(code)
+        if (!silent) {
+          notify({
+            title: t('admin.intake_forms.toast.preset_loaded', { defaultValue: 'Platform preset loaded' }),
+            variant: 'success',
+          })
+        }
+      } catch {
+        notify({
+          title: t('admin.intake_forms.errors.load_preset', { defaultValue: 'Failed to load platform preset' }),
+          variant: 'error',
+        })
+      } finally {
+        setLoadingPreset(false)
+      }
+    },
+    [disabled, notify, t],
+  )
 
   const loadCatalog = useCallback(
     async (code: string) => {
@@ -118,6 +183,13 @@ export function IntakeFormPresentationEditor({
   }, [profileCode, loadCatalog])
 
   useEffect(() => {
+    if (!autoLoadPreset || wizardMode !== true) return
+    if (!profileCode || loading || catalog.length === 0) return
+    if (presetLoadedFor === profileCode) return
+    void applyPreset(profileCode, catalog, true)
+  }, [applyPreset, autoLoadPreset, catalog, loading, presetLoadedFor, profileCode, wizardMode])
+
+  useEffect(() => {
     if (initialFields?.length) setRows(initialFields)
   }, [initialFields])
 
@@ -131,55 +203,8 @@ export function IntakeFormPresentationEditor({
   )
 
   const loadPlatformPreset = async () => {
-    if (!profileCode || disabled) return
-    setLoadingPreset(true)
-    try {
-      const preset = await getEntityProfilePresentationPreset(profileCode)
-      const presetByCode = new Map(preset.fields.map((field) => [field.qualified_code, field]))
-      setRows((prev) => {
-        const prevByCode = new Map(prev.map((row) => [row.qualified_code, row]))
-        return catalog.map((field, index) => {
-          const presetField = presetByCode.get(field.qualified_code)
-          const existing = prevByCode.get(field.qualified_code)
-          if (presetField) {
-            return {
-              qualified_code: field.qualified_code,
-              label_override: presetField.label_override || field.label,
-              intake_level: (presetField.intake_level === 'required'
-                ? 'required'
-                : presetField.intake_level === 'hidden'
-                  ? 'hidden'
-                  : 'optional') as 'required' | 'optional' | 'hidden',
-              sort_order: presetField.sort_order ?? (index + 1) * 10,
-              selected: true,
-              presentation_rules: presetField.presentation_rules,
-            }
-          }
-          if (existing) return { ...existing, selected: false }
-          return {
-            qualified_code: field.qualified_code,
-            label_override: field.label,
-            intake_level: (field.intake_level === 'required' ? 'required' : 'optional') as
-              | 'required'
-              | 'optional'
-              | 'hidden',
-            sort_order: (index + 1) * 10,
-            selected: false,
-          }
-        })
-      })
-      notify({
-        title: t('admin.intake_forms.toast.preset_loaded', { defaultValue: 'Platform preset loaded' }),
-        variant: 'success',
-      })
-    } catch {
-      notify({
-        title: t('admin.intake_forms.errors.load_preset', { defaultValue: 'Failed to load platform preset' }),
-        variant: 'error',
-      })
-    } finally {
-      setLoadingPreset(false)
-    }
+    if (!profileCode || disabled || catalog.length === 0) return
+    await applyPreset(profileCode, catalog, false)
   }
 
   const moveRow = (qualifiedCode: string, direction: -1 | 1) => {
@@ -202,51 +227,65 @@ export function IntakeFormPresentationEditor({
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('admin.intake_forms.fields.entity_profile', { defaultValue: 'Entity Profile' })}
-        </label>
-        <select
-          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-          value={profileCode}
-          disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value
-            setProfileCode(next)
-            onEntityProfileChange?.(next)
-          }}
-        >
-          {profiles.map((profile) => (
-            <option key={profile.code} value={profile.code}>
-              {profile.name} ({profile.code})
-            </option>
-          ))}
-        </select>
-        {profileCode === B2B_SALES_PROFILE_CODE && (
-          <button
-            type="button"
-            className="btn-secondary mt-2"
-            disabled={disabled || loadingPreset || loading}
-            onClick={() => void loadPlatformPreset()}
+      {!wizardMode && (
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('admin.intake_forms.fields.entity_profile', { defaultValue: 'Entity Profile' })}
+          </label>
+          <select
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            value={profileCode}
+            disabled={disabled}
+            onChange={(event) => {
+              const next = event.target.value
+              setProfileCode(next)
+              onEntityProfileChange?.(next)
+            }}
           >
-            {loadingPreset
-              ? t('common.loading')
-              : t('admin.intake_forms.load_b2b_preset', { defaultValue: 'Load B2B sales questionnaire preset' })}
-          </button>
-        )}
-      </div>
+            {profiles.map((profile) => (
+              <option key={profile.code} value={profile.code}>
+                {profile.name} ({profile.code})
+              </option>
+            ))}
+          </select>
+          {profileCode === B2B_SALES_PROFILE_CODE && (
+            <button
+              type="button"
+              className="btn-secondary mt-2"
+              disabled={disabled || loadingPreset || loading}
+              onClick={() => void loadPlatformPreset()}
+            >
+              {loadingPreset
+                ? t('common.loading')
+                : t('admin.intake_forms.load_b2b_preset', { defaultValue: 'Load B2B sales questionnaire preset' })}
+            </button>
+          )}
+        </div>
+      )}
 
-      {loading ? (
+      {wizardMode && (loading || loadingPreset) ? (
+        <p className="text-sm text-slate-500">{t('admin.questionnaire.loading_questions', { defaultValue: 'Загружаем вопросы…' })}</p>
+      ) : null}
+
+      {wizardMode && !loading && !loadingPreset ? (
+        <QuestionnaireQualityIndicator questionCount={selectedRows.length} />
+      ) : null}
+
+      {loading && !wizardMode ? (
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
-      ) : (
+      ) : !loading || wizardMode ? (
         <div className="overflow-x-auto rounded-xl border border-slate-100">
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.include', { defaultValue: 'Include' })}</th>
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.label', { defaultValue: 'Label' })}</th>
-                <th className="px-2 py-2">{t('admin.intake_forms.columns.field', { defaultValue: 'Field code' })}</th>
-                <th className="px-2 py-2">{t('admin.intake_forms.columns.level', { defaultValue: 'Intake level' })}</th>
+                {!wizardMode ? (
+                  <th className="px-2 py-2">{t('admin.intake_forms.columns.field', { defaultValue: 'Field code' })}</th>
+                ) : null}
+                {!wizardMode ? (
+                  <th className="px-2 py-2">{t('admin.intake_forms.columns.level', { defaultValue: 'Intake level' })}</th>
+                ) : null}
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.order', { defaultValue: 'Order' })}</th>
               </tr>
             </thead>
@@ -255,24 +294,29 @@ export function IntakeFormPresentationEditor({
                 const row = rows.find((item) => item.qualified_code === field.qualified_code)
                 if (!row) return null
                 const selectedIndex = selectedRows.findIndex((item) => item.qualified_code === row.qualified_code)
+                if (wizardMode && selectedQuestionsOnly && !row.selected) return null
                 return (
                   <tr key={field.qualified_code} className="border-b border-slate-50">
-                    <td className="px-2 py-2">
-                      <input
-                        type="checkbox"
-                        checked={row.selected}
-                        disabled={disabled}
-                        onChange={(event) =>
-                          setRows((prev) =>
-                            prev.map((item) =>
-                              item.qualified_code === row.qualified_code
-                                ? { ...item, selected: event.target.checked }
-                                : item,
-                            ),
-                          )
-                        }
-                      />
-                    </td>
+                    {!wizardMode || !selectedQuestionsOnly ? (
+                      <td className="px-2 py-2">
+                        <input
+                          type="checkbox"
+                          checked={row.selected}
+                          disabled={disabled}
+                          onChange={(event) =>
+                            setRows((prev) =>
+                              prev.map((item) =>
+                                item.qualified_code === row.qualified_code
+                                  ? { ...item, selected: event.target.checked }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </td>
+                    ) : (
+                      <td className="px-2 py-2 text-slate-400">•</td>
+                    )}
                     <td className="px-2 py-2">
                       <input
                         className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
@@ -289,30 +333,34 @@ export function IntakeFormPresentationEditor({
                         }
                       />
                     </td>
-                    <td className="px-2 py-2 font-mono text-xs text-slate-600">{row.qualified_code}</td>
-                    <td className="px-2 py-2">
-                      <select
-                        className="rounded-lg border border-slate-200 px-2 py-1 text-sm"
-                        value={row.intake_level}
-                        disabled={disabled || !row.selected}
-                        onChange={(event) =>
-                          setRows((prev) =>
-                            prev.map((item) =>
-                              item.qualified_code === row.qualified_code
-                                ? {
-                                    ...item,
-                                    intake_level: event.target.value as 'required' | 'optional' | 'hidden',
-                                  }
-                                : item,
-                            ),
-                          )
-                        }
-                      >
-                        <option value="required">{t('admin.intake_forms.level.required', { defaultValue: 'Required' })}</option>
-                        <option value="optional">{t('admin.intake_forms.level.optional', { defaultValue: 'Optional' })}</option>
-                        <option value="hidden">{t('admin.intake_forms.level.hidden', { defaultValue: 'Hidden' })}</option>
-                      </select>
-                    </td>
+                    {!wizardMode ? (
+                      <td className="px-2 py-2 font-mono text-xs text-slate-600">{row.qualified_code}</td>
+                    ) : null}
+                    {!wizardMode ? (
+                      <td className="px-2 py-2">
+                        <select
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-sm"
+                          value={row.intake_level}
+                          disabled={disabled || !row.selected}
+                          onChange={(event) =>
+                            setRows((prev) =>
+                              prev.map((item) =>
+                                item.qualified_code === row.qualified_code
+                                  ? {
+                                      ...item,
+                                      intake_level: event.target.value as 'required' | 'optional' | 'hidden',
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="required">{t('admin.intake_forms.level.required', { defaultValue: 'Required' })}</option>
+                          <option value="optional">{t('admin.intake_forms.level.optional', { defaultValue: 'Optional' })}</option>
+                          <option value="hidden">{t('admin.intake_forms.level.hidden', { defaultValue: 'Hidden' })}</option>
+                        </select>
+                      </td>
+                    ) : null}
                     <td className="px-2 py-2">
                       {row.selected ? (
                         <div className="flex items-center gap-1">
@@ -341,9 +389,9 @@ export function IntakeFormPresentationEditor({
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
-      {selectedRows.length > 0 && (
+      {!wizardMode && selectedRows.length > 0 && (
         <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('admin.intake_forms.sections.presentation_rules', { defaultValue: 'Presentation rules (P10A)' })}
