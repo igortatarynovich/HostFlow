@@ -34,7 +34,9 @@ Full browser walkthrough (A/B/C) is **release gate** — after UI/publication sl
 - [ ] **§4.4 Match Matrix:** Product B auto-attach conditions accepted
 - [ ] **§5 Publication / Invite:** Form default policy; Publication binds version + attribution; Invite forces attach
 - [ ] **§5.5 Component ownership:** Reuse-first audit accepted; no second routing engine
+- [ ] **§5.2 Publication contract:** one Form → many Publications; attribution scales to multi-channel ops
 - [ ] **§6 Versioning:** Published version immutable (design); Phase 1 honesty acknowledged
+- [ ] **Multi-form scalability (PR §9):** dozens of forms/publications per tenant — model yes; Phase 1 ops gaps explicit
 - [ ] **§7 Entity Profile:** Validates allowed purpose/policy combinations; form cannot set incompatible route_intent
 
 ## Product review (semantics — backend PR)

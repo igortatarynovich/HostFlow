@@ -89,6 +89,14 @@ Fields on `tenant_lead_forms` and `publication_config_v1` on `intake_source_prof
 
 1. Freeze new features
 2. P1 fixes + tests
-3. Architecture review → ADR-022 **Accepted**
+3. Architecture review → ADR-022 **Accepted** (incl. multi-form scalability §9)
 4. Merge backend slice
-5. Next slice: Admin UI + Product B UI acceptance
+5. Next slice: **Product B walkthrough** (UI/publication — not full Form Definition editor)
+
+## Development filter (post-merge)
+
+Every next PR must answer: **which end-to-end user scenario becomes passable that is not passable today?**
+
+If the answer is vague or does not move a revenue flow closer — backlog.
+
+Priority: Product B walkthrough → Product A walkthrough → Document Platform → Process Platform.
