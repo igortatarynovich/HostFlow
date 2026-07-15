@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { getIntakeFormDetail } from '../../api/intakeForms'
 import { listLeadQuestionnaireForms } from '../../api/client'
+import { settingsLeadFormDetailPath } from '../../app/crmAppPaths'
 import type { Lead } from '../../api/types'
 import { useI18n, type LocaleCode } from '../../i18n'
 import {
@@ -22,17 +23,12 @@ import {
   readSubmissionPublishedVersion,
   readSubmissionPurpose,
   readSubmissionSource,
+  resolveAttributionFormContext,
   shortId,
   submissionEntryLabel,
   submissionPolicyModeLabel,
+  type AttributionFormContext,
 } from '../../utils/salesQuestionnaireAttribution'
-
-type AttributionContext = {
-  formTitle: string
-  formId: string | null
-  publicationName: string | null
-  settingsFormPath: string | null
-}
 
 function formatSubmittedAt(iso: string | null | undefined, locale: LocaleCode): string {
   if (!iso) return '—'
@@ -52,45 +48,6 @@ function text(value: unknown): string {
   return String(value).trim()
 }
 
-async function resolveAttributionContext(submission: LeadSubmissionV1): Promise<AttributionContext> {
-  const formId = text(submission.form_id) || null
-  if (!formId) {
-    return { formTitle: '—', formId: null, publicationName: null, settingsFormPath: null }
-  }
-
-  try {
-    const forms = await listLeadQuestionnaireForms()
-    const match = forms.find((row) => row.id === formId)
-    if (match?.title) {
-      return {
-        formTitle: match.title,
-        formId,
-        publicationName: null,
-        settingsFormPath: `/app/settings/lead-forms/${formId}`,
-      }
-    }
-  } catch {
-    // fall through
-  }
-
-  try {
-    const detail = await getIntakeFormDetail(formId)
-    return {
-      formTitle: detail.form?.title || formId,
-      formId,
-      publicationName: detail.intake_source_profile?.name || null,
-      settingsFormPath: `/app/settings/lead-forms/${formId}`,
-    }
-  } catch {
-    return {
-      formTitle: formId,
-      formId,
-      publicationName: null,
-      settingsFormPath: `/app/settings/lead-forms/${formId}`,
-    }
-  }
-}
-
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <li className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
@@ -103,7 +60,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead }) {
   const { locale, t } = useI18n()
   const submission = readLatestSubmission(lead)
-  const [context, setContext] = useState<AttributionContext | null>(null)
+  const [context, setContext] = useState<AttributionFormContext | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -114,7 +71,10 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
     }
     let cancelled = false
     setLoading(true)
-    void resolveAttributionContext(submission)
+    void resolveAttributionFormContext(text(submission.form_id) || null, {
+      listForms: listLeadQuestionnaireForms,
+      getFormDetail: getIntakeFormDetail,
+    })
       .then((next) => {
         if (!cancelled) setContext(next)
       })
@@ -138,12 +98,13 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
   const policyMode = readSubmissionPolicyMode(submission)
   const publicationId = readSubmissionPublicationId(submission)
   const presentationCode = resolveSubmissionPresentationCode(submission)
-  const entryLabel = submissionEntryLabel(source.entry)
-  const policyLabel = submissionPolicyModeLabel(policyMode)
+  const entryLabel = submissionEntryLabel(source.entry, t)
+  const policyLabel = submissionPolicyModeLabel(policyMode, t)
   const intakeBehavior =
     source.entry === 'questionnaire_invite'
       ? personalInviteBehaviorLabel()
       : publicSubmitBehaviorLabel({ purpose, submission_policy: { mode: policyMode } })
+  const settingsFormPath = context?.formId ? settingsLeadFormDetailPath(context.formId) : null
 
   return (
     <section className="space-y-3" data-testid="sales-questionnaire-attribution">
@@ -164,8 +125,8 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
           <Row
             label={t('app.sales_questionnaire.attribution.form', { defaultValue: 'Form' })}
             value={
-              context?.settingsFormPath ? (
-                <Link to={context.settingsFormPath} className="text-brand-700 hover:underline">
+              settingsFormPath ? (
+                <Link to={settingsFormPath} className="text-brand-700 hover:underline">
                   {context?.formTitle || '—'}
                 </Link>
               ) : (
