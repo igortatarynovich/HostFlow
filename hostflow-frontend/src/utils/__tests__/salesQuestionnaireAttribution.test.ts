@@ -56,18 +56,20 @@ describe('salesQuestionnaireAttribution', () => {
     expect(readIntakeFormDetailTitle({ form: { title: 'From detail' } })).toBe('From detail')
   })
 
-  it('resolves form title from list, then detail, then uuid fallback', async () => {
+  it('resolves form title from list, then detail, then lead-forms list, then uuid fallback', async () => {
     const listForms = vi.fn().mockResolvedValue([{ id: formId, title: 'B1 Acceptance Form' }])
     const getFormDetail = vi.fn()
+    const listLeadForms = vi.fn()
 
     await expect(
-      resolveAttributionFormContext(formId, { listForms, getFormDetail }),
+      resolveAttributionFormContext(formId, { listForms, getFormDetail, listLeadForms }),
     ).resolves.toEqual({
       formTitle: 'B1 Acceptance Form',
       formId,
       publicationName: null,
     })
     expect(getFormDetail).not.toHaveBeenCalled()
+    expect(listLeadForms).not.toHaveBeenCalled()
 
     listForms.mockResolvedValue([])
     getFormDetail.mockResolvedValue({
@@ -76,18 +78,32 @@ describe('salesQuestionnaireAttribution', () => {
     })
 
     await expect(
-      resolveAttributionFormContext(formId, { listForms, getFormDetail }),
+      resolveAttributionFormContext(formId, { listForms, getFormDetail, listLeadForms }),
     ).resolves.toEqual({
       formTitle: 'Detail title',
       formId,
       publicationName: 'Meta Ads',
     })
+    expect(listLeadForms).not.toHaveBeenCalled()
+
+    listForms.mockResolvedValue([])
+    getFormDetail.mockRejectedValue(new Error('detail failed'))
+    listLeadForms.mockResolvedValue([{ id: formId, title: 'B1 Acceptance Form' }])
+
+    await expect(
+      resolveAttributionFormContext(formId, { listForms, getFormDetail, listLeadForms }),
+    ).resolves.toEqual({
+      formTitle: 'B1 Acceptance Form',
+      formId,
+      publicationName: null,
+    })
 
     listForms.mockRejectedValue(new Error('list failed'))
     getFormDetail.mockRejectedValue(new Error('detail failed'))
+    listLeadForms.mockRejectedValue(new Error('lead forms failed'))
 
     await expect(
-      resolveAttributionFormContext(formId, { listForms, getFormDetail }),
+      resolveAttributionFormContext(formId, { listForms, getFormDetail, listLeadForms }),
     ).resolves.toEqual({
       formTitle: formId,
       formId,

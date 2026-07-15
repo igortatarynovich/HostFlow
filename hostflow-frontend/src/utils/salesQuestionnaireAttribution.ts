@@ -94,6 +94,7 @@ export async function resolveAttributionFormContext(
   deps: {
     listForms: () => Promise<unknown>
     getFormDetail: (id: string) => Promise<unknown>
+    listLeadForms?: () => Promise<unknown>
   },
 ): Promise<AttributionFormContext> {
   if (!formId) {
@@ -121,7 +122,22 @@ export async function resolveAttributionFormContext(
       }
     }
   } catch {
-    // fall through to emergency fallback
+    // fall through to tenant lead-forms list
+  }
+
+  if (deps.listLeadForms) {
+    try {
+      const leadFormsPayload = await deps.listLeadForms()
+      const titleFromLeadForms = findQuestionnaireFormTitleInList(
+        normalizeLeadQuestionnaireFormsList(leadFormsPayload),
+        formId,
+      )
+      if (titleFromLeadForms) {
+        return { formTitle: titleFromLeadForms, formId, publicationName: null }
+      }
+    } catch {
+      // fall through to emergency fallback
+    }
   }
 
   return { formTitle: formId, formId, publicationName: null }
