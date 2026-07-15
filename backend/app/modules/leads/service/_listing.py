@@ -51,6 +51,7 @@ from backend.app.modules.leads.lead_candidate_doc_loader import (
 from backend.app.modules.leads.lead_criteria_eval import evaluate_vacancy_for_lead
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
 from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, lead_vacancy_routing_aux
+from backend.app.intake_platform.operational_scope import OPERATIONAL_EXCLUDED_LEAD_STAGES
 
 from ._helpers import _build_lead_outcome, _load_tenant_business_type
 
@@ -133,6 +134,7 @@ async def _build_lead_list_filters(
     lead_target_type: Optional[str] = None,
 ) -> Tuple[List[Any], Any, Any, datetime]:
     filters: List[Any] = [Lead.tenant_id == tenant_id]
+    filters.append(func.lower(func.coalesce(Lead.stage, "")).notin_(tuple(OPERATIONAL_EXCLUDED_LEAD_STAGES)))
     if own_company_id:
         filters.append(Lead.own_company_id == own_company_id)
     lt = (lead_type or "").strip().lower() or None

@@ -17,7 +17,7 @@ from backend.app.services.lead_communication_settings import (
     get_lead_communication_settings,
 )
 from backend.app.services.message_hub import resolve_lead_email_message
-from backend.app.services.lead_rodo import normalized_merging_lead_rodo
+from backend.app.intake_platform.constants import SUBMISSIONS_V1_KEY
 from backend.app.services.tenant_email import send_email_for_tenant
 
 logger = logging.getLogger(__name__)
@@ -34,12 +34,20 @@ _COMMUNICATION_EVENTS = frozenset(
 
 
 def normalized_merging_lead_persisted_blocks(lead: Lead, normalized: Dict[str, Any]) -> Dict[str, Any]:
-    """Preserve ``rodo`` and ``lead_communication_v1`` when pipeline rewrites normalized."""
+    """Preserve immutable/normalized blocks when pipeline rewrites normalized."""
+    from backend.app.services.lead_rodo import normalized_merging_lead_rodo
+
     out = normalized_merging_lead_rodo(lead, normalized)
     existing = lead.normalized if isinstance(lead.normalized, dict) else {}
     comm = existing.get(COMMUNICATION_NORMALIZED_KEY)
     if isinstance(comm, dict):
         out[COMMUNICATION_NORMALIZED_KEY] = dict(comm)
+    submissions = existing.get(SUBMISSIONS_V1_KEY)
+    if isinstance(submissions, list):
+        out[SUBMISSIONS_V1_KEY] = list(submissions)
+    for key in ("intake_attribution_v1", "intake_submit_resolution_v1", "public_intake_draft_v1"):
+        if key in existing and key not in out:
+            out[key] = existing[key]
     return out
 
 

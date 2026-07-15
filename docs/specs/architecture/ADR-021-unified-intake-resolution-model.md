@@ -6,7 +6,7 @@
 **Authors:** Product + Platform architecture  
 **Supersedes / clarifies:** partial product behaviour documented across [ADR-013](ADR-013-public-intake-strategy.md), [ui-constitution-v1.md](ui-constitution-v1.md), [applications-operating-model.md](applications-operating-model.md), [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md)
 
-**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
+**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
 
 **Review artifact:** [ADR-021-review-checklist.md](ADR-021-review-checklist.md)
 

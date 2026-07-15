@@ -189,3 +189,73 @@ async def test_questionnaire_invite_mark_sent_false_does_not_create_draft(
     assert reuse.status_code == 200, reuse.text
     assert reuse.json()["token"] == first_token
     assert reuse.json()["status"] == "sent"
+
+
+@pytest.mark.asyncio
+async def test_constructor_b2b_form_questionnaire_invite_flow(
+    client: AsyncClient,
+    tenant_id: str,
+    manager_headers: dict,
+) -> None:
+    from backend.app.models.intake_routing import IntakeSourceProfile
+    from backend.tests.api.test_intake_forms_settings import _admin_headers
+
+    async with async_session_maker() as session:
+        await ensure_tenant_entity_profile_defaults(session, tenant_id)
+        await session.commit()
+
+    admin_headers = await _admin_headers(tenant_id)
+    slug = f"b2b-{uuid4().hex[:8]}"
+    preset_resp = await client.get(
+        f"/api/v1/settings/intake-forms/entity-profiles/{TARGETED_ADVERTISING_PROFILE_CODE}/presentation-preset",
+        headers=admin_headers,
+    )
+    assert preset_resp.status_code == 200, preset_resp.text
+    preset_fields = preset_resp.json()["fields"]
+    assert len(preset_fields) >= 10
+
+    create_resp = await client.post(
+        "/api/v1/settings/intake-forms",
+        headers=admin_headers,
+        json={
+            "title": "Ankieta B2B — konstruktor",
+            "public_slug": slug,
+            "entity_profile_code": TARGETED_ADVERTISING_PROFILE_CODE,
+            "fields": preset_fields,
+        },
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    created = create_resp.json()
+    assert created["intake_source_profile"]["route_intent"] == "sales_inquiry"
+    assert created["intake_source_profile"]["entity_profile_code"] == TARGETED_ADVERTISING_PROFILE_CODE
+    expected_presentation = f"{TARGETED_ADVERTISING_PROFILE_CODE}.form.{slug}"
+    assert created["intake_source_profile"]["presentation_code"] == expected_presentation
+
+    lead = await _create_meta_client_lead(tenant_id)
+    lead_id = str(lead.id)
+
+    invite_resp = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite",
+        headers=manager_headers,
+        json={"mark_sent": True},
+    )
+    assert invite_resp.status_code == 200, invite_resp.text
+    token = invite_resp.json()["token"]
+    assert token
+
+    get_resp = await client.get(f"/api/v1/public/apply/{token}")
+    assert get_resp.status_code == 200, get_resp.text
+    body = get_resp.json()
+    assert body.get("form_presentation", {}).get("entity_profile_code") == TARGETED_ADVERTISING_PROFILE_CODE
+    assert body.get("form_presentation", {}).get("presentation_code") == expected_presentation
+
+    async with async_session_maker() as session:
+        intake_profile = await session.scalar(
+            select(IntakeSourceProfile).where(
+                IntakeSourceProfile.tenant_id == tenant_id,
+                IntakeSourceProfile.public_slug == slug,
+            )
+        )
+        assert intake_profile is not None
+        assert intake_profile.form_type == "sales_questionnaire"
+        assert intake_profile.lead_target_type == "client_lead"

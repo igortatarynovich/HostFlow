@@ -24,6 +24,7 @@ from backend.app.services.intake_mapping_admin_service import (
 from backend.app.services.intake_form_write_service import (
     create_public_intake_form,
     list_selectable_entity_profiles,
+    load_entity_profile_presentation_preset,
     update_public_intake_form,
     upsert_public_intake_form_presentation,
 )
@@ -57,6 +58,13 @@ class EntityProfileFieldsOut(BaseModel):
     code: str
     name: Optional[str] = None
     fields: List[EntityProfileFieldOptionOut] = Field(default_factory=list)
+
+
+class EntityProfilePresentationPresetOut(BaseModel):
+    entity_profile_code: str
+    presentation_code: str
+    profile_name: Optional[str] = None
+    fields: List[PresentationFieldIn] = Field(default_factory=list)
 
 
 class PresentationRuleConditionIn(BaseModel):
@@ -141,6 +149,7 @@ class IntakeFormDetailOut(BaseModel):
     presentation: dict[str, Any]
     presentations_available: List[dict[str, Any]] = Field(default_factory=list)
     submit_destination: dict[str, Any]
+    form_definition: Optional[dict[str, Any]] = None
     forms_platform: Optional[dict[str, Any]] = None
 
 
@@ -279,6 +288,29 @@ async def get_intake_form_entity_profile_fields(
         name=profile_meta.get("name"),
         fields=fields_out,
     )
+
+
+@router.get(
+    "/entity-profiles/{profile_code}/presentation-preset",
+    response_model=EntityProfilePresentationPresetOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def get_intake_form_entity_profile_presentation_preset(
+    profile_code: str,
+    presentation_code: Optional[str] = None,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple = Depends(get_db_with_tenant),
+) -> EntityProfilePresentationPresetOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    payload = await load_entity_profile_presentation_preset(
+        db,
+        tenant_id=tenant_id,
+        entity_profile_code=str(profile_code or "").strip(),
+        presentation_code=str(presentation_code or "").strip() or None,
+    )
+    return EntityProfilePresentationPresetOut.model_validate(payload)
 
 
 @router.post(
