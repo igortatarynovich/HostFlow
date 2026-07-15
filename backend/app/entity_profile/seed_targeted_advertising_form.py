@@ -62,22 +62,41 @@ async def _ensure_default_own_company_id(db: AsyncSession, tenant_id: str) -> st
     return str(row.id)
 
 
+async def _resolve_targeted_advertising_public_slug(db: AsyncSession, tenant_id: str) -> str:
+    """Canonical slug when free globally; otherwise tenant-scoped (global public_slug uniqueness)."""
+    taken_elsewhere = await db.scalar(
+        select(TenantLeadForm.tenant_id).where(
+            TenantLeadForm.public_slug == TARGETED_ADVERTISING_FORM_SLUG,
+            TenantLeadForm.tenant_id != str(tenant_id),
+        ).limit(1)
+    )
+    if taken_elsewhere is None:
+        return TARGETED_ADVERTISING_FORM_SLUG
+    suffix = str(tenant_id).replace("-", "")[:10]
+    return f"{TARGETED_ADVERTISING_FORM_SLUG}-{suffix}"
+
+
 async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenant_id: str) -> None:
     """Idempotent: TenantLeadForm + IntakeSourceProfile for service_sales.targeted_advertising."""
     await sync_targeted_advertising_presentation_from_manifest(db, str(tenant_id))
     own_company_id = await _ensure_default_own_company_id(db, str(tenant_id))
     lead_form = await db.scalar(
-        select(TenantLeadForm).where(
+        select(TenantLeadForm)
+        .where(
             TenantLeadForm.tenant_id == str(tenant_id),
-            TenantLeadForm.public_slug == TARGETED_ADVERTISING_FORM_SLUG,
+            TenantLeadForm.is_active.is_(True),
+            TenantLeadForm.target_entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE,
         )
+        .order_by(TenantLeadForm.is_system_preset.desc(), TenantLeadForm.created_at.asc())
+        .limit(1)
     )
+    public_slug = str(lead_form.public_slug) if lead_form else await _resolve_targeted_advertising_public_slug(db, str(tenant_id))
     if lead_form is None:
         lead_form = TenantLeadForm(
             id=str(uuid4()),
             tenant_id=str(tenant_id),
             title=TARGETED_ADVERTISING_FORM_TITLE,
-            public_slug=TARGETED_ADVERTISING_FORM_SLUG,
+            public_slug=public_slug,
             is_active=True,
         )
         apply_form_definition_fields(
@@ -116,7 +135,7 @@ async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenan
             channel=IntakeChannel.direct.value,
             own_company_id=own_company_id,
             route_intent=RouteIntent.sales_inquiry.value,
-            public_slug=TARGETED_ADVERTISING_FORM_SLUG,
+            public_slug=public_slug,
             form_type="sales_questionnaire",
             lead_type="client",
             lead_target_type="client_lead",
@@ -146,7 +165,7 @@ async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenan
         }
         await db.flush()
 
-    binding_key = f"public_slug:{TARGETED_ADVERTISING_FORM_SLUG}"
+    binding_key = f"public_slug:{public_slug}"
     binding = await db.scalar(
         select(IntakeSourceBinding).where(
             IntakeSourceBinding.tenant_id == str(tenant_id),
