@@ -8279,6 +8279,34 @@
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID tenanta"
       }
+    },
+    "sales_questionnaire": {
+      "attribution_title": "Atrybucja odpowiedzi",
+      "attribution_hint": "Skąd pochodzi ta odpowiedź i jak została dołączona.",
+      "attribution": {
+        "form": "Formularz",
+        "version": "Opublikowana wersja",
+        "source": "Źródło",
+        "publication": "Publikacja",
+        "submitted_at": "Wysłano",
+        "submission": "Zgłoszenie",
+        "attach_mode": "Tryb dołączenia",
+        "profile": "Profil encji",
+        "purpose": "Cel",
+        "presentation": "Prezentacja",
+        "invite": "Zaproszenie",
+        "behavior": "Routing odpowiedzi",
+        "entry": {
+          "questionnaire_invite": "Osobiste zaproszenie do ankiety",
+          "public_form": "Formularz publiczny"
+        },
+        "policy": {
+          "attach": "Dodano do tego zapytania",
+          "create": "Utworzono nowe zapytanie",
+          "match_or_create": "Dopasowano lub utworzono zapytanie",
+          "review": "Wysłano do kolejki weryfikacji"
+        }
+      }
     }
   },
   "public": {
