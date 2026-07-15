@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { getIntakeFormDetail } from '../../api/intakeForms'
 import { listLeadQuestionnaireForms } from '../../api/client'
+import { listLeadForms } from '../../api/leadForms'
 import { settingsLeadFormDetailPath } from '../../app/crmAppPaths'
 import type { Lead } from '../../api/types'
 import { useI18n, type LocaleCode } from '../../i18n'
@@ -74,6 +75,7 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
     void resolveAttributionFormContext(text(submission.form_id) || null, {
       listForms: listLeadQuestionnaireForms,
       getFormDetail: getIntakeFormDetail,
+      listLeadForms,
     })
       .then((next) => {
         if (!cancelled) setContext(next)
