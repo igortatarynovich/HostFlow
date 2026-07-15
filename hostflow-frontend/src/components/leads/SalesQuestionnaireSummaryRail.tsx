@@ -1,5 +1,6 @@
 import { readSalesQuestionnaireSummary, salesQuestionnaireStatusLabel } from '../../utils/salesQuestionnaire'
 import type { Lead } from '../../api/types'
+import { useI18n } from '../../i18n'
 
 function row(label: string, value: unknown) {
   const text = Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value ?? '').trim()
@@ -13,13 +14,16 @@ function row(label: string, value: unknown) {
 }
 
 export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) {
+  const { locale, t } = useI18n()
   const summary = readSalesQuestionnaireSummary(lead)
-  const status = salesQuestionnaireStatusLabel(lead)
+  const status = salesQuestionnaireStatusLabel(lead, { locale })
 
   return (
     <section className="space-y-3">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ankieta reklamowa</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.sales_questionnaire.title', { defaultValue: 'B2B questionnaire' })}
+        </p>
         <p className="mt-1 text-sm font-medium text-slate-900">{status}</p>
       </div>
       <ul className="space-y-2 text-sm text-slate-800">

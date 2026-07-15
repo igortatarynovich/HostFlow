@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   IconArrowLeft,
-  IconClipboardCheck,
   IconCopy,
   IconExternalLink,
   IconForms,
@@ -29,6 +28,7 @@ import {
   SavePresentationButton,
   type PresentationFieldDraft,
 } from '../../components/admin/IntakeFormPresentationEditor'
+import IntakeFormAnswersRoutingCard from '../../components/admin/IntakeFormAnswersRoutingCard'
 import { IntakeFormMappingEditor } from '../../components/admin/IntakeFormMappingEditor'
 import {
   friendlyErrorBannerSecondary,
@@ -56,6 +56,7 @@ export default function IntakeFormDetailPage() {
   const [smokeResult, setSmokeResult] = useState<IntakeFormSmokeTestResult | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editSlug, setEditSlug] = useState('')
+  const [editActive, setEditActive] = useState(true)
   const [entityProfileCode, setEntityProfileCode] = useState('')
   const [presentationFields, setPresentationFields] = useState<PresentationFieldInput[]>([])
   const [presentationDraft, setPresentationDraft] = useState<PresentationFieldDraft[]>([])
@@ -71,6 +72,7 @@ export default function IntakeFormDetailPage() {
       setDetail(payload)
       setEditTitle(payload.form.title || '')
       setEditSlug(payload.form.public_slug || '')
+      setEditActive(Boolean(payload.form.is_active))
       setEntityProfileCode(payload.entity_profile.code)
       setPresentationDraft(detailFieldsToDraft(payload))
     } catch (err: unknown) {
@@ -139,6 +141,7 @@ export default function IntakeFormDetailPage() {
       const updated = await patchIntakeForm(formId, {
         title: editTitle.trim() || undefined,
         public_slug: editSlug.trim() || undefined,
+        is_active: editActive,
         entity_profile_code: entityProfileCode || undefined,
       })
       setDetail(updated)
@@ -284,6 +287,12 @@ export default function IntakeFormDetailPage() {
               </div>
             </div>
 
+            <IntakeFormAnswersRoutingCard
+              definition={detail.form_definition}
+              entityProfileCode={detail.entity_profile.code}
+              entityProfileName={detail.entity_profile.name}
+            />
+
             {detail.intake_source_profile && (
               <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -327,6 +336,17 @@ export default function IntakeFormDetailPage() {
                       value={editSlug}
                       onChange={(event) => setEditSlug(event.target.value)}
                     />
+                  </label>
+                  <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300"
+                      checked={editActive}
+                      onChange={(event) => setEditActive(event.target.checked)}
+                    />
+                    <span className="text-slate-700">
+                      {t('admin.lead_forms.fields.active', { defaultValue: 'Active (available in Sales picker)' })}
+                    </span>
                   </label>
                   <div className="sm:col-span-2">
                     <button type="button" className="btn-secondary" disabled={metaSaving} onClick={() => void saveMetadata()}>
@@ -374,7 +394,7 @@ export default function IntakeFormDetailPage() {
 
             <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('admin.intake_forms.sections.preview', { defaultValue: 'Field preview (P5A runtime)' })}
+                {t('admin.intake_forms.sections.preview', { defaultValue: 'Preview saved questions' })}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {t('admin.intake_forms.preview_hint', {
@@ -409,30 +429,10 @@ export default function IntakeFormDetailPage() {
               )}
             </div>
 
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-              <h3 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                <IconClipboardCheck size={16} />
-                {t('admin.intake_forms.sections.submit', { defaultValue: 'Submit destination' })}
-              </h3>
-              <p className="mt-2 text-sm text-emerald-950">{detail.submit_destination.pipeline}</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-emerald-900">
-                <li>
-                  {t('admin.intake_forms.submit.lead_draft', {
-                    defaultValue: 'Create: Lead draft only (no Candidate on POST /public/intake)',
-                  })}
-                </li>
-                <li>
-                  {t('admin.intake_forms.submit.outcome', {
-                    defaultValue: 'Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)',
-                  })}
-                </li>
-              </ul>
-            </div>
-
             {publicUrl && (
               <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t('admin.intake_forms.sections.public_link', { defaultValue: 'Public link' })}
+                  {t('admin.intake_forms.sections.public_link', { defaultValue: 'Public preview link' })}
                 </h3>
                 <div className="mt-2 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
                   <span className="flex-1">{publicUrl}</span>
