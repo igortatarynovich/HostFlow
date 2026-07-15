@@ -123,4 +123,38 @@ describe('salesQuestionnaireSubmissionDisplay', () => {
     expect(rows[1].value).toBe('Warehouse pickers')
     expect(rows[2].value).toBe('Photos, Logo')
   })
+
+  it('shows answers removed from current presentation with fallback labels', () => {
+    const currentPresentation: PresentationFieldWithRules[] = [
+      {
+        qualified_code: 'service_sales.targeted_advertising.recruitment_other_role',
+        sort_order: 40,
+        intake_level: 'optional',
+        label: 'Jakie stanowisko?',
+        field_type: 'text',
+        widget_hint: 'text',
+      },
+    ]
+
+    const rows = buildSubmissionAnswerRows({
+      values: {
+        'service_sales.targeted_advertising.recruitment_other_role': 'Warehouse pickers',
+        'service_sales.targeted_advertising.legacy_budget_band': '2000_5000',
+      },
+      presentationFields: currentPresentation,
+      t,
+      locale: 'en',
+    })
+
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({
+      label: 'Jakie stanowisko?',
+      value: 'Warehouse pickers',
+    })
+    expect(rows[1]).toMatchObject({
+      qualifiedCode: 'service_sales.targeted_advertising.legacy_budget_band',
+      label: 'Legacy Budget Band',
+      value: '2000_5000',
+    })
+  })
 })

@@ -218,6 +218,40 @@ function labelKeyForField(field: PresentationFieldWithRules, catalogByCode: Map<
   return raw.startsWith('fields.') ? raw : undefined
 }
 
+function fallbackFieldLabel(qualifiedCode: string): string {
+  const segment = qualifiedCode.split('.').slice(-1)[0] || qualifiedCode
+  return humanizeOptionValue(segment) || segment
+}
+
+function formatUnknownSubmissionValue(
+  value: unknown,
+  options: { t: TranslateFn; locale: string },
+): string {
+  if (value === true || value === false) return formatBoolean(value, options.t)
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'boolean') return formatBoolean(item, options.t)
+        const raw = text(item)
+        return raw.includes('_') ? humanizeOptionValue(raw) : raw
+      })
+      .filter(Boolean)
+      .join(', ')
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  const raw = text(value)
+  if (!raw) return ''
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    const formatted = formatDateValue(value, options.locale)
+    if (formatted) return formatted
+  }
+  return raw
+}
+
+function maxPresentationSortOrder(fields: PresentationFieldWithRules[]): number {
+  return fields.reduce((max, field) => Math.max(max, field.sort_order), 0)
+}
+
 function resolveFieldLabel(field: PresentationFieldWithRules, catalogByCode: Map<string, EntityProfileFieldOption>, t: TranslateFn): string {
   if (field.label && !field.label.startsWith('fields.')) return field.label
   const labelKey = labelKeyForField(field, catalogByCode) || field.label
@@ -237,24 +271,41 @@ export function buildSubmissionAnswerRows(input: {
 }): SubmissionAnswerRow[] {
   const catalogByCode = new Map((input.catalogFields || []).map((row) => [row.qualified_code, row]))
   const fieldsByCode = new Map(input.presentationFields.map((field) => [field.qualified_code, field]))
+  const knownSortMax = maxPresentationSortOrder(input.presentationFields)
+  let fallbackIndex = 0
 
   const rows: SubmissionAnswerRow[] = []
   for (const [qualifiedCode, rawValue] of Object.entries(input.values)) {
     const field = fieldsByCode.get(qualifiedCode)
-    if (!field) continue
-    const intakeLevel = text(field.intake_level).toLowerCase()
-    if (intakeLevel === 'hidden') continue
-    const formatted = formatSubmissionFieldValue(rawValue, field, {
+    if (field) {
+      const intakeLevel = text(field.intake_level).toLowerCase()
+      if (intakeLevel === 'hidden') continue
+      const formatted = formatSubmissionFieldValue(rawValue, field, {
+        t: input.t,
+        locale: input.locale,
+        labelKey: labelKeyForField(field, catalogByCode),
+      })
+      if (!formatted) continue
+      rows.push({
+        qualifiedCode,
+        label: resolveFieldLabel(field, catalogByCode, input.t),
+        value: formatted,
+        sortOrder: field.sort_order,
+      })
+      continue
+    }
+
+    const formatted = formatUnknownSubmissionValue(rawValue, {
       t: input.t,
       locale: input.locale,
-      labelKey: labelKeyForField(field, catalogByCode),
     })
     if (!formatted) continue
+    fallbackIndex += 1
     rows.push({
       qualifiedCode,
-      label: resolveFieldLabel(field, catalogByCode, input.t),
+      label: fallbackFieldLabel(qualifiedCode),
       value: formatted,
-      sortOrder: field.sort_order,
+      sortOrder: knownSortMax + fallbackIndex * 10,
     })
   }
 
