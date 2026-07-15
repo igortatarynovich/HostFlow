@@ -124,6 +124,105 @@ async def _lead_form_for_intake_profile(
     return None
 
 
+async def _intake_profile_for_lead_form(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_form: TenantLeadForm,
+) -> IntakeSourceProfile | None:
+    form_id = str(lead_form.id)
+    bindings = (
+        await db.execute(
+            select(IntakeSourceBinding).where(
+                IntakeSourceBinding.tenant_id == str(tenant_id),
+                IntakeSourceBinding.external_key == f"lead_form_id:{form_id}",
+                IntakeSourceBinding.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+    for binding in bindings:
+        profile = await db.get(IntakeSourceProfile, str(binding.intake_source_profile_id))
+        if (
+            profile is not None
+            and profile.is_active
+            and str(profile.route_intent or "") == RouteIntent.sales_inquiry.value
+        ):
+            return profile
+
+    public_slug = str(lead_form.public_slug or "").strip()
+    if not public_slug:
+        return None
+    return await db.scalar(
+        select(IntakeSourceProfile).where(
+            IntakeSourceProfile.tenant_id == str(tenant_id),
+            IntakeSourceProfile.public_slug == public_slug,
+            IntakeSourceProfile.route_intent == RouteIntent.sales_inquiry.value,
+            IntakeSourceProfile.is_active.is_(True),
+        )
+    )
+
+
+async def resolve_lead_form_for_questionnaire(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_form_id: str | None = None,
+) -> tuple[TenantLeadForm, IntakeSourceProfile]:
+    """Resolve B2B sales questionnaire form (explicit pick or tenant default)."""
+    if lead_form_id:
+        lead_form = await db.scalar(
+            select(TenantLeadForm).where(
+                TenantLeadForm.tenant_id == str(tenant_id),
+                TenantLeadForm.id == str(lead_form_id),
+                TenantLeadForm.is_active.is_(True),
+            )
+        )
+        if lead_form is None:
+            raise LookupError("Lead form not found or inactive")
+        if str(lead_form.tenant_id) != str(tenant_id):
+            raise LookupError("Lead form not found or inactive")
+        profile_code = str(lead_form.target_entity_profile_code or "").strip()
+        if profile_code != TARGETED_ADVERTISING_PROFILE_CODE:
+            raise LookupError("Lead form is not a targeted advertising questionnaire")
+        intake_profile = await _intake_profile_for_lead_form(
+            db,
+            tenant_id=str(tenant_id),
+            lead_form=lead_form,
+        )
+        if intake_profile is None:
+            raise LookupError("Intake source profile is not configured for lead form")
+        return lead_form, intake_profile
+    return await resolve_lead_form_for_targeted_advertising(db, tenant_id=str(tenant_id))
+
+
+async def list_questionnaire_forms_for_targeted_advertising(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+) -> list[dict[str, Any]]:
+    await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
+    rows = (
+        await db.execute(
+            select(TenantLeadForm)
+            .where(
+                TenantLeadForm.tenant_id == str(tenant_id),
+                TenantLeadForm.is_active.is_(True),
+                TenantLeadForm.target_entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE,
+            )
+            .order_by(TenantLeadForm.is_system_preset.desc(), TenantLeadForm.title.asc())
+        )
+    ).scalars().all()
+    return [
+        {
+            "id": str(row.id),
+            "title": row.title,
+            "public_slug": row.public_slug,
+            "is_system_preset": bool(row.is_system_preset),
+        }
+        for row in rows
+    ]
+
+
 async def resolve_lead_form_for_targeted_advertising(
     db: AsyncSession,
     *,
@@ -240,9 +339,14 @@ async def attach_questionnaire_invite_to_lead(
     tenant_id: str,
     lead: Lead,
     mark_sent: bool = False,
+    lead_form_id: str | None = None,
 ) -> LeadQuestionnaireInvite:
     """Create or reuse a personal questionnaire token bound to an existing Lead."""
-    lead_form, intake_profile = await resolve_lead_form_for_targeted_advertising(db, tenant_id=str(tenant_id))
+    lead_form, intake_profile = await resolve_lead_form_for_questionnaire(
+        db,
+        tenant_id=str(tenant_id),
+        lead_form_id=lead_form_id,
+    )
     existing = await find_active_questionnaire_invite_for_lead(
         db,
         tenant_id=str(tenant_id),
@@ -261,6 +365,8 @@ async def attach_questionnaire_invite_to_lead(
             _sync_lead_questionnaire_status(lead, invite.status)
         if not invite.apply_url:
             invite.apply_url = _apply_url_for_token(invite.token)
+        if mark_sent:
+            _sync_lead_questionnaire_status(lead, invite.status)
         await db.flush()
         return invite
 
@@ -301,6 +407,24 @@ async def attach_questionnaire_invite_to_lead(
     lead.normalized = normalized
     await db.flush()
     return invite
+
+
+def questionnaire_invite_out_payload(invite: LeadQuestionnaireInvite) -> dict[str, Any]:
+    lead_form_id = str(invite.lead_form_id or "").strip() or None
+    return {
+        "id": str(invite.id),
+        "lead_id": str(invite.lead_id),
+        "lead_form_id": lead_form_id,
+        "token": invite.token,
+        "apply_url": invite.apply_url or _apply_url_for_token(invite.token),
+        "status": invite.status,
+        "entity_profile_code": invite.entity_profile_code,
+        "presentation_code": invite.presentation_code,
+        "sent_at": invite.sent_at,
+        "opened_at": invite.opened_at,
+        "submitted_at": invite.submitted_at,
+        "expires_at": invite.expires_at,
+    }
 
 
 def _sync_lead_questionnaire_status(lead: Lead, status: str) -> None:

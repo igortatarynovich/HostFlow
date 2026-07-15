@@ -973,6 +973,7 @@ export async function createLeadServiceOrder(leadId: string) {
 export type LeadQuestionnaireInviteResult = {
   id: string
   lead_id: string
+  lead_form_id?: string | null
   token: string
   apply_url: string
   status: string
@@ -984,10 +985,35 @@ export type LeadQuestionnaireInviteResult = {
   expires_at?: string | null
 }
 
+export type LeadQuestionnaireFormOption = {
+  id: string
+  title: string
+  public_slug?: string | null
+  is_system_preset?: boolean
+}
+
+/** List B2B targeted-advertising questionnaire forms for send picker (F3-B-02). */
+export async function listLeadQuestionnaireForms(): Promise<LeadQuestionnaireFormOption[]> {
+  const { data } = await api.get<LeadQuestionnaireFormOption[]>('/leads/questionnaire-forms')
+  return data
+}
+
+/** Active questionnaire invite for a lead, if any (404 when none). */
+export async function getLeadQuestionnaireInvite(leadId: string): Promise<LeadQuestionnaireInviteResult | null> {
+  try {
+    const { data } = await api.get<LeadQuestionnaireInviteResult>(`/leads/${leadId}/questionnaire-invite`)
+    return data
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 404) return null
+    throw err
+  }
+}
+
 /** Stage Sales Intake 1 — personal questionnaire link for client leads (targeted advertising). */
 export async function createLeadQuestionnaireInvite(
   leadId: string,
-  payload?: { mark_sent?: boolean },
+  payload?: { mark_sent?: boolean; lead_form_id?: string },
 ): Promise<LeadQuestionnaireInviteResult> {
   const { data } = await api.post<LeadQuestionnaireInviteResult>(
     `/leads/${leadId}/questionnaire-invite`,

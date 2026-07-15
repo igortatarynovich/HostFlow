@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
+import { isCookieConsentGranted, subscribeCookieConsent } from '../../components/public/cookieConsent'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { LegalLinksBlock } from './components/LegalLinksBlock'
@@ -31,7 +32,30 @@ type ValueState = Record<string, PresentationFieldValue>
 export default function PublicIntakePresentationForm({ intake, presentation }: Props) {
   const { t, locale } = useI18n()
   const { notify } = useToast()
-  const { loading, saving, submitting, error, state, formData, updatePresentationValues, submit } = intake
+  const {
+    loading,
+    saving,
+    submitting,
+    error,
+    state,
+    formData,
+    updatePresentationValues,
+    updateAgreements,
+    submit,
+  } = intake
+
+  const [cookiesAccepted, setCookiesAccepted] = useState(() => isCookieConsentGranted())
+
+  useEffect(() => {
+    const unsubscribe = subscribeCookieConsent(() => setCookiesAccepted(true))
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    if (cookiesAccepted && !formData.agreements?.cookies_accepted) {
+      updateAgreements({ cookies_accepted: true })
+    }
+  }, [cookiesAccepted, formData.agreements?.cookies_accepted, updateAgreements])
 
   const sortedFields = useMemo(
     () => [...presentation.fields].sort((a, b) => a.sort_order - b.sort_order),
@@ -128,12 +152,36 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     return Object.keys(nextErrors).length === 0
   }, [evaluatedFields, values, t])
 
+  const patchAgreements = useCallback(
+    (patch: Partial<typeof agreements>) => {
+      setAgreements((prev) => {
+        const next = { ...prev, ...patch }
+        updateAgreements({
+          general: next.general,
+          employer_share: next.employer_share,
+          terms_acceptance: next.terms_acceptance,
+          cookies_accepted: Boolean(next.cookies_accepted || cookiesAccepted),
+        })
+        return next
+      })
+    },
+    [cookiesAccepted, updateAgreements],
+  )
+
   const handleSubmit = async () => {
     syncPresentationValues(values)
     if (!validateRequired()) return
+    const cookieReady = Boolean(agreements.cookies_accepted || cookiesAccepted)
     if (!agreements.general || !agreements.employer_share || !agreements.terms_acceptance) {
       notify({
         title: t('public.intake.presentation.consents_required', { defaultValue: 'Zaakceptuj wymagane zgody' }),
+        variant: 'error',
+      })
+      return
+    }
+    if (!cookieReady) {
+      notify({
+        title: t('public.intake.validations.cookies', { defaultValue: 'Accept cookies to continue' }),
         variant: 'error',
       })
       return
@@ -145,7 +193,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
         terms_acceptance: agreements.terms_acceptance,
       },
       documents_version: CONSENT_DOCUMENT_VERSIONS,
-      cookies_accepted: agreements.cookies_accepted,
+      cookies_accepted: cookieReady,
     }
     try {
       await submit(payload)
@@ -227,7 +275,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
             <input
               type="checkbox"
               checked={agreements.general}
-              onChange={(e) => setAgreements((a) => ({ ...a, general: e.target.checked }))}
+              onChange={(e) => patchAgreements({ general: e.target.checked })}
             />
             <span>{t('public.intake.presentation.consent_general', { defaultValue: 'Akceptuję politykę prywatności' })}</span>
           </label>
@@ -235,7 +283,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
             <input
               type="checkbox"
               checked={agreements.employer_share}
-              onChange={(e) => setAgreements((a) => ({ ...a, employer_share: e.target.checked }))}
+              onChange={(e) => patchAgreements({ employer_share: e.target.checked })}
             />
             <span>{t('public.intake.presentation.consent_share', { defaultValue: 'Wyrażam zgodę na udostępnienie danych' })}</span>
           </label>
@@ -243,10 +291,11 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
             <input
               type="checkbox"
               checked={agreements.terms_acceptance}
-              onChange={(e) => setAgreements((a) => ({ ...a, terms_acceptance: e.target.checked }))}
+              onChange={(e) => patchAgreements({ terms_acceptance: e.target.checked })}
             />
             <span>{t('public.intake.presentation.consent_terms', { defaultValue: 'Akceptuję regulamin' })}</span>
           </label>
+          <p className="text-xs text-slate-500">{t('public.intake.forms.agreements.cookies_hint')}</p>
           <LegalLinksBlock />
         </div>
 

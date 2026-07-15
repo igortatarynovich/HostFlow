@@ -48,6 +48,7 @@ from backend.app.modules.leads.schemas import (
     LeadOut,
     LeadQuestionnaireInviteOut,
     LeadQuestionnaireInviteRequest,
+    LeadQuestionnaireFormOptionOut,
     LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
@@ -409,6 +410,19 @@ async def lead_conversion_funnel_endpoint(
         slice_params=sp,
         cohort_compare_prior=bool(cohort_compare_prior),
     )
+
+
+
+@router.get("/questionnaire-forms", response_model=list[LeadQuestionnaireFormOptionOut])
+async def list_lead_questionnaire_forms_endpoint(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+) -> list[LeadQuestionnaireFormOptionOut]:
+    from backend.app.modules.leads.lead_questionnaire_invite import list_questionnaire_forms_for_targeted_advertising
+
+    db, tenant_id = db_tenant
+    rows = await list_questionnaire_forms_for_targeted_advertising(db, tenant_id=str(tenant_id))
+    return [LeadQuestionnaireFormOptionOut.model_validate(row) for row in rows]
 
 
 @router.get("/{lead_id}", response_model=LeadOut)
@@ -1175,6 +1189,51 @@ async def create_service_order_from_lead(
     return ServiceOrderOut.model_validate(order, from_attributes=True)
 
 
+@router.get("/{lead_id}/questionnaire-invite", response_model=LeadQuestionnaireInviteOut)
+async def get_lead_questionnaire_invite_endpoint(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor, Role.viewer)),
+) -> LeadQuestionnaireInviteOut:
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.lead_questionnaire_invite import (
+        find_active_questionnaire_invite_for_lead,
+        questionnaire_invite_out_payload,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    invite = await find_active_questionnaire_invite_for_lead(
+        db,
+        tenant_id=tenant_id_str,
+        lead_id=str(lead.id),
+    )
+    if invite is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active questionnaire invite")
+    payload = questionnaire_invite_out_payload(invite)
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(payload["id"])),
+        lead_id=UUID(str(payload["lead_id"])),
+        lead_form_id=UUID(str(payload["lead_form_id"])) if payload.get("lead_form_id") else None,
+        token=str(payload["token"]),
+        apply_url=str(payload["apply_url"]),
+        status=str(payload["status"]),
+        entity_profile_code=payload.get("entity_profile_code"),
+        presentation_code=payload.get("presentation_code"),
+        sent_at=payload.get("sent_at"),
+        opened_at=payload.get("opened_at"),
+        submitted_at=payload.get("submitted_at"),
+        expires_at=payload.get("expires_at"),
+    )
+
+
 @router.post("/{lead_id}/questionnaire-invite", response_model=LeadQuestionnaireInviteOut)
 async def create_lead_questionnaire_invite_endpoint(
     lead_id: str,
@@ -1205,6 +1264,7 @@ async def create_lead_questionnaire_invite_endpoint(
             tenant_id=tenant_id_str,
             lead=lead,
             mark_sent=payload.mark_sent,
+            lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
         )
     except LookupError as exc:
         detail = str(exc)
@@ -1214,18 +1274,22 @@ async def create_lead_questionnaire_invite_endpoint(
 
     await db.commit()
     await db.refresh(invite)
+    from backend.app.modules.leads.lead_questionnaire_invite import questionnaire_invite_out_payload
+
+    out = questionnaire_invite_out_payload(invite)
     return LeadQuestionnaireInviteOut(
-        id=UUID(str(invite.id)),
-        lead_id=UUID(str(invite.lead_id)),
-        token=invite.token,
-        apply_url=invite.apply_url or f"/public/apply/{invite.token}",
-        status=invite.status,
-        entity_profile_code=invite.entity_profile_code,
-        presentation_code=invite.presentation_code,
-        sent_at=invite.sent_at,
-        opened_at=invite.opened_at,
-        submitted_at=invite.submitted_at,
-        expires_at=invite.expires_at,
+        id=UUID(str(out["id"])),
+        lead_id=UUID(str(out["lead_id"])),
+        lead_form_id=UUID(str(out["lead_form_id"])) if out.get("lead_form_id") else None,
+        token=str(out["token"]),
+        apply_url=str(out["apply_url"]),
+        status=str(out["status"]),
+        entity_profile_code=out.get("entity_profile_code"),
+        presentation_code=out.get("presentation_code"),
+        sent_at=out.get("sent_at"),
+        opened_at=out.get("opened_at"),
+        submitted_at=out.get("submitted_at"),
+        expires_at=out.get("expires_at"),
     )
 
 
