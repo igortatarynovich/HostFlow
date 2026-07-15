@@ -17,6 +17,8 @@ from backend.app.entity_profile.constants import (
 from backend.app.entity_profile.manifests.service_sales import service_sales_targeted_advertising_profile
 from backend.app.entity_profile.registry import EntityProfileRegistry, UnknownCanonicalFieldError
 from backend.app.entity_profile.seed import ensure_tenant_field_registry_defaults
+from backend.app.intake_platform.constants import DEFAULT_INQUIRY_POLICY, FormPurpose
+from backend.app.intake_platform.form_definition import apply_form_definition_fields
 from backend.app.models.entity_profile import EpEntityProfile, EpIntakePresentation
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.intake_routing_enums import IntakeChannel, IntakeProvider, RouteIntent
@@ -200,6 +202,21 @@ async def _ensure_entity_profile_template(db: AsyncSession, tenant_id: str) -> t
     return profile_created, presentation_created
 
 
+def _repair_lead_form_system_fields(lead_form: TenantLeadForm) -> bool:
+    """Fill missing system profile links only; never replace tenant-customized values."""
+    profile_code = str(lead_form.target_entity_profile_code or "").strip()
+    if profile_code == TARGETED_ADVERTISING_PROFILE_CODE:
+        return False
+    apply_form_definition_fields(
+        lead_form,
+        target_entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+        purpose=FormPurpose.inquiry.value,
+        submission_policy=DEFAULT_INQUIRY_POLICY,
+        is_system_preset=True,
+    )
+    return True
+
+
 def _repair_intake_profile_system_links(profile: IntakeSourceProfile) -> bool:
     """Fill missing system links only; never replace tenant-customized values."""
     repaired = False
@@ -279,13 +296,25 @@ async def _ensure_intake_form_stack(
             public_slug=public_slug,
             is_active=True,
         )
+        apply_form_definition_fields(
+            lead_form,
+            target_entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+            purpose=FormPurpose.inquiry.value,
+            submission_policy=DEFAULT_INQUIRY_POLICY,
+            is_system_preset=True,
+        )
         db.add(lead_form)
         await db.flush()
         created["lead_form"] = True
     else:
         created["lead_form"] = False
+        lead_form_repaired = False
         if not lead_form.is_active:
             lead_form.is_active = True
+            lead_form_repaired = True
+        if _repair_lead_form_system_fields(lead_form):
+            lead_form_repaired = True
+        if lead_form_repaired:
             repaired["lead_form"] = True
             await db.flush()
 
