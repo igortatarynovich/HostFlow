@@ -197,7 +197,7 @@ Walkthrough-specific gaps discovered during §20-style staging verification. Eac
 | G-B-02 | F3-B-01 | Channel inbox filter | **closed** |
 | G-B-03 | F3-B-05 / A12 | Structured answers UI on inquiry work page | **closed** (#24) |
 | G-B-04 | F3-B-06 / A13 | Submission attribution panel | **closed** (#25) |
-| **G-B-05** | Form editor / provisioning | **Targeted-advertising Entity Profile registry on services tenants** | **open** |
+| **G-B-05** | Form editor / provisioning | **Targeted-advertising Entity Profile registry on services tenants** | **closed** (#26 + staging repair 2026-07-15) |
 
 #### G-B-05 — targeted-advertising Entity Profile available for every services tenant
 
@@ -633,6 +633,7 @@ MONETIZATION:
 
 | Date | Change |
 |------|--------|
+| 2026-07-15 | **G-B-05 closed** — PR #26 merged; staging repair for demo tenant; `/fields` + `/presentation-preset` → 200 (27 fields); send + public apply verified on hostflow.cc |
 | 2026-07-15 | **G-B-05** opened — staging Entity Profile registry drift; auto-seed on `feat/targeted-advertising-auto-seed` not merged to integration line (§0.4) |
 | 2026-07-15 | Proven blocker rule + Foundation Debt register (§0.3); paydown within 1–2 PRs; max 2 consecutive Foundation |
 | 2026-07-15 | Agent rule `.cursor/rules/scenario-first-development.mdc` — proven blocker only, no "just in case" |
