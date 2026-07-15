@@ -8,6 +8,7 @@ export type PresentationRuleCondition = {
 
 export type PresentationRules = {
   show_if?: PresentationRuleCondition
+  show_if_all?: PresentationRuleCondition[]
   hide_if?: PresentationRuleCondition
   required_if?: PresentationRuleCondition
   readonly_if?: PresentationRuleCondition
@@ -57,8 +58,11 @@ export function evaluateRuleCondition(condition: PresentationRuleCondition | und
   if (operator === 'neq') return normalizeScalar(actual) !== normalizeScalar(expected)
   if (operator === 'in') {
     if (!Array.isArray(expected)) return false
-    const normalizedActual = normalizeScalar(actual)
-    return expected.some((item) => normalizeScalar(item) === normalizedActual)
+    const normalizedExpected = new Set(expected.map((item) => normalizeScalar(item)))
+    if (Array.isArray(actual)) {
+      return actual.some((item) => normalizedExpected.has(normalizeScalar(item)))
+    }
+    return normalizedExpected.has(normalizeScalar(actual))
   }
   return false
 }
@@ -73,7 +77,11 @@ export function evaluatePresentationFieldState(
   let readonly = false
   let effectiveLevel = baseLevel
 
-  if (rules.show_if) visible = evaluateRuleCondition(rules.show_if, values)
+  if (rules.show_if_all?.length) {
+    visible = rules.show_if_all.every((condition) => evaluateRuleCondition(condition, values))
+  } else if (rules.show_if) {
+    visible = evaluateRuleCondition(rules.show_if, values)
+  }
   if (rules.hide_if && evaluateRuleCondition(rules.hide_if, values)) visible = false
   if (rules.readonly_if && evaluateRuleCondition(rules.readonly_if, values)) readonly = true
   if (visible && rules.required_if && evaluateRuleCondition(rules.required_if, values)) {

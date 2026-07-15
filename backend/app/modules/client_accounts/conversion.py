@@ -67,22 +67,31 @@ def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
     sales_questionnaire = _record(normalized.get("sales_questionnaire")) or _record(payload.get("sales_questionnaire"))
 
     if sales_questionnaire:
-        if not _trim(company_profile.get("industry")) and _trim(sales_questionnaire.get("industry")):
-            company_profile["industry"] = _trim(sales_questionnaire.get("industry"))
-        if not _trim(need.get("monthly_ad_budget")) and _trim(sales_questionnaire.get("monthly_ad_budget")):
-            need["monthly_ad_budget"] = _trim(sales_questionnaire.get("monthly_ad_budget"))
-        if not _trim(need.get("start_timeline")) and _trim(sales_questionnaire.get("start_timeline")):
-            need["start_timeline"] = _trim(sales_questionnaire.get("start_timeline"))
-        if not _trim(need.get("notes")) and _trim(sales_questionnaire.get("additional_notes")):
-            need["notes"] = _trim(sales_questionnaire.get("additional_notes"))
         if not _trim(need.get("summary")):
             need_parts = [
-                str(sales_questionnaire.get("need_type") or "").replace("_", " ").strip(),
-                str(sales_questionnaire.get("primary_outcome") or "").replace("_", " ").strip(),
+                str(sales_questionnaire.get("need_type_label") or sales_questionnaire.get("need_type") or "").replace("_", " ").strip(),
+                str(sales_questionnaire.get("primary_outcome_label") or sales_questionnaire.get("primary_outcome") or "").replace("_", " ").strip(),
             ]
-            need_summary = " — ".join(p for p in need_parts if p)
-            if need_summary:
-                need["summary"] = need_summary
+            summary = " — ".join(p for p in need_parts if p)
+            if summary:
+                need["summary"] = summary
+        if not _trim(need.get("monthly_ad_budget")) and _trim(sales_questionnaire.get("monthly_ad_budget")):
+            need["monthly_ad_budget"] = _trim(sales_questionnaire.get("monthly_ad_budget_label")) or _trim(
+                sales_questionnaire.get("monthly_ad_budget")
+            )
+        if not _trim(need.get("start_timeline")) and _trim(sales_questionnaire.get("start_timeline")):
+            need["start_timeline"] = _trim(sales_questionnaire.get("start_timeline_label")) or _trim(
+                sales_questionnaire.get("start_timeline")
+            )
+        if not _trim(company_profile.get("industry")) and _trim(sales_questionnaire.get("industry")):
+            company_profile["industry"] = _trim(sales_questionnaire.get("industry_label")) or _trim(
+                sales_questionnaire.get("industry")
+            )
+        if not _trim(company_profile.get("website")) and _trim(sales_questionnaire.get("contact_website")):
+            company_profile["website"] = _trim(sales_questionnaire.get("contact_website"))
+        notes = _trim(sales_questionnaire.get("additional_notes"))
+        if notes:
+            need.setdefault("notes", notes)
         need.setdefault("questionnaire", sales_questionnaire)
 
     flat_full_name = (
@@ -145,6 +154,7 @@ def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
         "need": need,
         "marketing": marketing,
         "meta": meta,
+        "sales_questionnaire": sales_questionnaire,
         "company_name": company_name,
         "display_name": display_name,
         "contact_full_name": contact_full_name,
@@ -152,7 +162,6 @@ def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
         "contact_phone": contact_phone,
         "contacts_payload": contacts_payload,
         "converting_manager_uuid": converting_manager_uuid,
-        "sales_questionnaire": sales_questionnaire,
         "source_form_id": _latest_submission_form_id(lead),
         "source_channel_id": _source_channel_id(meta),
     }
@@ -171,6 +180,7 @@ def build_company_create_from_lead(
     need = _record(ctx.get("need"))
     marketing = _record(ctx.get("marketing"))
     meta = _record(ctx.get("meta"))
+    sales_questionnaire = _record(ctx.get("sales_questionnaire"))
     contacts_payload = ctx.get("contacts_payload") or {}
     manager_uuid = ctx.get("converting_manager_uuid")
     source_form_id = _trim(ctx.get("source_form_id"))
@@ -214,7 +224,7 @@ def build_company_create_from_lead(
                 "need": need,
                 "marketing": marketing,
                 "meta": meta,
-                "sales_questionnaire": _record(ctx.get("sales_questionnaire")),
+                "sales_questionnaire": sales_questionnaire or None,
             },
             "needs": [need] if need else [],
         },

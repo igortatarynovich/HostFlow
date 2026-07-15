@@ -52,8 +52,14 @@ async def _admin_headers(tenant_id: str) -> dict[str, str]:
 def _sales_presentation_values(email: str, phone: str) -> dict[str, str | list[str]]:
     prefix = f"{TARGETED_ADVERTISING_PROFILE_CODE}."
     return {
-        f"{prefix}need_type": "client_acquisition",
-        f"{prefix}primary_outcome": "more_inquiries",
+        f"{prefix}need_type": "services",
+        f"{prefix}advertised_services": ["targeted_advertising"],
+        f"{prefix}client_geo_country": "PL",
+        f"{prefix}client_geo_region": "PL-MZ",
+        f"{prefix}client_geo_city": "warsaw",
+        f"{prefix}conversion_destination": "whatsapp",
+        f"{prefix}has_website": "yes",
+        f"{prefix}marketing_materials": "yes",
         f"{prefix}contact_full_name": "Jan Kowalski",
         f"{prefix}contact_company_name": "Test Firma",
         f"{prefix}contact_phone": phone,

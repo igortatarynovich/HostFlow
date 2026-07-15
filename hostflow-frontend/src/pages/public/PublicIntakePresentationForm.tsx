@@ -12,22 +12,35 @@ import type { FormPresentationRuntime } from '../../modules/public-intake/types'
 import type { PublicIntakeHook } from '../../modules/public-intake/usePublicIntake'
 import type { PublicIntakeSubmitPayload } from '../../api/publicIntake'
 import { evaluatePresentationFields } from '../../utils/presentationRules'
+import { IntakePresentationFieldControl } from '../../components/intake/IntakePresentationFieldControl'
 
 type Props = {
   intake: PublicIntakeHook
   presentation: FormPresentationRuntime
+  /** When set, client cannot change locale (manager chose language on send). */
+  lockedLocale?: 'ru' | 'pl' | 'en'
 }
 
-function inputTypeForField(field: FormPresentationRuntime['fields'][number]): string {
-  const hint = String(field.widget_hint || field.field_type || 'text').toLowerCase()
-  if (hint.includes('email')) return 'email'
-  if (hint.includes('phone') || hint.includes('tel')) return 'tel'
-  if (hint.includes('date')) return 'date'
-  if (hint.includes('number')) return 'number'
-  return 'text'
+type FieldValue = string | string[]
+
+function normalizeStoredValue(raw: unknown, field: FormPresentationRuntime['fields'][number]): FieldValue {
+  const kind = String(field.widget_hint || field.field_type || 'text').toLowerCase()
+  if (kind.includes('multi_select')) {
+    if (Array.isArray(raw)) return raw.map((item) => String(item))
+    if (raw == null || raw === '') return []
+    return [String(raw)]
+  }
+  if (raw == null) return ''
+  return String(raw)
 }
 
-export default function PublicIntakePresentationForm({ intake, presentation }: Props) {
+function isEmptyValue(value: FieldValue, field: FormPresentationRuntime['fields'][number]): boolean {
+  const kind = String(field.widget_hint || field.field_type || 'text').toLowerCase()
+  if (kind.includes('multi_select')) return !Array.isArray(value) || value.length === 0
+  return !String(value || '').trim()
+}
+
+export default function PublicIntakePresentationForm({ intake, presentation, lockedLocale }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
   const {
@@ -60,7 +73,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     [presentation.fields],
   )
 
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [values, setValues] = useState<Record<string, FieldValue>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const valueMap = useMemo(() => {
@@ -81,6 +94,14 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     [evaluatedFields],
   )
 
+  const progress = useMemo(() => {
+    const total = visibleFields.length
+    const filled = visibleFields.filter((field) => !isEmptyValue(values[field.qualified_code], field)).length
+    return { total, filled, pct: total > 0 ? Math.round((filled / total) * 100) : 0 }
+  }, [values, visibleFields])
+
+  const headerLocaleSwitcher = lockedLocale ? null : <PublicLocaleSwitcher />
+
   const [agreements, setAgreements] = useState({
     general: Boolean(formData.agreements?.general),
     employer_share: Boolean(formData.agreements?.employer_share),
@@ -89,11 +110,11 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
   })
 
   useEffect(() => {
-    const initial: Record<string, string> = {}
+    const initial: Record<string, FieldValue> = {}
     for (const field of sortedFields) {
       const raw = formData.presentation_values?.[field.qualified_code]
       if (raw !== undefined && raw !== null) {
-        initial[field.qualified_code] = String(raw)
+        initial[field.qualified_code] = normalizeStoredValue(raw, field)
       }
     }
     setValues((prev) => ({ ...initial, ...prev }))
@@ -108,11 +129,28 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     })
   }, [formData.agreements])
 
+  const dependentFields: Record<string, string[]> = useMemo(
+    () => ({
+      'service_sales.targeted_advertising.work_location_country': [
+        'service_sales.targeted_advertising.work_location_region',
+        'service_sales.targeted_advertising.work_location_city',
+      ],
+      'service_sales.targeted_advertising.client_geo_country': [
+        'service_sales.targeted_advertising.client_geo_region',
+        'service_sales.targeted_advertising.client_geo_city',
+      ],
+    }),
+    [],
+  )
+
   const handleChange = useCallback(
-    (qualifiedCode: string, next: string) => {
+    (qualifiedCode: string, next: FieldValue) => {
       setValues((prev) => {
         const updated = { ...prev, [qualifiedCode]: next }
-        updatePresentationValues(updated)
+        for (const childCode of dependentFields[qualifiedCode] ?? []) {
+          delete updated[childCode]
+        }
+        updatePresentationValues(updated as Record<string, string>)
         return updated
       })
       setFieldErrors((prev) => {
@@ -122,7 +160,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
         return copy
       })
     },
-    [updatePresentationValues],
+    [dependentFields, updatePresentationValues],
   )
 
   const validateRequired = useCallback(() => {
@@ -130,8 +168,8 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     for (const field of evaluatedFields) {
       if (!field.evaluated.visible) continue
       if (field.evaluated.intake_level !== 'required') continue
-      const val = (values[field.qualified_code] || '').trim()
-      if (!val) {
+      const val = values[field.qualified_code]
+      if (isEmptyValue(val, field)) {
         nextErrors[field.qualified_code] = t('public.intake.presentation.required', {
           defaultValue: 'Required field',
         })
@@ -196,7 +234,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
   if (loading && !state) {
     return (
-      <PublicPageShell maxWidth="lg" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell maxWidth="lg" headerExtra={headerLocaleSwitcher}>
         <div className="card p-8 text-center text-slate-600">{t('common.loading')}</div>
       </PublicPageShell>
     )
@@ -204,7 +242,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
   if (state?.status === 'submitted') {
     return (
-      <PublicPageShell maxWidth="lg" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell maxWidth="lg" headerExtra={headerLocaleSwitcher}>
         <div className="card p-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-xl text-white">
             ✓
@@ -231,7 +269,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
   }
 
   return (
-    <PublicPageShell maxWidth="lg" headerExtra={<PublicLocaleSwitcher />}>
+    <PublicPageShell maxWidth="lg" headerExtra={headerLocaleSwitcher}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
@@ -240,29 +278,47 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
           <h1 className="text-xl font-semibold text-slate-900">
             {presentation.profile_name || presentation.entity_profile_code}
           </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('public.intake.presentation.duration_hint', { defaultValue: 'Обычно занимает 2–3 минуты' })}
+          </p>
         </div>
         <AutosaveIndicator saving={saving} />
       </div>
 
+      {progress.total > 0 ? (
+        <div className="mb-4">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-brand-600 transition-all duration-300"
+              style={{ width: `${progress.pct}%` }}
+            />
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {t('public.intake.presentation.progress', {
+              defaultValue: 'Заполнено {{filled}} из {{total}}',
+              filled: progress.filled,
+              total: progress.total,
+            })}
+          </p>
+        </div>
+      ) : null}
+
       <div className="card space-y-5 p-6">
         {visibleFields.map((field) => (
-          <label key={field.qualified_code} className="block">
+          <div key={field.qualified_code} className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
               {field.label}
               {field.evaluated.intake_level === 'required' ? <span className="text-red-500"> *</span> : null}
             </span>
-            <input
-              type={inputTypeForField(field)}
-              className="input w-full"
-              value={values[field.qualified_code] || ''}
-              onChange={(e) => handleChange(field.qualified_code, e.target.value)}
+            <IntakePresentationFieldControl
+              field={field}
+              values={values}
+              value={values[field.qualified_code] ?? ''}
+              error={fieldErrors[field.qualified_code]}
               disabled={submitting || field.evaluated.readonly}
-              readOnly={field.evaluated.readonly}
+              onChange={(next) => handleChange(field.qualified_code, next)}
             />
-            {fieldErrors[field.qualified_code] ? (
-              <span className="mt-1 block text-xs text-red-600">{fieldErrors[field.qualified_code]}</span>
-            ) : null}
-          </label>
+          </div>
         ))}
 
         <div className="space-y-2 border-t border-slate-100 pt-4">

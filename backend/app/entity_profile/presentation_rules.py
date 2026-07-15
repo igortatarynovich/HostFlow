@@ -64,8 +64,11 @@ def evaluate_rule_condition(condition: Any, values: dict[str, Any]) -> bool:
     if operator == "in":
         if not isinstance(expected, list):
             return False
+        normalized_expected = {_normalize_scalar(item) for item in expected}
+        if isinstance(actual, list):
+            return any(_normalize_scalar(item) in normalized_expected for item in actual)
         normalized_actual = _normalize_scalar(actual)
-        return any(_normalize_scalar(item) == normalized_actual for item in expected)
+        return normalized_actual in normalized_expected
     return False
 
 
@@ -96,7 +99,10 @@ def evaluate_presentation_field_state(
     effective_level = base_level
 
     show_if = rules.get("show_if")
-    if show_if is not None:
+    show_if_all = rules.get("show_if_all")
+    if isinstance(show_if_all, list) and show_if_all:
+        visible = all(evaluate_rule_condition(item, values) for item in show_if_all if isinstance(item, dict))
+    elif show_if is not None:
         visible = evaluate_rule_condition(show_if, values)
 
     hide_if = rules.get("hide_if")
@@ -237,6 +243,13 @@ def missing_required_presentation_fields(
         if not code:
             continue
         raw = values.get(code)
-        if raw is None or (isinstance(raw, str) and not raw.strip()):
+        if raw is None:
+            missing.append(code)
+            continue
+        if isinstance(raw, list):
+            if len(raw) == 0:
+                missing.append(code)
+            continue
+        if isinstance(raw, str) and not raw.strip():
             missing.append(code)
     return missing

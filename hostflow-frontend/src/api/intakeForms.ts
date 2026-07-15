@@ -27,6 +27,7 @@ export type EntityProfileFieldOption = {
   intake_level: string
   field_type?: string | null
   sort_order: number
+  options?: Array<{ value: string; label: string }>
 }
 
 export type IntakeFormDetail = {

@@ -123,11 +123,16 @@ class LeadQuestionnaireInviteRequest(BaseModel):
 
     mark_sent: bool = Field(
         default=False,
-        description="When true, marks the invite as sent (Wyślij ankietę).",
+        description="Deprecated — invite creation never marks delivery; use POST .../send.",
     )
     lead_form_id: Optional[UUID] = Field(
         default=None,
         description="Optional B2B questionnaire form; defaults to tenant targeted-advertising form.",
+    )
+    form_locale: Optional[str] = Field(
+        default=None,
+        max_length=8,
+        description="Client-facing questionnaire language (ru, pl, en). Manager-selected; not browser-detected.",
     )
 
 
@@ -153,6 +158,13 @@ class LeadQuestionnaireInviteOut(BaseModel):
     opened_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
+
+
+class QuestionnaireInviteConfirmSentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    invite_id: UUID
+    channel: Literal["email", "whatsapp", "link", "manual"] = "manual"
 
 
 class LeadOut(BaseModel):

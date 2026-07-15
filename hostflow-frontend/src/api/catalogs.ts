@@ -63,6 +63,27 @@ export async function fetchVacancyCategoryOptions(launchSearchOnly = true): Prom
   return data ?? []
 }
 
+export async function fetchRegionOptions(countryCode?: string): Promise<CatalogOptionDto[]> {
+  const params = countryCode && countryCode !== 'OTHER' ? { country: countryCode } : undefined
+  const { data } = await api.get<CatalogOptionDto[]>('/catalogs/regions/options', { params })
+  return data ?? []
+}
+
+export async function fetchProfessionOptions(): Promise<CatalogOptionDto[]> {
+  const { data } = await api.get<CatalogOptionDto[]>('/catalogs/professions/options')
+  return data ?? []
+}
+
+export async function fetchAdvertisedServiceOptions(): Promise<CatalogOptionDto[]> {
+  const { data } = await api.get<CatalogOptionDto[]>('/catalogs/services/options')
+  return data ?? []
+}
+
+export async function fetchCountryOptions(): Promise<CatalogOptionDto[]> {
+  const { data } = await api.get<CatalogOptionDto[]>('/catalogs/countries/options')
+  return data ?? []
+}
+
 export function invalidateCompanySetupCatalogsCache(): void {
   companySetupCache = null
 }

@@ -256,9 +256,8 @@ async def resolve_public_session_form_presentation(
         if entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE:
             from backend.app.entity_profile.constants import TARGETED_ADVERTISING_PRESENTATION_CODE
 
-            if TARGETED_ADVERTISING_PRESENTATION_CODE not in codes_to_try:
-                codes_to_try.append(TARGETED_ADVERTISING_PRESENTATION_CODE)
-        if DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
+            codes_to_try = [TARGETED_ADVERTISING_PRESENTATION_CODE]
+        elif DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
             codes_to_try.append(DRIVER_CE_INTAKE_PRESENTATION_CODE)
 
         for code in codes_to_try:

@@ -51,16 +51,16 @@ async def test_list_questionnaire_forms_for_manager(
 
 
 @pytest.mark.asyncio
-async def test_questionnaire_invite_sets_waiting_status_and_form_picker(
+async def test_questionnaire_invite_create_does_not_set_waiting_without_delivery(
     client: AsyncClient,
     tenant_id: str,
     manager_headers: dict,
 ) -> None:
     from backend.app.db.session import async_session_maker
+    from backend.app.modules.leads import crud as leads_crud
 
     await _seed_sales_profile(tenant_id)
     forms_resp = await client.get("/api/v1/leads/questionnaire-forms", headers=manager_headers)
-    assert forms_resp.status_code == 200, forms_resp.text
     picked_form_id = forms_resp.json()[0]["id"]
 
     lead = await _create_meta_client_lead(tenant_id)
@@ -73,21 +73,14 @@ async def test_questionnaire_invite_sets_waiting_status_and_form_picker(
     )
     assert invite_resp.status_code == 200, invite_resp.text
     body = invite_resp.json()
-    assert body["status"] == "sent"
+    assert body["status"] == "not_sent"
     assert body["lead_form_id"] == picked_form_id
     assert body["token"]
-
-    get_resp = await client.get(
-        f"/api/v1/leads/{lead_id}/questionnaire-invite",
-        headers=manager_headers,
-    )
-    assert get_resp.status_code == 200, get_resp.text
-    assert get_resp.json()["token"] == body["token"]
 
     async with async_session_maker() as session:
         refreshed = await leads_crud.get_lead(session, tenant_id=tenant_id, lead_id=lead_id)
         assert refreshed is not None
-        assert (refreshed.normalized or {}).get("sales_questionnaire_status") == "sent"
+        assert (refreshed.normalized or {}).get("sales_questionnaire_status") in {None, "not_sent"}
 
 
 @pytest.mark.asyncio

@@ -14,8 +14,8 @@ from backend.app.entity_profile.constants import (
 )
 
 _PREFIX = TARGETED_ADVERTISING_PROFILE_CODE
-_RECRUITMENT_NEED = "employee_recruitment"
-_SALES_NEEDS = ("client_acquisition", "product_sales", "service_promotion")
+_EMPLOYEES = ("vacancies",)
+_CLIENTS = ("services", "ecommerce", "real_estate", "other")
 
 
 def _qc(field_code: str) -> str:
@@ -38,129 +38,145 @@ def _profile_field(
     }
 
 
-def _need_type_rule(*values: str) -> dict[str, Any]:
-    if len(values) == 1:
-        return {"show_if": {"source_field": _qc("need_type"), "operator": "eq", "value": values[0]}}
-    return {"show_if": {"source_field": _qc("need_type"), "operator": "in", "value": list(values)}}
+def _employees_rule() -> dict[str, Any]:
+    return {"show_if": {"source_field": _qc("need_type"), "operator": "in", "value": list(_EMPLOYEES)}}
 
 
-def _presentation_overrides() -> dict[str, dict[str, Any]]:
-    """Polish labels + conditional presentation rules (recruitment vs sales branches)."""
-    recruitment = _need_type_rule(_RECRUITMENT_NEED)
-    sales = _need_type_rule(*_SALES_NEEDS)
-    geo_detail = {
+def _clients_rule() -> dict[str, Any]:
+    return {"show_if": {"source_field": _qc("need_type"), "operator": "in", "value": list(_CLIENTS)}}
+
+
+def _other_profession_rule() -> dict[str, Any]:
+    return {
         "show_if": {
-            "source_field": _qc("client_geo_scope"),
+            "source_field": _qc("recruitment_roles"),
             "operator": "in",
-            "value": ["single_city", "selected_region"],
+            "value": ["other"],
         }
     }
 
+
+def _other_service_rule() -> dict[str, Any]:
+    return {
+        "show_if": {
+            "source_field": _qc("advertised_services"),
+            "operator": "in",
+            "value": ["other"],
+        }
+    }
+
+
+def _presentation_overrides() -> dict[str, dict[str, Any]]:
+    employees = _employees_rule()
+    clients = _clients_rule()
+
     return {
         _qc("need_type"): {
-            "label_override": "Czego dotyczy Państwa potrzeba?",
+            "label_override": "Что вы хотите продвигать?",
             "widget_hint": "single_select",
-        },
-        _qc("primary_outcome"): {
-            "label_override": "Jaki wynik jest dla Państwa najważniejszy?",
-            "widget_hint": "single_select",
+            "intake_level": REQUIREMENT_REQUIRED,
         },
         _qc("recruitment_roles"): {
-            "label_override": "Jakich pracowników chcą Państwo pozyskiwać?",
+            "label_override": "Каких сотрудников вы ищете?",
             "widget_hint": "multi_select",
-            "presentation_rules": recruitment,
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": employees,
         },
         _qc("recruitment_other_role"): {
-            "label_override": "Jakie stanowisko?",
-            "presentation_rules": recruitment,
+            "label_override": "Укажите профессию",
+            "presentation_rules": {
+                "show_if_all": [employees["show_if"], _other_profession_rule()["show_if"]],
+            },
         },
         _qc("recruitment_headcount"): {
-            "label_override": "Ilu pracowników potrzebują Państwo obecnie?",
-            "presentation_rules": recruitment,
+            "label_override": "Сколько сотрудников требуется?",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": employees,
         },
         _qc("work_location_country"): {
-            "label_override": "Gdzie znajduje się miejsce pracy?",
-            "presentation_rules": recruitment,
+            "label_override": "Страна",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": employees,
+        },
+        _qc("work_location_region"): {
+            "label_override": "Регион",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": employees,
         },
         _qc("work_location_city"): {
-            "label_override": "Proszę podać miasto lub bazę",
-            "presentation_rules": recruitment,
+            "label_override": "Город",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": employees,
         },
-        _qc("application_channel"): {
-            "label_override": "Jak kandydaci powinni się zgłaszać?",
-            "presentation_rules": recruitment,
+        _qc("work_location_base"): {
+            "label_override": "База / депо (если есть)",
+            "presentation_rules": employees,
         },
         _qc("job_posting_ready"): {
-            "label_override": "Czy mają Państwo gotowe ogłoszenie o pracę?",
-            "presentation_rules": recruitment,
+            "label_override": "Есть ли готовое объявление?",
+            "presentation_rules": employees,
         },
         _qc("recruitment_materials"): {
-            "label_override": "Czy mają Państwo materiały do reklamy rekrutacyjnej?",
+            "label_override": "Есть ли фото или видео?",
+            "presentation_rules": employees,
+        },
+        _qc("advertised_services"): {
+            "label_override": "Какие услуги или товары вы хотите рекламировать?",
             "widget_hint": "multi_select",
-            "presentation_rules": recruitment,
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": clients,
         },
-        _qc("promotion_subject"): {
-            "label_override": "Co chcą Państwo promować?",
-            "presentation_rules": sales,
+        _qc("advertised_services_other"): {
+            "label_override": "Другая услуга",
+            "presentation_rules": {
+                "show_if_all": [clients["show_if"], _other_service_rule()["show_if"]],
+            },
         },
-        _qc("industry"): {
-            "label_override": "W jakiej branży działa firma?",
-            "presentation_rules": sales,
+        _qc("client_geo_country"): {
+            "label_override": "Страна",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": clients,
         },
-        _qc("client_geo_scope"): {
-            "label_override": "Gdzie chcą Państwo pozyskiwać klientów?",
-            "presentation_rules": sales,
+        _qc("client_geo_region"): {
+            "label_override": "Регион",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": clients,
         },
-        _qc("client_geo_detail"): {
-            "label_override": "Proszę podać miasto lub region",
-            "presentation_rules": {**sales, **geo_detail},
+        _qc("client_geo_city"): {
+            "label_override": "Город",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": clients,
         },
         _qc("conversion_destination"): {
-            "label_override": "Dokąd mają trafiać klienci z reklamy?",
-            "presentation_rules": sales,
+            "label_override": "Что должен сделать клиент после рекламы?",
+            "intake_level": REQUIREMENT_REQUIRED,
+            "presentation_rules": clients,
         },
-        _qc("offer_ready"): {
-            "label_override": "Czy mają Państwo gotową ofertę?",
-            "presentation_rules": sales,
+        _qc("has_website"): {
+            "label_override": "Есть ли сайт?",
+            "presentation_rules": clients,
         },
         _qc("marketing_materials"): {
-            "label_override": "Czy mają Państwo materiały reklamowe?",
-            "widget_hint": "multi_select",
-            "presentation_rules": sales,
-        },
-        _qc("prior_ads_experience"): {
-            "label_override": "Czy wcześniej korzystali Państwo z reklam na Facebooku lub Instagramie?",
-        },
-        _qc("monthly_ad_budget"): {
-            "label_override": "Jaki miesięczny budżet chcą Państwo przeznaczyć bezpośrednio na reklamę?",
-        },
-        _qc("start_timeline"): {
-            "label_override": "Kiedy chcą Państwo rozpocząć działania?",
-        },
-        _qc("decision_maker"): {
-            "label_override": "Kto podejmuje decyzję o współpracy?",
+            "label_override": "Есть ли фото или видео?",
+            "presentation_rules": clients,
         },
         _qc("contact_full_name"): {
-            "label_override": "Imię i nazwisko",
+            "label_override": "Имя",
             "intake_level": REQUIREMENT_REQUIRED,
         },
         _qc("contact_company_name"): {
-            "label_override": "Nazwa firmy",
-            "intake_level": REQUIREMENT_REQUIRED,
+            "label_override": "Компания",
         },
         _qc("contact_phone"): {
-            "label_override": "Numer telefonu",
+            "label_override": "Телефон",
             "intake_level": REQUIREMENT_REQUIRED,
         },
         _qc("contact_email"): {
-            "label_override": "Adres e-mail",
+            "label_override": "Email",
             "intake_level": REQUIREMENT_REQUIRED,
         },
-        _qc("contact_website"): {
-            "label_override": "Strona internetowa lub profil firmy",
-        },
         _qc("additional_notes"): {
-            "label_override": "Czy jest coś ważnego, co powinniśmy wiedzieć?",
+            "label_override": "Комментарий",
             "widget_hint": "textarea",
         },
     }
@@ -169,80 +185,72 @@ def _presentation_overrides() -> dict[str, dict[str, Any]]:
 def _presentation_field_subset() -> list[str]:
     return [
         _qc("need_type"),
-        _qc("primary_outcome"),
         _qc("recruitment_roles"),
         _qc("recruitment_other_role"),
         _qc("recruitment_headcount"),
         _qc("work_location_country"),
+        _qc("work_location_region"),
         _qc("work_location_city"),
-        _qc("application_channel"),
+        _qc("work_location_base"),
         _qc("job_posting_ready"),
         _qc("recruitment_materials"),
-        _qc("promotion_subject"),
-        _qc("industry"),
-        _qc("client_geo_scope"),
-        _qc("client_geo_detail"),
+        _qc("advertised_services"),
+        _qc("advertised_services_other"),
+        _qc("client_geo_country"),
+        _qc("client_geo_region"),
+        _qc("client_geo_city"),
         _qc("conversion_destination"),
-        _qc("offer_ready"),
+        _qc("has_website"),
         _qc("marketing_materials"),
-        _qc("prior_ads_experience"),
-        _qc("monthly_ad_budget"),
-        _qc("start_timeline"),
-        _qc("decision_maker"),
         _qc("contact_full_name"),
         _qc("contact_company_name"),
         _qc("contact_phone"),
         _qc("contact_email"),
-        _qc("contact_website"),
         _qc("additional_notes"),
     ]
 
 
 def service_sales_targeted_advertising_profile() -> dict[str, Any]:
-    """Targeted advertising sales questionnaire bound to existing Meta/client leads."""
+    """Branching B2B questionnaire: employees vs clients vs both."""
     overrides = _presentation_overrides()
     return {
         "profile_code": TARGETED_ADVERTISING_PROFILE_CODE,
         "entity_type": ENTITY_LEAD,
         "module_owner": SERVICE_SALES_MODULE,
         "name": "Targeted Advertising Questionnaire",
-        "description": "Conditional sales questionnaire for targeted advertising service inquiries (PL).",
+        "description": "Conditional sales questionnaire with platform library-backed selects.",
         "default_layout_code": None,
         "document_pack_code": None,
         "process_profile_code": None,
         "config": {
             "market_country": "PL",
-            "default_language": "pl",
+            "default_language": "ru",
             "questionnaire_kind": "targeted_advertising",
         },
         "fields": [
             _profile_field(_qc("need_type"), sort_order=10, intake_level=REQUIREMENT_REQUIRED),
-            _profile_field(_qc("primary_outcome"), sort_order=20, intake_level=REQUIREMENT_REQUIRED),
             _profile_field(_qc("recruitment_roles"), sort_order=110),
             _profile_field(_qc("recruitment_other_role"), sort_order=120),
             _profile_field(_qc("recruitment_headcount"), sort_order=130),
             _profile_field(_qc("work_location_country"), sort_order=140),
-            _profile_field(_qc("work_location_city"), sort_order=150),
-            _profile_field(_qc("application_channel"), sort_order=160),
-            _profile_field(_qc("job_posting_ready"), sort_order=170),
-            _profile_field(_qc("recruitment_materials"), sort_order=180),
-            _profile_field(_qc("promotion_subject"), sort_order=210),
-            _profile_field(_qc("industry"), sort_order=220),
-            _profile_field(_qc("client_geo_scope"), sort_order=230),
-            _profile_field(_qc("client_geo_detail"), sort_order=240),
-            _profile_field(_qc("conversion_destination"), sort_order=250),
-            _profile_field(_qc("offer_ready"), sort_order=260),
-            _profile_field(_qc("marketing_materials"), sort_order=270),
-            _profile_field(_qc("prior_ads_experience"), sort_order=310),
-            _profile_field(_qc("monthly_ad_budget"), sort_order=320),
-            _profile_field(_qc("start_timeline"), sort_order=330),
-            _profile_field(_qc("decision_maker"), sort_order=340),
+            _profile_field(_qc("work_location_region"), sort_order=150),
+            _profile_field(_qc("work_location_city"), sort_order=160),
+            _profile_field(_qc("work_location_base"), sort_order=170),
+            _profile_field(_qc("job_posting_ready"), sort_order=180),
+            _profile_field(_qc("recruitment_materials"), sort_order=190),
+            _profile_field(_qc("advertised_services"), sort_order=210),
+            _profile_field(_qc("advertised_services_other"), sort_order=220),
+            _profile_field(_qc("client_geo_country"), sort_order=230),
+            _profile_field(_qc("client_geo_region"), sort_order=240),
+            _profile_field(_qc("client_geo_city"), sort_order=250),
+            _profile_field(_qc("conversion_destination"), sort_order=260),
+            _profile_field(_qc("has_website"), sort_order=270),
+            _profile_field(_qc("marketing_materials"), sort_order=280),
             _profile_field(_qc("contact_full_name"), sort_order=410, intake_level=REQUIREMENT_REQUIRED),
-            _profile_field(_qc("contact_company_name"), sort_order=420, intake_level=REQUIREMENT_REQUIRED),
+            _profile_field(_qc("contact_company_name"), sort_order=420),
             _profile_field(_qc("contact_phone"), sort_order=430, intake_level=REQUIREMENT_REQUIRED),
             _profile_field(_qc("contact_email"), sort_order=440, intake_level=REQUIREMENT_REQUIRED),
-            _profile_field(_qc("contact_website"), sort_order=450),
-            _profile_field(_qc("additional_notes"), sort_order=460),
+            _profile_field(_qc("additional_notes"), sort_order=450),
         ],
         "intake_presentations": [
             {

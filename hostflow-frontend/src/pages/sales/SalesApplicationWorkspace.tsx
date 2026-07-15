@@ -97,6 +97,7 @@ export function SalesApplicationWorkspace() {
           converting={converting}
           patching={patching}
           onClose={onClose}
+          onRefresh={onRefresh}
           onStage={(stage) => {
             if (stage === 'lost') {
               setLostTargetId(application.id)

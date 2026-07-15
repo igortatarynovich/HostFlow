@@ -8,6 +8,11 @@ import {
   applicationInitial,
 } from './applicationDisplay'
 import { resolveSalesApplicationDecision } from './resolveSalesApplicationDecision'
+import {
+  SalesInquiryAnswersBlock,
+  SalesInquiryAttributionSection,
+  SalesInquiryCommunicationBlock,
+} from '../../components/leads/SalesInquiryQuestionnaireSection'
 
 const WORKFLOW_STEPS = [
   { key: 'contact', label: 'Связаться' },
@@ -24,6 +29,7 @@ export type ApplicationSalesDetailPanelProps = {
   onClose: () => void
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
   onConvert: () => void | Promise<void>
+  onRefresh?: () => void
 }
 
 export function ApplicationSalesDetailPanel({
@@ -33,6 +39,7 @@ export function ApplicationSalesDetailPanel({
   onClose,
   onStage,
   onConvert,
+  onRefresh,
 }: ApplicationSalesDetailPanelProps) {
   const { t } = useI18n()
   const companyName = application.title
@@ -108,13 +115,38 @@ export function ApplicationSalesDetailPanel({
           </ol>
         ),
         contacts: (
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
-              {applicationInitial(application)}
-            </span>
-            <p className="text-sm text-slate-600">{application.contact.name || 'Контакт'}</p>
+          <div className="space-y-4">
+            <div className="space-y-2 text-sm text-slate-700">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
+                  {applicationInitial(application)}
+                </span>
+                <div>
+                  <p className="font-medium text-slate-900">{application.contact.name || 'Контакт'}</p>
+                  {application.contact.phone ? <p>{application.contact.phone}</p> : null}
+                  {application.contact.email ? <p>{application.contact.email}</p> : null}
+                </div>
+              </div>
+            </div>
+            <SalesInquiryCommunicationBlock
+              applicationId={application.id}
+              contact={application.contact}
+              companyName={application.title}
+              convertedClientId={convertedId || null}
+              onLeadUpdated={onRefresh}
+            />
           </div>
         ),
+        summary: (
+          <SalesInquiryAnswersBlock applicationId={application.id} convertedClientId={convertedId || null} />
+        ),
+        history: <SalesInquiryAttributionSection applicationId={application.id} />,
+      }}
+      contextTitles={{
+        summary: 'Информация от клиента',
+        history: 'История',
+        contacts: 'Связаться',
+        workflow: 'Этапы',
       }}
     />
   )

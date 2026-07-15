@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.entity_profile.constants import DEFAULT_REGISTRY_VERSION
+from backend.app.field_registry.service_sales_options import attach_options_to_presentation_field
 from backend.app.entity_profile.resolver import resolve_effective_entity_profile
 from backend.app.models.entity_profile import PLATFORM_TENANT_SCOPE, EpIntakePresentation
 from backend.app.modules.intake_routing import crud as intake_crud
@@ -188,11 +189,13 @@ async def resolve_form_presentation(
             warnings.append(f"presentation_field_not_in_profile:{qualified_code}")
             continue
         fields_out.append(
-            _presentation_field_row(
-                qualified_code=qualified_code,
-                field_row=field_row,
-                presentation_overrides=presentation_overrides,
-                sort_order=(index + 1) * 10,
+            attach_options_to_presentation_field(
+                _presentation_field_row(
+                    qualified_code=qualified_code,
+                    field_row=field_row,
+                    presentation_overrides=presentation_overrides,
+                    sort_order=(index + 1) * 10,
+                )
             )
         )
 

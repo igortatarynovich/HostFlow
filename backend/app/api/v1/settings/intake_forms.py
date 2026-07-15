@@ -52,6 +52,7 @@ class EntityProfileFieldOptionOut(BaseModel):
     intake_level: str
     field_type: Optional[str] = None
     sort_order: int
+    options: List[dict[str, str]] = Field(default_factory=list)
 
 
 class EntityProfileFieldsOut(BaseModel):
@@ -244,6 +245,8 @@ async def get_intake_form_entity_profile_fields(
     from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
     from backend.app.entity_profile.facade import resolve_entity_profile_facade
     from backend.app.entity_profile.presentation_runtime import _effective_label
+    from backend.app.field_registry.service_sales_options import service_sales_field_options
+    from backend.app.field_registry.intake_reference_options import reference_domain_options
 
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -268,6 +271,8 @@ async def get_intake_form_entity_profile_fields(
         if not qcode:
             continue
         embedded = row.get("field") if isinstance(row.get("field"), dict) else {}
+        ref_domain = str(embedded.get("reference_domain") or "").strip() or None
+        options = reference_domain_options(ref_domain) if ref_domain else service_sales_field_options(qcode)
         label = _effective_label(
             qualified_code=qcode,
             field_row=row,
@@ -280,6 +285,7 @@ async def get_intake_form_entity_profile_fields(
                 intake_level=str(row.get("intake_level") or "optional"),
                 field_type=str(embedded.get("field_type") or "") or None,
                 sort_order=int(row.get("sort_order") or 0),
+                options=options,
             )
         )
     fields_out.sort(key=lambda f: f.sort_order)

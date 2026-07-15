@@ -34,6 +34,8 @@ INVITE_STATUS_OPENED = "opened"
 INVITE_STATUS_IN_PROGRESS = "in_progress"
 INVITE_STATUS_SUBMITTED = "submitted"
 
+LEAD_QUESTIONNAIRE_STATUS_WAITING = "waiting_for_response"
+
 QUESTIONNAIRE_INVITE_TTL_DAYS = 30
 SALES_QUESTIONNAIRE_PREFIX = f"{TARGETED_ADVERTISING_PROFILE_CODE}."
 
@@ -59,8 +61,19 @@ def _trim(value: Any) -> str | None:
     return s or None
 
 
-def _apply_url_for_token(token: str) -> str:
-    return f"/public/apply/{token}"
+def _apply_url_for_token(token: str, *, form_locale: str | None = None) -> str:
+    base = f"/public/apply/{token}"
+    loc = str(form_locale or "").strip().lower()
+    if loc in {"ru", "pl", "en"}:
+        return f"{base}?lang={loc}"
+    return base
+
+
+def _normalize_form_locale(value: str | None) -> str | None:
+    loc = str(value or "").strip().lower()
+    if loc in {"ru", "pl", "en"}:
+        return loc
+    return None
 
 
 def _qualified_to_sales_key(qualified_code: str) -> str | None:
@@ -212,6 +225,21 @@ async def list_questionnaire_forms_for_targeted_advertising(
             .order_by(TenantLeadForm.is_system_preset.desc(), TenantLeadForm.title.asc())
         )
     ).scalars().all()
+    if not rows:
+        await db.commit()
+        await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
+        await db.commit()
+        rows = (
+            await db.execute(
+                select(TenantLeadForm)
+                .where(
+                    TenantLeadForm.tenant_id == str(tenant_id),
+                    TenantLeadForm.is_active.is_(True),
+                    TenantLeadForm.target_entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE,
+                )
+                .order_by(TenantLeadForm.is_system_preset.desc(), TenantLeadForm.title.asc())
+            )
+        ).scalars().all()
     return [
         {
             "id": str(row.id),
@@ -340,6 +368,7 @@ async def attach_questionnaire_invite_to_lead(
     lead: Lead,
     mark_sent: bool = False,
     lead_form_id: str | None = None,
+    form_locale: str | None = None,
 ) -> LeadQuestionnaireInvite:
     """Create or reuse a personal questionnaire token bound to an existing Lead."""
     lead_form, intake_profile = await resolve_lead_form_for_questionnaire(
@@ -355,16 +384,18 @@ async def attach_questionnaire_invite_to_lead(
     now = _now()
     expires_at = now + timedelta(days=QUESTIONNAIRE_INVITE_TTL_DAYS)
 
+    normalized_locale = _normalize_form_locale(form_locale)
+
     if existing is not None:
         invite = existing
-        if mark_sent and invite.status == INVITE_STATUS_NOT_SENT:
-            invite.status = INVITE_STATUS_SENT
-            invite.sent_at = now
         invite.updated_at = now
-        if not invite.apply_url:
+        if normalized_locale:
+            meta = _record(invite.meta)
+            meta["form_locale"] = normalized_locale
+            invite.meta = meta
+            invite.apply_url = _apply_url_for_token(invite.token, form_locale=normalized_locale)
+        elif not invite.apply_url:
             invite.apply_url = _apply_url_for_token(invite.token)
-        if mark_sent:
-            _sync_lead_questionnaire_status(lead, invite.status)
         await db.flush()
         return invite
 
@@ -374,31 +405,29 @@ async def attach_questionnaire_invite_to_lead(
         str(getattr(intake_profile, "entity_profile_code", None) or "").strip()
         or TARGETED_ADVERTISING_PROFILE_CODE
     )
-    presentation_code = (
-        str(getattr(intake_profile, "presentation_code", None) or "").strip()
-        or TARGETED_ADVERTISING_PRESENTATION_CODE
-    )
+    presentation_code = TARGETED_ADVERTISING_PRESENTATION_CODE
     invite = LeadQuestionnaireInvite(
         tenant_id=str(tenant_id),
         lead_id=str(lead.id),
         lead_form_id=str(lead_form.id),
         token=token,
-        status=INVITE_STATUS_SENT if mark_sent else INVITE_STATUS_NOT_SENT,
+        status=INVITE_STATUS_NOT_SENT,
         entity_profile_code=entity_profile_code,
         presentation_code=presentation_code,
-        apply_url=_apply_url_for_token(token),
-        sent_at=now if mark_sent else None,
+        apply_url=_apply_url_for_token(token, form_locale=normalized_locale),
+        sent_at=None,
         expires_at=expires_at,
         meta={
             "intake_state": intake_state,
             "intake_source_profile_id": str(intake_profile.id),
             "questionnaire_kind": "targeted_advertising",
+            **({"form_locale": normalized_locale} if normalized_locale else {}),
         },
     )
     db.add(invite)
 
     normalized = _record(lead.normalized)
-    normalized.setdefault("sales_questionnaire_status", INVITE_STATUS_SENT if mark_sent else INVITE_STATUS_NOT_SENT)
+    normalized.setdefault("sales_questionnaire_status", INVITE_STATUS_NOT_SENT)
     lead.normalized = normalized
     await db.flush()
     return invite
@@ -426,6 +455,39 @@ def _sync_lead_questionnaire_status(lead: Lead, status: str) -> None:
     normalized = _record(lead.normalized)
     normalized["sales_questionnaire_status"] = status
     lead.normalized = normalized
+
+
+async def mark_invite_sent_after_sms_accepted(
+    db: AsyncSession,
+    *,
+    invite: LeadQuestionnaireInvite,
+    lead: Lead,
+) -> None:
+    """Invite lifecycle: provider accepted SMS; lead waits for questionnaire response."""
+    await mark_invite_sent_after_manual_delivery(db, invite=invite, lead=lead, channel="sms")
+
+
+async def mark_invite_sent_after_manual_delivery(
+    db: AsyncSession,
+    *,
+    invite: LeadQuestionnaireInvite,
+    lead: Lead,
+    channel: str = "manual",
+) -> None:
+    """Mark invite as sent after manager delivered link via email, WhatsApp, copy, etc."""
+    if invite.status == INVITE_STATUS_SUBMITTED:
+        return
+    now = _now()
+    if invite.sent_at is None:
+        invite.sent_at = now
+    if invite.status == INVITE_STATUS_NOT_SENT:
+        invite.status = INVITE_STATUS_SENT
+    invite.updated_at = now
+    meta = _record(invite.meta)
+    meta["last_delivery_channel"] = str(channel or "manual").strip() or "manual"
+    invite.meta = meta
+    _sync_lead_questionnaire_status(lead, INVITE_STATUS_SENT)
+    await db.flush()
 
 
 async def mark_invite_opened(

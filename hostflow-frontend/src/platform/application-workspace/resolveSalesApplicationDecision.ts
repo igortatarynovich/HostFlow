@@ -11,6 +11,13 @@ type ResolveSalesDecisionArgs = {
   t: (key: string, options?: Record<string, unknown>) => string
 }
 
+const SALES_CONTEXT: readonly ['workflow', 'contacts', 'summary', 'history'] = [
+  'workflow',
+  'contacts',
+  'summary',
+  'history',
+]
+
 export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs): ObjectDecision {
   const { application, converting, patching, onStage, onConvert, t } = args
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
@@ -49,7 +56,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         label: t('app.client_inquiry.service_order.open_client', { defaultValue: 'Открыть карточку клиента' }),
         href: clientHref,
       },
-      requiredContext: ['workflow'],
+      requiredContext: SALES_CONTEXT,
       terminal: false,
       variant: 'success',
     }
@@ -64,7 +71,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
           : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
       why: undefined,
       primaryAction: null,
-      requiredContext: ['workflow'],
+      requiredContext: SALES_CONTEXT,
       terminal: true,
       outcome: {
         title:
@@ -105,7 +112,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         },
       ],
       contactActions,
-      requiredContext: ['workflow'],
+      requiredContext: SALES_CONTEXT,
       variant: 'default',
     }
   }
@@ -139,7 +146,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         },
       ],
       contactActions,
-      requiredContext: ['workflow'],
+      requiredContext: SALES_CONTEXT,
     }
   }
 
@@ -167,7 +174,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       },
     ],
     contactActions,
-    requiredContext: ['workflow'],
+    requiredContext: SALES_CONTEXT,
     afterActionHint: contactPhone
       ? t('app.sales_inquiry.after_call_hint', { defaultValue: 'После звонка отметьте «Позвонил».' })
       : undefined,

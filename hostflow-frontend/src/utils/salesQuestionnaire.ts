@@ -28,7 +28,7 @@ const STATUS_LABELS_RU: Record<string, string> = {
 export type SalesQuestionnaireStatus = keyof typeof STATUS_LABELS_EN
 
 export function isWaitingForQuestionnaireResponse(status: string | null | undefined): boolean {
-  return status === 'sent' || status === 'opened' || status === 'in_progress'
+  return status === 'sent' || status === 'opened' || status === 'in_progress' || status === 'waiting_for_response'
 }
 
 export function readSalesQuestionnaireStatus(lead: { normalized?: Record<string, unknown> | null }): SalesQuestionnaireStatus | null {

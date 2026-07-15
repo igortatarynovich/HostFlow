@@ -1013,11 +1013,86 @@ export async function getLeadQuestionnaireInvite(leadId: string): Promise<LeadQu
 /** Stage Sales Intake 1 — personal questionnaire link for client leads (targeted advertising). */
 export async function createLeadQuestionnaireInvite(
   leadId: string,
-  payload?: { mark_sent?: boolean; lead_form_id?: string },
+  payload?: { mark_sent?: boolean; lead_form_id?: string; form_locale?: string },
 ): Promise<LeadQuestionnaireInviteResult> {
   const { data } = await api.post<LeadQuestionnaireInviteResult>(
     `/leads/${leadId}/questionnaire-invite`,
     payload ?? {},
+  )
+  return data
+}
+
+export type CommunicationDeliveryResult = {
+  id: string
+  tenant_id: string
+  entity_type: string
+  entity_id: string
+  purpose: string
+  channel: string
+  provider: string
+  invite_id?: string | null
+  recipient_masked: string
+  template_key: string
+  template_version: number
+  encoding: string
+  parts_count: number
+  status: string
+  error_code?: string | null
+  external_message_id?: string | null
+  queued_at: string
+  sent_at?: string | null
+  delivered_at?: string | null
+  idempotency_key?: string | null
+}
+
+export type QuestionnaireInviteSendResult = {
+  invite: LeadQuestionnaireInviteResult
+  delivery: CommunicationDeliveryResult
+}
+
+/** B-1-SMS — queue questionnaire invite SMS delivery (separate from invite creation). */
+export async function sendLeadQuestionnaireInviteSms(
+  leadId: string,
+  payload?: {
+    lead_form_id?: string
+    invite_id?: string
+    recipient_phone?: string
+    idempotency_key?: string
+    force_resend?: boolean
+  },
+): Promise<QuestionnaireInviteSendResult> {
+  const { data } = await api.post<QuestionnaireInviteSendResult>(
+    `/leads/${leadId}/questionnaire-invite/send`,
+    { channel: 'sms', ...(payload ?? {}) },
+  )
+  return data
+}
+
+export async function getLatestLeadQuestionnaireDelivery(
+  leadId: string,
+  channel = 'sms',
+): Promise<CommunicationDeliveryResult | null> {
+  try {
+    const { data } = await api.get<CommunicationDeliveryResult>(
+      `/leads/${leadId}/questionnaire-invite/deliveries/latest`,
+      { params: { channel } },
+    )
+    return data
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 404) return null
+    throw err
+  }
+}
+
+/** Mark questionnaire invite as sent after manual delivery (email / WhatsApp / copied link). */
+export async function confirmLeadQuestionnaireInviteSent(
+  leadId: string,
+  payload: { invite_id: string; channel: 'email' | 'whatsapp' | 'link' | 'manual' },
+): Promise<LeadQuestionnaireInviteResult> {
+  const { data } = await api.post<LeadQuestionnaireInviteResult>(
+    `/leads/${leadId}/questionnaire-invite/confirm-sent`,
+    payload,
   )
   return data
 }
