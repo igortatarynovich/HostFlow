@@ -1007,8 +1007,10 @@
         },
         "handoff": {
           "back_inbox": "Back to inbox",
-          "title": "Handoff snapshot",
-          "hint": "Read-only payload from GET /api/v1/handoffs/{id}/snapshot. No Candidates list API."
+          "title": "Internal HR handoff",
+          "hint": "Review transfer data, take the case into HR review, then approve for employment when ready.",
+          "accept_pickup": "Take into HR review",
+          "accepted_notice": "Case is in HR review. Complete the checklist below, then approve for employment."
         },
         "tasks": {
           "heading": "HR tasks",
@@ -1054,6 +1056,11 @@
           "lane_checklist_deregister": "Deregistration checklist",
           "lane_monthly_settlement": "Monthly settlement",
           "lane_export_queue": "Export (placeholder)"
+        },
+        "handoff": {
+          "back_inbox": "Back to inbox",
+          "title": "Handoff snapshot",
+          "hint": "Read-only payload from GET /api/v1/handoffs/{id}/snapshot. No Candidates list API."
         },
         "employees": {
           "heading": "Employees",
