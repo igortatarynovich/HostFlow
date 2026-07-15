@@ -16,7 +16,7 @@ from alembic import op
 RevisionType = Union[str, Sequence[str], None]
 
 revision: str = "202607151100_questionnaire_ssot_repair"
-down_revision: RevisionType = "202607151000_adr022_form_purpose"
+down_revision: RevisionType = "202607151200_b1_sms"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None
 
