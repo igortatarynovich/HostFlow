@@ -292,24 +292,40 @@ async def test_lazy_ensure_restores_missing_legacy_form() -> None:
 @pytest.mark.asyncio
 async def test_provisioned_form_supports_questionnaire_invite(
     client: AsyncClient,
-    tenant_id: str,
-    manager_headers: dict,
 ) -> None:
-    async with async_session_maker() as session:
-        from backend.app.models.own_company import OwnCompany
+    from backend.app.core.security import hash_password
+    from backend.app.models import User
+    from backend.tests.conftest import _build_token
 
-        own_company_id = await session.scalar(
-            select(OwnCompany.id)
-            .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
-            .order_by(OwnCompany.created_at.asc())
-            .limit(1)
+    tenant_id, own_company_id = await _create_tenant_bundle(business_type="services")
+    user_id = str(uuid4())
+    email = f"auto-seed-mgr-{uuid4().hex[:8]}@test.local"
+    async with async_session_maker() as session:
+        session.add(
+            User(
+                id=user_id,
+                email=email,
+                password_hash=hash_password("test"),
+                role="administrator",
+                short_id="AS01",
+                full_name="Auto Seed Manager",
+                tenant_id=tenant_id,
+                is_active=True,
+            )
         )
-        assert own_company_id is not None
+        await session.commit()
+
+    headers = {
+        "Authorization": f"Bearer {_build_token(user_id, email, 'administrator', tenant_id)}",
+        "X-Tenant-Id": tenant_id,
+    }
+
+    async with async_session_maker() as session:
         await provision_targeted_advertising_capability(session, tenant_id)
         lead = await leads_crud.create_lead(
             session,
             tenant_id=tenant_id,
-            own_company_id=str(own_company_id),
+            own_company_id=own_company_id,
             company_id=None,
             vacancy_id=None,
             source="meta_ads",
@@ -324,7 +340,7 @@ async def test_provisioned_form_supports_questionnaire_invite(
 
     invite_resp = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite",
-        headers=manager_headers,
+        headers=headers,
         json={"mark_sent": True},
     )
     assert invite_resp.status_code == 200, invite_resp.text
@@ -368,9 +384,17 @@ async def test_tenant_create_hook_provisions_services_capability() -> None:
 
 @pytest.mark.asyncio
 async def test_inactive_slug_form_is_reactivated_not_duplicated() -> None:
+    from backend.app.entity_profile.provision_targeted_advertising import _global_lead_form_public_slug_taken
+
     tenant_id, _ = await _create_tenant_bundle(business_type="services")
     legacy_form_id = str(uuid4())
     async with async_session_maker() as session:
+        if await _global_lead_form_public_slug_taken(
+            session,
+            TARGETED_ADVERTISING_FORM_SLUG,
+            tenant_id=tenant_id,
+        ):
+            pytest.skip("global canonical slug already claimed by another tenant")
         session.add(
             TenantLeadForm(
                 id=legacy_form_id,
