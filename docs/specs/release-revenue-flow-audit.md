@@ -4,13 +4,15 @@
 **Date:** 2026-07-15  
 **Purpose:** Prove HostFlow can be **bought, configured, and used for money** — not «close all modules».
 
-**Development model:** think in **scenarios and steps**, not in PRs or modules. Every PR must advance at least one step below to the next status — or it goes to backlog.
+**Development model (official):** three levels — **Foundation → Scenario Step → Revenue Flow**. Product progress = passable Scenario Steps + completed Revenue Flows. **Never** Foundation merges alone.
 
-**Gate question for every task / PR:**
+**Gate questions for every task / PR:**
 
-> *Which scenario step becomes passable end-to-end (no curl, manual URL, JSON, or DB edits) that is not passable today?*
+1. **Scenario Step PR:** Which step becomes **passable** without workarounds? **What can the operator do today that they could not yesterday?**
+2. **Foundation PR:** Which step(s) does this **unblock**? If none — backlog.
+3. **Any PR:** Operator gain = «nothing» → Foundation only; **does not count as product progress**.
 
-If the answer is vague or the work does not remove a Product A/B release blocker or move money closer — **lower backlog**.
+If vague or does not move Product A/B toward money — **lower backlog**.
 
 **Related canon:** [`personas.md`](personas.md), [`tenant-types.md`](tenant-types.md), [`plans-matrix.md`](plans-matrix.md), [`SSOT.md`](../SSOT.md) §2.1 / §2.16–§2.18, [`ADR-021`](architecture/ADR-021-unified-intake-resolution-model.md), [`ADR-022`](architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md), [`ADR-020`](architecture/ADR-020-sales-to-engagement-commercial-model.md), [`entity-profile-definition-registry.md`](platform/entity-profile-definition-registry.md), [`process-engine.md`](platform/process-engine.md), [`document-hub/module-scope.md`](../document-hub/module-scope.md).
 
@@ -18,82 +20,166 @@ If the answer is vague or the work does not remove a Product A/B release blocker
 
 ---
 
-## 0. Scenario Step Registry (operational index)
+## 0. Development model (official)
 
-Use these IDs in **every PR title/body**. One PR may cover one step or a tight chain; it must name the step(s).
+Three levels. Every piece of work must declare which level it serves.
 
-**Status per step:** `not_started` | `partial` | `passable` | `blocked`
+### Level 1 — Foundation
 
-### Flow 3 — Product B: B2B targeting (P0 revenue)
+Architecture, ADR, backend infrastructure, platform modules. **Does not sell by itself.** The client never sees it.
 
-| Step ID | Flow → Product → Step | Status | Next PR target |
-|---------|------------------------|--------|----------------|
-| **F3-B-01** | Flow 3 → Product B → Meta Lead lands in Sales inbox | **partial** | — (backend mostly done) |
-| **F3-B-02** | Flow 3 → Product B → Manager selects form + sends questionnaire | **partial** | **PR B-1** (next) |
-| **F3-B-03** | Flow 3 → Product B → Status «ожидаем ответ» visible to manager | **not_started** | **PR B-1** |
-| **F3-B-04** | Flow 3 → Product B → Client opens link + submits answers | **partial** | **PR B-2** |
-| **F3-B-05** | Flow 3 → Product B → Answers visible in Sales Workspace | **not_started** | **PR B-2** |
-| **F3-B-06** | Flow 3 → Product B → Attribution visible (form, version, source, new vs attach) | **not_started** | **PR B-2** |
-| **F3-B-07** | Flow 3 → Product B → Manager decision (create client / clarify / reject) | **partial** | **PR B-2** |
-| **F3-B-08** | Flow 3 → Product B → Quote → Service Order | **not_started** | after B-1/B-2 walkthrough |
-| **F3-B-09** | Flow 3 → Product B → Campaign activation + lead delivery | **not_started** | Flow 4 |
+Examples: ADR-022, Submission Policy resolver, Match Resolver, Entity Profile gate, document metadata schema.
 
-**PR B-1 acceptance (send only):**
+**Rule:** A Foundation PR is **never** product completion. It is **unblocking** one or more Scenario Steps. Progress is recorded only when a step becomes passable.
 
-- Manager received Meta Lead → clicked «Отправить анкету»
-- Can **select form**
-- Can **send** invite
-- Sees status **«ожидаем ответ»**
-- No Application Workspace UX scope in this PR
+**Bad PR title (Foundation disguised as product):** «Added Form Definition Policy Resolver.»  
+**Operator gain:** nothing → **Foundation only.**
 
-**PR B-2 acceptance (receive + decide):**
+### Level 2 — Scenario Step
 
-- Client submitted → answers appear in Sales Workspace
-- Visible: **source, form, version**, new inquiry vs attach
-- Manager can **take action** (create client, request clarification, reject)
-- Touches Application Workspace UX — isolated risk zone
+One concrete user action an operator or client can perform and **demonstrate**. This is where product value appears.
 
-**Forms rule after B-1/B-2:** Forms platform evolves **only** when a step above requires it. No standalone Form Definition editor PRs until a scenario step demands them.
+Each step MUST answer:
 
-### Flow 1 — Product A: Recruitment (P0 revenue)
+> **What can the operator (or client) do today that they could not do yesterday?**
 
-| Step ID | Flow → Product → Step | Status |
-|---------|------------------------|--------|
-| **F1-A-01** | Flow 1 → Product A → Signal lands in recruitment inbox | **partial** |
-| **F1-A-02** | Flow 1 → Product A → Review + assign candidate | **partial** |
-| **F1-A-03** | Flow 1 → Product A → Questionnaire + documents complete | **partial** |
-| **F1-A-04** | Flow 1 → Product A → Pipeline decision | **partial** |
-| **F1-A-05** | Flow 1 → Product A → Handoff ready | **partial** |
+Example **F3-B-02:**
 
-**Next after Product B B-1/B-2:** walk Flow 1 on staging → update statuses → pick first `not_started` / `partial` step.
+| | |
+|---|---|
+| **Yesterday** | Cannot send a questionnaire from the lead. |
+| **Today** | Can select a form, send a link, see status «Waiting for response». |
 
-### Platform foundations (only when a step above fails)
+That is a **good Scenario Step PR.**
 
-| Block | Trigger | Do not start until |
-|-------|---------|-------------------|
-| **Document Platform** | F1-A-03 or handoff fails on real docs | Flow 1/3 walkthrough shows doc blocker |
-| **Process Platform** | Decision/clarification/SLA fails in real use | Working scenarios show automation gap |
+Example **F3-B-04:**
+
+| | |
+|---|---|
+| **Yesterday** | Response is lost or creates duplicate inquiry. |
+| **Today** | Response appears on the existing application automatically. |
+
+### Level 3 — Revenue Flow
+
+A **complete money cycle** — passable end-to-end by a paying customer without workarounds.
+
+**Flow 3 (Product B) — target cycle:**
+
+```text
+Meta Lead
+    ↓
+Manager sends questionnaire          (F3-B-02..03)
+    ↓
+Client responds                      (F3-B-04)
+    ↓
+Manager sees answers + decides       (F3-B-05..07)
+    ↓
+Creates client
+    ↓
+Sends Quote                          (F3-B-08)
+    ↓
+Receives payment
+    ↓
+Launches campaign                    (F3-B-09 / Flow 4)
+    ↓
+Receives new leads
+    ↓
+Issues next invoice
+```
+
+**Product progress metric:** count of **`passable` Scenario Steps** + count of **Revenue Flows walked without workarounds** on staging/production-like env.
+
+Foundation merges **do not** increment this metric.
 
 ---
 
-## 0.1 PR template (mandatory header)
+## 0.1 Scenario Step Registry
 
-Every PR body starts with:
+Use step IDs in **every PR**. **Operator gain** is the most important column — if empty, the work is Foundation.
+
+**Step status:** `not_started` | `partial` | `passable` | `blocked`  
+**Foundation column:** dependency + `unblocked` (ready to implement step) or `pending`
+
+### Flow 3 — Product B: B2B targeting (P0)
+
+| Step | User action | Foundation dependency | Operator gain (yesterday → today) | Status |
+|------|-------------|----------------------|-----------------------------------|--------|
+| **F3-B-01** | Meta Lead in Sales inbox | Intake routing, Entity Profile | **Was:** lead lost or wrong inbox → **Now:** lead in Sales (partial — walkthrough needed) | **partial** |
+| **F3-B-02** | Send questionnaire | ADR-022 backend (**unblocked**) | **Was:** cannot send questionnaire → **Now:** select form + send link to client | **partial** |
+| **F3-B-03** | Waiting for response | Submission + invite transport (**unblocked**) | **Was:** no visibility → **Now:** status «Waiting for response» on lead | **not_started** |
+| **F3-B-04** | Client submits answers | Match resolver + attach (**unblocked**) | **Was:** response lost / duplicate inquiry → **Now:** answers land on correct application | **partial** |
+| **F3-B-05** | See answers in Sales | Application Workspace UX (**pending**) | **Was:** answers in JSON/DB only → **Now:** filled questionnaire visible in Sales | **not_started** |
+| **F3-B-06** | See attribution | Submission snapshot (**unblocked**) | **Was:** unknown source/form → **Now:** form, version, source, new vs attach visible | **not_started** |
+| **F3-B-07** | Take decision | ClientAccount + workspace actions | **Was:** no clear next action → **Now:** create client / clarify / reject | **partial** |
+| **F3-B-08** | Quote → Service Order | Quote Foundation (**pending**) | **Was:** commercial path manual → **Now:** quote sent from inquiry | **not_started** |
+| **F3-B-09** | Campaign + delivery | SO + campaign linkage | **Was:** no delivery loop → **Now:** campaign runs, leads attributed | **not_started** |
+
+**Next Scenario Step PRs (not Foundation):**
+
+| PR | Steps | Operator gain summary |
+|----|-------|----------------------|
+| **B-1** | F3-B-02, F3-B-03 | Manager can send questionnaire and see waiting status |
+| **B-2** | F3-B-04..F3-B-07 | Manager sees answers, attribution, and can decide |
+
+**Current Foundation PR (in review):** ADR-022 backend — unblocks F3-B-04 data path; **does not** pass any step until B-1/B-2.
+
+**Forms rule:** no standalone Forms PRs unless a row above is blocked.
+
+### Flow 1 — Product A: Recruitment (P0)
+
+| Step | User action | Foundation dependency | Operator gain (yesterday → today) | Status |
+|------|-------------|----------------------|-----------------------------------|--------|
+| **F1-A-01** | Signal in recruitment inbox | Intake + ADR-021 | Lead/candidate in correct inbox | **partial** |
+| **F1-A-02** | Review + assign | Application review UX | Manager can assign and move forward | **partial** |
+| **F1-A-03** | Questionnaire + documents | Document requirements | Candidate completes proof; manager sees readiness | **partial** |
+| **F1-A-04** | Pipeline decision | Process engine | Hire / reject / next stage | **partial** |
+| **F1-A-05** | Handoff | Handoff contract | HR receives employee package | **partial** |
+
+**Start Flow 1 walkthrough after F3-B-02..07 passable.**
+
+### Platform blocks (Foundation — only when a step fails walkthrough)
+
+| Block | Unblocks steps | Start only when |
+|-------|----------------|-----------------|
+| Document Platform | F1-A-03, handoff quality | Walkthrough fails on real documents |
+| Process Platform | F1-A-04, clarifications, SLA | Walkthrough fails on transitions/automation |
+
+---
+
+## 0.2 PR template (mandatory)
+
+Classify every PR as **Foundation** or **Scenario Step**. Scenario Step PRs must fill **Operator gain**.
 
 ```markdown
+## PR level
+
+- [ ] **Scenario Step** — makes step(s) passable: F3-B-02
+- [ ] **Foundation** — unblocks step(s): F3-B-04 (no operator gain in this PR)
+
+## Operator gain (required for Scenario Step PRs)
+
+**Yesterday:** Manager cannot send questionnaire from lead detail.
+**Today:** Manager can select form, send link, see «Waiting for response».
+
 ## Scenario
 
-- **Step(s):** F3-B-02, F3-B-03  (from release-revenue-flow-audit.md §0)
-- **Flow:** Flow 3 → Product B
-- **Before:** Manager cannot …
-- **After:** Manager can … end-to-end without curl / manual URL / JSON / DB
+- **Step(s):** F3-B-02, F3-B-03
+- **Revenue Flow:** Flow 3 → Product B
+- **Demonstration:** (how to show in staging in ≤5 min)
 
 ## Not in this PR
 
 - (explicit steps deferred)
+
+## Foundation note (if Foundation PR only)
+
+- **Unblocks:** F3-B-04, F3-B-06
+- **Does not pass any step** until follow-up Scenario Step PR
 ```
 
-If **Scenario** section is missing or step IDs do not exist in §0 — PR is out of process.
+PRs without **Operator gain** (Scenario Step) or **Unblocks** (Foundation) — **out of process**.
+
+**Anti-pattern:** Foundation PR titled as product feature without «Unblocks» and without follow-up step PR planned.
 
 ---
 
@@ -393,16 +479,17 @@ MONETIZATION:
 
 ## 8. How to use this document
 
-1. **Before starting work:** find step ID in §0; confirm PR advances it to `passable`.  
-2. **Opening a PR:** use §0.1 template; link step IDs in title or body.  
-3. **After each walkthrough:** update step status in §0 and flow block in §2.  
-4. **Weekly:** review §5 — demote blockers that no longer block A/B.  
-5. **Forms / Intake / ADR work:** only when a named step requires it.  
-6. **Do not** expand ADR-021 scope based on §7.
+1. **Classify work:** Foundation (unblocks) vs Scenario Step (passable) vs Revenue Flow (full cycle).  
+2. **Before starting:** pick step ID in §0.1; write Operator gain (yesterday → today).  
+3. **Opening a PR:** use §0.2 template; Foundation PRs must list **Unblocks**; Scenario Step PRs must list **Operator gain**.  
+4. **Measuring progress:** count `passable` steps + completed Revenue Flow walkthroughs — **not** Foundation merges.  
+5. **After walkthrough:** update Operator gain column and status in §0.1.  
+6. **Weekly:** review §5 blockers.  
+7. **Forms / ADR / platform:** only when a step row is blocked.
 
-**This document is the primary operational backlog filter.** Technical specs and ADRs implement steps listed here — they do not drive priority by themselves.
+**Hard rule:** No Foundation PR counts as product shipment. Product moves only when an operator can do something new without workarounds.
 
-**Inbound:** referenced from [`SSOT.md`](../SSOT.md) §2 (release audit).
+**Inbound:** [`SSOT.md`](../SSOT.md) §2.
 
 ---
 
@@ -410,5 +497,6 @@ MONETIZATION:
 
 | Date | Change |
 |------|--------|
+| 2026-07-15 | Three-level model (Foundation / Scenario Step / Revenue Flow); Operator gain column; Foundation ≠ product progress rule |
 | 2026-07-15 | Scenario Step Registry §0; PR template §0.1; Product B split PR B-1/B-2; scenario-first work order |
 | 2026-07-15 | Initial audit — Products A/B, 8 flows, money matrix, 3 platforms, release blockers |

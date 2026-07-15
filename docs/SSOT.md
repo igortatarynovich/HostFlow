@@ -86,7 +86,7 @@
 
 **Метрики «100%»:** **§1.7** (пилот **1a** vs дорожная карта **1b/1c**/stretch).
 
-**Release & revenue audit (главный операционный документ — шаги сценариев, gate для PR):** [`docs/specs/release-revenue-flow-audit.md`](specs/release-revenue-flow-audit.md) — каждый PR должен именовать step ID из §0; gate: делает ли задача шаг Product A/B проходимым без обходов или снимает release blocker?
+**Release & revenue audit (главный операционный документ):** [`release-revenue-flow-audit.md`](specs/release-revenue-flow-audit.md) — модель **Foundation → Scenario Step → Revenue Flow**; прогресс продукта = проходимые steps + завершённые flows, **не** Foundation merge; каждый PR: Operator gain или Unblocks.
 
 ### 2.1 Единый бэклог продукта (хвосты и roadmap)
 

@@ -95,6 +95,6 @@ Fields on `tenant_lead_forms` and `publication_config_v1` on `intake_source_prof
 
 ## Development filter (post-merge)
 
-**Operational doc:** [`release-revenue-flow-audit.md`](../release-revenue-flow-audit.md) §0 — scenario steps, not PRs.
+**Model:** [`release-revenue-flow-audit.md`](../release-revenue-flow-audit.md) §0 — Foundation → Scenario Step → Revenue Flow. Progress = passable steps, not Foundation merges.
 
-Every PR names step ID(s) it makes `passable`. Next: **PR B-1** (`F3-B-02`, `F3-B-03`) → **PR B-2** (`F3-B-04`..`F3-B-07`). Forms work only when a step requires it.
+Next Scenario Step PRs: **B-1** (`F3-B-02`, `F3-B-03`) → **B-2** (`F3-B-04`..`F3-B-07`). Each must state **Operator gain**.
