@@ -39,6 +39,12 @@ from backend.app.services.intake_channel_candidate import public_intake_stable_c
 
 PUBLIC_INTAKE_DRAFT_V1 = "public_intake_draft_v1"
 PUBLIC_INTAKE_SOURCE = "public_intake"
+# Draft tokens remain valid after submit for idempotent re-read / re-submit (ADR-022 P1).
+PUBLIC_INTAKE_DRAFT_TOKEN_STAGES = (
+    "intake_draft",
+    "questionnaire_submitted",
+    "intake_draft_abandoned",
+)
 INTAKE_TOKEN_TTL_DAYS = 30
 
 
@@ -151,7 +157,7 @@ async def find_lead_draft_by_intake_token(
     stmt = select(Lead).where(
         Lead.tenant_id == str(tenant_id),
         Lead.source == PUBLIC_INTAKE_SOURCE,
-        Lead.stage == "intake_draft",
+        Lead.stage.in_(PUBLIC_INTAKE_DRAFT_TOKEN_STAGES),
     )
     result = await db.execute(stmt)
     for lead in result.scalars().all():
@@ -196,7 +202,7 @@ async def resolve_public_intake_lead_draft_tenant_id(db: AsyncSession, token: st
 
     stmt = select(Lead.tenant_id, Lead.normalized).where(
         Lead.source == PUBLIC_INTAKE_SOURCE,
-        Lead.stage == "intake_draft",
+        Lead.stage.in_(PUBLIC_INTAKE_DRAFT_TOKEN_STAGES),
     )
     result = await db.execute(stmt)
     for tenant_id, normalized in result.all():
@@ -274,7 +280,7 @@ async def resolve_public_intake_session(
     stmt = select(Lead).where(
         Lead.tenant_id == str(tenant_id),
         Lead.source == PUBLIC_INTAKE_SOURCE,
-        Lead.stage == "intake_draft",
+        Lead.stage.in_(PUBLIC_INTAKE_DRAFT_TOKEN_STAGES),
     )
     result = await db.execute(stmt)
     for lead in result.scalars().all():
@@ -282,7 +288,8 @@ async def resolve_public_intake_session(
         if str(block.get("intake_token") or "") != str(token):
             continue
         expires_at = block.get("intake_token_expires_at")
-        if expires_at:
+        already_submitted = str(block.get("intake_status") or "").strip().lower() == "submitted"
+        if expires_at and not already_submitted:
             try:
                 exp = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
                 if exp < _now():

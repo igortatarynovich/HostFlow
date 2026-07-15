@@ -18,12 +18,14 @@ from backend.app.entity_profile.public_intake_presentation_bridge import (
     presentation_values_dict_from_state,
 )
 from backend.app.entity_profile.seed_targeted_advertising_form import (
-    TARGETED_ADVERTISING_FORM_SLUG,
     ensure_tenant_targeted_advertising_intake_form,
 )
 from backend.app.models import Lead
-from backend.app.models.intake_routing import IntakeSourceProfile
+from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
+from backend.app.models.intake_routing_enums import IntakeProvider, RouteIntent
 from backend.app.models.lead_questionnaire_invite import LeadQuestionnaireInvite
+from backend.app.intake_platform.policy_resolver import resolve_effective_policy_for_invite
+from backend.app.intake_platform.submission_store import append_submission
 from backend.app.models.tenant_lead_form import TenantLeadForm
 
 INVITE_STATUS_NOT_SENT = "not_sent"
@@ -80,33 +82,79 @@ def write_invite_intake_state(invite: LeadQuestionnaireInvite, state: dict[str, 
     invite.meta = meta
 
 
+async def _lead_form_for_intake_profile(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    intake_profile: IntakeSourceProfile,
+) -> TenantLeadForm | None:
+    bindings = (
+        await db.execute(
+            select(IntakeSourceBinding).where(
+                IntakeSourceBinding.tenant_id == str(tenant_id),
+                IntakeSourceBinding.intake_source_profile_id == str(intake_profile.id),
+                IntakeSourceBinding.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+    for binding in bindings:
+        key = str(binding.external_key or "").strip()
+        if not key.startswith("lead_form_id:"):
+            continue
+        form_id = key.split(":", 1)[1].strip()
+        if not form_id:
+            continue
+        lead_form = await db.scalar(
+            select(TenantLeadForm).where(
+                TenantLeadForm.tenant_id == str(tenant_id),
+                TenantLeadForm.id == form_id,
+            )
+        )
+        if lead_form is not None:
+            return lead_form
+
+    public_slug = str(getattr(intake_profile, "public_slug", None) or "").strip()
+    if public_slug:
+        return await db.scalar(
+            select(TenantLeadForm).where(
+                TenantLeadForm.tenant_id == str(tenant_id),
+                TenantLeadForm.public_slug == public_slug,
+            )
+        )
+    return None
+
+
 async def resolve_lead_form_for_targeted_advertising(
     db: AsyncSession,
     *,
     tenant_id: str,
 ) -> tuple[TenantLeadForm, IntakeSourceProfile]:
+    """Resolve active B2B sales questionnaire form (seeded or constructor-created)."""
     await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
-    lead_form = await db.scalar(
-        select(TenantLeadForm).where(
-            TenantLeadForm.tenant_id == str(tenant_id),
-            TenantLeadForm.public_slug == TARGETED_ADVERTISING_FORM_SLUG,
-            TenantLeadForm.is_active.is_(True),
-        )
-    )
-    if lead_form is None:
-        raise LookupError("Targeted advertising lead form is not configured for tenant")
 
-    profile_code = f"public-form-{TARGETED_ADVERTISING_FORM_SLUG}"
-    intake_profile = await db.scalar(
-        select(IntakeSourceProfile).where(
-            IntakeSourceProfile.tenant_id == str(tenant_id),
-            IntakeSourceProfile.code == profile_code,
-            IntakeSourceProfile.is_active.is_(True),
+    intake_profiles = (
+        await db.execute(
+            select(IntakeSourceProfile)
+            .where(
+                IntakeSourceProfile.tenant_id == str(tenant_id),
+                IntakeSourceProfile.entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE,
+                IntakeSourceProfile.is_active.is_(True),
+                IntakeSourceProfile.route_intent == RouteIntent.sales_inquiry.value,
+            )
+            .order_by(IntakeSourceProfile.updated_at.desc(), IntakeSourceProfile.created_at.desc())
         )
-    )
-    if intake_profile is None:
-        raise LookupError("Targeted advertising intake source profile is not configured for tenant")
-    return lead_form, intake_profile
+    ).scalars().all()
+
+    for intake_profile in intake_profiles:
+        lead_form = await _lead_form_for_intake_profile(
+            db,
+            tenant_id=str(tenant_id),
+            intake_profile=intake_profile,
+        )
+        if lead_form is not None and lead_form.is_active:
+            return lead_form, intake_profile
+
+    raise LookupError("Targeted advertising lead form is not configured for tenant")
 
 
 def _initial_intake_state(
@@ -216,14 +264,22 @@ async def attach_questionnaire_invite_to_lead(
 
     token = _generate_token()
     intake_state = _initial_intake_state(lead=lead, lead_form=lead_form)
+    entity_profile_code = (
+        str(getattr(intake_profile, "entity_profile_code", None) or "").strip()
+        or TARGETED_ADVERTISING_PROFILE_CODE
+    )
+    presentation_code = (
+        str(getattr(intake_profile, "presentation_code", None) or "").strip()
+        or TARGETED_ADVERTISING_PRESENTATION_CODE
+    )
     invite = LeadQuestionnaireInvite(
         tenant_id=str(tenant_id),
         lead_id=str(lead.id),
         lead_form_id=str(lead_form.id),
         token=token,
         status=INVITE_STATUS_SENT if mark_sent else INVITE_STATUS_NOT_SENT,
-        entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
-        presentation_code=TARGETED_ADVERTISING_PRESENTATION_CODE,
+        entity_profile_code=entity_profile_code,
+        presentation_code=presentation_code,
         apply_url=_apply_url_for_token(token),
         sent_at=now if mark_sent else None,
         expires_at=expires_at,
@@ -422,6 +478,32 @@ async def mark_invite_submitted(
     invite.updated_at = now
     write_invite_intake_state(invite, intake_state)
     merge_presentation_into_sales_summary(lead, intake_state, submitted=True)
+
+    lead_form: TenantLeadForm | None = None
+    if invite.lead_form_id:
+        lead_form = await db.get(TenantLeadForm, str(invite.lead_form_id))
+    effective = resolve_effective_policy_for_invite(
+        form=lead_form,
+        invite=invite,
+        entity_profile_code=str(invite.entity_profile_code or TARGETED_ADVERTISING_PROFILE_CODE),
+    )
+    agreements = _record(intake_state.get("agreements"))
+    presentation_values = intake_state.get("presentation_values")
+    if not isinstance(presentation_values, dict):
+        presentation_values = intake_state.get("presentation_values_v1")
+    normalized_values = dict(presentation_values) if isinstance(presentation_values, dict) else {}
+    await append_submission(
+        db,
+        tenant_id=str(lead.tenant_id),
+        lead_id=str(lead.id),
+        effective_policy=effective,
+        normalized_values=normalized_values,
+        presentation_code=str(invite.presentation_code or ""),
+        consent_metadata={"consents": agreements},
+        entry_context={"entry": "questionnaire_invite"},
+        idempotency_key=f"questionnaire-invite-submit:{invite.token}",
+    )
+
     lead.stage = "questionnaire_submitted"
     lead.status = "new"
     await db.flush()

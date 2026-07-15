@@ -11,6 +11,10 @@ from backend.app.entity_profile.constants import (
     TARGETED_ADVERTISING_PRESENTATION_CODE,
     TARGETED_ADVERTISING_PROFILE_CODE,
 )
+from backend.app.intake_platform.constants import DEFAULT_INQUIRY_POLICY, FormPurpose
+from backend.app.intake_platform.form_definition import apply_form_definition_fields
+from backend.app.intake_platform.policy_resolver import resolve_effective_policy_for_invite
+from backend.app.intake_platform.submission_store import append_submission
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.intake_routing_enums import IntakeChannel, IntakeProvider, RouteIntent
 from backend.app.models.own_company import OwnCompany
@@ -51,8 +55,24 @@ async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenan
             public_slug=TARGETED_ADVERTISING_FORM_SLUG,
             is_active=True,
         )
+        apply_form_definition_fields(
+            lead_form,
+            purpose=FormPurpose.inquiry.value,
+            target_entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+            submission_policy=DEFAULT_INQUIRY_POLICY,
+            published_version=1,
+            is_system_preset=True,
+        )
         db.add(lead_form)
         await db.flush()
+    else:
+        apply_form_definition_fields(
+            lead_form,
+            purpose=FormPurpose.inquiry.value,
+            target_entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+            submission_policy=DEFAULT_INQUIRY_POLICY,
+            is_system_preset=True,
+        )
 
     profile_code = f"public-form-{TARGETED_ADVERTISING_FORM_SLUG}"
     intake_profile = await db.scalar(
@@ -81,6 +101,10 @@ async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenan
             default_language="pl",
             supported_languages="pl,en",
             is_active=True,
+            publication_config_v1={
+                "source_label": "meta_ads",
+                "campaign": "targeted-advertising-default",
+            },
         )
         db.add(intake_profile)
         await db.flush()
@@ -91,6 +115,10 @@ async def ensure_tenant_targeted_advertising_intake_form(db: AsyncSession, tenan
         intake_profile.lead_target_type = "client_lead"
         intake_profile.route_intent = RouteIntent.sales_inquiry.value
         intake_profile.is_active = True
+        intake_profile.publication_config_v1 = {
+            "source_label": "meta_ads",
+            "campaign": "targeted-advertising-default",
+        }
         await db.flush()
 
     binding_key = f"public_slug:{TARGETED_ADVERTISING_FORM_SLUG}"

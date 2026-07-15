@@ -93,6 +93,13 @@ class IntakeSourceProfile(Base, TimestampMixin):
     supported_languages: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    publication_config_v1: Mapped[dict] = mapped_column(
+        JSONAnyType,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'"),
+        comment="ADR-022 publication attribution and limited policy overrides",
+    )
 
 
 class IntakeSourceBinding(Base, TimestampMixin):

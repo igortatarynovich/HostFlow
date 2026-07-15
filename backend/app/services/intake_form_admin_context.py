@@ -23,6 +23,7 @@ from backend.app.entity_profile.presentation_runtime import (
 )
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
+from backend.app.intake_platform.form_definition import read_form_definition
 
 
 def _record(value: Any) -> dict[str, Any]:
@@ -211,6 +212,7 @@ async def build_intake_form_admin_context(
             entity_profile_code=entity_profile_code,
             route_intent=route_intent,
         ),
+        "form_definition": read_form_definition(lead_form),
     }
     from backend.app.forms_platform.publication_bridge import build_forms_platform_admin_block
 

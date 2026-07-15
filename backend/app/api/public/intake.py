@@ -4299,12 +4299,16 @@ async def submit_public_intake(
         from backend.app.entity_profile.public_intake_draft_session import (
             mark_session_submitted,
             session_intake_state,
+            session_intake_status,
             submit_public_intake_lead_draft,
             write_session_intake_state,
         )
 
         if not payload.has_all_required():
             raise HTTPException(status_code=422, detail="Required consents must be accepted before submit")
+        if session_intake_status(public_session) == "submitted":
+            checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+            return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
         client_ip = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
         state = session_intake_state(public_session)
@@ -4337,12 +4341,27 @@ async def submit_public_intake(
                     },
                 )
         mark_session_submitted(public_session)
-        decision, created_candidate_id = await submit_public_intake_lead_draft(
-            db,
-            tenant_id=str(tenant_id),
-            lead=public_session.lead,
-            intake_state=state,
+        application_kind = str(state.get("application_kind") or "candidate").strip().lower()
+        form_presentation_code = (
+            str(form_presentation.get("presentation_code") or "") if form_presentation else None
         )
+        if application_kind == "client":
+            from backend.app.intake_platform.intake_submit_service import submit_client_public_intake_with_policy
+
+            decision, created_candidate_id, _effective = await submit_client_public_intake_with_policy(
+                db,
+                tenant_id=str(tenant_id),
+                draft_lead=public_session.lead,
+                intake_state=state,
+                presentation_code=form_presentation_code,
+            )
+        else:
+            decision, created_candidate_id = await submit_public_intake_lead_draft(
+                db,
+                tenant_id=str(tenant_id),
+                lead=public_session.lead,
+                intake_state=state,
+            )
         if created_candidate_id:
             await _log_consent_snapshot(db, tenant_id, created_candidate_id, payload, client_ip, user_agent)
             employments_payload = state.get("employments") or []
