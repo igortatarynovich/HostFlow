@@ -33,6 +33,8 @@ class TenantLeadForm(Base):
     submission_policy: Mapped[dict] = mapped_column(JSONAnyType, nullable=False, default=dict)
     published_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     is_system_preset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    supported_languages: Mapped[str] = mapped_column(String(32), nullable=False, default="pl,en,ru")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 

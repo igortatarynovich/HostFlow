@@ -16,6 +16,15 @@ class FormPurpose(str, Enum):
     document_collection = "document_collection"
 
 
+class FormLifecycleStatus(str, Enum):
+    draft = "draft"
+    active = "active"
+    archived = "archived"
+
+
+DEFAULT_QUESTIONNAIRE_LANGUAGES = "pl,en,ru"
+
+
 class SubmissionPolicyMode(str, Enum):
     create = "create"
     match_or_create = "match_or_create"
@@ -34,6 +43,7 @@ class MatchConfidence(str, Enum):
 
 
 FORM_PURPOSES: frozenset[str] = frozenset(p.value for p in FormPurpose)
+FORM_LIFECYCLE_STATUSES: frozenset[str] = frozenset(s.value for s in FormLifecycleStatus)
 SUBMISSION_POLICY_MODES: frozenset[str] = frozenset(m.value for m in SubmissionPolicyMode)
 
 SUBMISSIONS_V1_KEY = "submissions_v1"

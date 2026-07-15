@@ -95,8 +95,50 @@ Fields on `tenant_lead_forms` and `publication_config_v1` on `intake_source_prof
 
 ## Development filter (post-merge)
 
-Every next PR must answer: **which end-to-end user scenario becomes passable that is not passable today?**
+**Model:** [`release-revenue-flow-audit.md`](../release-revenue-flow-audit.md) §0 — Foundation → Scenario Step → Revenue Flow. Progress = passable steps, not Foundation merges.
 
-If the answer is vague or does not move a revenue flow closer — backlog.
+Next Scenario Step PRs: **B-1** (`F3-B-02`, `F3-B-03`) → **B-2** (`F3-B-04`..`F3-B-07`). Each must state **Operator gain**.
 
-Priority: Product B walkthrough → Product A walkthrough → Document Platform → Process Platform.
+---
+
+## Questionnaire SSOT — repair slice (implementation contract)
+
+**Goal:** One targeted-advertising questionnaire edited in Settings is the same form Sales sends and the client opens by link. This is **implementation alignment with ADR-022**, not a new architecture slice.
+
+### Repair contract
+
+| Rule | Behaviour |
+|------|-----------|
+| Identify TA forms | `target_entity_profile_code = service_sales.targeted_advertising`, slug `targeted-advertising*`, or intake binding to sales inquiry profile |
+| Profile code | Set `target_entity_profile_code` when missing; never clear user values |
+| Tenant presentation | Bind `presentation_code = {profile}.form.{public_slug}`; create tenant `ep_intake_presentations` from platform preset **only if absent** |
+| Runtime | Public/invite resolve tenant presentation only for repaired B2B forms; platform preset fallback allowed only for unrepaired legacy rows |
+| Idempotency | Re-run repair does not create duplicate forms or overwrite tenant presentation overrides |
+| User forms | Never delete tenant-owned forms; duplicates remain addressable via archive |
+
+### Schema (`202607151100_questionnaire_ssot_repair`)
+
+- `tenant_lead_forms.lifecycle_status`: `draft` \| `active` \| `archived` (default `active`)
+- `tenant_lead_forms.supported_languages`: comma list, default `pl,en,ru`
+
+### Services
+
+| Module | Responsibility |
+|--------|----------------|
+| `services/questionnaire_ssot_repair.py` | Backfill/repair per tenant |
+| `services/questionnaire_sales_resolver.py` | Unified Sales resolver (`primary_form`, alternates, readiness, languages, `config_error`) |
+| `scripts/repair_targeted_advertising_capability.py` | Staging operator entrypoint |
+
+### API
+
+| Endpoint | Notes |
+|----------|-------|
+| `GET /leads/questionnaire-context` | Canonical Sales resolver |
+| `GET /leads/questionnaire-forms` | Back-compat list derived from resolver |
+| `PATCH /settings/intake-forms/{id}` | `lifecycle_status=archived` hides form from Sales/new invites |
+| `POST /leads/{id}/questionnaire-invite` | Optional `form_locale` (`pl`/`en`/`ru`) fixed on apply URL |
+
+### Staging acceptance (10-point)
+
+See integration runbook: Settings ↔ Sales ↔ public link parity, locale on send, archive hides send but keeps submissions, idempotent repair.
+

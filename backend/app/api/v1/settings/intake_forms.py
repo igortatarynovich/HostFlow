@@ -113,6 +113,7 @@ class IntakeFormPatchIn(BaseModel):
     public_slug: Optional[str] = Field(default=None, max_length=64)
     is_active: Optional[bool] = None
     entity_profile_code: Optional[str] = Field(default=None, max_length=128)
+    lifecycle_status: Optional[Literal["draft", "active", "archived"]] = None
 
     @field_validator("public_slug")
     @classmethod
@@ -378,6 +379,7 @@ async def patch_intake_form(
         public_slug=data.get("public_slug"),
         is_active=data.get("is_active"),
         entity_profile_code=data.get("entity_profile_code"),
+        lifecycle_status=data.get("lifecycle_status"),
     )
     return IntakeFormDetailOut.model_validate(result)
 

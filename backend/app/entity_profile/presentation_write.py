@@ -220,3 +220,51 @@ async def upsert_tenant_intake_presentation(
             details={"presentation_code": code},
         ) from exc
     return row
+
+
+async def create_tenant_intake_presentation_if_absent(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_profile_id: str,
+    presentation_code: str,
+    field_subset: list[str],
+    presentation_overrides: dict[str, Any],
+) -> tuple[EpIntakePresentation | None, bool]:
+    """Create tenant presentation only when missing — never overwrite user edits."""
+    code = str(presentation_code or "").strip()
+    if not code:
+        raise PresentationWriteError(code="presentation_code_required", message="presentation_code is required")
+
+    tenant_scope = str(tenant_id).strip()
+    existing = await db.scalar(
+        select(EpIntakePresentation).where(
+            EpIntakePresentation.tenant_id == tenant_scope,
+            EpIntakePresentation.presentation_code == code,
+        )
+    )
+    if existing is not None:
+        return existing, False
+
+    row = EpIntakePresentation(
+        id=str(uuid4()),
+        tenant_id=tenant_scope,
+        entity_profile_id=str(entity_profile_id),
+        presentation_code=code,
+        field_subset=list(field_subset),
+        presentation_overrides=dict(presentation_overrides),
+        is_active=True,
+    )
+    db.add(row)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        existing = await db.scalar(
+            select(EpIntakePresentation).where(
+                EpIntakePresentation.tenant_id == tenant_scope,
+                EpIntakePresentation.presentation_code == code,
+            )
+        )
+        return existing, False
+    return row, True

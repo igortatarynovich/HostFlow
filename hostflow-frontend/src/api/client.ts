@@ -979,6 +979,7 @@ export type LeadQuestionnaireInviteResult = {
   status: string
   entity_profile_code?: string | null
   presentation_code?: string | null
+  form_locale?: string | null
   sent_at?: string | null
   opened_at?: string | null
   submitted_at?: string | null
@@ -990,6 +991,9 @@ export type LeadQuestionnaireFormOption = {
   title: string
   public_slug?: string | null
   is_system_preset?: boolean
+  lifecycle_status?: string | null
+  supported_languages?: string[]
+  presentation_code?: string | null
 }
 
 /** List B2B targeted-advertising questionnaire forms for send picker (F3-B-02). */
@@ -1013,7 +1017,7 @@ export async function getLeadQuestionnaireInvite(leadId: string): Promise<LeadQu
 /** Stage Sales Intake 1 — personal questionnaire link for client leads (targeted advertising). */
 export async function createLeadQuestionnaireInvite(
   leadId: string,
-  payload?: { mark_sent?: boolean; lead_form_id?: string },
+  payload?: { mark_sent?: boolean; lead_form_id?: string; form_locale?: string },
 ): Promise<LeadQuestionnaireInviteResult> {
   const { data } = await api.post<LeadQuestionnaireInviteResult>(
     `/leads/${leadId}/questionnaire-invite`,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 import { isCookieConsentGranted, subscribeCookieConsent } from '../../components/public/cookieConsent'
@@ -30,7 +30,8 @@ type Props = {
 type ValueState = Record<string, PresentationFieldValue>
 
 export default function PublicIntakePresentationForm({ intake, presentation }: Props) {
-  const { t, locale } = useI18n()
+  const { t, locale, setLocale } = useI18n()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { notify } = useToast()
   const {
     loading,
@@ -45,6 +46,17 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
   } = intake
 
   const [cookiesAccepted, setCookiesAccepted] = useState(() => isCookieConsentGranted())
+  const requestedLang = searchParams.get('lang')
+  const [languageConfirmed, setLanguageConfirmed] = useState(
+    () => requestedLang === 'pl' || requestedLang === 'en' || requestedLang === 'ru',
+  )
+
+  useEffect(() => {
+    if (requestedLang === 'pl' || requestedLang === 'en' || requestedLang === 'ru') {
+      setLocale(requestedLang)
+      setLanguageConfirmed(true)
+    }
+  }, [requestedLang, setLocale])
 
   useEffect(() => {
     const unsubscribe = subscribeCookieConsent(() => setCookiesAccepted(true))
@@ -210,6 +222,37 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
     return (
       <PublicPageShell maxWidth="lg" headerExtra={<PublicLocaleSwitcher />}>
         <div className="card p-8 text-center text-slate-600">{t('common.loading')}</div>
+      </PublicPageShell>
+    )
+  }
+
+  if (!languageConfirmed) {
+    const chooseLanguage = (lang: 'pl' | 'en' | 'ru') => {
+      setLocale(lang)
+      setLanguageConfirmed(true)
+      const next = new URLSearchParams(searchParams)
+      next.set('lang', lang)
+      setSearchParams(next, { replace: true })
+    }
+    return (
+      <PublicPageShell maxWidth="md">
+        <div className="card p-8 text-center">
+          <h1 className="text-xl font-semibold text-slate-900">
+            {t('public.intake.language.title', { defaultValue: 'Choose language' })}
+          </h1>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            {(['pl', 'en', 'ru'] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                className="btn-secondary rounded-lg px-4 py-2 text-sm font-semibold uppercase"
+                onClick={() => chooseLanguage(lang)}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
+        </div>
       </PublicPageShell>
     )
   }

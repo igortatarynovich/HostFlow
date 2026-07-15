@@ -17,6 +17,8 @@ from backend.app.entity_profile.constants import (
 from backend.app.entity_profile.manifests.service_sales import service_sales_targeted_advertising_profile
 from backend.app.entity_profile.registry import EntityProfileRegistry, UnknownCanonicalFieldError
 from backend.app.entity_profile.seed import ensure_tenant_field_registry_defaults
+from backend.app.intake_platform.constants import DEFAULT_INQUIRY_POLICY, FormPurpose
+from backend.app.intake_platform.form_definition import apply_form_definition_fields
 from backend.app.models.entity_profile import EpEntityProfile, EpIntakePresentation
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.intake_routing_enums import IntakeChannel, IntakeProvider, RouteIntent
@@ -142,6 +144,26 @@ async def _default_own_company_id(db: AsyncSession, tenant_id: str) -> str | Non
     return str(row) if row else None
 
 
+async def _ensure_default_own_company_id(db: AsyncSession, tenant_id: str) -> str:
+    existing = await _default_own_company_id(db, str(tenant_id))
+    if existing:
+        return existing
+    row = OwnCompany(
+        id=str(uuid4()),
+        tenant_id=str(tenant_id),
+        name="HostFlow",
+        is_archived=False,
+    )
+    db.add(row)
+    await db.flush()
+    return str(row.id)
+
+
+def _tenant_scoped_public_slug(tenant_id: str) -> str:
+    suffix = str(tenant_id).replace("-", "")[:10]
+    return f"{TARGETED_ADVERTISING_FORM_SLUG}-{suffix}"
+
+
 async def _ensure_entity_profile_template(db: AsyncSession, tenant_id: str) -> tuple[bool, bool]:
     """Ensure canonical entity profile + presentation exist without overwriting tenant instances."""
     existing_profile = await EntityProfileRegistry.get_entity_profile(
@@ -180,14 +202,37 @@ async def _ensure_entity_profile_template(db: AsyncSession, tenant_id: str) -> t
     return profile_created, presentation_created
 
 
-def _repair_intake_profile_system_links(profile: IntakeSourceProfile) -> bool:
+def _repair_lead_form_system_fields(lead_form: TenantLeadForm) -> bool:
+    """Fill missing system profile links only; never replace tenant-customized values."""
+    profile_code = str(lead_form.target_entity_profile_code or "").strip()
+    if profile_code == TARGETED_ADVERTISING_PROFILE_CODE:
+        return False
+    apply_form_definition_fields(
+        lead_form,
+        target_entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+        purpose=FormPurpose.inquiry.value,
+        submission_policy=DEFAULT_INQUIRY_POLICY,
+        is_system_preset=True,
+    )
+    return True
+
+
+def _repair_intake_profile_system_links(profile: IntakeSourceProfile, *, public_slug: str | None = None) -> bool:
     """Fill missing system links only; never replace tenant-customized values."""
     repaired = False
     if not str(profile.entity_profile_code or "").strip():
         profile.entity_profile_code = TARGETED_ADVERTISING_PROFILE_CODE
         repaired = True
     if not str(profile.presentation_code or "").strip():
-        profile.presentation_code = TARGETED_ADVERTISING_PRESENTATION_CODE
+        if public_slug:
+            from backend.app.entity_profile.presentation_write import build_tenant_form_presentation_code
+
+            profile.presentation_code = build_tenant_form_presentation_code(
+                entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+                public_slug=public_slug,
+            )
+        else:
+            profile.presentation_code = TARGETED_ADVERTISING_PRESENTATION_CODE
         repaired = True
     if not str(profile.route_intent or "").strip():
         profile.route_intent = RouteIntent.sales_inquiry.value
@@ -200,6 +245,9 @@ def _repair_intake_profile_system_links(profile: IntakeSourceProfile) -> bool:
         repaired = True
     if profile.is_active is False and str(profile.public_slug or "") == TARGETED_ADVERTISING_FORM_SLUG:
         profile.is_active = True
+        repaired = True
+    if str(profile.supported_languages or "").strip() != "pl,en,ru":
+        profile.supported_languages = "pl,en,ru"
         repaired = True
     return repaired
 
@@ -250,8 +298,8 @@ async def _ensure_intake_form_stack(
     if lead_form is None:
         public_slug: str | None = TARGETED_ADVERTISING_FORM_SLUG
         if await _global_lead_form_public_slug_taken(db, TARGETED_ADVERTISING_FORM_SLUG, tenant_id=tenant_id):
-            public_slug = None
-            created["public_slug_internal_only"] = True
+            public_slug = _tenant_scoped_public_slug(tenant_id)
+            created["public_slug_tenant_scoped"] = True
         lead_form = TenantLeadForm(
             id=str(uuid4()),
             tenant_id=str(tenant_id),
@@ -259,13 +307,25 @@ async def _ensure_intake_form_stack(
             public_slug=public_slug,
             is_active=True,
         )
+        apply_form_definition_fields(
+            lead_form,
+            target_entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+            purpose=FormPurpose.inquiry.value,
+            submission_policy=DEFAULT_INQUIRY_POLICY,
+            is_system_preset=True,
+        )
         db.add(lead_form)
         await db.flush()
         created["lead_form"] = True
     else:
         created["lead_form"] = False
+        lead_form_repaired = False
         if not lead_form.is_active:
             lead_form.is_active = True
+            lead_form_repaired = True
+        if _repair_lead_form_system_fields(lead_form):
+            lead_form_repaired = True
+        if lead_form_repaired:
             repaired["lead_form"] = True
             await db.flush()
 
@@ -297,7 +357,7 @@ async def _ensure_intake_form_stack(
             presentation_code=TARGETED_ADVERTISING_PRESENTATION_CODE,
             source="meta_ads",
             default_language="pl",
-            supported_languages="pl,en",
+            supported_languages="pl,en,ru",
             is_active=True,
         )
         db.add(intake_profile)
@@ -305,7 +365,10 @@ async def _ensure_intake_form_stack(
         created["intake_profile"] = True
     else:
         created["intake_profile"] = False
-        if _repair_intake_profile_system_links(intake_profile):
+        if _repair_intake_profile_system_links(
+            intake_profile,
+            public_slug=str(getattr(lead_form, "public_slug", None) or "").strip() or None,
+        ):
             repaired["intake_profile"] = True
             await db.flush()
 
@@ -354,17 +417,7 @@ async def provision_targeted_advertising_capability(
             skipped=True,
         )
 
-    own_company_id = await _default_own_company_id(db, tid)
-    if not own_company_id:
-        logger.info(
-            "targeted_advertising capability pending for tenant %s: own company not ready",
-            tid,
-        )
-        return TargetedAdvertisingProvisionResult(
-            status=CAPABILITY_PENDING,
-            tenant_id=tid,
-            error="own_company_missing",
-        )
+    own_company_id = await _ensure_default_own_company_id(db, tid)
 
     created: dict[str, bool] = {}
     repaired: dict[str, bool] = {}

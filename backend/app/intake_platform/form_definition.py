@@ -7,7 +7,10 @@ from typing import Any, Optional
 from backend.app.intake_platform.constants import (
     DEFAULT_INQUIRY_POLICY,
     DEFAULT_RECRUITMENT_APPLICATION_POLICY,
+    DEFAULT_QUESTIONNAIRE_LANGUAGES,
+    FORM_LIFECYCLE_STATUSES,
     FORM_PURPOSES,
+    FormLifecycleStatus,
     FormPurpose,
 )
 from backend.app.intake_platform.schemas import SubmissionPolicy
@@ -51,9 +54,33 @@ def read_form_definition(form: TenantLeadForm) -> dict[str, Any]:
         "submission_policy": policy.to_dict(),
         "published_version": int(getattr(form, "published_version", None) or 0),
         "is_system_preset": bool(getattr(form, "is_system_preset", False)),
+        "lifecycle_status": _normalize_lifecycle_status(getattr(form, "lifecycle_status", None)),
+        "supported_languages": parse_supported_languages(getattr(form, "supported_languages", None)),
         "public_slug": str(getattr(form, "public_slug", None) or "") or None,
         "is_active": bool(form.is_active),
     }
+
+
+def _normalize_lifecycle_status(value: Any) -> str:
+    status = str(value or FormLifecycleStatus.active.value).strip()
+    if status not in FORM_LIFECYCLE_STATUSES:
+        return FormLifecycleStatus.active.value
+    return status
+
+
+def parse_supported_languages(value: Any) -> list[str]:
+    raw = str(value or DEFAULT_QUESTIONNAIRE_LANGUAGES).strip().lower()
+    langs = [part.strip() for part in raw.split(",") if part.strip()]
+    out: list[str] = []
+    for lang in langs:
+        if lang in {"pl", "en", "ru"} and lang not in out:
+            out.append(lang)
+    return out or ["pl", "en", "ru"]
+
+
+def format_supported_languages(languages: list[str]) -> str:
+    normalized = parse_supported_languages(",".join(languages))
+    return ",".join(normalized)
 
 
 def apply_form_definition_fields(
@@ -64,6 +91,8 @@ def apply_form_definition_fields(
     submission_policy: Optional[dict[str, Any]] = None,
     published_version: Optional[int] = None,
     is_system_preset: Optional[bool] = None,
+    lifecycle_status: Optional[str] = None,
+    supported_languages: Optional[str] = None,
 ) -> None:
     if target_entity_profile_code is not None:
         form.target_entity_profile_code = str(target_entity_profile_code).strip() or None
@@ -82,3 +111,11 @@ def apply_form_definition_fields(
         form.published_version = 1
     if is_system_preset is not None:
         form.is_system_preset = bool(is_system_preset)
+    if lifecycle_status is not None:
+        form.lifecycle_status = _normalize_lifecycle_status(lifecycle_status)
+    elif not getattr(form, "lifecycle_status", None):
+        form.lifecycle_status = FormLifecycleStatus.active.value
+    if supported_languages is not None:
+        form.supported_languages = format_supported_languages(parse_supported_languages(supported_languages))
+    elif not getattr(form, "supported_languages", None):
+        form.supported_languages = DEFAULT_QUESTIONNAIRE_LANGUAGES

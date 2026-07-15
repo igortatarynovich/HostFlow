@@ -49,6 +49,7 @@ from backend.app.modules.leads.schemas import (
     LeadQuestionnaireInviteOut,
     LeadQuestionnaireInviteRequest,
     LeadQuestionnaireFormOptionOut,
+    SalesQuestionnaireContextOut,
     LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
@@ -411,6 +412,19 @@ async def lead_conversion_funnel_endpoint(
         cohort_compare_prior=bool(cohort_compare_prior),
     )
 
+
+
+@router.get("/questionnaire-context", response_model=SalesQuestionnaireContextOut)
+async def get_lead_questionnaire_context_endpoint(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+) -> SalesQuestionnaireContextOut:
+    from backend.app.services.questionnaire_sales_resolver import resolve_sales_questionnaire_context
+
+    db, tenant_id = db_tenant
+    context = await resolve_sales_questionnaire_context(db, tenant_id=str(tenant_id), auto_repair=True)
+    await db.commit()
+    return SalesQuestionnaireContextOut.model_validate(context)
 
 
 @router.get("/questionnaire-forms", response_model=list[LeadQuestionnaireFormOptionOut])
@@ -1227,6 +1241,7 @@ async def get_lead_questionnaire_invite_endpoint(
         status=str(payload["status"]),
         entity_profile_code=payload.get("entity_profile_code"),
         presentation_code=payload.get("presentation_code"),
+        form_locale=payload.get("form_locale"),
         sent_at=payload.get("sent_at"),
         opened_at=payload.get("opened_at"),
         submitted_at=payload.get("submitted_at"),
@@ -1265,6 +1280,7 @@ async def create_lead_questionnaire_invite_endpoint(
             lead=lead,
             mark_sent=payload.mark_sent,
             lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            form_locale=payload.form_locale,
         )
     except LookupError as exc:
         detail = str(exc)
@@ -1286,6 +1302,7 @@ async def create_lead_questionnaire_invite_endpoint(
         status=str(out["status"]),
         entity_profile_code=out.get("entity_profile_code"),
         presentation_code=out.get("presentation_code"),
+        form_locale=out.get("form_locale"),
         sent_at=out.get("sent_at"),
         opened_at=out.get("opened_at"),
         submitted_at=out.get("submitted_at"),

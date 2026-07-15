@@ -35,6 +35,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
   const [loadingForms, setLoadingForms] = useState(true)
   const [forms, setForms] = useState<LeadQuestionnaireFormOption[]>([])
   const [selectedFormId, setSelectedFormId] = useState<string>('')
+  const [selectedLocale, setSelectedLocale] = useState<string>('pl')
   const [applyUrl, setApplyUrl] = useState<string | null>(null)
 
   const statusLabel = useMemo(() => salesQuestionnaireStatusLabel(lead, { locale }), [lead, locale])
@@ -92,6 +93,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
       const result = await createLeadQuestionnaireInvite(lead.id, {
         mark_sent: true,
         lead_form_id: selectedFormId || undefined,
+        form_locale: selectedLocale || undefined,
       })
       const url = absoluteApplyUrl(result.apply_url)
       setApplyUrl(url)
@@ -110,7 +112,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
     } finally {
       setBusy(false)
     }
-  }, [lead.id, notify, onLeadUpdated, selectedFormId, t])
+  }, [lead.id, notify, onLeadUpdated, selectedFormId, selectedLocale, t])
 
   const copyLink = useCallback(async () => {
     if (!applyUrl) return
@@ -190,6 +192,23 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
           </select>
         </label>
       ) : null}
+
+      <label className="mt-3 block text-sm text-slate-700">
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.sales_questionnaire.locale_label', { defaultValue: 'Questionnaire language' })}
+        </span>
+        <select
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          value={selectedLocale}
+          onChange={(event) => setSelectedLocale(event.target.value)}
+          disabled={busy}
+          data-testid="sales-questionnaire-locale-select"
+        >
+          <option value="pl">PL</option>
+          <option value="en">EN</option>
+          <option value="ru">RU</option>
+        </select>
+      </label>
 
       {!loadingForms && forms.length === 0 ? (
         <p className="mt-3 text-sm text-amber-800">

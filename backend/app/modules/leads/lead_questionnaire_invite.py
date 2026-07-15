@@ -10,16 +10,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.entity_profile.constants import (
-    TARGETED_ADVERTISING_PRESENTATION_CODE,
     TARGETED_ADVERTISING_PROFILE_CODE,
 )
+from backend.app.entity_profile.presentation_write import build_tenant_form_presentation_code
 from backend.app.entity_profile.public_intake_presentation_bridge import (
     PRESENTATION_VALUES_V1,
     presentation_values_dict_from_state,
 )
-from backend.app.entity_profile.seed_targeted_advertising_form import (
-    ensure_tenant_targeted_advertising_intake_form,
-)
+from backend.app.intake_platform.constants import FormLifecycleStatus
+from backend.app.intake_platform.form_definition import parse_supported_languages
+from backend.app.services.questionnaire_form_binding import intake_profile_for_lead_form
 from backend.app.models import Lead
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.intake_routing_enums import IntakeProvider, RouteIntent
@@ -59,8 +59,12 @@ def _trim(value: Any) -> str | None:
     return s or None
 
 
-def _apply_url_for_token(token: str) -> str:
-    return f"/public/apply/{token}"
+def _apply_url_for_token(token: str, *, form_locale: str | None = None) -> str:
+    base = f"/public/apply/{token}"
+    locale = str(form_locale or "").strip().lower()
+    if locale in {"pl", "en", "ru"}:
+        return f"{base}?lang={locale}"
+    return base
 
 
 def _qualified_to_sales_key(qualified_code: str) -> str | None:
@@ -184,7 +188,9 @@ async def resolve_lead_form_for_questionnaire(
         profile_code = str(lead_form.target_entity_profile_code or "").strip()
         if profile_code != TARGETED_ADVERTISING_PROFILE_CODE:
             raise LookupError("Lead form is not a targeted advertising questionnaire")
-        intake_profile = await _intake_profile_for_lead_form(
+        if str(getattr(lead_form, "lifecycle_status", FormLifecycleStatus.active.value) or FormLifecycleStatus.active.value) == FormLifecycleStatus.archived.value:
+            raise LookupError("Lead form is archived")
+        intake_profile = await intake_profile_for_lead_form(
             db,
             tenant_id=str(tenant_id),
             lead_form=lead_form,
@@ -200,27 +206,9 @@ async def list_questionnaire_forms_for_targeted_advertising(
     *,
     tenant_id: str,
 ) -> list[dict[str, Any]]:
-    await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
-    rows = (
-        await db.execute(
-            select(TenantLeadForm)
-            .where(
-                TenantLeadForm.tenant_id == str(tenant_id),
-                TenantLeadForm.is_active.is_(True),
-                TenantLeadForm.target_entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE,
-            )
-            .order_by(TenantLeadForm.is_system_preset.desc(), TenantLeadForm.title.asc())
-        )
-    ).scalars().all()
-    return [
-        {
-            "id": str(row.id),
-            "title": row.title,
-            "public_slug": row.public_slug,
-            "is_system_preset": bool(row.is_system_preset),
-        }
-        for row in rows
-    ]
+    from backend.app.services.questionnaire_sales_resolver import list_active_questionnaire_forms_for_sales
+
+    return await list_active_questionnaire_forms_for_sales(db, tenant_id=str(tenant_id))
 
 
 async def resolve_lead_form_for_targeted_advertising(
@@ -229,31 +217,29 @@ async def resolve_lead_form_for_targeted_advertising(
     tenant_id: str,
 ) -> tuple[TenantLeadForm, IntakeSourceProfile]:
     """Resolve active B2B sales questionnaire form (seeded or constructor-created)."""
-    await ensure_tenant_targeted_advertising_intake_form(db, str(tenant_id))
+    from backend.app.services.questionnaire_sales_resolver import list_active_questionnaire_forms_for_sales
 
-    intake_profiles = (
-        await db.execute(
-            select(IntakeSourceProfile)
-            .where(
-                IntakeSourceProfile.tenant_id == str(tenant_id),
-                IntakeSourceProfile.entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE,
-                IntakeSourceProfile.is_active.is_(True),
-                IntakeSourceProfile.route_intent == RouteIntent.sales_inquiry.value,
-            )
-            .order_by(IntakeSourceProfile.updated_at.desc(), IntakeSourceProfile.created_at.desc())
+    forms = await list_active_questionnaire_forms_for_sales(db, tenant_id=str(tenant_id))
+    if not forms:
+        raise LookupError("Targeted advertising lead form is not configured for tenant")
+
+    primary_id = str(forms[0]["id"])
+    lead_form = await db.scalar(
+        select(TenantLeadForm).where(
+            TenantLeadForm.tenant_id == str(tenant_id),
+            TenantLeadForm.id == primary_id,
         )
-    ).scalars().all()
-
-    for intake_profile in intake_profiles:
-        lead_form = await _lead_form_for_intake_profile(
-            db,
-            tenant_id=str(tenant_id),
-            intake_profile=intake_profile,
-        )
-        if lead_form is not None and lead_form.is_active:
-            return lead_form, intake_profile
-
-    raise LookupError("Targeted advertising lead form is not configured for tenant")
+    )
+    if lead_form is None:
+        raise LookupError("Targeted advertising lead form is not configured for tenant")
+    intake_profile = await intake_profile_for_lead_form(
+        db,
+        tenant_id=str(tenant_id),
+        lead_form=lead_form,
+    )
+    if intake_profile is None:
+        raise LookupError("Intake source profile is not configured for lead form")
+    return lead_form, intake_profile
 
 
 def _initial_intake_state(
@@ -340,6 +326,7 @@ async def attach_questionnaire_invite_to_lead(
     lead: Lead,
     mark_sent: bool = False,
     lead_form_id: str | None = None,
+    form_locale: str | None = None,
 ) -> LeadQuestionnaireInvite:
     """Create or reuse a personal questionnaire token bound to an existing Lead."""
     lead_form, intake_profile = await resolve_lead_form_for_questionnaire(
@@ -347,6 +334,11 @@ async def attach_questionnaire_invite_to_lead(
         tenant_id=str(tenant_id),
         lead_form_id=lead_form_id,
     )
+    supported = parse_supported_languages(getattr(lead_form, "supported_languages", None))
+    locale = str(form_locale or "").strip().lower()
+    if locale and locale not in supported:
+        raise LookupError(f"Unsupported questionnaire locale: {locale}")
+    resolved_locale = locale or None
     existing = await find_active_questionnaire_invite_for_lead(
         db,
         tenant_id=str(tenant_id),
@@ -364,7 +356,11 @@ async def attach_questionnaire_invite_to_lead(
             invite.updated_at = now
             _sync_lead_questionnaire_status(lead, invite.status)
         if not invite.apply_url:
-            invite.apply_url = _apply_url_for_token(invite.token)
+            invite.apply_url = _apply_url_for_token(invite.token, form_locale=resolved_locale)
+        if resolved_locale:
+            meta = _record(invite.meta)
+            meta["form_locale"] = resolved_locale
+            invite.meta = meta
         if mark_sent:
             _sync_lead_questionnaire_status(lead, invite.status)
         await db.flush()
@@ -379,9 +375,13 @@ async def attach_questionnaire_invite_to_lead(
         str(getattr(intake_profile, "entity_profile_code", None) or "").strip()
         or TARGETED_ADVERTISING_PROFILE_CODE
     )
+    public_slug = str(getattr(lead_form, "public_slug", None) or "").strip()
     presentation_code = (
         str(getattr(intake_profile, "presentation_code", None) or "").strip()
-        or TARGETED_ADVERTISING_PRESENTATION_CODE
+        or (build_tenant_form_presentation_code(
+            entity_profile_code=entity_profile_code,
+            public_slug=public_slug,
+        ) if public_slug else "")
     )
     invite = LeadQuestionnaireInvite(
         tenant_id=str(tenant_id),
@@ -391,13 +391,14 @@ async def attach_questionnaire_invite_to_lead(
         status=INVITE_STATUS_SENT if mark_sent else INVITE_STATUS_NOT_SENT,
         entity_profile_code=entity_profile_code,
         presentation_code=presentation_code,
-        apply_url=_apply_url_for_token(token),
+        apply_url=_apply_url_for_token(token, form_locale=resolved_locale),
         sent_at=now if mark_sent else None,
         expires_at=expires_at,
         meta={
             "intake_state": intake_state,
             "intake_source_profile_id": str(intake_profile.id),
             "questionnaire_kind": "targeted_advertising",
+            **({"form_locale": resolved_locale} if resolved_locale else {}),
         },
     )
     db.add(invite)
@@ -411,15 +412,20 @@ async def attach_questionnaire_invite_to_lead(
 
 def questionnaire_invite_out_payload(invite: LeadQuestionnaireInvite) -> dict[str, Any]:
     lead_form_id = str(invite.lead_form_id or "").strip() or None
+    meta = _record(invite.meta)
     return {
         "id": str(invite.id),
         "lead_id": str(invite.lead_id),
         "lead_form_id": lead_form_id,
         "token": invite.token,
-        "apply_url": invite.apply_url or _apply_url_for_token(invite.token),
+        "apply_url": invite.apply_url or _apply_url_for_token(
+            invite.token,
+            form_locale=str(meta.get("form_locale") or "").strip() or None,
+        ),
         "status": invite.status,
         "entity_profile_code": invite.entity_profile_code,
         "presentation_code": invite.presentation_code,
+        "form_locale": meta.get("form_locale"),
         "sent_at": invite.sent_at,
         "opened_at": invite.opened_at,
         "submitted_at": invite.submitted_at,

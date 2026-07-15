@@ -129,6 +129,11 @@ class LeadQuestionnaireInviteRequest(BaseModel):
         default=None,
         description="Optional B2B questionnaire form; defaults to tenant targeted-advertising form.",
     )
+    form_locale: Optional[str] = Field(
+        default=None,
+        description="Questionnaire locale (pl, en, ru). Fixed on the public apply link.",
+        max_length=8,
+    )
 
 
 class LeadQuestionnaireFormOptionOut(BaseModel):
@@ -136,6 +141,18 @@ class LeadQuestionnaireFormOptionOut(BaseModel):
     title: str
     public_slug: Optional[str] = None
     is_system_preset: bool = False
+    lifecycle_status: Optional[str] = None
+    supported_languages: list[str] = Field(default_factory=list)
+    presentation_code: Optional[str] = None
+
+
+class SalesQuestionnaireContextOut(BaseModel):
+    primary_form: Optional[LeadQuestionnaireFormOptionOut] = None
+    alternate_forms: list[LeadQuestionnaireFormOptionOut] = Field(default_factory=list)
+    archived_forms: list[LeadQuestionnaireFormOptionOut] = Field(default_factory=list)
+    readiness: str
+    supported_languages: list[str] = Field(default_factory=list)
+    config_error: Optional[str] = None
 
 
 class LeadQuestionnaireInviteOut(BaseModel):
@@ -149,6 +166,7 @@ class LeadQuestionnaireInviteOut(BaseModel):
     status: str
     entity_profile_code: Optional[str] = None
     presentation_code: Optional[str] = None
+    form_locale: Optional[str] = None
     sent_at: Optional[datetime] = None
     opened_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None

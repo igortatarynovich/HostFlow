@@ -35,9 +35,11 @@ from backend.app.services.lead_forms_quota import (
     normalize_and_validate_public_slug,
 )
 from backend.app.intake_platform.entity_profile_gate import validate_form_definition_triple
+from backend.app.intake_platform.constants import FormLifecycleStatus
 from backend.app.intake_platform.form_definition import (
     apply_form_definition_fields,
     default_submission_policy_for_entity_profile,
+    format_supported_languages,
     read_form_definition,
 )
 from backend.app.services.plan_feature_gates import count_tenant_lead_sources, ensure_lead_source_limit
@@ -348,6 +350,7 @@ async def create_public_intake_form(
         lead_form,
         target_entity_profile_code=entity_profile_code,
         published_version=1,
+        supported_languages=format_supported_languages(["pl", "en", "ru"]),
     )
     policy = default_submission_policy_for_entity_profile(entity_profile_code)
     validate_form_definition_triple(
@@ -394,6 +397,7 @@ async def update_public_intake_form(
     public_slug: Optional[str] = None,
     is_active: Optional[bool] = None,
     entity_profile_code: Optional[str] = None,
+    lifecycle_status: Optional[str] = None,
 ) -> dict[str, Any]:
     lead_form = await _load_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
     old_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
@@ -408,6 +412,18 @@ async def update_public_intake_form(
             will_be_active=bool(is_active),
         )
         lead_form.is_active = bool(is_active)
+
+    if lifecycle_status is not None:
+        status = str(lifecycle_status).strip()
+        if status not in {
+            FormLifecycleStatus.draft.value,
+            FormLifecycleStatus.active.value,
+            FormLifecycleStatus.archived.value,
+        }:
+            raise HTTPException(status_code=422, detail="Invalid lifecycle_status")
+        lead_form.lifecycle_status = status
+        if status == FormLifecycleStatus.archived.value:
+            lead_form.is_active = False
 
     new_slug = old_slug
     if public_slug is not None:
@@ -453,6 +469,8 @@ async def update_public_intake_form(
             _apply_intake_routing(intake_profile, routing)
         intake_profile.name = lead_form.title or intake_profile.name
         intake_profile.is_active = bool(lead_form.is_active)
+        if lifecycle_status == FormLifecycleStatus.archived.value:
+            intake_profile.is_active = False
         if new_slug:
             intake_profile.public_slug = new_slug
             if ep_code or intake_profile.entity_profile_code:
@@ -528,6 +546,7 @@ async def upsert_public_intake_form_presentation(
 
     intake_profile.entity_profile_code = str(entity_profile_code).strip()
     intake_profile.presentation_code = presentation_code
+    lead_form.published_version = int(getattr(lead_form, "published_version", None) or 0) + 1
     await db.commit()
     return await build_intake_form_admin_context(db, tenant_id=str(tenant_id), form_id=str(form_id))
 

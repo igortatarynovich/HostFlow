@@ -13,6 +13,7 @@ from backend.app.entity_profile.constants import (
 )
 from backend.app.entity_profile.ingest_runtime import resolve_public_intake_source_profile_id
 from backend.app.entity_profile.presentation_runtime import (
+    FORM_PRESENTATION_RUNTIME_V1,
     FormPresentationNotFoundError,
     resolve_form_presentation_for_intake_source,
 )
@@ -20,6 +21,7 @@ from backend.app.entity_profile.presentation_rules import (
     apply_presentation_rules_evaluation,
     missing_required_presentation_fields,
 )
+from backend.app.services.questionnaire_form_binding import is_repaired_b2b_questionnaire_form
 
 PRESENTATION_VALUES_V1 = "presentation_values_v1"
 
@@ -250,16 +252,29 @@ async def resolve_public_session_form_presentation(
                 entity_profile_code = bound
             presentation_code = str(getattr(profile, "presentation_code", None) or "").strip()
 
+        lead_form_row = None
+        if lead_form_id:
+            from backend.app.models.tenant_lead_form import TenantLeadForm
+
+            lead_form_row = await db.get(TenantLeadForm, str(lead_form_id))
+
         codes_to_try: list[str] = []
         if presentation_code:
             codes_to_try.append(presentation_code)
-        if entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE:
+
+        is_repaired_b2b = (
+            entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE
+            and lead_form_row is not None
+            and is_repaired_b2b_questionnaire_form(lead_form_row)
+        )
+        if entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE and not is_repaired_b2b:
             from backend.app.entity_profile.constants import TARGETED_ADVERTISING_PRESENTATION_CODE
 
             if TARGETED_ADVERTISING_PRESENTATION_CODE not in codes_to_try:
                 codes_to_try.append(TARGETED_ADVERTISING_PRESENTATION_CODE)
-        if DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
-            codes_to_try.append(DRIVER_CE_INTAKE_PRESENTATION_CODE)
+        elif entity_profile_code != TARGETED_ADVERTISING_PROFILE_CODE:
+            if DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
+                codes_to_try.append(DRIVER_CE_INTAKE_PRESENTATION_CODE)
 
         for code in codes_to_try:
             try:
@@ -269,6 +284,8 @@ async def resolve_public_session_form_presentation(
                     intake_source_profile_id=str(intake_source_profile_id),
                     presentation_code=code,
                 )
+                if presentation.get("contract_version") != FORM_PRESENTATION_RUNTIME_V1:
+                    continue
                 field_codes = [
                     str(f.get("qualified_code") or "")
                     for f in (presentation.get("fields") or [])
