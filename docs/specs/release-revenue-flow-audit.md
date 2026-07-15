@@ -198,7 +198,8 @@ Walkthrough-specific gaps discovered during §20-style staging verification. Eac
 | G-B-03 | F3-B-05 / A12 | Structured answers UI on inquiry work page | **closed** (#24) |
 | G-B-04 | F3-B-06 / A13 | Submission attribution panel | **closed** (#25) |
 | **G-B-05** | Form editor / provisioning | **Targeted-advertising Entity Profile registry on services tenants** | **closed** (#26 + staging repair 2026-07-15) |
-| **G-B-07** | F3-B-10 | **First working questionnaire — Capability-first create + post-save card** | **open** — [Flow Spec](flows/F3-B-10-create-questionnaire-flow-spec.md) |
+| **G-B-07** | F3-B-10 | **First working questionnaire — Capability-first create + post-save card** | **partial** — create/card UI; [Flow Spec rev 4](flows/F3-B-10-create-questionnaire-flow-spec.md) |
+| **G-B-08** | F3-B-11 / §13–§16 | **Usage destination + convert mapping + review on conflict** | **open** — [Flow Spec §17](flows/F3-B-10-create-questionnaire-flow-spec.md) |
 
 #### G-B-07 — manager gets a working questionnaire, not a platform assembly kit
 
@@ -206,11 +207,36 @@ Walkthrough-specific gaps discovered during §20-style staging verification. Eac
 
 **Product goal (PR acceptance):** *Менеджер создаёт первую рабочую анкету за 2–3 минуты без понимания Entity Profile / Preset / Submission Policy.* If walkthrough needs those terms — PR failed.
 
-**Scope (Flow Spec rev 2):** Capability-first entry (no default blank create) → pre-filled editor → save → **questionnaire card** (send / copy link / preview). Form is persistence; Capability is UI primary object.
+**Scope (Flow Spec rev 4):** Capability-first entry → pre-filled editor → save → **questionnaire card** with **usage-mode copy** (§5). Form is persistence; Capability is UI primary object.
+
+**Status:** frontend create/card partially implemented; card usage copy still missing.
 
 **Not architecture.** Reuse existing APIs; UX + card composition only.
 
-**Next:** Scenario Step PR (spec rev 3 approved) → F3-B-10 walkthrough → **F3-B-11 naive-user test** on new services tenant without repair CLI.
+#### G-B-08 — questionnaire answers land on the right inquiry and convert cleanly
+
+**Symptom:** Manager can create a form but cannot explain (a) how send from a **specific** inquiry works vs public link, (b) where answers go, (c) what transfers on «Создать клиента».
+
+**Product goal:** Full path without platform jargon:
+
+```text
+create → card → send from inquiry → submit → answers on THAT inquiry → convert → mapped client + original submission traceable
+```
+
+**Backend mostly ready:** invite attach (`DEFAULT_INVITE_POLICY`), `merge_presentation_into_sales_summary`, `convert_client_lead`, public `match_or_create`.
+
+**Gaps (§17):**
+
+| Item | Severity |
+|------|----------|
+| Questionnaire card missing two-mode usage copy | **P0 UI** |
+| Public submit conflict → review queue not implemented (creates new lead) | **P1 product** |
+| Convert mapping incomplete for `industry`, `monthly_ad_budget`, `additional_notes` | **P1** |
+| ClientAccount → source inquiry / submission link in UI | **P1 UX** |
+
+**Next:** Close G-B-07 card copy + G-B-08 gaps → full walkthrough → F3-B-11 naive-user test → **then** PR (not before).
+
+**Do not open PR** until §17 merge gate passes.
 
 
 #### G-B-05 — targeted-advertising Entity Profile available for every services tenant
