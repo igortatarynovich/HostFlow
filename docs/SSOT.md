@@ -86,6 +86,8 @@
 
 **Метрики «100%»:** **§1.7** (пилот **1a** vs дорожная карта **1b/1c**/stretch).
 
+**Release & revenue audit (главный операционный документ — шаги сценариев, gate для PR):** [`docs/specs/release-revenue-flow-audit.md`](specs/release-revenue-flow-audit.md) — каждый PR должен именовать step ID из §0; gate: делает ли задача шаг Product A/B проходимым без обходов или снимает release blocker?
+
 ### 2.1 Единый бэклог продукта (хвосты и roadmap)
 
 *Поиск открытых пунктов в этом файле:* `^- \[ \]` в `docs/SSOT.md`.

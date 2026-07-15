@@ -296,18 +296,18 @@ Submission              = snapshot: form_id + publication_id + published_version
 
 ## 10. Post-merge development filter
 
-После merge — **не проектирование**, а денежные контуры. Каждый следующий PR отвечает на один вопрос:
+**Primary operational doc:** [`release-revenue-flow-audit.md`](release-revenue-flow-audit.md) §0 Scenario Step Registry.
 
-> **Какой конкретный пользовательский сценарий после этого PR можно пройти до конца, чего нельзя сделать сегодня?**
+Every next PR names scenario step ID(s) (e.g. `F3-B-02`) and makes them passable without technical workarounds.
 
-Если ответ нечёткий или сценарий не приближает продажу — задача ниже в бэклоге.
+**Next after backend merge:**
 
-| Priority | Goal | Release blocker |
-|----------|------|-----------------|
-| **1** | Product B walkthrough (Meta → invite → answers → Sales → decision) | B2B revenue |
-| **2** | Product A walkthrough (Recruitment: candidate → docs → pipeline → handoff) | Recruitment revenue |
-| **3** | Document Platform (types, metadata, requirements, reuse, handoff) | Cross-module blocker |
-| **4** | Process Platform (transitions, SLA, clarification, handoff automation) | After working scenarios |
+| PR | Steps | Scope |
+|----|-------|-------|
+| **B-1** | F3-B-02, F3-B-03 | Send questionnaire + «ожидаем ответ» only |
+| **B-2** | F3-B-04..F3-B-07 | Client submit → Sales Workspace → decision |
+
+Forms platform: **no standalone PRs** — only when a named step requires it.
 
 ---
 

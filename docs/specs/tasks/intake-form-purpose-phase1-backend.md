@@ -95,8 +95,6 @@ Fields on `tenant_lead_forms` and `publication_config_v1` on `intake_source_prof
 
 ## Development filter (post-merge)
 
-Every next PR must answer: **which end-to-end user scenario becomes passable that is not passable today?**
+**Operational doc:** [`release-revenue-flow-audit.md`](../release-revenue-flow-audit.md) §0 — scenario steps, not PRs.
 
-If the answer is vague or does not move a revenue flow closer — backlog.
-
-Priority: Product B walkthrough → Product A walkthrough → Document Platform → Process Platform.
+Every PR names step ID(s) it makes `passable`. Next: **PR B-1** (`F3-B-02`, `F3-B-03`) → **PR B-2** (`F3-B-04`..`F3-B-07`). Forms work only when a step requires it.
