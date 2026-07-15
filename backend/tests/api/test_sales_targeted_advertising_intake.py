@@ -35,6 +35,22 @@ async def _ensure_questionnaire_invite_table() -> None:
         )
 
 
+@pytest.fixture(autouse=True)
+def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _noop(*args, **kwargs):  # noqa: ANN002, ANN003
+        return None
+
+    async def _zero(*args, **kwargs):  # noqa: ANN002, ANN003
+        return 0
+
+    monkeypatch.setattr("backend.app.services.intake_form_write_service.ensure_lead_source_limit", _noop)
+    monkeypatch.setattr("backend.app.services.intake_form_write_service.count_tenant_lead_sources", _zero)
+    monkeypatch.setattr(
+        "backend.app.services.intake_form_write_service.ensure_tenant_lead_form_active_count_allows_transition",
+        _noop,
+    )
+
+
 async def _seed_sales_profile(tenant_id: str) -> None:
     async with async_session_maker() as session:
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
