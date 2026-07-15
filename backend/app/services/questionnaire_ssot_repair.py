@@ -265,6 +265,10 @@ async def repair_targeted_advertising_questionnaires(
 
     forms = await _candidate_targeted_advertising_forms(db, tenant_id=str(tenant_id))
     for lead_form in forms:
+        lifecycle = str(getattr(lead_form, "lifecycle_status", FormLifecycleStatus.active.value) or "").strip()
+        if lifecycle == FormLifecycleStatus.archived.value:
+            skipped_ids.append(str(lead_form.id))
+            continue
         result = await repair_targeted_advertising_form(db, tenant_id=str(tenant_id), lead_form=lead_form)
         error = str(result.get("error") or "").strip()
         if error:
