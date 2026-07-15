@@ -93,6 +93,54 @@ Issues next invoice
 
 Foundation merges **do not** increment this metric.
 
+### Proven blocker rule (Foundation gate)
+
+Before **any** Foundation PR, answer in this direction only:
+
+```text
+Revenue Flow target
+      ↓
+Step X is not passable (walkthrough proof)
+      ↓
+Root cause identified
+      ↓
+Can reuse existing code? → extend, do not create new
+      ↓
+Reuse impossible or worse → Foundation PR
+      ↓
+Scenario Step becomes passable
+      ↓
+Next Step
+```
+
+**Required statement (Foundation PR):**
+
+> **Step `F3-B-04` cannot pass because** … **Therefore Foundation:** Match Resolver + Submission Policy.
+
+**Forbidden direction:** «Foundation X will be useful someday» without naming a **currently blocked** step ID.
+
+PRs that fail this filter — **reject / backlog**.
+
+### Foundation Debt
+
+Foundation creates **debt**: no operator gain until paid down by Scenario Step PR(s).
+
+| Rule | Value |
+|------|-------|
+| Paydown deadline | **1–2 PRs** after Foundation merge (next PR must be Scenario Step unless walkthrough proves new blocker) |
+| Max consecutive Foundation PRs | **2** — third in a row = process violation; stop and ship Scenario Step |
+| Debt register | §0.3 below — updated on every Foundation merge |
+
+**Example chain (current):**
+
+| PR | Level | Pays down | Next required |
+|----|-------|-----------|---------------|
+| **#22** ADR-022 backend | Foundation | — | **B-1** (mandatory next) |
+| **B-1** | Scenario Step | #22 (partial — F3-B-02/03) | B-2 |
+| **B-2** | Scenario Step | #22 (full — F3-B-04..07) | next blocked step |
+
+Three Foundation PRs after #22 without B-1/B-2 = **infrastructure drift** — escalate.
+
 ---
 
 ## 0.1 Scenario Step Registry
@@ -127,7 +175,17 @@ Use step IDs in **every PR**. **Operator gain** is the most important column —
 
 **Forms rule:** no standalone Forms PRs unless a row above is blocked.
 
-### Flow 1 — Product A: Recruitment (P0)
+### §0.3 Foundation Debt register
+
+Living ledger. Update on every Foundation merge.
+
+| PR / change | Blocked step(s) | Proven cause | Foundation delivered | Unblocks | Paydown by PR | Debt status |
+|-------------|-----------------|--------------|----------------------|----------|---------------|-------------|
+| **#22** ADR-022 backend | F3-B-04, F3-B-06 | Response attaches to wrong/missing application without policy+match+submission snapshot | `intake_platform`, Submission Policy, Match Resolver | F3-B-04, F3-B-06 data path | **B-1** (next), **B-2** (max) | **open** |
+
+**Debt status:** `open` | `partial` | **paid** (all listed steps passable)
+
+---
 
 | Step | User action | Foundation dependency | Operator gain (yesterday → today) | Status |
 |------|-------------|----------------------|-----------------------------------|--------|
@@ -173,15 +231,24 @@ Classify every PR as **Foundation** or **Scenario Step**. Scenario Step PRs must
 
 - (explicit steps deferred)
 
-## Foundation note (if Foundation PR only)
+## Foundation note (required for Foundation PRs)
 
+- **Blocked step(s):** F3-B-04 — cannot pass because …
+- **Proven cause:** (from walkthrough, not speculation)
+- **Reuse attempted:** (what existing code was considered)
+- **Foundation delivers:** Match Resolver + …
 - **Unblocks:** F3-B-04, F3-B-06
-- **Does not pass any step** until follow-up Scenario Step PR
+- **Foundation Debt:** paydown due in next **1–2 PRs** (name them: B-1, B-2)
+- **Operator gain in this PR:** none
 ```
 
-PRs without **Operator gain** (Scenario Step) or **Unblocks** (Foundation) — **out of process**.
+PRs without **Operator gain** (Scenario Step) or **Blocked step + Proven cause + Unblocks + Paydown** (Foundation) — **out of process**.
 
-**Anti-pattern:** Foundation PR titled as product feature without «Unblocks» and without follow-up step PR planned.
+**Anti-patterns (auto-reject):**
+
+- Foundation PR: «will be useful later» without blocked step ID
+- Foundation PR: no paydown plan
+- **3+ consecutive Foundation PRs** without Scenario Step paydown
 
 ---
 
@@ -499,6 +566,7 @@ MONETIZATION:
 
 | Date | Change |
 |------|--------|
+| 2026-07-15 | Proven blocker rule + Foundation Debt register (§0.3); paydown within 1–2 PRs; max 2 consecutive Foundation |
 | 2026-07-15 | Agent rule `.cursor/rules/scenario-first-development.mdc` — proven blocker only, no "just in case" |
 | 2026-07-15 | Three-level model (Foundation / Scenario Step / Revenue Flow); Operator gain column; Foundation ≠ product progress rule |
 | 2026-07-15 | Scenario Step Registry §0; PR template §0.1; Product B split PR B-1/B-2; scenario-first work order |
