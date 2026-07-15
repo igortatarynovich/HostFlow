@@ -1,4 +1,5 @@
 import { IconClock, IconMail, IconPhone, IconBrandWhatsapp, IconX } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 import type { Lead } from '../../api/types'
 import { useI18n } from '../../i18n'
 import {
@@ -10,6 +11,7 @@ import {
   inquiryStatusKey,
   salesInquiryWorkflowStep,
 } from '../../utils/clientInquiryLead'
+import { clientCompanyPath, inquiryRequiresReview } from '../../utils/inquiryTraceability'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
 
 const WORKFLOW_STEPS = [
@@ -32,6 +34,7 @@ const STATUS_TEXT: Record<string, string> = {
   in_progress: 'В работе',
   waiting: 'Ожидает',
   completed: 'Завершено',
+  review: 'Требует проверки',
 }
 
 type SalesInquiryDetailPanelProps = {
@@ -55,6 +58,7 @@ export function SalesInquiryDetailPanel({
   const contactPhone = inquiryContactPhone(lead)
   const contactEmail = inquiryContactEmail(lead)
   const statusKey = inquiryStatusKey(lead)
+  const statusText = inquiryRequiresReview(lead) ? STATUS_TEXT.review : STATUS_TEXT[statusKey] || statusKey
   const activeStep = salesInquiryWorkflowStep(lead)
   const terminal = leadIntakeResolutionRejected(lead)
   const convertedId = String(lead.converted_client_id || '').trim()
@@ -117,7 +121,7 @@ export function SalesInquiryDetailPanel({
             <p className="mt-0.5 text-sm text-slate-500">{inquiryRequestTitle(lead)}</p>
           </div>
           <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${STATUS_BADGE[statusKey] || STATUS_BADGE.new}`}>
-            {STATUS_TEXT[statusKey] || statusKey}
+            {statusText}
           </span>
         </div>
       </div>
@@ -222,6 +226,17 @@ export function SalesInquiryDetailPanel({
               </button>
             ) : null}
           </section>
+        </div>
+      ) : null}
+
+      {convertedId ? (
+        <div className="border-b border-slate-100 p-4">
+          <Link
+            to={clientCompanyPath(convertedId)}
+            className="inline-flex rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            {t('app.sales_inquiry.open_client', { defaultValue: 'Открыть клиента' })}
+          </Link>
         </div>
       ) : null}
 

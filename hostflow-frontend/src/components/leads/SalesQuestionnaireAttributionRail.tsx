@@ -123,70 +123,79 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
       {loading ? (
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
       ) : (
-        <ul className="space-y-2 text-sm text-slate-800">
-          <Row
-            label={t('app.sales_questionnaire.attribution.form', { defaultValue: 'Form' })}
-            value={
-              settingsFormPath ? (
-                <Link to={settingsFormPath} className="text-brand-700 hover:underline">
-                  {context?.formTitle || '—'}
-                </Link>
-              ) : (
-                context?.formTitle || '—'
-              )
-            }
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.version', { defaultValue: 'Published version' })}
-            value={publishedVersion != null ? String(publishedVersion) : '—'}
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.source', { defaultValue: 'Source' })}
-            value={entryLabel}
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.publication', { defaultValue: 'Publication' })}
-            value={context?.publicationName || shortId(publicationId) || '—'}
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.submitted_at', { defaultValue: 'Submitted at' })}
-            value={formatSubmittedAt(submission.submitted_at, locale)}
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.submission', { defaultValue: 'Submission' })}
-            value={shortId(submission.submission_id)}
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.attach_mode', { defaultValue: 'Attach mode' })}
-            value={policyLabel}
-          />
-          <Row
-            label={t('app.sales_questionnaire.attribution.profile', { defaultValue: 'Entity profile' })}
-            value={entityProfileLabel(entityProfileCode)}
-          />
-          {purpose ? (
+        <>
+          <ul className="space-y-2 text-sm text-slate-800">
             <Row
-              label={t('app.sales_questionnaire.attribution.purpose', { defaultValue: 'Purpose' })}
-              value={purposeLabel(purpose)}
+              label={t('app.sales_questionnaire.attribution.form', { defaultValue: 'Анкета' })}
+              value={
+                settingsFormPath ? (
+                  <Link to={settingsFormPath} className="text-brand-700 hover:underline">
+                    {context?.formTitle || '—'}
+                  </Link>
+                ) : (
+                  context?.formTitle || '—'
+                )
+              }
             />
-          ) : null}
-          {presentationCode ? (
             <Row
-              label={t('app.sales_questionnaire.attribution.presentation', { defaultValue: 'Presentation' })}
-              value={<span className="font-mono text-xs">{presentationCode}</span>}
+              label={t('app.sales_questionnaire.attribution.submitted_at', { defaultValue: 'Ответ получен' })}
+              value={formatSubmittedAt(submission.submitted_at, locale)}
             />
-          ) : null}
-          {source.invite_id ? (
             <Row
-              label={t('app.sales_questionnaire.attribution.invite', { defaultValue: 'Invite' })}
-              value={<span className="font-mono text-xs">{shortId(source.invite_id)}</span>}
+              label={t('app.sales_questionnaire.attribution.source', { defaultValue: 'Как отправлено' })}
+              value={entryLabel}
             />
-          ) : null}
-          <Row
-            label={t('app.sales_questionnaire.attribution.behavior', { defaultValue: 'Routing behavior' })}
-            value={intakeBehavior}
-          />
-        </ul>
+          </ul>
+          <details className="mt-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.sales_questionnaire.attribution_advanced', { defaultValue: 'Служебные данные' })}
+            </summary>
+            <ul className="mt-3 space-y-2 text-sm text-slate-800">
+              <Row
+                label={t('app.sales_questionnaire.attribution.version', { defaultValue: 'Published version' })}
+                value={publishedVersion != null ? String(publishedVersion) : '—'}
+              />
+              <Row
+                label={t('app.sales_questionnaire.attribution.publication', { defaultValue: 'Publication' })}
+                value={context?.publicationName || shortId(publicationId) || '—'}
+              />
+              <Row
+                label={t('app.sales_questionnaire.attribution.submission', { defaultValue: 'Submission' })}
+                value={shortId(submission.submission_id)}
+              />
+              <Row
+                label={t('app.sales_questionnaire.attribution.attach_mode', { defaultValue: 'Attach mode' })}
+                value={policyLabel}
+              />
+              <Row
+                label={t('app.sales_questionnaire.attribution.profile', { defaultValue: 'Entity profile' })}
+                value={entityProfileLabel(entityProfileCode)}
+              />
+              {purpose ? (
+                <Row
+                  label={t('app.sales_questionnaire.attribution.purpose', { defaultValue: 'Purpose' })}
+                  value={purposeLabel(purpose)}
+                />
+              ) : null}
+              {presentationCode ? (
+                <Row
+                  label={t('app.sales_questionnaire.attribution.presentation', { defaultValue: 'Presentation' })}
+                  value={<span className="font-mono text-xs">{presentationCode}</span>}
+                />
+              ) : null}
+              {source.invite_id ? (
+                <Row
+                  label={t('app.sales_questionnaire.attribution.invite', { defaultValue: 'Invite' })}
+                  value={<span className="font-mono text-xs">{shortId(source.invite_id)}</span>}
+                />
+              ) : null}
+              <Row
+                label={t('app.sales_questionnaire.attribution.behavior', { defaultValue: 'Routing behavior' })}
+                value={intakeBehavior}
+              />
+            </ul>
+          </details>
+        </>
       )}
     </section>
   )

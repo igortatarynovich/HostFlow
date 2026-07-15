@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.intake_platform.submission_store import list_submissions
 from backend.app.models import ClientAccount, Company, Lead
 from backend.app.modules.client_accounts import crud as account_crud
 from backend.app.modules.companies import schemas as company_schemas
@@ -22,6 +23,7 @@ class ClientLeadConversionResult:
     client_account: ClientAccount
     company: Optional[Company]
     idempotent_replay: bool
+
 
 
 def _record(value: Any) -> Dict[str, Any]:
@@ -39,6 +41,20 @@ def _ensure_session_tenant_id(db: AsyncSession, tenant_id: str) -> None:
         db.info["tenant_id"] = uuid.UUID(tid) if len(tid) == 36 else tid
 
 
+def _latest_submission_form_id(lead: Lead) -> Optional[str]:
+    submissions = list_submissions(lead)
+    if not submissions:
+        return None
+    form_id = _trim(submissions[-1].get("form_id"))
+    return form_id or None
+
+
+def _source_channel_id(meta: dict[str, Any]) -> Optional[str]:
+    source_profile = _record(meta.get("source_profile"))
+    channel_id = _trim(source_profile.get("id"))
+    return channel_id or None
+
+
 def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
     """Parse normalized/payload fields used for ClientAccount + Company creation."""
     normalized = _record(getattr(lead, "normalized", None))
@@ -48,6 +64,26 @@ def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
     need = _record(normalized.get("need")) or _record(payload.get("need"))
     marketing = _record(normalized.get("marketing"))
     meta = _record(normalized.get("meta"))
+    sales_questionnaire = _record(normalized.get("sales_questionnaire")) or _record(payload.get("sales_questionnaire"))
+
+    if sales_questionnaire:
+        if not _trim(company_profile.get("industry")) and _trim(sales_questionnaire.get("industry")):
+            company_profile["industry"] = _trim(sales_questionnaire.get("industry"))
+        if not _trim(need.get("monthly_ad_budget")) and _trim(sales_questionnaire.get("monthly_ad_budget")):
+            need["monthly_ad_budget"] = _trim(sales_questionnaire.get("monthly_ad_budget"))
+        if not _trim(need.get("start_timeline")) and _trim(sales_questionnaire.get("start_timeline")):
+            need["start_timeline"] = _trim(sales_questionnaire.get("start_timeline"))
+        if not _trim(need.get("notes")) and _trim(sales_questionnaire.get("additional_notes")):
+            need["notes"] = _trim(sales_questionnaire.get("additional_notes"))
+        if not _trim(need.get("summary")):
+            need_parts = [
+                str(sales_questionnaire.get("need_type") or "").replace("_", " ").strip(),
+                str(sales_questionnaire.get("primary_outcome") or "").replace("_", " ").strip(),
+            ]
+            need_summary = " — ".join(p for p in need_parts if p)
+            if need_summary:
+                need["summary"] = need_summary
+        need.setdefault("questionnaire", sales_questionnaire)
 
     flat_full_name = (
         _trim(normalized.get("full_name"))
@@ -116,6 +152,9 @@ def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
         "contact_phone": contact_phone,
         "contacts_payload": contacts_payload,
         "converting_manager_uuid": converting_manager_uuid,
+        "sales_questionnaire": sales_questionnaire,
+        "source_form_id": _latest_submission_form_id(lead),
+        "source_channel_id": _source_channel_id(meta),
     }
 
 
@@ -134,6 +173,8 @@ def build_company_create_from_lead(
     meta = _record(ctx.get("meta"))
     contacts_payload = ctx.get("contacts_payload") or {}
     manager_uuid = ctx.get("converting_manager_uuid")
+    source_form_id = _trim(ctx.get("source_form_id"))
+    source_channel_id = _trim(ctx.get("source_channel_id"))
     if manager_uuid is None and actor_id:
         try:
             manager_uuid = uuid.UUID(actor_id)
@@ -164,6 +205,8 @@ def build_company_create_from_lead(
             "company_kind": "client",
             "source": lead.source,
             "source_lead_id": str(lead.id),
+            "source_channel_id": source_channel_id,
+            "source_form_id": source_form_id,
             "source_profile": meta.get("source_profile"),
             "intake": {
                 "company_profile": company_profile,
@@ -171,6 +214,7 @@ def build_company_create_from_lead(
                 "need": need,
                 "marketing": marketing,
                 "meta": meta,
+                "sales_questionnaire": _record(ctx.get("sales_questionnaire")),
             },
             "needs": [need] if need else [],
         },

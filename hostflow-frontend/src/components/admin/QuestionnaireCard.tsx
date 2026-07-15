@@ -116,6 +116,24 @@ export function QuestionnaireCard({
         </p>
       </div>
 
+      <div
+        className="mt-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700"
+        data-testid="questionnaire-card-usage-copy"
+      >
+        <p>
+          {t('admin.questionnaire_card.usage_from_inquiry', {
+            defaultValue:
+              'Если отправить из заявки в Sales — ответы попадут именно в эту заявку.',
+          })}
+        </p>
+        <p>
+          {t('admin.questionnaire_card.usage_public_link', {
+            defaultValue:
+              'Если использовать публичную ссылку — система найдёт подходящую заявку или создаст новую.',
+          })}
+        </p>
+      </div>
+
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {actions.map((action) => {
           const node = action.render()

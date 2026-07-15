@@ -4,6 +4,11 @@ import { Link } from 'react-router-dom'
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
+import {
+  inquiryQuestionnaireFormPath,
+  inquiryRequiresReview,
+  inquiryReviewMessage,
+} from '../../utils/inquiryTraceability'
 
 type ClientLeadDetailViewProps = {
   lead: Lead
@@ -84,21 +89,41 @@ export default function ClientLeadDetailView({
   const meta = record(normalized.meta)
   const consent = record(normalized.consent)
   const sourceProfile = record(meta.source_profile)
+  const salesQuestionnaire = record(normalized.sales_questionnaire) || record(payload.sales_questionnaire)
   const companyName = text(company.name) || text(normalized.company_name) || text(payloadCompany.name) || lead.company_name || 'Client Lead'
   const convertedId = text(lead.converted_client_id)
   const terminal = leadIntakeResolutionRejected(lead)
+  const needsReview = inquiryRequiresReview(lead)
+  const questionnaireFormPath = inquiryQuestionnaireFormPath(lead)
   const statusLabel = terminal
     ? 'Отклонён'
     : convertedId
       ? 'Клиент создан'
-      : lead.status === 'processed'
-        ? 'Новая анкета'
-        : lead.status === 'rejected'
-          ? 'Отклонён'
-          : lead.status
+      : needsReview
+        ? 'Требует проверки'
+        : lead.status === 'processed'
+          ? 'Новая анкета'
+          : lead.status === 'rejected'
+            ? 'Отклонён'
+            : lead.status
+
+  const SALES_Q_LABELS: Record<string, string> = {
+    need_type: 'Тип потребности',
+    primary_outcome: 'Цель',
+    industry: 'Отрасль',
+    monthly_ad_budget: 'Бюджет на рекламу',
+    start_timeline: 'Сроки запуска',
+    additional_notes: 'Комментарий',
+    contact_website: 'Сайт',
+  }
 
   return (
     <div className="space-y-5">
+      {needsReview ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {inquiryReviewMessage(lead)}
+        </p>
+      ) : null}
       <header className="card relative overflow-hidden p-5 shadow-md shadow-slate-900/[0.04] sm:p-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600/90" aria-hidden />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -127,6 +152,20 @@ export default function ClientLeadDetailView({
             </div>
             {terminal ? (
               <p className="mt-3 text-sm text-red-700">Лид отклонён и исключён из обработки кандидатов.</p>
+            ) : null}
+            {(convertedId || questionnaireFormPath) && !terminal ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {convertedId ? (
+                  <Link to={`${CRM_APP_PATHS.agencyClients}/${convertedId}`} className="btn-secondary btn-sm">
+                    Открыть клиента
+                  </Link>
+                ) : null}
+                {questionnaireFormPath ? (
+                  <Link to={questionnaireFormPath} className="btn-secondary btn-sm">
+                    Открыть анкету
+                  </Link>
+                ) : null}
+              </div>
             ) : null}
             <p className="mt-3 font-mono text-[11px] leading-relaxed text-slate-400 break-all">ID · {lead.id}</p>
           </div>
@@ -164,6 +203,7 @@ export default function ClientLeadDetailView({
 
       <Section title="Компания">
         <Field label="Название" value={company.name || payloadCompany.name || lead.company_name} />
+        <Field label="Отрасль" value={company.industry || salesQuestionnaire.industry || payloadCompany.industry} />
         <Field label="Юр. название" value={company.legal_name || payloadCompany.legal_name} />
         <Field label="NIP / VAT" value={company.tax_id || company.nip || company.vat || payloadCompany.tax_id} />
         <Field label="Страна" value={company.country || payloadCompany.country} />
@@ -182,12 +222,24 @@ export default function ClientLeadDetailView({
       </Section>
 
       <Section title="Потребность">
+        <Field label="Кратко" value={need.summary || payloadNeed.summary} />
+        <Field label="Бюджет на рекламу" value={need.monthly_ad_budget || salesQuestionnaire.monthly_ad_budget} />
+        <Field label="Сроки" value={need.start_timeline || salesQuestionnaire.start_timeline} />
+        <Field label="Комментарий" value={need.notes || salesQuestionnaire.additional_notes} />
         <Field label="Что нужно" value={need.what_needed || payloadNeed.what_needed} />
         <Field label="Сколько людей" value={need.people_count || payloadNeed.people_count} />
         <Field label="Тип сотрудничества" value={need.cooperation_type || payloadNeed.cooperation_type} />
         <Field label="Когда нужны" value={need.start_date || need.when_needed || payloadNeed.start_date || payloadNeed.when_needed} />
         <Field label="Требования" value={need.requirements || payloadNeed.requirements} />
       </Section>
+
+      {Object.keys(salesQuestionnaire).length > 0 ? (
+        <Section title="Ответы анкеты">
+          {Object.entries(salesQuestionnaire).map(([key, value]) => (
+            <Field key={key} label={SALES_Q_LABELS[key] || key.replace(/_/g, ' ')} value={value} />
+          ))}
+        </Section>
+      ) : null}
 
       <Section title="Условия работы">
         <Field label="Ставка" value={terms.rate || normalized.rate} />

@@ -8,6 +8,7 @@ import ClientLeadDetailView from '../../components/leads/ClientLeadDetailView'
 import SalesQuestionnairePanel from '../../components/leads/SalesQuestionnairePanel'
 import SalesQuestionnaireSummaryRail from '../../components/leads/SalesQuestionnaireSummaryRail'
 import SalesQuestionnaireAttributionRail from '../../components/leads/SalesQuestionnaireAttributionRail'
+import { InquiryTraceabilityPanel } from '../../components/leads/InquiryTraceabilityPanel'
 import LostReasonForLostStageModal from '../../components/leads/LostReasonForLostStageModal'
 import { useToast } from '../../components/Toast'
 import { useI18n, type LocaleCode } from '../../i18n'
@@ -180,6 +181,7 @@ export default function ClientInquiryWorkPage() {
       {!loading && lead ? (
         <>
           <SalesQuestionnairePanel lead={lead} onLeadUpdated={setLead} />
+          <InquiryTraceabilityPanel lead={lead} />
           {showQuestionnaireAttribution ? (
             <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="sales-questionnaire-attribution-panel">
               <SalesQuestionnaireAttributionRail lead={lead} />

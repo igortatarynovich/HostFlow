@@ -556,6 +556,7 @@ def merge_presentation_into_sales_summary(
         for k, v in {
             "name": company_name,
             "website": website,
+            "industry": _trim(sales_questionnaire.get("industry")),
         }.items()
         if v
     }
@@ -573,7 +574,18 @@ def merge_presentation_into_sales_summary(
     need_summary = " — ".join(p for p in need_summary_parts if p)
     if need_summary:
         need["summary"] = need_summary
+    if sales_questionnaire:
         need["questionnaire"] = sales_questionnaire
+    budget = _trim(sales_questionnaire.get("monthly_ad_budget"))
+    if budget:
+        need["monthly_ad_budget"] = budget
+    timeline = _trim(sales_questionnaire.get("start_timeline"))
+    if timeline:
+        need["start_timeline"] = timeline
+    notes = _trim(sales_questionnaire.get("additional_notes"))
+    if notes:
+        need["notes"] = notes
+    if need:
         normalized["need"] = need
 
     normalized["sales_questionnaire_status"] = (

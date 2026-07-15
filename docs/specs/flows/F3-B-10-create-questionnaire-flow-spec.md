@@ -330,7 +330,7 @@ Until «Создать клиента», data stays on the inquiry because the c
 | **From inquiry** (personal invite) | `attach` | Submission → **current** Sales Inquiry |
 | **Public link**, strong single match | `match_or_create` | Submission → **matched** Sales Inquiry |
 | **Public link**, no match | `match_or_create` | Submission → **new** Sales Inquiry |
-| **Public link**, conflict / ambiguous | `match_or_create` → review | **Review queue** — no silent attach |
+| **Public link**, conflict / ambiguous | `match_or_create` → review | **New inquiry** flagged «Требует проверки» — no Review Queue in Product B v1 |
 
 **Attribution UI (inquiry work page):** manager sees form, submission, attach mode, source — without jargon where possible (F3-B-06).
 
@@ -399,9 +399,9 @@ Verified against current integration branch. **Create path (F3-B-10a/b)** partia
 |-----|--------|---------------|-----------------|
 | **G-B-07-UI-card-copy** | §5 usage copy | Card lacks two-mode explanation | Add copy to questionnaire card |
 | **G-B-07-UI-send** | §13 Mode 1 | Card links to Sales home, not inquiry | OK if send always from inquiry; card copy must say so |
-| **G-B-08-review-queue** | §15 conflict row | `resolve_submit_target` creates new lead when match suggests `review` — no review inbox | Implement review queue **or** document Phase 2 + show manager warning on ambiguous public submit |
-| **G-B-08-convert-mapping** | §16 | `industry`, `monthly_ad_budget`, `additional_notes` not mapped to structured Company/need fields — live in `sales_questionnaire` blob | Extend `extract_lead_conversion_context` / Company `extra` **or** accept v1 with need.questionnaire only + UI to show it |
-| **G-B-08-post-convert-nav** | §16 post-convert | ClientAccount UI may not surface link back to source inquiry + submission | Verify / add «Исходная заявка» link on ClientAccount |
+| **G-B-08-review-queue** | §15 conflict row | Ambiguous public match → new inquiry + `intake_review_required` flag | **closed (v1)** — no Review Queue; manager sees «Требует проверки» |
+| **G-B-08-convert-mapping** | §16 | merge + convert extended; UI shows need + sales_questionnaire | **partial** — verify full walkthrough |
+| **G-B-08-post-convert-nav** | §16 post-convert | InquiryTraceabilityPanel + ClientLeadOriginPanel | **partial** — verify full walkthrough |
 | **G-B-08-compatibility** | §14 | Picker hard-coded to targeted_advertising profile | OK for v1 walkthrough; generalize with Capability metadata later |
 
 ### PR merge gate (rev 4)

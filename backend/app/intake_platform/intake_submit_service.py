@@ -84,6 +84,27 @@ def _submit_idempotency_key(draft_lead: Lead, intake_state: dict[str, Any]) -> s
     return f"public-intake-submit:{form_id}:{draft_lead.id}"
 
 
+def _mark_inquiry_requires_manual_review(lead: Lead, match_result: Any) -> None:
+    """Public intake could not auto-attach — flag for manager (no review queue in Product B v1)."""
+    if match_result is None:
+        return
+    suggested = str(getattr(match_result, "suggested_action", "") or "").strip()
+    if suggested != "review":
+        return
+    normalized = _record(lead.normalized)
+    normalized["intake_review_required"] = True
+    normalized["intake_review_message"] = (
+        "Не удалось однозначно определить существующую заявку. "
+        "Создана новая заявка, требующая проверки."
+    )
+    reasons = getattr(match_result, "reasons", None)
+    if isinstance(reasons, list) and reasons:
+        normalized["intake_review_reasons"] = list(reasons)
+    lead.normalized = normalized
+    if str(lead.stage or "").strip().lower() in {"", "new"}:
+        lead.stage = "review_required"
+
+
 async def submit_client_public_intake_with_policy(
     db: AsyncSession,
     *,
@@ -125,6 +146,14 @@ async def submit_client_public_intake_with_policy(
 
     if resolution.draft_lead_abandoned and str(draft_lead.id) != str(target_lead.id):
         _mark_draft_abandoned(draft_lead, target_lead_id=str(target_lead.id), match_result=resolution.match_result)
+
+    if (
+        resolution.action == "create"
+        and resolution.match_result is not None
+        and str(getattr(resolution.match_result, "suggested_action", "") or "").strip() == "review"
+        and str(target_lead.id) == str(draft_lead.id)
+    ):
+        _mark_inquiry_requires_manual_review(target_lead, resolution.match_result)
 
     decision, created_candidate_id = await submit_public_intake_lead_draft(
         db,

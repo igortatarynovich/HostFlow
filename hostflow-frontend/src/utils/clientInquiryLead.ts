@@ -142,7 +142,10 @@ export type SalesInquiryStatusKey = 'new' | 'in_progress' | 'waiting' | 'complet
 
 export function inquiryStatusKey(lead: Lead): SalesInquiryStatusKey {
   if (lead.converted_client_id || lead.stage === 'converted' || lead.stage === 'lost') return 'completed'
+  const normalized = record(lead.normalized)
+  if (normalized.intake_review_required === true) return 'waiting'
   const stage = (lead.stage || '').trim().toLowerCase()
+  if (stage === 'review_required') return 'waiting'
   if (!stage || stage === 'new') return 'new'
   if (stage === 'qualified') return 'waiting'
   return 'in_progress'
