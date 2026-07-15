@@ -2,6 +2,7 @@ import { api } from './client'
 import type {
   CandidateEvidenceSnapshot,
   RequirementsChecklistResponse,
+  RequirementsWorkspaceResponse,
 } from './types/candidateRequirements'
 
 export type {
@@ -12,7 +13,12 @@ export type {
   RequirementEvaluationStatus,
   RequirementEvidenceDocument,
   RequirementPipelineBlockers,
-  RequirementsChecklistResponse,
+  RequirementsWorkspaceResponse,
+  WorkspaceFieldRequirement,
+  WorkspaceFieldRequirementsSection,
+  WorkspaceSummary,
+  WorkspaceTransferReadiness,
+  OperationalRequirementRow,
 } from './types/candidateRequirements'
 
 export async function getCandidateRequirementsChecklist(
@@ -20,6 +26,15 @@ export async function getCandidateRequirementsChecklist(
 ): Promise<RequirementsChecklistResponse> {
   const { data } = await api.get<RequirementsChecklistResponse>(
     `/candidates/${candidateId}/requirements/checklist`,
+  )
+  return data
+}
+
+export async function getCandidateRequirementsWorkspace(
+  candidateId: string,
+): Promise<RequirementsWorkspaceResponse> {
+  const { data } = await api.get<RequirementsWorkspaceResponse>(
+    `/candidates/${candidateId}/requirements/workspace`,
   )
   return data
 }
@@ -77,6 +92,18 @@ export async function replaceRequirementEvidence(
 ): Promise<CandidateEvidenceSnapshot> {
   const { data } = await api.post<CandidateEvidenceSnapshot>(
     `/candidates/${candidateId}/requirements/${requirementCode}/replace-evidence`,
+    body,
+  )
+  return data
+}
+
+export async function completeOperationalRequirementActivity(
+  candidateId: string,
+  requirementCode: string,
+  body: { activity_id: string },
+): Promise<OperationalRequirementRow> {
+  const { data } = await api.post<OperationalRequirementRow>(
+    `/candidates/${candidateId}/requirements/${requirementCode}/complete-activity`,
     body,
   )
   return data

@@ -169,10 +169,19 @@ class CandidateProfileOut(BaseModel):
     created_at: str
     updated_at: str
     usage_count: Optional[int] = Field(None, description="Number of vacancies using this profile")
+    deprecation_warnings: list[str] = Field(
+        default_factory=list,
+        description="C2: warnings when legacy CandidateProfile.config fragments are written",
+    )
 
     @classmethod
     async def from_model_with_usage(
-        cls, profile: CandidateProfile, db: AsyncSession, tenant_id: str
+        cls,
+        profile: CandidateProfile,
+        db: AsyncSession,
+        tenant_id: str,
+        *,
+        deprecation_warnings: list[str] | None = None,
     ) -> "CandidateProfileOut":
         """Create from ORM model with usage count."""
         # Count vacancies using this profile
@@ -198,6 +207,7 @@ class CandidateProfileOut(BaseModel):
             created_at=profile.created_at.isoformat() if profile.created_at else "",
             updated_at=profile.updated_at.isoformat() if profile.updated_at else "",
             usage_count=usage_count,
+            deprecation_warnings=list(deprecation_warnings or []),
         )
     
     @classmethod
@@ -595,6 +605,16 @@ async def create_candidate_profile(
         client_id=payload.client_id,
     )
 
+    from backend.app.entity_profile.config_deprecation import enforce_candidate_profile_config_write
+
+    deprecation_warnings = await enforce_candidate_profile_config_write(
+        db,
+        tenant_id=str(tenant_id),
+        profile_code=payload.code,
+        previous_config={},
+        next_config=payload.config or {},
+    )
+
     from uuid import uuid4
 
     profile = CandidateProfile(
@@ -614,7 +634,12 @@ async def create_candidate_profile(
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
-    return await CandidateProfileOut.from_model_with_usage(profile, db, str(tenant_id))
+    return await CandidateProfileOut.from_model_with_usage(
+        profile,
+        db,
+        str(tenant_id),
+        deprecation_warnings=deprecation_warnings,
+    )
 
 
 DRIVER_CE_DEFAULT_CODE = "driver_ce_default"
@@ -850,6 +875,16 @@ async def update_candidate_profile(
         client_id=payload.client_id,
     )
 
+    from backend.app.entity_profile.config_deprecation import enforce_candidate_profile_config_write
+
+    deprecation_warnings = await enforce_candidate_profile_config_write(
+        db,
+        tenant_id=str(tenant_id),
+        profile_code=str(profile.code),
+        previous_config=profile.config or {},
+        next_config=payload.config or {},
+    )
+
     # Save old data for history
     old_data = _profile_to_dict(profile)
     
@@ -879,7 +914,12 @@ async def update_candidate_profile(
     db.add(history_entry)
     await db.commit()
     
-    return await CandidateProfileOut.from_model_with_usage(profile, db, str(tenant_id))
+    return await CandidateProfileOut.from_model_with_usage(
+        profile,
+        db,
+        str(tenant_id),
+        deprecation_warnings=deprecation_warnings,
+    )
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)

@@ -34,7 +34,7 @@ from ._helpers import (  # noqa: F401
     _resolve_vacancy,
     _rule_recruiter_id_from_normalized,
     _stamp_lead_qualification_preview_v1,
-    _triage_bypass_from_vacancy_fallback,
+    unresolved_vacancy_routing_error_code,
     _vacancy_allows_auto_convert_on_fit,
     _validate_company_id,
     _validate_recruiter_id,

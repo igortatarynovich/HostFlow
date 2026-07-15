@@ -1,0 +1,393 @@
+{
+  "schema_bundle_version": "driver_ce.v1",
+  "effective_from": "2026-07-13",
+  "adr": "ADR-018",
+  "description": "Versioned DocumentTypeVersion schemas for Driver CE contour only.",
+  "document_types": {
+    "passport": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {
+        "valid_from": "issue_date",
+        "valid_to": "expiry_date"
+      },
+      "evaluation_fields": ["document_number", "issuing_country", "nationality", "expiry_date"],
+      "sensitivity": "high",
+      "sensitive_fields": ["document_number", "date_of_birth", "given_names", "surname"],
+      "extraction_mapping": {
+        "document_number": ["number", "passport_number", "document_number"],
+        "issuing_country": ["country", "issuing_country"],
+        "nationality": ["nationality"],
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"],
+        "given_names": ["given_names", "first_name"],
+        "surname": ["surname", "last_name"],
+        "date_of_birth": ["date_of_birth", "birth_date"]
+      },
+      "ui_labels": {
+        "en": {
+          "document_number": "Passport number",
+          "issuing_country": "Issuing country",
+          "nationality": "Nationality",
+          "expiry_date": "Expiry date"
+        },
+        "ru": {
+          "document_number": "Номер паспорта",
+          "issuing_country": "Страна выдачи",
+          "nationality": "Гражданство",
+          "expiry_date": "Срок действия"
+        }
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "issuing_country", "nationality", "expiry_date"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 3, "maxLength": 32},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "nationality": {"type": "string", "minLength": 2, "maxLength": 2},
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "given_names": {"type": "string", "maxLength": 128},
+          "surname": {"type": "string", "maxLength": 128},
+          "date_of_birth": {"type": "string", "format": "date"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "national_identity_card": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["document_number", "issuing_country", "expiry_date"],
+      "sensitivity": "high",
+      "sensitive_fields": ["document_number", "date_of_birth"],
+      "extraction_mapping": {
+        "document_number": ["number", "document_number"],
+        "issuing_country": ["country", "issuing_country"],
+        "nationality": ["nationality"],
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"]
+      },
+      "ui_labels": {
+        "en": {
+          "document_number": "ID number",
+          "issuing_country": "Issuing country",
+          "expiry_date": "Expiry date"
+        }
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "issuing_country", "expiry_date"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 3, "maxLength": 32},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "nationality": {"type": "string", "minLength": 2, "maxLength": 2},
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "date_of_birth": {"type": "string", "format": "date"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "driver_license": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["document_number", "categories", "expiry_date", "code_95_valid_to"],
+      "sensitivity": "high",
+      "sensitive_fields": ["document_number"],
+      "extraction_mapping": {
+        "document_number": ["number", "license_number", "document_number"],
+        "issuing_country": ["country", "issuing_country"],
+        "categories": ["categories", "license_categories"],
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"],
+        "code_95_valid_to": ["code_95_valid_to", "code95_valid_to", "code95_expires_at"]
+      },
+      "conditional_required": [
+        {
+          "when": {"field": "categories", "contains_any": ["CE", "C1E", "DE"]},
+          "required_fields": ["code_95_valid_to"]
+        }
+      ],
+      "ui_labels": {
+        "en": {
+          "categories": "Categories",
+          "code_95_valid_to": "Code 95 valid until"
+        }
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "issuing_country", "categories", "expiry_date"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 3, "maxLength": 32},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "categories": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["B", "C", "CE", "C1", "C1E", "D", "DE"]},
+            "minItems": 1
+          },
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "code_95_valid_to": {"type": "string", "format": "date"},
+          "restrictions": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "driver_qualification_card": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["document_number", "expiry_date"],
+      "sensitivity": "high",
+      "sensitive_fields": ["document_number"],
+      "extraction_mapping": {
+        "document_number": ["number", "document_number"],
+        "issuing_country": ["country", "issuing_country"],
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "expiry_date"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 3, "maxLength": 32},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "tachograph_card": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["document_number", "expiry_date"],
+      "sensitivity": "medium",
+      "sensitive_fields": ["document_number"],
+      "extraction_mapping": {
+        "document_number": ["number", "document_number"],
+        "issuing_country": ["country", "issuing_country"],
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "expiry_date"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 6, "maxLength": 32},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "psychological_certificate": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["expiry_date"],
+      "sensitivity": "medium",
+      "sensitive_fields": [],
+      "extraction_mapping": {
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"],
+        "center": ["center", "clinic"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["issue_date", "expiry_date"],
+        "properties": {
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "center": {"type": "string", "maxLength": 255}
+        },
+        "additionalProperties": false
+      }
+    },
+    "medical_certificate": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["expiry_date"],
+      "sensitivity": "medium",
+      "sensitive_fields": [],
+      "extraction_mapping": {
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"],
+        "clinic": ["clinic", "center"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["issue_date", "expiry_date"],
+        "properties": {
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "clinic": {"type": "string", "maxLength": 255}
+        },
+        "additionalProperties": false
+      }
+    },
+    "visa": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "expiry_date"},
+      "evaluation_fields": ["document_number", "visa_type", "expiry_date", "work_access"],
+      "sensitivity": "high",
+      "sensitive_fields": ["document_number"],
+      "extraction_mapping": {
+        "document_number": ["number", "document_number"],
+        "visa_type": ["type", "visa_type"],
+        "issue_date": ["issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"],
+        "work_access": ["work_access", "work_permitted"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "visa_type", "expiry_date"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 3, "maxLength": 32},
+          "visa_type": {"type": "string", "enum": ["C", "D", "other"]},
+          "purpose_code": {"type": "string", "maxLength": 32},
+          "entries": {"type": "string", "enum": ["single", "multiple", "unknown"]},
+          "issue_date": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "work_access": {"type": "string", "enum": ["none", "limited", "full", "unknown"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "residence_card": {
+      "version_code": "v1",
+      "expiry_field": "expiry_date",
+      "validity_fields": {"valid_from": "valid_from", "valid_to": "expiry_date"},
+      "evaluation_fields": ["document_number", "card_type", "expiry_date", "work_access"],
+      "sensitivity": "high",
+      "sensitive_fields": ["document_number"],
+      "extraction_mapping": {
+        "document_number": ["number", "document_number"],
+        "card_type": ["type", "card_type"],
+        "valid_from": ["valid_from", "issued_at", "issue_date"],
+        "expiry_date": ["expires_at", "expiry_date", "expire_date"],
+        "issuing_country": ["country", "issuing_country"],
+        "work_access": ["work_access"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["document_number", "card_type", "expiry_date", "issuing_country"],
+        "properties": {
+          "document_number": {"type": "string", "minLength": 3, "maxLength": 64},
+          "card_type": {
+            "type": "string",
+            "enum": ["temporary", "permanent", "blue_card", "eu_long_term", "other"]
+          },
+          "valid_from": {"type": "string", "format": "date"},
+          "expiry_date": {"type": "string", "format": "date"},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2},
+          "work_access": {"type": "string", "enum": ["none", "limited", "full", "unknown"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "driver_attestation": {
+      "version_code": "v1",
+      "expiry_field": "valid_to",
+      "validity_fields": {"valid_from": "issue_date", "valid_to": "valid_to"},
+      "evaluation_fields": ["serial_number", "valid_to", "carrier_name"],
+      "sensitivity": "medium",
+      "sensitive_fields": ["serial_number"],
+      "process_generated": true,
+      "extraction_mapping": {
+        "serial_number": ["number", "serial_number", "document_number"],
+        "issue_date": ["issued_at", "issue_date"],
+        "valid_to": ["valid_to", "expires_at", "expiry_date"],
+        "carrier_name": ["carrier", "carrier_name"],
+        "community_licence_reference": ["community_licence_reference", "licence_reference"],
+        "issuing_authority": ["issuing_authority", "authority"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["issue_date", "valid_to", "carrier_name", "issuing_authority"],
+        "properties": {
+          "serial_number": {"type": "string", "minLength": 2, "maxLength": 64},
+          "issue_date": {"type": "string", "format": "date"},
+          "valid_to": {"type": "string", "format": "date"},
+          "carrier_name": {"type": "string", "maxLength": 255},
+          "community_licence_reference": {"type": "string", "maxLength": 128},
+          "issuing_authority": {"type": "string", "maxLength": 128}
+        },
+        "additionalProperties": false
+      }
+    },
+    "work_permit_decision": {
+      "version_code": "v1",
+      "expiry_field": "valid_to",
+      "evaluation_fields": ["decision_category", "case_number", "valid_to"],
+      "sensitivity": "medium",
+      "extraction_mapping": {
+        "decision_category": ["decision_category", "category"],
+        "case_number": ["case_number", "reference_number"],
+        "valid_to": ["valid_to", "expiry_date"]
+      },
+      "json_schema": {
+        "type": "object",
+        "required": ["decision_category", "issue_date", "authority"],
+        "properties": {
+          "decision_category": {"type": "string", "enum": ["work_permit"]},
+          "case_number": {"type": "string"},
+          "issue_date": {"type": "string", "format": "date"},
+          "valid_to": {"type": "string", "format": "date"},
+          "authority": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "temporary_residence_decision": {
+      "version_code": "v1",
+      "evaluation_fields": ["decision_category", "case_number"],
+      "json_schema": {
+        "type": "object",
+        "required": ["decision_category", "issue_date"],
+        "properties": {
+          "decision_category": {"type": "string", "enum": ["temporary_residence"]},
+          "case_number": {"type": "string"},
+          "issue_date": {"type": "string", "format": "date"},
+          "authority": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "temporary_residence_and_work_decision": {
+      "version_code": "v1",
+      "evaluation_fields": ["decision_category", "case_number"],
+      "json_schema": {
+        "type": "object",
+        "required": ["decision_category", "issue_date"],
+        "properties": {
+          "decision_category": {"type": "string", "enum": ["temporary_residence_and_work"]},
+          "case_number": {"type": "string"},
+          "issue_date": {"type": "string", "format": "date"},
+          "authority": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "eu_residence_registration": {
+      "version_code": "v1",
+      "evaluation_fields": ["registration_date", "issuing_country"],
+      "json_schema": {
+        "type": "object",
+        "required": ["registration_date"],
+        "properties": {
+          "registration_date": {"type": "string", "format": "date"},
+          "issuing_country": {"type": "string", "minLength": 2, "maxLength": 2}
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

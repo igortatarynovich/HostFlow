@@ -38,14 +38,14 @@ git diff origin/<lifecycle-branch>...HEAD -- \
 | **ORM status writes** | §4 + legacy normalize | **`set_recruitment_application_status(row, new_status)`** — sole supported assign path from services | Same + `ensure_*` create path uses setter |
 | **No-op `X→X`** | lifecycle §4 note | `validate_*` early-return; `set_recruitment_application_status` when `cur_n == new_n` | `test_noop_transition`, `test_set_status_idempotent_same_canonical` |
 | **§4 (c) guards** | §4 guard bullets | **Not** in helper | Encode when status PATCH / hire services exist |
-| **Repeat apply / new cycle** | §5 | `application_cycle` nullable; no dedicated “second apply” writer | **C2b** gap |
+| **Repeat apply / new cycle** | §5 | `application_cycle` + `external_id`; `ensure_recruitment_application_for_external_intent` | **C2b Done (2026-07-02)** |
 | **Idempotency `lead_id`** | §10 | `ensure_recruitment_application_for_lead_intent` upsert by `(tenant, candidate_id, lead_id)` | MVP API tests |
 | **Idempotency no-lead** | §10 subset | `(tenant, candidate_id, vacancy_id, source)` when `lead_id` IS NULL | MVP API tests |
 | **Pool → vacancy** | §6 | Same row + `meta["pool_to_vacancy_audit_v1"]` | `test_pool_to_vacancy_updates_row_and_audit_meta` |
-| **Vacancy switch** | §7 default new Application | No policy layer / API | **I1** gap |
+| **Vacancy switch** | §7 default new Application | `switch_recruitment_application_vacancy` + POST API | **I1 Done (2026-07-02)** |
 | **HR return / reactivation** | §§8–9 | Spec-only until handoff writers | — |
 | **Candidate.stage coupling** | §2 | `ensure_*` does not change stage | `test_ensure_does_not_change_candidate_stage` (**C4**) |
-| **`hired` → Employee** | §8 | No implicit Employee on status alone | **C3** — test when status PATCH exists |
+| **`hired` → Employee** | §8 | PATCH status only; no implicit Employee | **C3 Done (2026-07-02)** — `test_c3_hired_status_does_not_create_workforce_employee` |
 
 ---
 
@@ -62,25 +62,25 @@ git diff origin/<lifecycle-branch>...HEAD -- \
 - **§5:** A **genuine** second application episode → **new** row / **new** `application_cycle`, not silent update of history.
 - **Declared rule for current ingestion:** Replay of the **same** conversion event is keyed by **`lead_id`** (when present) → same row. A **different** `lead_id` (new intake row) → **new** Application row after attach/create, even if same Candidate + vacancy.
 
-### C2b — Second apply **without** a new Lead (portal / same channel) — **OPEN**
+### C2b — Second apply **without** a new Lead (portal / same channel) — **Done (2026-07-02)**
 
-- **Gap:** No stable **`external_id`** (or equivalent) on `recruitment_applications` yet; `application_cycle` not auto-set on “second apply.”
-- **Next:** Product + schema: either `external_id` idempotency per §10, or explicit API “new intent” that sets `application_cycle`.
+- **`external_id`** on `recruitment_applications`; idempotent upsert via `ensure_recruitment_application_for_external_intent`.
+- Different `external_id` → new row + auto `application_cycle`.
 
-### C3 — `hired` must not materialize Employee by itself — **OPEN until PATCH**
+### C3 — `hired` must not materialize Employee by itself — **Done (2026-07-02)**
 
 - **Rule:** Transition to `hired` must not create `WorkforceEmployee` without the handoff path.
-- **Next:** Add regression test when a public PATCH or internal status setter exists.
+- **Evidence:** `patch_recruitment_application_status` + API PATCH; regression tests in `test_recruitment_application_a6.py`.
 
 ### C4 — Candidate pipeline vs Application — **RULE DOCUMENTED; TEST EXISTS FOR `ensure_*`**
 
 - **Rule:** No automatic `Candidate.stage` updates from `RecruitmentApplication.status` unless a **named** integration rule exists.
 - **Evidence:** `test_ensure_does_not_change_candidate_stage`.
 
-### I1 — Vacancy switch (§7) — **IMPLEMENTATION GAP (not a moral conflict)**
+### I1 — Vacancy switch (§7) — **Done (2026-07-02)**
 
-- **Spec default:** new Application for vacancy B when switching off evaluated A.
-- **Code:** No dedicated “switch vacancy” operation; operators must not rely on helper until product defines API.
+- **Spec default:** new Application for vacancy B; previous intent withdrawn when `close_previous=true`.
+- **Code:** `switch_recruitment_application_vacancy` + `POST .../applications/{id}/switch-vacancy`.
 
 ---
 
@@ -89,9 +89,9 @@ git diff origin/<lifecycle-branch>...HEAD -- \
 Order is suggestive; do not bundle unrelated concerns.
 
 1. **Status writers:** Any service that sets `RecruitmentApplication.status` → **must** call **`set_recruitment_application_status`** (wraps normalize + `validate_application_status_transition`). Do not assign ``row.status`` directly except in Alembic.
-2. **C2b:** Schema + API for second apply without new Lead (optional: `external_id`, cycle assignment).
-3. **C3:** Regression test when hire transition is exposed.
-4. **I1:** Vacancy switch policy (new row vs audited same-row exception per §7).
+2. ~~**C2b:** Schema + API for second apply without new Lead~~ — Done.
+3. ~~**C3:** Regression test when hire transition is exposed~~ — Done.
+4. ~~**I1:** Vacancy switch policy~~ — Done.
 5. **§4 (c) guards:** Hire binding, reopen policy in domain layer — not only matrix membership.
 
 **Still explicitly out of scope:** workflow engine, orchestration saga, reports migration, removal of `candidate.vacancy_id` (see lifecycle §11).

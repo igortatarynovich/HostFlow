@@ -17,16 +17,21 @@ from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.process_engine.constants import HR_MODULE
 from backend.app.process_engine.pipeline_mapping import apply_pe_mapping_to_funnel_stage
 from backend.app.process_engine.seed import ensure_platform_process_engine_catalog
+from backend.app.models.candidate import Candidate
 from backend.app.services.hr_employee_funnel_assignment import (
     EMPLOYEE_PIPELINE_META_KEY,
+    RECRUITMENT_HANDOFF_PIPELINE_ORIGIN,
+    assign_hr_employee_pipeline_from_recruitment_handoff,
     assign_hr_employee_pipeline_on_create,
     first_hr_employee_funnel_stage_code,
+    merge_recruitment_handoff_pipeline_meta,
+    resolve_recruitment_handoff_entry_stage,
 )
 from backend.app.services.hr_employee_funnel_bootstrap import (
     HR_EMPLOYEE_BOOTSTRAP_STAGE_CODES,
     bootstrap_hr_employee_funnel_for_company,
 )
-from backend.app.services.workforce_employees import create_employee
+from backend.app.services.workforce_employees import create_employee, handoff_from_candidate
 
 
 def _uid(prefix: str = "h4") -> str:
@@ -280,3 +285,126 @@ async def test_create_employee_default_stage_when_pipeline_stage_omitted(db) -> 
         row.meta[EMPLOYEE_PIPELINE_META_KEY]["stage_code"]
         == first_hr_employee_funnel_stage_code(funnel)
     )
+
+
+def test_workforce_handoff_from_candidate_wires_recruitment_pipeline_assignment() -> None:
+    source = Path("backend/app/services/workforce_employees.py").read_text(encoding="utf-8")
+    assert "merge_recruitment_handoff_pipeline_meta" in source
+    assert "resolve_recruitment_funnel" not in source
+
+
+def test_resolve_recruitment_handoff_entry_stage_prefers_received_from_recruitment() -> None:
+    funnel = Funnel(id="f1", tenant_id="t1", type=HR_EMPLOYEE_FUNNEL_TYPE, name="Test")
+    funnel.stages = [
+        FunnelStage(
+            funnel_id="f1",
+            code="received_from_recruitment",
+            label="Received",
+            order=0,
+            pe_maps_to_module=HR_MODULE_KEY,
+            pe_maps_to_code="received_from_recruitment",
+        ),
+        FunnelStage(
+            funnel_id="f1",
+            code="handoff_pending",
+            label="Handoff Pending",
+            order=1,
+            pe_maps_to_module=HR_MODULE_KEY,
+            pe_maps_to_code="handoff_pending",
+        ),
+    ]
+    stage_code, used_fallback = resolve_recruitment_handoff_entry_stage(funnel)
+    assert stage_code == "received_from_recruitment"
+    assert used_fallback is False
+
+
+def test_resolve_recruitment_handoff_entry_stage_falls_back_to_first_hr_stage() -> None:
+    funnel = Funnel(id="f1", tenant_id="t1", type=HR_EMPLOYEE_FUNNEL_TYPE, name="Test")
+    funnel.stages = [
+        FunnelStage(
+            funnel_id="f1",
+            code="handoff_pending",
+            label="Handoff Pending",
+            order=0,
+            pe_maps_to_module=HR_MODULE_KEY,
+            pe_maps_to_code="handoff_pending",
+        ),
+    ]
+    stage_code, used_fallback = resolve_recruitment_handoff_entry_stage(funnel)
+    assert stage_code == "handoff_pending"
+    assert used_fallback is True
+
+
+@pytest.mark.anyio
+async def test_assign_hr_employee_pipeline_from_recruitment_handoff_sets_origin(db) -> None:
+    tenant = await _seed_tenant(db)
+    company = await _seed_company(db, tenant_id=tenant.id)
+    await _seed_hr_funnel_with_stages(db, tenant_id=tenant.id, company_id=company.id)
+    await db.commit()
+
+    meta = await assign_hr_employee_pipeline_from_recruitment_handoff(
+        db,
+        tenant_id=tenant.id,
+        company_id=company.id,
+        employee_meta={},
+    )
+    pipeline = meta[EMPLOYEE_PIPELINE_META_KEY]
+    assert pipeline["origin"] == RECRUITMENT_HANDOFF_PIPELINE_ORIGIN
+    assert pipeline["stage_code"] == HR_EMPLOYEE_BOOTSTRAP_STAGE_CODES[0]
+    assert pipeline.get("source_handoff_fallback") is True
+
+
+@pytest.mark.anyio
+async def test_handoff_from_candidate_assigns_employee_pipeline(db) -> None:
+    tenant = await _seed_tenant(db, modules={"hr": True, "recruitment": True, "candidates": True})
+    company = await _seed_company(db, tenant_id=tenant.id)
+    await _seed_hr_funnel_with_stages(db, tenant_id=tenant.id, company_id=company.id)
+    candidate = Candidate(
+        id=_uid(),
+        tenant_id=tenant.id,
+        company_id=company.id,
+        first_name="Handoff",
+        last_name="Pipeline",
+        phone="+48111222333",
+        email="handoff-pipeline@example.com",
+    )
+    db.add(candidate)
+    await db.commit()
+
+    emp = await handoff_from_candidate(
+        db,
+        tenant.id,
+        candidate,
+        hire_date=None,
+        actor_user_id="actor-1",
+        seed_hr_bundle=False,
+    )
+    await db.commit()
+
+    pipeline = (emp.meta or {}).get(EMPLOYEE_PIPELINE_META_KEY) or {}
+    assert pipeline.get("funnel_id")
+    assert pipeline.get("stage_code") == HR_EMPLOYEE_BOOTSTRAP_STAGE_CODES[0]
+    assert pipeline.get("origin") == RECRUITMENT_HANDOFF_PIPELINE_ORIGIN
+
+
+@pytest.mark.anyio
+async def test_merge_recruitment_handoff_pipeline_meta_preserves_advanced_stage(db) -> None:
+    tenant = await _seed_tenant(db)
+    company = await _seed_company(db, tenant_id=tenant.id)
+    funnel = await _seed_hr_funnel_with_stages(db, tenant_id=tenant.id, company_id=company.id)
+    await db.commit()
+
+    meta = {
+        EMPLOYEE_PIPELINE_META_KEY: {
+            "funnel_id": funnel.id,
+            "stage_code": "verification",
+            "source": "company_default",
+        }
+    }
+    merged = await merge_recruitment_handoff_pipeline_meta(
+        db,
+        tenant_id=tenant.id,
+        company_id=company.id,
+        employee_meta=meta,
+    )
+    assert merged[EMPLOYEE_PIPELINE_META_KEY]["stage_code"] == "verification"

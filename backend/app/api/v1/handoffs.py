@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -47,6 +47,24 @@ from backend.app.services.handoff import (
 HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)
 
 router = APIRouter(prefix="/handoffs", tags=["handoffs"])
+
+
+def _handoff_create_http_exception(err: str | dict[str, Any]) -> HTTPException:
+    if isinstance(err, dict) and str(err.get("code") or "") == "handoff_docs_incomplete":
+        return HTTPException(status_code=409, detail=err)
+    if isinstance(err, dict):
+        return HTTPException(status_code=400, detail=err)
+    return HTTPException(status_code=400, detail=err)
+
+
+def _bulk_handoff_error_item(candidate_id: str, err: str | dict[str, Any]) -> dict[str, Any]:
+    if isinstance(err, dict):
+        return {
+            "candidate_id": candidate_id,
+            "error": str(err.get("message") or err.get("code") or "handoff_failed"),
+            "detail": err,
+        }
+    return {"candidate_id": candidate_id, "error": err}
 
 
 class HandoffCreate(BaseModel):
@@ -161,7 +179,7 @@ async def create_handoff_bulk(
                 destination="client_portal",
             )
             if err:
-                errors.append({"candidate_id": str(candidate_id), "error": err})
+                errors.append(_bulk_handoff_error_item(str(candidate_id), err))
             else:
                 created += 1
         except HTTPException as e:
@@ -200,7 +218,7 @@ async def create_handoff_route(
         application_id=app_id,
     )
     if err:
-        raise HTTPException(status_code=400, detail=err)
+        raise _handoff_create_http_exception(err)
     await db.commit()
     await db.refresh(handoff)
     return HandoffOut.model_validate(handoff)

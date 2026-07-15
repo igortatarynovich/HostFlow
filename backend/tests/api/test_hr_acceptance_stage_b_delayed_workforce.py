@@ -13,14 +13,19 @@ from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import WorkforceHrReview
 from backend.app.models.workforce_onboarding_task import WorkforceOnboardingTask
 from backend.app.models.workforce_work_eligibility_profile import WorkforceWorkEligibilityProfile
+from backend.tests.test_support.candidate_evidence_helpers import close_driver_ce_requirements
+from backend.tests.test_support.hr_verification_e2e import prepare_handoff_hr_review_for_approve
 from backend.app.models.workforce_zus_profile import WorkforceZusProfile
 from backend.tests.api.test_handoff_internal_hr import (
+    _ensure_hr_employee_funnel_for_company,
     _ensure_tenant_link_internal_hr,
 )
 from backend.tests.test_support.candidate_handoff_gate import seed_documents_for_ready_for_handoff
 
 
 async def _set_delayed_hr_workforce_creation(tenant_id: str, *, enabled: bool) -> None:
+    from sqlalchemy.orm.attributes import flag_modified
+
     async with async_session_maker() as session:
         tenant = await session.get(Tenant, tenant_id)
         assert tenant is not None
@@ -30,6 +35,7 @@ async def _set_delayed_hr_workforce_creation(tenant_id: str, *, enabled: bool) -
         else:
             settings.pop("delayed_hr_workforce_creation", None)
         tenant.settings = settings
+        flag_modified(tenant, "settings")
         await session.commit()
 
 
@@ -167,7 +173,10 @@ async def _run_delayed_workforce_flow(
     await _ensure_tenant_link_internal_hr(
         client, manager_headers=manager_headers, tenant_id=tenant_id, company_id=company_id
     )
-    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
+    await _ensure_hr_employee_funnel_for_company(tenant_id=tenant_id, company_id=company_id)
+    await close_driver_ce_requirements(
+        client, manager_headers, candidate_id=candidate_id
+    )
 
     rf = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
@@ -203,23 +212,20 @@ async def _run_delayed_workforce_flow(
         linked_entity_id=str(review_row.id),
     ) >= 1
 
-    panel = await client.get(f"/api/v1/handoffs/{handoff_id}/hr-review", headers=hr_officer_headers)
-    assert panel.status_code == 200, panel.text
-    body = panel.json()
-    assert body["handoff_id"] == handoff_id
-    assert body.get("employee_id") in (None, "")
-    assert len(body.get("checklist") or []) >= 1
+    handoff_review = await client.get(
+        f"/api/v1/handoffs/{handoff_id}/hr-review",
+        headers=hr_officer_headers,
+    )
+    assert handoff_review.status_code == 200, handoff_review.text
+    panel = handoff_review.json()
+    assert panel.get("handoff_id") == handoff_id
+    assert panel.get("employee_id") in (None, "")
+    docs = panel.get("documents_for_approval") or []
+    assert any(str(d.get("document_id") or "").strip() for d in docs if isinstance(d, dict))
 
-    for item in body.get("checklist") or []:
-        code = item.get("item_code")
-        if not code:
-            continue
-        patch = await client.patch(
-            f"/api/v1/handoffs/{handoff_id}/hr-review/checklist/{code}",
-            headers=hr_officer_headers,
-            json={"satisfied": True},
-        )
-        assert patch.status_code == 200, patch.text
+    assert len(panel.get("checklist") or []) >= 1
+
+    await prepare_handoff_hr_review_for_approve(client, handoff_id, hr_officer_headers)
 
     approve = await client.post(
         f"/api/v1/handoffs/{handoff_id}/hr-review/approve",
@@ -255,3 +261,15 @@ async def _run_delayed_workforce_flow(
 
     wel = await _work_eligibility_row(tenant_id, emp_id)
     assert wel is not None
+    assert wel.citizenship == "UA"
+    assert wel.work_country == "PL"
+
+    emp_detail = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}",
+        headers=hr_officer_headers,
+    )
+    assert emp_detail.status_code == 200, emp_detail.text
+    pipeline = (emp_detail.json().get("meta") or {}).get("employee_pipeline") or {}
+    assert pipeline.get("funnel_id")
+    assert pipeline.get("stage_code")
+    assert pipeline.get("origin") == "recruitment_handoff"

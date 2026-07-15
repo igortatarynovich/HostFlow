@@ -54,13 +54,15 @@ export function resolveNotificationOpenPath(
     threadId || (entityType === 'communication_thread' ? entityId : '')
 
   if (eventType === 'handoff_requested' || eventType === 'handoff_accepted') {
-    return CRM_APP_PATHS.procesowani
+    const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')
+    if (cid) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(cid)}`
+    return CRM_APP_PATHS.candidates
   }
 
   if (eventType === 'handoff_rejected' || eventType === 'handoff_returned') {
     const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')
     if (cid) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(cid)}`
-    return CRM_APP_PATHS.procesowani
+    return CRM_APP_PATHS.candidates
   }
 
   if (eventType === 'lead_stuck_stage') {

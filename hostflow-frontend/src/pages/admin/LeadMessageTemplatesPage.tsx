@@ -159,14 +159,14 @@ export default function LeadMessageTemplatesPage() {
   )
 
   return (
-    <div className="space-y-4">
+    
       <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
         title={t('admin.meta_leads.settings.template_hub_title', { defaultValue: 'Lead Email Template Hub' })}
         subtitle={t('admin.meta_leads.settings.template_hub_hint', {
           defaultValue: 'Create shared templates once and reuse them in RODO and operational lead emails.',
         })}
-        backHref={CRM_APP_PATHS.settings}
-      />
+        backHref={CRM_APP_PATHS.settings}>
       {error ? <ErrorRecoveryBanner error={error} /> : null}
       {notice ? <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</div> : null}
       <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -248,6 +248,6 @@ export default function LeadMessageTemplatesPage() {
           ))}
         </div>
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -124,14 +124,14 @@ export default function IntegrationsWebhookPage() {
   }, [previewItems.length, settings?.generic_inbound_webhook_enabled, settingsLoading])
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-6 sm:py-8">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.integrations_hub.back_to_hub')}
-        kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
-        title={t('admin.integrations_webhook.title')}
-        subtitle={t('admin.integrations_webhook.intro')}
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.integrations_hub.back_to_hub')}
+      kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+      title={t('admin.integrations_webhook.title')}
+      subtitle={t('admin.integrations_webhook.intro')}
+      contentClassName="mx-auto w-full max-w-4xl gap-8"
+    >
 
       <div className="flex justify-end">
         <button type="button" className="btn-secondary btn-sm" onClick={() => setShowAdvanced((v) => !v)}>
@@ -154,12 +154,12 @@ export default function IntegrationsWebhookPage() {
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
           {error}
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">{t('admin.integrations_webhook.endpoint_title')}</h2>
         <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_webhook.endpoint_desc')}</p>
 
@@ -187,7 +187,7 @@ export default function IntegrationsWebhookPage() {
       </div>
 
       {lastRotate ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-5 text-sm">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 text-sm">
           <p className="font-medium text-emerald-950">{t('admin.integrations_webhook.new_url_title')}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <code className="max-w-full break-all rounded bg-white px-2 py-1 text-xs text-slate-800">
@@ -234,7 +234,7 @@ export default function IntegrationsWebhookPage() {
             ))}
           </ol>
 
-          <details className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
+          <details className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">
               {t('admin.integrations_webhook.advanced_mapping_toggle')}
             </summary>
@@ -258,7 +258,7 @@ Content-Type: application/json
             </pre>
           </details>
 
-          <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <details className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">
               {t('admin.integrations_webhook.recent_title')}
             </summary>
@@ -293,6 +293,6 @@ Content-Type: application/json
           </details>
         </>
       ) : null}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

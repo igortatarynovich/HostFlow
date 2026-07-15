@@ -70,6 +70,7 @@ from backend.app.services import hr_document_verification as doc_verify_svc
 from backend.app.services import hr_verified_fields as vf_svc
 from backend.app.services import workforce_hr_review as hr_review_svc
 from backend.app.services import workforce_hr_satellites as wh_sat
+from backend.app.services import workforce_hr_operational_context as hr_ctx_svc
 from backend.app.services import workforce_employees as we_svc
 from backend.app.services import workforce_directory as wf_directory
 from backend.app.services import workforce_operational_profile as wf_op
@@ -91,6 +92,8 @@ router = APIRouter(prefix="/workforce", tags=["workforce"])
 
 # HR workspace: list/detail/create/update (not visible to pure recruitment roles)
 HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)
+# HR-only document review lane (recruitment/supervisor must not mutate HR checks)
+HR_DOCUMENT_REVIEW_ROLES = (Role.hr_officer, Role.administrator)
 # Recruitment / managers with candidate access (HR officers use list/create in workspace, not this)
 HANDOFF_ROLES = (
     Role.recruiter,
@@ -1170,6 +1173,90 @@ async def list_employee_documents_via_candidate_link(
         )
         for r in rows
     ]
+
+
+class HrOperationalContextOut(BaseModel):
+    hr_case: dict[str, Any]
+    document_links: list[dict[str, Any]]
+
+
+class EmployeeDocumentHrReviewIn(BaseModel):
+    decision: str
+    comment: Optional[str] = None
+    reason_code: Optional[str] = None
+    payload: Optional[dict[str, Any]] = None
+
+
+class EmployeeDocumentHrReviewOut(BaseModel):
+    id: str
+    document_id: str
+    decision: str
+    comment: Optional[str] = None
+    reason_code: Optional[str] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    reviewer_id: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+@router.get(
+    "/employees/{employee_id}/hr-operational-context",
+    response_model=HrOperationalContextOut,
+    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+)
+async def get_employee_hr_operational_context(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrOperationalContextOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    bundle = await hr_ctx_svc.get_hr_operational_context_bundle(db, tenant_id, emp)
+    await db.commit()
+    return HrOperationalContextOut.model_validate(bundle)
+
+
+@router.post(
+    "/employees/{employee_id}/documents/{document_id}/hr-review",
+    response_model=EmployeeDocumentHrReviewOut,
+    dependencies=[Depends(require_roles(*HR_DOCUMENT_REVIEW_ROLES))],
+)
+async def post_employee_document_hr_review(
+    employee_id: str,
+    document_id: str,
+    body: EmployeeDocumentHrReviewIn,
+    current_user: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> EmployeeDocumentHrReviewOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    emp = await we_svc.get_employee(db, tenant_id, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    try:
+        result = await hr_ctx_svc.submit_employee_document_hr_review(
+            db,
+            tenant_id=tenant_id,
+            employee=emp,
+            document_id=document_id,
+            reviewer_id=str(getattr(current_user, "sub", "") or "") or None,
+            decision=body.decision,
+            comment=body.comment,
+            reason_code=body.reason_code,
+            payload=body.payload,
+        )
+    except ValueError as exc:
+        code = str(exc)
+        if code in {"DOCUMENT_NOT_FOUND", "EMPLOYEE_CANDIDATE_MISSING"}:
+            raise HTTPException(status_code=404, detail=code) from exc
+        if code == "DOCUMENT_NOT_ACCESSIBLE":
+            raise HTTPException(status_code=403, detail=code) from exc
+        if code == "INVALID_DECISION":
+            raise HTTPException(status_code=422, detail=code) from exc
+        raise HTTPException(status_code=422, detail=code) from exc
+    await db.commit()
+    return EmployeeDocumentHrReviewOut.model_validate(result)
 
 
 @router.get(

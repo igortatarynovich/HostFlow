@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.entity_profile.constants import (
     DRIVER_CE_INTAKE_PRESENTATION_CODE,
     DRIVER_CE_PROFILE_CODE,
+    TARGETED_ADVERTISING_PROFILE_CODE,
 )
 from backend.app.entity_profile.ingest_runtime import resolve_public_intake_source_profile_id
 from backend.app.entity_profile.presentation_runtime import (
@@ -79,6 +80,27 @@ def presentation_value_from_state(state: dict[str, Any], qualified_code: str) ->
         return experience.get("years_ce")
     if code == "recruitment.candidate.personal.in_poland":
         return personal.get("in_poland")
+
+    if code.startswith(f"{TARGETED_ADVERTISING_PROFILE_CODE}."):
+        block = _record(state.get(PRESENTATION_VALUES_V1))
+        if code in block and not _is_empty(block.get(code)):
+            return block.get(code)
+        client_company = _record(state.get("client_company"))
+        contacts = _record(state.get("contacts"))
+        personal = _record(state.get("personal"))
+        suffix = code.split(".")[-1]
+        if suffix == "contact_full_name":
+            return personal.get("full_name")
+        if suffix == "contact_company_name":
+            return client_company.get("name")
+        if suffix == "contact_phone":
+            return contacts.get("phone")
+        if suffix == "contact_email":
+            return contacts.get("email")
+        if suffix == "contact_website":
+            return client_company.get("website")
+        return block.get(code)
+
     return block.get(code)
 
 
@@ -135,9 +157,28 @@ def apply_presentation_values_to_state(
     if in_poland is not None and in_poland != "":
         personal["in_poland"] = in_poland
 
+    client_company = _record(state.get("client_company"))
+    for qualified_code, target_key, bucket in (
+        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_full_name", "full_name", personal),
+        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_company_name", "name", client_company),
+        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_phone", "phone", contacts),
+        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_email", "email", contacts),
+        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_website", "website", client_company),
+    ):
+        val = block.get(qualified_code)
+        if not _is_empty(val):
+            bucket[target_key] = str(val).strip() if isinstance(val, str) else val
+    if not _is_empty(block.get(f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_full_name")) or not _is_empty(
+        block.get(f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_company_name")
+    ):
+        fn = str(block.get(f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_full_name") or "").strip()
+        if fn:
+            personal["full_name"] = fn
+
     state["contacts"] = contacts
     state["personal"] = personal
     state["experience"] = experience
+    state["client_company"] = client_company
     return state
 
 
@@ -191,6 +232,10 @@ async def resolve_public_session_form_presentation(
     entity_profile_code = DRIVER_CE_PROFILE_CODE
     presentation_code = ""
 
+    entity_profile_hint = str(intake_state.get("entity_profile_code") or "").strip()
+    if entity_profile_hint:
+        entity_profile_code = entity_profile_hint
+
     if intake_source_profile_id:
         from backend.app.modules.intake_routing import crud as intake_crud
 
@@ -208,6 +253,11 @@ async def resolve_public_session_form_presentation(
         codes_to_try: list[str] = []
         if presentation_code:
             codes_to_try.append(presentation_code)
+        if entity_profile_code == TARGETED_ADVERTISING_PROFILE_CODE:
+            from backend.app.entity_profile.constants import TARGETED_ADVERTISING_PRESENTATION_CODE
+
+            if TARGETED_ADVERTISING_PRESENTATION_CODE not in codes_to_try:
+                codes_to_try.append(TARGETED_ADVERTISING_PRESENTATION_CODE)
         if DRIVER_CE_INTAKE_PRESENTATION_CODE not in codes_to_try:
             codes_to_try.append(DRIVER_CE_INTAKE_PRESENTATION_CODE)
 

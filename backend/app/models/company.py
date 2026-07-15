@@ -67,6 +67,11 @@ class Company(Base):
     )
     client_stage: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     client_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    client_account_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+    )
 
     # JSON-поля: используем SQLite JSON + PostgreSQL JSONB
     _JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
@@ -82,6 +87,11 @@ class Company(Base):
         nullable=False,
         default=dict,
         server_default=text("'{}'"),
+    )
+    enabled_modules: Mapped[Optional[dict]] = mapped_column(
+        _JSONType,
+        nullable=True,
+        default=None,
     )
 
     # ДВА уровня дефолтов: python-side + server_default — чтобы не ловить

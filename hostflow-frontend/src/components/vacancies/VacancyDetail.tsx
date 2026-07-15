@@ -17,7 +17,8 @@ import { listCandidateProfiles, type CandidateProfile } from '../../api/candidat
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { PageBreadcrumb } from '../nav/PageBreadcrumb'
+import { PageHeader } from '../nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../layout'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { servicesWorkspacePath } from '../../modules/services/utils'
 import { NextActionBadge } from '../candidate/NextActionBadge'
@@ -32,7 +33,7 @@ import {
 } from '../../utils/vacancyLayoutUtils'
 
 const primaryBtn = 'btn-primary'
-const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
+const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
 
 // Phase 2.6.D Stage C — single source of truth for status options;
 // see `docs/specs/vacancy-statuses.md`. Backend `VacancyOut` already
@@ -213,9 +214,9 @@ const DATE_FNS_LOCALES: Record<LocaleCode, typeof enUS> = {
 
 function StatPill({ stageCode, value }:{ stageCode: string; value: React.ReactNode }){
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-2">
       <StageTag code={stageCode} />
-      <span className="inline-flex min-w-[22px] items-center justify-center rounded-md border border-white/30 bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+      <span className="inline-flex min-w-[22px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
         {value}
       </span>
     </span>
@@ -612,7 +613,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="title" className="block">
               <div className="label">
                 {vacancyFieldLabel('title', 'Название', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <input className="input" {...register('title')} />
               {errors.title && <p className="text-sm text-rose-600 mt-1">{errors.title.message}</p>}
@@ -623,7 +624,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="employment_type" className="block">
               <div className="label">
                 {vacancyFieldLabel('employment_type', 'Тип занятости', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <select className="input" {...register('employment_type')}>
                 {EMPLOYMENT_TYPES.map((option) => (
@@ -642,7 +643,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="company_id" className="block">
               <div className="label">
                 {vacancyFieldLabel('company_id', 'Компания', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <select className="input" {...register('company_id')}>
                 <option value="">— выберите компанию —</option>
@@ -662,7 +663,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="headcount_target" className="block">
               <div className="label">
                 {vacancyFieldLabel('headcount_target', t('app.vacancies.detail.fields.headcount_target'), effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <input
                 type="number"
@@ -681,7 +682,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label key="location" className="block">
               <div className="label">
                 {vacancyFieldLabel('location', 'Локация', effectiveLayout)}
-                {requiredMark ? <span className="text-red-600"> *</span> : null}
+                {requiredMark ? <span className="text-rose-600"> *</span> : null}
               </div>
               <input className="input" {...register('location')} />
             </label>
@@ -692,7 +693,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               <label className="block">
                 <div className="label">
                   {vacancyFieldLabel('description', 'Описание', effectiveLayout)}
-                  {requiredMark ? <span className="text-red-600"> *</span> : null}
+                  {requiredMark ? <span className="text-rose-600"> *</span> : null}
                 </div>
                 <textarea
                   className="input w-full bg-muted/60 resize-none overflow-hidden min-h-[140px] max-h-none"
@@ -798,101 +799,83 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     : undefined
 
   return (
-    <div className="h-full min-h-0 w-full flex flex-col gap-4 pb-12">
-      {/* Header — unified with Companies style */}
-      <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-lg">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <div className="text-xs text-white/80">
-              <Link to={CRM_APP_PATHS.vacancies} className="hover:underline">{'← '}{t('app.nav.items.vacancies')}</Link>
-            </div>
-            <h1 className="text-3xl font-semibold">
-              {watchTitle || model?.title || t('app.vacancies.detail.untitled')}
-            </h1>
-            {companyName && <div className="text-sm text-white/80">{companyName}</div>}
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {statusText && <StageTag code={String(statusText)} />}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          breadcrumbCurrentLabel={watchTitle || model?.title || t('app.vacancies.detail.untitled')}
+          subtitle={
+            <div className="flex flex-wrap items-center gap-2">
+              {companyName ? <span>{companyName}</span> : null}
+              {statusText ? <StageTag code={String(statusText)} /> : null}
               {vacancyIdForBadge ? (
                 <NextActionBadge
                   dto={vacancyNextAction}
                   loading={vacancyNextActionLoading}
                   error={vacancyNextActionError}
-                  inverse
                 />
               ) : null}
-              {Object.keys(pipeCounts).length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(pipeCounts).map(([k, v]) => (
-                    <StatPill key={k} stageCode={k} value={v} />
-                  ))}
-                </div>
-              )}
+              {Object.keys(pipeCounts).length > 0
+                ? Object.entries(pipeCounts).map(([k, v]) => <StatPill key={k} stageCode={k} value={v} />)
+                : null}
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {handleRemove && (
-              <button
-                onClick={handleRemove}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-              >
-                {t('common.actions.delete')}
+          }
+          secondaryActions={
+            <>
+              {handleRemove ? (
+                <button type="button" className="btn-danger btn-sm" onClick={handleRemove}>
+                  {t('common.actions.delete')}
+                </button>
+              ) : null}
+              <button type="button" className="btn-secondary btn-sm" onClick={refresh}>
+                {t('common.actions.refresh')}
               </button>
-            )}
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-              onClick={refresh}
-            >
-              {t('common.actions.refresh')}
-            </button>
-            <Link
-              className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-              to={
-                model?.id
-                  ? `${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${model.id}`
-                  : `${CRM_APP_PATHS.candidates}?view=kanban`
-              }
-            >
-              {t('app.candidates.pipeline.title')}
-            </Link>
-            {can('services.view') && model?.id ? (
               <Link
-                className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-                to={servicesWorkspacePath('orders', {
-                  vacancyId: String(model.id),
-                  ...(model.company_id ? { companyId: String(model.company_id) } : {}),
-                })}
+                className="btn-secondary btn-sm"
+                to={
+                  model?.id
+                    ? `${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${model.id}`
+                    : `${CRM_APP_PATHS.candidates}?view=kanban`
+                }
               >
-                {t('app.nav.items.services')}
+                {t('app.candidates.pipeline.title')}
               </Link>
-            ) : null}
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-              onClick={onBack}
-            >
-              {t('common.actions.cancel')}
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/60 bg-white px-3 py-2 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-white/90"
-              disabled={saving}
-              onClick={save}
-            >
+              {can('services.view') && model?.id ? (
+                <Link
+                  className="btn-secondary btn-sm"
+                  to={servicesWorkspacePath('orders', {
+                    vacancyId: String(model.id),
+                    ...(model.company_id ? { companyId: String(model.company_id) } : {}),
+                  })}
+                >
+                  {t('app.nav.items.services')}
+                </Link>
+              ) : null}
+              <button type="button" className="btn-secondary btn-sm" onClick={onBack}>
+                {t('common.actions.cancel')}
+              </button>
+            </>
+          }
+          primaryAction={
+            <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={save}>
               {saving ? t('common.saving') : t('common.actions.save')}
             </button>
+          }
+        />
+        {pipeLoading ? <div className="mt-2 text-xs text-slate-500">{t('common.loading')}</div> : null}
+        {savedOk ? (
+          <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {t('common.messages.saved')}
           </div>
-        </div>
-        {pipeLoading && <div className="mt-2 text-xs text-white/70">{t('common.loading')}</div>}
+        ) : null}
         {model?.id && routeId !== 'new' ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-white/25 bg-black/10 px-4 py-3 text-sm text-white/95">
+          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
             <span className="font-medium">
               {t('app.vacancies.detail.ops.candidates_linked', {
                 values: { count: model.candidate_count ?? 0 },
               })}
             </span>
             {model.headcount_target != null && model.headcount_target > 0 ? (
-              <span className="text-white/90">
+              <span>
                 {t('app.vacancies.detail.ops.headcount_target', {
                   values: {
                     current: model.candidate_count ?? 0,
@@ -902,14 +885,14 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               </span>
             ) : null}
             {lastCandidateActivityLabel ? (
-              <span className="text-white/80">
+              <span className="text-slate-500">
                 {t('app.vacancies.detail.ops.last_candidate_activity', {
                   values: { when: lastCandidateActivityLabel },
                 })}
               </span>
             ) : null}
             {pipelineBottleneck ? (
-              <span className="text-white/85">
+              <span className="text-slate-600">
                 {t('app.vacancies.detail.ops.bottleneck', {
                   values: { stage: pipelineBottleneck[0], count: pipelineBottleneck[1] },
                 })}
@@ -918,7 +901,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <div className="ml-auto flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-white/30 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25"
+                className="btn-secondary btn-sm"
                 onClick={() => setTab('candidates')}
               >
                 {t('app.vacancies.detail.ops.open_candidate_queue')}
@@ -926,38 +909,32 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             </div>
           </div>
         ) : null}
-      </section>
+      </PageShellHeader>
 
-      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
-        <PageBreadcrumb />
-      </div>
-
-      <div className="flex items-center gap-2 border-b border-slate-200">
-        {(['info','candidates','notes'] as TabKey[]).map(key => (
-          <button
-            key={key}
-            type="button"
-            className={[
-              'px-3 py-2 text-sm -mb-[1px] border-b-2 transition-colors',
-              tab === key ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-slate-500 hover:text-slate-700'
-            ].join(' ')}
-            onClick={()=>setTab(key)}
-          >
-            {key === 'info'
-              ? t('app.vacancies.detail.tabs.info')
-              : key === 'candidates'
-                ? `${t('app.vacancies.detail.tabs.candidates')}${candItems.length ? ` (${candItems.length})` : ''}`
-                : t('app.vacancies.detail.tabs.notes')}
-          </button>
-        ))}
-      </div>
-
-      {savedOk && (
-        <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-          {t('common.messages.saved')}
+      <Toolbar>
+        <div className="flex flex-wrap gap-2">
+          {(['info', 'candidates', 'notes'] as TabKey[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                tab === key
+                  ? 'bg-slate-900 text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+              onClick={() => setTab(key)}
+            >
+              {key === 'info'
+                ? t('app.vacancies.detail.tabs.info')
+                : key === 'candidates'
+                  ? `${t('app.vacancies.detail.tabs.candidates')}${candItems.length ? ` (${candItems.length})` : ''}`
+                  : t('app.vacancies.detail.tabs.notes')}
+            </button>
+          ))}
         </div>
-      )}
+      </Toolbar>
 
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
       {tab === 'info' && (
         <div className="space-y-4">
           <SectionCard title={t('app.vacancies.detail.sections.info')}>
@@ -1069,7 +1046,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               {requirementsPresets.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <select
-                    className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                    className="input h-9 rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
                     value={selectedPresetId}
                     onChange={(e) => setSelectedPresetId(e.target.value)}
                   >
@@ -1247,6 +1224,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         </SectionCard>
       )}
 
-    </div>
+      </div>
+    </PageShell>
   )
 }

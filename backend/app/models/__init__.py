@@ -48,6 +48,7 @@ def _load_model_module(module_name: str) -> ModuleType:
 Tenant = _load_model_module("tenant").Tenant  # type: ignore[attr-defined]
 TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
 Company = _load_model_module("company").Company  # type: ignore[attr-defined]
+ClientAccount = _load_model_module("client_account").ClientAccount  # type: ignore[attr-defined]
 Vacancy = _load_model_module("vacancy").Vacancy  # type: ignore[attr-defined]
 VacancyRecruiter = _load_model_module("vacancy_recruiter").VacancyRecruiter  # type: ignore[attr-defined]
 lead_module = _load_model_module("lead")
@@ -64,6 +65,7 @@ IntakeSourceBinding = intake_routing_module.IntakeSourceBinding  # type: ignore[
 lead_import_module = _load_model_module("lead_import_job")
 LeadImportJob = lead_import_module.LeadImportJob  # type: ignore[attr-defined]
 LeadImportJobStatus = lead_import_module.LeadImportJobStatus  # type: ignore[attr-defined]
+LeadQuestionnaireInvite = _load_model_module("lead_questionnaire_invite").LeadQuestionnaireInvite  # type: ignore[attr-defined]
 Candidate = _load_model_module("candidate").Candidate  # type: ignore[attr-defined]
 RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
@@ -171,6 +173,9 @@ _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
 _load_model_module("activity")
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
+CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
+CommunicationThread = _load_model_module("communication").CommunicationThread  # type: ignore[attr-defined]
+DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
 CandidateService = _load_model_module("service").CandidateService  # type: ignore[attr-defined]
@@ -273,6 +278,7 @@ __all__ = [
     "MetaOAuthPending",
     "LeadImportJob",
     "LeadImportJobStatus",
+    "LeadQuestionnaireInvite",
     "CandidateDeleteRequest",
     "UserInvite",
     "UserAuditLog",
@@ -304,6 +310,9 @@ __all__ = [
     "MergeDocumentGenerationLog",
     "Reminder",
     "UserNotification",
+    "CandidateProfile",
+    "CommunicationThread",
+    "DocumentPolicy",
     "Stage",
     "MagicLink",
     "Invoice",

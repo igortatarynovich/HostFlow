@@ -232,29 +232,26 @@ export default function LeadFormsSettingsPage() {
   const sortedForms = useMemo(() => [...forms].sort((a, b) => a.created_at.localeCompare(b.created_at)), [forms])
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.lead_forms.header_kicker')}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
+          {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
+        </span>
+      }
+      subtitle={t('admin.lead_forms.subtitle', {
+        defaultValue:
+          'Intake entry points for the public portal. Configure Entity Profile binding, preview fields, and smoke-test submit.',
+      })}
+      actions={
+        <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
+          {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
+        </Link>
+      }
+    >
       <section className="settings-panel">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.lead_forms.header_kicker')}
-            title={
-              <span className="inline-flex items-center gap-2">
-                <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
-                {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
-              </span>
-            }
-            subtitle={t('admin.lead_forms.subtitle', {
-              defaultValue:
-                'Intake entry points for the public portal. Configure Entity Profile binding, preview fields, and smoke-test submit.',
-            })}
-            actions={
-              <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
-                {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
-              </Link>
-            }
-          />
-        </div>
 
         {pageError && (
           <div className="mb-4">
@@ -304,7 +301,7 @@ export default function LeadFormsSettingsPage() {
         )}
 
         {canMutate && showProfileCreate && (
-          <div className="mb-6 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+          <div className="mb-6 rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900">
               {t('admin.intake_forms.create_with_profile', { defaultValue: 'New public form (Entity Profile)' })}
             </h3>
@@ -361,7 +358,7 @@ export default function LeadFormsSettingsPage() {
               const shareUrl = slugOk ? publicIntakeUrlForSlug(d.public_slug.trim()) : ''
               const dirty = isDirty(row)
               return (
-                <li key={row.id} className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                <li key={row.id} className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
                   <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                     <label className="block">
                       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -449,6 +446,6 @@ export default function LeadFormsSettingsPage() {
           </ul>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

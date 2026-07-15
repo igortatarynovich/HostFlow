@@ -18,8 +18,8 @@ import { useI18n } from '../i18n'
 import { usePermissions } from '../hooks/usePermissions'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
-import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 
 type PolicyCard = {
   key: string
@@ -44,7 +44,7 @@ export default function AutomationsHubPage() {
         to: CRM_APP_PATHS.settingsRiskIntel,
         title: t('app.automations.hub.policy_risk_title', { defaultValue: 'Risk intelligence' }),
         description: t('app.automations.hub.policy_risk_desc', {
-          defaultValue: 'Hourly risk model, shadow cohorts, stage gate, digest email — team policy in Settings.',
+          defaultValue: 'Hourly risk model, shadow-sm cohorts, stage gate, digest email — team policy in Settings.',
         }),
         Icon: IconShield,
       })
@@ -130,27 +130,24 @@ export default function AutomationsHubPage() {
   }, [can, t])
 
   return (
-    <div className="flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-4 sm:px-6">
-      <div className="border-b border-slate-200 pb-4">
-        <SettingsSubpageHeader
-          backLabel={t('admin.settings.subpage.back_all')}
-          kicker={t('app.automations.hub.header_kicker')}
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
           title={t('app.automations.hub.title', { defaultValue: 'Automations' })}
           subtitle={t('app.automations.hub.subtitle', {
-            defaultValue:
-              'Rules, logs, and lead routing — one place to start; details open on their own screens.',
+            defaultValue: 'Rules, logs, and lead routing — one place to start; details open on their own screens.',
           })}
+          kind="browse"
         />
-      </div>
+      </PageShellHeader>
 
-      <PageBreadcrumb className="max-w-4xl" />
-
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
       <section className="max-w-4xl rounded-xl border border-brand-200/80 bg-brand-50/40 p-4 text-sm text-slate-800 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">
           {t('app.automations.hub.meta_leads_fit_title')}
         </h2>
         <p className="mt-2 leading-relaxed text-slate-700">{t('app.automations.hub.meta_leads_fit_intro')}</p>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-slate-700">
+        <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-slate-700">
           <li>{t('app.automations.hub.meta_leads_fit_step_vacancy')}</li>
           <li>{t('app.automations.hub.meta_leads_fit_step_meta')}</li>
           <li>{t('app.automations.hub.meta_leads_fit_step_rules')}</li>
@@ -159,20 +156,20 @@ export default function AutomationsHubPage() {
           {showMetaLeadPlaybook ? (
             <Link
               to={`${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=settings`}
-              className="btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium"
+              className="btn-secondary inline-flex items-center rounded-lg px-3 py-2 text-xs font-medium"
             >
               {t('app.automations.hub.meta_leads_fit_link_meta')}
             </Link>
           ) : null}
           <Link
             to={CRM_APP_PATHS.automationRules}
-            className="btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium"
+            className="btn-secondary inline-flex items-center rounded-lg px-3 py-2 text-xs font-medium"
           >
             {t('app.automations.hub.meta_leads_fit_link_rules')}
           </Link>
           <Link
             to={CRM_APP_PATHS.vacancies}
-            className="btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium"
+            className="btn-secondary inline-flex items-center rounded-lg px-3 py-2 text-xs font-medium"
           >
             {t('app.automations.hub.meta_leads_fit_link_vacancies')}
           </Link>
@@ -182,7 +179,7 @@ export default function AutomationsHubPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Link
           to={CRM_APP_PATHS.automationRules}
-          className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+          className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
         >
           <div className="flex items-start gap-4">
             <span className="rounded-xl bg-brand-50 p-3 text-brand-700 ring-1 ring-brand-100">
@@ -207,7 +204,7 @@ export default function AutomationsHubPage() {
 
         <Link
           to={CRM_APP_PATHS.automationLog}
-          className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+          className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
         >
           <div className="flex items-start gap-4">
             <span className="rounded-xl bg-slate-50 p-3 text-slate-700 ring-1 ring-slate-200">
@@ -233,10 +230,10 @@ export default function AutomationsHubPage() {
           <>
             <Link
               to={CRM_APP_PATHS.leadsDistribution}
-              className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+              className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
             >
               <div className="flex items-start gap-4">
-                <span className="rounded-xl bg-violet-50 p-3 text-violet-700 ring-1 ring-violet-100">
+                <span className="rounded-xl bg-blue-50 p-3 text-blue-700 ring-1 ring-blue-100">
                   <IconRoute size={28} stroke={1.6} />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -256,7 +253,7 @@ export default function AutomationsHubPage() {
             </Link>
             <Link
               to={CRM_APP_PATHS.leadsDistributionRules}
-              className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+              className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
             >
               <div className="flex items-start gap-4">
                 <span className="rounded-xl bg-slate-50 p-3 text-slate-700 ring-1 ring-slate-200">
@@ -340,6 +337,7 @@ export default function AutomationsHubPage() {
           </div>
         </section>
       ) : null}
-    </div>
+      </div>
+    </PageShell>
   )
 }

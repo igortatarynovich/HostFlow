@@ -9,9 +9,9 @@ Legacy ``active`` is normalized to ``applied`` on read and on assign through the
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
@@ -19,7 +19,19 @@ from backend.app.models.lead import Lead
 from backend.app.models.recruitment_application import RecruitmentApplication
 from backend.app.services.recruitment_application_lifecycle import (
     INITIAL_APPLICATION_STATUS,
+    InvalidRecruitmentApplicationTransition,
+    normalize_application_status,
     set_recruitment_application_status,
+)
+
+
+class RecruitmentApplicationNotFound(LookupError):
+    """Application row missing or not owned by tenant/candidate."""
+
+
+# §7 — progressed rows must not silently change vacancy target.
+_VACANCY_SWITCH_PROGRESS_STATUSES = frozenset(
+    {"in_review", "shortlisted", "ready_for_handoff", "handed_off", "hired"}
 )
 
 
@@ -265,3 +277,204 @@ async def list_recruitment_applications_for_candidate(
         .order_by(RecruitmentApplication.applied_at.desc(), RecruitmentApplication.created_at.desc())
     )
     return list(res.scalars().all())
+
+
+async def _next_application_cycle(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+) -> str:
+    res = await db.execute(
+        select(func.count())
+        .select_from(RecruitmentApplication)
+        .where(
+            RecruitmentApplication.tenant_id == tenant_id,
+            RecruitmentApplication.candidate_id == candidate_id,
+        )
+    )
+    n = int(res.scalar_one() or 0)
+    return f"cycle-{n + 1}"
+
+
+def _append_vacancy_switch_audit(
+    meta: Optional[Dict[str, Any]],
+    *,
+    from_application_id: str,
+    from_vacancy_id: Optional[str],
+    to_vacancy_id: str,
+    actor_sub: Optional[str] = None,
+) -> Dict[str, Any]:
+    m = dict(meta) if isinstance(meta, dict) else {}
+    trail = list(m.get("vacancy_switch_audit_v1") or [])
+    entry: Dict[str, Any] = {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "from_application_id": from_application_id,
+        "from_vacancy_id": from_vacancy_id,
+        "to_vacancy_id": to_vacancy_id,
+    }
+    if actor_sub:
+        entry["actor_sub"] = str(actor_sub).strip()
+    trail.append(entry)
+    m["vacancy_switch_audit_v1"] = trail[-20:]
+    return m
+
+
+async def ensure_recruitment_application_for_external_intent(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    external_id: str,
+    source: str,
+    vacancy_id: Optional[str] = None,
+    recruiter_id: Optional[str] = None,
+    applied_at: Optional[datetime] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Optional[RecruitmentApplication]:
+    """C2b — second apply without Lead: idempotent on ``(tenant, candidate, source, external_id)``."""
+    tid = str(tenant_id).strip()
+    cid = str(candidate_id).strip()
+    ext = str(external_id or "").strip()
+    if not tid or not cid or not ext:
+        return None
+
+    cand = await db.get(Candidate, cid)
+    if cand is None or str(cand.tenant_id) != tid or cand.deleted_at is not None:
+        return None
+
+    src = str(source or "portal").strip() or "portal"
+    res = await db.execute(
+        select(RecruitmentApplication).where(
+            RecruitmentApplication.tenant_id == tid,
+            RecruitmentApplication.candidate_id == cid,
+            RecruitmentApplication.source == src,
+            RecruitmentApplication.external_id == ext,
+        )
+    )
+    existing = res.scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    eff_vac = _norm_vacancy_id(vacancy_id) or _norm_vacancy_id(getattr(cand, "vacancy_id", None))
+    if not eff_vac:
+        return None
+
+    if eff_vac and (not cand.vacancy_id or str(cand.vacancy_id) != eff_vac):
+        cand.vacancy_id = eff_vac
+
+    rid = str(recruiter_id).strip() if recruiter_id else None
+    if rid == "":
+        rid = None
+
+    when = applied_at if applied_at is not None else datetime.now(timezone.utc)
+    cycle = await _next_application_cycle(db, tenant_id=tid, candidate_id=cid)
+    app = RecruitmentApplication(
+        tenant_id=tid,
+        candidate_id=cid,
+        lead_id=None,
+        vacancy_id=eff_vac,
+        source=src,
+        external_id=ext,
+        recruiter_id=rid,
+        applied_at=when,
+        application_cycle=cycle,
+        meta=dict(meta) if isinstance(meta, dict) else {},
+    )
+    set_recruitment_application_status(app, INITIAL_APPLICATION_STATUS)
+    db.add(app)
+    await db.flush()
+    return app
+
+
+async def switch_recruitment_application_vacancy(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    application_id: str,
+    to_vacancy_id: str,
+    actor_sub: Optional[str] = None,
+    close_previous: bool = True,
+) -> Tuple[RecruitmentApplication, RecruitmentApplication]:
+    """I1 — §7 default: new Application row for target vacancy; never overwrite progressed row."""
+    tid = str(tenant_id).strip()
+    cid = str(candidate_id).strip()
+    aid = str(application_id).strip()
+    to_vac = _norm_vacancy_id(to_vacancy_id)
+    if not to_vac:
+        raise ValueError("to_vacancy_id is required")
+
+    app = await db.get(RecruitmentApplication, aid)
+    if app is None or str(app.tenant_id) != tid or str(app.candidate_id) != cid:
+        raise RecruitmentApplicationNotFound(aid)
+
+    from_vac = _norm_vacancy_id(getattr(app, "vacancy_id", None))
+    if from_vac == to_vac:
+        return app, app
+
+    cur = normalize_application_status(app.status)
+    if close_previous and cur in _VACANCY_SWITCH_PROGRESS_STATUSES.union({"applied", "reopened"}):
+        try:
+            if cur not in ("withdrawn", "rejected", "archived"):
+                set_recruitment_application_status(app, "withdrawn")
+                m = dict(app.meta) if isinstance(app.meta, dict) else {}
+                m["vacancy_switch_closed_v1"] = {
+                    "at": datetime.now(timezone.utc).isoformat(),
+                    "reason": "rerouted",
+                    "to_vacancy_id": to_vac,
+                }
+                if actor_sub:
+                    m["vacancy_switch_closed_v1"]["actor_sub"] = str(actor_sub).strip()
+                app.meta = m
+        except InvalidRecruitmentApplicationTransition:
+            pass
+
+    cand = await db.get(Candidate, cid)
+    if cand is not None and (not cand.vacancy_id or str(cand.vacancy_id) != to_vac):
+        cand.vacancy_id = to_vac
+
+    cycle = await _next_application_cycle(db, tenant_id=tid, candidate_id=cid)
+    new_meta = _append_vacancy_switch_audit(
+        {},
+        from_application_id=aid,
+        from_vacancy_id=from_vac,
+        to_vacancy_id=to_vac,
+        actor_sub=actor_sub,
+    )
+    new_app = RecruitmentApplication(
+        tenant_id=tid,
+        candidate_id=cid,
+        lead_id=app.lead_id,
+        vacancy_id=to_vac,
+        source=str(app.source or "meta"),
+        external_id=None,
+        recruiter_id=app.recruiter_id,
+        applied_at=datetime.now(timezone.utc),
+        application_cycle=cycle,
+        meta=new_meta,
+    )
+    set_recruitment_application_status(new_app, INITIAL_APPLICATION_STATUS)
+    db.add(new_app)
+    await db.flush()
+    return app, new_app
+
+
+async def patch_recruitment_application_status(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    application_id: str,
+    new_status: str,
+) -> RecruitmentApplication:
+    """Status PATCH writer — uses lifecycle helper only; **no** WorkforceEmployee side effects (C3)."""
+    tid = str(tenant_id).strip()
+    cid = str(candidate_id).strip()
+    aid = str(application_id).strip()
+    row = await db.get(RecruitmentApplication, aid)
+    if row is None or str(row.tenant_id) != tid or str(row.candidate_id) != cid:
+        raise RecruitmentApplicationNotFound(aid)
+    set_recruitment_application_status(row, new_status)
+    await db.flush()
+    return row

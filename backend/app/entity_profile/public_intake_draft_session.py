@@ -10,12 +10,15 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from backend.app.models.lead_questionnaire_invite import LeadQuestionnaireInvite
 
 from backend.app.entity_profile.decision_layer import (
     DecisionInput,
@@ -82,11 +85,12 @@ def is_public_intake_draft_lead(lead: Lead) -> bool:
 
 @dataclass
 class PublicIntakeSession:
-    kind: Literal["lead_draft", "legacy_candidate"]
+    kind: Literal["lead_draft", "legacy_candidate", "questionnaire_invite"]
     tenant_id: str
     token: str
     lead: Optional[Lead] = None
     candidate: Optional[Candidate] = None
+    invite: Optional["LeadQuestionnaireInvite"] = None
 
     @property
     def lead_id(self) -> Optional[str]:
@@ -113,12 +117,37 @@ class PublicIntakeSession:
         return None
 
 
+async def _find_lead_by_questionnaire_invite_token(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    token: str,
+) -> tuple[Optional[Lead], Optional["LeadQuestionnaireInvite"]]:
+    from backend.app.modules.leads.lead_questionnaire_invite import find_questionnaire_invite_by_token
+
+    invite = await find_questionnaire_invite_by_token(db, token=token)
+    if invite is None or str(invite.tenant_id) != str(tenant_id):
+        return None, None
+    lead = await db.get(Lead, str(invite.lead_id))
+    if lead is None or str(lead.tenant_id) != str(tenant_id):
+        return None, None
+    return lead, invite
+
+
 async def find_lead_draft_by_intake_token(
     db: AsyncSession,
     *,
     tenant_id: str,
     token: str,
 ) -> Optional[Lead]:
+    lead, _invite = await _find_lead_by_questionnaire_invite_token(
+        db,
+        tenant_id=str(tenant_id),
+        token=token,
+    )
+    if lead is not None:
+        return lead
+
     stmt = select(Lead).where(
         Lead.tenant_id == str(tenant_id),
         Lead.source == PUBLIC_INTAKE_SOURCE,
@@ -155,6 +184,16 @@ async def find_lead_draft_by_contact(
 
 
 async def resolve_public_intake_lead_draft_tenant_id(db: AsyncSession, token: str) -> Optional[str]:
+    from backend.app.models.lead_questionnaire_invite import LeadQuestionnaireInvite
+
+    invite_tid = await db.scalar(
+        select(LeadQuestionnaireInvite.tenant_id)
+        .where(LeadQuestionnaireInvite.token == str(token))
+        .limit(1)
+    )
+    if invite_tid:
+        return str(invite_tid)
+
     stmt = select(Lead.tenant_id, Lead.normalized).where(
         Lead.source == PUBLIC_INTAKE_SOURCE,
         Lead.stage == "intake_draft",
@@ -169,6 +208,43 @@ async def resolve_public_intake_lead_draft_tenant_id(db: AsyncSession, token: st
     return None
 
 
+async def find_lead_draft_by_status_share_token(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    share_token: str,
+) -> Optional[Lead]:
+    stmt = select(Lead).where(
+        Lead.tenant_id == str(tenant_id),
+        Lead.source == PUBLIC_INTAKE_SOURCE,
+        Lead.stage == "intake_draft",
+    )
+    result = await db.execute(stmt)
+    for lead in result.scalars().all():
+        block = get_public_intake_draft_block(lead)
+        if str(block.get("status_share_token") or "") == str(share_token):
+            return lead
+    return None
+
+
+async def resolve_public_intake_lead_draft_status_tenant_id(
+    db: AsyncSession,
+    share_token: str,
+) -> Optional[str]:
+    stmt = select(Lead.tenant_id, Lead.normalized).where(
+        Lead.source == PUBLIC_INTAKE_SOURCE,
+        Lead.stage == "intake_draft",
+    )
+    result = await db.execute(stmt)
+    for tenant_id, normalized in result.all():
+        if not isinstance(normalized, dict):
+            continue
+        block = normalized.get(PUBLIC_INTAKE_DRAFT_V1)
+        if isinstance(block, dict) and str(block.get("status_share_token") or "") == str(share_token):
+            return str(tenant_id)
+    return None
+
+
 async def resolve_public_intake_session(
     db: AsyncSession,
     *,
@@ -176,10 +252,35 @@ async def resolve_public_intake_session(
     token: str,
     legacy_loader,
 ) -> PublicIntakeSession:
-    """Load lead-first draft session or legacy candidate draft (compatibility)."""
-    lead = await find_lead_draft_by_intake_token(db, tenant_id=str(tenant_id), token=token)
-    if lead is not None:
+    """Load questionnaire invite, lead-first draft session, or legacy candidate draft."""
+    from backend.app.modules.leads.lead_questionnaire_invite import INVITE_STATUS_SUBMITTED
+
+    invite_lead, invite = await _find_lead_by_questionnaire_invite_token(
+        db,
+        tenant_id=str(tenant_id),
+        token=token,
+    )
+    if invite is not None and invite_lead is not None:
+        if invite.expires_at and invite.expires_at < _now() and invite.status != INVITE_STATUS_SUBMITTED:
+            raise HTTPException(status_code=410, detail="Intake link expired")
+        return PublicIntakeSession(
+            kind="questionnaire_invite",
+            tenant_id=str(tenant_id),
+            token=token,
+            lead=invite_lead,
+            invite=invite,
+        )
+
+    stmt = select(Lead).where(
+        Lead.tenant_id == str(tenant_id),
+        Lead.source == PUBLIC_INTAKE_SOURCE,
+        Lead.stage == "intake_draft",
+    )
+    result = await db.execute(stmt)
+    for lead in result.scalars().all():
         block = get_public_intake_draft_block(lead)
+        if str(block.get("intake_token") or "") != str(token):
+            continue
         expires_at = block.get("intake_token_expires_at")
         if expires_at:
             try:
@@ -319,6 +420,18 @@ async def create_or_reuse_public_intake_lead_draft(
     if is_client and not own_company_id:
         raise ValueError("own_company_id is required for client intake draft")
 
+    if not is_client and company_id:
+        from backend.app.services.launch_search_vacancy_setup import ensure_recruitment_funnels_for_company
+
+        try:
+            await ensure_recruitment_funnels_for_company(
+                db,
+                tenant_id=str(tenant_id),
+                company_id=str(company_id),
+            )
+        except Exception:
+            pass
+
     token = _generate_token()
     block = {
         "intake_token": token,
@@ -357,6 +470,10 @@ async def create_or_reuse_public_intake_lead_draft(
 
 
 def session_intake_state(session: PublicIntakeSession) -> dict[str, Any]:
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        from backend.app.modules.leads.lead_questionnaire_invite import invite_intake_state
+
+        return invite_intake_state(session.invite)
     if session.kind == "legacy_candidate" and session.candidate is not None:
         state = session.candidate.intake_state
         return dict(state) if isinstance(state, dict) else {}
@@ -368,6 +485,11 @@ def session_intake_state(session: PublicIntakeSession) -> dict[str, Any]:
 
 
 def write_session_intake_state(session: PublicIntakeSession, state: dict[str, Any]) -> None:
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        from backend.app.modules.leads.lead_questionnaire_invite import write_invite_intake_state
+
+        write_invite_intake_state(session.invite, state)
+        return
     if session.kind == "legacy_candidate" and session.candidate is not None:
         session.candidate.intake_state = dict(state)
         return
@@ -378,6 +500,12 @@ def write_session_intake_state(session: PublicIntakeSession, state: dict[str, An
 
 
 def session_intake_status(session: PublicIntakeSession) -> str:
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        from backend.app.modules.leads.lead_questionnaire_invite import INVITE_STATUS_SUBMITTED
+
+        if session.invite.status == INVITE_STATUS_SUBMITTED:
+            return "submitted"
+        return "draft"
     if session.kind == "legacy_candidate" and session.candidate is not None:
         if session.candidate.intake_submitted_at:
             return "submitted"
@@ -387,6 +515,8 @@ def session_intake_status(session: PublicIntakeSession) -> str:
 
 
 def session_created_at(session: PublicIntakeSession) -> Optional[datetime]:
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        return session.invite.created_at
     if session.kind == "legacy_candidate" and session.candidate is not None:
         return getattr(session.candidate, "intake_token_created_at", None)
     block = get_public_intake_draft_block(session.lead) if session.lead else {}
@@ -400,6 +530,8 @@ def session_created_at(session: PublicIntakeSession) -> Optional[datetime]:
 
 
 def session_expires_at(session: PublicIntakeSession) -> Optional[datetime]:
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        return session.invite.expires_at
     if session.kind == "legacy_candidate" and session.candidate is not None:
         return getattr(session.candidate, "intake_token_expires_at", None)
     block = get_public_intake_draft_block(session.lead) if session.lead else {}
@@ -413,6 +545,8 @@ def session_expires_at(session: PublicIntakeSession) -> Optional[datetime]:
 
 
 def session_submitted_at(session: PublicIntakeSession) -> Optional[datetime]:
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        return session.invite.submitted_at
     if session.kind == "legacy_candidate" and session.candidate is not None:
         return getattr(session.candidate, "intake_submitted_at", None)
     block = get_public_intake_draft_block(session.lead) if session.lead else {}
@@ -434,6 +568,9 @@ def session_status_share_token(session: PublicIntakeSession) -> Optional[str]:
 
 def mark_session_submitted(session: PublicIntakeSession) -> None:
     now = _now()
+    if session.kind == "questionnaire_invite" and session.invite is not None:
+        session.invite.submitted_at = now
+        return
     if session.kind == "legacy_candidate" and session.candidate is not None:
         session.candidate.intake_status = "submitted"
         session.candidate.intake_submitted_at = now

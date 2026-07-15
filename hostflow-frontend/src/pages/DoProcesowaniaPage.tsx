@@ -21,7 +21,8 @@ import { toCSV, formatDateSafe } from '../modules/candidates/candidateUtils'
 import { canonicalStageKey, translateStageLabel } from '../utils/stageLabels'
 import { ColumnFilterMenu } from '../modules/candidates/components'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
 type CompanyOption = { id: string; name: string }
 
 type TabKey = 'do-procesowania' | 'w-procesie' | 'historia-decyzji'
@@ -830,24 +831,43 @@ export default function DoProcesowaniaPage() {
   )
 
   return (
-    <div className="w-full max-w-none p-0" style={{ width: '100%', maxWidth: 'none' }}>
-      <h1 className="text-2xl font-semibold text-slate-900">{t('app.handoff.do_procesowania')}</h1>
-      <p className="mt-1 text-sm text-slate-500">{t('app.handoff.do_procesowania_subtitle')}</p>
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.handoff.do_procesowania')}
+          subtitle={t('app.handoff.do_procesowania_subtitle')}
+          kind="browse"
+        />
+      </PageShellHeader>
 
-      <div className="mt-3 max-w-5xl">
-        <PageBreadcrumb />
-      </div>
-
-      {isClientTenant && !selectedCompanyId ? (
-        <div className="mt-4 space-y-3">
-          <p className="text-sm text-slate-600">{t('app.handoff.your_org')}</p>
-          {role === 'administrator' && companies.length > 0 && (
-            <div>
-              <label className="label">{t('app.handoff.filter_by_company')}</label>
+      <Toolbar>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {isClientTenant && !selectedCompanyId ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-slate-600">{t('app.handoff.your_org')}</span>
+                {role === 'administrator' && companies.length > 0 ? (
+                  <select
+                    value={selectedCompanyId ?? ''}
+                    onChange={(e) => setSelectedCompanyId(e.target.value || null)}
+                    className="input h-9 w-auto py-2 text-sm"
+                    aria-label={t('app.handoff.filter_by_company')}
+                  >
+                    <option value="">—</option>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+            ) : (
               <select
                 value={selectedCompanyId ?? ''}
                 onChange={(e) => setSelectedCompanyId(e.target.value || null)}
-                className="input mt-1 max-w-xs"
+                className="input h-9 w-auto py-2 text-sm"
+                aria-label={t('app.handoff.company')}
               >
                 <option value="">—</option>
                 {companies.map((c) => (
@@ -856,86 +876,74 @@ export default function DoProcesowaniaPage() {
                   </option>
                 ))}
               </select>
+            )}
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm">
+              {TABS.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={clsx(
+                    'rounded-lg px-3 py-2',
+                    activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600',
+                  )}
+                >
+                  {tab === 'do-procesowania' && t('app.handoff.tabs.to_process')}
+                  {tab === 'w-procesie' && t('app.handoff.tabs.in_process')}
+                  {tab === 'historia-decyzji' && t('app.handoff.tabs.history')}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="mt-4">
-          <label className="label">{t('app.handoff.company')}</label>
-          <select
-            value={selectedCompanyId ?? ''}
-            onChange={(e) => setSelectedCompanyId(e.target.value || null)}
-            className="input mt-1 max-w-xs"
-          >
-            <option value="">—</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={clsx(
-                'rounded-lg px-3 py-1.5',
-                activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600',
-              )}
-            >
-              {tab === 'do-procesowania' && t('app.handoff.tabs.to_process')}
-              {tab === 'w-procesie' && t('app.handoff.tabs.in_process')}
-              {tab === 'historia-decyzji' && t('app.handoff.tabs.history')}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <input
-              className="input w-72 pr-8"
-              value={globalSearch}
-              onChange={(e) => setGlobalSearch(e.target.value)}
-              placeholder={t('app.handoff.search_placeholder')}
-            />
-            <span className="pointer-events-none absolute right-2 top-1.5 text-slate-400">⌕</span>
           </div>
-          {pendingRows.length > 0 && checkedIds.length > 0 && (
-            <>
-              <button type="button" onClick={() => void handleBulkAccept()} disabled={submitting} className="btn-primary btn-sm">
-                {t('app.handoff.accept_btn')} ({checkedIds.length})
-              </button>
-              <button type="button" onClick={() => setBulkReturnActive(true)} disabled={submitting} className="btn-secondary btn-sm">
-                {t('app.handoff.return_btn')} ({checkedIds.length})
-              </button>
-              <button type="button" onClick={() => setBulkRejectActive(true)} disabled={submitting} className="btn-danger btn-sm">
-                {t('app.handoff.reject_btn')} ({checkedIds.length})
-              </button>
-            </>
-          )}
-          <button type="button" onClick={handleExportCSV} disabled={sortedRows.length === 0} className="btn-secondary btn-sm">
-            CSV
-          </button>
-        </div>
-      </div>
-      {searchTooShort && (
-        <p className="mt-2 text-xs text-amber-700">{t('app.handoff.search_min')}</p>
-      )}
 
-      <div className="mt-4 card overflow-hidden">
-        {loading ? (
-          <p className="p-4 text-sm text-slate-500">{t('common.loading')}</p>
-        ) : (
-          <div className="overflow-auto">
-          <table className="min-w-full border-separate border-spacing-0 text-sm [&_th]:border-r [&_th]:border-slate-200 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-100 [&_td:last-child]:border-r-0">
-            <thead className="align-top border-b-2 border-slate-200 bg-slate-50">
-              <tr>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <input
+                className="input h-9 w-72 pr-8 text-sm"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder={t('app.handoff.search_placeholder')}
+              />
+              <span className="pointer-events-none absolute right-2 top-2 text-slate-400">⌕</span>
+            </div>
+            {pendingRows.length > 0 && checkedIds.length > 0 ? (
+              <>
+                <button type="button" onClick={() => void handleBulkAccept()} disabled={submitting} className="btn-primary btn-sm">
+                  {t('app.handoff.accept_btn')} ({checkedIds.length})
+                </button>
+                <button type="button" onClick={() => setBulkReturnActive(true)} disabled={submitting} className="btn-secondary btn-sm">
+                  {t('app.handoff.return_btn')} ({checkedIds.length})
+                </button>
+                <button type="button" onClick={() => setBulkRejectActive(true)} disabled={submitting} className="btn-danger btn-sm">
+                  {t('app.handoff.reject_btn')} ({checkedIds.length})
+                </button>
+              </>
+            ) : null}
+            <button type="button" onClick={handleExportCSV} disabled={sortedRows.length === 0} className="btn-secondary btn-sm">
+              CSV
+            </button>
+          </div>
+        </div>
+      </Toolbar>
+
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+        {searchTooShort ? (
+          <p className="mb-2 text-xs text-amber-700">{t('app.handoff.search_min')}</p>
+        ) : null}
+
+        <DataTableFrame
+          className="min-h-0 flex-1"
+          footer={t('app.handoff.rows_count', {
+            defaultValue: '{{count}} rows',
+            values: { count: sortedRows.length },
+          })}
+        >
+          {loading ? (
+            <p className="px-4 py-6 text-sm text-slate-500">{t('common.loading')}</p>
+          ) : (
+            <table className="min-w-full border-separate border-spacing-0 text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_0_rgb(226_232_240)]">
+              <tr className="h-11 bg-slate-50 text-left">
                 {pendingRows.length > 0 && (
                   <th className="px-4 py-3 text-left w-10">
                     <input
@@ -1215,8 +1223,8 @@ export default function DoProcesowaniaPage() {
               )}
             </tbody>
           </table>
-          </div>
-        )}
+          )}
+        </DataTableFrame>
       </div>
 
       {(returnModal || bulkReturnActive) && (
@@ -1302,6 +1310,6 @@ export default function DoProcesowaniaPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

@@ -141,6 +141,7 @@ class IntakeFormDetailOut(BaseModel):
     presentation: dict[str, Any]
     presentations_available: List[dict[str, Any]] = Field(default_factory=list)
     submit_destination: dict[str, Any]
+    forms_platform: Optional[dict[str, Any]] = None
 
 
 class IntakeFormSmokeTestOut(BaseModel):

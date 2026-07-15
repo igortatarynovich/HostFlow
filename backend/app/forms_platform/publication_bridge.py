@@ -1,0 +1,189 @@
+"""Bridge TenantLeadForm → ADR-007 Form Publication view (C4)."""
+
+from __future__ import annotations
+
+from typing import Any, Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
+from backend.app.entity_profile.ingest_runtime import resolve_public_intake_source_profile_id
+from backend.app.forms_platform.constants import (
+    FORMS_PLATFORM_ADR,
+    FORMS_PLATFORM_CONTRACT_VERSION,
+    FORMS_TIER_BASIC,
+    PUBLICATION_MODE_LINKED,
+    PUBLICATION_MODE_STANDALONE,
+    STORAGE_BACKEND_TENANT_LEAD_FORM,
+)
+from backend.app.forms_platform.handlers import list_registered_handlers, resolve_submission_handler
+from backend.app.models.intake_routing import IntakeSourceProfile
+from backend.app.models.tenant_lead_form import TenantLeadForm
+from backend.app.modules.intake_routing import crud as intake_crud
+
+
+async def _load_lead_form_by_slug(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    public_slug: str,
+) -> TenantLeadForm | None:
+    slug = str(public_slug or "").strip()
+    if not slug:
+        return None
+    return await db.scalar(
+        select(TenantLeadForm).where(
+            TenantLeadForm.tenant_id == str(tenant_id),
+            TenantLeadForm.public_slug == slug,
+        )
+    )
+
+
+async def _load_lead_form_by_id(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+) -> TenantLeadForm | None:
+    fid = str(form_id or "").strip()
+    if not fid:
+        return None
+    return await db.scalar(
+        select(TenantLeadForm).where(
+            TenantLeadForm.tenant_id == str(tenant_id),
+            TenantLeadForm.id == fid,
+        )
+    )
+
+
+async def _publication_mode_for_intake_source(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    intake_source: IntakeSourceProfile | None,
+) -> str:
+    if intake_source is None:
+        return PUBLICATION_MODE_STANDALONE
+    bindings = await intake_crud.list_bindings_for_profile(
+        db,
+        tenant_id=str(tenant_id),
+        profile_id=str(intake_source.id),
+    )
+    for binding in bindings:
+        key = str(getattr(binding, "external_key", "") or "")
+        if key.startswith("vacancy_id:") or key.startswith("job_post_id:"):
+            return PUBLICATION_MODE_LINKED
+    return PUBLICATION_MODE_STANDALONE
+
+
+def build_forms_platform_publication_view(
+    *,
+    lead_form: TenantLeadForm,
+    intake_source: IntakeSourceProfile | None,
+    entity_profile_code: str,
+    publication_mode: str,
+) -> dict[str, Any]:
+    public_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
+    route_intent = str(getattr(intake_source, "route_intent", None) or "candidate_application")
+    handler = resolve_submission_handler(route_intent=route_intent)
+    ep_code = str(entity_profile_code or DRIVER_CE_PROFILE_CODE).strip() or DRIVER_CE_PROFILE_CODE
+    presentation_code = str(getattr(intake_source, "presentation_code", None) or "").strip() or None
+
+    return {
+        "contract_version": FORMS_PLATFORM_CONTRACT_VERSION,
+        "adr": FORMS_PLATFORM_ADR,
+        "publication_id": str(lead_form.id),
+        "storage_backend": STORAGE_BACKEND_TENANT_LEAD_FORM,
+        "title": str(lead_form.title or ""),
+        "public_slug": public_slug,
+        "is_active": bool(lead_form.is_active),
+        "mode": publication_mode,
+        "tier": FORMS_TIER_BASIC,
+        "module_owner": handler["module_owner"],
+        "entity_profile_code": ep_code,
+        "presentation_code": presentation_code,
+        "intake_source_profile_id": str(intake_source.id) if intake_source else None,
+        "public_intake_path": "/api/v1/public/intake",
+        "public_apply_path_template": "/public/apply/{token}",
+        "submission_handler": handler,
+        "capabilities": {
+            "file_uploads": True,
+            "field_mapping": True,
+            "consent_capture": True,
+            "presentation_rules": True,
+        },
+        "canon": "TenantLeadForm is bridged as ADR-007 publication until FormTemplate migration",
+    }
+
+
+async def resolve_forms_platform_publication(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    public_slug: str | None = None,
+    form_id: str | None = None,
+) -> dict[str, Any] | None:
+    """Resolve ADR-007 publication contract for a tenant lead form."""
+    lead_form: TenantLeadForm | None = None
+    if form_id:
+        lead_form = await _load_lead_form_by_id(db, tenant_id=str(tenant_id), form_id=str(form_id))
+    elif public_slug:
+        lead_form = await _load_lead_form_by_slug(db, tenant_id=str(tenant_id), public_slug=str(public_slug))
+    if lead_form is None:
+        return None
+
+    slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
+    intake_source_profile_id = await resolve_public_intake_source_profile_id(
+        db,
+        tenant_id=str(tenant_id),
+        lead_form_id=str(lead_form.id),
+        public_slug=slug,
+    )
+    intake_source: IntakeSourceProfile | None = None
+    if intake_source_profile_id:
+        intake_source = await intake_crud.get_profile_by_id(
+            db,
+            tenant_id=str(tenant_id),
+            profile_id=str(intake_source_profile_id),
+        )
+
+    entity_profile_code = (
+        str(getattr(intake_source, "entity_profile_code", None) or "").strip()
+        or DRIVER_CE_PROFILE_CODE
+    )
+    mode = await _publication_mode_for_intake_source(
+        db,
+        tenant_id=str(tenant_id),
+        intake_source=intake_source,
+    )
+    return build_forms_platform_publication_view(
+        lead_form=lead_form,
+        intake_source=intake_source,
+        entity_profile_code=entity_profile_code,
+        publication_mode=mode,
+    )
+
+
+async def build_forms_platform_admin_block(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+) -> dict[str, Any]:
+    """Admin-facing ADR-007 block for intake form detail."""
+    publication = await resolve_forms_platform_publication(
+        db,
+        tenant_id=str(tenant_id),
+        form_id=str(form_id),
+    )
+    if publication is None:
+        return {
+            "contract_version": FORMS_PLATFORM_CONTRACT_VERSION,
+            "adr": FORMS_PLATFORM_ADR,
+            "available_handlers": list_registered_handlers(),
+        }
+    return {
+        **publication,
+        "available_handlers": list_registered_handlers(),
+    }

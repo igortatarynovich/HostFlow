@@ -6,6 +6,11 @@ from typing import Dict, Sequence
 
 from httpx import AsyncClient
 
+from backend.tests.test_support.candidate_evidence_helpers import (
+    RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS,
+    satisfy_first_contact_operational_requirement,
+)
+
 # Aligns with default checklist used by hiring / handoff gate (see test_documents._ensure_required_documents).
 DEFAULT_HANDOFF_GATE_DOC_TYPES: tuple[str, ...] = (
     "driver_license",
@@ -45,7 +50,8 @@ async def seed_documents_for_ready_for_handoff(
     elif isinstance(address_raw, dict):
         has_address = bool(str(address_raw.get("line1") or address_raw.get("address") or "").strip())
     if not has_address:
-        patch_payload["personal_data"] = {**personal, "address": "Handoff Gate Street 1, Warsaw"}
+        extra = cand.get("extra") if isinstance(cand.get("extra"), dict) else {}
+        patch_payload["extra"] = {**extra, "address": "Handoff Gate Street 1, Warsaw"}
 
     if patch_payload:
         contact_patch = await client.patch(
@@ -63,3 +69,15 @@ async def seed_documents_for_ready_for_handoff(
         }
         resp = await client.post("/api/v1/documents/", headers=manager_headers, json=payload)
         assert resp.status_code == 200, resp.text
+
+    confirm = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=manager_headers,
+        json={"extra": {"recruitment_dossier_confirmed_blocks": list(RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS)}},
+    )
+    assert confirm.status_code == 200, confirm.text
+    await satisfy_first_contact_operational_requirement(
+        client,
+        manager_headers,
+        candidate_id=candidate_id,
+    )

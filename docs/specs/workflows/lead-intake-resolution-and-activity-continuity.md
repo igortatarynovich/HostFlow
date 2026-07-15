@@ -3,7 +3,7 @@
 **Status:** architecture / product spec — **guardrails before implementation**.  
 **Purpose:** separate **intake triage** from **routing**, **recruitment workflow**, and **candidate operations** so the Lead screen becomes an **Intake Decision Workspace**, not a mini Candidate card.
 
-**Related:** [ingestion-contract-template.md](ingestion-contract-template.md) (mandatory lightweight contract per ingestion channel), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) (implementation snapshot: stable vs gaps vs slices), [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) (canonical story: Lead / Candidate / Application / conversion), [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md) (entity boundaries), [activity-notification-operating-layer.md](../architecture/activity-notification-operating-layer.md), [phase-1-3-activity-layer-v1-migration-plan.md](../architecture/phase-1-3-activity-layer-v1-migration-plan.md), [application-creation-mvp.md](application-creation-mvp.md) (Applications MVP closed separately), [modules/leads.md](../modules/leads.md).
+**Related:** [**recruitment-operational-goals-and-order.md**](recruitment-operational-goals-and-order.md) (цели и порядок: Lead first → Candidate requirements → Handoff), [ingestion-contract-template.md](ingestion-contract-template.md) (mandatory lightweight contract per ingestion channel), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) (implementation snapshot: stable vs gaps vs slices), [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) (canonical story: Lead / Candidate / Application / conversion), [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md) (entity boundaries), [activity-notification-operating-layer.md](../architecture/activity-notification-operating-layer.md), [phase-1-3-activity-layer-v1-migration-plan.md](../architecture/phase-1-3-activity-layer-v1-migration-plan.md), [application-creation-mvp.md](application-creation-mvp.md) (Applications MVP closed separately), [modules/leads.md](../modules/leads.md).
 
 ### Phase discipline: semantic foundation → operational consolidation
 
@@ -286,7 +286,7 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Practical delivery track:** **Intake Resolution MVP** — шесть срезов ниже (в этом порядке). Не путать с «только Lead UI cleanup»: срез 6 — последний, после семантики и guards.
 
-**Параллельно (архитектура):** публичный Candidate-first vs CRM Lead-first — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Proposed**); правило **не расширять новый канал без записанного ingestion contract** — см. ADR § «Ingestion governance».
+**Параллельно (архитектура):** публичный candidate intake — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Accepted 2026-07-02**); contract [ingestion-contract-public-intake.md](ingestion-contract-public-intake.md). Telegram — отдельный contract при расширении.
 
 Порядок срезов совпадает с [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) §4.
 
@@ -297,7 +297,7 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 | **3** | **Reject reasons + intake taxonomy** | Foundation для source/campaign/recruiter KPI и automation; CRM `lost` недостаточно. §5 коды — опора аналитики. |
 | **4** | **Qualification summary** | Один компактный блок (опыт, документы, язык, fit, route, source) **без** гигантских виджетов — поддержка решения по intake, не дублирование candidate card. |
 | **5** | **Activity continuity guards** | Enforcement: нет дублирующего first-call/SLA после convert; перенос контекста (§7). Doctrine без слоя проверки ≠ «проблема решена». |
-| **6** | **Lead workspace cleanup** | Demote stage/fit/automation/playbook до вторичного; **intake decision first** в layout и mental model. |
+| **6** | **Lead workspace cleanup** | Demote stage/fit/automation/playbook до вторичного; **intake decision first** в layout и mental model. | **Done (2026-07-02)** — recruitment detail + inbox workspace; CRM chrome under More. |
 
 **Порядок намеренный:** сначала семантика, действия, таксономия, qualification data, continuity guards — **затем** чистка UI. Рисовать «красивый Lead» до стабилизации смыслов почти всегда даёт **operationally inconsistent** интерфейс.
 

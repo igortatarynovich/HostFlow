@@ -98,7 +98,7 @@ export default function HiringPipelineGatesSettingsPage() {
   }
 
   return (
-    <div className="settings-page-shell-narrow">
+    
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
@@ -107,8 +107,7 @@ export default function HiringPipelineGatesSettingsPage() {
         subtitle={t('admin.hiring_gates.blurb', {
           defaultValue:
             'Configure which stages enforce document, vacancy, and contact-attempt rules. Stored in tenant settings (hiring_stage_gates_v1).',
-        })}
-      />
+        })}>
 
       {loading ? (
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
@@ -238,6 +237,6 @@ export default function HiringPipelineGatesSettingsPage() {
           )}
         </div>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

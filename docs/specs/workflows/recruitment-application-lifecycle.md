@@ -198,23 +198,24 @@ Normative semantics remain §§1–11. The table below is the **contract alignme
 |--------|------|------|--------|
 | Enum §3 + `active`→`applied` | §3, §3 legacy note | `backend/app/services/recruitment_application_lifecycle.py` | `backend/tests/services/test_recruitment_application_lifecycle.py`; Alembic `202605120001_recruitment_application_status_applied.py` |
 | Transition matrix §4 (distinct edges) | §4 | `_ALLOWED_TRANSITIONS`, `validate_application_status_transition`, `apply_application_status_transition`, **`set_recruitment_application_status`** (ORM writes) | `test_recruitment_application_lifecycle.py` (incl. forbidden edge parametrize) |
-| **(c)** guards (hire binding, reopen policy) | §4 guards | **Not** in helper — future status PATCH / domain services | — |
-| Create + list | creation MVP | `recruitment_application_service.py`; GET router uses `normalize_application_status` | `backend/tests/api/test_recruitment_applications_mvp.py` |
+| **(c)** guards (hire binding, reopen policy) | §4 guards | PATCH exists; domain guards still open | — |
+| Create + list + PATCH status | creation MVP | `recruitment_application_service.py`; GET/PATCH router | `test_recruitment_applications_mvp.py`, `test_recruitment_application_a6.py` |
 | Idempotency `lead_id` | §10 | `ensure_recruitment_application_for_lead_intent` | MVP tests |
-| Idempotency no-lead | §10 subset | same helper, `(tenant, candidate, vacancy_id, source)` branch | MVP tests |
+| Idempotency no-lead / external | §10 | `ensure_recruitment_application_for_external_intent` | **C2b** — `test_recruitment_application_a6.py` |
 | Pool → vacancy + audit | §6 | `meta["pool_to_vacancy_audit_v1"]` | `test_pool_to_vacancy_updates_row_and_audit_meta` |
-| Vacancy switch §7 | §7 default new row | **No** dedicated policy API yet | sync note **I1** |
+| Vacancy switch §7 | §7 default new row | `switch_recruitment_application_vacancy` + POST API | sync note **I1 Done** |
 | No automatic Candidate.stage from Application.status | §2 | No coupling in `ensure_*`; `test_ensure_does_not_change_candidate_stage` | MVP suite (**C4**) |
-| `hired` does not materialize Employee alone | §8 | No implicit Employee create on status | **C3** — add when PATCH exists |
+| `hired` does not materialize Employee alone | §8 | PATCH only; no WorkforceEmployee side effect | **C3 Done** — `test_recruitment_application_a6.py` |
 
 ---
 
 ## Next implementation step (after spec + sync)
 
 1. ~~Enum + migration from `active`~~ — done in aligned tree.
-2. ~~Transition helper (matrix edges)~~ — done; **`set_recruitment_application_status`** enforces writes on create (`ensure_*`); wire **future** PATCH / other mutators through the same helper.
-3. **Still open:** **C2b** second-apply without new Lead; **C3** regression test for `hired`; **I1** vacancy-switch policy; **(c)** guards in service layer.
-4. **UI:** display raw status with normalization only; no new workflow surfaces required by this doc.
+2. ~~Transition helper (matrix edges)~~ — done; **`set_recruitment_application_status`** + PATCH API.
+3. ~~**C2b / C3 / I1**~~ — Done (A6, 2026-07-02).
+4. **Still open:** **(c)** guards in service layer.
+5. **UI:** display raw status with normalization only; no new workflow surfaces required by this doc.
 
 ---
 

@@ -174,21 +174,20 @@ export default function CommunicationsQueueSettingsPage() {
   }, [planLimitModal, t])
 
   return (
-    <div className="space-y-4">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsCommunications}
-        backLabel={t('admin.communications_queue.actions.all_settings', { defaultValue: 'All communication settings' })}
-        kicker={t('admin.communications_queue.header_kicker')}
-        title={t('admin.communications_queue.title', { defaultValue: 'Queue settings' })}
-        subtitle={t('admin.communications_queue.subtitle', {
-          defaultValue: 'Manager allocation strategy, queue flags and diagnostics.',
-        })}
-        actions={
-          <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
-            {t('admin.communications_queue.actions.open_messages', { defaultValue: 'Open messages' })}
-          </Link>
-        }
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsCommunications}
+      backLabel={t('admin.communications_queue.actions.all_settings', { defaultValue: 'All communication settings' })}
+      kicker={t('admin.communications_queue.header_kicker')}
+      title={t('admin.communications_queue.title', { defaultValue: 'Queue settings' })}
+      subtitle={t('admin.communications_queue.subtitle', {
+        defaultValue: 'Manager allocation strategy, queue flags and diagnostics.',
+      })}
+      actions={
+        <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
+          {t('admin.communications_queue.actions.open_messages', { defaultValue: 'Open messages' })}
+        </Link>
+      }
+    >
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
@@ -494,6 +493,6 @@ export default function CommunicationsQueueSettingsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

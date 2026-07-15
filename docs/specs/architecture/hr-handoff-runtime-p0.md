@@ -1,10 +1,12 @@
 # HR Handoff Runtime P0 — architecture gate
 
-**Status:** **OPEN** — spec only; no runtime implementation authorized until gate checklist (§7) is approved.
+**Status:** **CLOSED** — gate checklist §7 satisfied (2026-07-02); automated regression suite green.
 
 **Prerequisite:** [`hr-employee-pipeline-p0.md`](hr-employee-pipeline-p0.md) **CLOSED** (`PASS WITH NOTES`, 2026-06-30).
 
 **Owner:** Platform core + HR module + Recruitment handoff contour.
+
+**Operating order (Lead → Candidate requirements → Handoff):** [recruitment-operational-goals-and-order.md](../workflows/recruitment-operational-goals-and-order.md).
 
 **Related:**
 
@@ -151,15 +153,15 @@ flowchart TD
 
 Gate closes when all are true:
 
-- [ ] `handoff_from_candidate` assigns `meta.employee_pipeline` via HR resolver (no recruitment resolver).
-- [ ] Recruitment-origin materialization sets stage mapped to **`received_from_recruitment`** when present in funnel.
-- [ ] `accept_internal_hr_handoff` (and delayed approve path) uses same assignment; existing tests extended.
-- [ ] Module gates: HR off blocks internal_hr handoff + from-candidate; recruitment off blocks handoff create; HR-only create still passes H6.
-- [ ] `handoff-contract.md` aligned with PR-5 (T2 canonical, T1 deprecated).
-- [ ] Idempotency: repeat accept / existing employee — no duplicate workforce; stable pipeline meta per §5.3.
-- [ ] No new recruitment → HR coupling in HR resolver/bootstrap (§2.3 regression).
+- [x] `handoff_from_candidate` assigns `meta.employee_pipeline` via HR resolver (no recruitment resolver).
+- [x] Recruitment-origin materialization sets stage mapped to **`received_from_recruitment`** when present in funnel.
+- [x] `accept_internal_hr_handoff` (and delayed approve path) uses same assignment; existing tests extended.
+- [x] Module gates: HR off blocks internal_hr handoff + from-candidate; recruitment off blocks handoff create; HR-only create still passes H6.
+- [x] `handoff-contract.md` aligned with PR-5 (T2 canonical, T1 deprecated).
+- [x] Idempotency: repeat accept / existing employee — no duplicate workforce; stable pipeline meta per §5.3.
+- [x] No new recruitment → HR coupling in HR resolver/bootstrap (§2.3 regression).
 
-**Verdict:** _pending implementation_
+**Verdict:** **PASS** — B1–B3 + G1–G4 delivered on `feat/documents-runtime-expiry-engine`; regression: 45 tests (handoff gates, module gates, idempotency, pipeline, PR17 snapshot, H6).
 
 ---
 
@@ -207,7 +209,7 @@ Reference in PR title/body: `Gate: hr-handoff-runtime-p0`.
 ```mermaid
 flowchart LR
   HR_P[HR Employee Pipeline P0 CLOSED]
-  HO[HR Handoff Runtime P0 OPEN]
+  HO[HR Handoff Runtime P0 CLOSED]
   HR_P --> HO
 ```
 
@@ -215,4 +217,5 @@ flowchart LR
 
 ## History
 
+- 2026-07-02: Gate **CLOSED** — G1–G4 + module gates + PR17 enrichment; §7 checklist satisfied; 45-test regression.
 - 2026-06-30: Gate spec drafted after HR employee pipeline P0 closure; analysis-only, no runtime.

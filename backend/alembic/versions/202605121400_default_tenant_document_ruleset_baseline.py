@@ -1,11 +1,12 @@
 """Backfill empty active document rulesets for the default dev tenant.
 
 Revision ID: 202605121400_def_ruleset
-Revises: 202605140900_ch_snap
+Revises: 202605121350_ruleset_signature_prerequisite
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from pathlib import Path
@@ -16,6 +17,34 @@ from alembic import op
 
 DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
 BASELINE_RULESET_COMMENT = "Baseline required-documents matrix (default-tenant backfill)"
+
+
+
+def _normalize_payload(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return {"__raw__": raw}
+    return {}
+
+
+def _compute_signature(tenant_id: str, version: int, json_data: Any, comment: str | None) -> str:
+    payload = {
+        "tenant_id": tenant_id,
+        "version": version,
+        "ruleset": _normalize_payload(json_data),
+    }
+    if comment:
+        payload["comment"] = comment
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def _load_baseline_ruleset_dict() -> dict[str, Any]:
@@ -42,8 +71,12 @@ def _ruleset_required_matrix_empty(json_data: Any) -> bool:
     rt = defaults.get("requiredTypes") or []
     return len(rt) == 0
 
+
+def _column_exists(insp: sa.Inspector, table: str, column: str) -> bool:
+    return column in {c["name"] for c in insp.get_columns(table)}
+
 revision: str = "202605121400_def_ruleset"
-down_revision: Union[str, None] = "202605140900_ch_snap"
+down_revision: Union[str, None] = "202605121350_ruleset_signature_prerequisite"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -94,23 +127,43 @@ def upgrade() -> None:
         {"tid": DEFAULT_TENANT_ID},
     ).scalar()
     next_v = int(mv or 0) + 1
-    conn.execute(
-        sa.text(
-            "INSERT INTO document_ruleset_versions ("
-            "id, tenant_id, own_company_id, version, json_data, comment, "
-            "is_active, signature, created_at"
-            ") VALUES ("
-            ":id, :tid, NULL, :ver, CAST(:js AS JSON), :cm, TRUE, '', CURRENT_TIMESTAMP"
-            ")"
-        ),
-        {
-            "id": str(uuid.uuid4()),
-            "tid": DEFAULT_TENANT_ID,
-            "ver": next_v,
-            "js": payload,
-            "cm": BASELINE_RULESET_COMMENT,
-        },
-    )
+    insert_params = {
+        "id": str(uuid.uuid4()),
+        "tid": DEFAULT_TENANT_ID,
+        "ver": next_v,
+        "js": payload,
+        "cm": BASELINE_RULESET_COMMENT,
+    }
+    if _column_exists(insp, "document_ruleset_versions", "signature"):
+        signature = _compute_signature(
+            DEFAULT_TENANT_ID,
+            next_v,
+            baseline,
+            BASELINE_RULESET_COMMENT,
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO document_ruleset_versions ("
+                "id, tenant_id, own_company_id, version, json_data, comment, "
+                "is_active, signature, created_at"
+                ") VALUES ("
+                ":id, :tid, NULL, :ver, CAST(:js AS JSON), :cm, TRUE, :sig, CURRENT_TIMESTAMP"
+                ")"
+            ),
+            {**insert_params, "sig": signature},
+        )
+    else:
+        conn.execute(
+            sa.text(
+                "INSERT INTO document_ruleset_versions ("
+                "id, tenant_id, own_company_id, version, json_data, comment, "
+                "is_active, created_at"
+                ") VALUES ("
+                ":id, :tid, NULL, :ver, CAST(:js AS JSON), :cm, TRUE, CURRENT_TIMESTAMP"
+                ")"
+            ),
+            insert_params,
+        )
 
 
 def downgrade() -> None:

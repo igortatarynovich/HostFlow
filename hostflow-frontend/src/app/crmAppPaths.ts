@@ -27,6 +27,30 @@ export function settingsLeadFormDetailPath(formId: string): string {
   return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
 }
 
+export function recruitmentSearchPath(searchId: string): string {
+  return `${P.recruitmentSearches}/${encodeURIComponent(searchId)}`
+}
+
+export function recruitmentSearchAcquisitionPath(searchId: string): string {
+  return `${recruitmentSearchPath(searchId)}/acquisition`
+}
+
+export function recruitmentSearchAcquisitionActivitiesPath(searchId: string): string {
+  return `${recruitmentSearchAcquisitionPath(searchId)}/activities`
+}
+
+export function recruitmentSearchAcquisitionNewPath(searchId: string): string {
+  return `${recruitmentSearchPath(searchId)}/acquisition/new`
+}
+
+export function recruitmentSearchMetaSourcePath(searchId: string): string {
+  return `${recruitmentSearchPath(searchId)}/acquisition/meta`
+}
+
+export function fleetOperatingLineSeasonalityPath(lineId: string): string {
+  return `${P.fleetOperatingLinesSeasonality}/${encodeURIComponent(lineId)}`
+}
+
 /**
  * React Router `path` when routes are mounted under **`CRM_APP_PATHS.appShellPrefix`** (no leading slash).
  * Only path-only URLs — rejects `?` and `#`.

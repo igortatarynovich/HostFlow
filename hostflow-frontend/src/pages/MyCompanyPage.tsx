@@ -11,7 +11,8 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 export default function MyCompanyPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
@@ -90,39 +91,42 @@ export default function MyCompanyPage() {
   const operatingSlotsMissing = operatingSlotsOverflow ? Math.max(1, usedOperatingSlots - effectiveOperatingLimit) : 0
 
   return (
-    <div className="flex h-full w-full flex-col gap-4 p-6">
-      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white shadow-lg">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1">
-            <p className="text-2xl font-semibold">{t('app.my_company.title', { defaultValue: 'My Company' })}</p>
-            <p className="text-sm text-white/80">
-              {t(
-                'app.my_company.subtitle',
-                { defaultValue: 'Your operating company profiles for invoicing, contracts, legal data and branding.' },
-              )}
-            </p>
-          </div>
-          <button
-            className="btn-primary bg-white text-slate-900 hover:bg-white/90"
-            onClick={() =>
-              navigate(hasAvailableOperatingSlots ? CRM_APP_PATHS.onboardingCompany : billingCompanySlotsPath)
-            }
-          >
-            {hasAvailableOperatingSlots
-              ? t('app.my_company.create', { defaultValue: 'Create my company' })
-              : t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
-          </button>
-        </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.my_company.title', { defaultValue: 'My Company' })}
+          subtitle={t(
+            'app.my_company.subtitle',
+            { defaultValue: 'Your operating company profiles for invoicing, contracts, legal data and branding.' },
+          )}
+          kind="action"
+          primaryAction={
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={() =>
+                navigate(hasAvailableOperatingSlots ? CRM_APP_PATHS.onboardingCompany : billingCompanySlotsPath)
+              }
+            >
+              {hasAvailableOperatingSlots
+                ? t('app.my_company.create', { defaultValue: 'Create my company' })
+                : t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-6 text-white shadow-md">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.operating_count', { defaultValue: 'Operating companies' })}</div>
             <div className="text-3xl font-semibold">{managedOperatingCompanies.length}</div>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.limit', { defaultValue: 'Plan limit' })}</div>
             <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : effectiveOperatingLimit}</div>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.available', { defaultValue: 'Available slots' })}</div>
             <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : availableOperatingSlots}</div>
           </div>
@@ -149,8 +153,6 @@ export default function MyCompanyPage() {
           </div>
         ) : null}
       </section>
-
-      <PageBreadcrumb className="max-w-4xl" />
 
       {error && (
         <ErrorRecoveryBanner
@@ -275,6 +277,7 @@ export default function MyCompanyPage() {
           ))}
         </section>
       )}
-    </div>
+      </div>
+    </PageShell>
   )
 }

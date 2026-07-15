@@ -552,7 +552,8 @@ class PublicIntakeState(BaseModel):
 
 
 class PublicStatusState(BaseModel):
-    candidate_id: str
+    candidate_id: Optional[str] = None
+    lead_id: Optional[str] = None
     status: str
     stage: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -3210,6 +3211,7 @@ def _status_response_payload(
     name = " ".join(part for part in [candidate.first_name, candidate.last_name] if part).strip() or None
     return PublicStatusState(
         candidate_id=candidate.id,
+        lead_id=None,
         status=candidate.intake_status or ("submitted" if candidate.intake_submitted_at else "draft"),
         stage=candidate.stage,
         created_at=getattr(candidate, "intake_token_created_at", None),
@@ -3217,6 +3219,50 @@ def _status_response_payload(
         submitted_at=candidate.intake_submitted_at,
         candidate_name=name,
         contacts=data_payload.contacts.model_dump(),
+        checklist=checklist,
+        documents=documents,
+        timeline=timeline,
+    )
+
+
+def _status_response_payload_from_lead_session(
+    public_session,
+    checklist: Dict[str, Any],
+    documents: Dict[str, Any],
+) -> PublicStatusState:
+    from backend.app.entity_profile.public_intake_draft_session import (
+        get_public_intake_draft_block,
+        session_created_at,
+        session_expires_at,
+        session_intake_state,
+        session_intake_status,
+        session_submitted_at,
+    )
+
+    state = session_intake_state(public_session)
+    contacts_raw = dict(state.get("contacts") or {})
+    personal = dict(state.get("personal") or {})
+    name = str(personal.get("full_name") or "").strip() or None
+    block = get_public_intake_draft_block(public_session.lead) if public_session.lead else {}
+    expires_raw = block.get("intake_token_expires_at")
+    expires_at = session_expires_at(public_session)
+    if expires_raw and not expires_at:
+        try:
+            expires_at = datetime.fromisoformat(str(expires_raw).replace("Z", "+00:00"))
+        except ValueError:
+            expires_at = None
+    data_payload = _intake_data_from_state_dict(state)
+    timeline = _build_timeline_entries_for_draft(public_session, data_payload, checklist, documents)
+    return PublicStatusState(
+        candidate_id=None,
+        lead_id=public_session.lead_id,
+        status=session_intake_status(public_session),
+        stage=getattr(public_session.lead, "stage", None) if public_session.lead else None,
+        created_at=session_created_at(public_session),
+        expires_at=expires_at,
+        submitted_at=session_submitted_at(public_session),
+        candidate_name=name,
+        contacts=contacts_raw or None,
         checklist=checklist,
         documents=documents,
         timeline=timeline,
@@ -3593,17 +3639,23 @@ async def create_public_intake(
         vacancy_uuid=payload.vacancy_id,
     )
 
-    candidate = await _find_candidate_by_contact(
-        db,
-        tenant_id,
-        email=contacts.email,
-        phone_country_code=contacts.phone_country_code,
-        phone=contacts.phone,
-    )
+    # ADR-013 / Form Constructor (C1): bound lead forms always use Lead-first draft (P5C).
+    # Legacy candidate-token reuse applies only to unbound public intake (no TenantLeadForm).
+    use_legacy_candidate_session = lf is None
+
+    candidate = None
+    if use_legacy_candidate_session:
+        candidate = await _find_candidate_by_contact(
+            db,
+            tenant_id,
+            email=contacts.email,
+            phone_country_code=contacts.phone_country_code,
+            phone=contacts.phone,
+        )
     now = _now()
     expires_at = now + timedelta(days=INTAKE_TOKEN_TTL_DAYS)
 
-    if candidate:
+    if use_legacy_candidate_session and candidate:
         state = _ensure_intake_state(candidate)
         if payload.application_kind is not None:
             state["application_kind"] = _coerce_intake_application_kind(str(payload.application_kind))
@@ -3708,6 +3760,15 @@ async def get_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+        from backend.app.modules.leads.lead_questionnaire_invite import mark_invite_opened
+
+        await mark_invite_opened(
+            db,
+            invite=public_session.invite,
+            lead=public_session.lead,
+        )
+        await db.commit()
     if public_session.kind == "legacy_candidate" and public_session.candidate is not None:
         if _ensure_status_share_token(public_session.candidate):
             await db.commit()
@@ -3916,16 +3977,68 @@ async def get_public_status(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> PublicStatusState:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
-    employments = await _list_employments(db, tenant_id, candidate.id)
-    checklist, documents = await _build_checklist_and_docs(
+    candidate_stmt = (
+        select(Candidate)
+        .where(
+            Candidate.tenant_id == str(tenant_id),
+            Candidate.status_share_token == share_token,
+            Candidate.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    candidate = await db.scalar(candidate_stmt)
+    if candidate is not None:
+        expires_at = getattr(candidate, "status_share_token_expires_at", None)
+        if expires_at and expires_at < _now():
+            raise HTTPException(status_code=410, detail="Status link expired")
+        employments = await _list_employments(db, tenant_id, candidate.id)
+        checklist, documents = await _build_checklist_and_docs(
+            db,
+            tenant_id,
+            candidate,
+            download_scope="status",
+            download_token=share_token,
+        )
+        return _status_response_payload(candidate, employments, checklist, documents)
+
+    from backend.app.entity_profile.public_intake_draft_session import (
+        PublicIntakeSession,
+        find_lead_draft_by_status_share_token,
+        get_public_intake_draft_block,
+    )
+
+    lead = await find_lead_draft_by_status_share_token(
+        db,
+        tenant_id=str(tenant_id),
+        share_token=share_token,
+    )
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Invalid status token")
+    block = get_public_intake_draft_block(lead)
+    if isinstance(block, dict):
+        expires_raw = block.get("intake_token_expires_at")
+        if expires_raw:
+            try:
+                exp = datetime.fromisoformat(str(expires_raw).replace("Z", "+00:00"))
+                if exp < _now():
+                    raise HTTPException(status_code=410, detail="Status link expired")
+            except ValueError:
+                pass
+    token = str(block.get("intake_token") or "") if isinstance(block, dict) else ""
+    public_session = PublicIntakeSession(
+        kind="lead_draft",
+        tenant_id=str(tenant_id),
+        token=token,
+        lead=lead,
+    )
+    checklist, documents = await _build_checklist_and_docs_for_session(
         db,
         tenant_id,
-        candidate,
+        public_session,
         download_scope="status",
         download_token=share_token,
     )
-    return _status_response_payload(candidate, employments, checklist, documents)
+    return _status_response_payload_from_lead_session(public_session, checklist, documents)
 
 
 @router.post("/status/{share_token}/rotate", response_model=PublicStatusRotateResponse)
@@ -4066,6 +4179,29 @@ async def update_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            session_intake_state,
+            write_session_intake_state,
+        )
+        from backend.app.modules.leads.lead_questionnaire_invite import (
+            mark_invite_in_progress,
+            merge_presentation_into_sales_summary,
+        )
+
+        state = session_intake_state(public_session)
+        state = _merge_intake_payload_into_state(state, payload.data)
+        write_session_intake_state(public_session, state)
+        merge_presentation_into_sales_summary(public_session.lead, state, submitted=False)
+        await mark_invite_in_progress(
+            db,
+            invite=public_session.invite,
+            lead=public_session.lead,
+        )
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
     if public_session.kind == "lead_draft" and public_session.lead is not None:
         from backend.app.entity_profile.public_intake_draft_session import (
             session_intake_state,
@@ -4112,6 +4248,53 @@ async def submit_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
+    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+        from backend.app.entity_profile.public_intake_draft_session import (
+            session_intake_state,
+            write_session_intake_state,
+        )
+        from backend.app.entity_profile.public_intake_presentation_bridge import (
+            resolve_public_session_form_presentation,
+            validate_presentation_required_fields,
+        )
+        from backend.app.modules.leads.lead_questionnaire_invite import mark_invite_submitted
+
+        if not payload.has_all_required():
+            raise HTTPException(status_code=422, detail="Required consents must be accepted before submit")
+        state = session_intake_state(public_session)
+        state["agreements"] = {
+            "general": payload.consents.general,
+            "employer_share": payload.consents.employer_share,
+            "terms_acceptance": payload.consents.terms_acceptance,
+            "cookies_accepted": payload.cookies_accepted,
+        }
+        write_session_intake_state(public_session, state)
+        form_presentation = await resolve_public_session_form_presentation(
+            db,
+            tenant_id=str(tenant_id),
+            intake_state=state,
+        )
+        if form_presentation:
+            missing = validate_presentation_required_fields(form_presentation, state)
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "presentation_required_fields",
+                        "message": "Required presentation fields are missing",
+                        "missing": missing,
+                    },
+                )
+        await mark_invite_submitted(
+            db,
+            invite=public_session.invite,
+            lead=public_session.lead,
+            intake_state=state,
+        )
+        await db.commit()
+        checklist, documents = await _build_checklist_and_docs_for_session(db, tenant_id, public_session)
+        return await _response_payload_from_session(db, tenant_id, public_session, checklist, documents)
+
     if public_session.kind == "lead_draft" and public_session.lead is not None:
         from backend.app.entity_profile.public_intake_draft_session import (
             mark_session_submitted,

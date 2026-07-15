@@ -58,11 +58,4 @@ export const CRM_CONTOUR_NAV_ITEMS: CrmContourNavItem[] = [
     descriptionKey: 'admin.settings.crm_contours.desc.tasks',
     permission: 'notifications.view',
   },
-  {
-    key: 'processing',
-    path: CRM_APP_PATHS.procesowani,
-    labelKey: 'app.nav.items.do_procesowania',
-    descriptionKey: 'admin.settings.crm_contours.desc.processing',
-    permission: 'companies.view',
-  },
 ]

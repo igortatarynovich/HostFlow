@@ -452,6 +452,15 @@ def _candidate_scope_clause(
     return or_(*clauses)
 
 
+def _coerce_naive_utc_datetime(value: Any) -> datetime | None:
+    """Normalize filter datetimes to naive UTC for timestamp-without-tz columns."""
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: TenantVisibility | None = None):
     is_client = bool(filters.get("is_client_tenant"))
     conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client)]
@@ -547,8 +556,8 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     if cand_status_norm:
         conds.append(Candidate.status.in_(cand_status_norm))
 
-    dt_from: Optional[datetime] = filters.get("dt_from")
-    dt_to: Optional[datetime] = filters.get("dt_to")
+    dt_from = _coerce_naive_utc_datetime(filters.get("dt_from"))
+    dt_to = _coerce_naive_utc_datetime(filters.get("dt_to"))
     if dt_from:
         conds.append(Candidate.created_at >= dt_from)
     if dt_to:
@@ -825,8 +834,8 @@ async def count_candidates_insights(
 
     # --- Work hub / recruiting dashboard (action-first aggregates; same ACL scope) ---
     now_utc = datetime.now(timezone.utc)
-    start_day_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-    thresh_24h = now_utc - timedelta(hours=24)
+    start_day_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+    thresh_24h = (now_utc - timedelta(hours=24)).replace(tzinfo=None)
 
     bn_no_contact = case((and_(ops_active, stage_lower.in_(("new", "no_answer"))), 1), else_=0)
     bn_docs_wait = case((and_(ops_active, stage_lower == literal("docs_wait")), 1), else_=0)

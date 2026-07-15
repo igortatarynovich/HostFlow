@@ -141,6 +141,16 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     assert lst.status_code == 200, lst.text
     emp_id = _employee_id_for_candidate(lst.json(), candidate_id)
 
+    emp_detail = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}",
+        headers=hr_officer_headers,
+    )
+    assert emp_detail.status_code == 200, emp_detail.text
+    pipeline = (emp_detail.json().get("meta") or {}).get("employee_pipeline") or {}
+    assert pipeline.get("funnel_id")
+    assert pipeline.get("stage_code")
+    assert pipeline.get("origin") == "recruitment_handoff"
+
     hr_docs = await client.get(
         f"/api/v1/workforce/employees/{emp_id}/documents",
         headers=hr_officer_headers,
@@ -173,6 +183,31 @@ async def test_internal_hr_accept_handoff_workforce_idempotent_hr_reads_same_doc
     assert (rs.get("document_field_values") or {}).get("license_number") == "DL-998877"
     assert (rs.get("notes") or {}).get("handoff_notes") == "docs complete"
     assert (rs.get("personal_data") or {}).get("passport_number") == "PP-123456"
+
+    bundle = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}/hr-bundle",
+        headers=hr_officer_headers,
+    )
+    assert bundle.status_code == 200, bundle.text
+    wel = (bundle.json().get("work_eligibility_profile") or {})
+    assert wel.get("citizenship") == "UA"
+    assert wel.get("work_country") == "PL"
+    assert wel.get("position_category") == "driver"
+
+    review = await client.get(
+        f"/api/v1/workforce/employees/{emp_id}/hr-review",
+        headers=hr_officer_headers,
+    )
+    assert review.status_code == 200, review.text
+    verified = review.json().get("verified_fields") or []
+    citizenship_row = next(
+        (f for f in verified if str(f.get("field_code") or "") == "citizenship"),
+        None,
+    )
+    if citizenship_row:
+        profile_vals = citizenship_row.get("profile_values") or citizenship_row.get("profile_values_json") or {}
+        seeded = profile_vals.get("recruitment") or profile_vals.get("candidate_snapshot")
+        assert seeded == "UA"
 
     patch_hired = await client.patch(
         f"/api/v1/candidates/{candidate_id}",
@@ -449,6 +484,8 @@ async def test_recruiter_can_ready_for_hr_but_not_hired_when_handoff_enabled(
         client, manager_headers=manager_headers, tenant_id=tenant_id, company_id=company_id
     )
     rec_json = {**recruiter_headers, "Content-Type": "application/json"}
+
+    await seed_documents_for_ready_for_handoff(client, manager_headers, candidate_id)
 
     patch_ok = await client.patch(
         f"/api/v1/candidates/{candidate_id}",

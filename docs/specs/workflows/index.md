@@ -15,6 +15,8 @@
 
 | Документ | Назначение | Основные сущности | Автоматизация |
 |-----------|-------------|-------------------|----------------|
+| [**recruitment-operational-goals-and-order.md**](recruitment-operational-goals-and-order.md) | **Hub:** цели, порядок этапов Lead → Candidate → Handoff → HR; requirements-driven flow; кто решает обязательность; очередь работ по трём направлениям | Lead, Candidate, Requirement, Handoff, WorkforceEmployee | Requirement Engine gates; читать **в любой ветке** |
+| [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) | **A3 backlog:** экраны, API bundle, срезы PR, acceptance по типам требований | Candidate, Requirement, CandidateEvidence | Workspace route + evidence flow |
 | [document_expiry.md](document_expiry.md) | Контроль сроков действия документов и напоминания | Document, Candidate, Reminder | Автоматические напоминания, изменение статуса |
 | [reminders.md](reminders.md) | Подсистема напоминаний и уведомлений | Reminder, Candidate, Document | Cron-задачи, уведомления, RLS |
 | [reminders_matrix.md](reminders_matrix.md) | SLA и эскалации напоминаний | Reminder, Notification | Каналы доставки, дедупликация |

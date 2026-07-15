@@ -57,6 +57,15 @@ async def apply_blocked_duplicate_outcome(
         normalized=normalized,
         match_reasons=list(decision.duplicate_match.reasons),
     )
+    from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
+
+    await carry_lead_context_on_conversion(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        candidate=duplicate,
+        actor_id=None,
+    )
     await db.flush()
     await db.commit()
     try:
@@ -238,9 +247,12 @@ async def execute_outcome_decision(
             source=source,
             decision=decision,
         )
+        entity_id = str(client.id) if client is not None else str(getattr(lead, "client_account_id", "") or "")
+        if not entity_id:
+            raise ValueError("Client conversion produced no entity id")
         return OutcomeExecutionResult(
             entity_type="client",
-            entity_id=str(client.id),
+            entity_id=entity_id,
             idempotent_replay=idempotent,
         )
 

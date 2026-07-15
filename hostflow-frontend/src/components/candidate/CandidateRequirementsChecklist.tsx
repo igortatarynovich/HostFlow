@@ -192,7 +192,7 @@ function RequirementRow({
         </div>
         <span
           className={clsx(
-            'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
+            'shrink-0 rounded-full border px-3 py-0.5 text-[11px] font-semibold',
             requirementStatusBadgeClass(rowStatus),
           )}
         >
@@ -271,7 +271,7 @@ function RequirementRow({
                     <li key={docId || typeCode}>
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs hover:bg-slate-100"
+                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs hover:bg-slate-100"
                         onClick={() => onOpenDocs?.(typeCode || undefined)}
                       >
                         <span className="font-medium text-slate-900">{labelForType(typeCode)}</span>
@@ -575,7 +575,7 @@ export default function CandidateRequirementsChecklist({
   return (
     <section
       className={clsx(
-        'rounded-2xl border border-slate-200 bg-white p-3 transition-shadow duration-200',
+        'rounded-xl border border-slate-200 bg-white p-3 transition duration-200',
         primary && 'ring-2 ring-amber-400/95 ring-offset-2 ring-offset-white shadow-sm shadow-amber-500/10',
         className,
       )}
@@ -603,7 +603,7 @@ export default function CandidateRequirementsChecklist({
         </div>
         <span
           className={clsx(
-            'rounded-full px-2.5 py-1 text-xs font-semibold',
+            'rounded-full px-3 py-1 text-xs font-semibold',
             checklist?.all_fulfilled
               ? 'bg-emerald-100 text-emerald-900'
               : 'bg-amber-100 text-amber-900',

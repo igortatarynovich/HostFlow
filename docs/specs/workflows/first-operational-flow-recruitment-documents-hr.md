@@ -2,6 +2,8 @@
 
 **Статус:** канон для постановки задач агентам и разработчикам на этапе запуска цепочки.
 
+**Порядок этапов и requirements-driven flow:** [recruitment-operational-goals-and-order.md](recruitment-operational-goals-and-order.md).
+
 **Самый правильный первый шаг:** настроить связку **внутри одного tenant** (и в рамках одного **company scope** для operational handoff), без внешнего sharing и без межаккаунтных сценариев.
 
 ---

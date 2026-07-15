@@ -6,6 +6,7 @@ import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { RECRUITMENT_INBOX_PATH } from '../../app/recruitmentInboxPaths'
 
 /**
  * §2.13 ТЗ: глобальная горизонтальная полоса под top bar для быстрого переключения
@@ -34,6 +35,9 @@ function globalWorkStripVisible(pathname: string): boolean {
   if (pathname.startsWith(p.profile)) return false
   if (pathname.startsWith(p.myCompany)) return false
   if (pathname.startsWith(p.onboarding)) return false
+  if (pathname.startsWith(p.recruitmentSearches)) return true
+  if (pathname.startsWith(RECRUITMENT_INBOX_PATH)) return true
+  if (pathname.startsWith(p.sales)) return true
 
   if (pathname === p.work || pathname.startsWith(`${p.work}/`)) return false
   if (pathname.startsWith(p.candidates)) return true
@@ -59,7 +63,7 @@ export type WorkContextTabsProps = {
   businessType?: 'agency' | 'employer' | 'services'
 }
 
-export default function WorkContextTabs(_props: WorkContextTabsProps) {
+export default function WorkContextTabs({ businessType = 'agency' }: WorkContextTabsProps) {
   const { pathname, search } = useLocation()
   const { t } = useI18n()
   const { can } = usePermissions()
@@ -75,6 +79,30 @@ export default function WorkContextTabs(_props: WorkContextTabsProps) {
 
   const tabs = useMemo(() => {
     const out: TabDef[] = []
+    if (can('vacancies.view')) {
+      out.push({
+        key: 'recruitment-searches',
+        to: CRM_APP_PATHS.recruitmentSearches,
+        label: t('app.nav.items.recruitment_searches', { defaultValue: 'Подборы' }),
+        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.recruitmentSearches),
+      })
+    }
+    if (can('leads.view')) {
+      out.push({
+        key: 'recruitment-inbox',
+        to: RECRUITMENT_INBOX_PATH,
+        label: t('app.nav.items.recruitment_inbox', { defaultValue: 'Отклики' }),
+        isActive: (p, _tab) => p.startsWith(RECRUITMENT_INBOX_PATH),
+      })
+      if (businessType === 'services') {
+        out.push({
+          key: 'sales',
+          to: CRM_APP_PATHS.sales,
+          label: t('app.nav.items.sales', { defaultValue: 'Обращения' }),
+          isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.sales),
+        })
+      }
+    }
     if (can('candidates.view')) {
       out.push({
         key: 'candidates',
@@ -91,28 +119,12 @@ export default function WorkContextTabs(_props: WorkContextTabsProps) {
         isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.agencyClients),
       })
     }
-    if (can('vacancies.view')) {
-      out.push({
-        key: 'vacancies',
-        to: CRM_APP_PATHS.vacancies,
-        label: t('app.nav.items.vacancies'),
-        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.vacancies),
-      })
-    }
     if (can('documents.manage')) {
       out.push({
         key: 'documents',
         to: CRM_APP_PATHS.documents,
         label: t('app.nav.items.documents'),
         isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.documents),
-      })
-    }
-    if (can('leads.view')) {
-      out.push({
-        key: 'leads',
-        to: CRM_APP_PATHS.leads,
-        label: t('app.nav.items.leads'),
-        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.leads),
       })
     }
     if (can('services.view')) {
@@ -133,12 +145,12 @@ export default function WorkContextTabs(_props: WorkContextTabsProps) {
       )
     }
     return out
-  }, [can, companiesLabel, t])
+  }, [can, companiesLabel, t, businessType])
 
   if (!globalWorkStripVisible(pathname) || tabs.length === 0) return null
 
   return (
-    <div className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 sm:px-5 lg:px-8">
+    <div className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 sm:px-4 lg:px-8">
       <nav
         className="flex max-w-full flex-wrap items-center gap-x-1 gap-y-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label={t('app.work.context_strip.aria', { defaultValue: 'Operational sections' })}
@@ -150,7 +162,7 @@ export default function WorkContextTabs(_props: WorkContextTabsProps) {
               key={tab.key}
               to={tab.to}
               className={clsx(
-                'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition',
+                'shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition',
                 active
                   ? 'bg-white text-brand-800 shadow-sm ring-1 ring-slate-200'
                   : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',

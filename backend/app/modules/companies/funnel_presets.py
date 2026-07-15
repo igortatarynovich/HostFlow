@@ -9,18 +9,9 @@ from __future__ import annotations
 
 from typing import Any
 
-# Must match hostflow-frontend OnboardingCompanyPage IndustryKey
-INDUSTRY_KEYS = frozenset(
-    {
-        "transport_logistics",
-        "construction",
-        "horeca",
-        "healthcare",
-        "it",
-        "manufacturing",
-        "other",
-    }
-)
+from backend.app.reference.company_setup_catalogs import INDUSTRY_CODES
+
+INDUSTRY_KEYS = INDUSTRY_CODES
 
 StageRow = tuple[str, str, str, bool]
 

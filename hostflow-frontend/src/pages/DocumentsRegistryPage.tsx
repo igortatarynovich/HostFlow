@@ -5,6 +5,8 @@ import { listDocuments } from '../api/documents'
 import type { Document } from '../api/types'
 import type { DocumentProcessType } from '../api/types/document'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
@@ -448,71 +450,65 @@ export default function DocumentsRegistryPage() {
   const currentDocs = filteredDocs.slice(pageStart, pageStart + PAGE_SIZE)
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-4 lg:gap-6">
-      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 px-5 py-4 text-white shadow-none sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-lg font-semibold sm:text-xl">
-              {registryMode ? t('admin.documents.registry.title') : t('admin.documents.registry.work.title')}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 md:justify-end">
-            {registryMode ? (
-              <button
-                type="button"
-                className="rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
-                onClick={openMyWork}
-              >
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={
+            registryMode ? t('admin.documents.registry.title') : t('admin.documents.registry.work.title')
+          }
+          kind="action"
+          primaryAction={
+            registryMode ? (
+              <button type="button" className="btn-secondary btn-sm" onClick={openMyWork}>
                 {t('admin.documents.registry.work.back_to_my_work')}
               </button>
             ) : (
-              <button
-                type="button"
-                className="rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
-                onClick={openFullRegistry}
-              >
+              <button type="button" className="btn-primary btn-sm" onClick={openFullRegistry}>
                 {t('admin.documents.registry.work.open_full_registry')}
               </button>
-            )}
-          </div>
-        </div>
-        {registryMode ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {[
-              { label: t('admin.documents.registry.stats.process_all'), value: processQueueStats.process },
-              { label: t('admin.documents.registry.stats.process_mine'), value: processQueueStats.my },
-              { label: t('admin.documents.registry.stats.process_sla_due'), value: processQueueStats.overdue },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-xs sm:text-sm">
-                <div className="text-white/75">{item.label}</div>
-                <div className="text-xl font-semibold tabular-nums">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {[
-              { label: t('admin.documents.registry.work.stats.attention'), value: workQueueStats.attention },
-              { label: t('admin.documents.registry.work.stats.mine_total'), value: workQueueStats.mine },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs sm:text-sm">
-                <div className="text-white/75">{item.label}</div>
-                <div className="text-xl font-semibold tabular-nums">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <div className="px-5 sm:px-6 lg:px-8">
+            )
+          }
+          secondaryActions={
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setReloadKey((prev) => prev + 1)}
+              disabled={loading}
+            >
+              {loading ? t('admin.documents.registry.loading') : t('common.actions.refresh')}
+            </button>
+          }
+        />
         {storageQuotaWarning ? (
-          <div className="mt-3">
+          <div className="mt-2">
             <QuotaNearLimitBanner kind="storage" percentUsed={storageQuotaWarning.percentUsed} />
           </div>
         ) : null}
-      </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {(registryMode
+            ? [
+                { label: t('admin.documents.registry.stats.process_all'), value: processQueueStats.process },
+                { label: t('admin.documents.registry.stats.process_mine'), value: processQueueStats.my },
+                { label: t('admin.documents.registry.stats.process_sla_due'), value: processQueueStats.overdue },
+              ]
+            : [
+                { label: t('admin.documents.registry.work.stats.attention'), value: workQueueStats.attention },
+                { label: t('admin.documents.registry.work.stats.mine_total'), value: workQueueStats.mine },
+              ]
+          ).map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm"
+            >
+              <div className="text-slate-500">{item.label}</div>
+              <div className="text-xl font-semibold tabular-nums text-slate-900">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </PageShellHeader>
 
-      <section className="app-surface flex flex-col gap-3 border-x-0 border-t-0 border-b border-slate-200 px-5 py-3 sm:px-6 lg:px-8">
+      <Toolbar>
+        <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -528,14 +524,6 @@ export default function DocumentsRegistryPage() {
               aria-label={t('admin.documents.registry.search_label')}
             />
           </div>
-          <button
-            type="button"
-            className="btn-secondary btn-sm shrink-0"
-            onClick={() => setReloadKey((prev) => prev + 1)}
-            disabled={loading}
-          >
-            {loading ? t('admin.documents.registry.loading') : t('common.actions.refresh')}
-          </button>
         </div>
 
         {registryMode ? (
@@ -565,7 +553,7 @@ export default function DocumentsRegistryPage() {
                   className={[
                     'rounded border px-2 py-1 text-xs font-medium transition',
                     queueFilter === q
-                      ? 'border-teal-600 bg-teal-600 text-white'
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
                   ].join(' ')}
                 >
@@ -599,7 +587,7 @@ export default function DocumentsRegistryPage() {
                 </option>
               ))}
             </select>
-            <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-slate-700">
+            <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-xs text-slate-700">
               <input
                 type="checkbox"
                 className="rounded border-slate-300"
@@ -615,9 +603,9 @@ export default function DocumentsRegistryPage() {
               type="button"
               onClick={() => setWorkTabParam('attention')}
               className={[
-                'rounded-lg border px-2.5 py-1 text-sm font-medium transition',
+                'rounded-lg border px-3 py-1 text-sm font-medium transition',
                 workTab === 'attention'
-                  ? 'border-teal-600 bg-teal-600 text-white'
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               ].join(' ')}
             >
@@ -627,9 +615,9 @@ export default function DocumentsRegistryPage() {
               type="button"
               onClick={() => setWorkTabParam('mine')}
               className={[
-                'rounded-lg border px-2.5 py-1 text-sm font-medium transition',
+                'rounded-lg border px-3 py-1 text-sm font-medium transition',
                 workTab === 'mine'
-                  ? 'border-teal-600 bg-teal-600 text-white'
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               ].join(' ')}
             >
@@ -637,9 +625,11 @@ export default function DocumentsRegistryPage() {
             </button>
           </div>
         )}
-      </section>
+        </div>
+      </Toolbar>
 
-      <section className="flex flex-col gap-4 px-5 pb-8 sm:px-6 lg:flex-row lg:items-start lg:gap-6 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="order-1 min-w-0 flex-1 space-y-4">
         <div className="card space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -649,7 +639,7 @@ export default function DocumentsRegistryPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {registryMode ? (
-                <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs font-medium">
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs font-medium">
                   <button
                     type="button"
                     className={[
@@ -705,7 +695,7 @@ export default function DocumentsRegistryPage() {
                         }
                       }}
                       className={[
-                        'rounded-2xl border bg-white/90 p-4 text-left shadow-sm outline-none transition',
+                        'rounded-xl border bg-white/90 p-4 text-left shadow-sm outline-none transition',
                         isSel ? 'border-brand-400 ring-1 ring-brand-200' : 'border-slate-100',
                       ].join(' ')}
                     >
@@ -869,7 +859,7 @@ export default function DocumentsRegistryPage() {
               </table>
             )
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
               {!registryMode && !me?.id
                 ? t('admin.documents.registry.work.empty.no_session')
                 : !registryMode && workTab === 'attention'
@@ -950,7 +940,8 @@ export default function DocumentsRegistryPage() {
           </div>
         </aside>
       </section>
-    </div>
+      </div>
+    </PageShell>
   )
 }
 
@@ -966,9 +957,9 @@ const SearchIcon = ({ className }: { className?: string }) => (
 
 const STATUS_TONES: Record<string, string> = {
   missing: 'bg-slate-100 text-slate-700',
-  requested: 'bg-sky-100 text-sky-700',
-  in_progress: 'bg-sky-100 text-sky-700',
-  received: 'bg-indigo-100 text-indigo-700',
+  requested: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  received: 'bg-blue-100 text-blue-700',
   approved: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-rose-100 text-rose-700',
   expired: 'bg-amber-100 text-amber-800',
@@ -977,7 +968,7 @@ const STATUS_TONES: Record<string, string> = {
 function StatusChip({ label, tone }: { label: string; tone: string }) {
   const toneClass = STATUS_TONES[tone] ?? 'bg-slate-100 text-slate-700'
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>
+    <span className={`inline-flex shrink-0 items-center rounded-lg px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>
       {label}
     </span>
   )

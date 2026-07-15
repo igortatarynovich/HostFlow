@@ -164,7 +164,7 @@ export default function RiskIntelSettingsPage() {
   )
 
   return (
-    <div className="settings-page-shell-narrow">
+    
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
@@ -173,8 +173,7 @@ export default function RiskIntelSettingsPage() {
         subtitle={t('admin.risk_intel.settings.blurb', {
           defaultValue:
             'Tenant overrides for risk_model_v1: hourly job, stage gate, digest email, and risk-band automations. Effective values merge with product defaults.',
-        })}
-      />
+        })}>
 
       {loading ? (
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
@@ -336,7 +335,7 @@ export default function RiskIntelSettingsPage() {
             </div>
             <p className="mt-1 text-xs text-slate-600">
               {t('admin.risk_intel.settings.automations_hint', {
-                defaultValue: 'Runs after hourly scoring when shadow rows exist; uses automation rules for candidate risk bands.',
+                defaultValue: 'Runs after hourly scoring when shadow-sm rows exist; uses automation rules for candidate risk bands.',
               })}
             </p>
             <label className="mt-3 flex items-center gap-2">
@@ -393,6 +392,6 @@ export default function RiskIntelSettingsPage() {
           )}
         </div>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

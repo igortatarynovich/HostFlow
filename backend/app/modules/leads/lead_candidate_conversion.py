@@ -140,6 +140,15 @@ async def create_candidate_from_lead_conversion(
         )
         existing = res.scalar_one_or_none()
         if existing is not None:
+            from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
+
+            await carry_lead_context_on_conversion(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                candidate=existing,
+                actor_id=None,
+            )
             oc = getattr(existing, "own_company_id", None) or getattr(lead, "own_company_id", None)
             await _emit_candidate_created_audit(
                 db,
@@ -162,6 +171,9 @@ async def create_candidate_from_lead_conversion(
         acl=None,
         source_lead=lead,
     )
+    if not getattr(lead, "candidate_id", None):
+        lead.candidate_id = str(candidate.id)
+        await db.flush()
     oc = getattr(candidate, "own_company_id", None) or getattr(lead, "own_company_id", None)
     await _emit_candidate_created_audit(
         db,

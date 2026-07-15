@@ -20,9 +20,18 @@ from backend.app.requirement_rules.readiness_bridge import (
     load_candidate_documents_snapshot,
     resolve_entity_profile_code_for_candidate,
 )
-from backend.app.requirement_rules.slot_evaluator import evaluate_document_slot, expand_type_codes_for_slot
+from backend.app.requirement_rules.slot_evaluator import (
+    evaluate_document_slot,
+    evaluate_slot_alternatives,
+    expand_type_codes_for_slot,
+)
 from backend.app.requirement_rules.slot_registry import get_slot_definition
 from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.services.requirement_document_data import (
+    enrich_document_snapshot_for_checklist,
+    extraction_blockers_for_documents,
+    missing_extraction_fields,
+)
 
 ACTIVE_EVIDENCE_STATUSES = frozenset(
     {
@@ -103,6 +112,37 @@ def _extracted_fields_from_document(doc: Document) -> dict[str, Any]:
         return {}
     extracted = meta.get("extracted_fields") or meta.get("fields") or {}
     return dict(extracted) if isinstance(extracted, dict) else {}
+
+
+def _enrich_checklist_document_snapshots(snapshots: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [enrich_document_snapshot_for_checklist(row) for row in snapshots if isinstance(row, dict)]
+
+
+def _apply_document_data_enrichment_to_evaluation(
+    *,
+    slot: dict[str, Any],
+    evidence_snapshot: dict[str, Any] | None,
+    evaluation: dict[str, Any],
+) -> dict[str, Any]:
+    enriched = dict(evaluation)
+    linked_docs = list((evidence_snapshot or {}).get("documents") or [])
+    alternatives = slot.get("accepted_evidence_variants") or slot.get("satisfaction_alternatives") or []
+    if len(alternatives) > 1:
+        enriched["alternatives_evaluated"] = evaluate_slot_alternatives(slot, linked_docs=linked_docs)
+
+    if linked_docs:
+        extraction_blockers = extraction_blockers_for_documents(linked_docs)
+        if extraction_blockers:
+            enriched["blockers"] = list(enriched.get("blockers") or []) + extraction_blockers
+            evidence_status = _norm((evidence_snapshot or {}).get("status"))
+            if evidence_status in {"selected", "pending_review"} and enriched.get("status") not in {
+                "satisfied",
+                "not_applicable",
+            }:
+                enriched["status"] = "pending_verification"
+                enriched["extraction_incomplete"] = True
+
+    return enriched
 
 
 def _expanded_type_codes(type_code: str) -> set[str]:
@@ -488,15 +528,30 @@ async def _validate_evidence_ready_for_approval(
             if doc is None:
                 continue
             linked_snapshots.append(
-                {
-                    "document_id": str(doc.id),
-                    "document_type_code": normalize_doc_type(getattr(doc, "doc_type", "") or ""),
-                    "type": normalize_doc_type(getattr(doc, "doc_type", "") or ""),
-                    "status": getattr(doc.status, "value", getattr(doc, "status", "")),
-                    "has_files": bool(getattr(doc, "files", None)),
-                    "expire_date": getattr(doc, "expire_date", None),
-                }
+                enrich_document_snapshot_for_checklist(
+                    {
+                        "document_id": str(doc.id),
+                        "document_type_code": normalize_doc_type(getattr(doc, "doc_type", "") or ""),
+                        "type": normalize_doc_type(getattr(doc, "doc_type", "") or ""),
+                        "status": getattr(doc.status, "value", getattr(doc, "status", "")),
+                        "has_files": bool(getattr(doc, "files", None)),
+                        "expire_date": getattr(doc, "expire_date", None),
+                        "meta": getattr(doc, "meta", None) or {},
+                    }
+                )
             )
+    else:
+        linked_snapshots = _enrich_checklist_document_snapshots(linked_snapshots)
+
+    for snapshot in linked_snapshots:
+        if missing_extraction_fields(snapshot):
+            missing = ", ".join(snapshot.get("missing_extraction_fields") or [])
+            doc_type = snapshot.get("document_type_code") or snapshot.get("type") or "document"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing extraction fields on {doc_type}: {missing}",
+            )
+
     evaluation = evaluate_document_slot(
         evidence.requirement_code,
         candidate_evidence={
@@ -727,6 +782,7 @@ async def build_requirements_checklist(
             linked_snapshots = [
                 row for row in snapshots if str(row.get("document_id") or row.get("id")) in linked_ids
             ]
+            linked_snapshots = _enrich_checklist_document_snapshots(linked_snapshots)
             evidence_snapshot = serialize_candidate_evidence(evidence_row, linked_snapshots)
 
         evaluation = evaluate_document_slot(
@@ -734,6 +790,11 @@ async def build_requirements_checklist(
             candidate_evidence=evidence_snapshot,
             citizenship=str(citizenship).strip() if citizenship else None,
             position_category=str(position_category).strip() if position_category else None,
+        )
+        evaluation = _apply_document_data_enrichment_to_evaluation(
+            slot=slot,
+            evidence_snapshot=evidence_snapshot,
+            evaluation=evaluation,
         )
         variants = []
         for alt in slot.get("accepted_evidence_variants") or slot.get("satisfaction_alternatives") or []:
@@ -751,6 +812,7 @@ async def build_requirements_checklist(
                     "all_of": bool(alt.get("all_of")),
                 }
             )
+        eval_status = evaluation.get("status")
         items.append(
             {
                 "requirement_code": req_code,
@@ -760,7 +822,7 @@ async def build_requirements_checklist(
                 "accepted_evidence_variants": variants,
                 "candidate_evidence": evidence_snapshot,
                 "evaluation": evaluation,
-                "fulfilled": evaluation.get("status") == "satisfied",
+                "fulfilled": eval_status in {"satisfied", "not_applicable"},
             }
         )
 

@@ -217,7 +217,7 @@ function MessengerHubWizardPanel({
   const testKey = pa ? `hub-test-${pa.id}` : ''
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
+    <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1234,37 +1234,45 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
     if (newest) await patchCommunicationAccount(newest.id, { is_active: true })
   }, [applyChannelPatchFresh, createForSelectedChannel, lockedChannel, selectedChannel])
 
+  const messengerHeaderProps = lockedChannel
+    ? {
+        backHref: CRM_APP_PATHS.settingsIntegrations,
+        backLabel: t('admin.integrations_hub.back_to_hub'),
+        kicker: t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' }),
+        title: t(CHANNEL_META[lockedChannel].titleKey as any, {
+          defaultValue: CHANNEL_META[lockedChannel].titleDefault,
+        }),
+        subtitle: t(CHANNEL_META[lockedChannel].subtitleKey as any, {
+          defaultValue: CHANNEL_META[lockedChannel].subtitleDefault,
+        }),
+        actions: (
+          <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="btn-secondary">
+            {t('admin.communications_messengers.actions.all_messengers', {
+              defaultValue: 'All messengers & shared templates',
+            })}
+          </Link>
+        ),
+      }
+    : {
+        backHref: CRM_APP_PATHS.settingsCommunications,
+        backLabel: t('admin.communications_messengers.actions.all_settings', {
+          defaultValue: 'All communication settings',
+        }),
+        kicker: t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messengers' }),
+        title: t('admin.communications_messengers.title', { defaultValue: 'Messenger settings' }),
+        subtitle: t('admin.communications_messengers.subtitle', {
+          defaultValue:
+            'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.',
+        }),
+        actions: (
+          <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
+            {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
+          </Link>
+        ),
+      }
+
   return (
-    <div className="space-y-4">
-      {lockedChannel ? (
-        <SettingsSubpageHeader
-          backHref={CRM_APP_PATHS.settingsIntegrations}
-          backLabel={t('admin.integrations_hub.back_to_hub')}
-          kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
-          title={t(CHANNEL_META[lockedChannel].titleKey as any, { defaultValue: CHANNEL_META[lockedChannel].titleDefault })}
-          subtitle={t(CHANNEL_META[lockedChannel].subtitleKey as any, { defaultValue: CHANNEL_META[lockedChannel].subtitleDefault })}
-          actions={
-            <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="btn-secondary">
-              {t('admin.communications_messengers.actions.all_messengers', { defaultValue: 'All messengers & shared templates' })}
-            </Link>
-          }
-        />
-      ) : (
-        <SettingsSubpageHeader
-          backHref={CRM_APP_PATHS.settingsCommunications}
-          backLabel={t('admin.communications_messengers.actions.all_settings', { defaultValue: 'All communication settings' })}
-          kicker={t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messengers' })}
-          title={t('admin.communications_messengers.title', { defaultValue: 'Messenger settings' })}
-          subtitle={t('admin.communications_messengers.subtitle', {
-            defaultValue: 'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.',
-          })}
-          actions={
-            <Link to={CRM_APP_PATHS.inboxMessagesScoped} className="btn-secondary">
-              {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
-            </Link>
-          }
-        />
-      )}
+    <SettingsSubpageHeader {...messengerHeaderProps}>
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
@@ -1595,7 +1603,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
             <summary className="cursor-pointer text-sm font-semibold">
               {t('admin.communications_messengers.templates.how_used', { defaultValue: 'How templates are used' })}
             </summary>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">
           <li>
             {t('admin.communications_messengers.templates.how_used_1', {
               defaultValue: 'Message templates appear as quick buttons in composer on',
@@ -1688,7 +1696,7 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
             defaultValue: 'What are Command templates',
           })}
         </summary>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-900">
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-900">
           <li>
             {t('admin.communications_messengers.templates.command_desc_1', {
               defaultValue: 'Saved batch action (example: add tag + archive + set priority).',
@@ -1862,6 +1870,6 @@ export default function CommunicationsMessengerSettingsPage({ lockedChannel }: C
       </details>
         </>
       )}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -12,6 +12,7 @@
 
 import type { ReactNode } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
+import { IconCircleDot } from '@tabler/icons-react'
 import type { TranslateFn } from '../../../i18n'
 import type { ColumnTextFilters, DateRangeFilter, SortKey } from '../types'
 import { isRangeActive } from '../candidateUtils'
@@ -343,6 +344,7 @@ export function CandidatesTableColumnHeaderContent({ columnKey, ctx }: Candidate
             />
             <ColumnFilterMenu
               title={t('app.candidates.filters.row_status_menu', { defaultValue: 'Status' })}
+              icon={IconCircleDot}
               options={candidateRowStatusFilterOptions}
               selected={candidateRowStatusFilter}
               onChange={setCandidateRowStatusFilter}

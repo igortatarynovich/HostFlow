@@ -22,7 +22,8 @@ import { getLeadDistribution, patchLeadDistribution, type LeadDistributionOut } 
 import { useI18n } from '../i18n'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 const CRITERIA_IDS = ['working_hours', 'workload', 'language', 'experience'] as const
 const ROUTE_LANGS = ['pl', 'en', 'de'] as const
 
@@ -173,20 +174,39 @@ export default function LeadsDistributionRulesPage() {
 
   if (loading || !base) {
     return (
-      <div className="px-4 py-8 text-sm text-slate-600">{loading ? t('common.loading') : (error ?? '')}</div>
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader
+            title={t('app.leads.distribution.rules.title')}
+            kind="browse"
+          />
+        </PageShellHeader>
+        <div className="px-4 pb-4 text-sm text-slate-600">{loading ? t('common.loading') : (error ?? '')}</div>
+      </PageShell>
     )
   }
 
   const canEdit = base.feature_gate.advanced_rules_allowed
 
     return (
-    <div className="w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-      <Link to={CRM_APP_PATHS.leadsDistribution} className="text-xs font-medium text-brand-700 hover:underline">
-        ← {t('app.leads.distribution.rules.back')}
-      </Link>
-      <h1 className="text-2xl font-semibold text-slate-900">{t('app.leads.distribution.rules.title')}</h1>
-
-      <PageBreadcrumb className="max-w-4xl" />
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.leads.distribution.rules.title')}
+          kind="action"
+          primaryAction={
+            <button
+              type="button"
+              disabled={!canEdit || saving}
+              className="btn-primary btn-sm"
+              onClick={() => void save()}
+            >
+              {saving ? t('common.saving') : t('common.actions.save')}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
 
       {!canEdit ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -199,7 +219,7 @@ export default function LeadsDistributionRulesPage() {
 
       {error ? <div className="text-sm text-rose-700">{String(error)}</div> : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.strategy')}</h2>
         <div className="mt-3 space-y-2 text-sm">
           {(
@@ -224,7 +244,7 @@ export default function LeadsDistributionRulesPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.priority')}</h2>
         <p className="mt-1 text-xs text-slate-500">{t('app.leads.distribution.rules.priority_hint')}</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -258,7 +278,7 @@ export default function LeadsDistributionRulesPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.limits')}</h2>
         <label className="mt-3 block text-sm text-slate-700">
           {t('app.leads.distribution.rules.max')}
@@ -269,7 +289,7 @@ export default function LeadsDistributionRulesPage() {
             disabled={!canEdit}
             value={maxLeads}
             onChange={(e) => setMaxLeads(Number(e.target.value) || 1)}
-            className="mt-1 block w-32 rounded-lg border border-slate-300 px-2 py-1.5"
+            className="mt-1 block w-32 rounded-lg border border-slate-300 px-2 py-2"
           />
         </label>
         <label className="mt-3 flex items-center gap-2 text-sm">
@@ -279,7 +299,7 @@ export default function LeadsDistributionRulesPage() {
         <label className="mt-3 block text-sm text-slate-700">
           {t('app.leads.distribution.rules.preview_lang')}
           <select
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-2 py-1.5"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-2 py-2"
             value={previewLang}
             disabled={!canEdit}
             onChange={(e) => setPreviewLang(e.target.value)}
@@ -291,7 +311,7 @@ export default function LeadsDistributionRulesPage() {
         </label>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-medium text-slate-800">{t('app.leads.distribution.rules.lang_route_title')}</h2>
         <p className="mt-1 text-xs text-slate-500">{t('app.leads.distribution.rules.lang_route_hint')}</p>
         <div className="mt-4 space-y-4">
@@ -319,10 +339,7 @@ export default function LeadsDistributionRulesPage() {
           )}
         </div>
       </section>
-
-      <button type="button" disabled={!canEdit || saving} className="btn-primary w-full rounded-lg py-2" onClick={() => void save()}>
-        {saving ? t('common.saving') : t('common.actions.save')}
-      </button>
     </div>
+    </PageShell>
   )
 }

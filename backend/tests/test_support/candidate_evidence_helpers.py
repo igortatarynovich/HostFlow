@@ -83,15 +83,11 @@ async def setup_driver_ce_candidate(
 
     from backend.app.seed_candidate_profiles import ensure_driver_ce_default_profile
 
-    company_row = (
-        await db.execute(
-            text("SELECT id FROM companies WHERE tenant_id = :tid LIMIT 1"),
-            {"tid": tenant_id},
-        )
-    ).first()
-    if not company_row:
-        pytest.skip("No company for tenant")
-    company_id = str(company_row[0])
+    from backend.app.services.recruitment_funnel_bootstrap import resolve_first_operating_company_id
+
+    company_id = await resolve_first_operating_company_id(db, tenant_id=tenant_id)
+    if not company_id:
+        pytest.skip("No operating company for tenant")
 
     await ensure_tenant_entity_profile_defaults(db, tenant_id)
     await ensure_driver_ce_default_profile(db, tenant_id)
@@ -152,6 +148,8 @@ async def post_document(
         payload["expires_at"] = expires_at
     if meta:
         payload["meta"] = meta
+    elif default_document_extraction_meta(doc_type):
+        payload["meta"] = default_document_extraction_meta(doc_type)
     resp = await client.post("/api/v1/documents/", headers=headers, json=payload)
     assert resp.status_code == 200, resp.text
     return str(resp.json()["id"])
@@ -164,6 +162,19 @@ async def get_checklist(
 ) -> dict[str, Any]:
     resp = await client.get(
         f"/api/v1/candidates/{candidate_id}/requirements/checklist",
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def get_requirements_workspace(
+    client: AsyncClient,
+    headers: dict[str, str],
+    candidate_id: str,
+) -> dict[str, Any]:
+    resp = await client.get(
+        f"/api/v1/candidates/{candidate_id}/requirements/workspace",
         headers=headers,
     )
     assert resp.status_code == 200, resp.text
@@ -252,6 +263,189 @@ def past_expiry(days: int = 30) -> str:
 
 DRIVER_CE_REQUIREMENTS = (
     "identity_document",
+    "legal_stay_confirmation",
     "driver_license_with_code95",
     "tachograph_card",
+    "medical_fitness",
+    "psychological_tests",
+    "voivodeship_decision",
 )
+
+DRIVER_CE_EVIDENCE_FLOWS = (
+    ("identity_document", "identity_any", "passport"),
+    ("legal_stay_confirmation", "legal_stay_any", "karta_pobytu"),
+    ("driver_license_with_code95", "combined_eu_license", "driver_license_code95"),
+    ("tachograph_card", "tacho_any", "tacho_card"),
+    ("medical_fitness", "medical_any", "medical_certificate"),
+    ("psychological_tests", "psychological_any", "psychotest"),
+    ("voivodeship_decision", "decision_any", "decision"),
+)
+
+RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS = (
+    "Contacts & address",
+    "Passport / ID",
+    "Legal stay",
+    "Red paper",
+    "Work permit",
+    "Driver license",
+    "Code95",
+    "Tacho card",
+    "Medical",
+    "Psychological",
+    "Work experience",
+)
+
+
+def default_document_extraction_meta(doc_type: str) -> dict[str, Any]:
+    """Minimal extracted_fields so evidence approval passes catalog required_meta."""
+    from backend.app.services.requirement_document_data import required_extraction_fields_for_type
+
+    fields = required_extraction_fields_for_type(doc_type)
+    if not fields:
+        return {}
+    values: dict[str, Any] = {
+        "number": "TEST-123456",
+        "country": "PL",
+        "issued_at": "2020-01-01",
+        "expires_at": "2030-01-01",
+        "categories": ["CE"],
+        "type": "temporary",
+        "voivodeship": "mazowieckie",
+        "issued_by": "Test Authority",
+    }
+    extracted = {field: values[field] for field in fields if field in values}
+    for field in fields:
+        if field not in extracted:
+            extracted[field] = f"test-{field}"
+    return {"extracted_fields": extracted}
+
+
+async def satisfy_first_contact_operational_requirement(
+    client: AsyncClient,
+    headers: dict[str, str],
+    *,
+    candidate_id: str,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    due_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    created = await client.post(
+        "/api/v1/activities",
+        headers=headers,
+        json={
+            "title": "Call candidate",
+            "type": "call",
+            "entity_type": "candidate",
+            "entity_id": candidate_id,
+            "due_at": due_at,
+        },
+    )
+    assert created.status_code == 201, created.text
+    complete = await client.post(
+        f"/api/v1/candidates/{candidate_id}/requirements/first_contact_completed/complete-activity",
+        headers=headers,
+        json={"activity_id": created.json()["id"]},
+    )
+    assert complete.status_code == 200, complete.text
+
+
+async def close_driver_ce_requirements(
+    client: AsyncClient,
+    headers: dict[str, str],
+    *,
+    candidate_id: str,
+    include_dossier_confirmations: bool = True,
+    include_first_contact: bool = True,
+) -> None:
+    """Approve all driver_ce evidence slots and patch data fields for workspace closure."""
+    extra: dict[str, Any] = {
+        "citizenship": "UA",
+        "work_country": "PL",
+        "experience_eu_years": "5",
+        "address": "Warsaw, Test Street 1",
+    }
+    if include_dossier_confirmations:
+        extra["recruitment_dossier_confirmed_blocks"] = list(RECRUITMENT_DOSSIER_CONFIRMED_BLOCKS)
+
+    patch_resp = await client.patch(
+        f"/api/v1/candidates/{candidate_id}",
+        headers=headers,
+        json={
+            "phone": "+48123456789",
+            "extra": extra,
+            "personal_data": {
+                "address": "Warsaw, Test Street 1",
+                "citizenship": "UA",
+            },
+        },
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+
+    for requirement_code, variant_code, doc_type in DRIVER_CE_EVIDENCE_FLOWS:
+        doc_id = await post_document(client, headers, candidate_id=candidate_id, doc_type=doc_type)
+        evidence = await select_evidence(
+            client,
+            headers,
+            candidate_id=candidate_id,
+            requirement_code=requirement_code,
+            evidence_variant_code=variant_code,
+        )
+        await link_evidence_document(
+            client,
+            headers,
+            candidate_id=candidate_id,
+            evidence_id=evidence["evidence_id"],
+            document_id=doc_id,
+        )
+        await approve_evidence_api(
+            client,
+            headers,
+            candidate_id=candidate_id,
+            evidence_id=evidence["evidence_id"],
+        )
+
+    if include_first_contact:
+        await satisfy_first_contact_operational_requirement(
+            client,
+            headers,
+            candidate_id=candidate_id,
+        )
+
+
+async def ensure_tenant_link_internal_hr(
+    client: AsyncClient,
+    *,
+    manager_headers: dict[str, str],
+    tenant_id: str,
+    company_id: str,
+) -> None:
+    lst = await client.get(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+    )
+    assert lst.status_code == 200, lst.text
+    for row in lst.json():
+        if str(row.get("client_company_id") or "") == str(company_id):
+            link_id = row["id"]
+            patch = await client.patch(
+                f"/api/v1/tenants/{tenant_id}/links/{link_id}",
+                headers=manager_headers,
+                json={
+                    "handoff_enabled": True,
+                    "handoff_to_client": True,
+                    "handoff_to_internal_hr": True,
+                },
+            )
+            assert patch.status_code == 200, patch.text
+            return
+    create = await client.post(
+        f"/api/v1/tenants/{tenant_id}/links",
+        headers=manager_headers,
+        json={
+            "client_company_id": company_id,
+            "handoff_enabled": True,
+            "handoff_to_client": True,
+            "handoff_to_internal_hr": True,
+        },
+    )
+    assert create.status_code == 201, create.text

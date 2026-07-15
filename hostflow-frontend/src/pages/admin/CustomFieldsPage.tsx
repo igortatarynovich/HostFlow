@@ -150,7 +150,7 @@ function ArrayInputField({ label, value, onChange, placeholder, addButtonLabel }
           {value.map((item, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-xs text-blue-800"
+              className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-xs text-blue-800"
             >
               {item}
               <button
@@ -289,28 +289,25 @@ export default function CustomFieldsPage() {
   )
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.custom_fields.page.header_kicker')}
+      title={t('admin.custom_fields.page.title')}
+      subtitle={t('admin.custom_fields.page.subtitle')}
+      actions={
+        <button
+          className="btn-primary"
+          type="button"
+          onClick={() => {
+            setNewDefinitionMode(true)
+            setEditingDefinition(null)
+          }}
+        >
+          {t('admin.custom_fields.page.create_field')}
+        </button>
+      }
+    >
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.custom_fields.page.header_kicker')}
-            title={t('admin.custom_fields.page.title')}
-            subtitle={t('admin.custom_fields.page.subtitle')}
-            actions={
-              <button
-                className="btn-primary"
-                type="button"
-                onClick={() => {
-                  setNewDefinitionMode(true)
-                  setEditingDefinition(null)
-                }}
-              >
-                {t('admin.custom_fields.page.create_field')}
-              </button>
-            }
-          />
-        </div>
 
         <div className="mb-4">
           <SelectField
@@ -376,27 +373,27 @@ export default function CustomFieldsPage() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-900">{def.label}</span>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
+                            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
                               {def.key}
                             </span>
-                            <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            <span className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                               {scopeOptions.find((o) => o.value === def.scope)?.label ?? def.scope}
                             </span>
-                            <span className="rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                            <span className="rounded-lg bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                               {fieldTypeOptions.find((opt) => opt.value === def.field_type)?.label || def.field_type}
                             </span>
                             {def.required && (
-                              <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                                 {t('admin.custom_fields.list.badge_required')}
                               </span>
                             )}
                             {!def.is_active && (
-                              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {t('admin.custom_fields.list.badge_inactive')}
                               </span>
                             )}
                             {def.is_system && (
-                              <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                              <span className="rounded-lg bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
                                 {t('admin.custom_fields.list.badge_system')}
                               </span>
                             )}
@@ -442,7 +439,7 @@ export default function CustomFieldsPage() {
           </div>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 
