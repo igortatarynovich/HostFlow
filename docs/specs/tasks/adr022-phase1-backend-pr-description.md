@@ -206,7 +206,8 @@ Merge **разрешён после**:
 4. **Backend contract scenarios A/B/C** — подтверждены API/E2E-тестами (§6 matrix, left column)
 5. **Reuse audit принят** (§3)
 6. **Migration roundtrip** — `202607151000_adr022_form_purpose`
-7. **Явная декларация в PR:** product UI acceptance **ещё не выполнен** — это release gate, не merge blocker
+7. **Multi-form scalability accepted** (§9) — Publication contract + versioning design; Phase 1 gaps explicit
+8. **Явная декларация в PR:** product UI acceptance **ещё не выполнен** — release gate, not merge blocker
 
 Product sign-off на этом этапе: **semantics и сценарии** (purpose/policy, match_or_create, release flow) — не implementation details.
 
@@ -238,6 +239,75 @@ Meta Lead
 ```
 
 Form Definition admin UI — после закрытия release gate.
+
+---
+
+## 9. Multi-form scalability (pre-merge architecture check)
+
+Product B подразумевает **десятки форм одновременно** у одного tenant. Вопрос merge gate: масштабируется ли выбранная модель?
+
+### Пример tenant (целевое состояние)
+
+| Entry point | Form Definition | Publication role |
+|-------------|-----------------|------------------|
+| Meta Ads → «Таргетированная реклама» | Sales inquiry form A | `IntakeSourceProfile` + binding (campaign/page) |
+| Meta Ads → «Подбор водителей» | Recruitment form B | Отдельный profile + binding |
+| Google Ads → «Консультация» | Sales form C | Profile + `public_slug` |
+| Сайт → «Запрос демо» | Sales form D | Profile / form slug |
+| QR на выставке | Event form E | Profile + campaign attribution |
+| Email / WhatsApp follow-up | Любая form | **Invite** (attach, known Application) |
+
+### Модель: Form Definition × Publication × Submission
+
+```
+TenantLeadForm          = Form Definition (purpose, profile, policy, presentation draft)
+IntakeSourceProfile     = Publication transport (channel, attribution, optional policy override)
+IntakeSourceBinding     = Provider key → Publication (Meta campaign, page, etc.)
+LeadQuestionnaireInvite = Personal entry (forced attach)
+Submission              = snapshot: form_id + publication_id + published_version + effective_policy + source
+```
+
+**ADR-022 контракт:** one Form Definition → many Publications; each Publication carries attribution; Submission stores immutable effective policy snapshot.
+
+### Scalability matrix
+
+| Requirement | Model (ADR-022) | Phase 1 backend shipped |
+|-------------|-----------------|-------------------------|
+| Many Form Definitions per tenant | ✓ `TenantLeadForm` rows, tenant-scoped | ✓ |
+| Each form — own purpose / policy / entity profile | ✓ three mandatory axes | ✓ |
+| Many Publications per form | ✓ `IntakeSourceProfile` + bindings | Partial — resolver + `publication_config_v1`; no Publication CRUD UI |
+| Publication — own attribution (source, campaign, channel) | ✓ stored on Submission `source` + `publication_id` | ✓ data path |
+| Publication — limited policy override | ✓ `publication_config_v1.submission_policy_override` | ✓ resolver |
+| Independent disable (form or channel) | ✓ `is_active` on form + profile + binding | ✓ |
+| Per-publication analytics | ✓ Submission attribution fields | Data ✓; analytics UI — later |
+| Long-lived campaigns across form versions | ✓ immutable `published_version` on Submission (ADR §6) | Design ✓; publish workflow — Phase 2 |
+| Email/WhatsApp follow-up | ✓ Invite path (attach, no match) | ✓ |
+| Cross-form isolation (wrong form ≠ wrong inbox) | ✓ Entity Profile → route_intent; match scoped by tenant + profile | ✓ Sales slice |
+
+### Architecture verdict (merge gate item)
+
+**Выбор фундамента — правильный:** три оси + Publication/Invite entry context + Submission snapshot масштабируются на десятки форм без второй intake-системы.
+
+**Phase 1 — vertical slice, не full ops:** Publication admin, immutable publish workflow и analytics dashboards — Phase 2; они не меняют модель, только operational maturity.
+
+**Blocker для merge:** архитектор подтверждает, что §5.2 Publication contract + §6 versioning **design** принимаются как путь к multi-form ops; отсутствие Publication CRUD UI в этом PR — expected gap, не architectural flaw.
+
+---
+
+## 10. Post-merge development filter
+
+После merge — **не проектирование**, а денежные контуры. Каждый следующий PR отвечает на один вопрос:
+
+> **Какой конкретный пользовательский сценарий после этого PR можно пройти до конца, чего нельзя сделать сегодня?**
+
+Если ответ нечёткий или сценарий не приближает продажу — задача ниже в бэклоге.
+
+| Priority | Goal | Release blocker |
+|----------|------|-----------------|
+| **1** | Product B walkthrough (Meta → invite → answers → Sales → decision) | B2B revenue |
+| **2** | Product A walkthrough (Recruitment: candidate → docs → pipeline → handoff) | Recruitment revenue |
+| **3** | Document Platform (types, metadata, requirements, reuse, handoff) | Cross-module blocker |
+| **4** | Process Platform (transitions, SLA, clarification, handoff automation) | After working scenarios |
 
 ---
 
