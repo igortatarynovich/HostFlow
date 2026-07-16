@@ -117,6 +117,39 @@ def _coerce_intake_application_kind(value: Optional[str]) -> str:
     return "client" if s == "client" else "candidate"
 
 
+def _lead_form_implies_client_application(
+    *,
+    purpose: Optional[str] = None,
+    target_entity_profile_code: Optional[str] = None,
+    entity_profile_code: Optional[str] = None,
+) -> bool:
+    """B2B inquiry / questionnaire forms create Sales leads, not candidates."""
+    purpose_l = str(purpose or "").strip().lower()
+    if purpose_l in {"inquiry", "questionnaire"}:
+        return True
+    for code in (target_entity_profile_code, entity_profile_code):
+        ep = str(code or "").strip().lower()
+        if ep.startswith("service_sales."):
+            return True
+    return False
+
+
+def _resolve_intake_application_kind(
+    explicit: Optional[str],
+    *,
+    purpose: Optional[str] = None,
+    target_entity_profile_code: Optional[str] = None,
+    entity_profile_code: Optional[str] = None,
+) -> str:
+    if _lead_form_implies_client_application(
+        purpose=purpose,
+        target_entity_profile_code=target_entity_profile_code,
+        entity_profile_code=entity_profile_code,
+    ):
+        return "client"
+    return _coerce_intake_application_kind(explicit)
+
+
 def _candidate_public_display_name(candidate: Candidate) -> str:
     full = " ".join(part for part in [candidate.first_name, candidate.last_name] if part).strip()
     state = _ensure_intake_state(candidate)
@@ -3253,6 +3286,20 @@ def _status_response_payload_from_lead_session(
             expires_at = None
     data_payload = _intake_data_from_state_dict(state)
     timeline = _build_timeline_entries_for_draft(public_session, data_payload, checklist, documents)
+    lf = state.get("lead_form") if isinstance(state.get("lead_form"), dict) else {}
+    is_b2b = (
+        str(state.get("application_kind") or "").strip().lower() == "client"
+        or str(lf.get("purpose") or "").strip().lower() in {"inquiry", "questionnaire"}
+        or str(lf.get("target_entity_profile_code") or "").strip().lower().startswith("service_sales.")
+        or str(getattr(public_session.lead, "lead_type", "") or "").lower() == "client"
+        or bool((state.get("presentation_values_v1") or {}) and any(
+            str(k).startswith("service_sales.") for k in (state.get("presentation_values_v1") or {})
+        ))
+    )
+    if is_b2b:
+        # Do not expose candidate document checklist for B2B inquiry / questionnaire.
+        checklist = {"requiredTypes": [], "optionalTypes": []}
+        documents = {"items": [], "status": "not_applicable"}
     return PublicStatusState(
         candidate_id=None,
         lead_id=public_session.lead_id,
@@ -3710,7 +3757,13 @@ async def create_public_intake(
 
     from backend.app.entity_profile.public_intake_draft_session import create_or_reuse_public_intake_lead_draft
 
-    ak = _coerce_intake_application_kind(str(payload.application_kind) if payload.application_kind is not None else None)
+    lf_purpose = str(getattr(lf, "purpose", None) or "").strip() if lf is not None else None
+    lf_target = str(getattr(lf, "target_entity_profile_code", None) or "").strip() if lf is not None else None
+    ak = _resolve_intake_application_kind(
+        str(payload.application_kind) if payload.application_kind is not None else None,
+        purpose=lf_purpose,
+        target_entity_profile_code=lf_target,
+    )
     lf_meta = lead_form_meta_for_intake_state(lf) if lf is not None else None
     client_company = None
     if payload.client_company is not None:
@@ -4341,7 +4394,19 @@ async def submit_public_intake(
                     },
                 )
         mark_session_submitted(public_session)
-        application_kind = str(state.get("application_kind") or "candidate").strip().lower()
+        lf_block = state.get("lead_form") if isinstance(state.get("lead_form"), dict) else {}
+        application_kind = _resolve_intake_application_kind(
+            str(state.get("application_kind") or "candidate"),
+            purpose=str(lf_block.get("purpose") or "") or None,
+            target_entity_profile_code=str(lf_block.get("target_entity_profile_code") or "") or None,
+            entity_profile_code=(
+                str(form_presentation.get("entity_profile_code") or "") if form_presentation else None
+            ),
+        )
+        # Persist corrected kind so subsequent reads / thank-you omit candidate status tracking.
+        if application_kind == "client" and str(state.get("application_kind") or "").lower() != "client":
+            state["application_kind"] = "client"
+            write_session_intake_state(public_session, state)
         form_presentation_code = (
             str(form_presentation.get("presentation_code") or "") if form_presentation else None
         )

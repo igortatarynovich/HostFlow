@@ -149,6 +149,32 @@ export async function getEntityProfilePresentationPreset(
   return data
 }
 
+/** Published presentation runtime (readable by CRM roles that view leads). */
+export async function resolveEntityProfilePresentation(
+  profileCode: string,
+  presentationCode: string,
+): Promise<{
+  entity_profile_code: string
+  presentation_code: string
+  profile_name?: string | null
+  fields: Array<{
+    qualified_code: string
+    sort_order: number
+    intake_level: string
+    label: string
+    field_type?: string | null
+    widget_hint?: string | null
+    field?: Record<string, unknown> | null
+    presentation_overrides?: Record<string, unknown> | null
+    presentation_rules?: PresentationFieldInput['presentation_rules']
+  }>
+}> {
+  const { data } = await api.get(
+    `/platform/entity-profiles/${encodeURIComponent(profileCode)}/presentations/${encodeURIComponent(presentationCode)}`,
+  )
+  return data
+}
+
 export async function createIntakeForm(payload: IntakeFormCreateInput): Promise<IntakeFormDetail> {
   const { data } = await api.post<IntakeFormDetail>('/settings/intake-forms', payload)
   return data

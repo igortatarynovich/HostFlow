@@ -7,9 +7,9 @@ import SalesQuestionnairePanel from '../leads/SalesQuestionnairePanel'
 import SalesQuestionnaireAnswersView from '../leads/SalesQuestionnaireAnswersView'
 import {
   readSalesQuestionnaireStatus,
-  readSalesQuestionnaireSummary,
   type SalesQuestionnaireStatus,
 } from '../../utils/salesQuestionnaire'
+import { submissionHasDisplayableAnswers } from '../../utils/salesQuestionnaireSubmission'
 
 /** POST hydrate is allowed only for in-flight invites; never on page load for not_sent/submitted. */
 const HYDRATE_INVITE_STATUSES: ReadonlySet<SalesQuestionnaireStatus> = new Set([
@@ -88,7 +88,7 @@ export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: 
     void hydrateInvite(lead)
   }, [lead, hydrateInvite])
 
-  const hasAnswers = useMemo(() => Object.keys(readSalesQuestionnaireSummary(lead || {})).length > 0, [lead])
+  const hasAnswers = useMemo(() => submissionHasDisplayableAnswers(lead || ({ id: leadId } as Lead)), [lead, leadId])
   const status = useMemo(() => readSalesQuestionnaireStatus(lead || {}), [lead])
 
   const handleLeadUpdated = useCallback(

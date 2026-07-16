@@ -1969,6 +1969,10 @@
         "sessions": {
           "title": "Aktywne sesje",
           "description": "Przeglądaj zalogowane urządzenia i w razie potrzeby zakończ je."
+        },
+        "signature": {
+          "title": "Podpis wiadomości wychodzących",
+          "description": "Dodawany automatycznie do e-maili i innych wiadomości wychodzących. Szablony nie powinny zawierać podpisu."
         }
       },
       "avatar": {
@@ -1985,7 +1989,13 @@
         "birth_date": "Data urodzenia",
         "country": "Kraj",
         "city": "Miasto",
-        "preferred_contact": "Preferowany kanał kontaktu"
+        "preferred_contact": "Preferowany kanał kontaktu",
+        "company": "Firma",
+        "website": "Strona WWW",
+        "logo_url": "Logo (URL)",
+        "show_phone": "Pokazuj telefon",
+        "show_email": "Pokazuj e-mail",
+        "show_website": "Pokazuj stronę WWW"
       },
       "preferences": {
         "hints": {
@@ -2117,6 +2127,11 @@
       "labels": {
         "timezone": "Strefa czasowa",
         "user": "Użytkownik"
+      },
+      "signature": {
+        "preview_label": "Podgląd podpisu",
+        "company_fallback_hint": "Firma, strona WWW i kontakty do podpisu pochodzą tylko z tego bloku. Own company / SMTP nie są używane.",
+        "html_hint": "W e-mailu: imię i firma pogrubione kolorem marki, spójne ikony, logo ~180px."
       }
     },
     "signup": {

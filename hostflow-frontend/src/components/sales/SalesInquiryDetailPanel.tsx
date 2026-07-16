@@ -24,13 +24,15 @@ const STATUS_BADGE: Record<string, string> = {
   new: 'bg-emerald-50 text-emerald-700',
   in_progress: 'bg-amber-50 text-amber-700',
   waiting: 'bg-blue-50 text-blue-700',
+  questionnaire_submitted: 'bg-violet-50 text-violet-700',
   completed: 'bg-slate-100 text-slate-600',
 }
 
 const STATUS_TEXT: Record<string, string> = {
   new: 'Новое',
   in_progress: 'В работе',
-  waiting: 'Ожидает',
+  waiting: 'Ожидаем ответ',
+  questionnaire_submitted: 'Ответ получен',
   completed: 'Завершено',
 }
 

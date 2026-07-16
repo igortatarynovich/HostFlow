@@ -49,6 +49,10 @@ from backend.app.modules.leads.schemas import (
     LeadQuestionnaireInviteOut,
     LeadQuestionnaireInviteRequest,
     LeadQuestionnaireFormOptionOut,
+    QuestionnaireInviteEmailPreviewOut,
+    QuestionnaireInviteEmailPreviewRequest,
+    QuestionnaireInviteEmailSendOut,
+    QuestionnaireInviteEmailSendRequest,
     SalesQuestionnaireContextOut,
     LeadStageHealthResponse,
     LeadStageUpdate,
@@ -1307,6 +1311,159 @@ async def create_lead_questionnaire_invite_endpoint(
         opened_at=out.get("opened_at"),
         submitted_at=out.get("submitted_at"),
         expires_at=out.get("expires_at"),
+    )
+
+
+def _invite_out_from_payload(out: dict) -> LeadQuestionnaireInviteOut:
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(out["id"])),
+        lead_id=UUID(str(out["lead_id"])),
+        lead_form_id=UUID(str(out["lead_form_id"])) if out.get("lead_form_id") else None,
+        token=str(out["token"]),
+        apply_url=str(out["apply_url"]),
+        status=str(out["status"]),
+        entity_profile_code=out.get("entity_profile_code"),
+        presentation_code=out.get("presentation_code"),
+        form_locale=out.get("form_locale"),
+        sent_at=out.get("sent_at"),
+        opened_at=out.get("opened_at"),
+        submitted_at=out.get("submitted_at"),
+        expires_at=out.get("expires_at"),
+    )
+
+
+def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
+    from backend.app.services.communication_deliveries.questionnaire_email import QuestionnaireEmailError
+
+    if isinstance(exc, QuestionnaireEmailError):
+        code = exc.code
+        detail: dict = {"code": code, "message": exc.message, **(exc.extra or {})}
+        if code in {"email_not_configured"}:
+            return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        if code in {"clarification_required"}:
+            return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+        if code in {"invalid_email", "empty_message", "not_client_lead", "invite_error"}:
+            return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+    return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+
+
+@router.post(
+    "/{lead_id}/questionnaire-invite/email/preview",
+    response_model=QuestionnaireInviteEmailPreviewOut,
+)
+async def preview_lead_questionnaire_invite_email(
+    lead_id: str,
+    payload: QuestionnaireInviteEmailPreviewRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+) -> QuestionnaireInviteEmailPreviewOut:
+    from backend.app.modules.leads import crud
+    from backend.app.services.communication_deliveries.questionnaire_email import (
+        QuestionnaireEmailError,
+        compose_questionnaire_invite_email,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    try:
+        compose = await compose_questionnaire_invite_email(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            form_locale=payload.form_locale,
+            lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            force_new_invite=payload.force_new_invite,
+            recipient_email=payload.recipient_email,
+            actor_user_id=str(current_user.sub or "").strip() or None,
+        )
+    except QuestionnaireEmailError as exc:
+        raise _questionnaire_email_http_error(exc) from exc
+
+    await db.commit()
+    return QuestionnaireInviteEmailPreviewOut(
+        invite=_invite_out_from_payload(compose.invite_payload),
+        recipient_email=compose.recipient_email or None,
+        subject=compose.subject,
+        body=compose.body,
+        questionnaire_url=compose.questionnaire_url,
+        email_configured=compose.email_configured,
+        clarification_required=compose.clarification_required,
+        invite_reused=compose.invite_reused,
+        form_locale=compose.locale,
+    )
+
+
+@router.post(
+    "/{lead_id}/questionnaire-invite/email/send",
+    response_model=QuestionnaireInviteEmailSendOut,
+)
+async def send_lead_questionnaire_invite_email(
+    lead_id: str,
+    payload: QuestionnaireInviteEmailSendRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+) -> QuestionnaireInviteEmailSendOut:
+    from backend.app.api.v1.communications._helpers.billing import (
+        _load_tenant_license_row,
+        _require_outbound_comms_not_billing_blocked,
+    )
+    from backend.app.modules.leads import crud
+    from backend.app.services.communication_deliveries.questionnaire_email import (
+        QuestionnaireEmailError,
+        send_questionnaire_invite_email,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    tenant = await db.scalar(select(Tenant).where(Tenant.id == tenant_id_str).limit(1))
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    license_row = await _load_tenant_license_row(db, tenant_id_str)
+    _require_outbound_comms_not_billing_blocked(tenant, license_row)
+
+    try:
+        result = await send_questionnaire_invite_email(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            form_locale=payload.form_locale,
+            lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            force_new_invite=payload.force_new_invite,
+            recipient_email=payload.recipient_email,
+            subject=payload.subject,
+            body=payload.body,
+            actor_user_id=str(current_user.sub or "").strip() or None,
+            save_email_to_lead=payload.save_email_to_lead,
+        )
+    except QuestionnaireEmailError as exc:
+        await db.commit()  # persist failed delivery journal row
+        raise _questionnaire_email_http_error(exc) from exc
+
+    await db.commit()
+    return QuestionnaireInviteEmailSendOut(
+        invite=_invite_out_from_payload(result["invite"]),
+        delivery_id=UUID(str(result["delivery_id"])),
+        recipient_email=str(result["recipient_email"]),
+        questionnaire_url=str(result["questionnaire_url"]),
+        subject=str(result["subject"]),
+        status=str(result["status"]),
     )
 
 

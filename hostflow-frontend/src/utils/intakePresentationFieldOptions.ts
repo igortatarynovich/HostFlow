@@ -1,5 +1,5 @@
 import type { FormPresentationField } from '../modules/public-intake/types'
-import type { LocaleCode } from '../i18n'
+import { lookupScopedTranslation, type LocaleCode } from '../i18n'
 import { buildCountryOptions } from '../data/countries'
 
 export type FieldOption = { value: string; label: string }
@@ -65,6 +65,9 @@ function scopedOption(
   value: string,
   fallback: string,
 ): FieldOption {
+  // Prefer the requested locale (submission / public form), not the CRM UI language.
+  const scoped = lookupScopedTranslation(locale, `public.intake.presentation.options.${group}`, value)
+  if (scoped) return { value, label: scoped }
   const key = `public.intake.presentation.options.${group}.${value}`
   const translated = t(key, { defaultValue: '' })
   if (translated && translated !== key) {

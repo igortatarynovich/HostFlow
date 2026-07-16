@@ -93,7 +93,13 @@ def _sales_status(lead: Lead) -> ApplicationStatus:
         or _text(getattr(lead, "stage", None)).lower() in ("converted", "lost")
     ):
         return "completed"
+    normalized = _record(getattr(lead, "normalized", None))
+    q_status = _text(normalized.get("sales_questionnaire_status")).lower()
     stage = _text(getattr(lead, "stage", None)).lower()
+    if stage == "questionnaire_submitted" or q_status == "submitted":
+        return "questionnaire_submitted"
+    if stage == "waiting_for_response" or q_status in {"sent", "opened", "in_progress"}:
+        return "waiting"
     if not stage or stage == "new":
         return "new"
     if stage == "qualified":
@@ -115,6 +121,8 @@ def _recruitment_status(lead: Lead) -> ApplicationStatus:
 def _tab_bucket(status: ApplicationStatus) -> ApplicationTabBucket:
     if status == "rejected":
         return "completed"
+    if status == "questionnaire_submitted":
+        return "in_progress"
     return status  # type: ignore[return-value]
 
 
@@ -171,6 +179,8 @@ def _sales_workflow_step(lead: Lead) -> int:
         return 4
     stage = _text(getattr(lead, "stage", None)).lower()
     if stage == "qualified":
+        return 3
+    if stage in {"waiting_for_response", "questionnaire_submitted"}:
         return 3
     if stage == "contacted":
         return 2

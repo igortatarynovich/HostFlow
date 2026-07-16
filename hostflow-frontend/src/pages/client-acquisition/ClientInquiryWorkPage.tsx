@@ -180,14 +180,14 @@ export default function ClientInquiryWorkPage() {
       {!loading && lead ? (
         <>
           <SalesQuestionnairePanel lead={lead} onLeadUpdated={setLead} />
-          {showQuestionnaireAttribution ? (
-            <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="sales-questionnaire-attribution-panel">
-              <SalesQuestionnaireAttributionRail lead={lead} />
-            </section>
-          ) : null}
           {showQuestionnaireSummary ? (
             <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="sales-questionnaire-summary">
               <SalesQuestionnaireSummaryRail lead={lead} />
+            </section>
+          ) : null}
+          {showQuestionnaireAttribution ? (
+            <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="sales-questionnaire-attribution-panel">
+              <SalesQuestionnaireAttributionRail lead={lead} />
             </section>
           ) : null}
           <ClientLeadDetailView

@@ -1,14 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconBrandWhatsapp, IconCheck, IconCopy, IconSend } from '@tabler/icons-react'
+import {
+  IconBrandWhatsapp,
+  IconCheck,
+  IconChevronDown,
+  IconCopy,
+  IconExternalLink,
+  IconMail,
+  IconSend,
+} from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 
 import {
   createLeadQuestionnaireInvite,
   getLead,
   getLeadQuestionnaireInvite,
   listLeadQuestionnaireForms,
+  previewLeadQuestionnaireInviteEmail,
+  sendLeadQuestionnaireInviteEmail,
   type LeadQuestionnaireFormOption,
 } from '../../api/client'
 import type { Lead } from '../../api/types'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
 import {
@@ -28,6 +40,25 @@ function text(value: unknown): string {
   return String(value).trim()
 }
 
+function detailMessage(err: unknown, fallback: string): string {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (detail && typeof detail === 'object') {
+    const obj = detail as { message?: string; code?: string }
+    if (obj.message) return obj.message
+    if (obj.code) return obj.code
+  }
+  return (err as Error)?.message || fallback
+}
+
+function detailCode(err: unknown): string | null {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (detail && typeof detail === 'object' && 'code' in (detail as object)) {
+    return String((detail as { code?: string }).code || '') || null
+  }
+  return null
+}
+
 export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) {
   const { t, locale } = useI18n()
   const { notify } = useToast()
@@ -37,11 +68,25 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
   const [selectedFormId, setSelectedFormId] = useState<string>('')
   const [selectedLocale, setSelectedLocale] = useState<string>('pl')
   const [applyUrl, setApplyUrl] = useState<string | null>(null)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [forceNewInvite, setForceNewInvite] = useState(false)
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [emailConfigured, setEmailConfigured] = useState(true)
+  const [clarificationRequired, setClarificationRequired] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   const statusLabel = useMemo(() => salesQuestionnaireStatusLabel(lead, { locale }), [lead, locale])
   const phone = text(lead.normalized?.phone) || text(lead.payload?.phone)
+  const leadEmail =
+    text(lead.normalized?.email) ||
+    text(lead.payload?.email) ||
+    text((lead.normalized as { contact?: { email?: string } } | undefined)?.contact?.email)
   const questionnaireStatus = text(lead.normalized?.sales_questionnaire_status)
   const waitingForResponse = isWaitingForQuestionnaireResponse(questionnaireStatus)
+  const answered = questionnaireStatus === 'submitted'
 
   useEffect(() => {
     let cancelled = false
@@ -78,6 +123,9 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         if (invite.lead_form_id) {
           setSelectedFormId(invite.lead_form_id)
         }
+        if (invite.form_locale) {
+          setSelectedLocale(String(invite.form_locale))
+        }
       })
       .catch(() => {
         if (!cancelled) setApplyUrl(null)
@@ -87,7 +135,114 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
     }
   }, [lead.id, questionnaireStatus])
 
-  const sendInvite = useCallback(async () => {
+  useEffect(() => {
+    if (!emailOpen) return
+    setRecipientEmail((current) => current || leadEmail)
+  }, [emailOpen, leadEmail])
+
+  const refreshLead = useCallback(async () => {
+    const refreshed = await getLead(lead.id)
+    onLeadUpdated(refreshed)
+    return refreshed
+  }, [lead.id, onLeadUpdated])
+
+  const openEmailCompose = useCallback(async () => {
+    setBusy(true)
+    setSendError(null)
+    setEmailOpen(true)
+    const mintNew = forceNewInvite || answered
+    try {
+      const preview = await previewLeadQuestionnaireInviteEmail(lead.id, {
+        form_locale: selectedLocale,
+        lead_form_id: selectedFormId || undefined,
+        force_new_invite: mintNew,
+        recipient_email: recipientEmail || leadEmail || undefined,
+      })
+      setApplyUrl(absoluteApplyUrl(preview.questionnaire_url || preview.invite.apply_url))
+      setRecipientEmail(preview.recipient_email || leadEmail || '')
+      setEmailSubject(preview.subject)
+      setEmailBody(preview.body)
+      setEmailConfigured(preview.email_configured)
+      setClarificationRequired(Boolean(preview.clarification_required) || answered)
+      setForceNewInvite(false)
+      await refreshLead()
+    } catch (err: unknown) {
+      setEmailOpen(false)
+      notify({
+        title: detailMessage(
+          err,
+          t('app.sales_questionnaire.email_preview_failed', { defaultValue: 'Could not prepare email' }),
+        ),
+        variant: 'error',
+      })
+    } finally {
+      setBusy(false)
+    }
+  }, [
+    answered,
+    forceNewInvite,
+    lead.id,
+    leadEmail,
+    notify,
+    recipientEmail,
+    refreshLead,
+    selectedFormId,
+    selectedLocale,
+    t,
+  ])
+
+  const sendEmail = useCallback(async () => {
+    setBusy(true)
+    setSendError(null)
+    try {
+      const result = await sendLeadQuestionnaireInviteEmail(lead.id, {
+        form_locale: selectedLocale,
+        lead_form_id: selectedFormId || undefined,
+        force_new_invite: forceNewInvite || clarificationRequired,
+        recipient_email: recipientEmail,
+        subject: emailSubject,
+        body: emailBody,
+        save_email_to_lead: true,
+      })
+      setApplyUrl(absoluteApplyUrl(result.questionnaire_url || result.invite.apply_url))
+      setForceNewInvite(false)
+      setClarificationRequired(false)
+      setEmailOpen(false)
+      await refreshLead()
+      notify({
+        title: t('app.sales_questionnaire.email_sent_success', { defaultValue: 'Questionnaire email sent' }),
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      const code = detailCode(err)
+      const message = detailMessage(
+        err,
+        t('app.sales_questionnaire.email_send_failed', { defaultValue: 'Could not send email' }),
+      )
+      setSendError(message)
+      if (code === 'email_not_configured') {
+        setEmailConfigured(false)
+      }
+      notify({ title: message, variant: 'error' })
+    } finally {
+      setBusy(false)
+    }
+  }, [
+    clarificationRequired,
+    emailBody,
+    emailSubject,
+    forceNewInvite,
+    lead.id,
+    notify,
+    recipientEmail,
+    refreshLead,
+    selectedFormId,
+    selectedLocale,
+    t,
+  ])
+
+  const ensureLink = useCallback(async () => {
+    if (applyUrl) return applyUrl
     setBusy(true)
     try {
       const result = await createLeadQuestionnaireInvite(lead.id, {
@@ -97,41 +252,48 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
       })
       const url = absoluteApplyUrl(result.apply_url)
       setApplyUrl(url)
-      const refreshed = await getLead(lead.id)
-      onLeadUpdated(refreshed)
-      notify({
-        title: t('app.sales_questionnaire.sent_success', { defaultValue: 'Questionnaire link created' }),
-        variant: 'success',
-      })
+      await refreshLead()
+      return url
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
-        (err as Error)?.message ??
-        t('app.sales_questionnaire.send_failed', { defaultValue: 'Could not create questionnaire link' })
-      notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
+      notify({
+        title: detailMessage(
+          err,
+          t('app.sales_questionnaire.send_failed', { defaultValue: 'Could not create questionnaire link' }),
+        ),
+        variant: 'error',
+      })
+      return null
     } finally {
       setBusy(false)
     }
-  }, [lead.id, notify, onLeadUpdated, selectedFormId, selectedLocale, t])
+  }, [applyUrl, lead.id, notify, refreshLead, selectedFormId, selectedLocale, t])
 
   const copyLink = useCallback(async () => {
-    if (!applyUrl) return
+    const url = await ensureLink()
+    if (!url) return
     try {
-      await navigator.clipboard.writeText(applyUrl)
+      await navigator.clipboard.writeText(url)
       notify({
         title: t('app.sales_questionnaire.link_copied', { defaultValue: 'Link copied' }),
         variant: 'success',
       })
     } catch {
-      notify({ title: applyUrl, variant: 'info' })
+      notify({ title: url, variant: 'info' })
     }
-  }, [applyUrl, notify, t])
+  }, [ensureLink, notify, t])
 
-  const openWhatsApp = useCallback(() => {
-    if (!applyUrl) return
+  const openForm = useCallback(async () => {
+    const url = await ensureLink()
+    if (!url) return
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [ensureLink])
+
+  const openWhatsApp = useCallback(async () => {
+    const url = await ensureLink()
+    if (!url) return
     const message = t('app.sales_questionnaire.whatsapp_message', {
       defaultValue: 'Hello! Please complete this short questionnaire: {{url}}',
-      url: applyUrl,
+      url,
     })
     const wa = whatsAppShareUrl(phone, message)
     if (wa) window.open(wa, '_blank', 'noopener,noreferrer')
@@ -141,7 +303,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         variant: 'error',
       })
     }
-  }, [applyUrl, notify, phone, t])
+  }, [ensureLink, notify, phone, t])
 
   const showFormPicker = forms.length > 1
 
@@ -159,17 +321,12 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
             {statusLabel}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-primary inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold"
-          disabled={busy || loadingForms || forms.length === 0}
-          onClick={() => void sendInvite()}
-        >
-          <IconSend size={16} stroke={1.75} aria-hidden />
-          {busy
-            ? t('app.sales_questionnaire.sending', { defaultValue: 'Sending…' })
-            : t('app.sales_questionnaire.send', { defaultValue: 'Send questionnaire' })}
-        </button>
+        {waitingForResponse ? (
+          <span className="inline-flex h-8 items-center gap-1 rounded-lg bg-amber-50 px-3 text-xs font-medium text-amber-900">
+            <IconCheck size={14} stroke={1.75} aria-hidden />
+            {t('app.sales_questionnaire.waiting_badge', { defaultValue: 'Waiting for response' })}
+          </span>
+        ) : null}
       </div>
 
       {showFormPicker ? (
@@ -193,22 +350,29 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         </label>
       ) : null}
 
-      <label className="mt-3 block text-sm text-slate-700">
+      <div className="mt-3" data-testid="sales-questionnaire-locale-group">
         <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('app.sales_questionnaire.locale_label', { defaultValue: 'Questionnaire language' })}
         </span>
-        <select
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-          value={selectedLocale}
-          onChange={(event) => setSelectedLocale(event.target.value)}
-          disabled={busy}
-          data-testid="sales-questionnaire-locale-select"
-        >
-          <option value="pl">PL</option>
-          <option value="en">EN</option>
-          <option value="ru">RU</option>
-        </select>
-      </label>
+        <div className="flex flex-wrap gap-2">
+          {(['pl', 'en', 'ru'] as const).map((code) => (
+            <button
+              key={code}
+              type="button"
+              className={`inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold ${
+                selectedLocale === code
+                  ? 'bg-brand-700 text-white'
+                  : 'border border-slate-200 bg-white text-slate-700'
+              }`}
+              disabled={busy}
+              onClick={() => setSelectedLocale(code)}
+              data-testid={`sales-questionnaire-locale-${code}`}
+            >
+              {code.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {!loadingForms && forms.length === 0 ? (
         <p className="mt-3 text-sm text-amber-800">
@@ -218,28 +382,170 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         </p>
       ) : null}
 
-      {applyUrl ? (
-        <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-white p-3">
-          <p className="break-all font-mono text-xs text-slate-600">{applyUrl}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-primary inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold"
+          disabled={busy || loadingForms || forms.length === 0}
+          onClick={() => void openEmailCompose()}
+          data-testid="sales-questionnaire-email-open"
+        >
+          <IconMail size={16} stroke={1.75} aria-hidden />
+          {t('app.sales_questionnaire.send_email', { defaultValue: 'Send by email' })}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm"
+          disabled={busy || loadingForms || forms.length === 0}
+          onClick={() => void openWhatsApp()}
+          data-testid="sales-questionnaire-whatsapp"
+        >
+          <IconBrandWhatsapp size={16} stroke={1.75} aria-hidden />
+          WhatsApp
+        </button>
+        <div className="relative">
+          <button
+            type="button"
+            className="btn-secondary inline-flex h-9 items-center gap-1 rounded-lg px-3 text-sm"
+            disabled={busy || loadingForms || forms.length === 0}
+            onClick={() => setMoreOpen((v) => !v)}
+            data-testid="sales-questionnaire-more"
+          >
+            {t('app.sales_questionnaire.more', { defaultValue: 'More' })}
+            <IconChevronDown size={14} stroke={1.75} aria-hidden />
+          </button>
+          {moreOpen ? (
+            <div className="absolute right-0 z-10 mt-1 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-md">
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setMoreOpen(false)
+                  void copyLink()
+                }}
+              >
+                <IconCopy size={14} stroke={1.75} aria-hidden />
+                {t('app.sales_questionnaire.copy_link', { defaultValue: 'Copy link' })}
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setMoreOpen(false)
+                  void openForm()
+                }}
+              >
+                <IconExternalLink size={14} stroke={1.75} aria-hidden />
+                {t('app.sales_questionnaire.open_form', { defaultValue: 'Open form' })}
+              </button>
+              {applyUrl ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    setForceNewInvite(true)
+                    setMoreOpen(false)
+                    notify({
+                      title: t('app.sales_questionnaire.new_link_armed', {
+                        defaultValue: 'Next email will create a new link',
+                      }),
+                      variant: 'info',
+                    })
+                  }}
+                >
+                  {t('app.sales_questionnaire.create_new_link', { defaultValue: 'Create new link' })}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {emailOpen ? (
+        <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-white p-3" data-testid="sales-questionnaire-email-compose">
+          {clarificationRequired ? (
+            <p className="text-sm text-amber-900" data-testid="sales-questionnaire-new-invite-banner">
+              {t('app.sales_questionnaire.clarification_new_link', {
+                defaultValue:
+                  'Previous response is kept. This email uses a new personal link for clarification.',
+              })}
+            </p>
+          ) : null}
+          {!emailConfigured ? (
+            <p className="text-sm text-amber-900">
+              {t('app.sales_questionnaire.email_not_configured', {
+                defaultValue: 'Connect email in settings',
+              })}{' '}
+              <Link className="font-semibold underline" to={CRM_APP_PATHS.settingsEmail}>
+                {CRM_APP_PATHS.settingsEmail}
+              </Link>
+            </p>
+          ) : null}
+          <label className="block text-sm text-slate-700">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.sales_questionnaire.email_to', { defaultValue: 'To' })}
+            </span>
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              value={recipientEmail}
+              onChange={(event) => setRecipientEmail(event.target.value)}
+              disabled={busy}
+              data-testid="sales-questionnaire-email-to"
+            />
+          </label>
+          <label className="block text-sm text-slate-700">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.sales_questionnaire.email_subject', { defaultValue: 'Subject' })}
+            </span>
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              value={emailSubject}
+              onChange={(event) => setEmailSubject(event.target.value)}
+              disabled={busy}
+              data-testid="sales-questionnaire-email-subject"
+            />
+          </label>
+          <label className="block text-sm text-slate-700">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.sales_questionnaire.email_body', { defaultValue: 'Message' })}
+            </span>
+            <textarea
+              className="min-h-[180px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              value={emailBody}
+              onChange={(event) => setEmailBody(event.target.value)}
+              disabled={busy}
+              data-testid="sales-questionnaire-email-body"
+            />
+          </label>
+          {applyUrl ? (
+            <p className="break-all text-xs text-slate-500" data-testid="sales-questionnaire-email-link">
+              {applyUrl}
+            </p>
+          ) : null}
+          {sendError ? <p className="text-sm text-red-700">{sendError}</p> : null}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs"
-              onClick={() => void copyLink()}
+              className="btn-primary inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold"
+              disabled={busy || !emailConfigured || !recipientEmail || !emailSubject || !emailBody}
+              onClick={() => void sendEmail()}
+              data-testid="sales-questionnaire-email-send"
             >
-              <IconCopy size={14} stroke={1.75} aria-hidden />
-              {t('app.sales_questionnaire.copy_link', { defaultValue: 'Copy link' })}
+              <IconSend size={16} stroke={1.75} aria-hidden />
+              {busy
+                ? t('app.sales_questionnaire.sending', { defaultValue: 'Sending…' })
+                : sendError
+                  ? t('app.sales_questionnaire.retry_email', { defaultValue: 'Retry' })
+                  : t('app.sales_questionnaire.send_email_action', { defaultValue: 'Send email' })}
             </button>
-            <button type="button" className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-3 text-xs" onClick={openWhatsApp}>
-              <IconBrandWhatsapp size={14} stroke={1.75} aria-hidden />
-              WhatsApp
+            <button
+              type="button"
+              className="btn-secondary inline-flex h-9 items-center rounded-lg px-3 text-sm"
+              disabled={busy}
+              onClick={() => setEmailOpen(false)}
+            >
+              {t('common.cancel', { defaultValue: 'Cancel' })}
             </button>
-            {waitingForResponse ? (
-              <span className="inline-flex h-8 items-center gap-1 rounded-lg bg-amber-50 px-3 text-xs font-medium text-amber-900">
-                <IconCheck size={14} stroke={1.75} aria-hidden />
-                {t('app.sales_questionnaire.waiting_badge', { defaultValue: 'Waiting for response' })}
-              </span>
-            ) : null}
           </div>
         </div>
       ) : null}

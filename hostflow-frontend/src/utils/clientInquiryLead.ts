@@ -138,11 +138,17 @@ export function inquiryServiceLabel(lead: Lead): string | null {
   return null
 }
 
-export type SalesInquiryStatusKey = 'new' | 'in_progress' | 'waiting' | 'completed'
+export type SalesInquiryStatusKey = 'new' | 'in_progress' | 'waiting' | 'completed' | 'questionnaire_submitted'
 
 export function inquiryStatusKey(lead: Lead): SalesInquiryStatusKey {
   if (lead.converted_client_id || lead.stage === 'converted' || lead.stage === 'lost') return 'completed'
+  const normalized = record(lead.normalized)
+  const qStatus = text(normalized.sales_questionnaire_status).toLowerCase()
   const stage = (lead.stage || '').trim().toLowerCase()
+  if (stage === 'questionnaire_submitted' || qStatus === 'submitted') return 'questionnaire_submitted'
+  if (stage === 'waiting_for_response' || qStatus === 'sent' || qStatus === 'opened' || qStatus === 'in_progress') {
+    return 'waiting'
+  }
   if (!stage || stage === 'new') return 'new'
   if (stage === 'qualified') return 'waiting'
   return 'in_progress'
@@ -161,6 +167,7 @@ export function salesInquiryWorkflowStep(lead: Lead): number {
   if (lead.converted_client_id) return 4
   const stage = (lead.stage || '').trim().toLowerCase()
   if (stage === 'qualified') return 3
+  if (stage === 'waiting_for_response' || stage === 'questionnaire_submitted') return 3
   if (stage === 'contacted') return 2
   return 1
 }

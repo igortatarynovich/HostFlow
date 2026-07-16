@@ -1,6 +1,6 @@
 export type ApplicationModule = 'sales' | 'recruitment'
 
-export type ApplicationStatus = 'new' | 'in_progress' | 'waiting' | 'completed' | 'rejected'
+export type ApplicationStatus = 'new' | 'in_progress' | 'waiting' | 'completed' | 'rejected' | 'questionnaire_submitted'
 
 export type ApplicationTab = 'all' | 'new' | 'in_progress' | 'waiting' | 'completed'
 

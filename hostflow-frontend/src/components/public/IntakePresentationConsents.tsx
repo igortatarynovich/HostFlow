@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { useI18n } from '../../i18n'
-
-const LEGAL_LINK_CLASS = 'text-brand-700 underline-offset-2 hover:underline'
+import { ConsentRow } from './ConsentRow'
 
 export const INTAKE_LEGAL_URLS = {
   privacy: '/legal/privacy.html',
@@ -16,84 +15,99 @@ type AgreementsState = {
   rodo_acknowledgment: boolean
 }
 
+type ConsentErrors = Partial<Record<keyof AgreementsState, string>>
+
 type Props = {
   agreements: AgreementsState
   onChange: (patch: Partial<AgreementsState>) => void
   showErrors?: boolean
+  errors?: ConsentErrors
+  disabled?: boolean
+  consentRefs?: Partial<Record<keyof AgreementsState, React.RefObject<HTMLInputElement | null>>>
 }
 
 function LegalLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={LEGAL_LINK_CLASS}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
       {children}
     </a>
   )
 }
 
-export function IntakePresentationConsents({ agreements, onChange, showErrors = false }: Props) {
+export function IntakePresentationConsents({
+  agreements,
+  onChange,
+  showErrors = false,
+  errors = {},
+  disabled = false,
+  consentRefs,
+}: Props) {
   const { t } = useI18n()
-
-  const labelClass = (checked: boolean) =>
-    `flex items-start gap-2 rounded-lg border px-2 py-2 text-sm transition ${
-      showErrors && !checked ? 'border-rose-400 bg-rose-50 text-rose-900' : 'border-transparent text-slate-700'
-    }`
+  const requiredMessage = t('public.intake.presentation.consent_required', {
+    defaultValue: 'To pole jest wymagane',
+  })
 
   return (
-    <div className="space-y-3">
-      <label className={labelClass(agreements.general)}>
-        <input
-          type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.general ? 'outline outline-2 outline-rose-500' : ''}`}
-          checked={agreements.general}
-          onChange={(e) => onChange({ general: e.target.checked })}
-        />
-        <span>
-          {t('public.intake.presentation.consent_general_prefix', { defaultValue: 'I accept the' })}{' '}
-          <LegalLink href={INTAKE_LEGAL_URLS.privacy}>
-            {t('public.intake.presentation.consent_general_link', { defaultValue: 'privacy policy' })}
-          </LegalLink>
-        </span>
-      </label>
+    <div className="space-y-2">
+      <ConsentRow
+        id="consent-general"
+        ref={consentRefs?.general}
+        checked={agreements.general}
+        disabled={disabled}
+        showError={showErrors}
+        errorMessage={errors.general || requiredMessage}
+        onChange={(checked) => onChange({ general: checked })}
+      >
+        {t('public.intake.presentation.consent_general_prefix', { defaultValue: 'Akceptuję' })}{' '}
+        <LegalLink href={INTAKE_LEGAL_URLS.privacy}>
+          {t('public.intake.presentation.consent_general_link', { defaultValue: 'politykę prywatności' })}
+        </LegalLink>
+      </ConsentRow>
 
-      <label className={labelClass(agreements.employer_share)}>
-        <input
-          type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.employer_share ? 'outline outline-2 outline-rose-500' : ''}`}
-          checked={agreements.employer_share}
-          onChange={(e) => onChange({ employer_share: e.target.checked })}
-        />
-        <span>{t('public.intake.presentation.consent_share', { defaultValue: 'I agree to share data with employers' })}</span>
-      </label>
+      <ConsentRow
+        id="consent-employer-share"
+        ref={consentRefs?.employer_share}
+        checked={agreements.employer_share}
+        disabled={disabled}
+        showError={showErrors}
+        errorMessage={errors.employer_share || requiredMessage}
+        onChange={(checked) => onChange({ employer_share: checked })}
+      >
+        {t('public.intake.presentation.consent_share_prefix', { defaultValue: 'Wyrażam zgodę na' })}{' '}
+        <LegalLink href={INTAKE_LEGAL_URLS.rodo}>
+          {t('public.intake.presentation.consent_share_link', { defaultValue: 'udostępnienie danych' })}
+        </LegalLink>
+      </ConsentRow>
 
-      <label className={labelClass(agreements.terms_acceptance)}>
-        <input
-          type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.terms_acceptance ? 'outline outline-2 outline-rose-500' : ''}`}
-          checked={agreements.terms_acceptance}
-          onChange={(e) => onChange({ terms_acceptance: e.target.checked })}
-        />
-        <span>
-          {t('public.intake.presentation.consent_terms_prefix', { defaultValue: 'I accept the' })}{' '}
-          <LegalLink href={INTAKE_LEGAL_URLS.terms}>
-            {t('public.intake.presentation.consent_terms_link', { defaultValue: 'terms of use' })}
-          </LegalLink>
-        </span>
-      </label>
+      <ConsentRow
+        id="consent-terms"
+        ref={consentRefs?.terms_acceptance}
+        checked={agreements.terms_acceptance}
+        disabled={disabled}
+        showError={showErrors}
+        errorMessage={errors.terms_acceptance || requiredMessage}
+        onChange={(checked) => onChange({ terms_acceptance: checked })}
+      >
+        {t('public.intake.presentation.consent_terms_prefix', { defaultValue: 'Akceptuję' })}{' '}
+        <LegalLink href={INTAKE_LEGAL_URLS.terms}>
+          {t('public.intake.presentation.consent_terms_link', { defaultValue: 'regulamin' })}
+        </LegalLink>
+      </ConsentRow>
 
-      <label className={labelClass(agreements.rodo_acknowledgment)}>
-        <input
-          type="checkbox"
-          className={`mt-0.5 ${showErrors && !agreements.rodo_acknowledgment ? 'outline outline-2 outline-rose-500' : ''}`}
-          checked={agreements.rodo_acknowledgment}
-          onChange={(e) => onChange({ rodo_acknowledgment: e.target.checked })}
-        />
-        <span>
-          {t('public.intake.presentation.consent_rodo_prefix', { defaultValue: 'I have read the' })}{' '}
-          <LegalLink href={INTAKE_LEGAL_URLS.rodo}>
-            {t('public.intake.presentation.consent_rodo_link', { defaultValue: 'RODO information' })}
-          </LegalLink>
-        </span>
-      </label>
+      <ConsentRow
+        id="consent-rodo"
+        ref={consentRefs?.rodo_acknowledgment}
+        checked={agreements.rodo_acknowledgment}
+        disabled={disabled}
+        showError={showErrors}
+        errorMessage={errors.rodo_acknowledgment || requiredMessage}
+        onChange={(checked) => onChange({ rodo_acknowledgment: checked })}
+      >
+        {t('public.intake.presentation.consent_rodo_prefix', { defaultValue: 'Zapoznałem się z' })}{' '}
+        <LegalLink href={INTAKE_LEGAL_URLS.rodo}>
+          {t('public.intake.presentation.consent_rodo_link', { defaultValue: 'informacją RODO' })}
+        </LegalLink>
+      </ConsentRow>
     </div>
   )
 }

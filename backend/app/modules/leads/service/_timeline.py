@@ -79,6 +79,23 @@ async def get_lead_timeline(
             from_stage = (payload or {}).get("from_stage") if isinstance(payload, dict) else None
             to_stage = (payload or {}).get("to_stage") if isinstance(payload, dict) else None
             descr = f"{from_stage or '—'} → {to_stage or '—'}"
+        elif action == "lead.questionnaire_email_sent":
+            kind = "questionnaire_email"
+            if isinstance(payload, dict):
+                recipient = payload.get("recipient") or "—"
+                channel = payload.get("channel") or "email"
+                link = payload.get("questionnaire_url") or ""
+                descr = f"{channel} → {recipient}" + (f" · {link}" if link else "")
+        elif action == "lead.questionnaire_email_failed":
+            kind = "questionnaire_email"
+            if isinstance(payload, dict):
+                descr = str(payload.get("error") or payload.get("error_code") or "send failed")
+        elif action == "lead.questionnaire_submitted":
+            kind = "questionnaire_submitted"
+            if isinstance(payload, dict):
+                contact = payload.get("contact_name") or "—"
+                company = payload.get("company_name") or "—"
+                descr = f"{contact} — {company}"
         elif str(action or "").startswith("analytics.next_action."):
             kind = "next_action_warning"
         elif str(action or "").startswith("analytics.perf."):

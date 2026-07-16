@@ -1026,6 +1026,63 @@ export async function createLeadQuestionnaireInvite(
   return data
 }
 
+export type QuestionnaireInviteEmailPreview = {
+  invite: LeadQuestionnaireInviteResult
+  recipient_email?: string | null
+  subject: string
+  body: string
+  questionnaire_url: string
+  email_configured: boolean
+  clarification_required: boolean
+  invite_reused: boolean
+  form_locale: string
+  settings_email_path?: string
+}
+
+export type QuestionnaireInviteEmailSendResult = {
+  invite: LeadQuestionnaireInviteResult
+  delivery_id: string
+  recipient_email: string
+  questionnaire_url: string
+  subject: string
+  status: string
+}
+
+export async function previewLeadQuestionnaireInviteEmail(
+  leadId: string,
+  payload: {
+    form_locale?: string
+    lead_form_id?: string
+    force_new_invite?: boolean
+    recipient_email?: string
+  },
+): Promise<QuestionnaireInviteEmailPreview> {
+  const { data } = await api.post<QuestionnaireInviteEmailPreview>(
+    `/leads/${leadId}/questionnaire-invite/email/preview`,
+    payload,
+  )
+  return data
+}
+
+export async function sendLeadQuestionnaireInviteEmail(
+  leadId: string,
+  payload: {
+    form_locale?: string
+    lead_form_id?: string
+    force_new_invite?: boolean
+    recipient_email: string
+    subject: string
+    body: string
+    save_email_to_lead?: boolean
+  },
+): Promise<QuestionnaireInviteEmailSendResult> {
+  const { data } = await api.post<QuestionnaireInviteEmailSendResult>(
+    `/leads/${leadId}/questionnaire-invite/email/send`,
+    payload,
+  )
+  return data
+}
+
 export async function convertClientLeadToClient(leadId: string): Promise<Lead> {
   const { data } = await api.post<Lead>(`/leads/${leadId}/convert-client`);
   return data;

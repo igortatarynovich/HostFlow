@@ -34,6 +34,13 @@ INVITE_STATUS_OPENED = "opened"
 INVITE_STATUS_IN_PROGRESS = "in_progress"
 INVITE_STATUS_SUBMITTED = "submitted"
 
+LEAD_STAGE_WAITING_FOR_RESPONSE = "waiting_for_response"
+LEAD_STAGE_QUESTIONNAIRE_SUBMITTED = "questionnaire_submitted"
+
+QUESTIONNAIRE_WAITING_STATUSES = frozenset(
+    {INVITE_STATUS_SENT, INVITE_STATUS_OPENED, INVITE_STATUS_IN_PROGRESS}
+)
+
 QUESTIONNAIRE_INVITE_TTL_DAYS = 30
 SALES_QUESTIONNAIRE_PREFIX = f"{TARGETED_ADVERTISING_PROFILE_CODE}."
 
@@ -327,8 +334,15 @@ async def attach_questionnaire_invite_to_lead(
     mark_sent: bool = False,
     lead_form_id: str | None = None,
     form_locale: str | None = None,
+    create_if_missing: bool = False,
+    force_new: bool = False,
 ) -> LeadQuestionnaireInvite:
-    """Create or reuse a personal questionnaire token bound to an existing Lead."""
+    """Create or reuse a personal questionnaire token bound to an existing Lead.
+
+    Public create endpoint keeps ``mark_sent=False`` from creating drafts.
+    Email preview/send uses ``create_if_missing=True`` so an invite can exist
+    before the outbound message is accepted.
+    """
     lead_form, intake_profile = await resolve_lead_form_for_questionnaire(
         db,
         tenant_id=str(tenant_id),
@@ -347,6 +361,11 @@ async def attach_questionnaire_invite_to_lead(
     now = _now()
     expires_at = now + timedelta(days=QUESTIONNAIRE_INVITE_TTL_DAYS)
 
+    if force_new and existing is not None:
+        existing.expires_at = now
+        existing.updated_at = now
+        existing = None
+
     if existing is not None:
         invite = existing
         if mark_sent:
@@ -354,19 +373,18 @@ async def attach_questionnaire_invite_to_lead(
                 invite.status = INVITE_STATUS_SENT
                 invite.sent_at = now
             invite.updated_at = now
-            _sync_lead_questionnaire_status(lead, invite.status)
-        if not invite.apply_url:
-            invite.apply_url = _apply_url_for_token(invite.token, form_locale=resolved_locale)
+            _apply_questionnaire_lifecycle(lead, invite.status, form_locale=resolved_locale)
         if resolved_locale:
             meta = _record(invite.meta)
             meta["form_locale"] = resolved_locale
             invite.meta = meta
-        if mark_sent:
-            _sync_lead_questionnaire_status(lead, invite.status)
+            invite.apply_url = _apply_url_for_token(invite.token, form_locale=resolved_locale)
+        elif not invite.apply_url:
+            invite.apply_url = _apply_url_for_token(invite.token, form_locale=resolved_locale)
         await db.flush()
         return invite
 
-    if not mark_sent:
+    if not mark_sent and not create_if_missing:
         raise LookupError("No questionnaire invite exists for this lead")
 
     token = _generate_token()
@@ -403,9 +421,8 @@ async def attach_questionnaire_invite_to_lead(
     )
     db.add(invite)
 
-    normalized = _record(lead.normalized)
-    normalized.setdefault("sales_questionnaire_status", INVITE_STATUS_SENT if mark_sent else INVITE_STATUS_NOT_SENT)
-    lead.normalized = normalized
+    initial_status = INVITE_STATUS_SENT if mark_sent else INVITE_STATUS_NOT_SENT
+    _apply_questionnaire_lifecycle(lead, initial_status, form_locale=resolved_locale)
     await db.flush()
     return invite
 
@@ -439,6 +456,20 @@ def _sync_lead_questionnaire_status(lead: Lead, status: str) -> None:
     lead.normalized = normalized
 
 
+def _apply_questionnaire_lifecycle(lead: Lead, questionnaire_status: str, *, form_locale: str | None = None) -> None:
+    """Keep invite status, CRM stage, and application list status in sync."""
+    _sync_lead_questionnaire_status(lead, questionnaire_status)
+    locale = str(form_locale or "").strip().lower()[:2]
+    if locale:
+        normalized = _record(lead.normalized)
+        normalized["sales_questionnaire_locale"] = locale
+        lead.normalized = normalized
+    if questionnaire_status in QUESTIONNAIRE_WAITING_STATUSES:
+        lead.stage = LEAD_STAGE_WAITING_FOR_RESPONSE
+    elif questionnaire_status == INVITE_STATUS_SUBMITTED:
+        lead.stage = LEAD_STAGE_QUESTIONNAIRE_SUBMITTED
+
+
 async def mark_invite_opened(
     db: AsyncSession,
     *,
@@ -453,7 +484,8 @@ async def mark_invite_opened(
     if invite.status in {INVITE_STATUS_NOT_SENT, INVITE_STATUS_SENT}:
         invite.status = INVITE_STATUS_OPENED
     invite.updated_at = now
-    _sync_lead_questionnaire_status(lead, INVITE_STATUS_OPENED)
+    locale = str(_record(invite.meta).get("form_locale") or "").strip() or None
+    _apply_questionnaire_lifecycle(lead, INVITE_STATUS_OPENED, form_locale=locale)
     await db.flush()
 
 
@@ -469,7 +501,8 @@ async def mark_invite_in_progress(
     if invite.status != INVITE_STATUS_IN_PROGRESS:
         invite.status = INVITE_STATUS_IN_PROGRESS
     invite.updated_at = now
-    _sync_lead_questionnaire_status(lead, INVITE_STATUS_IN_PROGRESS)
+    locale = str(_record(invite.meta).get("form_locale") or "").strip() or None
+    _apply_questionnaire_lifecycle(lead, INVITE_STATUS_IN_PROGRESS, form_locale=locale)
     await db.flush()
 
 
@@ -589,9 +622,13 @@ def merge_presentation_into_sales_summary(
         need["questionnaire"] = sales_questionnaire
         normalized["need"] = need
 
-    normalized["sales_questionnaire_status"] = (
+    next_status = (
         INVITE_STATUS_SUBMITTED if submitted else normalized.get("sales_questionnaire_status") or INVITE_STATUS_IN_PROGRESS
     )
+    normalized["entity_profile_code"] = TARGETED_ADVERTISING_PROFILE_CODE
+    lead.normalized = normalized
+    _apply_questionnaire_lifecycle(lead, str(next_status))
+    normalized = _record(lead.normalized)
     normalized["entity_profile_code"] = TARGETED_ADVERTISING_PROFILE_CODE
     lead.normalized = normalized
 
@@ -600,6 +637,162 @@ def merge_presentation_into_sales_summary(
     payload["questionnaire_intake_state"] = dict(intake_state)
     lead.payload = payload
     return normalized
+
+
+async def _questionnaire_submit_notification_exists(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    invite_id: str,
+) -> bool:
+    from backend.app.models.user_notification import UserNotification
+
+    rows = (
+        await db.execute(
+            select(UserNotification)
+            .where(
+                UserNotification.tenant_id == str(tenant_id),
+                UserNotification.event_type == "intake.questionnaire.submitted",
+            )
+            .order_by(UserNotification.created_at.desc())
+            .limit(200)
+        )
+    ).scalars().all()
+    for row in rows:
+        payload = _record(row.payload)
+        if str(payload.get("invite_id") or "") == str(invite_id):
+            return True
+    return False
+
+
+async def _notify_questionnaire_submitted(
+    db: AsyncSession,
+    *,
+    invite: LeadQuestionnaireInvite,
+    lead: Lead,
+    intake_state: dict[str, Any],
+) -> None:
+    from backend.app.constants import spa_paths
+    from backend.app.models.user import Role, User
+    from backend.app.modules.leads import pipeline_hooks
+    from backend.app.services.audit import log_activity
+    from backend.app.services.events import EventAudience, emit_event
+
+    tenant_id = str(lead.tenant_id)
+    invite_id = str(invite.id)
+    if await _questionnaire_submit_notification_exists(db, tenant_id=tenant_id, invite_id=invite_id):
+        return
+
+    normalized = _record(lead.normalized)
+    contact_name = (
+        _trim(normalized.get("full_name"))
+        or _trim(_record(normalized.get("contact_person")).get("full_name"))
+        or "Контакт"
+    )
+    company_name = (
+        _trim(_record(normalized.get("company_profile")).get("name"))
+        or _trim(normalized.get("company_name"))
+        or "Компания"
+    )
+    summary_line = f"{contact_name} — {company_name}"
+    submitted_at = invite.submitted_at.isoformat() if invite.submitted_at else _now().isoformat()
+    dedupe_key = f"intake.questionnaire.submitted:{invite_id}"
+
+    assignee = await pipeline_hooks._lead_reminder_assignee_id(
+        db,
+        tenant_id=tenant_id,
+        lead_id=str(lead.id),
+    )
+    if not assignee:
+        row = await db.execute(
+            select(User.id)
+            .where(
+                User.tenant_id == tenant_id,
+                User.is_active.is_(True),
+                User.role.in_(["administrator", "supervisor", "manager"]),
+            )
+            .order_by(User.created_at.asc())
+            .limit(1)
+        )
+        assignee = row.scalar_one_or_none()
+
+    payload = {
+        "title": "Клиент заполнил анкету",
+        "description": summary_line,
+        "body": summary_line,
+        "contact_name": contact_name,
+        "company_name": company_name,
+        "tenant_id": tenant_id,
+        "lead_id": str(lead.id),
+        "invite_id": invite_id,
+        "submission_id": f"questionnaire-invite-submit:{invite.token}",
+        "form_id": str(invite.lead_form_id) if invite.lead_form_id else None,
+        "responsible_user_id": assignee,
+        "submitted_at": submitted_at,
+        "href": spa_paths.spa_lead(str(lead.id)),
+        "dedupe_key": dedupe_key,
+    }
+
+    audience = (
+        EventAudience(user_ids=[assignee])
+        if assignee
+        else EventAudience(roles=(Role.supervisor, Role.administrator))
+    )
+    try:
+        await emit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type="intake.questionnaire.submitted",
+            payload=payload,
+            audience=audience,
+            entity_type="lead",
+            entity_id=str(lead.id),
+            channel="in_app",
+        )
+    except Exception:
+        from backend.app.models.user_notification import UserNotification
+        from uuid import uuid4
+
+        recipient_ids: list[str] = []
+        if assignee:
+            recipient_ids = [assignee]
+        else:
+            rows = await db.execute(
+                select(User.id).where(
+                    User.tenant_id == tenant_id,
+                    User.is_active.is_(True),
+                    User.role.in_(["administrator", "supervisor"]),
+                )
+            )
+            recipient_ids = [str(uid) for uid in rows.scalars().all() if uid]
+        for user_id in recipient_ids:
+            db.add(
+                UserNotification(
+                    id=str(uuid4()),
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    event_type="intake.questionnaire.submitted",
+                    payload=payload,
+                    entity_type="lead",
+                    entity_id=str(lead.id),
+                    channel="in_app",
+                )
+            )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="lead.questionnaire_submitted",
+        target_type="lead",
+        target_id=str(lead.id),
+        payload={
+            "invite_id": invite_id,
+            "contact_name": contact_name,
+            "company_name": company_name,
+            "submitted_at": submitted_at,
+            "form_id": payload["form_id"],
+            "responsible_user_id": assignee,
+        },
+    )
 
 
 async def mark_invite_submitted(
@@ -637,10 +830,20 @@ async def mark_invite_submitted(
         normalized_values=normalized_values,
         presentation_code=str(invite.presentation_code or ""),
         consent_metadata={"consents": agreements},
-        entry_context={"entry": "questionnaire_invite"},
+        entry_context={
+            "entry": "questionnaire_invite",
+            "form_locale": str(_record(invite.meta).get("form_locale") or "").strip() or None,
+        },
         idempotency_key=f"questionnaire-invite-submit:{invite.token}",
     )
 
-    lead.stage = "questionnaire_submitted"
+    submit_locale = str(_record(invite.meta).get("form_locale") or "").strip() or None
+    _apply_questionnaire_lifecycle(lead, INVITE_STATUS_SUBMITTED, form_locale=submit_locale)
     lead.status = "new"
+    await _notify_questionnaire_submitted(
+        db,
+        invite=invite,
+        lead=lead,
+        intake_state=intake_state,
+    )
     await db.flush()

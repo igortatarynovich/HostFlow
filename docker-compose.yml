@@ -38,7 +38,8 @@ services:
       - SYNC_DATABASE_URL=postgresql+psycopg://hostflow:hostflow@db:5432/hostflow
       - UVICORN_WORKERS=1
       - REDIS_URL=redis://redis:6379/0
-      - EMAIL_DELIVERY_MODE=mock
+      # Live SMTP for questionnaire email staging acceptance (tenant_email_config).
+      - EMAIL_DELIVERY_MODE=live
     depends_on:
       db:
         condition: service_healthy

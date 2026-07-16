@@ -1007,10 +1007,8 @@
         },
         "handoff": {
           "back_inbox": "Back to inbox",
-          "title": "Internal HR handoff",
-          "hint": "Review transfer data, take the case into HR review, then approve for employment when ready.",
-          "accept_pickup": "Take into HR review",
-          "accepted_notice": "Case is in HR review. Complete the checklist below, then approve for employment."
+          "title": "Handoff snapshot",
+          "hint": "Read-only payload from GET /api/v1/handoffs/{id}/snapshot. No Candidates list API."
         },
         "tasks": {
           "heading": "HR tasks",
@@ -1056,11 +1054,6 @@
           "lane_checklist_deregister": "Deregistration checklist",
           "lane_monthly_settlement": "Monthly settlement",
           "lane_export_queue": "Export (placeholder)"
-        },
-        "handoff": {
-          "back_inbox": "Back to inbox",
-          "title": "Handoff snapshot",
-          "hint": "Read-only payload from GET /api/v1/handoffs/{id}/snapshot. No Candidates list API."
         },
         "employees": {
           "heading": "Employees",
@@ -2049,6 +2042,10 @@
         "sessions": {
           "title": "Active sessions",
           "description": "Review signed-in devices and revoke sessions if needed."
+        },
+        "signature": {
+          "title": "Outgoing message signature",
+          "description": "Appended automatically to emails and other outbound messages. Templates must not include a signature."
         }
       },
       "avatar": {
@@ -2065,7 +2062,13 @@
         "birth_date": "Date of birth",
         "country": "Country",
         "city": "City",
-        "preferred_contact": "Preferred contact channel"
+        "preferred_contact": "Preferred contact channel",
+        "company": "Company",
+        "website": "Website",
+        "logo_url": "Logo (URL)",
+        "show_phone": "Show phone",
+        "show_email": "Show email",
+        "show_website": "Show website"
       },
       "preferences": {
         "hints": {
@@ -2197,6 +2200,11 @@
       "labels": {
         "timezone": "Timezone",
         "user": "User"
+      },
+      "signature": {
+        "preview_label": "Signature preview",
+        "company_fallback_hint": "Company, website and contacts for the signature come only from this block. Own company / SMTP are not used.",
+        "html_hint": "In email: name and company in bold brand color, consistent icons, logo ~180px wide."
       }
     },
     "signup": {

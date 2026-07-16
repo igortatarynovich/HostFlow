@@ -1904,6 +1904,8 @@ def _ensure_preferences_structure(preferences: dict[str, Any] | None) -> dict[st
 
 
 def _extract_profile_dict(user: User) -> Dict[str, Any]:
+    from backend.app.services.email_signature import normalize_signature_block
+
     extra = _ensure_profile_extra(user.extra)
     profile = extra["profile"]
     return {
@@ -1919,6 +1921,7 @@ def _extract_profile_dict(user: User) -> Dict[str, Any]:
         "position": profile.get("position"),
         "phone": profile.get("phone"),
         "avatar_url": profile.get("avatar_url"),
+        "signature": normalize_signature_block(profile.get("signature")),
     }
 
 
@@ -2071,6 +2074,14 @@ async def patch_user_me(
             if profile.get("birth_date") != new_birth_date:
                 profile["birth_date"] = new_birth_date
                 changed_profile_fields.append("birth_date")
+
+        if "signature" in profile_payload:
+            from backend.app.services.email_signature import merge_signature_block, normalize_signature_block
+
+            next_signature = merge_signature_block(profile.get("signature"), profile_payload.get("signature"))
+            if normalize_signature_block(profile.get("signature")) != next_signature:
+                profile["signature"] = next_signature
+                changed_profile_fields.append("signature")
 
     preferences_changed = False
     if preferences_payload:

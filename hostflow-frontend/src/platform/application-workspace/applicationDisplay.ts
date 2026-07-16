@@ -4,6 +4,7 @@ export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   new: 'bg-emerald-50 text-emerald-700',
   in_progress: 'bg-amber-50 text-amber-700',
   waiting: 'bg-blue-50 text-blue-700',
+  questionnaire_submitted: 'bg-violet-50 text-violet-700',
   completed: 'bg-slate-100 text-slate-600',
   rejected: 'bg-rose-50 text-rose-700',
 }
@@ -11,7 +12,8 @@ export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
 export const APPLICATION_STATUS_TEXT: Record<ApplicationStatus, string> = {
   new: 'Новое',
   in_progress: 'В работе',
-  waiting: 'Ожидает',
+  waiting: 'Ожидаем ответ',
+  questionnaire_submitted: 'Ответ получен',
   completed: 'Завершено',
   rejected: 'Отклонено',
 }
@@ -19,6 +21,7 @@ export const APPLICATION_STATUS_TEXT: Record<ApplicationStatus, string> = {
 export function applicationTabBucket(app: Application): ApplicationTab {
   if (app.tab_bucket && app.tab_bucket !== 'all') return app.tab_bucket
   if (app.status === 'rejected') return 'completed'
+  if (app.status === 'questionnaire_submitted') return 'in_progress'
   return app.status === 'new' || app.status === 'in_progress' || app.status === 'waiting' || app.status === 'completed'
     ? app.status
     : 'all'

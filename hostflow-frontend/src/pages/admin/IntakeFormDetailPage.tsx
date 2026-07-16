@@ -36,9 +36,10 @@ import {
   type FriendlyErrorInfo,
 } from '../../utils/friendlyError'
 
-function publicIntakeUrlForSlug(slug: string): string {
-  if (typeof window === 'undefined') return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}`
+function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client' | 'candidate' }): string {
   const q = new URLSearchParams({ lead_form_slug: slug })
+  if (opts?.applicationKind) q.set('application_kind', opts.applicationKind)
+  if (typeof window === 'undefined') return `/public/intake?${q.toString()}`
   return `${window.location.origin}/public/intake?${q.toString()}`
 }
 
@@ -199,7 +200,15 @@ export default function IntakeFormDetailPage() {
   )
 
   const publicSlug = detail?.form.public_slug?.trim() || ''
-  const publicUrl = publicSlug ? publicIntakeUrlForSlug(publicSlug) : ''
+  const formPurpose = String(detail?.form.purpose || '').trim().toLowerCase()
+  const publicUrl = publicSlug
+    ? publicIntakeUrlForSlug(
+        publicSlug,
+        formPurpose === 'inquiry' || formPurpose === 'questionnaire'
+          ? { applicationKind: 'client' }
+          : undefined,
+      )
+    : ''
 
   return (
     <SettingsSubpageHeader

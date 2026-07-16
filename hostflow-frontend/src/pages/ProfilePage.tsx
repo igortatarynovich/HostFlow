@@ -15,6 +15,7 @@ import type {
   Company,
   TeamOverviewResponse,
   UserNotificationPreference,
+  UserOutgoingSignature,
   UserPreferences,
   UserSavedViews,
   UserSessionInfo,
@@ -37,6 +38,65 @@ const TIMEZONE_OPTIONS = ['Europe/Warsaw', 'Europe/Moscow', 'UTC']
 const DATE_FORMAT_OPTIONS = ['DD.MM.YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY']
 const PHONE_FORMAT_OPTIONS = ['+CC (AAA) BBB-CC-DD', '+CC BBB BBB BBB', '+CC BBBBB BBBBB']
 const THEME_VALUES = ['system', 'light', 'dark'] as const
+
+function signatureFromMe(me: { signature?: UserOutgoingSignature | null } | null | undefined): UserOutgoingSignature {
+  const sig = me?.signature || {}
+  return {
+    first_name: sig.first_name ?? '',
+    last_name: sig.last_name ?? '',
+    position: sig.position ?? '',
+    phone: sig.phone ?? '',
+    email: sig.email ?? '',
+    company: sig.company ?? '',
+    website: sig.website ?? '',
+    logo_url: sig.logo_url ?? '',
+    show_phone: sig.show_phone !== false,
+    show_email: sig.show_email !== false,
+    show_website: sig.show_website !== false,
+  }
+}
+
+function previewOutgoingSignature(input: {
+  signature: UserOutgoingSignature
+  fallbackName: string
+  fallbackPosition: string
+  fallbackPhone: string
+  fallbackEmail: string
+  fallbackLogo: string
+  locale: string
+}): string {
+  const closing =
+    input.locale === 'en' ? 'Kind regards,' : input.locale === 'ru' ? 'С уважением,' : 'Z poważaniem,'
+  const first = String(input.signature.first_name || '').trim()
+  const last = String(input.signature.last_name || '').trim()
+  const name = [first, last].filter(Boolean).join(' ') || input.fallbackName
+  const position = String(input.signature.position || '').trim() || input.fallbackPosition
+  const company = String(input.signature.company || '').trim()
+  const phone = String(input.signature.phone || '').trim() || input.fallbackPhone
+  const email = String(input.signature.email || '').trim() || input.fallbackEmail
+  const websiteRaw = String(input.signature.website || '').trim()
+  const website = websiteRaw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '')
+  const logo = String(input.signature.logo_url || '').trim() || input.fallbackLogo
+  const lines = [closing, '', name]
+  if (position) lines.push(position)
+  if (company) {
+    lines.push('')
+    lines.push(company)
+  }
+  const contacts: string[] = []
+  if (input.signature.show_phone !== false && phone) contacts.push(`☎ ${phone}`)
+  if (input.signature.show_email !== false && email) contacts.push(`✉ ${email}`)
+  if (input.signature.show_website !== false && website) contacts.push(`↗ ${website}`)
+  if (contacts.length) {
+    lines.push('')
+    lines.push(...contacts)
+  }
+  if (logo) {
+    lines.push('')
+    lines.push(logo)
+  }
+  return lines.join('\n')
+}
 
 const NOTIFICATION_ITEMS = [
   { code: 'candidate.new_assignment', key: 'candidate_new_assignment' },
@@ -103,6 +163,7 @@ export default function ProfilePage() {
     city: me?.city ?? '',
     birth_date: me?.birth_date ?? '',
   })
+  const [signatureForm, setSignatureForm] = useState<UserOutgoingSignature>(() => signatureFromMe(me))
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(me?.avatar_url ?? null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -235,8 +296,9 @@ export default function ProfilePage() {
       city: me?.city ?? '',
       birth_date: me?.birth_date ?? '',
     })
+    setSignatureForm(signatureFromMe(me))
     setAvatarPreview(me?.avatar_url ?? null)
-  }, [me?.first_name, me?.last_name, me?.position, me?.phone, me?.email, me?.country, me?.city, me?.birth_date, me?.avatar_url])
+  }, [me?.first_name, me?.last_name, me?.position, me?.phone, me?.email, me?.country, me?.city, me?.birth_date, me?.avatar_url, me?.signature])
 
   useEffect(() => {
     setUiForm({
@@ -302,6 +364,35 @@ export default function ProfilePage() {
     const value = event.target.value
     setProfileForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  const handleSignatureChange = (key: keyof UserOutgoingSignature) => (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value
+    setSignatureForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const signaturePreview = useMemo(() => {
+    const locale = String(uiForm.locale || 'pl').split('-')[0].toLowerCase()
+    const fallbackName = [profileForm.first_name, profileForm.last_name].filter(Boolean).join(' ').trim()
+    return previewOutgoingSignature({
+      signature: signatureForm,
+      fallbackName: fallbackName || String(me?.email || '').trim(),
+      fallbackPosition: profileForm.position || '',
+      fallbackPhone: profileForm.phone || '',
+      fallbackEmail: profileForm.email || me?.email || '',
+      fallbackLogo: avatarPreview || '',
+      locale,
+    })
+  }, [
+    avatarPreview,
+    me?.email,
+    profileForm.email,
+    profileForm.first_name,
+    profileForm.last_name,
+    profileForm.phone,
+    profileForm.position,
+    signatureForm,
+    uiForm.locale,
+  ])
 
   const handleUiChange = (key: keyof typeof uiForm) => (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value
@@ -406,6 +497,17 @@ export default function ProfilePage() {
         profile: {
           ...profileForm,
           birth_date: profileForm.birth_date || null,
+          signature: {
+            ...signatureForm,
+            first_name: signatureForm.first_name?.trim() || null,
+            last_name: signatureForm.last_name?.trim() || null,
+            position: signatureForm.position?.trim() || null,
+            phone: signatureForm.phone?.trim() || null,
+            email: signatureForm.email?.trim() || null,
+            company: signatureForm.company?.trim() || null,
+            website: signatureForm.website?.trim() || null,
+            logo_url: signatureForm.logo_url?.trim() || null,
+          },
         },
       }
       const result = await patchUserMe(payload)
@@ -419,7 +521,9 @@ export default function ProfilePage() {
         city: result.profile.city,
         birth_date: result.profile.birth_date,
         avatar_url: result.profile.avatar_url,
+        signature: result.profile.signature ?? null,
       })
+      setSignatureForm(signatureFromMe(result.profile))
       updatePreferences(result.preferences)
       updateSecurity(result.security)
       setProfileMessage(t('app.profile.messages.profile_saved'))
@@ -442,6 +546,7 @@ export default function ProfilePage() {
       city: me?.city ?? '',
       birth_date: me?.birth_date ?? '',
     })
+    setSignatureForm(signatureFromMe(me))
   }
 
   const handlePreferencesSubmit = async (event: FormEvent) => {
@@ -663,6 +768,73 @@ export default function ProfilePage() {
               <Field label={t('app.profile.fields.city')}>
                 <input className="input" value={profileForm.city} onChange={handleProfileChange('city')} autoComplete="address-level2" />
               </Field>
+            </div>
+
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">{t('app.profile.sections.signature.title')}</h3>
+              <p className="mt-1 text-xs text-slate-500">{t('app.profile.sections.signature.description')}</p>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Field label={t('app.profile.fields.first_name')}>
+                  <input className="input" value={signatureForm.first_name || ''} onChange={handleSignatureChange('first_name')} autoComplete="given-name" />
+                </Field>
+                <Field label={t('app.profile.fields.last_name')}>
+                  <input className="input" value={signatureForm.last_name || ''} onChange={handleSignatureChange('last_name')} autoComplete="family-name" />
+                </Field>
+                <Field label={t('app.profile.fields.position')}>
+                  <input className="input" value={signatureForm.position || ''} onChange={handleSignatureChange('position')} autoComplete="organization-title" />
+                </Field>
+                <Field label={t('app.profile.fields.phone')}>
+                  <input className="input" value={signatureForm.phone || ''} onChange={handleSignatureChange('phone')} autoComplete="tel" />
+                </Field>
+                <Field label={t('app.profile.fields.email')}>
+                  <input className="input" type="email" value={signatureForm.email || ''} onChange={handleSignatureChange('email')} autoComplete="email" />
+                </Field>
+                <Field label={t('app.profile.fields.company')}>
+                  <input className="input" value={signatureForm.company || ''} onChange={handleSignatureChange('company')} autoComplete="organization" />
+                </Field>
+                <Field label={t('app.profile.fields.website')}>
+                  <input className="input" value={signatureForm.website || ''} onChange={handleSignatureChange('website')} autoComplete="url" placeholder="hostflow.cc" />
+                </Field>
+                <Field label={t('app.profile.fields.logo_url')}>
+                  <input className="input" value={signatureForm.logo_url || ''} onChange={handleSignatureChange('logo_url')} autoComplete="url" placeholder="https://" />
+                </Field>
+              </div>
+
+              <div className="mt-3 flex flex-col gap-2 text-sm text-slate-700">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" className="text-brand-600" checked={signatureForm.show_phone !== false} onChange={handleSignatureChange('show_phone')} />
+                  <span>{t('app.profile.fields.show_phone')}</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" className="text-brand-600" checked={signatureForm.show_email !== false} onChange={handleSignatureChange('show_email')} />
+                  <span>{t('app.profile.fields.show_email')}</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" className="text-brand-600" checked={signatureForm.show_website !== false} onChange={handleSignatureChange('show_website')} />
+                  <span>{t('app.profile.fields.show_website')}</span>
+                </label>
+              </div>
+
+              <p className="mt-3 text-xs text-slate-500">{t('app.profile.signature.company_fallback_hint')}</p>
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.profile.signature.preview_label')}</p>
+              <div className="mt-1 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800">
+                <pre className="whitespace-pre-wrap font-sans">{signaturePreview}</pre>
+                {(signatureForm.logo_url || avatarPreview) ? (
+                  <img
+                    src={String(signatureForm.logo_url || avatarPreview || '/logo_hf.svg')}
+                    alt=""
+                    className="mt-3 block h-auto w-[180px] max-w-full"
+                  />
+                ) : (
+                  <img src="/logo_hf.svg" alt="HostFlow" className="mt-3 block h-auto w-[180px] max-w-full" />
+                )}
+                <p className="mt-2 text-xs text-slate-500">
+                  {t('app.profile.signature.html_hint', {
+                    defaultValue: 'В письме: имя и компания жирным фирменным цветом, иконки одного стиля, лого ~180px.',
+                  })}
+                </p>
+              </div>
             </div>
 
             {profileMessage && <Alert variant="success" message={profileMessage} />}

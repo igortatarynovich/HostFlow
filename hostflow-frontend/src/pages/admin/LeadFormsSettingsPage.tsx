@@ -30,9 +30,10 @@ import {
 
 type Draft = { title: string; public_slug: string; is_active: boolean }
 
-function publicIntakeUrlForSlug(slug: string): string {
-  if (typeof window === 'undefined') return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}`
+function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client' | 'candidate' }): string {
   const q = new URLSearchParams({ lead_form_slug: slug })
+  if (opts?.applicationKind) q.set('application_kind', opts.applicationKind)
+  if (typeof window === 'undefined') return `/public/intake?${q.toString()}`
   return `${window.location.origin}/public/intake?${q.toString()}`
 }
 

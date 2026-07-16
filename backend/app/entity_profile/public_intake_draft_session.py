@@ -223,7 +223,7 @@ async def find_lead_draft_by_status_share_token(
     stmt = select(Lead).where(
         Lead.tenant_id == str(tenant_id),
         Lead.source == PUBLIC_INTAKE_SOURCE,
-        Lead.stage == "intake_draft",
+        Lead.stage.in_(PUBLIC_INTAKE_DRAFT_TOKEN_STAGES),
     )
     result = await db.execute(stmt)
     for lead in result.scalars().all():
@@ -239,7 +239,7 @@ async def resolve_public_intake_lead_draft_status_tenant_id(
 ) -> Optional[str]:
     stmt = select(Lead.tenant_id, Lead.normalized).where(
         Lead.source == PUBLIC_INTAKE_SOURCE,
-        Lead.stage == "intake_draft",
+        Lead.stage.in_(PUBLIC_INTAKE_DRAFT_TOKEN_STAGES),
     )
     result = await db.execute(stmt)
     for tenant_id, normalized in result.all():
@@ -381,6 +381,8 @@ async def create_or_reuse_public_intake_lead_draft(
     if lead_form_meta:
         intake_state["lead_form"] = dict(lead_form_meta)
 
+    is_client = application_kind == "client"
+
     if existing is not None:
         block = get_public_intake_draft_block(existing)
         token = str(block.get("intake_token") or "") or _generate_token()
@@ -402,8 +404,10 @@ async def create_or_reuse_public_intake_lead_draft(
                 "source_channel": intake_source,
             }
         )
-        if not block.get("status_share_token"):
+        if not is_client and not block.get("status_share_token"):
             block["status_share_token"] = _generate_token()
+        if is_client:
+            block.pop("status_share_token", None)
         existing.vacancy_id = vacancy_id
         normalized = set_public_intake_draft_block(existing, block)
         normalized.setdefault("email", email)
@@ -423,7 +427,6 @@ async def create_or_reuse_public_intake_lead_draft(
         vacancy_id=vacancy_id,
         application_kind=application_kind,
     )
-    is_client = application_kind == "client"
     if is_client and not own_company_id:
         raise ValueError("own_company_id is required for client intake draft")
 
@@ -440,18 +443,20 @@ async def create_or_reuse_public_intake_lead_draft(
             pass
 
     token = _generate_token()
-    block = {
+    block: dict[str, Any] = {
         "intake_token": token,
         "intake_token_created_at": now.isoformat(),
         "intake_token_expires_at": expires_at.isoformat(),
         "intake_status": "draft",
         "intake_submitted_at": None,
         "intake_state": intake_state,
-        "status_share_token": _generate_token(),
         "vacancy_id": vacancy_id,
         "source_channel": intake_source,
         "pending_documents": [],
     }
+    # Candidate applications get a status-share link; B2B inquiry/questionnaire do not.
+    if not is_client:
+        block["status_share_token"] = _generate_token()
     normalized: dict[str, Any] = {
         PUBLIC_INTAKE_DRAFT_V1: block,
         "email": email,
@@ -567,8 +572,21 @@ def session_submitted_at(session: PublicIntakeSession) -> Optional[datetime]:
 
 
 def session_status_share_token(session: PublicIntakeSession) -> Optional[str]:
+    # Personal sales questionnaire invites and B2B inquiry drafts do not use candidate status tracking.
+    if session.kind == "questionnaire_invite":
+        return None
     if session.kind == "legacy_candidate" and session.candidate is not None:
         return getattr(session.candidate, "status_share_token", None)
+    state = session_intake_state(session)
+    if str(state.get("application_kind") or "").strip().lower() == "client":
+        return None
+    lf = state.get("lead_form") if isinstance(state.get("lead_form"), dict) else {}
+    purpose = str(lf.get("purpose") or "").strip().lower()
+    if purpose in {"inquiry", "questionnaire"}:
+        return None
+    ep = str(lf.get("target_entity_profile_code") or "").strip().lower()
+    if ep.startswith("service_sales."):
+        return None
     block = get_public_intake_draft_block(session.lead) if session.lead else {}
     return str(block.get("status_share_token") or "") or None
 

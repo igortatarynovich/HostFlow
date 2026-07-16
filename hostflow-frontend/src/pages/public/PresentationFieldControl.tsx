@@ -26,9 +26,9 @@ export function PresentationFieldControl({ field, value, error, disabled, locale
   const options = fieldOptionsForCode(field.qualified_code, t, locale)
   const required = field.evaluated.intake_level === 'required'
   const label = (
-    <span className="mb-1 block text-sm font-medium text-slate-700">
+    <span className="mb-1 block text-sm font-medium text-slate-800">
       {field.label}
-      {required ? <span className="text-red-500"> *</span> : null}
+      {required ? <span className="ml-1 text-xs font-normal text-slate-400">({t('public.intake.presentation.required_short', { defaultValue: 'wymagane' })})</span> : null}
     </span>
   )
 
@@ -39,11 +39,11 @@ export function PresentationFieldControl({ field, value, error, disabled, locale
         {label}
         <div className="space-y-2">
           {options.map((option) => (
-            <label key={option.value} className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+            <label key={option.value} className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
               <input
                 type="radio"
                 name={field.qualified_code}
-                className="mt-0.5"
+                className="h-4 w-4 shrink-0 accent-brand-600"
                 checked={selected === option.value}
                 onChange={() => onChange(field.qualified_code, option.value)}
               />
@@ -65,10 +65,10 @@ export function PresentationFieldControl({ field, value, error, disabled, locale
           {options.map((option) => {
             const checked = selected.includes(option.value)
             return (
-              <label key={option.value} className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+              <label key={option.value} className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
                 <input
                   type="checkbox"
-                  className="mt-0.5"
+                  className="h-4 w-4 shrink-0 accent-brand-600"
                   checked={checked}
                   onChange={() => {
                     const next = checked

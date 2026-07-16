@@ -135,6 +135,16 @@ async def test_meta_lead_questionnaire_invite_submit_convert_client(
     token = invite_resp.json()["token"]
     assert token
 
+    async with async_session_maker() as session:
+        sent_lead = await leads_crud.get_lead(session, tenant_id=tenant_id, lead_id=lead_id)
+        assert sent_lead is not None
+        assert sent_lead.stage == "waiting_for_response"
+        assert (sent_lead.normalized or {}).get("sales_questionnaire_status") == "sent"
+        from backend.app.modules.applications.mappers import lead_to_sales_inquiry
+
+        app_row = lead_to_sales_inquiry(sent_lead)
+        assert app_row.status == "waiting"
+
     get_resp = await client.get(f"/api/v1/public/apply/{token}")
     assert get_resp.status_code == 200, get_resp.text
     body = get_resp.json()
@@ -160,8 +170,29 @@ async def test_meta_lead_questionnaire_invite_submit_convert_client(
         assert refreshed is not None
         normalized = refreshed.normalized or {}
         assert normalized.get("sales_questionnaire_status") == "submitted"
+        assert refreshed.stage == "questionnaire_submitted"
         assert isinstance(normalized.get("sales_questionnaire"), dict)
         assert normalized["sales_questionnaire"].get("need_type") == "client_acquisition"
+
+        from backend.app.models.user_notification import UserNotification
+        from backend.app.modules.applications.mappers import lead_to_sales_inquiry
+
+        app_row = lead_to_sales_inquiry(refreshed)
+        assert app_row.status == "questionnaire_submitted"
+
+        notifs = [
+            row
+            for row in (
+                await session.execute(
+                    select(UserNotification).where(
+                        UserNotification.tenant_id == tenant_id,
+                        UserNotification.event_type == "intake.questionnaire.submitted",
+                    )
+                )
+            ).scalars().all()
+            if (row.payload or {}).get("lead_id") == lead_id
+        ]
+        assert len(notifs) == 1
 
         lead_count = await session.scalar(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id))
         assert lead_count is not None and lead_count >= 1

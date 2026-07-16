@@ -173,6 +173,53 @@ class LeadQuestionnaireInviteOut(BaseModel):
     expires_at: Optional[datetime] = None
 
 
+class QuestionnaireInviteEmailPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    form_locale: Optional[str] = Field(default="pl", max_length=8)
+    lead_form_id: Optional[UUID] = None
+    force_new_invite: bool = False
+    recipient_email: Optional[str] = Field(default=None, max_length=320)
+
+
+class QuestionnaireInviteEmailPreviewOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    invite: LeadQuestionnaireInviteOut
+    recipient_email: Optional[str] = None
+    subject: str
+    body: str
+    questionnaire_url: str
+    email_configured: bool
+    clarification_required: bool
+    invite_reused: bool
+    form_locale: str
+    settings_email_path: str = "/app/settings/email"
+
+
+class QuestionnaireInviteEmailSendRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    form_locale: Optional[str] = Field(default="pl", max_length=8)
+    lead_form_id: Optional[UUID] = None
+    force_new_invite: bool = False
+    recipient_email: str = Field(..., min_length=3, max_length=320)
+    subject: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=20000)
+    save_email_to_lead: bool = True
+
+
+class QuestionnaireInviteEmailSendOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    invite: LeadQuestionnaireInviteOut
+    delivery_id: UUID
+    recipient_email: str
+    questionnaire_url: str
+    subject: str
+    status: str
+
+
 class LeadOut(BaseModel):
     id: UUID
     tenant_id: UUID

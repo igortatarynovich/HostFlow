@@ -46,6 +46,7 @@ export interface WhoAmI {
   city?: string | null;
   birth_date?: string | null;
   avatar_url?: string | null;
+  signature?: UserOutgoingSignature | null;
   preferences?: UserPreferences;
   security?: UserSecuritySummary;
   /** G-6 Stage 2e — true when owner-class role and tenant has one active member (from GET /users/me). */
@@ -287,6 +288,20 @@ export interface AdminUserDetail extends AdminUser {
   recruiters: RecruiterSummary[];
 }
 
+export interface UserOutgoingSignature {
+  first_name?: string | null
+  last_name?: string | null
+  position?: string | null
+  phone?: string | null
+  email?: string | null
+  company?: string | null
+  website?: string | null
+  logo_url?: string | null
+  show_phone?: boolean
+  show_email?: boolean
+  show_website?: boolean
+}
+
 export interface UserProfile {
   user_id: string;
   email: string;
@@ -300,6 +315,7 @@ export interface UserProfile {
   tenant_id?: string | null;
   role?: string | null;
   avatar_url?: string | null;
+  signature?: UserOutgoingSignature | null;
 }
 
 export type UserProfileUpdate = Partial<Omit<UserProfile, 'user_id'>>;

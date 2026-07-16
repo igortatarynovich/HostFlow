@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 ApplicationModule = Literal["sales", "recruitment"]
-ApplicationStatus = Literal["new", "in_progress", "waiting", "completed", "rejected"]
+ApplicationStatus = Literal["new", "in_progress", "waiting", "completed", "rejected", "questionnaire_submitted"]
 ApplicationTabBucket = Literal["all", "new", "in_progress", "waiting", "completed"]
 ApplicationStageUpdate = Literal["contacted", "qualified", "lost"]
 

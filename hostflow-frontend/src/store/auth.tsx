@@ -148,6 +148,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         position: profile.position ?? whoami.position,
         phone: profile.phone ?? whoami.phone,
         avatar_url: profile.avatar_url ?? whoami.avatar_url,
+        signature: profile.signature ?? whoami.signature ?? null,
         preferences: meEnvelope.preferences,
         security: meEnvelope.security,
         is_solo_admin: meEnvelope.is_solo_admin ?? false,

@@ -7,8 +7,10 @@ import {
   submissionHasDisplayableAnswers,
 } from '../salesQuestionnaireSubmission'
 import {
+  buildGroupedSubmissionAnswerSections,
   buildSubmissionAnswerRows,
   formatSubmissionFieldValue,
+  resolveFormLocale,
 } from '../salesQuestionnaireSubmissionDisplay'
 import type { PresentationFieldWithRules } from '../presentationRules'
 
@@ -95,23 +97,112 @@ describe('salesQuestionnaireSubmissionDisplay', () => {
     },
   ]
 
-  it('humanizes single_select values instead of showing raw codes', () => {
+  it('humanizes unknown single_select codes instead of showing raw snake_case', () => {
     expect(
       formatSubmissionFieldValue('fill_roles', fields[1], { t, locale: 'en' }),
     ).toBe('Fill Roles')
   })
 
+  it('resolves known option codes to human labels for the submission locale', () => {
+    const promotion: PresentationFieldWithRules = {
+      qualified_code: 'service_sales.targeted_advertising.promotion_subject',
+      sort_order: 10,
+      intake_level: 'required',
+      label: 'Co chcą Państwo promować?',
+      field_type: 'single_select',
+      widget_hint: 'single_select',
+    }
+    const geo: PresentationFieldWithRules = {
+      qualified_code: 'service_sales.targeted_advertising.client_geo_scope',
+      sort_order: 20,
+      intake_level: 'required',
+      label: 'Gdzie chcą Państwo pozyskiwać klientów?',
+      field_type: 'single_select',
+      widget_hint: 'single_select',
+    }
+    const timeline: PresentationFieldWithRules = {
+      qualified_code: 'service_sales.targeted_advertising.start_timeline',
+      sort_order: 30,
+      intake_level: 'required',
+      label: 'Kiedy chcą Państwo rozpocząć działania?',
+      field_type: 'single_select',
+      widget_hint: 'single_select',
+    }
+
+    expect(formatSubmissionFieldValue('service', promotion, { t, locale: 'pl' })).toBe('Usługa')
+    expect(formatSubmissionFieldValue('poland', geo, { t, locale: 'pl' })).toBe('Cała Polska')
+    expect(formatSubmissionFieldValue('two_weeks', timeline, { t, locale: 'pl' })).toBe('W ciągu 2 tygodni')
+  })
+
+  it('builds Polish human rows even when CRM UI locale would be Russian', () => {
+    const presentation: PresentationFieldWithRules[] = [
+      {
+        qualified_code: 'service_sales.targeted_advertising.promotion_subject',
+        sort_order: 10,
+        intake_level: 'required',
+        label: 'Co chcą Państwo promować?',
+        field_type: 'single_select',
+        widget_hint: 'single_select',
+      },
+      {
+        qualified_code: 'service_sales.targeted_advertising.client_geo_scope',
+        sort_order: 20,
+        intake_level: 'required',
+        label: 'Gdzie chcą Państwo pozyskiwać klientów?',
+        field_type: 'single_select',
+        widget_hint: 'single_select',
+      },
+      {
+        qualified_code: 'service_sales.targeted_advertising.start_timeline',
+        sort_order: 30,
+        intake_level: 'required',
+        label: 'Kiedy chcą Państwo rozpocząć działania?',
+        field_type: 'single_select',
+        widget_hint: 'single_select',
+      },
+      {
+        qualified_code: 'service_sales.targeted_advertising.decision_maker',
+        sort_order: 40,
+        intake_level: 'required',
+        label: 'Kto podejmuje decyzję o współpracy?',
+        field_type: 'single_select',
+        widget_hint: 'single_select',
+      },
+    ]
+
+    const sections = buildGroupedSubmissionAnswerSections({
+      values: {
+        'service_sales.targeted_advertising.promotion_subject': 'service',
+        'service_sales.targeted_advertising.client_geo_scope': 'poland',
+        'service_sales.targeted_advertising.start_timeline': 'two_weeks',
+        'service_sales.targeted_advertising.decision_maker': 'owner',
+      },
+      presentationFields: presentation,
+      t,
+      locale: 'pl',
+    })
+
+    const rows = sections.flatMap((section) => section.rows)
+    expect(rows.map((row) => [row.label, row.value])).toEqual([
+      ['Co chcą Państwo promować?', 'Usługa'],
+      ['Gdzie chcą Państwo pozyskiwać klientów?', 'Cała Polska'],
+      ['Kiedy chcą Państwo rozpocząć działania?', 'W ciągu 2 tygodni'],
+      ['Kto podejmuje decyzję o współpracy?', 'Właściciel firmy'],
+    ])
+    expect(rows.some((row) => /client_geo_scope|promotion_subject|two_weeks|service\b|owner/.test(`${row.label} ${row.value}`))).toBe(false)
+  })
+
   it('builds ordered rows for submitted values only', () => {
     const rows = buildSubmissionAnswerRows({
       values: {
-        'service_sales.targeted_advertising.primary_outcome': 'fill_roles',
+        'service_sales.targeted_advertising.primary_outcome': 'more_inquiries',
         'service_sales.targeted_advertising.recruitment_other_role': 'Warehouse pickers',
         'service_sales.targeted_advertising.hidden_note': 'secret',
         'service_sales.targeted_advertising.marketing_materials': ['photos', 'logo'],
       },
       presentationFields: fields,
       t,
-      locale: 'en',
+      locale: 'pl',
     })
 
     expect(rows.map((row) => row.label)).toEqual([
@@ -119,9 +210,9 @@ describe('salesQuestionnaireSubmissionDisplay', () => {
       'Jakie stanowisko?',
       'Materiały',
     ])
-    expect(rows[0].value).toBe('Fill Roles')
+    expect(rows[0].value).toBe('Więcej zapytań od klientów')
     expect(rows[1].value).toBe('Warehouse pickers')
-    expect(rows[2].value).toBe('Photos, Logo')
+    expect(rows[2].value).toBe('Zdjęcia, Logo firmy')
   })
 
   it('shows answers removed from current presentation with fallback labels', () => {
@@ -154,7 +245,22 @@ describe('salesQuestionnaireSubmissionDisplay', () => {
     expect(rows[1]).toMatchObject({
       qualifiedCode: 'service_sales.targeted_advertising.legacy_budget_band',
       label: 'Legacy Budget Band',
-      value: '2000_5000',
+      value: '2000 5000',
     })
+  })
+
+  it('resolves form locale from submission source before CRM UI', () => {
+    expect(
+      resolveFormLocale(
+        { normalized: { sales_questionnaire_locale: 'ru' } },
+        { source: { form_locale: 'pl' }, presentation_code: 'service_sales.targeted_advertising.form.b2b-x' },
+      ),
+    ).toBe('pl')
+    expect(
+      resolveFormLocale(
+        { normalized: {} },
+        { presentation_code: 'service_sales.targeted_advertising.form.b2b-x' },
+      ),
+    ).toBe('pl')
   })
 })

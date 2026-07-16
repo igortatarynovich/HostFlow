@@ -42,6 +42,7 @@ def _send_smtp_sync(
     to: str,
     subject: str,
     body: str,
+    html_body: Optional[str] = None,
 ) -> None:
     """Sync SMTP send. Run in thread to avoid blocking."""
     if is_email_delivery_mock():
@@ -50,7 +51,10 @@ def _send_smtp_sync(
     msg["Subject"] = subject
     msg["From"] = f"{from_name} <{from_email}>" if from_name else from_email
     msg["To"] = to
+    # Plain first, HTML second — clients prefer the last alternative they support.
     msg.attach(MIMEText(body, "plain", "utf-8"))
+    if html_body and str(html_body).strip():
+        msg.attach(MIMEText(str(html_body).strip(), "html", "utf-8"))
 
     use_starttls = use_tls and port in (587, 25)
     conn = smtplib.SMTP(host, port)
@@ -69,6 +73,7 @@ async def send_email_smtp(
     to: str,
     subject: str,
     body: str,
+    html_body: Optional[str] = None,
 ) -> None:
     """Send email via tenant SMTP config."""
     if is_email_delivery_mock():
@@ -89,6 +94,7 @@ async def send_email_smtp(
         to=to,
         subject=subject,
         body=body,
+        html_body=html_body,
     )
 
 
@@ -99,6 +105,7 @@ async def send_email_for_tenant(
     to: str,
     subject: str,
     body: str,
+    html_body: Optional[str] = None,
 ) -> bool:
     """
     Send email via tenant SMTP configuration only.
@@ -109,5 +116,5 @@ async def send_email_for_tenant(
     config = await get_tenant_email_config(db, tenant_id)
     if not config or not config.smtp_host or not config.from_email:
         raise ValueError("TENANT_EMAIL_NOT_CONFIGURED")
-    await send_email_smtp(config, to=to, subject=subject, body=body)
+    await send_email_smtp(config, to=to, subject=subject, body=body, html_body=html_body)
     return True

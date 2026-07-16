@@ -257,6 +257,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     if (eventType === 'intake_client_lead_skipped_no_company') {
       return t('app.notifications.intake_client_lead_skipped_no_company_title')
     }
+    if (eventType === 'intake.questionnaire.submitted') {
+      return t('app.notifications.intake_questionnaire_submitted_title', {
+        defaultValue: 'Клиент заполнил анкету',
+      })
+    }
     if (typeof item.payload?.title === 'string' && item.payload.title.trim()) {
       return maybeTranslateKey(item.payload.title)
     }
@@ -280,7 +285,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         values: { name: String(payload.candidate_name || '').trim() || '—' },
       })
     }
-    const raw = String(payload.description || '').trim()
+    if (eventType === 'intake.questionnaire.submitted') {
+      const line = String(payload.description || payload.body || '').trim()
+      if (line) return line
+      const contact = String(payload.contact_name || '').trim() || '—'
+      const company = String(payload.company_name || '').trim() || '—'
+      return t('app.notifications.intake_questionnaire_submitted_desc', {
+        defaultValue: '{contact} — {company}',
+        values: { contact, company },
+      })
+    }
+    const raw = String(payload.description || payload.body || '').trim()
     if (!raw) return ''
     if (/^(app|common)\./.test(raw)) {
       const localized = t(raw as any, { defaultValue: '' })

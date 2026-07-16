@@ -121,6 +121,20 @@ class UserCreate(BaseModel):
     company_ids: Sequence[str] = Field(default_factory=list)
 
 
+class UserOutgoingSignature(BaseModel):
+    first_name: str | None = Field(default=None, max_length=255)
+    last_name: str | None = Field(default=None, max_length=255)
+    position: str | None = Field(default=None, max_length=128)
+    phone: str | None = Field(default=None, max_length=64)
+    email: EmailStr | None = None
+    company: str | None = Field(default=None, max_length=255)
+    website: str | None = Field(default=None, max_length=255)
+    logo_url: str | None = Field(default=None, max_length=1024)
+    show_phone: bool = True
+    show_email: bool = True
+    show_website: bool = True
+
+
 class UserProfileOut(BaseModel):
     user_id: str
     email: EmailStr
@@ -133,6 +147,8 @@ class UserProfileOut(BaseModel):
     city: str | None = Field(default=None, max_length=128)
     position: str | None = Field(default=None, max_length=128)
     phone: str | None = Field(default=None, max_length=64)
+    avatar_url: str | None = Field(default=None, max_length=1024)
+    signature: UserOutgoingSignature = Field(default_factory=UserOutgoingSignature)
 
 
 class UserProfileUpdate(BaseModel):
@@ -144,6 +160,7 @@ class UserProfileUpdate(BaseModel):
     position: str | None = Field(default=None, max_length=128)
     phone: str | None = Field(default=None, max_length=64)
     email: EmailStr | None = None
+    signature: UserOutgoingSignature | None = None
 
 
 class UserPasswordChange(BaseModel):

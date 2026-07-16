@@ -244,11 +244,31 @@ async def prepare_public_intake_runtime(
     }
 
     warnings = list(profile_view.get("warnings") or []) + list(validation.warnings)
+    route_intent = "candidate_application"
+    ak = str((intake_state or {}).get("application_kind") or "").strip().lower()
+    if ak == "client":
+        route_intent = "sales_inquiry"
+    elif intake_source_profile_id:
+        from backend.app.models.intake_routing import IntakeSourceProfile
+
+        isp = await db.scalar(
+            select(IntakeSourceProfile)
+            .where(
+                IntakeSourceProfile.id == str(intake_source_profile_id),
+                IntakeSourceProfile.tenant_id == str(tenant_id),
+            )
+            .limit(1)
+        )
+        if isp is not None and str(getattr(isp, "route_intent", "") or "").strip():
+            route_intent = str(isp.route_intent).strip()
+    entity_code = str(profile_view.get("entity_profile_code") or "").strip()
+    if route_intent == "candidate_application" and entity_code.startswith("service_sales."):
+        route_intent = "sales_inquiry"
     envelope = IngestEnvelope(
         raw_payload=raw_payload,
         normalized_payload=normalized_payload,
-        entity_profile_code=str(profile_view.get("entity_profile_code") or "").strip() or None,
-        route_intent="candidate_application",
+        entity_profile_code=entity_code or None,
+        route_intent=route_intent,
         mapping_result=validation.to_dict(),
         warnings=warnings,
         resolution_source=str(profile_view.get("resolution_source") or "not_specified"),

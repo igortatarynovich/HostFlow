@@ -1,36 +1,32 @@
 import { useEffect, useState } from 'react'
-import { salesQuestionnaireStatusLabel } from '../../utils/salesQuestionnaire'
-import { loadSubmissionAnswerRowsForLead, type SubmissionAnswerRow } from '../../utils/salesQuestionnaireSubmissionDisplay'
 import type { Lead } from '../../api/types'
 import { useI18n } from '../../i18n'
-
-function AnswerRow({ row }: { row: SubmissionAnswerRow }) {
-  return (
-    <li
-      className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 last:pb-0"
-      data-testid={`sales-questionnaire-answer-${row.qualifiedCode}`}
-    >
-      <span className="text-slate-500">{row.label}</span>
-      <span className="min-w-0 text-right font-medium text-slate-900">{row.value}</span>
-    </li>
-  )
-}
+import {
+  formLocaleLabel,
+  formatSubmittedAt,
+  loadGroupedSubmissionAnswersForLead,
+  type GroupedSubmissionAnswers,
+} from '../../utils/salesQuestionnaireSubmissionDisplay'
+import { salesQuestionnaireStatusLabel } from '../../utils/salesQuestionnaire'
+import { SalesQuestionnaireAnswerSections } from './SalesQuestionnaireAnswerSections'
 
 export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) {
   const { locale, t } = useI18n()
   const status = salesQuestionnaireStatusLabel(lead, { locale })
-  const [rows, setRows] = useState<SubmissionAnswerRow[]>([])
+  const [grouped, setGrouped] = useState<GroupedSubmissionAnswers | null>(null)
+  const [historyIndex, setHistoryIndex] = useState(0)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    void loadSubmissionAnswerRowsForLead(lead, { t, locale })
-      .then((nextRows) => {
-        if (!cancelled) setRows(nextRows)
+    void loadGroupedSubmissionAnswersForLead(lead, { t, locale, historyIndex })
+      .then((next) => {
+        if (!cancelled) setGrouped(next)
       })
       .catch(() => {
-        if (!cancelled) setRows([])
+        if (!cancelled) setGrouped(null)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -38,29 +34,98 @@ export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) 
     return () => {
       cancelled = true
     }
-  }, [lead, locale, t])
+  }, [lead, locale, t, historyIndex])
+
+  const submittedLabel = formatSubmittedAt(grouped?.submittedAt, locale)
+  const localeLabel = formLocaleLabel(grouped?.formLocale || null, t)
+  const metaParts = [
+    submittedLabel
+      ? t('app.sales_questionnaire.received_at', {
+          defaultValue: 'Получено {datetime}',
+          values: { datetime: submittedLabel },
+        })
+      : null,
+    localeLabel || null,
+  ].filter(Boolean)
 
   return (
-    <section className="space-y-3" data-testid="sales-questionnaire-summary-rail">
+    <section className="space-y-4" data-testid="sales-questionnaire-summary-rail">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.sales_questionnaire.answers_title', { defaultValue: 'Questionnaire answers' })}
+          {t('app.sales_questionnaire.client_info_title', { defaultValue: 'Информация от клиента' })}
         </p>
-        <p className="mt-1 text-sm font-medium text-slate-900">{status}</p>
+        {metaParts.length > 0 ? (
+          <p className="mt-1 text-sm text-slate-600">{metaParts.join(' · ')}</p>
+        ) : (
+          <p className="mt-1 text-sm font-medium text-slate-900">{status}</p>
+        )}
+        {grouped?.isResubmission && historyIndex === 0 ? (
+          <p className="mt-2 inline-flex rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-800">
+            {t('app.sales_questionnaire.resubmission_badge', { defaultValue: 'Повторное заполнение' })}
+          </p>
+        ) : null}
+        {historyIndex > 0 ? (
+          <p className="mt-2 text-xs font-medium text-amber-800">
+            {t('app.sales_questionnaire.history_viewing', {
+              defaultValue: 'Просмотр предыдущего заполнения',
+            })}
+          </p>
+        ) : null}
       </div>
+
       {loading ? (
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          {t('app.sales_questionnaire.answers_empty', { defaultValue: 'No questionnaire answers yet.' })}
-        </p>
       ) : (
-        <ul className="space-y-2 text-sm text-slate-800">
-          {rows.map((row) => (
-            <AnswerRow key={row.qualifiedCode} row={row} />
-          ))}
-        </ul>
+        <SalesQuestionnaireAnswerSections
+          sections={grouped?.sections || []}
+          empty={
+            <p className="text-sm text-slate-500">
+              {t('app.sales_questionnaire.answers_empty', { defaultValue: 'No questionnaire answers yet.' })}
+            </p>
+          }
+        />
       )}
+
+      {(grouped?.history.length || 0) > 1 ? (
+        <div className="border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            className="text-sm font-semibold text-brand-700 hover:underline"
+            onClick={() => setHistoryOpen((open) => !open)}
+            data-testid="sales-questionnaire-history-toggle"
+          >
+            {historyOpen
+              ? t('app.sales_questionnaire.history_hide', { defaultValue: 'Скрыть историю ответов' })
+              : t('app.sales_questionnaire.history_show', { defaultValue: 'История ответов' })}
+          </button>
+          {historyOpen ? (
+            <ul className="mt-2 space-y-1.5" data-testid="sales-questionnaire-history-list">
+              {grouped!.history.map((item, index) => {
+                const label = formatSubmittedAt(item.submitted_at, locale) || `#${grouped!.history.length - index}`
+                const active = index === historyIndex
+                return (
+                  <li key={item.submission_id || `${item.submitted_at}-${index}`}>
+                    <button
+                      type="button"
+                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
+                        active ? 'bg-brand-50 font-semibold text-brand-800' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                      onClick={() => setHistoryIndex(index)}
+                    >
+                      {index === 0
+                        ? t('app.sales_questionnaire.history_latest', {
+                            defaultValue: 'Последний ответ · {datetime}',
+                            values: { datetime: label },
+                          })
+                        : label}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   )
 }
