@@ -5,7 +5,7 @@
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#forms)  
-**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) ✅ · [`forms-sprint-2.md`](../tasks/forms-sprint-2.md)  
+**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · Product Layer [`forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)  
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -82,7 +82,18 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. Builder / schema editor / marketplace remain **out of contract**.
+7. Product Layer Builder remains **LOCKED** until Field Catalog (P1); when unlocked, Builder still **must not invent field types**.
+
+---
+
+## Field Catalog SoT (Product Layer rule)
+
+**Normative** ([`forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)):
+
+- **Field Catalog** is Source of Truth for field types, params, validation, normalization, Builder palette, and Public Form render.
+- **Builder** only selects Catalog types and order — it does **not** invent data types.
+- Published `forms.field_schema.v1` fields must resolve to Catalog types (enforced when Catalog ships).
+- Gaps discovered during Builder work → surgical platform extension; **no** rewrite of Sprint 1–6 contour.
 
 ---
 
@@ -91,9 +102,10 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 - Importing `TenantLeadForm` internals instead of Adapter  
 - Editing a published snapshot in place  
 - Creating Forms-local routing / attribution / Outcome / KPI engines  
-- Calling Builder APIs  
+- Calling Builder APIs that invent field types outside Field Catalog  
 - Bypassing Acquisition for campaign↔result links when Acquisition context applies  
 - Duplicating Shared Intake
+- Rewriting Sprint 1–6 storage/validation contracts as a parallel stack
 
 ---
 
@@ -154,4 +166,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 5 — `forms.normalized_answers.v1` (raw/normalized + Shared Intake handoff).  
 - 2026-07-18: Sprint 5 COMPLETE (PR #40).  
 - 2026-07-18: Sprint 6 — append-only `form_submission_envelopes` persistence.  
-- 2026-07-18: Sprint 6 COMPLETE (PR #41) — Submission Envelope Contract ACTIVE; Builder LOCKED.
+- 2026-07-18: Sprint 6 COMPLETE (PR #41) — Submission Envelope Contract ACTIVE; Builder LOCKED.  
+- 2026-07-18: Product Layer epic — Field Catalog SoT; Builder must not invent types.
