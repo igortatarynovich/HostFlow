@@ -1,0 +1,110 @@
+# ADR-026: Platform Rule P-02 — Capability Ownership
+
+## Status
+
+**Accepted (platform principle).**  
+**2026-07-18:** Сквозное правило платформы HostFlow. Логическое продолжение [`ADR-025`](ADR-025-standard-adapter-boundary.md) (P-01). Вместе P-01 + P-02 задают канон: **как** взаимодействовать и **к кому** обращаться.
+
+## Canonical statement
+
+> **Platform Rule P-02 — Capability Ownership**
+>
+> Каждая платформенная capability имеет **единственного владельца** (Single Source of Truth).  
+> Нельзя иметь две реализации одной и той же capability.  
+> Если модулю нужна эта возможность, он обязан использовать **публичный контракт владельца** (через адаптер по P-01).
+
+| Правило | Вопрос | Ответ |
+|---------|--------|--------|
+| **P-01** | Как взаимодействовать? | Только через **канонический** Standard Adapter |
+| **P-02** | К кому обращаться? | Только к **владельцу** capability |
+
+Сочетание P-01 + P-02 практически исключает дублирующие реализации и удерживает архитектуру чистой.
+
+## Context: platform of capabilities
+
+HostFlow проектируется не как «набор хороших модулей», а как **платформа capabilities**: фундаментальные возможности, которые **переиспользуют** любые бизнес-модули.
+
+| Platform Capability | Владелец (SoT) | Типичные потребители |
+|---------------------|----------------|----------------------|
+| **Endpoint** | Intake / Acquisition boundary ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) | Acquisition, Forms (HostFlow Form is-a Endpoint), API, Mobile, Meta, … |
+| **Submission** | Intake / Forms capture path ([`ADR-007`](ADR-007-forms-platform-capability.md), ADR-024) | Recruitment, Sales, HR, Services, … |
+| **Forms** | Forms Core Platform Module (ADR-007) | Все модули (сбор данных / consents) |
+| **Documents** | Document Hub ([`ADR-009`](ADR-009-document-hub-platform-layer.md)) | Recruitment, HR, Fleet, Finance, … |
+| **Notifications** | Activity & Notification layer ([`ADR-012`](ADR-012-activity-notification-operating-layer.md)) | Все модули |
+| **Automations** | Automations capability ([`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md)) | Все модули |
+| **AI** | AI platform capability (через AI Adapter, P-01) | Все модули |
+| **Search** | Global Search capability | Все модули |
+| **Activity** | Activity & Notification layer (ADR-012) | Все модули |
+| **Acquisition / Campaigns** | Acquisition ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) | Growth / demand flow; не владеет Result objects |
+
+Бизнес-модули (Recruitment, Sales, HR, Fleet, Finance) **владеют** своими domain entities и **потребляют** platform capabilities — не копируют их.
+
+Связанные: [`platform-architecture-principles.md`](platform-architecture-principles.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), ADR-004, ADR-006, ADR-007, ADR-009, ADR-012, ADR-019, ADR-023, ADR-024.
+
+## Decision
+
+### Правило
+
+1. У каждой platform capability — **один** владелец SoT (модуль / shared capability / bounded context).  
+2. Вторая реализация той же capability в другом модуле — **запрещена**.  
+3. Потребление — только через **Public contracts** владельца + **Standard Adapter** (P-01).  
+4. Бизнес-модуль **не** создаёт «свой» Form Builder, Document store, Notification SMTP-стек, Search index, AI client, Endpoint pipeline.  
+5. Реестр capabilities и владельцев ведётся в platform principles / catalog; новый capability = ADR + owner + public contracts (шаблон ADR-025).  
+6. Споры о ownership разрешаются архитектурным review до кода.
+
+### Примеры (SoT)
+
+| Capability | Единственный владелец | Нельзя |
+|------------|----------------------|--------|
+| Forms (Builder, Version, Consent, Form Submission surface) | Forms | Recruitment «своя анкета» / Sales «своя форма» |
+| Documents | Document Hub | Локальные file tables в модулях как второй SoT |
+| Notifications (delivery) | Notifications / Operating Layer | Прямой SMTP/SMS из Recruitment |
+| Search (index & query) | Search | Модульный полнотекст вместо платформенного |
+| Activity (audit / operational history surface) | Activity layer | Параллельные «истории» без контракта |
+| AI (LLM interaction) | AI capability | Прямой SDK в бизнес-коде |
+| Endpoint (точка входа) | Endpoint / Intake model | Второй intake pipeline в модуле |
+| Campaign / Attribution / Routing Context | Acquisition | Campaign SoT внутри Recruitment |
+
+### Что считается нарушением (блокер)
+
+| # | Нарушение |
+|---|-----------|
+| 1 | Вторая реализация capability, у которой уже есть владелец |
+| 2 | Модуль объявляет «локальный SoT» для Documents / Forms / Notifications / Search / AI / Endpoint |
+| 3 | Потребление capability в обход владельца (даже через «свой» адаптер — см. P-01 § локальный vs канонический) |
+| 4 | ADR / feature без явного Ownership для затрагиваемой capability |
+| 5 | Бизнес-модуль хранит канонические данные чужой capability «для удобства» как второй SoT |
+
+P-02 **не** запрещает кэш / проекции / read models **явно** помеченные как derived (не SoT), если владелец и invalidation определены в контракте.
+
+### Связь с шаблоном модуля (ADR-025)
+
+В разделе **Ownership** каждого модуля:
+
+- перечислить capabilities, которыми модуль **владеет**;  
+- перечислить capabilities, которые **только потребляет** (Required contracts);  
+- запретить владение чужими capabilities в **Forbidden dependencies**.
+
+## Consequences
+
+1. Мышление сдвигается: проектируем **capabilities платформы**, затем бизнес-модули на них.  
+2. P-01 + P-02 = нет дублирующих стеков и нет прямых внутренних зависимостей.  
+3. Новые каналы / LLM / storage подключаются у **владельца** capability, не размазываются по модулям.  
+4. Code review: вторая Forms/Documents/Notifications реализация — блокер наравне с нарушением P-01.  
+5. Catalog capabilities обновляется при каждом новом platform epic.
+
+## Relationship
+
+| ADR | Роль |
+|-----|------|
+| [`ADR-025`](ADR-025-standard-adapter-boundary.md) | **Как** вызывать (adapter) |
+| **ADR-026 (этот)** | **Кого** вызывать (owner SoT) |
+| ADR-007 / 009 / 012 / 019 / 024 | Конкретные owners |
+
+## References
+
+[`platform-architecture-principles.md`](platform-architecture-principles.md) · ADR-004 · ADR-006 · ADR-007 · ADR-009 · ADR-012 · ADR-019 · ADR-023 · ADR-024 · ADR-025
+
+## История
+
+- 2026-07-18: P-02 Capability Ownership accepted; HostFlow as platform of capabilities; pairs with P-01.

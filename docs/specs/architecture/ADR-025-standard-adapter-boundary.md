@@ -136,7 +136,8 @@ Acquisition не знает хранение формы, publish, version, conse
 3. Новый канал / провайдер = новый adapter за **существующим** или **зарегистрированным** каноническим контрактом.  
 4. Тестирование: swap → mock / fake adapter + contract tests.  
 5. Нарушения из таблицы blockers — стоп в review наравне с SoT ownership.  
-6. Endpoint + P-01 вместе: универсальный вход **и** универсальный способ взаимодействия.
+6. Endpoint + P-01 вместе: универсальный вход **и** универсальный способ взаимодействия.  
+7. Владелец capability и запрет дублей — **P-02** ([`ADR-026`](ADR-026-capability-ownership.md)).
 
 ## Relationship to other ADRs
 
@@ -148,6 +149,7 @@ Acquisition не знает хранение формы, publish, version, conse
 | [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) | Integration adapters |
 | [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) | Automation Adapter |
 | [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) | Endpoint spine; Endpoint Adapter |
+| [`ADR-026`](ADR-026-capability-ownership.md) | **P-02** — кто владеет capability (SoT) |
 
 ## References
 
@@ -156,4 +158,5 @@ Acquisition не знает хранение формы, publish, version, conse
 ## История
 
 - 2026-07-18: P-01 accepted.  
-- 2026-07-18: Strengthened — blockers table; canonical (not ad-hoc) adapters; development order; modular-monolith local adapters OK; mandatory module contract template; P-01 governs all future ADRs/modules.
+- 2026-07-18: Strengthened — blockers table; canonical (not ad-hoc) adapters; development order; modular-monolith local adapters OK; mandatory module contract template; P-01 governs all future ADRs/modules.  
+- 2026-07-18: Paired with **P-02 Capability Ownership** ([`ADR-026`](ADR-026-capability-ownership.md)).

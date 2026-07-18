@@ -6,32 +6,43 @@
 
 Документ фиксирует **главную архитектурную логику** продукта: HostFlow — **modular multi-company SaaS platform**, а не одна монолитная CRM. Детали по подсистемам — в ADR и scope-файлах; здесь — **согласованная картина** и **формула** для принятия решений.
 
-**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
 
 ---
 
-## 0. Platform Rule P-01 — Standard Adapter Boundary
+## 0. Platform Rules (P-01 + P-02)
 
-Норматив: **[`ADR-025`](ADR-025-standard-adapter-boundary.md)**. Обязательное правило **всей** платформы (не договорённость по модулю).
+HostFlow — **платформа capabilities**, а не только набор бизнес-модулей. Фундаментальные возможности (Endpoint, Submission, Forms, Documents, Notifications, Automations, AI, Search, Activity, …) принадлежат **владельцам** и переиспользуются Recruitment / Sales / HR / Fleet / Finance.
 
-Два уровня канона:
+### P-01 — Standard Adapter Boundary
 
-| Уровень | Формула | Смысл |
-|---------|---------|--------|
-| **Поток данных** | `Endpoint → Submission → Routing → Decision → Business Entity` | Универсальный вход и слои ответственности ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) |
-| **Граница взаимодействия** | `Module A → Standard Adapter → Module B` (или Provider Adapter → External System) | Универсальный способ связи; прямой доступ запрещён |
+Норматив: **[`ADR-025`](ADR-025-standard-adapter-boundary.md)**.
 
-> Endpoint определяет универсальный **вход**. P-01 определяет универсальный **способ взаимодействия**.
+| Уровень | Формула |
+|---------|---------|
+| **Поток данных** | `Endpoint → Submission → Routing → Decision → Business Entity` |
+| **Граница взаимодействия** | `Module A → Standard Adapter → Module B` (канонический контракт) |
 
-**Standard Adapters Only** = использование **канонического** платформенного контракта, не произвольных локальных обёрток.
+**Как** взаимодействовать? — только через канонический адаптер. Прямой доступ и ad-hoc wrappers — блокер.
 
-Архитектурные блокеры (полный список — ADR-025): прямой импорт чужих сервисов / таблиц / ORM; зависимость от внутреннего storage shape; прямой вызов внешнего провайдера из бизнес-модуля; локальный адаптер вместо платформенного контракта; дублирование контрактов.
+### P-02 — Capability Ownership
 
-Порядок нового взаимодействия: owner → public contract → canonical adapter interface → consumers on interface only → providers behind boundary → contract tests → contract change = architecture review.
+Норматив: **[`ADR-026`](ADR-026-capability-ownership.md)**.
 
-P-01 — граница **архитектуры**, не требование микросервисов: адаптер может быть локальным интерфейсом в modular monolith.
+**К кому** обращаться? — только к **единственному владельцу** capability (SoT). Две реализации одной capability — запрещены.
 
-Каждый модуль обязан явно зафиксировать: Ownership, Public contracts, Required contracts, Events, Forbidden dependencies, Contract tests, Versioning policy.
+| Capability (пример) | Owner |
+|---------------------|--------|
+| Endpoint | Intake / Acquisition boundary (ADR-024) |
+| Forms | Forms (ADR-007) |
+| Documents | Document Hub (ADR-009) |
+| Notifications / Activity | Operating Layer (ADR-012) |
+| Automations | Automations (ADR-019) |
+| AI / Search | соответствующие platform capabilities |
+
+P-01 + P-02 вместе исключают дублирующие стеки и удерживают архитектуру чистой.
+
+Адаптер может быть локальным интерфейсом в modular monolith (P-01 не требует микросервисов). Каждый модуль фиксирует Ownership / Public & Required contracts / Events / Forbidden deps / Contract tests / Versioning (шаблон ADR-025).
 
 ---
 
@@ -152,7 +163,8 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 
 ## 6. Shared platform capabilities
 
-Общий слой; **не** пять ключей `enabled_modules` ADR-004 (лицензирование features — отдельно).
+Общий слой; **не** пять ключей `enabled_modules` ADR-004 (лицензирование features — отдельно).  
+Каждая строка — **platform capability** с единственным владельцем (**P-02**, [`ADR-026`](ADR-026-capability-ownership.md)); потребители ходят только через канонические адаптеры (**P-01**, [`ADR-025`](ADR-025-standard-adapter-boundary.md)).
 
 | # | Capability | Назначение |
 |---|------------|------------|
@@ -275,4 +287,5 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-05: [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) — платформенный UI-стандарт (всё стандартизируемое в приложении); capability #11 в §6; §12 — политика ревью против дрейфа.
 - 2026-05: [`ADR-012`](ADR-012-activity-notification-operating-layer.md) — Activity & Notification Operating Layer (единая capability вместо двух старых строк «Notifications» + «Activity / Tasks»); canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Уточнение: «Reminder», «Todo», «Planner», «Today», «Calendar» — **представления** Activity, не отдельные модули.
 - 2026-07-18: [`ADR-025`](ADR-025-standard-adapter-boundary.md) — **Platform Rule P-01 Standard Adapter Boundary** (Standard Adapters Only); §0 в этом документе.  
-- 2026-07-18: P-01 strengthened — canonical contracts (not ad-hoc wrappers); blockers; module contract template; governs all future ADRs.
+- 2026-07-18: P-01 strengthened — canonical contracts (not ad-hoc wrappers); blockers; module contract template; governs all future ADRs.  
+- 2026-07-18: [`ADR-026`](ADR-026-capability-ownership.md) — **Platform Rule P-02 Capability Ownership**; HostFlow as platform of capabilities; §0 = P-01 + P-02.

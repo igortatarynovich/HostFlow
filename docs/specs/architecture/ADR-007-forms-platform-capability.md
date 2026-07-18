@@ -8,7 +8,7 @@
 **Связанное главное решение платформы:** абстракция **Endpoint** и spine  
 `Endpoint → Submission → Routing → Decision → Business Entity` — в [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md). Forms — SoT **сбора данных**, когда Endpoint типа HostFlow Public Form; Acquisition не зависит от Forms internals.
 
-**Платформенный принцип:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) **P-01 Standard Adapter Boundary** — потребители Forms / HostFlow Form работают только через **Endpoint Adapter** (и родственные публичные контракты), не через Form Builder / SQL / внутренние модели.
+**Платформенный принцип:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) **P-01** + [`ADR-026`](ADR-026-capability-ownership.md) **P-02** — потребители Forms работают только через **Endpoint Adapter** у владельца Forms/Endpoint capability; вторая реализация Forms в модуле запрещена.
 
 Имплементация **поэтапная**. Текущий код (`tenant_lead_forms`, `/public/intake`, квоты) — исторический bridge.
 
