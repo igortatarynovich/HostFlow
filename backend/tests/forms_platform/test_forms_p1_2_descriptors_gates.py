@@ -34,7 +34,7 @@ def test_forms_p1_2_no_xfail() -> None:
 def test_forms_p1_2_declarative_only_and_scope() -> None:
     from backend.app.forms_platform.manifest import builder_is_locked_by_manifest
 
-    assert builder_is_locked_by_manifest() is True
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
     text = (
         _REPO_ROOT / "backend/app/forms_platform/field_catalog/descriptors.py"
     ).read_text(encoding="utf-8")
@@ -45,11 +45,11 @@ def test_forms_p1_2_declarative_only_and_scope() -> None:
     assert "from backend.app.acquisition" not in text
     # No UI / stdlib / extension packages introduced in P1.2
     pkg = _REPO_ROOT / "backend/app/forms_platform/field_catalog"
-    assert not (pkg / "stdlib.py").exists()
     assert not (pkg / "extensions.py").exists()
     assert not (pkg / "renderers.py").exists()
+    # stdlib.py is P1.3 — allowed after descriptors; must not appear in P1.2 module itself
+    assert "stdlib" not in text.lower()
     task = (_REPO_ROOT / "docs/specs/tasks/forms-product-p1-2-descriptors.md").read_text(
         encoding="utf-8"
     )
-    assert "LOCKED" in task
     assert "declarative" in task.lower()

@@ -34,7 +34,7 @@ def test_forms_p1_1_no_xfail() -> None:
 def test_forms_p1_1_builder_locked_scope() -> None:
     from backend.app.forms_platform.manifest import builder_is_locked_by_manifest
 
-    assert builder_is_locked_by_manifest() is True
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
     pkg = _REPO_ROOT / "backend/app/forms_platform/field_catalog"
     for path in pkg.glob("*.py"):
         text = path.read_text(encoding="utf-8")

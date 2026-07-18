@@ -70,7 +70,7 @@ def test_forms_sprint5_no_xfail() -> None:
 def test_forms_sprint5_builder_locked_and_no_domain_mapping() -> None:
     from backend.app.forms_platform.manifest import builder_is_locked_by_manifest
 
-    assert builder_is_locked_by_manifest() is True
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
     answers = (_REPO_ROOT / "backend/app/forms_platform/answers.py").read_text(encoding="utf-8")
     assert "from backend.app.acquisition" not in answers
     assert "Candidate" not in answers

@@ -82,7 +82,7 @@ def test_forms_sprint6_alembic_roundtrip() -> None:
 def test_forms_sprint6_no_xfail_builder_locked() -> None:
     from backend.app.forms_platform.manifest import builder_is_locked_by_manifest
 
-    assert builder_is_locked_by_manifest() is True
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
     for path in (_REPO_ROOT / "backend/tests/forms_platform").glob("test_forms_sprint6*.py"):
         assert _XFAIL.search(path.read_text(encoding="utf-8")) is None
     svc = (_REPO_ROOT / "backend/app/forms_platform/submission_envelope.py").read_text(
