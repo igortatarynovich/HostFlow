@@ -1,7 +1,8 @@
 # Platform Capability Catalog
 
-**Status:** canonical (practical SoT for P-02 / P-03 / P-04)  
-**Rules:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) (P-01) · [`ADR-026`](ADR-026-capability-ownership.md) (P-02) · [`ADR-027`](ADR-027-capability-composition.md) (P-03) · [`ADR-028`](ADR-028-configuration-ownership.md) (P-04)  
+**Status:** canonical (practical SoT for P-02…P-05)  
+**Rules:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) (P-01) · [`ADR-026`](ADR-026-capability-ownership.md) (P-02) · [`ADR-027`](ADR-027-capability-composition.md) (P-03) · [`ADR-028`](ADR-028-configuration-ownership.md) (P-04) · [`ADR-029`](ADR-029-settings-contract.md) (P-05)  
+**Settings Manifest schema:** [`capability-settings-manifest.md`](capability-settings-manifest.md)  
 **Index / product keys:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md)  
 **PR gate:** [`architecture-review-checklist.md`](architecture-review-checklist.md)  
 **Guide:** [`architecture-guide.md`](architecture-guide.md)
@@ -10,48 +11,53 @@
 
 ## Purpose
 
-Справочник **возможностей платформы**, не список экранов CRM.
+Справочник **возможностей платформы**, не список экранов CRM. Настройки — **не** техническая свалка: пользователь настраивает **capability**, не «систему».
 
-| Правило | Вопрос | Каталог фиксирует |
-|---------|--------|-------------------|
-| **P-01** | Как взаимодействовать? | **Exposes** |
+| Правило | Вопрос | Каталог / Manifest |
+|---------|--------|---------------------|
+| **P-01** | Как вызывать поведение? | **Exposes** |
 | **P-02** | Кто владеет функциональностью? | Owner + **Owns** |
-| **P-03** | Как строить новое? | Есть ли capability → **Consumes** / композиция |
-| **P-04** | Кто владеет конфигурацией? | **Configures** |
+| **P-03** | Как строить новое? | **Consumes** |
+| **P-04** | Кто владеет конфигурацией? | **Configures** (pointer) |
+| **P-05** | Как конфигурация публикуется? | **Settings Manifest** / Contract |
 
 Проектирование:
 
-> **Какой существующей capability это принадлежит — как Owns, Configures, Exposes или Consumes?**
+> **Какой capability это принадлежит — и это Owns, Configures, Exposes или Consumes?**
 
-Краткий индекс владельцев — [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1.  
-**Нормативные границы — только в этом файле.**
+Admin IA:
+
+> **Какое конфигурационное пространство capability открыть?** (не «General → SMTP»)
 
 ---
 
-## Four boundaries (Capability Definition)
-
-У каждой capability **четыре независимые** границы. Их нельзя смешивать в один плоский список «Owned», иначе каталог раздувается и становится неоднозначным.
+## Four boundaries + two documents
 
 | Граница | Смысл | Пример |
 |---------|--------|--------|
-| **1. Owns** | Функциональный SoT (поведение + канонические сущности) | Documents: Registry, Metadata, Versions, Storage, Verification |
-| **2. Configures** | Конфигурационный SoT — **не** бизнес-данные (**P-04**) | Notifications: SMTP, SMS Provider, Retry, Templates, Quiet Hours |
-| **3. Exposes** | Что отдаёт платформе (adapters / contracts) (**P-01**) | Forms: Form Adapter, Endpoint Adapter (HostFlow Form); Documents: Document Adapter, Verification Adapter |
-| **4. Consumes** | Чем пользуется через чужие Exposes (**P-03**) | Recruitment: Forms, Documents, Notifications, AI, Search |
+| **Owns** | Функциональный SoT | Documents: Registry, Metadata, Versions, Storage, Verification |
+| **Configures** | *Какие классы* настроек принадлежат capability (**P-04**) — детали в Manifest | Notifications: Email/SMS/Push/Retry/Quiet Hours |
+| **Exposes** | Adapters / contracts (**P-01**) | Document Adapter, Verification Adapter |
+| **Consumes** | Чужие capabilities (**P-03**) | Recruitment → Forms, Documents, Notifications, AI, Search |
 
-Архитектурная ошибка часто видна сразу: SMTP в Recruitment → смотри **Configures** у Notifications → нарушение **P-04**.
+| Документ | Тип | Содержание |
+|----------|-----|------------|
+| **Capability Passport** | Архитектурный | Purpose · Owns · Exposes · Consumes · Events · Forbidden · Data Ownership · Configures *(указатель)* |
+| **Settings Manifest** | Эксплуатационный (**P-05**) | General · Integrations · Defaults · Policies · Feature Flags · License Gates · Validation Rules |
+
+Knobs **не** перечисляются полностью в Passport — только в [`capability-settings-manifest.md`](capability-settings-manifest.md) / будущих JSON Manifests.
+
+SMTP в Recruitment → нет в Manifest Notifications write path → нарушение **P-04/P-05**.
 
 ---
 
 ## Capability kinds
 
-Не все capabilities одинаковы.
-
 | Kind | Роль | Правило |
 |------|------|---------|
-| **Infrastructure** | Сквозная «труба» платформы | Не бизнес-домен; Business **только Consumes** |
-| **Platform** | Переиспользуемые продуктовые capability | Один owner; Business **композирует**, не копирует |
-| **Business** | Лицензируемый домен (ADR-004 + Sales surface) | **Не владеет** infrastructure/platform stacks; Owns только свой domain |
+| **Infrastructure** | Сквозная «труба» | Business **только Consumes**; свой Manifest только для своей трубы |
+| **Platform** | Переиспользуемые capability | Один owner; Business композирует |
+| **Business** | Домен ADR-004 (+ Sales) | Manifest **только** domain settings; **не** SMTP/OCR/LLM/Meta App |
 
 | Kind | Capabilities |
 |------|----------------|
@@ -59,26 +65,26 @@
 | **Platform** | Forms, Documents, Automations, AI, Integrations / Marketplace, Acquisition / Campaigns, Process Engine |
 | **Business** | Recruitment, Sales, HR, Fleet, Services / Orders, Finance |
 
-**Business Capability не владеет инфраструктурой** — только использует её (**Consumes** + adapters).
-
 ---
 
 ## Capability Passport (template)
 
-Неполный паспорт для затронутой capability — блокер review.
+Архитектурный документ. Неполный passport — блокер review.
 
 | # | Раздел | Содержание |
 |---|--------|------------|
 | 1 | **Purpose** | Зачем существует |
 | 2 | **Owns** | Функциональный SoT |
-| 3 | **Configures** | Настройки / provider bindings (P-04) |
-| 4 | **Exposes** | Adapters / public contracts (P-01) |
-| 5 | **Consumes** | Чужие capabilities (P-03) |
-| 6 | **Events** | Publishes / Consumes (events) |
-| 7 | **Forbidden** | Что нельзя реализовывать / конфигурировать |
+| 3 | **Configures** | Классы настроек + ссылка на Settings Manifest (**P-04/P-05**) |
+| 4 | **Exposes** | Adapters / public contracts |
+| 5 | **Consumes** | Чужие capabilities |
+| 6 | **Events** | Publishes / Consumes |
+| 7 | **Forbidden** | Запреты (в т.ч. чужой Manifest) |
 | 8 | **Data Ownership** | SoT entities |
 
-Уровни хранения Tenant → Company → Module — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md); **семантика** knobs — у capability в **Configures**.
+**Settings Manifest** (отдельно): см. [`capability-settings-manifest.md`](capability-settings-manifest.md).
+
+Уровни Tenant → Company → Module — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md) (**хранение**); семантика и UI — owner Manifest.
 
 ---
 
@@ -157,7 +163,7 @@
 | | |
 |--|--|
 | **Owns** | Channels; Delivery; Queue; Retry engine; Preference model; notification template runtime |
-| **Configures** | SMTP; SMS Provider; Push Provider; Retry Policy; Templates; Quiet Hours; locale defaults |
+| **Configures** | Email, SMS, WhatsApp, Push, working hours, Retry Policy → Manifest [Notifications](capability-settings-manifest.md#notifications) |
 | **Exposes** | Notification Adapter |
 | **Consumes** | Integrations (provider connectors); Activity (compose внутри layer) |
 | **Events** | Publishes: `notification.queued` / `delivered` / `failed` |
@@ -211,7 +217,7 @@
 | | |
 |--|--|
 | **Owns** | Form Builder; Templates; Versioning; Form Submission **surface**; Consent + version pin; Public/Internal Forms; Form Logic; Themes; CAPTCHA surface; multi-language copy; Endpoint Publishing **для HostFlow Form** |
-| **Configures** | Branding / themes defaults; CAPTCHA; Default language; Consent defaults; public form host / publish defaults |
+| **Configures** | Branding, default language, CAPTCHA, consent policy, public URLs, themes → Manifest [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) |
 | **Exposes** | Form Adapter; Endpoint Adapter (HostFlow Form specialization); Consent pin contract |
 | **Consumes** | Endpoint / Submission (routing after surface); Documents (file fields); Notifications; Automations (opt.); Field Registry |
 | **Events** | Publishes: `form.published`, `form.version_created`, `form.submission_received`, consent accepted |
@@ -229,7 +235,7 @@
 | | |
 |--|--|
 | **Owns** | Registry; Metadata; Versions; Storage; Verification / Review; Preview; Digital Signature; OCR capability; Links; Required Document Sets |
-| **Configures** | Storage backends / quotas; retention / expiry defaults; OCR Engine binding; e-sign provider binding; sensitivity defaults |
+| **Configures** | OCR, file storage, retention, auto-deletion, e-sign → Manifest [Documents](capability-settings-manifest.md#documents) |
 | **Exposes** | Document Adapter; Verification Adapter; document set resolution |
 | **Consumes** | Notifications (reminders); Automations (opt.); AI (opt. assist); Integrations (providers) |
 | **Events** | Publishes: `document.created` / `linked` / `verified` / `expired` |
@@ -263,7 +269,7 @@
 | | |
 |--|--|
 | **Owns** | AI Adapter / model routing; prompt/policy governance; usage metering hooks |
-| **Configures** | LLM Provider; model allowlists; safety / retention policies |
+| **Configures** | Provider, model, limits, Prompt Library, usage policies → Manifest [AI](capability-settings-manifest.md#ai) |
 | **Exposes** | AI Adapter |
 | **Consumes** | Integrations (model providers) |
 | **Events** | Publishes: `ai.invocation_*` (audit) |
@@ -440,16 +446,17 @@
 
 ## How to use (design & review)
 
-1. Найти capability по ответственности → открыть passport.  
-2. Новое поведение → **Owns** существующего owner? → compose / extend у owner.  
-3. Новый knob → есть ли в чьём-то **Configures**? → только там (**P-04**).  
-4. Межмодульный вызов → только через **Exposes** (**P-01**).  
-5. Business feature → только **Consumes** Infrastructure/Platform (**P-03**).  
-6. Нет строки в Index → ADR + kind + полный passport **до** кода.
+1. Найти capability → открыть **Passport**.  
+2. Новое поведение → **Owns**? → extend owner / compose.  
+3. Новый knob → **P-04** owner + запись в **Settings Manifest** (**P-05**) — не в чужой Passport list.  
+4. Admin UI → capability space из Manifest; не техническая свалка.  
+5. Межмодульный вызов → **Exposes**. Business → только **Consumes** Infrastructure/Platform.  
+6. Нет Index entry → ADR + kind + Passport + Manifest **до** кода.
 
 ---
 
 ## History
 
-- **2026-07-18** — каталог + Capability Boundary (плоский Owned/Settings).  
-- **2026-07-18** — v2: четыре границы Owns / Configures / Exposes / Consumes; kinds Infrastructure / Platform / Business; **P-04** ([`ADR-028`](ADR-028-configuration-ownership.md)).
+- **2026-07-18** — каталог + Capability Boundary.  
+- **2026-07-18** — v2: Owns / Configures / Exposes / Consumes; kinds; **P-04**.  
+- **2026-07-18** — v3: Passport vs **Settings Manifest**; **P-05** Settings Contract; capability-scoped admin IA.

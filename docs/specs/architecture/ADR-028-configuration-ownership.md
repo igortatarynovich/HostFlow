@@ -19,14 +19,17 @@
 | **P-02** | Кто владеет **функциональностью**? | Единственный owner capability (SoT) |
 | **P-03** | Как строить новое? | Композиция существующих capabilities |
 | **P-04** | Кто владеет **конфигурацией**? | Ровно одна capability — раздел **Configures** в паспорте |
+| **P-05** | Как конфигурация **публикуется**? | **Settings Contract** / Manifest ([`ADR-029`](ADR-029-settings-contract.md)) |
 
-P-02 и P-04 различаются:
+P-02 / P-04 / P-05:
 
-| | P-02 | P-04 |
-|---|------|------|
-| Объект | Capability / поведение / SoT данных | Settings / provider bindings / policy knobs |
-| Пример | Notifications владеет delivery | SMTP / SMS / Retry / Quiet Hours — только у Notifications |
-| Нарушение | Второй Form Builder в Recruitment | SMTP-поля в Recruitment settings |
+| | P-02 | P-04 | P-05 |
+|---|------|------|------|
+| Объект | Функциональность | Ownership knobs | Публикация knobs |
+| Пример | Notifications = delivery | SMTP только у Notifications | SMTP только через Notifications Manifest |
+| Нарушение | Второй Form Builder | SMTP в Recruitment settings blob | Settings UI без Manifest |
+
+Детали knobs — в [`capability-settings-manifest.md`](capability-settings-manifest.md), не в раздутом Passport.
 
 ## Context
 
