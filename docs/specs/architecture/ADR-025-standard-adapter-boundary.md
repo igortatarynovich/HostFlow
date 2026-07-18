@@ -150,6 +150,7 @@ Acquisition не знает хранение формы, publish, version, conse
 | [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) | Automation Adapter |
 | [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) | Endpoint spine; Endpoint Adapter |
 | [`ADR-026`](ADR-026-capability-ownership.md) | **P-02** — кто владеет capability (SoT) |
+| [`ADR-027`](ADR-027-capability-composition.md) | **P-03** — как строить новое (композиция) |
 
 ## References
 
@@ -159,4 +160,4 @@ Acquisition не знает хранение формы, publish, version, conse
 
 - 2026-07-18: P-01 accepted.  
 - 2026-07-18: Strengthened — blockers table; canonical (not ad-hoc) adapters; development order; modular-monolith local adapters OK; mandatory module contract template; P-01 governs all future ADRs/modules.  
-- 2026-07-18: Paired with **P-02 Capability Ownership** ([`ADR-026`](ADR-026-capability-ownership.md)).
+- 2026-07-18: Paired with **P-02** ([`ADR-026`](ADR-026-capability-ownership.md)) and **P-03** ([`ADR-027`](ADR-027-capability-composition.md)); platform canon milestone.

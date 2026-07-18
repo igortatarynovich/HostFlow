@@ -58,6 +58,7 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
  - [ ] Проверены миграции Alembic и сиды
  - [ ] Обновлены связанные спеки и README при необходимости
 - [ ] Если PR в security perimeter (см. `docs/security/security-review-checklist.md`) — отмечены все пункты чеклиста в описании PR
+- [ ] Если PR затрагивает модули / shared capabilities / integrations — пройден [`docs/specs/architecture/architecture-review-checklist.md`](docs/specs/architecture/architecture-review-checklist.md) (**P-01 / P-02 / P-03**)
 - [ ] Если PR трогает `*.md` — пройден `make docs-lint` и контрибьютор-чеклист (`docs/governance/documentation-rules.md` §9)
 
 ---
@@ -89,6 +90,7 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 
 **Жёсткие правила (выдержка из rules):**
 - Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage из domain map / module catalog).
+- Platform rules: **P-01** adapter boundary, **P-02** capability ownership, **P-03** capability composition — см. [`docs/specs/architecture/architecture-guide.md`](docs/specs/architecture/architecture-guide.md).
 - Новый workflow — обязательная запись в `docs/specs/workflows/index.md`.
 - Изменение поведения модуля — обновление `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в одном PR.
 - Запрещено создавать спеки в корне репо (кроме `AGENTS.md`, `README.md` и т.п.) или в `docs/_drafts/**`.

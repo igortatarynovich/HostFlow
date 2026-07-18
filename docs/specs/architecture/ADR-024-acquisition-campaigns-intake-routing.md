@@ -562,7 +562,7 @@ V1 **не** заменяет Meta Ads Manager.
 ## References
 
 - [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md)  
-- [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md)
+- [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-027`](ADR-027-capability-composition.md) · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) · [`architecture-review-checklist.md`](architecture-review-checklist.md)
 
 ## История
 
@@ -577,4 +577,4 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: 3B fix — drop `provider`/`external_ref` snapshots; partial unique indexes for one active primary per Flight.  
 - 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.  
 - 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); **Endpoint** as primary intake abstraction; Campaign → Endpoint → Submission; routing once per Lead; intake spine `Endpoint → Submission → Routing → Decision → Business Entity`.  
-- 2026-07-18: Linked to **P-01 Standard Adapter Boundary** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).
+- 2026-07-18: Linked to **P-01…P-03** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-027`](ADR-027-capability-composition.md)); capability catalog §0.1.

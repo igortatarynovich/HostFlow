@@ -8,7 +8,9 @@
 **Связанное главное решение платформы:** абстракция **Endpoint** и spine  
 `Endpoint → Submission → Routing → Decision → Business Entity` — в [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md). Forms — SoT **сбора данных**, когда Endpoint типа HostFlow Public Form; Acquisition не зависит от Forms internals.
 
-**Платформенный принцип:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) **P-01** + [`ADR-026`](ADR-026-capability-ownership.md) **P-02** — потребители Forms работают только через **Endpoint Adapter** у владельца Forms/Endpoint capability; вторая реализация Forms в модуле запрещена.
+**Платформенный принцип:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) **P-01** + [`ADR-026`](ADR-026-capability-ownership.md) **P-02** + [`ADR-027`](ADR-027-capability-composition.md) **P-03** — потребители Forms работают только через **Endpoint Adapter** у владельца; вторая реализация Forms запрещена; Recruitment/Sales/… **композируют** Forms, не копируют.
+
+**Submission:** Forms владеет form surface + consent version pin. Универсальный Submission object / routing envelope — Shared Intake ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)); catalog — [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1.
 
 Имплементация **поэтапная**. Текущий код (`tenant_lead_forms`, `/public/intake`, квоты) — исторический bridge.
 
@@ -79,11 +81,11 @@ Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versio
 
 ## Consequences
 
-1. Главное изменение платформы — **Endpoint**, не «перенос Form Builder». Подчиняется **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).  
-2. Forms = единственный SoT формы и form-submission / consent.  
+1. Главное изменение платформы — **Endpoint**, не «перенос Form Builder». Подчиняется **P-01…P-03**.  
+2. Forms = единственный SoT формы и form-submission surface / consent.  
 3. Campaign / Acquisition потребляют Endpoint → Submission через Adapter.  
 4. RODO/Terms/Privacy не живут в Recruitment settings.  
-5. Новый публичный сбор данных — только через Forms (HostFlow Form) или другой Endpoint type + handler.
+5. Новый публичный сбор данных — только через Forms (HostFlow Form) или другой Endpoint type + handler (композиция, не дубликат).
 
 ## References
 

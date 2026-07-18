@@ -17,6 +17,7 @@
 |---------|--------|--------|
 | **P-01** | Как взаимодействовать? | Только через **канонический** Standard Adapter |
 | **P-02** | К кому обращаться? | Только к **владельцу** capability |
+| **P-03** | Как строить новое? | **Композицией** существующих capabilities ([`ADR-027`](ADR-027-capability-composition.md)) |
 
 Сочетание P-01 + P-02 практически исключает дублирующие реализации и удерживает архитектуру чистой.
 
@@ -27,8 +28,8 @@ HostFlow проектируется не как «набор хороших мо
 | Platform Capability | Владелец (SoT) | Типичные потребители |
 |---------------------|----------------|----------------------|
 | **Endpoint** | Intake / Acquisition boundary ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) | Acquisition, Forms (HostFlow Form is-a Endpoint), API, Mobile, Meta, … |
-| **Submission** | Intake / Forms capture path ([`ADR-007`](ADR-007-forms-platform-capability.md), ADR-024) | Recruitment, Sales, HR, Services, … |
-| **Forms** | Forms Core Platform Module (ADR-007) | Все модули (сбор данных / consents) |
+| **Submission** (universal intake record) | Shared Intake (ADR-021/022/024) | Recruitment, Sales, HR, Services, … |
+| **Forms** (builder, version, consent, form surface) | Forms Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)) | Все модули |
 | **Documents** | Document Hub ([`ADR-009`](ADR-009-document-hub-platform-layer.md)) | Recruitment, HR, Fleet, Finance, … |
 | **Notifications** | Activity & Notification layer ([`ADR-012`](ADR-012-activity-notification-operating-layer.md)) | Все модули |
 | **Automations** | Automations capability ([`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md)) | Все модули |
@@ -37,7 +38,10 @@ HostFlow проектируется не как «набор хороших мо
 | **Activity** | Activity & Notification layer (ADR-012) | Все модули |
 | **Acquisition / Campaigns** | Acquisition ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) | Growth / demand flow; не владеет Result objects |
 
-Бизнес-модули (Recruitment, Sales, HR, Fleet, Finance) **владеют** своими domain entities и **потребляют** platform capabilities — не копируют их.
+**Каталог-источник:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1.  
+**Forms vs Submission:** Forms владеет form surface + consent pinning; universal Submission object — Shared Intake (не второй Form Builder).
+
+Бизнес-модули (Recruitment, Sales, HR, Fleet, Finance) **владеют** своими domain entities и **композируют** platform capabilities (**P-03**, [`ADR-027`](ADR-027-capability-composition.md)) — не копируют их.
 
 Связанные: [`platform-architecture-principles.md`](platform-architecture-principles.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), ADR-004, ADR-006, ADR-007, ADR-009, ADR-012, ADR-019, ADR-023, ADR-024.
 
