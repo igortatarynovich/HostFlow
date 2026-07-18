@@ -1,10 +1,24 @@
 # Forms Product Layer P1 — Field Catalog (component registry)
 
-**Status:** **READY** (design canon · implementation not started)  
+**Status:** **ACTIVE** (decomposition canon · merge `51063d1c` / [PR #45](https://github.com/igortatarynovich/HostFlow/pull/45))  
 **Epic:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md) · merge `29f4057f` / PR #43 · registry framing `8320dc7a` / PR #44  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE**  
-**Unlocks:** Product Layer P2 (Builder) after **P1.3** (standard library)  
+**Unlocks:** Product Layer P2 (Builder) **only after P1.3 Standard Library DoD**  
 **Canon:** [`forms-public-contract.md`](../architecture/forms-public-contract.md) · [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md)
+
+---
+
+## Closed / active gates (after PR #45)
+
+| Gate | Status |
+|------|--------|
+| P1 decomposition (P1.1–P1.4) | ✅ **ACTIVE** |
+| **P1.1 Registry** | **READY FOR IMPLEMENTATION** |
+| P1.2 Descriptors | pending (after P1.1) |
+| P1.3 Standard library | pending — **Builder unlock condition** |
+| P1.4 Extension API | pending (after P1.3) |
+| Builder (P2) | **LOCKED** |
+| Unlock Builder | **completed P1.3 Standard Library** only |
 
 ---
 
@@ -44,16 +58,16 @@ Builder | Public Form | Entity cards | CRM | Mobile   ← clients, not owners
 
 ## Implementation plan — four small sprints
 
-| Sprint | Name | Outcome | Builder |
-|--------|------|---------|---------|
-| **P1.1** | Registry | Register / find / get by id+version / version compatibility | still LOCKED |
-| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | still LOCKED |
-| **P1.3** | Standard library | First Basic component set | **P2 may start** |
-| **P1.4** | Extension API | Modules register their own components | Catalog grows without Builder changes |
+| Sprint | Name | Outcome | Builder | Status |
+|--------|------|---------|---------|--------|
+| **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | **READY FOR IMPLEMENTATION** |
+| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | pending |
+| **P1.3** | Standard library | First Basic component set | **unlock after DoD** | pending |
+| **P1.4** | Extension API | Modules register their own components | unlocked path | pending |
 
-### P1.1 — Registry
+### P1.1 — Registry (**READY FOR IMPLEMENTATION**)
 
-First step. Component registry only.
+First step. Component registry only. **No UI. No Builder.**
 
 **Can:**
 
@@ -98,7 +112,7 @@ First HostFlow Forms component pack (minimal):
 | File | upload |
 | Hidden | non-visible value |
 
-After P1.3, **Builder (P2) may start** — it already has a usable catalog.
+After P1.3 DoD, **Builder (P2) may start** — unlock condition is **completed Standard Library** only.
 
 ### P1.4 — Extension API
 
@@ -200,4 +214,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 
 - 2026-07-18: Design canon after Product Layer epic merge `29f4057f` (#43).  
 - 2026-07-18: Component registry framing `8320dc7a` (#44).  
-- 2026-07-18: Implementation split into P1.1–P1.4; Builder as thin Catalog client.
+- 2026-07-18: Implementation split into P1.1–P1.4; Builder as thin Catalog client.  
+- 2026-07-18: **ACTIVE** — decomposition merged `51063d1c` (#45); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.
