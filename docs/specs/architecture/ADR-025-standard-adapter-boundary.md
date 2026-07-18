@@ -3,132 +3,151 @@
 ## Status
 
 **Accepted (platform principle).**  
-**2026-07-18:** Введён как **сквозной платформенный принцип** HostFlow. Применяется ко всем модулям, shared capabilities и внешним системам — не только к Forms / Acquisition.
+**2026-07-18:** Сквозное **обязательное правило построения всей платформы HostFlow** — не договорённость по одному модулю. Все последующие ADR и все новые модули реализуются в соответствии с P-01.
 
 ## Canonical statement
 
 > **Platform Rule P-01 — Standard Adapter Boundary**
 >
-> Любое взаимодействие между модулями платформы и любыми внешними системами допускается **только через стандартизированные адаптеры**. Внутренние модели, схемы хранения и детали реализации **не** являются частью контракта и **не** могут использоваться другими модулями напрямую.
+> Любое взаимодействие между модулями платформы и любыми внешними системами допускается **только через стандартизированные (канонические) адаптеры**. Внутренние модели, схемы хранения и детали реализации **не** являются частью контракта и **не** могут использоваться другими модулями напрямую.
 
-Коротко: **Standard Adapters Only.**
+Коротко: **Standard Adapters Only** — и не «любой локальный wrapper», а **канонический платформенный контракт**.
+
+Два взаимосвязанных уровня канона:
+
+### 1. Поток данных (intake / domain spine)
 
 ```text
-Consumer Module / Capability
-        ↓
-   Typed Adapter (public contract)
-        ↓
-Provider Module / External System
+Endpoint → Submission → Routing → Decision → Business Entity
 ```
 
-Ни один модуль не должен знать внутреннюю реализацию другого. Он работает только через **публичный контракт (Adapter)**.
+Каждый слой отвечает только за свой участок и **не** использует внутренности соседнего слоя ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)).
+
+### 2. Граница взаимодействия (везде)
+
+```text
+Module A  →  Standard Adapter  →  Module B
+```
+
+или:
+
+```text
+Business Module  →  Provider Adapter  →  External System
+```
+
+**Прямой доступ в обход адаптера запрещён.**
+
+- **Endpoint** задаёт универсальный **вход** в систему.  
+- **P-01** задаёт универсальный **способ взаимодействия** между всеми частями системы.
 
 ## Context
 
-По мере выделения Forms как Core Platform Module и Endpoint как intake-абстракции ([`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) стало ясно: то же правило должно действовать для Documents, Notifications, Automations, AI, Integrations и всех будущих каналов. Иначе каждый контур снова изобретёт прямой доступ к SQL, SMTP, S3 или чужим ORM-моделям.
-
-Связанные: [`platform-architecture-principles.md`](platform-architecture-principles.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md).
+Связанные: [`platform-architecture-principles.md`](platform-architecture-principles.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md).
 
 ## Decision
 
 ### Правило
 
-1. Межмодульные вызовы — **только** через опубликованный Adapter / facade / API контракт capability.  
-2. Внешние системы (Meta, SMS, WhatsApp, LLM, storage, SMTP, …) — **только** через Integration / Provider Adapter с единым стилем контракта.  
-3. Прямой доступ к чужим таблицам, внутренним моделям, SDK провайдера или «тихому» SQL из другого bounded context — **запрещён**.  
-4. Замена реализации за адаптером (OpenAI → Azure, S3 → другой store, SMTP → ESP) **не** должна требовать переписывания бизнес-модулей.  
-5. В тестах Adapter заменяется stub/mock — бизнес-логика тестируется без реальных провайдеров.
+1. Межмодульные вызовы — **только** через опубликованный **канонический** Adapter / facade / API контракт capability.  
+2. Внешние системы — **только** через Integration / Provider Adapter с единым стилем семейства контрактов.  
+3. Прямой доступ к чужим таблицам, ORM-моделям, SDK провайдера, внутренним сервисам — **запрещён**.  
+4. Замена реализации за адаптером **не** должна требовать переписывания потребителей.  
+5. В тестах Adapter заменяется stub/mock; совместимость — **contract tests**.  
+6. Изменение публичного контракта — **отдельный архитектурный review**.  
+7. Новый адаптер **не** создаётся, если уже существует платформенный контракт того же назначения; дублирование контрактов в модулях — нарушение.
 
-### Примеры адаптеров
+### Что считается нарушением архитектуры (блокер)
 
-| Adapter | Consumer работает с | Provider скрывает |
-|---------|---------------------|-------------------|
-| **Endpoint Adapter** | `Endpoint → Submission` | Form Builder, версии, publish, consents, Meta internals |
-| **Document Adapter** | create/link/require/review document | S3, OCR, file versions, storage layout |
-| **Notification Adapter** | «notify actor / channel intent» | SMTP, SMS, WhatsApp, Push, Telegram |
-| **Automation Adapter** | emit/subscribe events, schedule rules | прямые вызовы бизнес-логики модулей |
-| **AI Adapter** | prompt / structured task | OpenAI, Azure, Anthropic, local LLM |
-| **Integration Adapters** | Meta / SMS / WhatsApp / TikTok / Google / … | credentials, provider SDK quirks |
+В code review / ADR review следующие пункты — **архитектурный блокер**:
 
-Каждый внешний сервис реализует **один и тот же класс контракта** своего семейства (например все messaging adapters — единый Notification/Messaging shape).
+| # | Нарушение |
+|---|-----------|
+| 1 | Прямой импорт внутренних сервисов другого модуля |
+| 2 | Запрос к таблицам / SQL другого модуля |
+| 3 | Использование ORM-моделей другого модуля |
+| 4 | Зависимость от внутреннего формата хранения (JSON shape, column layout) другого модуля |
+| 5 | Прямой вызов конкретного внешнего провайдера (SMTP, OpenAI SDK, Meta SDK, S3 client, …) из бизнес-модуля |
+| 6 | Создание **локального** адаптера там, где уже есть **платформенный** контракт |
+| 7 | Дублирование одинакового интеграционного контракта в разных модулях («свой» Notification / Document / Endpoint wrapper) |
 
-### Forms / Acquisition (частный случай P-01)
+Фраза «работаем через адаптеры» **недостаточна**: P-01 требует использование **канонического** контракта платформы, а не произвольных несовместимых обёрток.
 
-```text
-Forms  →  Endpoint Adapter  →  Submission  →  Universal Routing
-```
+### Порядок разработки нового взаимодействия
 
-Acquisition **не знает**: где хранится форма, как опубликована, какая версия, какие согласия. Получает типовой **Submission**.
+1. Определяется **владелец** capability.  
+2. Определяется **публичный контракт**.  
+3. Контракт оформляется как **канонический adapter interface**.  
+4. Потребители зависят **только** от этого интерфейса.  
+5. Реализация и провайдеры подключаются **за** границей модуля.  
+6. Совместимость покрывается **contract tests**.  
+7. Изменение контракта проходит **отдельный архитектурный review**.
 
-Это частный случай P-01; Endpoint Model ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) подчиняется этому правилу.
+Пока Forms / Documents / Notifications / AI не готовы, потребляющий модуль работает против стабильного контракта с **тестовым адаптером**. Реальная реализация подключается без переделки бизнес-логики.
 
-### Documents
+### Важное ограничение: не микросервис ради микросервиса
 
-```text
-Recruitment (или HR / Fleet / …)  →  Document Adapter  →  Documents Module
-```
+P-01 регулирует **архитектурную границу**, а не способ физического вызова.
 
-Модуль не знает S3 / OCR / версии хранения.
+- Адаптер **может** быть локальным Python / TypeScript-интерфейсом внутри **modular monolith**.  
+- Позже тот же контракт **можно** реализовать через HTTP, очередь или отдельный сервис.  
+- Не каждый внутренний вызов нужно превращать в сетевой API.
 
-### Notifications
+Независимость модулей сохраняется **без** преждевременного усложнения инфраструктуры.
 
-```text
-Any module  →  Notification Adapter  →  Notifications capability
-```
+### Примеры канонических адаптеров
 
-Каналы (Email, SMS, WhatsApp, Push, Telegram) выбирает Notifications, не caller.
+| Adapter | Consumer | Provider скрывает |
+|---------|----------|-------------------|
+| **Endpoint Adapter** | Acquisition / Intake | Form Builder, versions, consents, Meta internals |
+| **Document Adapter** | Recruitment / HR / Fleet / … | S3, OCR, file versions, storage |
+| **Notification Adapter** | Any module | SMTP, SMS, WhatsApp, Push, Telegram |
+| **Automation Adapter** | Any module | прямые вызовы чужой бизнес-логики |
+| **AI Adapter** | Any module | OpenAI, Azure, Anthropic, local LLM |
+| **Integration Adapters** | Platform | Meta / SMS / WhatsApp / TikTok / Google / … credentials & SDK |
 
-### Automations
-
-```text
-Any module  →  Automation Adapter  →  Automations
-```
-
-Automations не вызывают внутренние сервисы модулей в обход их adapters.
-
-### AI
-
-```text
-Any module  →  AI Adapter  →  LLM Provider
-```
-
-Смена провайдера без каскада по бизнес-коду.
-
-### Integrations
+Частный случай Forms / Acquisition:
 
 ```text
-Platform  →  Meta Adapter / SMS Adapter / WhatsApp Adapter / …
+Forms → Endpoint Adapter → Submission → Universal Routing
 ```
 
-Единый стиль; новый канал = новый adapter type в registry, не fork потребителя.
+Acquisition не знает хранение формы, publish, version, consents — только типовой Submission ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)).
 
-## Anti-patterns (запрещено)
+### Обязательный шаблон каждого модуля / capability
 
-- Recruitment читает таблицы Forms / Documents напрямую.  
-- Acquisition импортирует Form Builder models или пишет в `tenant_lead_forms` как SoT владельца.  
-- Модуль шлёт SMTP/SMS сам, минуя Notification Adapter.  
-- Automation rule вызывает private service function другого модуля.  
-- Бизнес-код знает имя LLM SDK или bucket path.
+У каждого платформенного или бизнес-модуля в ADR / module-scope **явно** фиксируются:
+
+| Раздел | Содержание |
+|--------|------------|
+| **Ownership** | Какие данные и capability принадлежат модулю |
+| **Public contracts** | Какие канонические адаптеры он **предоставляет** |
+| **Required contracts** | Какие канонические адаптеры он **потребляет** |
+| **Events** | Какие доменные события публикует и принимает |
+| **Forbidden dependencies** | К каким внутренностям других модулей обращаться нельзя |
+| **Contract tests** | Как проверяется совместимость публичного контракта |
+| **Versioning policy** | Как изменяется публичный контракт (breaking / additive / review) |
+
+Новые ADR **должны** включать эти разделы (или явную ссылку на заполненный module-scope). Отсутствие публичного контракта при межмодульном доступе — нарушение P-01.
 
 ## Consequences
 
-1. Модули **независимы**; внутреннюю реализацию можно менять без каскада.  
-2. Новые реализации (каналы, провайдеры, storage) добавляются **адаптером**, не переписыванием callers.  
-3. Тестирование упрощается (swap adapter → mock).  
-4. Единый стиль интеграции по всей платформе.  
-5. Endpoint / Forms / Documents / Notifications / AI / Integrations подчиняются **одному** правилу.  
-6. Нарушение P-01 в code review — блокер наравне с cross-module SoT ownership.
+1. P-01 — правило для **всех** последующих ADR и модулей, не только Forms / Acquisition.  
+2. Модули независимы; реализацию за адаптером можно менять без каскада.  
+3. Новый канал / провайдер = новый adapter за **существующим** или **зарегистрированным** каноническим контрактом.  
+4. Тестирование: swap → mock / fake adapter + contract tests.  
+5. Нарушения из таблицы blockers — стоп в review наравне с SoT ownership.  
+6. Endpoint + P-01 вместе: универсальный вход **и** универсальный способ взаимодействия.
 
 ## Relationship to other ADRs
 
-| ADR | Как связан с P-01 |
-|-----|-------------------|
-| [`ADR-007`](ADR-007-forms-platform-capability.md) | Forms SoT; consumers → Endpoint / Forms via adapters |
-| [`ADR-009`](ADR-009-document-hub-platform-layer.md) | Document Adapter boundary |
+| ADR | Связь с P-01 |
+|-----|----------------|
+| [`ADR-007`](ADR-007-forms-platform-capability.md) | Forms SoT; consumers → Endpoint / Forms adapters |
+| [`ADR-009`](ADR-009-document-hub-platform-layer.md) | Document Adapter |
 | [`ADR-012`](ADR-012-activity-notification-operating-layer.md) | Notification / Activity adapters |
-| [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) | Integration adapters + marketplace apps |
-| [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) | Automation Adapter / entitlement |
-| [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) | Endpoint Adapter; `Endpoint → Submission → Routing → Decision → Business Entity` |
+| [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) | Integration adapters |
+| [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) | Automation Adapter |
+| [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) | Endpoint spine; Endpoint Adapter |
 
 ## References
 
@@ -136,4 +155,5 @@ Platform  →  Meta Adapter / SMS Adapter / WhatsApp Adapter / …
 
 ## История
 
-- 2026-07-18: **P-01 Standard Adapter Boundary** accepted as platform-wide principle (Standard Adapters Only).
+- 2026-07-18: P-01 accepted.  
+- 2026-07-18: Strengthened — blockers table; canonical (not ad-hoc) adapters; development order; modular-monolith local adapters OK; mandatory module contract template; P-01 governs all future ADRs/modules.

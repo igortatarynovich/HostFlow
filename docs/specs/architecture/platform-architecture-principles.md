@@ -12,27 +12,26 @@
 
 ## 0. Platform Rule P-01 — Standard Adapter Boundary
 
-Норматив: **[`ADR-025`](ADR-025-standard-adapter-boundary.md)**.
+Норматив: **[`ADR-025`](ADR-025-standard-adapter-boundary.md)**. Обязательное правило **всей** платформы (не договорённость по модулю).
 
-> Любое взаимодействие между модулями платформы и любыми внешними системами допускается **только через стандартизированные адаптеры**. Внутренние модели, схемы хранения и детали реализации не являются частью контракта.
+Два уровня канона:
 
-**Standard Adapters Only.** Ни один модуль не знает внутреннюю реализацию другого — только публичный Adapter.
+| Уровень | Формула | Смысл |
+|---------|---------|--------|
+| **Поток данных** | `Endpoint → Submission → Routing → Decision → Business Entity` | Универсальный вход и слои ответственности ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) |
+| **Граница взаимодействия** | `Module A → Standard Adapter → Module B` (или Provider Adapter → External System) | Универсальный способ связи; прямой доступ запрещён |
 
-```text
-Consumer → Typed Adapter → Provider / External System
-```
+> Endpoint определяет универсальный **вход**. P-01 определяет универсальный **способ взаимодействия**.
 
-Примеры: Endpoint Adapter, Document Adapter, Notification Adapter, Automation Adapter, AI Adapter, Meta/SMS/WhatsApp/… Integration Adapters.
+**Standard Adapters Only** = использование **канонического** платформенного контракта, не произвольных локальных обёрток.
 
-Частный случай intake spine ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)):
+Архитектурные блокеры (полный список — ADR-025): прямой импорт чужих сервисов / таблиц / ORM; зависимость от внутреннего storage shape; прямой вызов внешнего провайдера из бизнес-модуля; локальный адаптер вместо платформенного контракта; дублирование контрактов.
 
-```text
-Endpoint → Submission → Routing → Decision → Business Entity
-```
+Порядок нового взаимодействия: owner → public contract → canonical adapter interface → consumers on interface only → providers behind boundary → contract tests → contract change = architecture review.
 
-Acquisition работает с Endpoint Adapter / Submission — не с Form Builder. Recruitment работает с Document Adapter — не с S3. Модули шлют Notification Adapter — не SMTP напрямую.
+P-01 — граница **архитектуры**, не требование микросервисов: адаптер может быть локальным интерфейсом в modular monolith.
 
-Нарушение P-01 в review — архитектурный блокер.
+Каждый модуль обязан явно зафиксировать: Ownership, Public contracts, Required contracts, Events, Forbidden dependencies, Contract tests, Versioning policy.
 
 ---
 
@@ -275,4 +274,5 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-05: [`ADR-010`](ADR-010-unified-resource-list-shell.md) — единая оболочка списков (SPA), field kinds, rail/modal; capability #10 в §6 (после консолидации Activity/Notification — было #11).
 - 2026-05: [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) — платформенный UI-стандарт (всё стандартизируемое в приложении); capability #11 в §6; §12 — политика ревью против дрейфа.
 - 2026-05: [`ADR-012`](ADR-012-activity-notification-operating-layer.md) — Activity & Notification Operating Layer (единая capability вместо двух старых строк «Notifications» + «Activity / Tasks»); canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Уточнение: «Reminder», «Todo», «Planner», «Today», «Calendar» — **представления** Activity, не отдельные модули.
-- 2026-07-18: [`ADR-025`](ADR-025-standard-adapter-boundary.md) — **Platform Rule P-01 Standard Adapter Boundary** (Standard Adapters Only); §0 в этом документе.
+- 2026-07-18: [`ADR-025`](ADR-025-standard-adapter-boundary.md) — **Platform Rule P-01 Standard Adapter Boundary** (Standard Adapters Only); §0 в этом документе.  
+- 2026-07-18: P-01 strengthened — canonical contracts (not ad-hoc wrappers); blockers; module contract template; governs all future ADRs.
