@@ -102,3 +102,30 @@ class FormsEnvelopeStatusError(FormsAdapterError):
     code = "forms_submission_envelope_status_invalid"
     http_status = 422
     default_message = "Invalid submission envelope processing status"
+
+
+# --- Field Catalog P1.1 ---
+
+
+class FormsCatalogComponentDuplicateError(FormsAdapterError):
+    code = "forms_catalog_component_duplicate"
+    http_status = 409
+    default_message = "Component version already registered"
+
+
+class FormsCatalogComponentNotFoundError(FormsAdapterError):
+    code = "forms_catalog_component_not_found"
+    http_status = 404
+    default_message = "Catalog component not found"
+
+
+class FormsCatalogVersionIncompatibleError(FormsAdapterError):
+    code = "forms_catalog_version_incompatible"
+    http_status = 409
+    default_message = "Catalog component version is incompatible"
+
+
+class FormsCatalogVersionInvalidError(FormsAdapterError):
+    code = "forms_catalog_version_invalid"
+    http_status = 422
+    default_message = "Catalog component version must be semver MAJOR.MINOR.PATCH"

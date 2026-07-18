@@ -92,8 +92,9 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 
 - **Field Catalog** is a **component registry** (SoT): type identity, properties, config schema, validation, normalization, **storage contract**, Builder palette, Public Form render.
 - Each component has stable `component_id` + `component_version` (stronger than a bare type string).
+- **P1.1 Registry** (`forms.field_catalog.registry.v1`): platform-wide register/get/find/resolve_compatible; semver major/minor/patch; no major auto-jump ([`forms-product-p1-1-registry.md`](../tasks/forms-product-p1-1-registry.md)).
 - **Builder** is a Catalog **client** (not owner): composition only; same components may serve forms, entity cards, CRM, mobile.
-- P1 lands as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API** ([`forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).
+- P1 lands as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API**.
 - Published `forms.field_schema.v1` fields must resolve to Catalog components (enforced when Catalog ships).
 - Gaps discovered during Builder work → surgical platform extension; **no** rewrite of Sprint 1–6 contour.
 
@@ -123,6 +124,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Field schema / validation | `schema.py` · `validation.py` (`forms.field_schema.v1`) |
 | Normalized answers | `answers.py` (`forms.normalized_answers.v1`) → Shared Intake handoff |
 | Submission envelope | `submission_envelope.py` · migration `202607180009_forms_s6` |
+| Field Catalog registry (P1.1) | `field_catalog/` · `forms.field_catalog.registry.v1` |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -137,6 +139,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - Sprint 4: `test_forms_sprint4_contract.py` · `test_forms_sprint4_gates.py`  
 - Sprint 5: `test_forms_sprint5_contract.py` · `test_forms_sprint5_gates.py`  
 - Sprint 6: `test_forms_sprint6_contract.py` · `test_forms_sprint6_gates.py`  
+- P1.1: `test_forms_p1_1_registry_contract.py` · `test_forms_p1_1_registry_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -171,4 +174,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 6 COMPLETE (PR #41) — Submission Envelope Contract ACTIVE; Builder LOCKED.  
 - 2026-07-18: Product Layer epic — Field Catalog SoT; Builder must not invent types.  
 - 2026-07-18: Product Layer ACTIVE (`29f4057f`); P1 = component registry (id/version/config/validation/normalization/storage/renderers).  
-- 2026-07-18: P1.1–P1.4 plan; Builder = thin Field Catalog client (not owner).
+- 2026-07-18: P1.1–P1.4 plan; Builder = thin Field Catalog client (not owner).  
+- 2026-07-18: P1.1 Registry implementation — `forms.field_catalog.registry.v1`.
