@@ -19,8 +19,8 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 5. **Forms Sprint 4:** ✅ **COMPLETE** ([`../tasks/forms-sprint-4.md`](../tasks/forms-sprint-4.md) · PR #39 · `779cffd3`).
 6. **Forms Sprint 5:** ✅ **COMPLETE** ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md) · PR #40 · `a6df02f0`).
 7. **Forms Sprint 6:** ✅ **COMPLETE** ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md) · PR #41 · `7e259f22`) — backend platform contour closed.
-8. **Forms Product Layer:** **ACTIVE** — P1.1 ✅ COMPLETE; P1.2 Design ✅ **ACTIVE**; Descriptor Contract **READY FOR IMPLEMENTATION**.
-9. **Builder / P1.3:** **LOCKED** until respective DoD. Descriptors must be **declarative** (no executable logic).
+8. **Forms Product Layer:** **ACTIVE** — P1.1–P1.2 ✅ COMPLETE; **P1.3 Standard Library READY FOR IMPLEMENTATION**.
+9. **Builder:** **LOCKED** until **P1.3**. Stdlib registers only via public Registry/Descriptors (no Catalog-core special cases).
 10. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 11. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
@@ -65,3 +65,4 @@ UI **не** определяет архитектуру.
 - 2026-07-18: P1 decomposition ACTIVE (`51063d1c`); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.
 - 2026-07-18: P1.1 Registry COMPLETE (`644b102a`); P1.2 Descriptors READY; Builder LOCKED.
 - 2026-07-18: P1.2 Design ACTIVE; Descriptor Contract READY FOR IMPLEMENTATION; declarative-only descriptors rule.
+- 2026-07-18: P1.2 Descriptors COMPLETE (`1f7b4aba`); P1.3 Standard Library READY FOR IMPLEMENTATION; Builder LOCKED.

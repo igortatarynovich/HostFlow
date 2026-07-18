@@ -8,7 +8,7 @@
 
 ---
 
-## Closed / active gates (after P1.1)
+## Closed / active gates (after P1.2)
 
 | Gate | Status |
 |------|--------|
@@ -17,10 +17,12 @@
 | Field Catalog Registry | ✅ **ACTIVE** |
 | Component Identity and Versioning | ✅ **ACTIVE** |
 | Compatibility Resolution | ✅ **ACTIVE** |
-| **P1.2 Descriptors** | ✅ **ACTIVE** (design) · Descriptor Contract **READY FOR IMPLEMENTATION** ([`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md)) |
-| P1.3 Standard library | **LOCKED** until P1.2 DoD — then **Builder unlock condition** |
+| **P1.2 Descriptors** | ✅ **COMPLETE** (`1f7b4aba` / #50) |
+| Descriptor Contract | ✅ **ACTIVE** |
+| Declarative Multi-client Surface | ✅ **ACTIVE** |
+| **P1.3 Standard library** | **READY FOR IMPLEMENTATION** ([`forms-product-p1-3-standard-library.md`](forms-product-p1-3-standard-library.md)) |
 | P1.4 Extension API | pending |
-| Builder (P2) | **LOCKED** |
+| Builder (P2) | **LOCKED** until **P1.3** DoD |
 | Unlock Builder | **completed P1.3 Standard Library** only |
 
 ---
@@ -64,8 +66,8 @@ Builder | Public Form | Entity cards | CRM | Mobile   ← clients, not owners
 | Sprint | Name | Outcome | Builder | Status |
 |--------|------|---------|---------|--------|
 | **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | ✅ **COMPLETE** |
-| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | ✅ **ACTIVE** (design) · impl READY |
-| **P1.3** | Standard library | First Basic component set | **unlock after DoD** | **LOCKED** until P1.2 |
+| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | ✅ **COMPLETE** |
+| **P1.3** | Standard library | First Basic component set | **unlock after DoD** | **READY FOR IMPLEMENTATION** |
 | **P1.4** | Extension API | Modules register their own components | unlocked path | pending |
 
 ### P1.1 — Registry (✅ COMPLETE)
@@ -81,7 +83,7 @@ See [`forms-product-p1-1-registry.md`](forms-product-p1-1-registry.md). Platform
 
 **Out:** Builder UI · descriptors surface · standard library · module extension API  
 
-### P1.2 — Runtime descriptors (✅ design ACTIVE · impl READY)
+### P1.2 — Runtime descriptors (✅ COMPLETE)
 
 See [`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md).
 
@@ -92,15 +94,15 @@ Each component exposes four **declarative** descriptors (no executable logic). B
 | Descriptor | Purpose |
 |------------|---------|
 | Builder descriptor | Palette / property editors / preview contract |
-| Public renderer descriptor | Public Form render contract |
+| Public descriptor | Public Form render contract |
 | Validation descriptor | Compose Sprint 4/5 validation |
 | Normalization descriptor | Compose Sprint 5 canonical normalization |
 
-(Storage contract remains part of the component definition; may be exposed as its own descriptor facet if needed.)
+### P1.3 — Standard library (**READY FOR IMPLEMENTATION**)
 
-### P1.3 — Standard library
+See [`forms-product-p1-3-standard-library.md`](forms-product-p1-3-standard-library.md).
 
-First HostFlow Forms component pack (minimal):
+Register Basic components **only** via public Registry + Descriptors — no Catalog-core special cases.
 
 | Component | Role |
 |-----------|------|
@@ -222,4 +224,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 - 2026-07-18: Implementation split into P1.1–P1.4; Builder as thin Catalog client.  
 - 2026-07-18: **ACTIVE** — decomposition merged `51063d1c` (#45); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.  
 - 2026-07-18: P1.1 **COMPLETE** (`644b102a` / #47); P1.2 Descriptors **READY**.  
-- 2026-07-18: P1.2 Design **ACTIVE**; Descriptor Contract READY FOR IMPLEMENTATION; descriptors must be declarative (no executable logic); P1.3 LOCKED.
+- 2026-07-18: P1.2 Design **ACTIVE**; Descriptor Contract READY FOR IMPLEMENTATION; descriptors must be declarative (no executable logic); P1.3 LOCKED.  
+- 2026-07-18: P1.2 **COMPLETE** (`1f7b4aba` / #50); P1.3 Standard Library **READY FOR IMPLEMENTATION**.
