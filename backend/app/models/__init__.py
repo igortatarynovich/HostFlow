@@ -93,6 +93,8 @@ CampaignRunIntakeSource = campaign_module.CampaignRunIntakeSource  # type: ignor
 CampaignResultAttribution = campaign_module.CampaignResultAttribution  # type: ignore[attr-defined]
 CampaignOutcome = campaign_module.CampaignOutcome  # type: ignore[attr-defined]
 CampaignOutcomeResultLink = campaign_module.CampaignOutcomeResultLink  # type: ignore[attr-defined]
+CampaignFlightSpendEntry = campaign_module.CampaignFlightSpendEntry  # type: ignore[attr-defined]
+CampaignResultQualification = campaign_module.CampaignResultQualification  # type: ignore[attr-defined]
 funnel_module = _load_model_module("funnel")
 Funnel = funnel_module.Funnel  # type: ignore[attr-defined]
 FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
@@ -290,6 +292,8 @@ __all__ = [
     "CampaignResultAttribution",
     "CampaignOutcome",
     "CampaignOutcomeResultLink",
+    "CampaignFlightSpendEntry",
+    "CampaignResultQualification",
     "UserCompanyAccess",
     "VacancyRecruiter",
     "Lead",

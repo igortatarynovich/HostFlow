@@ -9,6 +9,15 @@ from backend.app.acquisition.campaign_service import (
     remove_campaign_target,
     update_campaign,
 )
+from backend.app.acquisition.kpi_aggregates import (
+    CampaignKpiAggregate,
+    FlightKpiAggregate,
+    KpiAggregateError,
+    aggregate_campaign_kpi,
+    aggregate_flight_kpi,
+    qualify_attribution,
+    record_flight_spend,
+)
 from backend.app.acquisition.outcome_service import (
     OutcomeError,
     apply_attribution_to_outcome,
@@ -41,11 +50,16 @@ from backend.app.acquisition.validation import (
 __all__ = [
     "AttributionError",
     "AttributionSnapshot",
+    "CampaignKpiAggregate",
     "CampaignServiceError",
+    "FlightKpiAggregate",
+    "KpiAggregateError",
     "OutcomeError",
     "UniversalRoutingDecision",
     "ValidatedTarget",
     "add_campaign_target",
+    "aggregate_campaign_kpi",
+    "aggregate_flight_kpi",
     "apply_attribution_to_outcome",
     "build_attribution_from_routing",
     "create_campaign",
@@ -57,6 +71,8 @@ __all__ = [
     "list_campaigns",
     "mark_outcome_cancelled",
     "mark_outcome_failed",
+    "qualify_attribution",
+    "record_flight_spend",
     "record_result_attribution_from_routing",
     "remove_campaign_target",
     "resolve_universal_submission_routing",

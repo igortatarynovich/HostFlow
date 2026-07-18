@@ -157,9 +157,9 @@ Epic P закрыт **только если**:
 
 | PR | Focus | Status |
 |----|--------|--------|
-| **PR-1** | Result attribution record/projection from `acquisition_routing_v1` + submission id; contract test skeleton | ✅ DONE 2026-07-18 · [PR #31](https://github.com/igortatarynovich/HostFlow/pull/31) |
-| **PR-2** | Outcome entity + lifecycle statuses + progress from attributed Results | ✅ DONE 2026-07-18 · [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32) |
-| **PR-3** | Flight/Campaign KPI aggregates (Spend, Leads, Qualified, Converted, CPL, CPQ, Cost per Outcome) | planned |
+| **PR-1** | Result attribution record/projection from `acquisition_routing_v1` + submission id; contract test skeleton | ✅ DONE · [PR #31](https://github.com/igortatarynovich/HostFlow/pull/31) MERGED |
+| **PR-2** | Outcome entity + lifecycle statuses + progress from attributed Results | ✅ DONE · [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32) MERGED |
+| **PR-3** | Flight/Campaign KPI aggregates (Spend, Leads, Qualified, Converted, CPL, CPQ, Cost per Outcome) | 🔄 opening |
 | **PR-4** | Full chain contract tests green; DoD checklist; unlock note in ADR-024 / ADR-007 | planned |
 
 Не мержить PR-1, если появился manual link API или ownership FK на domain Results.
@@ -170,7 +170,21 @@ Epic P закрыт **только если**:
 - Service: `backend/app/acquisition/result_attribution.py` — build/record **only** from routing stamp; manual `campaign_id`/`flight_id` rejected
 - Hook: `intake_submit_service` records attribution after Decision Layer when campaign-routed
 - Migration: `202607180004_acq_3d`
-- Tests: `backend/tests/api/test_stage_3d_outcome_attribution.py` (Outcome/KPI skeletons xfail until PR-2/3)
+- Tests: `backend/tests/api/test_stage_3d_outcome_attribution.py`
+
+### PR-2 delivered
+
+- Outcome + ledger; soft-revoke; no intake hook — [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32)
+
+### PR-3 delivered (this branch)
+
+- Spend source: `acq_flight_spend_entries` (Decimal/NUMERIC + currency)
+- Qualification contract: `acq_result_qualifications`
+- Read model: `kpi_aggregates.py` — Flight + Campaign (Campaign = sum of Flights)
+- Cost per Outcome from **completed** Outcomes (soft-revoke / failed / cancelled excluded)
+- Zero denominator → `null`; mixed currencies → error
+- Migration: `202607180006_acq_3d_k`
+- Tests: `backend/tests/api/test_stage_3d_kpi_aggregates.py`
 
 ---
 
@@ -187,4 +201,5 @@ Epic P закрыт **только если**:
 
 - 2026-07-18: Epic P locked as Phase 1 start; Capability Contract sequence adopted for subsequent L1 (Forms first after V1).  
 - 2026-07-18: **PR-1 DONE** — `acq_result_attributions` + routing-only attribution service + submit hook + contract tests.  
-- 2026-07-18: **PR-2** — Outcome + ledger links; progress monotonic; soft-revoke on Result delete; no intake hook for Outcome.
+- 2026-07-18: **PR-2** — Outcome + ledger links; progress monotonic; soft-revoke on Result delete; no intake hook for Outcome.  
+- 2026-07-18: **PR-3** — KPI read model (Flight+Campaign); spend source; qualification contract; Decimal-only ratios.

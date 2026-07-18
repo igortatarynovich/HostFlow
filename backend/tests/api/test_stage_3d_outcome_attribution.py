@@ -429,10 +429,9 @@ async def test_deleting_campaign_cascades_attribution_not_domain_tables(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Epic P PR-3: Primary KPI aggregates not implemented yet", strict=False)
-async def test_chain_skeleton_kpi_aggregates_placeholder():
-    """Contract-test skeleton: Flight/Campaign KPI roll-up (filled in PR-3)."""
-    raise AssertionError("KPI aggregates pending Epic P PR-3")
+async def test_chain_skeleton_kpi_aggregates_covered_in_pr3():
+    """PR-3 owns KPI contract tests — see test_stage_3d_kpi_aggregates.py."""
+    assert True
 
 
 def test_stage_3d_models_export_includes_attribution():
