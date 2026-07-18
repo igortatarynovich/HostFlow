@@ -6,15 +6,22 @@
 
 > HostFlow — **система управления ростом**: Growth → Intake → Operations → Intelligence ↺ Growth.
 
+> **Intake spine:** `Endpoint → Submission → Routing → Decision → Business Entity`
+
 > Привлечение спроса **отделено** от исполнения бизнес-процессов.
+
+> **Campaign → Endpoint → Submission** (не Campaign → Form).  
+> Campaign отвечает за Attribution, Routing Context, Intent, Source.
 
 > **CampaignTemplate** — готовый playbook / экспертиза (после V1).  
 > **Campaign** — долгоживущая инициатива.  
 > **Flight / CampaignRun** — конкретная волна (V1 = ровно один).
 
-> **Goal Type + Primary KPI** — зачем и чем измеряем (не плоский enum Hire/Sales/Brand).  
+> **Goal Type + Primary KPI** — зачем и чем измеряем.  
 > **`route_intent`** — что создать во Intake.  
 > **Outcome** — измеримый progress.
+
+> **Routing once** при создании Lead; continuation Submissions наследуют context.
 
 ```text
 Template → Campaign → Flight → Results → Outcomes

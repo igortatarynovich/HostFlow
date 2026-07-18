@@ -1,43 +1,33 @@
-# Модуль Forms: охват Core Platform Module
+# Модуль Forms: Core Platform Module
 
-Нормативное решение — **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.
+Норматив: **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.  
+Intake spine / Endpoint: **[`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)**.
 
 ## Суть
 
-- **Forms** — **Core Platform Module** HostFlow (рядом с Documents, Activity, Notifications, Automations, Search).  
-- **Не** часть Recruitment / Acquisition; **не** шестой лицензируемый продукт ADR-004. Basic — всем тенантам.  
-- Полностью владеет жизненным циклом формы: Builder, templates, versions, publish, public/internal endpoints, Submission, consents (GDPR/RODO/Terms/Privacy), multi-language, themes, CAPTCHA, webhooks, post-submit automation events.  
-- **Acquisition не знает Forms internals.** Campaign использует **Endpoint**; HostFlow Public Form — один тип Endpoint ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)).  
-- Recruitment, Sales, HR, Fleet, Finance, Services — **потребители**; никто не строит свой form-стек.  
-- Forms **не определяют смысл полей** — поверхность ввода над Entity Profile / Field Registry.
+```text
+Endpoint → Submission → Routing → Decision → Business Entity
+```
 
-## First entry vs continuation
+- **Endpoint** — главная абстракция входа (Meta, HostFlow Form, API, Webhook, …).  
+- **Forms** — Core Platform Module: SoT **HostFlow Form** (builder, versions, publish, submission surface, consents).  
+- HostFlow Public Form **is-a** Endpoint; Campaign использует Endpoint, не Form.  
+- Forms **не** часть Recruitment/Acquisition; **не** продукт ADR-004 (Basic — всем тенантам).
 
-| Режим | Routing |
-|-------|---------|
-| First entry (новый Lead) | Submission → Universal Submission Routing → Lead / Campaign context |
-| Continuation (существующий Lead) | Новая Submission **без** повторного routing; контекст Lead наследуется |
+## Responsibilities (SoT)
 
-## Юридический якорь
+Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints; Submission Engine; Consent (GDPR/RODO/Terms/Privacy) + version pinning; Multi-language; Form Logic; Themes; CAPTCHA; webhooks; post-submit events.
 
-Submission ссылается на **опубликованную версию** формы. Позднейшие версии не переписывают уже принятые согласия.
+## Routing
 
-## Basic vs Advanced
-
-| Tier | Содержание |
-|------|------------|
-| **Basic** | Форма, публичная ссылка, submissions, файлы — **core platform** |
-| **Advanced** | Conditional logic, deep mapping, e-sign/consent tracking, branding, multi-language, portals — **addon / bundle** |
+- First entry → Universal Routing (один раз на новый Lead).  
+- Continuation → наследование Routing/Attribution context Lead.
 
 ## Platform epic (после Acquisition V1)
 
-Visual Form Builder; Public Endpoint Engine; Versioning; Submission Engine; Consent Management; Conditional Logic; File Upload; Multi-language; Themes; Endpoint Publishing; Submission API; Automations / Documents / Entity Workspace.
-
-## Текущий код
-
-`tenant_lead_forms`, `/public/intake`, `forms_platform/` bridge — исторический слой; миграция к FormTemplate / FormPublish / Submission — поэтапно (ADR-007).
+Form Builder; Endpoint Engine; Submission Engine; Versioning; Consent; Public Publishing; Internal Forms; Themes; Conditional Logic; File Upload; Multi-language; Automations / Documents / Entity Workspace.
 
 ## История
 
-- 2026-05: Forms как платформенная capability.  
-- 2026-07-18: Core Platform Module lock-in; Campaign → Endpoint; routing once; Platform Forms epic.
+- 2026-05: платформенная capability.  
+- 2026-07-18: Core Platform Module + Endpoint spine.

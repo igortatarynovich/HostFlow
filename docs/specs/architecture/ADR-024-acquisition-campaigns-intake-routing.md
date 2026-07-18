@@ -14,13 +14,29 @@
 
 > **Acquisition creates demand flow; destination modules own resulting business objects.**
 
+**Базовый архитектурный скелет HostFlow (intake spine):**
+
+```text
+Endpoint → Submission → Routing → Decision → Business Entity
+```
+
+| Слой | Ответственность |
+|------|-----------------|
+| **Endpoint** | Принимает обращение (любой внешний/внутренний вход) |
+| **Forms** | Собирает данные и согласия, когда вход — HostFlow Form ([`ADR-007`](ADR-007-forms-platform-capability.md)) |
+| **Acquisition** | Происхождение, Attribution, Routing Context, Intent / Source |
+| **Decision Layer** | Бизнес-решение по Submission / Lead |
+| **Business Modules** | Работают с готовыми сущностями (Application, Inquiry, …) |
+
+Главное архитектурное изменение Stage 3 / платформы intake — **не** «вынести Form Builder», а ввести универсальную абстракцию **Endpoint**. Все новые каналы подключаются как Endpoint types; Campaign и Universal Routing не меняются.
+
 Ключевое архитектурное разделение HostFlow:
 
 > **Привлечение спроса** (Campaigns / Acquisition) **отделено от исполнения** бизнес-процессов (Recruitment, Sales, Fleet, HR, Finance).
 
 > Кампания **никогда** напрямую не владеет кандидатом, обращением или клиентом. Она создаёт атрибутированный intake, который маршрутизируется в модуль-владелец.
 
-> Campaigns — универсальный механизм продвижения. Target, модуль и result задаются **registry**; lifecycle рекламы, форм, атрибуции и аналитики — **одинаковый**.
+> Campaigns — универсальный механизм продвижения. Target, модуль и result задаются **registry**; lifecycle рекламы, **Endpoint**, атрибуции и аналитики — **одинаковый**.
 
 Позиционирование продукта:
 
@@ -172,36 +188,59 @@ Template → Campaign → Flight → Results → Outcomes
 | Inquiry / Client / Service Order (SoT) | **Sales** (+ Services for order) |
 | Future Fleet / HR inquiry objects | **Fleet** / **HR** |
 
-### 4. Campaign uses Endpoint — not Form
+### 4. Endpoint Model (главная платформенная абстракция)
 
-**Неверно:** Campaign владеет Form или зависит от Form Builder / версий / согласий.  
-**Неверно:** Campaign **содержит** Form как exclusive child.  
-**Верно:** Campaign **использует Endpoint**. Endpoint доставляет **Submission**. Источник (Meta, HostFlow Form, API, …) для Campaign безразличен.
+**Главное решение:** любой внешний или внутренний вход в HostFlow — это **Endpoint**. Все Endpoint сходятся в одну модель:
 
 ```text
-Campaign → Flight → Endpoint → Submission → Universal Routing (once per new Lead)
+Endpoint → Submission
 ```
 
-Типы Endpoint (registry; без fork Campaign service): Meta Lead Form; HostFlow Public Form ([`ADR-007`](ADR-007-forms-platform-capability.md)); API; Webhook; WhatsApp; Telegram; QR; Mobile App; …
+Примеры Endpoint (registry; без fork Campaign):
+
+- Meta Lead Form  
+- HostFlow Public Form ([`ADR-007`](ADR-007-forms-platform-capability.md))  
+- API  
+- Webhook  
+- WhatsApp / Telegram  
+- QR Code / Mobile App  
+- …
+
+**Campaign больше не работает с Form напрямую.** Целевая модель:
+
+```text
+Campaign → Endpoint → Submission
+```
+
+(часто через Flight: `Campaign → Flight → Endpoint → Submission`)
+
+Campaign отвечает **только** за:
+
+- Attribution  
+- Routing Context  
+- Intent (`route_intent` / Target)  
+- Source / происхождение спроса  
+
+Campaign **ничего не знает** о внутреннем устройстве Forms (builder, versions, consents, themes). Forms — SoT формы и (для HostFlow Form) Submission capture; Acquisition потребляет уже готовый Submission через Endpoint.
 
 ```text
 Campaign ──uses──► Endpoint
 HostFlow Public Form ──is-a──► Endpoint
-Forms SoT ──owns──► template / version / publish / consent
+Forms SoT ──owns──► template / version / publish / consent / form submission surface
 ```
 
-**Stage 3B V1:** `acq_campaign_run_forms` + `acq_campaign_run_intake_sources` — две concrete associations. Целевая модель — единый **CampaignRun ↔ Endpoint**. До миграции Form∪Profile matrix в 3C остаётся корректной V1 реализацией двух endpoint-типов.
+**Stage 3B V1:** `acq_campaign_run_forms` + `acq_campaign_run_intake_sources` — переходные специализации Endpoint. Целевая модель — единый **CampaignRun ↔ Endpoint**. До миграции Form∪Profile matrix в 3C — корректная V1 реализация двух endpoint-типов. HostFlow Public Form = один `endpoint_type`.
 
 ### 4b. Routing once per Lead
 
-Universal Submission Routing выполняется **только при создании нового Lead** (first entry).
+Routing выполняется **только один раз** — при создании нового Lead (first entry).
 
-| Submission | Routing |
-|------------|---------|
-| First entry (новый Lead) | Endpoint → optional Flight → `route_intent` → Decision Layer; stamp `acquisition_routing_v1` |
-| Continuation (существующий Lead) | **Не** пересчитывать Campaign/Flight. Наследовать routing/attribution context Lead |
+| Submission | Поведение |
+|------------|-----------|
+| First entry (новый Lead) | Endpoint → optional Flight → `route_intent` → Decision Layer; stamp routing/attribution context |
+| Continuation (существующий Lead) | **Наследует** Routing Context Lead; **не** определяет Campaign повторно; **не** меняет Attribution; используется только для продолжения процесса |
 
-Forms создаёт Submission в обоих случаях; Acquisition routing — только first entry ([`ADR-007`](ADR-007-forms-platform-capability.md)).
+Forms (или другой Endpoint) может создавать новые Submissions в обоих случаях; Acquisition Universal Routing — только first entry ([`ADR-007`](ADR-007-forms-platform-capability.md)).
 
 ### 5. Audience — первоклассный объект HostFlow
 
@@ -226,7 +265,7 @@ V1 может хранить Audience как HostFlow definition + manual/provid
 
 ```text
 Campaign → Goal(s)
-Campaign → CampaignTarget(s) → Flight → Intake Source → Submission → Route Intent → Result Object
+Campaign → CampaignTarget(s) → Flight → Endpoint → Submission → Route Intent → Result Object
 ```
 
 **Запрещено** на `Campaign`: `vacancy_id`, `service_id`, `client_id`, `order_id`.
@@ -504,17 +543,18 @@ V1 **не** заменяет Meta Ads Manager.
 
 ## Consequences
 
-1. HostFlow позиционируется как **система управления ростом**: Growth → Intake → Operations → Intelligence ↺ Growth.  
-2. Привлечение спроса и исполнение процессов — разные слои.  
-3. **Goal Type ≠ Primary KPI ≠ route_intent ≠ Outcome**.  
-4. **Campaign ≠ Flight**; **Template ≠ Campaign** — playbook vs инициатива vs волна.  
-5. **Result ≠ Outcome**: факты vs progress; атрибуция Result → Flight → Campaign.  
-6. **Endpoint** (не Form) — переиспользуемый intake entry; Forms SoT для HostFlow Public Form; Audiences — platform objects; Template ссылается, не exclusive-owns.  
-7. Новый target / channel / intent / goal type / KPI / template / **endpoint type** = registry, не fork.  
-8. ADR-023 Stage 3 = этот ADR; исполнение **3A→3E** после cutover; Template — после V1 (ориентир V2); **Platform Forms epic** — после Acquisition V1 ([`ADR-007`](ADR-007-forms-platform-capability.md)).  
-9. Deep links: Campaign / Audience / Form на shell; Application/Inquiry — module hosts (6C).  
-10. Stage 3 V1 доказывает сквозную модель до Result attribution + Outcome progress без Template catalog и multi-Flight UX.  
-11. **Routing once per Lead**; continuation Submissions не пересчитывают Campaign.
+1. **Intake spine** HostFlow: `Endpoint → Submission → Routing → Decision → Business Entity` — базовый скелет для всех каналов и модулей.  
+2. **Endpoint** — главная платформенная абстракция входа; новый канал = новый `endpoint_type` в registry, не fork Campaign/Routing.  
+3. **Forms** = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)): SoT формы + согласий; не часть Acquisition.  
+4. Campaign отвечает за Attribution / Routing Context / Intent / Source — **не** за Form Builder.  
+5. HostFlow позиционируется как **система управления ростом**: Growth → Intake → Operations → Intelligence ↺ Growth.  
+6. Привлечение спроса и исполнение процессов — разные слои.  
+7. **Goal Type ≠ Primary KPI ≠ route_intent ≠ Outcome**.  
+8. **Campaign ≠ Flight**; **Template ≠ Campaign**.  
+9. **Result ≠ Outcome**; атрибуция Result → Flight → Campaign.  
+10. **Routing once per Lead**; continuation Submissions наследуют context, не меняют Attribution.  
+11. Stage 3A–3C DONE в V1; 3B Form/Intake links = transitional Endpoint specializations; **Platform Forms epic** после Acquisition V1.  
+12. Deep links: Campaign / Audience / Form на shell; Application/Inquiry — module hosts (6C).
 
 ## References
 
@@ -533,4 +573,4 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: **Stage 3B DONE** — Flight↔Form / Flight↔IntakeSource associations; Meta via existing profile bind.  
 - 2026-07-18: 3B fix — drop `provider`/`external_ref` snapshots; partial unique indexes for one active primary per Flight.  
 - 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.  
-- 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); Campaign → **Endpoint** (not Form); routing once per Lead; 3B Form/Intake links = V1 Endpoint specializations.
+- 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); **Endpoint** as primary intake abstraction; Campaign → Endpoint → Submission; routing once per Lead; intake spine `Endpoint → Submission → Routing → Decision → Business Entity`.
