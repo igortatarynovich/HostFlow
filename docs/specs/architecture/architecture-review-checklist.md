@@ -1,70 +1,70 @@
-# Architecture Review Checklist (P-01 · P-02 · P-03)
+# Architecture Review Checklist (P-01 · P-02 · P-03 · P-04)
 
 **Status:** canonical  
-**Normative rules:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-027`](ADR-027-capability-composition.md)  
+**Normative rules:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-027`](ADR-027-capability-composition.md) · [`ADR-028`](ADR-028-configuration-ownership.md)  
 **Principles:** [`platform-architecture-principles.md`](platform-architecture-principles.md) §0  
-**Catalog (boundaries):** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
+**Catalog:** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
 **Owners index:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1  
 
-Обязательная проверка для **каждого PR**, который затрагивает модули, shared capabilities, integrations или публичные контракты. Если любой пункт «нет» / «не применимо без обоснования» — **архитектурный review до merge**.
+Обязательная проверка для **каждого PR**, который затрагивает модули, shared capabilities, integrations, settings или публичные контракты.
 
 ---
 
-## Четыре главных вопроса
+## Пять главных вопросов
 
 | # | Вопрос | Правило |
 |---|--------|---------|
-| 1 | Использует ли изменение **только канонические** Standard Adapters? | **P-01** |
-| 2 | Обращается ли оно **только к владельцам** соответствующих capabilities? | **P-02** |
-| 3 | Не создаёт ли оно **новую capability**, где уже есть подходящая (нужна ли композиция)? | **P-03** |
-| 4 | Не забирает ли оно ответственность из **Forbidden** / вне **Capability Boundary** паспорта? | **P-02 Boundary** |
+| 1 | Только канонические Standard Adapters? | **P-01** / **Exposes** |
+| 2 | Только к владельцам capabilities? | **P-02** / **Owns** |
+| 3 | Композиция, а не дубликат capability? | **P-03** / **Consumes** |
+| 4 | Не забирает ли ответственность из **Forbidden**? | **Boundary** |
+| 5 | Новые/изменённые настройки только в **Configures** владельца? | **P-04** |
 
-Ответ «да» на 1–3 и «нет, не забирает» на 4 → обычно достаточно обычного code review.  
-Иначе → architecture canon owner / ADR до реализации.
+Иначе → architecture review **до** merge.
 
 ---
 
-## P-01 — Adapter Boundary
+## P-01 — Adapter Boundary (Exposes)
 
-- [ ] Нет прямого импорта внутренних сервисов другого модуля  
-- [ ] Нет SQL / запросов к таблицам другого модуля  
-- [ ] Нет использования ORM-моделей другого модуля  
-- [ ] Нет зависимости от внутреннего формата хранения чужого модуля  
-- [ ] Нет прямого вызова внешнего провайдера (SMTP, LLM SDK, Meta SDK, S3, …) из бизнес-модуля  
-- [ ] Нет локального «адаптера», дублирующего уже существующий платформенный контракт  
-- [ ] Нет второго несовместимого контракта той же интеграции в другом модуле  
-- [ ] Новый межмодульный доступ оформлен как канонический adapter interface + contract tests (или явно отложен с issue)
+- [ ] Нет прямого импорта / SQL / ORM чужого модуля  
+- [ ] Нет прямого вызова внешнего провайдера из Business capability  
+- [ ] Нет локального адаптера, дублирующего платформенный контракт  
+- [ ] Новый доступ оформлен через **Exposes** владельца + contract tests (или отложен с issue)
 
-## P-02 — Capability Ownership + Boundary
+## P-02 — Ownership (Owns) + Forbidden
 
-- [ ] Затронутые capabilities указаны; владелец совпадает с каталогом  
-- [ ] Изменение укладывается в **Owned** паспорта; не реализует пункты из **Forbidden**  
-- [ ] Settings / Data Ownership не переезжают к чужому модулю  
+- [ ] Затронутые capabilities и **kind** (Infrastructure / Platform / Business) указаны  
+- [ ] Изменение в **Owns** паспорта; не в **Forbidden**  
+- [ ] Business не владеет Infrastructure/Platform stacks  
 - [ ] Нет второй реализации Forms / Documents / Notifications / Search / AI / Endpoint / Automations / …  
-- [ ] Derived cache / projection помечены как non-SoT (если есть)  
-- [ ] Passport в [`platform-capability-catalog.md`](platform-capability-catalog.md) обновлён при смене границы (тот же PR)
+- [ ] Derived cache помечен non-SoT  
 
-## P-03 — Capability Composition
+## P-03 — Composition (Consumes)
 
-- [ ] Функция собрана из существующих capabilities, где это возможно  
-- [ ] Новая capability (если есть) имеет ADR + Owner + **полный passport 1–8** + Index entry **до** кода  
-- [ ] Бизнес-модуль не добавляет «свой» Form/Document/Notify/AI/Search/Automation stack  
-- [ ] Оркестрация в модуле только вызывает чужие Public contracts (тонкий facade OK)
+- [ ] Функция собрана через **Consumes** существующих capabilities  
+- [ ] Новая capability = ADR + kind + полный passport **до** кода  
+- [ ] Тонкий facade OK; второй SoT — нет  
+
+## P-04 — Configuration Ownership (Configures)
+
+- [ ] Каждый новый/изменённый knob есть в **Configures** ровно одной capability  
+- [ ] Нет SMTP / OCR Engine / LLM Provider / Meta App / CAPTCHA SoT в Business settings  
+- [ ] Нет дублирования authoritative config между модулями  
+- [ ] ADR-005 уровень (Tenant/Company/Module) не подменяет configuration owner  
 
 ## Intake / Endpoint (если затрагивается)
 
-- [ ] Соблюдён spine: `Endpoint → Submission → Routing → Decision → Business Entity`  
-- [ ] Campaign не зависит от Forms internals  
-- [ ] Routing once per new Lead; continuation не пересчитывает Campaign  
+- [ ] Spine: `Endpoint → Submission → Routing → Decision → Business Entity`  
+- [ ] Campaign ↛ Forms internals; routing-once per new Lead  
 
 ## Документация
 
-- [ ] `platform-capability-catalog.md` / ADR / module-scope / §0.1 index обновлены в том же PR при смене ownership или контракта  
-- [ ] Breaking change публичного контракта отмечен + architecture review  
+- [ ] [`platform-capability-catalog.md`](platform-capability-catalog.md) обновлён при смене Owns / Configures / Exposes / Consumes / Forbidden  
+- [ ] §0.1 index / ADR / module-scope синхронизированы  
 
 ---
 
 ## История
 
-- 2026-07-18: введен вместе с P-01/P-02/P-03 platform canon milestone.
-- 2026-07-18: добавлен вопрос 4 — Capability Boundary / Forbidden check; catalog SoT.
+- 2026-07-18: P-01…P-03 + Boundary.  
+- 2026-07-18: P-04 Configuration Ownership; Owns/Configures/Exposes/Consumes.

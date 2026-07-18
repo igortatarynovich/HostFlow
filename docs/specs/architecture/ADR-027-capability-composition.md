@@ -17,6 +17,7 @@
 | **P-01** | Как взаимодействовать? | Через **канонические** Standard Adapters |
 | **P-02** | К кому обращаться? | Только к **владельцу** capability |
 | **P-03** | Как строить новую функциональность? | **Композицией** существующих capabilities, не дубликатами |
+| **P-04** | Кто владеет конфигурацией? | Ровно одна capability — **Configures** ([`ADR-028`](ADR-028-configuration-ownership.md)) |
 
 Три вопроса перед реализацией любого модуля / фичи:
 
@@ -67,12 +68,13 @@
 1. Product design начинается с **composition map**, не с greenfield stack.  
 2. Platform epics (Forms, AI, …) разблокируют все модули сразу.  
 3. Review: «можно ли собрать из существующего?» — первый вопрос.  
-4. P-01 + P-02 + P-03 = полный фундамент канона HostFlow.
+4. P-01…P-04 + Catalog Passport = фундамент канона HostFlow.
 
 ## References
 
-ADR-025 · ADR-026 · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) · [`architecture-review-checklist.md`](architecture-review-checklist.md)
+ADR-025 · ADR-026 · ADR-028 · [`platform-capability-catalog.md`](platform-capability-catalog.md) · [`architecture-review-checklist.md`](architecture-review-checklist.md)
 
 ## История
 
 - 2026-07-18: P-03 Capability Composition accepted.
+- 2026-07-18: Aligned with P-04 and Consumes boundary.

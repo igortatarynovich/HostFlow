@@ -16,12 +16,15 @@
 | Правило | Вопрос | Ответ |
 |---------|--------|--------|
 | **P-01** | Как взаимодействовать? | Только через **канонический** Standard Adapter |
-| **P-02** | К кому обращаться? | Только к **владельцу** capability |
+| **P-02** | К кому обращаться? / кто владеет **функциональностью**? | Только к **владельцу** capability (**Owns**) |
 | **P-03** | Как строить новое? | **Композицией** существующих capabilities ([`ADR-027`](ADR-027-capability-composition.md)) |
+| **P-04** | Кто владеет **конфигурацией**? | Ровно одна capability — **Configures** ([`ADR-028`](ADR-028-configuration-ownership.md)) |
 
-Сочетание P-01 + P-02 практически исключает дублирующие реализации и удерживает архитектуру чистой.
+Сочетание P-01…P-04 + Catalog Passport удерживает архитектуру чистой.
 
-**Capability Boundary (обязательное уточнение P-02):** одного имени владельца недостаточно. У каждой capability в [`platform-capability-catalog.md`](platform-capability-catalog.md) зафиксирован состав **Owned / Forbidden / Settings / Data / Contracts / Events**. Review дополнительно спрашивает: *не пытается ли модуль забрать чужую ответственность?*
+**Capability Boundary:** четыре независимые оси в [`platform-capability-catalog.md`](platform-capability-catalog.md) — **Owns / Configures / Exposes / Consumes** (+ Events / Forbidden / Data Ownership). Review: *не пытается ли модуль забрать чужую ответственность или чужой Configures?*
+
+**Kinds:** Infrastructure · Platform · Business — Business **не** владеет infrastructure.
 
 ## Context: platform of capabilities
 
@@ -110,14 +113,16 @@ P-02 **не** запрещает кэш / проекции / read models **яв�
 |-----|------|
 | [`ADR-025`](ADR-025-standard-adapter-boundary.md) | **Как** вызывать (adapter) |
 | **ADR-026 (этот)** | **Кого** вызывать (owner SoT) + **что** ему принадлежит (Boundary via catalog) |
-| [`ADR-027`](ADR-027-capability-composition.md) | **Как** строить новое (compose) |
+| [`ADR-027`](ADR-027-capability-composition.md) | **Как** строить новое (compose / Consumes) |
+| [`ADR-028`](ADR-028-configuration-ownership.md) | **Кто** владеет конфигурацией (Configures) |
 | ADR-007 / 009 / 012 / 019 / 024 | Конкретные owners |
 
 ## References
 
-[`platform-capability-catalog.md`](platform-capability-catalog.md) · [`platform-architecture-principles.md`](platform-architecture-principles.md) · ADR-004 · ADR-006 · ADR-007 · ADR-009 · ADR-012 · ADR-019 · ADR-023 · ADR-024 · ADR-025 · ADR-027
+[`platform-capability-catalog.md`](platform-capability-catalog.md) · [`platform-architecture-principles.md`](platform-architecture-principles.md) · ADR-004 · ADR-006 · ADR-007 · ADR-009 · ADR-012 · ADR-019 · ADR-023 · ADR-024 · ADR-025 · ADR-027 · ADR-028
 
 ## История
 
 - 2026-07-18: P-02 Capability Ownership accepted; HostFlow as platform of capabilities; pairs with P-01.
 - 2026-07-18: Capability Boundary + Platform Capability Catalog (passports) — P-02 operationalized.
+- 2026-07-18: Four boundaries Owns/Configures/Exposes/Consumes; link to P-04.

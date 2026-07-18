@@ -6,29 +6,30 @@
 
 Документ фиксирует **главную архитектурную логику** продукта: HostFlow — **modular multi-company SaaS platform**, а не одна монолитная CRM. Детали по подсистемам — в ADR и scope-файлах; здесь — **согласованная картина** и **формула** для принятия решений.
 
-**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`platform-capability-catalog.md`](platform-capability-catalog.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`ADR-028`](ADR-028-configuration-ownership.md), [`platform-capability-catalog.md`](platform-capability-catalog.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
 
 ---
 
-## 0. Platform Rules (P-01 · P-02 · P-03)
+## 0. Platform Rules (P-01 · P-02 · P-03 · P-04)
 
-HostFlow — **платформа capabilities**, а не только набор бизнес-модулей. Фундаментальные возможности принадлежат **владельцам** и переиспользуются бизнес-модулями через композицию.
+HostFlow — **платформа capabilities**, а не только набор бизнес-модулей. Фундаментальные возможности принадлежат **владельцам** и переиспользуются через композицию; конфигурация — отдельная ось владения.
 
 | Правило | ADR | Вопрос | Ответ |
 |---------|-----|--------|--------|
-| **P-01** Standard Adapter Boundary | [`ADR-025`](ADR-025-standard-adapter-boundary.md) | Как взаимодействовать? | Только **канонический** Standard Adapter |
-| **P-02** Capability Ownership | [`ADR-026`](ADR-026-capability-ownership.md) | К кому обращаться? | Только к **единственному владельцу** (SoT) |
-| **P-03** Capability Composition | [`ADR-027`](ADR-027-capability-composition.md) | Как строить новое? | **Композицией** существующих capabilities |
+| **P-01** Standard Adapter Boundary | [`ADR-025`](ADR-025-standard-adapter-boundary.md) | Как взаимодействовать? | Только **канонический** Standard Adapter (**Exposes**) |
+| **P-02** Capability Ownership | [`ADR-026`](ADR-026-capability-ownership.md) | Кто владеет **функциональностью**? | Единственный owner (**Owns**) |
+| **P-03** Capability Composition | [`ADR-027`](ADR-027-capability-composition.md) | Как строить новое? | **Композицией** (**Consumes**) |
+| **P-04** Configuration Ownership | [`ADR-028`](ADR-028-configuration-ownership.md) | Кто владеет **конфигурацией**? | Ровно одна capability (**Configures**) |
 
 **Поток:** `Endpoint → Submission → Routing → Decision → Business Entity`  
 **Граница:** `Module A → Standard Adapter → Module B`
 
-**Catalog (boundaries):** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
+**Catalog:** [`platform-capability-catalog.md`](platform-capability-catalog.md) — kinds (Infrastructure / Platform / Business) + passport  
 **Owners index:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1  
 **PR checklist:** [`architecture-review-checklist.md`](architecture-review-checklist.md)  
 **Guide:** [`architecture-guide.md`](architecture-guide.md)
 
-Адаптер может быть локальным интерфейсом в modular monolith. Каждый модуль/capability фиксирует passport (Purpose, Owned, Public/Required contracts, Events, Settings, Data Ownership, Forbidden) — [`platform-capability-catalog.md`](platform-capability-catalog.md).
+Адаптер может быть локальным интерфейсом в modular monolith. Passport: Purpose · Owns · Configures · Exposes · Consumes · Events · Forbidden · Data Ownership.
 
 ---
 
@@ -277,3 +278,4 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-07-18: [`ADR-026`](ADR-026-capability-ownership.md) — **Platform Rule P-02 Capability Ownership**; HostFlow as platform of capabilities; §0 = P-01 + P-02.  
 - 2026-07-18: [`ADR-027`](ADR-027-capability-composition.md) — **P-03 Capability Composition**; checklist + capability catalog §0.1; platform canon milestone.
 - 2026-07-18: [`platform-capability-catalog.md`](platform-capability-catalog.md) — **Capability Boundary** + Module/Capability Passport; P-02 operationalized.
+- 2026-07-18: [`ADR-028`](ADR-028-configuration-ownership.md) — **P-04 Configuration Ownership**; catalog v2 Owns/Configures/Exposes/Consumes; kinds Infrastructure/Platform/Business.
