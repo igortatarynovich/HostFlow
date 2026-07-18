@@ -1,104 +1,43 @@
-# Модуль Forms / Public Forms: охват и роль на платформе
+# Модуль Forms: охват Core Platform Module
 
-Документ описывает **целевой** продуктовый модуль **Forms** как **платформенную capability** (input layer), а не как подсистему только Recruitment. Нормативное архитектурное решение — **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.
+Нормативное решение — **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.
 
 ## Суть
 
-- **Forms** — отдельный контур: шаблоны, публикация, приём **submissions**, файлы, согласия, маппинг, триггеры автоматизаций.  
-- **Recruitment, HR, Fleet, Services, Finance** — **потребители** Forms; доменные сущности и бизнес-правила остаются в соответствующих модулях.  
-- **Главное правило:** Forms — это **не** синоним «анкеты кандидата». Анкета кандидата — **один** из сценариев.
-- **Канон данных:** Forms **не определяют смысл полей**. Формы — поверхность ввода над **Entity Profile**, основанным на **Field Registry** — см. [`entity-profile-definition-registry.md`](../specs/platform/entity-profile-definition-registry.md).
+- **Forms** — **Core Platform Module** HostFlow (рядом с Documents, Activity, Notifications, Automations, Search).  
+- **Не** часть Recruitment / Acquisition; **не** шестой лицензируемый продукт ADR-004. Basic — всем тенантам.  
+- Полностью владеет жизненным циклом формы: Builder, templates, versions, publish, public/internal endpoints, Submission, consents (GDPR/RODO/Terms/Privacy), multi-language, themes, CAPTCHA, webhooks, post-submit automation events.  
+- **Acquisition не знает Forms internals.** Campaign использует **Endpoint**; HostFlow Public Form — один тип Endpoint ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)).  
+- Recruitment, Sales, HR, Fleet, Finance, Services — **потребители**; никто не строит свой form-стек.  
+- Forms **не определяют смысл полей** — поверхность ввода над Entity Profile / Field Registry.
 
-## Режимы
+## First entry vs continuation
 
-| Режим | Описание |
-|-------|----------|
-| **Standalone** | Форма создана пользователем, выдана **публичная ссылка**; обработчик submission определяет целевую сущность по конфигурации. |
-| **Linked** | Форма привязана к **модулю**, **процессу** или **конкретной сущности** (вакансия, employee, vehicle, order, client…). |
+| Режим | Routing |
+|-------|---------|
+| First entry (новый Lead) | Submission → Universal Submission Routing → Lead / Campaign context |
+| Continuation (существующий Lead) | Новая Submission **без** повторного routing; контекст Lead наследуется |
 
-## Состав (целевая архитектура)
+## Юридический якорь
 
-- **Form templates** — схема полей, версии, валидация.  
-- **Public links** — slug, политика доступа, срок действия (Advanced).  
-- **Submissions** — сохранённые ответы, статусы, аудит.  
-- **File uploads** — вложения; регистрация в **Document Hub** как **Document** + links ([`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)).  
-- **Consent capture** — RODO, oświadczenia, явные согласия (по политике продукта).  
-- **Field mapping** — отображение полей формы на поля сущностей / custom fields.  
-- **Automation triggers** — события для правил и сценариев платформы.
+Submission ссылается на **опубликованную версию** формы. Позднейшие версии не переписывают уже принятые согласия.
 
-## Целевые результаты submission (handlers)
-
-Один и тот же движок Forms должен поддерживать настройку исхода данных в сторону (не исчерпывающе):
-
-- **Lead**, **Candidate**  
-- **Employee** (workforce)  
-- **Client** / company / party (по канону B2B)  
-- **Service Order**  
-- Записи **Fleet** (damage, inspection, handover, return, trip issue, fuel/card confirmation — уточнение в доменном API)  
-- **Document** (файл + метаданные)  
-- **Billing profile** / реквизиты для счетов  
-
-## Примеры по модулям-потребителям
-
-### Recruitment
-
-- Анкета кандидата  
-- Форма отклика на вакансию (**связана с Job Post** в контуре Job Publishing — [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md))  
-- Обновление данных кандидата  
-- Загрузка документов  
-- Предварительная квалификация  
-- RODO consent  
-- Форма для клиента: оценка кандидата  
-
-### HR
-
-- Анкета сотрудника  
-- Сбор данных для ZUS  
-- PIT-2 / налоговые данные  
-- Банковские реквизиты  
-- Согласия и oświadczenia  
-- Обновление данных сотрудника  
-- Onboarding form  
-
-### Fleet
-
-- Vehicle handover checklist  
-- Damage report  
-- Vehicle return  
-- Inspection  
-- Driver trip issue report  
-- Fuel / card / equipment confirmation  
-
-### Services
-
-- Service request  
-- Client order  
-- Intake  
-- Document submission  
-
-### Finance
-
-- Billing details  
-- Данные для счёта / обновление  
-- Payment confirmation  
-
-## Basic vs Advanced (продукт)
+## Basic vs Advanced
 
 | Tier | Содержание |
 |------|------------|
-| **Basic** | Создание формы, публичная ссылка, сбор submissions, загрузка файлов — **включено в платформу** / baseline. |
-| **Advanced** | Условные поля, маппинг на сущности, автоматизации, e-signature / consent tracking, интеграция с чек-листами документов, брендирование, мультиязычность, истечение ссылок, связка с порталами кандидата/клиента — **платный addon** и/или часть пакетов модулей. |
+| **Basic** | Форма, публичная ссылка, submissions, файлы — **core platform** |
+| **Advanced** | Conditional logic, deep mapping, e-sign/consent tracking, branding, multi-language, portals — **addon / bundle** |
 
-## Текущий код (наблюдение)
+## Platform epic (после Acquisition V1)
 
-- **Lead forms:** `tenant_lead_forms`, квоты, UI настроек лид-форм, публичный intake — исторически ориентированы на лиды/кандидатов. Эволюция к универсальной модели Forms описана в **ADR-007** (миграция схемы и API — поэтапно).  
-- См. также [`../specs/lead-types.md`](../specs/lead-types.md), [`../SSOT.md`](../SSOT.md).
+Visual Form Builder; Public Endpoint Engine; Versioning; Submission Engine; Consent Management; Conditional Logic; File Upload; Multi-language; Themes; Endpoint Publishing; Submission API; Automations / Documents / Entity Workspace.
 
-## Сопровождение
+## Текущий код
 
-- При добавлении нового **публичного** сценария сбора данных проверять: не дублировать «ещё один специальный intake», а расширять **Forms** + handler модуля.  
-- Обновлять этот файл и **ADR-007** в одном изменении с продуктовыми решениями по маппингу и биллингу Advanced.
+`tenant_lead_forms`, `/public/intake`, `forms_platform/` bridge — исторический слой; миграция к FormTemplate / FormPublish / Submission — поэтапно (ADR-007).
 
 ## История
 
-- 2026-05: первичная фиксация scope Forms как платформенного модуля и матрица примеров по потребителям.
+- 2026-05: Forms как платформенная capability.  
+- 2026-07-18: Core Platform Module lock-in; Campaign → Endpoint; routing once; Platform Forms epic.

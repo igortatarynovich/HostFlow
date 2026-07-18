@@ -48,7 +48,7 @@ Growth → Intake → Operations → Intelligence ↺ Growth
 
 | Уровень | Вопрос | Состав (ориентир) | Задача |
 |---------|--------|-------------------|--------|
-| **1. Growth** | Откуда приходит спрос? | Campaigns, Audiences, Channels, Assets, Forms, Attribution, Analytics | Привести нужных людей |
+| **1. Growth** | Откуда приходит спрос? | Campaigns, Audiences, Channels, Assets, **Endpoints**, Attribution, Analytics | Привести нужных людей |
 | **2. Intake** | Что после заявки? | Sources, Submissions, Routing, Inbox, Deduplication, Screening | Правильно распределить обращения |
 | **3. Operations** | Что делает бизнес? | Recruitment, HR, Sales, Fleet, Finance | Создать ценность для клиента |
 | **4. Intelligence** | Что система узнала? | Аудитории/формы/каналы/менеджеры/вакансии/ROI; рекомендации | Улучшать следующие кампании и решения |
@@ -75,7 +75,7 @@ Campaign                         ← долгоживущая инициатив
 │     ├── dates, budget
 │     ├── Channels + Assets
 │     ├── Audiences (wave-scoped)
-│     ├── Forms (links)
+│     ├── Endpoints (links)
 │     └── Results (wave facts)
 ├── Attribution / Analytics      ← roll-up по Flight → Campaign
 ├── Timeline                     ← общая история инициативы
@@ -162,32 +162,46 @@ Template → Campaign → Flight → Results → Outcomes
 | CampaignTemplate (playbook / recipe; instantiate → Campaign) | Shared Acquisition (после V1 foundation) |
 | Campaign, CampaignGoal (type + primary KPI), CampaignTarget, CampaignRun (Flight), Channel binding, Ad / Creative (Asset), Audience (definition), Budget, Attribution, Campaign Timeline | Shared Acquisition |
 | Provider account / OAuth / webhook credentials | Shared Integrations (+ Acquisition UX) |
-| **Form** (template, versions, public link) | **Shared Forms** (ADR-007) — самостоятельный объект |
-| Campaign↔Form link (usage) | Acquisition (association only; обычно на Flight) |
+| **Form** (template, versions, public link, consents) | **Shared Forms** ([`ADR-007`](ADR-007-forms-platform-capability.md)) — **Core Platform Module** |
+| **Endpoint** (Meta Lead Form, HostFlow Public Form, API, Webhook, WhatsApp, Telegram, QR, Mobile App, …) | Shared Intake association on Flight; HostFlow Form SoT remains Forms |
+| CampaignRun ↔ Endpoint (usage) | Acquisition (association only) |
+| CampaignRun ↔ `TenantLeadForm` (`acq_campaign_run_forms`) | **V1 transitional** Endpoint type = HostFlow Public Form (Stage 3B); migrate to generic Endpoint |
+| CampaignRun ↔ IntakeSourceProfile | V1 Endpoint / channel specialization (e.g. Meta) |
 | Submission, Routing Rule / `route_intent` | Shared Intake |
 | Vacancy / Подбор / Application / Candidate | **Recruitment** |
 | Inquiry / Client / Service Order (SoT) | **Sales** (+ Services for order) |
 | Future Fleet / HR inquiry objects | **Fleet** / **HR** |
 
-### 4. Form — самостоятельный переиспользуемый объект
+### 4. Campaign uses Endpoint — not Form
 
-**Неверно:** Campaign **содержит** Form как вложенный exclusive child.  
-**Верно:** Campaign **использует** Form.
+**Неверно:** Campaign владеет Form или зависит от Form Builder / версий / согласий.  
+**Неверно:** Campaign **содержит** Form как exclusive child.  
+**Верно:** Campaign **использует Endpoint**. Endpoint доставляет **Submission**. Источник (Meta, HostFlow Form, API, …) для Campaign безразличен.
 
 ```text
-Campaign ──uses──► Form
+Campaign → Flight → Endpoint → Submission → Universal Routing (once per new Lead)
 ```
 
-Одна Form может обслуживать:
+Типы Endpoint (registry; без fork Campaign service): Meta Lead Form; HostFlow Public Form ([`ADR-007`](ADR-007-forms-platform-capability.md)); API; Webhook; WhatsApp; Telegram; QR; Mobile App; …
 
-- несколько кампаний;  
-- сайт / organic landing;  
-- QR;  
-- WhatsApp;  
-- ручной ввод менеджером;  
-- standalone public link (ADR-007).
+```text
+Campaign ──uses──► Endpoint
+HostFlow Public Form ──is-a──► Endpoint
+Forms SoT ──owns──► template / version / publish / consent
+```
 
-В UI конструктора кампании можно «создать новую форму» как shortcut — физически создаётся объект Forms, затем **линкуется** к Campaign. Владение и версионирование остаются у Forms.
+**Stage 3B V1:** `acq_campaign_run_forms` + `acq_campaign_run_intake_sources` — две concrete associations. Целевая модель — единый **CampaignRun ↔ Endpoint**. До миграции Form∪Profile matrix в 3C остаётся корректной V1 реализацией двух endpoint-типов.
+
+### 4b. Routing once per Lead
+
+Universal Submission Routing выполняется **только при создании нового Lead** (first entry).
+
+| Submission | Routing |
+|------------|---------|
+| First entry (новый Lead) | Endpoint → optional Flight → `route_intent` → Decision Layer; stamp `acquisition_routing_v1` |
+| Continuation (существующий Lead) | **Не** пересчитывать Campaign/Flight. Наследовать routing/attribution context Lead |
+
+Forms создаёт Submission в обоих случаях; Acquisition routing — только first entry ([`ADR-007`](ADR-007-forms-platform-capability.md)).
 
 ### 5. Audience — первоклассный объект HostFlow
 
@@ -419,8 +433,8 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | Slice | Name | Доказывает / отдаёт |
 |-------|------|---------------------|
 | **3A** ✅ | Campaign foundation (Goal + Target + reserved Flight) | **DONE.** Campaign-as-initiative; **Goal Type + Primary KPI**; `CampaignTarget` via registry; **CampaignRun** (V1 = ровно один / `current_flight`); company + module gate; `target_module` canonical; route_intent validation. **Не** Template catalog |
-| **3B** ✅ | Form and Intake Source binding | **DONE.** reusable Form link; Intake Source link; Meta/external via existing `IntakeSourceProfile` binding to Flight; CampaignRun uses, does not own |
-| **3C** ✅ | Universal submission routing | **DONE.** Submission → Form∪Profile Flight resolve → `route_intent` → Recruitment Application **и** Sales Inquiry; unresolved → `review_queue` / `needs_routing` |
+| **3B** ✅ | Endpoint binding (V1: Form + Intake Source) | **DONE.** V1: `CampaignRun ↔ TenantLeadForm` + `↔ IntakeSourceProfile` as transitional Endpoint specializations; uses-not-owns. **Canon:** CampaignRun ↔ Endpoint (HostFlow Public Form = one type) — [`ADR-007`](ADR-007-forms-platform-capability.md) |
+| **3C** ✅ | Universal submission routing | **DONE.** Submission from any Endpoint → Form∪Profile Flight resolve → `route_intent` → Application \| Inquiry; unresolved → disposition-only queue. **Routing once per new Lead** |
 | **3D** | Outcome attribution and basic analytics | Result → Flight → Campaign; **Outcome** progress (в единицах Primary KPI); базовые расходы + lead metrics |
 | **3E** | Timeline and automation events | Timeline событий; emit events для Automations (полные Automation Campaigns — позже) |
 
@@ -454,7 +468,8 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 
 - **Submission before Decision Layer:** public policy submit resolves target Lead → universal routing → stamp `acquisition_routing_v1` → `append_submission` → Decision Layer **only if** `status=routed`. Unresolved never calls domain create.
 - **Two-layer composition:** `IntakeRouter` unchanged (Binding → Profile). `resolve_universal_submission_routing` runs after it (Meta via `intake_route`; public via `intake_submit_service`).
-- **Form ∪ Profile Flight matrix:** eligible Form-only / Profile-only / same Flight → campaign routing; Form≠Profile → `form_profile_flight_conflict`; >1 eligible in either set → `multiple_active_flights`; ∅∅ → profile default.
+- **Form ∪ Profile Flight matrix:** eligible Form-only / Profile-only / same Flight → campaign routing; Form≠Profile → `form_profile_flight_conflict`; >1 eligible in either set → `multiple_active_flights`; ∅∅ → profile default. (V1 dual Endpoint types; later unified Endpoint association.)
+- **Routing once:** first-entry Lead only; continuation Submissions inherit Lead routing context (canon; enforce in follow-up if any path re-routes).
 - **Routing-eligible (single predicate):** association `is_active` + Campaign `status=active` + Flight `status=active` + optional `starts_at`/`ends_at` window. Ineligible links excluded from sets (not conflicts).
 - **Closed unresolved reasons:** `no_intake_context`, `multiple_active_flights`, `form_profile_flight_conflict`, `campaign_not_routable`, `flight_not_routable`, `missing_primary_target`, `multiple_primary_targets`, `unknown_route_intent`, `unsupported_route_intent` (free-text only in `warnings`).
 - **Unresolved Queue = disposition-only:** stamp + Lead `needs_routing` / Decision Layer `review_queue`; no new queue table/UI in 3C.
@@ -494,11 +509,12 @@ V1 **не** заменяет Meta Ads Manager.
 3. **Goal Type ≠ Primary KPI ≠ route_intent ≠ Outcome**.  
 4. **Campaign ≠ Flight**; **Template ≠ Campaign** — playbook vs инициатива vs волна.  
 5. **Result ≠ Outcome**: факты vs progress; атрибуция Result → Flight → Campaign.  
-6. Forms и Audiences — переиспользуемые platform objects; Template ссылается, не exclusive-owns.  
-7. Новый target / channel / intent / goal type / KPI / template = registry, не fork.  
-8. ADR-023 Stage 3 = этот ADR; исполнение **3A→3E** после cutover; Template — после V1 (ориентир V2).  
+6. **Endpoint** (не Form) — переиспользуемый intake entry; Forms SoT для HostFlow Public Form; Audiences — platform objects; Template ссылается, не exclusive-owns.  
+7. Новый target / channel / intent / goal type / KPI / template / **endpoint type** = registry, не fork.  
+8. ADR-023 Stage 3 = этот ADR; исполнение **3A→3E** после cutover; Template — после V1 (ориентир V2); **Platform Forms epic** — после Acquisition V1 ([`ADR-007`](ADR-007-forms-platform-capability.md)).  
 9. Deep links: Campaign / Audience / Form на shell; Application/Inquiry — module hosts (6C).  
-10. Stage 3 V1 доказывает сквозную модель до Result attribution + Outcome progress без Template catalog и multi-Flight UX.
+10. Stage 3 V1 доказывает сквозную модель до Result attribution + Outcome progress без Template catalog и multi-Flight UX.  
+11. **Routing once per Lead**; continuation Submissions не пересчитывают Campaign.
 
 ## References
 
@@ -516,4 +532,5 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: **Stage 3A DONE** — foundation API, registries, auto Flight, gates, integrity tests.  
 - 2026-07-18: **Stage 3B DONE** — Flight↔Form / Flight↔IntakeSource associations; Meta via existing profile bind.  
 - 2026-07-18: 3B fix — drop `provider`/`external_ref` snapshots; partial unique indexes for one active primary per Flight.  
-- 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.
+- 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.  
+- 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); Campaign → **Endpoint** (not Form); routing once per Lead; 3B Form/Intake links = V1 Endpoint specializations.
