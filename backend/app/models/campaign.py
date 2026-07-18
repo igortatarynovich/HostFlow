@@ -1,4 +1,4 @@
-"""ADR-024 Stage 3A/3B/3D — Campaign foundation, Endpoint bindings, Result attribution."""
+"""ADR-024 Stage 3A/3B/3D — Campaign foundation, Endpoint bindings, Result/Outcome."""
 
 from __future__ import annotations
 
@@ -254,3 +254,103 @@ class CampaignResultAttribution(Base, TimestampMixin):
     endpoint_form_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     endpoint_intake_source_profile_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     routing_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+
+class CampaignOutcome(Base, TimestampMixin):
+    """Stage 3D PR-2 — Acquisition Outcome (progress toward Campaign goal).
+
+    Outcome is **not** a Result status. Results feed Outcome via ledger links;
+    progress is monotonic (soft-revoke does not decrease ``progress_current``).
+    """
+
+    __tablename__ = "acq_outcomes"
+    __table_args__ = (
+        Index("ix_acq_outcomes_tenant_campaign", "tenant_id", "campaign_id"),
+        Index("ix_acq_outcomes_tenant_flight", "tenant_id", "campaign_run_id"),
+        Index("ix_acq_outcomes_tenant_status", "tenant_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Flight id (CampaignRun). Named campaign_run_id in DB; exposed as flight_id in services.
+    campaign_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaign_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="created")
+    progress_current: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    progress_target: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    result_links: Mapped[list["CampaignOutcomeResultLink"]] = relationship(
+        "CampaignOutcomeResultLink",
+        back_populates="outcome",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class CampaignOutcomeResultLink(Base, TimestampMixin):
+    """Ledger: Outcome ← attributed Result.
+
+    Soft-revoke (``revoked_at``) keeps audit history and does **not** decrease
+    Outcome.progress_current — Outcome reflects attained business progress.
+    """
+
+    __tablename__ = "acq_outcome_result_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "outcome_id",
+            "result_type",
+            "result_id",
+            name="uq_acq_outcome_result_links_outcome_result",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "attribution_id",
+            name="uq_acq_outcome_result_links_attribution",
+        ),
+        Index("ix_acq_outcome_result_links_tenant_outcome", "tenant_id", "outcome_id"),
+        Index(
+            "ix_acq_outcome_result_links_tenant_result",
+            "tenant_id",
+            "result_type",
+            "result_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    outcome_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_outcomes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    attribution_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_result_attributions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    result_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    counted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoke_reason: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+    outcome: Mapped["CampaignOutcome"] = relationship(
+        "CampaignOutcome", back_populates="result_links"
+    )
