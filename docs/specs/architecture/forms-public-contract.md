@@ -127,6 +127,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Normalized answers | `answers.py` (`forms.normalized_answers.v1`) → Shared Intake handoff |
 | Submission envelope | `submission_envelope.py` · migration `202607180009_forms_s6` |
 | Field Catalog registry (P1.1) | `field_catalog/` · `forms.field_catalog.registry.v1` |
+| Field Catalog descriptors (P1.2) | `field_catalog/descriptors.py` · `forms.field_catalog.descriptors.v1` |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -142,6 +143,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - Sprint 5: `test_forms_sprint5_contract.py` · `test_forms_sprint5_gates.py`  
 - Sprint 6: `test_forms_sprint6_contract.py` · `test_forms_sprint6_gates.py`  
 - P1.1: `test_forms_p1_1_registry_contract.py` · `test_forms_p1_1_registry_gates.py`  
+- P1.2: `test_forms_p1_2_descriptors_contract.py` · `test_forms_p1_2_descriptors_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -179,4 +181,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: P1.1–P1.4 plan; Builder = thin Field Catalog client (not owner).  
 - 2026-07-18: P1.1 Registry implementation — `forms.field_catalog.registry.v1`.  
 - 2026-07-18: P1.1 COMPLETE (`644b102a`); P1.2 Descriptors READY (four surfaces; no UI renderers / no stdlib yet).  
-- 2026-07-18: P1.2 Design ACTIVE; Descriptor Contract READY FOR IMPLEMENTATION; declarative-only rule.
+- 2026-07-18: P1.2 Design ACTIVE; Descriptor Contract READY FOR IMPLEMENTATION; declarative-only rule.  
+- 2026-07-18: P1.2 Descriptor Contract implementation — `forms.field_catalog.descriptors.v1`.

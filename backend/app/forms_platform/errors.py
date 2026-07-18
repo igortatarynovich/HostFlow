@@ -129,3 +129,24 @@ class FormsCatalogVersionInvalidError(FormsAdapterError):
     code = "forms_catalog_version_invalid"
     http_status = 422
     default_message = "Catalog component version must be semver MAJOR.MINOR.PATCH"
+
+
+# --- Field Catalog P1.2 ---
+
+
+class FormsCatalogDescriptorMissingError(FormsAdapterError):
+    code = "forms_catalog_descriptor_missing"
+    http_status = 404
+    default_message = "Catalog component descriptor is missing"
+
+
+class FormsCatalogDescriptorInvalidError(FormsAdapterError):
+    code = "forms_catalog_descriptor_invalid"
+    http_status = 422
+    default_message = "Catalog component descriptor is invalid"
+
+
+class FormsCatalogDescriptorUnsupportedError(FormsAdapterError):
+    code = "forms_catalog_descriptor_unsupported"
+    http_status = 422
+    default_message = "Catalog component descriptor kind is unsupported"
