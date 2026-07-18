@@ -1,10 +1,11 @@
 # Capability Settings Manifest (Settings Contract schema)
 
-**Status:** canonical (operational contract for **P-05**)  
-**Normative:** [`ADR-029`](ADR-029-settings-contract.md) · ownership [`ADR-028`](ADR-028-configuration-ownership.md) (P-04) · storage levels [`ADR-005`](ADR-005-three-level-settings-hierarchy.md)  
-**Catalog pointer:** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
+**Status:** canonical (operational contract for **P-05**) · **L0 CLOSED** — schema shape frozen; JSON instances = L2  
+**Normative:** [`ADR-029`](ADR-029-settings-contract.md) · [`ADR-028`](ADR-028-configuration-ownership.md) (P-04) · [`ADR-005`](ADR-005-three-level-settings-hierarchy.md) · [`L0-platform-architecture.md`](L0-platform-architecture.md)  
+**Catalog:** [`platform-capability-catalog.md`](platform-capability-catalog.md)
 
-Этот документ — **эксплуатационный** контракт. Архитектура capability — в **Capability Passport** (каталог). Здесь — *какие knobs существуют и как их публиковать*.
+Изменение **формы** Manifest (sections, required fields) = L0 → Architecture RFC.  
+Добавление keys в outline / JSON Manifest конкретной capability = L2 применение.
 
 ---
 

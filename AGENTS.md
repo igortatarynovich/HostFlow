@@ -58,7 +58,8 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
  - [ ] Проверены миграции Alembic и сиды
  - [ ] Обновлены связанные спеки и README при необходимости
 - [ ] Если PR в security perimeter (см. `docs/security/security-review-checklist.md`) — отмечены все пункты чеклиста в описании PR
-- [ ] Если PR затрагивает модули / shared capabilities / integrations / settings — пройден [`docs/specs/architecture/architecture-review-checklist.md`](docs/specs/architecture/architecture-review-checklist.md) (**P-01…P-05** + Passport / Settings Manifest)
+- [ ] Если PR затрагивает модули / shared capabilities / integrations / settings / contracts — пройден [`docs/specs/architecture/architecture-review-checklist.md`](docs/specs/architecture/architecture-review-checklist.md) (**10 вопросов L0**; обязателен также перед новым ADR)
+- [ ] Если PR меняет L0 (P-rules, Passport/Manifest **shape**, freeze docs) — есть **Architecture RFC** (`architecture-rfc` / `l0-change`) или `l0-errata` + аппрув Architecture canon owner — [`L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md)
 - [ ] Если PR трогает `*.md` — пройден `make docs-lint` и контрибьютор-чеклист (`docs/governance/documentation-rules.md` §9)
 
 ---
@@ -90,7 +91,7 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 
 **Жёсткие правила (выдержка из rules):**
 - Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage из domain map / module catalog).
-- Platform rules: **P-01…P-05** — adapters, ownership, composition, configuration ownership, **Settings Contract**; Passport + Manifest — [`platform-capability-catalog.md`](docs/specs/architecture/platform-capability-catalog.md), [`capability-settings-manifest.md`](docs/specs/architecture/capability-settings-manifest.md); guide — [`docs/specs/architecture/architecture-guide.md`](docs/specs/architecture/architecture-guide.md).
+- Platform architecture **L0 CLOSED** — [`docs/specs/architecture/L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md). Rules **P-01…P-05** + lifecycle/versioning/licensing/deps ([`ADR-030`](docs/specs/architecture/ADR-030-l0-platform-architecture-closure.md)). Work on L1–L3; L0 changes only via Architecture RFC.
 - Новый workflow — обязательная запись в `docs/specs/workflows/index.md`.
 - Изменение поведения модуля — обновление `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в одном PR.
 - Запрещено создавать спеки в корне репо (кроме `AGENTS.md`, `README.md` и т.п.) или в `docs/_drafts/**`.

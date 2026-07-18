@@ -1,64 +1,64 @@
-# Architecture Review Checklist (P-01…P-05)
+# Architecture Review Checklist (L0)
 
-**Status:** canonical  
-**Rules:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-027`](ADR-027-capability-composition.md) · [`ADR-028`](ADR-028-configuration-ownership.md) · [`ADR-029`](ADR-029-settings-contract.md)  
-**Catalog:** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
-**Settings Manifest:** [`capability-settings-manifest.md`](capability-settings-manifest.md)  
+**Status:** canonical · **обязателен** перед каждым **ADR** и каждым **PR**, затрагивающим modules / capabilities / settings / contracts / integrations  
+**L0:** [`L0-platform-architecture.md`](L0-platform-architecture.md) (**CLOSED**) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md)  
+**Rules:** P-01…P-05 · Catalog · Settings Manifest  
 
----
-
-## Шесть главных вопросов
-
-| # | Вопрос | Правило |
-|---|--------|---------|
-| 1 | Только канонические Standard Adapters? | **P-01** / Exposes |
-| 2 | Только к владельцам capabilities? | **P-02** / Owns |
-| 3 | Композиция, а не дубликат? | **P-03** / Consumes |
-| 4 | Не чужой Forbidden? | **Boundary** |
-| 5 | Knobs только у configuration owner? | **P-04** / Configures |
-| 6 | Settings опубликованы через **Settings Manifest** владельца (не свалка UI)? | **P-05** |
+Без прохождения чеклиста — **не merge** и **не accept ADR**.
 
 ---
 
-## P-01 — Exposes
+## Десять обязательных вопросов
 
-- [ ] Нет прямого импорта / SQL / ORM / provider SDK из Business  
-- [ ] Доступ только через **Exposes** владельца  
+| # | Вопрос | Если «нет» / неясно |
+|---|--------|---------------------|
+| 1 | **Кто владелец** затронутой / новой capability? | Стоп → P-02 / Catalog |
+| 2 | **Не существует ли уже** такой capability? | Стоп → P-03 compose |
+| 3 | Через какой **Adapter** (**Exposes**) идёт взаимодействие? | Стоп → P-01 |
+| 4 | Не нарушает ли PR **Capability Boundary** / **Forbidden**? | Стоп → Boundary |
+| 5 | Не **дублируются** ли настройки (чужой **Configures** / Manifest)? | Стоп → P-04 / P-05 |
+| 6 | Не нарушается ли **SoT** / Data Ownership? | Стоп → P-02 |
+| 7 | Какие **Events** публикуются / потребляются? | Зафиксировать в Passport |
+| 8 | Какие **Requires / Optional** зависимости добавляются? | Граф ADR-030; циклы запрещены |
+| 9 | Требуется ли новая **лицензия** / меняется license class? | Catalog + commercial L1 |
+| 10 | Изменяется ли **публичный контракт** (breaking / deprecated / additive)? | Versioning ADR-030 §C |
 
-## P-02 / Boundary — Owns + Forbidden
+Дополнительно для settings: UI = **capability space**, не техническая свалка (**P-05**).
 
-- [ ] Kind (Infrastructure / Platform / Business) указан  
-- [ ] Изменение в **Owns**; не в **Forbidden**  
-- [ ] Business не владеет Infrastructure/Platform stacks  
+---
 
-## P-03 — Consumes
+## Быстрые чекбоксы
 
-- [ ] Compose через Consumes; новый capability = ADR + Passport + Manifest **до** кода  
+### P-01 / Exposes
+- [ ] Нет прямого импорта / SQL / ORM / provider SDK в обход adapter  
 
-## P-04 — Configures (ownership)
+### P-02 / Owns / SoT
+- [ ] Owner совпадает с Catalog; нет второго SoT  
 
-- [ ] Каждый knob принадлежит ровно одной capability  
-- [ ] Нет SMTP / OCR / LLM / Meta App SoT в Business settings  
+### P-03 / Consumes
+- [ ] Compose first; новая capability только если нет покрытия  
 
-## P-05 — Settings Contract (publication)
+### P-04 / P-05 / Config
+- [ ] Knobs только в Manifest владельца; нет SMTP/OCR/LLM в Business settings  
 
-- [ ] Новый/изменённый knob отражён в **Settings Manifest** владельца (key, type, default, license, restart/migration, section)  
-- [ ] Admin UI — **capability space**, не техническая свалка («General → SMTP» как SoT IA)  
-- [ ] Лицензия / disable capability исключает Manifest из shell  
-- [ ] Export/import/backup затрагивает только Manifest keys  
-- [ ] Passport не раздут полным списком knobs (pointer → Manifest)  
+### Lifecycle / License / Deps (ADR-030)
+- [ ] Requires/Optional/Forbidden обновлены при необходимости  
+- [ ] License class указан  
+- [ ] Disable/Enable семантика учтена  
 
-## Intake / Endpoint
+### Contract versioning
+- [ ] Additive / deprecated / breaking классифицированы; breaking = major + review  
 
-- [ ] Spine Endpoint → Submission → Routing → Decision → Business Entity  
+### L0 freeze
+- [ ] PR **не** меняет P-rules / L0 шаблоны без Architecture RFC (`architecture-rfc` / `l0-change`)  
+- [ ] Или это `l0-errata` (явная ошибка) с аппрувом owner  
 
-## Документация
-
-- [ ] Catalog Passport + Manifest schema обновлены в том же PR  
+### Docs
+- [ ] Passport / Manifest / §0.1 / ADR синхронизированы в том же PR  
 
 ---
 
 ## История
 
-- 2026-07-18: P-01…P-04 + Boundary.  
-- 2026-07-18: P-05 Settings Contract / Manifest / capability-scoped admin IA.
+- 2026-07-18: P-01…P-05 checklist.  
+- 2026-07-18: **L0 closure** — 10 вопросов; обязателен перед ADR и PR; freeze gate.

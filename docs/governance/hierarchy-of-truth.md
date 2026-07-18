@@ -11,17 +11,37 @@
 
 ---
 
-## Level 1 — Canon (constitutional)
+## Level 0 — Platform Architecture Constitution (**FROZEN**)
 
-Документы, которые **определяют форму системы**. Менять только через ADR-процесс (см. [`documentation-rules.md`](documentation-rules.md) § «Adding architecture decisions»).
+Документы, которые **задают форму платформы capabilities** (P-rules, Passport/Manifest shape, lifecycle/licensing/deps models, review checklist).
+
+| Документ | Чем владеет |
+|---|---|
+| `docs/specs/architecture/L0-platform-architecture.md` | Конституция L0; freeze / RFC rule; completeness |
+| `docs/specs/architecture/ADR-025`…`ADR-030` | P-01…P-05 + L0 closure norms |
+| `docs/specs/architecture/platform-capability-catalog.md` | Capability Passport template + index (заполнение строк = применение L0) |
+| `docs/specs/architecture/capability-settings-manifest.md` | Settings Contract schema (P-05) |
+| `docs/specs/architecture/architecture-review-checklist.md` | Обязательный gate перед ADR/PR |
+| `docs/specs/architecture/architecture-guide.md` | Навигация по канону |
+| `docs/specs/architecture/platform-architecture-principles.md` §0 | Сводка P-01…P-05 |
+
+**Изменения L0:** только через **Architecture RFC** (`architecture-rfc` / `l0-change`) с аппрувом Architecture canon owner — см. L0 Freeze rule. Явные ошибки — `l0-errata`.
+
+**Жёсткое правило:** обычные feature ADR (L1) **не** переписывают P-rules и шаблоны границ L0.
+
+---
+
+## Level 1 — Canon (constitutional / domain)
+
+Документы, которые **определяют форму системы** на уровне домена и engineering. Менять через ADR-процесс (см. [`documentation-rules.md`](documentation-rules.md) § «Adding architecture decisions»), **не** ломая L0.
 
 | Документ | Чем владеет |
 |---|---|
 | `AGENTS.md` (root) | Engineering canon, security operating model, PR gates |
 | `docs/specs/architecture/hostflow-core-domain-map-v1.md` | Bounded contexts, ownership matrix, scopes (GLOBAL/TENANT/COMPANY/MODULE) |
-| `docs/specs/architecture/platform-architecture-principles.md` | Modular multi-company SaaS принципы |
+| `docs/specs/architecture/platform-architecture-principles.md` (кроме §0 L0) | Modular multi-company SaaS принципы |
 | `docs/specs/architecture/module-catalog-and-routing-map.md` | Каталог продуктовых модулей, ключи, маршруты |
-| `docs/specs/architecture/ADR-002…ADR-014` + `docs/hr/ADR-001` | Канонические architecture decisions |
+| `docs/specs/architecture/ADR-002`…`ADR-024` + domain ADRs; `docs/hr/ADR-001` | Канонические architecture decisions (**не** P-01…P-05 / ADR-025…030 — те в L0) |
 | `docs/security/security-ssot.md` | Security canon (классификация, RLS, handoff, IR) |
 | `docs/security/security-review-checklist.md` | PR security gate (контракт) |
 | `docs/security/threat-models/*.md` | Threat models по поверхностям |

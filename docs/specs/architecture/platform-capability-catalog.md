@@ -1,11 +1,14 @@
 # Platform Capability Catalog
 
-**Status:** canonical (practical SoT for P-02…P-05)  
-**Rules:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) (P-01) · [`ADR-026`](ADR-026-capability-ownership.md) (P-02) · [`ADR-027`](ADR-027-capability-composition.md) (P-03) · [`ADR-028`](ADR-028-configuration-ownership.md) (P-04) · [`ADR-029`](ADR-029-settings-contract.md) (P-05)  
-**Settings Manifest schema:** [`capability-settings-manifest.md`](capability-settings-manifest.md)  
-**Index / product keys:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md)  
-**PR gate:** [`architecture-review-checklist.md`](architecture-review-checklist.md)  
+**Status:** canonical · **L0 CLOSED** — [`L0-platform-architecture.md`](L0-platform-architecture.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md)  
+**Rules:** P-01…P-05 ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-029`](ADR-029-settings-contract.md))  
+**Settings Manifest:** [`capability-settings-manifest.md`](capability-settings-manifest.md)  
+**Index:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1  
+**Checklist:** [`architecture-review-checklist.md`](architecture-review-checklist.md)  
 **Guide:** [`architecture-guide.md`](architecture-guide.md)
+
+> Изменение **шаблона** Passport / kinds / границ = изменение L0 → только Architecture RFC.  
+> Добавление/уточнение строк Index и заполнение Passport по шаблону = **применение** L0 (L1), не переоткрытие конституции.
 
 ---
 
@@ -75,14 +78,17 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |---|--------|------------|
 | 1 | **Purpose** | Зачем существует |
 | 2 | **Owns** | Функциональный SoT |
-| 3 | **Configures** | Классы настроек + ссылка на Settings Manifest (**P-04/P-05**) |
+| 3 | **Configures** | Классы настроек → Settings Manifest (**P-04/P-05**) |
 | 4 | **Exposes** | Adapters / public contracts |
-| 5 | **Consumes** | Чужие capabilities |
-| 6 | **Events** | Publishes / Consumes |
-| 7 | **Forbidden** | Запреты (в т.ч. чужой Manifest) |
-| 8 | **Data Ownership** | SoT entities |
+| 5 | **Consumes** | Чужие capabilities (runtime use) |
+| 6 | **Requires / Optional / Forbidden** | Граф зависимостей (**ADR-030**) |
+| 7 | **License class** | Always Available \| Platform \| Licensed \| Enterprise Only |
+| 8 | **Lifecycle defaults** | Bootstrap Install/Enable/Configure/Disable intent |
+| 9 | **Events** | Publishes / Consumes |
+| 10 | **Forbidden** | Запреты реализации / config |
+| 11 | **Data Ownership** | SoT entities |
 
-**Settings Manifest** (отдельно): см. [`capability-settings-manifest.md`](capability-settings-manifest.md).
+**Settings Manifest** (отдельно): [`capability-settings-manifest.md`](capability-settings-manifest.md).
 
 Уровни Tenant → Company → Module — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md) (**хранение**); семантика и UI — owner Manifest.
 
@@ -90,26 +96,26 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ## Index
 
-| Capability | Kind | Owner | Passport |
-|------------|------|-------|----------|
-| Endpoint | Infrastructure | Intake / Acquisition boundary | [§](#endpoint) |
-| Submission | Infrastructure | Shared Intake | [§](#submission) |
-| Notifications | Infrastructure | Activity & Notification Operating Layer | [§](#notifications) |
-| Activity | Infrastructure | Activity & Notification Operating Layer | [§](#activity) |
-| Search | Infrastructure | Global Search | [§](#search) |
-| Forms | Platform | Forms | [§](#forms) |
-| Documents | Platform | Document Hub | [§](#documents) |
-| Automations | Platform | Automations | [§](#automations) |
-| AI | Platform | AI capability | [§](#ai) |
-| Integrations / Marketplace | Platform | Integrations | [§](#integrations--marketplace) |
-| Acquisition / Campaigns | Platform | Acquisition | [§](#acquisition--campaigns) |
-| Process Engine | Platform | Process Engine | [§](#process-engine) |
-| Recruitment | Business | Recruitment | [§](#recruitment) |
-| Sales | Business | Sales | [§](#sales) |
-| HR | Business | HR | [§](#hr) |
-| Fleet | Business | Fleet | [§](#fleet) |
-| Services / Orders | Business | Services | [§](#services--orders) |
-| Finance | Business | Finance | [§](#finance) |
+| Capability | Kind | License | Requires (hard) | Passport |
+|------------|------|---------|-----------------|----------|
+| Endpoint | Infrastructure | Always Available | — | [§](#endpoint) |
+| Submission | Infrastructure | Always Available | Endpoint | [§](#submission) |
+| Notifications | Infrastructure | Platform | — | [§](#notifications) |
+| Activity | Infrastructure | Platform | — | [§](#activity) |
+| Search | Infrastructure | Platform | — | [§](#search) |
+| Forms | Platform | Platform | Endpoint, Submission | [§](#forms) |
+| Documents | Platform | Platform | — | [§](#documents) |
+| Automations | Platform | Licensed | Notifications | [§](#automations) |
+| AI | Platform | Licensed | — | [§](#ai) |
+| Integrations / Marketplace | Platform | Platform | — | [§](#integrations--marketplace) |
+| Acquisition / Campaigns | Platform | Platform | Endpoint, Submission | [§](#acquisition--campaigns) |
+| Process Engine | Platform | Platform | — | [§](#process-engine) |
+| Recruitment | Business | Licensed | Forms, Documents, Notifications | [§](#recruitment) |
+| Sales | Business | Licensed | Forms, Documents, Notifications | [§](#sales) |
+| HR | Business | Licensed | Documents, Notifications | [§](#hr) |
+| Fleet | Business | Licensed | Documents, Notifications | [§](#fleet) |
+| Services / Orders | Business | Licensed | Documents, Notifications | [§](#services--orders) |
+| Finance | Business | Licensed | — | [§](#finance) |
 
 **Forms vs Submission:** Forms Owns form surface + consent pin; universal Submission / routing envelope — Shared Intake.  
 **Notifications vs Activity:** одна Operating Layer ([`ADR-012`](ADR-012-activity-notification-operating-layer.md)); два паспорта; не два ADR-004 модуля.
@@ -130,6 +136,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Endpoint type enablement; ingest auth / rate limits (platform) |
 | **Exposes** | Endpoint Adapter family |
 | **Consumes** | Submission; Forms (когда type = HostFlow Form); Acquisition (campaign context) |
+| **Requires** | — |
+| **Optional** | Forms, Acquisition |
+| **License class** | Always Available |
+| **Lifecycle defaults** | Install+Enable+Configure on tenant create |
 | **Events** | Publishes: `endpoint.submission_accepted`. Consumes: form publish / integration webhooks |
 | **Forbidden** | Form Builder / Consent SoT; Result domain entities; второй intake pipeline |
 | **Data Ownership** | Endpoint definitions / bindings (ADR-024) |
@@ -148,6 +158,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Routing policy knobs (Intake/Acquisition — не Recruitment) |
 | **Exposes** | Submission / Intake contracts; universal routing resolve |
 | **Consumes** | Endpoint; Acquisition; Decision Layer (после routed) |
+| **Requires** | Endpoint |
+| **Optional** | Acquisition |
+| **License class** | Always Available |
+| **Lifecycle defaults** | Install+Enable+Configure on tenant create |
 | **Events** | Publishes: `submission.appended` / `routed` / `unresolved` |
 | **Forbidden** | Form Builder; auto-create Application/Inquiry без Decision; Campaign creative SoT |
 | **Data Ownership** | Submission / intake append log + routing metadata |
@@ -166,6 +180,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Email, SMS, WhatsApp, Push, working hours, Retry Policy → Manifest [Notifications](capability-settings-manifest.md#notifications) |
 | **Exposes** | Notification Adapter |
 | **Consumes** | Integrations (provider connectors); Activity (compose внутри layer) |
+| **Requires** | — |
+| **Optional** | Integrations, Activity |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable+Configure (SMTP/channel defaults) on tenant create |
 | **Events** | Publishes: `notification.queued` / `delivered` / `failed` |
 | **Forbidden** | Recruitment/Sales pipeline SoT; Document registry; Form Builder; SMTP config в бизнес-модулях |
 | **Data Ownership** | Notification; DeliveryAttempt; NotificationTemplate; ChannelConfig; Preference |
@@ -184,6 +202,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Default reminder offsets; calendar / working-hours defaults (где owned by layer) |
 | **Exposes** | Activity contracts (create / assign / complete / schedule) |
 | **Consumes** | Notifications; Search (optional) |
+| **Requires** | — |
+| **Optional** | Notifications, Search |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable+Configure with Notifications |
 | **Events** | Publishes: `activity.created` / `completed` / `reminder_due` |
 | **Forbidden** | Отдельный «модуль todo» как ADR-004; Hiring/Sales stage SoT; второй notification stack |
 | **Data Ownership** | Activity; Reminder |
@@ -200,6 +222,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Index backends; ranking defaults |
 | **Exposes** | Search Adapter |
 | **Consumes** | Module Public Contracts (projectable fields) |
+| **Requires** | — |
+| **Optional** | — |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable on tenant create |
 | **Events** | Consumes domain create/update/delete; publishes reindex signals |
 | **Forbidden** | Модульный полнотекст как замена Search SoT |
 | **Data Ownership** | Search index documents (derived); query API SoT |
@@ -220,6 +246,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Branding, default language, CAPTCHA, consent policy, public URLs, themes → Manifest [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) |
 | **Exposes** | Form Adapter; Endpoint Adapter (HostFlow Form specialization); Consent pin contract |
 | **Consumes** | Endpoint / Submission (routing after surface); Documents (file fields); Notifications; Automations (opt.); Field Registry |
+| **Requires** | Endpoint, Submission |
+| **Optional** | Documents, Notifications, Automations |
+| **License class** | Platform (Basic); Licensed addons = Advanced Forms |
+| **Lifecycle defaults** | Install+Enable+Configure (default Manifest) on tenant create |
 | **Events** | Publishes: `form.published`, `form.version_created`, `form.submission_received`, consent accepted |
 | **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT |
 | **Data Ownership** | Form; FormVersion; FormTemplate; FormTheme; FormLogic; ConsentDefinition + pin; form-surface payload |
@@ -238,6 +268,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | OCR, file storage, retention, auto-deletion, e-sign → Manifest [Documents](capability-settings-manifest.md#documents) |
 | **Exposes** | Document Adapter; Verification Adapter; document set resolution |
 | **Consumes** | Notifications (reminders); Automations (opt.); AI (opt. assist); Integrations (providers) |
+| **Requires** | — |
+| **Optional** | Notifications, Automations, AI, Integrations |
+| **License class** | Platform (Basic); Licensed = Advanced Document Hub |
+| **Lifecycle defaults** | Install+Enable+Configure on tenant create |
 | **Events** | Publishes: `document.created` / `linked` / `verified` / `expired` |
 | **Forbidden** | Employee / Candidate / Vehicle / Invoice **domain** SoT; module-local file table как SoT; SMTP для бизнес-статусов |
 | **Data Ownership** | Document; DocumentVersion; DocumentType; DocumentTemplate; DocumentLink; DocumentRequirement; DocumentReview |
@@ -256,6 +290,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Entitlements Basic/Advanced; rate limits / safety rails |
 | **Exposes** | Automation Adapter |
 | **Consumes** | Notifications; Activity; Documents; AI; module Exposes (action targets) |
+| **Requires** | Notifications |
+| **Optional** | Activity, Documents, AI |
+| **License class** | Licensed |
+| **Lifecycle defaults** | Install; Enable when entitled; else Disable |
 | **Events** | Publishes: `automation.triggered` / `completed` / `failed` |
 | **Forbidden** | Скрытый второй automation engine в каждом бизнес-модуле; provider SDK из rule body в обход adapters |
 | **Data Ownership** | AutomationRule; AutomationRun |
@@ -272,6 +310,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Provider, model, limits, Prompt Library, usage policies → Manifest [AI](capability-settings-manifest.md#ai) |
 | **Exposes** | AI Adapter |
 | **Consumes** | Integrations (model providers) |
+| **Requires** | — |
+| **Optional** | Integrations |
+| **License class** | Licensed (often Enterprise for advanced) |
+| **Lifecycle defaults** | Install; **Disable** until entitled |
 | **Events** | Publishes: `ai.invocation_*` (audit) |
 | **Forbidden** | Прямой LLM SDK / API-key SoT в Business capabilities |
 | **Data Ownership** | AI invocation audit / policy config |
@@ -290,6 +332,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Meta App / provider app bindings; installed scopes; connector enablement |
 | **Exposes** | Integration Adapters (per provider family) |
 | **Consumes** | Module Exposes as install targets |
+| **Requires** | — |
+| **Optional** | — |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable on tenant create |
 | **Events** | Publishes: `integration.installed` / `revoked` |
 | **Forbidden** | Дублирующие SDK-вызовы из Business в обход Integration Adapter |
 | **Data Ownership** | IntegrationInstallation; connector config |
@@ -308,6 +354,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Campaign defaults / windows; source registry defaults |
 | **Exposes** | Campaign / Flight / routing APIs; binding APIs (uses-not-owns Form associations) |
 | **Consumes** | Endpoint; Submission; Forms (compose); Notifications (opt.) |
+| **Requires** | Endpoint, Submission |
+| **Optional** | Forms, Notifications |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable when growth surface used; Configure defaults |
 | **Events** | Campaign/Flight lifecycle; consumes submission routing outcomes |
 | **Forbidden** | Application / Candidate / Inquiry SoT; Form Builder / Consent; Document Hub; SMTP |
 | **Data Ownership** | Campaign; Flight; association tables; attribution on intake path |
@@ -326,6 +376,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Process profile defaults (engine-level) |
 | **Exposes** | Process contracts |
 | **Consumes** | Module domain objects as subjects |
+| **Requires** | — |
+| **Optional** | — |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable with platform |
 | **Events** | Transition evaluated / applied |
 | **Forbidden** | Параллельные несовместимые engines без контракта |
 | **Data Ownership** | Process/pipeline definition artifacts (модуль выбирает, **какой** profile applies — см. Recruitment Owns pipeline **application**) |
@@ -348,6 +402,11 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Pipeline / stage definitions; hiring gates; interview defaults; job publishing **defaults** (каналы — через Integrations) |
 | **Exposes** | Recruitment domain APIs; handoff contracts |
 | **Consumes** | Forms; Documents; Notifications; Activity; AI; Search; Automations; Endpoint; Submission; Acquisition; Process Engine |
+| **Requires** | Forms, Documents, Notifications |
+| **Optional** | AI, Automations, Acquisition, Activity, Search, Process Engine |
+| **Forbidden deps** | Не Requires Finance; invoices только через Billing Events contract |
+| **License class** | Licensed |
+| **Lifecycle defaults** | Install when sold; Enable per company modules; Configure pipeline defaults |
 | **Events** | Application/Candidate/Vacancy lifecycle; handoff requested; consumes `submission.routed` |
 | **Forbidden** | Forms/Documents/Notifications/AI/Search/Automations/Endpoint SoT; Campaign SoT; SMTP/OCR/LLM/Meta App config; Sales Inquiry / Employee / Invoice SoT |
 | **Data Ownership** | Vacancy; JobPost; Candidate; Application; Interview; Offer; recruitment pipeline state |
@@ -366,6 +425,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Sales pipeline / qualification defaults |
 | **Exposes** | Sales / inquiry APIs |
 | **Consumes** | Forms; Endpoint; Submission; Acquisition; Documents; Notifications; Activity; Automations; AI; Search |
+| **Requires** | Forms, Documents, Notifications |
+| **Optional** | AI, Automations, Acquisition, Activity, Search |
+| **License class** | Licensed |
+| **Lifecycle defaults** | Install when sold; Enable on sales host / entitlement |
 | **Events** | Inquiry lifecycle; consumes routed submissions with sales intent |
 | **Forbidden** | Recruitment Candidate/Vacancy SoT; infrastructure/platform Configures; Invoice SoT |
 | **Data Ownership** | Inquiry; ClientAccount (sales); sales pipeline state |
@@ -384,6 +447,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | HR process / case defaults |
 | **Exposes** | HR / workforce APIs; handoff accept |
 | **Consumes** | Documents; Notifications; Activity; Forms; Automations; AI; Search |
+| **Requires** | Documents, Notifications |
+| **Optional** | Forms, Activity, Automations, AI, Search |
+| **License class** | Licensed |
+| **Lifecycle defaults** | Install when sold; Enable per company |
 | **Events** | Employee lifecycle; consumes Recruitment handoff |
 | **Forbidden** | Candidate pipeline SoT; Document storage / OCR Engine SoT; SMTP; Fleet assignment SoT |
 | **Data Ownership** | Employee; HR Case; employment records |
@@ -402,6 +469,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Fleet operational defaults |
 | **Exposes** | Fleet APIs |
 | **Consumes** | Documents; Notifications; Activity; Automations; Search |
+| **Requires** | Documents, Notifications |
+| **Optional** | Activity, Automations, Search |
+| **License class** | Licensed |
+| **Lifecycle defaults** | Install when sold; Enable per company |
 | **Events** | Assignment / vehicle lifecycle |
 | **Forbidden** | Hiring pipeline; Forms/Documents/Notifications SoT; infrastructure Configures |
 | **Data Ownership** | Vehicle; Assignment; inspection records |
@@ -420,6 +491,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Catalog / order defaults |
 | **Exposes** | Services / orders APIs; Billing Event producer contract |
 | **Consumes** | Documents; Notifications; Activity; Forms; Finance (consumer of events) |
+| **Requires** | Documents, Notifications |
+| **Optional** | Forms, Activity, Finance |
+| **License class** | Licensed |
+| **Lifecycle defaults** | Install with Services entitlement |
 | **Events** | Publishes Billing Events |
 | **Forbidden** | Invoice SoT; infrastructure/platform stacks |
 | **Data Ownership** | Service; ServiceOrder; BillingEvent (producer side) |
@@ -438,6 +513,10 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Configures** | Tax / numbering; payment provider bindings (**finance-owned semantics**; connectors via Integrations) |
 | **Exposes** | Finance / invoice APIs; Billing Event consumer |
 | **Consumes** | Documents; Notifications; Activity; Search; Integrations |
+| **Requires** | — |
+| **Optional** | Documents, Notifications, Activity, Search, Integrations |
+| **License class** | Licensed |
+| **Lifecycle defaults** | **Not Install** until Finance sold; then Enable+Configure tax/numbering |
 | **Events** | Invoice/Payment lifecycle; consumes Billing Events |
 | **Forbidden** | Invoice create из Recruitment/HR напрямую; Forms/Documents/Notifications stacks; SMTP SoT |
 | **Data Ownership** | Invoice; Payment; finance rules |
@@ -460,3 +539,4 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 - **2026-07-18** — каталог + Capability Boundary.  
 - **2026-07-18** — v2: Owns / Configures / Exposes / Consumes; kinds; **P-04**.  
 - **2026-07-18** — v3: Passport vs **Settings Manifest**; **P-05** Settings Contract; capability-scoped admin IA.
+- **2026-07-18** — v4: License / Requires / Optional / Lifecycle defaults; **L0 CLOSED** ([`ADR-030`](ADR-030-l0-platform-architecture-closure.md)).
