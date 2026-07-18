@@ -26,21 +26,24 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 ## Platform epic (после Epic P DoD)
 
-**Forms Sprint 1 — UNLOCKED** ([`capability-contract.md`](../specs/architecture/capability-contract.md)):
+**Forms Sprint 1 — IN PROGRESS** ([`../specs/tasks/forms-sprint-1.md`](../specs/tasks/forms-sprint-1.md)):
 
-1. Passport (полный)  
-2. Manifest keys (flags, limits, defaults, permissions, adapter config)  
-3. Public Contract: `publish → endpoint → submission → result`  
-4. Adapter поверх Endpoint  
-5. Contract Tests  
+1. Passport (Catalog `#forms`)  
+2. Manifest keys — [`capability-settings-manifest.md`](../specs/architecture/capability-settings-manifest.md#forms)  
+3. Public Contract — [`forms-public-contract.md`](../specs/architecture/forms-public-contract.md): `publish → endpoint → submission → result`  
+4. Adapter — `backend/app/forms_platform/adapter.py` (`forms.endpoint_adapter_v1`)  
+5. Contract Tests — `test_forms_sprint1_contract.py`
 
-**Forms Builder — LOCKED** until Sprint 1 contracts land.
+**Forms Builder — LOCKED** (`forms.feature_flags.builder_enabled=false`).
 
-Gate evidence: [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · E2E `test_stage_3d_epic_p_contract.py`.
+Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
+
+Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · Forms E2E `backend/tests/forms_platform/test_forms_sprint1_contract.py`.
 
 ## История
 
 - 2026-05: платформенная capability.  
 - 2026-07-18: Core Platform Module + Endpoint spine.  
 - 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.  
-- 2026-07-18: Epic P COMPLETE — Sprint 1 **UNLOCKED**; Builder **LOCKED**.
+- 2026-07-18: Epic P COMPLETE — Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
+- 2026-07-18: Sprint 1 infra started — Public Contract + Adapter + contract tests.
