@@ -18,11 +18,10 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 4. **Forms Sprint 3:** ✅ **COMPLETE** ([`../tasks/forms-sprint-3.md`](../tasks/forms-sprint-3.md) · PR #38 · `f5771df6`).
 5. **Forms Sprint 4:** ✅ **COMPLETE** ([`../tasks/forms-sprint-4.md`](../tasks/forms-sprint-4.md) · PR #39 · `779cffd3`).
 6. **Forms Sprint 5:** ✅ **COMPLETE** ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md) · PR #40 · `a6df02f0`).
-7. **Forms Sprint 6:** **IN PROGRESS** — submission persistence envelope ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).
-8. **Forms Builder:** **LOCKED**.
-3. **Forms Builder:** **LOCKED** until Sprint 1 contracts land.  
-4. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
-5. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
+7. **Forms Sprint 6:** ✅ **COMPLETE** ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md) · PR #41 · `7e259f22`) — backend platform contour closed.
+8. **Forms Builder:** **LOCKED** (next stage = product surface, not platform core).
+9. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
+10. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
 ## Ежедневный путь проектирования (L1)
 
@@ -58,3 +57,4 @@ UI **не** определяет архитектуру.
 - 2026-07-18: Phase 1 lock — Epic P first; Capability Contract sequence; Forms Sprint 1 after V1.  
 - 2026-07-18: Epic P COMPLETE — Forms Sprint 1 unlocked; Builder locked.
 - 2026-07-18: Forms Sprint 1 infra started (Public Contract + Adapter).
+- 2026-07-18: Forms Sprint 6 COMPLETE — submission envelope; Forms backend platform contour closed; Builder remains LOCKED.

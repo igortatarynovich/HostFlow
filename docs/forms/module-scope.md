@@ -26,9 +26,11 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 ## Platform epic (после Epic P DoD)
 
-**Forms Sprint 1–5 — ✅ COMPLETE** · **Forms Sprint 6 — IN PROGRESS** ([`../specs/tasks/forms-sprint-6.md`](../specs/tasks/forms-sprint-6.md)):
+**Forms Sprint 1–6 — ✅ COMPLETE** (backend platform contour · PR #41 · `7e259f22`).
 
-Submission persistence envelope (append-only); Builder **LOCKED**.
+Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**. Builder **LOCKED**.
+
+Next stage = product surface (Builder, publish UI, field catalog, themes, analytics) — not further platform storage contracts.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 

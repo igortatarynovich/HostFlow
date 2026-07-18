@@ -153,4 +153,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 4 COMPLETE (PR #39).  
 - 2026-07-18: Sprint 5 — `forms.normalized_answers.v1` (raw/normalized + Shared Intake handoff).  
 - 2026-07-18: Sprint 5 COMPLETE (PR #40).  
-- 2026-07-18: Sprint 6 — append-only `form_submission_envelopes` persistence.
+- 2026-07-18: Sprint 6 — append-only `form_submission_envelopes` persistence.  
+- 2026-07-18: Sprint 6 COMPLETE (PR #41) — Submission Envelope Contract ACTIVE; Builder LOCKED.
