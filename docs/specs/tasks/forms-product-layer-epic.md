@@ -129,7 +129,9 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Forms Sprint 1–6 (L0 platform) | ✅ COMPLETE |
 | Forms Product Layer epic | ✅ **ACTIVE** (`29f4057f`) |
 | P1 decomposition (P1.1–P1.4) | ✅ **ACTIVE** (`51063d1c` / #45) |
-| **P1.1 Registry** | **READY FOR IMPLEMENTATION** → this PR |
+| **P1.1 Registry** | ✅ **COMPLETE** (`644b102a` / #47) |
+| Field Catalog Registry / Identity / Compatibility | ✅ **ACTIVE** |
+| **P1.2 Descriptors** | **READY** |
 | Builder (P2) | **LOCKED** |
 | Unlock Builder | **completed P1.3 Standard Library** only |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
@@ -141,4 +143,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-18: Opened after Sprint 6 COMPLETE (`7e259f22` / #41). Backend contour closed; product surface next.  
 - 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).  
 - 2026-07-18: P1 split into Registry → Descriptors → Standard library → Extension API; Builder = Catalog client.  
-- 2026-07-18: P1 decomposition ACTIVE (`51063d1c` / #45); P1.1 READY FOR IMPLEMENTATION.
+- 2026-07-18: P1 decomposition ACTIVE (`51063d1c` / #45); P1.1 READY FOR IMPLEMENTATION.  
+- 2026-07-18: P1.1 COMPLETE (`644b102a` / #47); P1.2 Descriptors READY.
