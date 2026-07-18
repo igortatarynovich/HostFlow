@@ -72,10 +72,10 @@ Campaign → Audience(s) → Flight → Channels
 
 После **production cutover**:
 
-1. **3A** — Campaign + Goal Type + Primary KPI + Target + reserved CampaignRun (**не** Template)  
-2. **3B** — Form + Intake Source  
-3. **3C** — routing → Application | Inquiry  
-4. **3D** — Result → Flight → Campaign + Outcome progress  
+1. **3A** ✅ — Campaign + Goal Type + Primary KPI + Target + reserved CampaignRun (**не** Template)  
+2. **3B** ✅ — Form + Intake Source  
+3. **3C** ✅ — routing → Application | Inquiry (Submission before Decision Layer; Form∪Profile matrix)  
+4. **3D** — Result → Flight → Campaign + Outcome progress ← next  
 5. **3E** — Timeline + automation events  
 
 V1 vertical:

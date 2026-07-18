@@ -201,6 +201,7 @@ async def prepare_public_intake_runtime(
     candidate_profile_id: Optional[str] = None,
     candidate_profile_code: Optional[str] = None,
     vacancy_id: Optional[str] = None,
+    route_intent_override: Optional[str] = None,
 ) -> tuple[IngestEnvelope, dict[str, Any], MappingValidationResult]:
     """Build ingest envelope for public candidate intake submit."""
     raw_payload = dict(intake_state or {})
@@ -244,26 +245,31 @@ async def prepare_public_intake_runtime(
     }
 
     warnings = list(profile_view.get("warnings") or []) + list(validation.warnings)
-    route_intent = "candidate_application"
-    ak = str((intake_state or {}).get("application_kind") or "").strip().lower()
-    if ak == "client":
-        route_intent = "sales_inquiry"
-    elif intake_source_profile_id:
-        from backend.app.models.intake_routing import IntakeSourceProfile
+    override = str(route_intent_override or "").strip() or None
+    if override:
+        route_intent = override
+    else:
+        route_intent = "candidate_application"
+        ak = str((intake_state or {}).get("application_kind") or "").strip().lower()
+        if ak == "client":
+            route_intent = "sales_inquiry"
+        elif intake_source_profile_id:
+            from backend.app.models.intake_routing import IntakeSourceProfile
 
-        isp = await db.scalar(
-            select(IntakeSourceProfile)
-            .where(
-                IntakeSourceProfile.id == str(intake_source_profile_id),
-                IntakeSourceProfile.tenant_id == str(tenant_id),
+            isp = await db.scalar(
+                select(IntakeSourceProfile)
+                .where(
+                    IntakeSourceProfile.id == str(intake_source_profile_id),
+                    IntakeSourceProfile.tenant_id == str(tenant_id),
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
-        if isp is not None and str(getattr(isp, "route_intent", "") or "").strip():
-            route_intent = str(isp.route_intent).strip()
+            if isp is not None and str(getattr(isp, "route_intent", "") or "").strip():
+                route_intent = str(isp.route_intent).strip()
+        entity_code_preview = str(profile_view.get("entity_profile_code") or "").strip()
+        if route_intent == "candidate_application" and entity_code_preview.startswith("service_sales."):
+            route_intent = "sales_inquiry"
     entity_code = str(profile_view.get("entity_profile_code") or "").strip()
-    if route_intent == "candidate_application" and entity_code.startswith("service_sales."):
-        route_intent = "sales_inquiry"
     envelope = IngestEnvelope(
         raw_payload=raw_payload,
         normalized_payload=normalized_payload,

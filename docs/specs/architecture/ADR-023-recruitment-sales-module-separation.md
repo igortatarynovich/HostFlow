@@ -316,10 +316,10 @@ Shared platform capabilities (Communications, Documents, Forms, Automations engi
 1. Production cutover — DNS, wildcard TLS, proxy reload, smoke tests, legacy URL redirects.
 2. **Stage 3** ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)), slices in order:
    - **3A** ✅ **DONE** — Campaign + Goal Type + Primary KPI + Target + reserved CampaignRun (Flight; V1 = one); Template canon only (implement later)  
-   - **3B** ✅ **DONE** — Form + Intake Source binding (uses, not owns)  
-   - **3C** universal submission routing ← next  
-   - **3D** outcome attribution + basic analytics  
-   - **3E** Timeline + automation events  
+   - **3B** ✅ **DONE** — Form + Intake Source binding (uses, not owns)
+   - **3C** ✅ **DONE** — universal submission routing
+   - **3D** outcome attribution + basic analytics ← next
+   - **3E** timeline + automation events
 
 V1 = vertical chain through 3A–3E (minimal; single Flight); Audience/Assets/full Budget/multi-Flight later. Not a Marketing product module.
 
@@ -359,7 +359,7 @@ Internal table reuse is temporarily allowed. A shared **external** contract is n
 - Stage 2B (permissions) follows only after 2A.
 - Stage **6A** connects Module Host Runtime; **6B** shared cookie session (hash handoff removed); **2B** HTTP module gates enforce entitlements without trusting hostname.
 - Stage **6C** entity deep-link wiring is **DONE**; production cutover remains open for full Stage 6.
-- After cutover: **Stage 3A→3E** Universal Acquisition ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) — **3A+3B DONE**; continue **3C→3E** vertical V1 chain (single Flight); not full Campaign Manager / multi-Flight in one shot.
+- After cutover: **Stage 3A→3E** Universal Acquisition ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) — **3A+3B+3C DONE**; continue **3D→3E** vertical V1 chain (single Flight); not full Campaign Manager / multi-Flight in one shot.
 - Docs name Stage 1 **Module Surface Separation**; full Module Separation requires the eight-level checklist (§3).
 - Cash Loop is gated on Stage 2A+2B (§3.6) and ships under Finance URL boundary.
 

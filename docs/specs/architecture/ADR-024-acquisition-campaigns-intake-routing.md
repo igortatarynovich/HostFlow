@@ -5,7 +5,8 @@
 **Accepted (product & architecture direction).** Кодовый этап: **Stage 3 — Universal Acquisition and Intake Routing**.
 
 **Stage 3A — DONE** (2026-07-18): Campaign foundation API + registries + integrity tests.  
-**Stage 3B — DONE** (2026-07-18): Form + Intake Source binding to CampaignRun. Next: **3C** universal submission routing.
+**Stage 3B — DONE** (2026-07-18): Form + Intake Source binding to CampaignRun.  
+**Stage 3C — DONE** (2026-07-18): Universal submission routing. Next: **3D** outcome attribution and basic analytics.
 
 ## Canonical statement
 
@@ -419,7 +420,7 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 |-------|------|---------------------|
 | **3A** ✅ | Campaign foundation (Goal + Target + reserved Flight) | **DONE.** Campaign-as-initiative; **Goal Type + Primary KPI**; `CampaignTarget` via registry; **CampaignRun** (V1 = ровно один / `current_flight`); company + module gate; `target_module` canonical; route_intent validation. **Не** Template catalog |
 | **3B** ✅ | Form and Intake Source binding | **DONE.** reusable Form link; Intake Source link; Meta/external via existing `IntakeSourceProfile` binding to Flight; CampaignRun uses, does not own |
-| **3C** | Universal submission routing | Submission → `route_intent` → Recruitment Application **и** Sales Inquiry |
+| **3C** ✅ | Universal submission routing | **DONE.** Submission → Form∪Profile Flight resolve → `route_intent` → Recruitment Application **и** Sales Inquiry; unresolved → `review_queue` / `needs_routing` |
 | **3D** | Outcome attribution and basic analytics | Result → Flight → Campaign; **Outcome** progress (в единицах Primary KPI); базовые расходы + lead metrics |
 | **3E** | Timeline and automation events | Timeline событий; emit events для Automations (полные Automation Campaigns — позже) |
 
@@ -448,6 +449,17 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 - API: `…/campaigns/{id}/forms`, `…/intake-sources` (+ PATCH link flags; explicit `…/flights/{flight_id}/…`); nested on `CampaignOut.flights[]`.
 - No Application/Inquiry creation; no attribution metrics.
 - Tests: `backend/tests/api/test_stage_3b_form_intake_binding.py`; migrations `202607180002_acq_3b` + `202607180003_acq_3b_fix` (snapshot drop + primary indexes; revision ids ≤32 chars).
+
+#### Stage 3C Definition of Done — met
+
+- **Submission before Decision Layer:** public policy submit resolves target Lead → universal routing → stamp `acquisition_routing_v1` → `append_submission` → Decision Layer **only if** `status=routed`. Unresolved never calls domain create.
+- **Two-layer composition:** `IntakeRouter` unchanged (Binding → Profile). `resolve_universal_submission_routing` runs after it (Meta via `intake_route`; public via `intake_submit_service`).
+- **Form ∪ Profile Flight matrix:** eligible Form-only / Profile-only / same Flight → campaign routing; Form≠Profile → `form_profile_flight_conflict`; >1 eligible in either set → `multiple_active_flights`; ∅∅ → profile default.
+- **Routing-eligible (single predicate):** association `is_active` + Campaign `status=active` + Flight `status=active` + optional `starts_at`/`ends_at` window. Ineligible links excluded from sets (not conflicts).
+- **Closed unresolved reasons:** `no_intake_context`, `multiple_active_flights`, `form_profile_flight_conflict`, `campaign_not_routable`, `flight_not_routable`, `missing_primary_target`, `multiple_primary_targets`, `unknown_route_intent`, `unsupported_route_intent` (free-text only in `warnings`).
+- **Unresolved Queue = disposition-only:** stamp + Lead `needs_routing` / Decision Layer `review_queue`; no new queue table/UI in 3C.
+- Acquisition still does not own Candidate / Application / Inquiry (no FK).
+- Tests: `backend/tests/api/test_stage_3c_universal_submission_routing.py`.
 
 #### Минимальный вертикальный срез V1 (3A→3D, базовый Timeline в 3E)
 
@@ -503,4 +515,5 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-17: **CampaignTemplate** (canon, post-V1); Goal → **Goal Type + Primary KPI** (не плоский enum).  
 - 2026-07-18: **Stage 3A DONE** — foundation API, registries, auto Flight, gates, integrity tests.  
 - 2026-07-18: **Stage 3B DONE** — Flight↔Form / Flight↔IntakeSource associations; Meta via existing profile bind.  
-- 2026-07-18: 3B fix — drop `provider`/`external_ref` snapshots; partial unique indexes for one active primary per Flight.
+- 2026-07-18: 3B fix — drop `provider`/`external_ref` snapshots; partial unique indexes for one active primary per Flight.  
+- 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.

@@ -670,6 +670,7 @@ async def submit_public_intake_lead_draft(
     lead: Lead,
     intake_state: dict[str, Any],
     source: str = PUBLIC_INTAKE_SOURCE,
+    route_intent_override: Optional[str] = None,
 ) -> tuple[DecisionResult, Optional[str]]:
     """Run Decision Layer + Outcome Executor for lead-first public submit."""
     _lf_meta = intake_state.get("lead_form") if isinstance(intake_state.get("lead_form"), dict) else {}
@@ -693,6 +694,7 @@ async def submit_public_intake_lead_draft(
         intake_source_profile_id=intake_source_profile_id,
         candidate_profile_id=None,
         vacancy_id=vacancy_id,
+        route_intent_override=route_intent_override,
     )
     intake_state["ingest_envelope_v1"] = envelope.to_dict()
     if envelope.entity_profile_code:

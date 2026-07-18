@@ -328,6 +328,10 @@ async def process_normalized_lead(
     normalized["intake_routing_v1"] = intake_ctx.to_intake_routing_v1()
     normalized["intake_route_v1"] = intake_ctx.to_normalized_block()
     normalized["outcome_resolution_v1"] = outcome_resolution.to_dict()
+    if intake_ctx.acquisition_routing:
+        from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
+
+        normalized[ACQUISITION_ROUTING_V1_KEY] = dict(intake_ctx.acquisition_routing)
     if intake_ctx.pipeline_preset:
         normalized["intake_pipeline_preset_v1"] = intake_ctx.pipeline_preset
     if intake_ctx.own_company_id:
@@ -540,11 +544,15 @@ async def process_normalized_lead(
     business_type = await _load_tenant_business_type(db, tenant_id, effective_own_company_id)
 
     if intake_ctx.failed and not force_candidate_conversion:
-        failed_error = (
-            str(intake_ctx.warnings[0]).upper()
-            if intake_ctx.warnings
-            else "INTAKE_ROUTING_FAILED"
-        )
+        acq = intake_ctx.acquisition_routing if isinstance(intake_ctx.acquisition_routing, dict) else {}
+        if intake_ctx.acquisition_unresolved and acq.get("unresolved_reason"):
+            failed_error = str(acq["unresolved_reason"])
+        else:
+            failed_error = (
+                str(intake_ctx.warnings[0]).upper()
+                if intake_ctx.warnings
+                else "INTAKE_ROUTING_FAILED"
+            )
         failed_lead_id = str(lead.id)
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
@@ -707,7 +715,11 @@ async def process_normalized_lead(
         )
 
     if ingest_decision.disposition == IngestDisposition.review_queue.value:
-        review_error = "DUPLICATE_REVIEW_PENDING"
+        acq = normalized.get("acquisition_routing_v1")
+        if isinstance(acq, dict) and acq.get("status") == "unresolved" and acq.get("unresolved_reason"):
+            review_error = str(acq["unresolved_reason"])
+        else:
+            review_error = "DUPLICATE_REVIEW_PENDING"
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
