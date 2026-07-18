@@ -12,11 +12,13 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from decimal import Decimal
 
 from ..db.base import Base
 from .mixins import TimestampMixin
@@ -354,3 +356,62 @@ class CampaignOutcomeResultLink(Base, TimestampMixin):
     outcome: Mapped["CampaignOutcome"] = relationship(
         "CampaignOutcome", back_populates="result_links"
     )
+
+
+class CampaignFlightSpendEntry(Base, TimestampMixin):
+    """Canonical Flight spend source (Stage 3D PR-3).
+
+    Not a KPI row — aggregates read and sum these entries. Amounts are Decimal/NUMERIC;
+    currency is ISO-4217; mixed currencies must not be summed by the KPI service.
+    """
+
+    __tablename__ = "acq_flight_spend_entries"
+    __table_args__ = (
+        Index("ix_acq_flight_spend_entries_tenant_flight", "tenant_id", "campaign_run_id"),
+        Index("ix_acq_flight_spend_entries_tenant_campaign", "tenant_id", "campaign_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    campaign_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaign_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+
+class CampaignResultQualification(Base, TimestampMixin):
+    """Explicit qualification contract (Stage 3D PR-3).
+
+    An attributed Result counts as Qualified **only** when this row exists.
+    """
+
+    __tablename__ = "acq_result_qualifications"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "attribution_id",
+            name="uq_acq_result_qualifications_attribution",
+        ),
+        Index("ix_acq_result_qualifications_tenant_attr", "tenant_id", "attribution_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    attribution_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_result_attributions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    qualified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
