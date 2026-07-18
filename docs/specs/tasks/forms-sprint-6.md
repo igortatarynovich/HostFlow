@@ -73,7 +73,8 @@ Forms **backend platform contour** is complete for Phase 1 core:
 
 publication · version ledger · immutable snapshots · lifecycle · schema · validation · normalization · immutable submission envelope · Shared Intake handoff · audit.
 
-Next work shifts to **product capabilities** on top of this platform (Builder, publish runtime/UI, field catalog, themes, analytics) — not further storage/contract foundation.
+**Next:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md) (P1 Field Catalog → Builder → Publish UI → Themes → Analytics).  
+**Rule:** Field Catalog SoT; Builder must not invent field types.
 
 ---
 

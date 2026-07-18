@@ -74,13 +74,19 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - Stage 3B V1 Form/Intake associations = transitional Endpoint specializations.
 - Stage 3C: любой Endpoint → тот же Universal Routing.
 - **Gate:** Epic P / Stage 3D **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).  
-- **Forms Sprint 1:** **IN PROGRESS** — [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) · Public Contract [`forms-public-contract.md`](forms-public-contract.md) · Adapter `forms.endpoint_adapter_v1`.  
-- **Forms Builder:** **LOCKED** (drag-and-drop / schema editor / themes marketplace / branching UI — после Sprint 1 DoD).  
+- **Forms Sprint 1–6:** ✅ **COMPLETE** — L0 backend platform contour ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).  
+- **Forms Product Layer:** **OPEN** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)) — P1 Field Catalog next.  
+- **Architectural rule:** **Field Catalog is SoT** for field types / params / validation / normalization / Builder + Public render. **Builder must not invent field types** — only compose Catalog blocks.  
+- **Forms Builder:** **LOCKED** until Product Layer P1 DoD.  
 - Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 
 ## Platform epic (roadmap)
 
-Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versioning; Consent Management; Public Publishing; Internal Forms; Themes; Conditional Logic; File Upload; Multi-language; Automations / Documents / Universal Entity integration.
+**Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
+
+**Open — Product Layer:** Field Catalog → Builder → Publish UI → Themes → Analytics ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)).
+
+Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 
 ## Consequences
 
@@ -102,4 +108,5 @@ Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versio
 - 2026-07-18: Forms Sprint 1 gated on Epic P / 3D DoD; sequence Passport → Manifest → Public Contract → Adapter → Tests (not Builder first).  
 - 2026-07-18: Epic P COMPLETE — Forms Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
 - 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).  
-- 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.
+- 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.  
+- 2026-07-18: Sprint 1–6 COMPLETE; Product Layer epic OPEN; Field Catalog SoT / Builder-no-invent-types rule.

@@ -28,9 +28,11 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 **Forms Sprint 1–6 — ✅ COMPLETE** (backend platform contour · PR #41 · `7e259f22`).
 
-Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**. Builder **LOCKED**.
+Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-Next stage = product surface (Builder, publish UI, field catalog, themes, analytics) — not further platform storage contracts.
+**Next:** [`Forms Product Layer`](../specs/tasks/forms-product-layer-epic.md) (**OPEN**) — P1 Field Catalog → P2 Builder → P3 Publish UI → P4 Themes → P5 Analytics.
+
+**Rule:** Field Catalog is SoT for field types; Builder **must not** invent types — only compose Catalog blocks. Builder **LOCKED** until P1 DoD.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
@@ -43,4 +45,5 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.  
 - 2026-07-18: Epic P COMPLETE — Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
 - 2026-07-18: Sprint 1 infra started — Public Contract + Adapter + contract tests.  
-- 2026-07-18: Sprint 1 **COMPLETE** (PR #36); Sprint 2 runtime hardening opened.
+- 2026-07-18: Sprint 1 **COMPLETE** (PR #36); Sprint 2 runtime hardening opened.  
+- 2026-07-18: Sprint 6 **COMPLETE**; Product Layer epic opened (Field Catalog first).
