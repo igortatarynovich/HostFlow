@@ -1,9 +1,11 @@
 # Epic P — Acquisition Stage 3D (Outcome Attribution)
 
-**Status:** active · **Phase 1 first product vertical**  
+**Status:** **COMPLETE** (Epic P DoD · 2026-07-18)  
 **Canon:** [`ADR-024`](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §9 · §14  
 **Module scope:** [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md)  
-**Gate:** closes Acquisition V1 vertical → unlocks Forms Sprint 1 ([`ADR-007`](../architecture/ADR-007-forms-platform-capability.md))
+**Gate:** Acquisition V1 vertical **closed** → **Forms Sprint 1 UNLOCKED** · **Forms Builder LOCKED**  
+**E2E contract:** `backend/tests/api/test_stage_3d_epic_p_contract.py`  
+**Base-known CI:** [`acquisition-epic-p-base-known-ci-failures.md`](acquisition-epic-p-base-known-ci-failures.md)
 
 ---
 
@@ -142,14 +144,17 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome
 
 Epic P закрыт **только если**:
 
-- [ ] Вся цепочка проходит contract tests  
-- [ ] Attribution полностью автоматический (через routing)  
-- [ ] Ownership нигде не нарушается  
-- [ ] KPI строятся без дополнительных запросов пользователя  
-- [ ] Нет временных special case в attribution/KPI path  
-- [ ] ADR-007 / Forms Sprint 1 считается **разблокированным** (Acquisition V1 vertical closed; 3E Timeline может идти параллельно Forms prep)
+- [x] Вся цепочка проходит contract tests (`test_stage_3d_epic_p_contract.py`)  
+- [x] Attribution полностью автоматический (через routing)  
+- [x] Ownership нигде не нарушается  
+- [x] KPI строятся без дополнительных запросов пользователя  
+- [x] Нет временных special case в attribution/KPI path  
+- [x] xfail отсутствуют в Stage 3D suites  
+- [x] Alembic: `202607180004_acq_3d` → `202607180005_acq_3d_o` → `202607180006_acq_3d_k`; single head; PR-3 downgrade/upgrade roundtrip  
+- [x] Base-known CI failures documented; Epic P не добавил SPA `/app` literals  
+- [x] ADR-007 / Forms Sprint 1 **UNLOCKED**; Forms Builder **LOCKED**
 
-После DoD: **не** начинать Forms Builder. Сначала Forms Sprint 1 = Passport + Manifest + Public Contract + Adapter + Contract Tests ([`capability-contract.md`](../architecture/capability-contract.md)).
+После DoD: **не** начинать Forms Builder. Forms Sprint 1 = Passport → Manifest → Public Contract (`publish → endpoint → submission → result`) → Adapter → Contract Tests ([`capability-contract.md`](../architecture/capability-contract.md)).
 
 ---
 
@@ -157,10 +162,10 @@ Epic P закрыт **только если**:
 
 | PR | Focus | Status |
 |----|--------|--------|
-| **PR-1** | Result attribution record/projection from `acquisition_routing_v1` + submission id; contract test skeleton | ✅ DONE · [PR #31](https://github.com/igortatarynovich/HostFlow/pull/31) MERGED |
-| **PR-2** | Outcome entity + lifecycle statuses + progress from attributed Results | ✅ DONE · [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32) MERGED |
-| **PR-3** | Flight/Campaign KPI aggregates (Spend, Leads, Qualified, Converted, CPL, CPQ, Cost per Outcome) | 🔄 opening |
-| **PR-4** | Full chain contract tests green; DoD checklist; unlock note in ADR-024 / ADR-007 | planned |
+| **PR-1** | Result attribution record/projection from `acquisition_routing_v1` + submission id; contract test skeleton | ✅ COMPLETE · [PR #31](https://github.com/igortatarynovich/HostFlow/pull/31) MERGED |
+| **PR-2** | Outcome entity + lifecycle statuses + progress from attributed Results | ✅ COMPLETE · [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32) MERGED |
+| **PR-3** | Flight/Campaign KPI aggregates (Spend, Leads, Qualified, Converted, CPL, CPQ, Cost per Outcome) | ✅ COMPLETE · [PR #33](https://github.com/igortatarynovich/HostFlow/pull/33) MERGED |
+| **PR-4** | Full chain contract + DoD + Forms Sprint 1 unlock (Builder remains locked) | ✅ COMPLETE (this PR) |
 
 Не мержить PR-1, если появился manual link API или ownership FK на domain Results.
 
@@ -176,7 +181,7 @@ Epic P закрыт **только если**:
 
 - Outcome + ledger; soft-revoke; no intake hook — [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32)
 
-### PR-3 delivered (this branch)
+### PR-3 delivered
 
 - Spend source: `acq_flight_spend_entries` (Decimal/NUMERIC + currency)
 - Qualification contract: `acq_result_qualifications`
@@ -186,14 +191,37 @@ Epic P закрыт **только если**:
 - Migration: `202607180006_acq_3d_k`
 - Tests: `backend/tests/api/test_stage_3d_kpi_aggregates.py`
 
+### PR-4 delivered
+
+- E2E public contract: `test_stage_3d_epic_p_contract.py`
+- Gates: `test_stage_3d_epic_p_gates.py` (suites exist, no xfail, Alembic chain/head/roundtrip, no new SPA literals)
+- Base-known CI: [`acquisition-epic-p-base-known-ci-failures.md`](acquisition-epic-p-base-known-ci-failures.md)
+- Canon: Acquisition Stage 3D ✅; Forms Sprint 1 **UNLOCKED**; Forms Builder **LOCKED**
+
+---
+
+## Next allowed stage
+
+**Forms Sprint 1 only:**
+
+```text
+Passport → Manifest → Public Contract
+  publish → endpoint → submission → result
+→ Adapter → Contract Tests
+```
+
+**Still LOCKED:** visual Builder; drag-and-drop; arbitrary schema editor; presentation designer; branching UI; form marketplace; new routing engine; Forms-owned Outcome/KPI layer.
+
+Forms **compose** Acquisition Endpoint/Submission/Result contracts — do not copy them.
+
 ---
 
 ## Implementation context (L3 pointers)
 
 - Routing stamp: `backend/app/acquisition/submission_routing.py` (`acquisition_routing_v1`)  
 - Campaign models: `backend/app/models/campaign.py`  
-- Prior tests: `test_stage_3a_*`, `test_stage_3b_*`, `test_stage_3c_*`  
-- No Result/Outcome acquisition tables yet — introduce per ADR-024 §9 without breaking 3A–3C
+- Attribution / Outcome / KPI: `result_attribution.py` · `outcome_service.py` · `kpi_aggregates.py`  
+- Contract suites: `test_stage_3a_*` … `test_stage_3d_*` + `test_stage_3d_epic_p_*`
 
 ---
 
@@ -202,4 +230,5 @@ Epic P закрыт **только если**:
 - 2026-07-18: Epic P locked as Phase 1 start; Capability Contract sequence adopted for subsequent L1 (Forms first after V1).  
 - 2026-07-18: **PR-1 DONE** — `acq_result_attributions` + routing-only attribution service + submit hook + contract tests.  
 - 2026-07-18: **PR-2** — Outcome + ledger links; progress monotonic; soft-revoke on Result delete; no intake hook for Outcome.  
-- 2026-07-18: **PR-3** — KPI read model (Flight+Campaign); spend source; qualification contract; Decimal-only ratios.
+- 2026-07-18: **PR-3** — KPI read model (Flight+Campaign); spend source; qualification contract; Decimal-only ratios.  
+- 2026-07-18: **PR-4 COMPLETE** — E2E contract + gates; DoD checked; Forms Sprint 1 unlocked; Builder locked.

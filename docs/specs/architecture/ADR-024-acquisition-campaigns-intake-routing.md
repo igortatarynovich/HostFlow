@@ -7,7 +7,7 @@
 **Stage 3A — DONE** (2026-07-18): Campaign foundation API + registries + integrity tests.  
 **Stage 3B — DONE** (2026-07-18): Form + Intake Source binding to CampaignRun.  
 **Stage 3C — DONE** (2026-07-18): Universal submission routing.  
-**Stage 3D — IN PROGRESS (Epic P):** Outcome attribution + basic analytics — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Closes Acquisition V1 vertical; unlocks Forms Sprint 1 (not Builder).
+**Stage 3D — DONE (Epic P COMPLETE)** (2026-07-18): Outcome attribution + KPI — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). E2E: `test_stage_3d_epic_p_contract.py`. **Forms Sprint 1 UNLOCKED**; **Forms Builder LOCKED**.
 
 ## Canonical statement
 
@@ -477,7 +477,7 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | **3A** ✅ | Campaign foundation (Goal + Target + reserved Flight) | **DONE.** Campaign-as-initiative; **Goal Type + Primary KPI**; `CampaignTarget` via registry; **CampaignRun** (V1 = ровно один / `current_flight`); company + module gate; `target_module` canonical; route_intent validation. **Не** Template catalog |
 | **3B** ✅ | Endpoint binding (V1: Form + Intake Source) | **DONE.** V1: `CampaignRun ↔ TenantLeadForm` + `↔ IntakeSourceProfile` as transitional Endpoint specializations; uses-not-owns. **Canon:** CampaignRun ↔ Endpoint (HostFlow Public Form = one type) — [`ADR-007`](ADR-007-forms-platform-capability.md) |
 | **3C** ✅ | Universal submission routing | **DONE.** Submission from any Endpoint → Form∪Profile Flight resolve → `route_intent` → Application \| Inquiry; unresolved → disposition-only queue. **Routing once per new Lead** |
-| **3D** 🔄 | Outcome attribution and basic analytics | **Epic P** — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Chain: Campaign → Flight → Endpoint → Submission → Result → Outcome; auto attribution; Outcome lifecycle; Primary KPI aggregates |
+| **3D** ✅ | Outcome attribution and basic analytics | **Epic P COMPLETE** — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Chain: Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI |
 | **3E** | Timeline and automation events | Timeline событий; emit events для Automations (полные Automation Campaigns — позже) |
 
 #### Stage 3A Definition of Done — met
@@ -518,26 +518,29 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 - Acquisition still does not own Candidate / Application / Inquiry (no FK).
 - Tests: `backend/tests/api/test_stage_3c_universal_submission_routing.py`.
 
-#### Stage 3D Definition of Done — Epic P (active)
+#### Stage 3D Definition of Done — Epic P ✅ COMPLETE (2026-07-18)
 
-Нормативный трекер: [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md).
+Нормативный трекер: [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md).  
+E2E contract: `backend/tests/api/test_stage_3d_epic_p_contract.py`.  
+Gates: `backend/tests/api/test_stage_3d_epic_p_gates.py`.  
+Base-known CI: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
 **Публичная цепочка (единственная):**
 
 ```text
-Campaign → Flight → Endpoint → Submission → Result → Outcome
+Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 ```
 
-**DoD (все пункты обязательны):**
+**DoD (met):**
 
-1. **Attribution automatic** — Result всегда знает `campaign`, `flight`, `endpoint`, `submission`; источник = существующий Universal Routing (`acquisition_routing_v1`); **нет** ручных связей.  
-2. **Outcome progress** — статусы минимум: `created` · `active` · `completed` · `failed` · `cancelled`; Outcome = единица продуктовой аналитики.  
-3. **Primary KPI** (Flight + Campaign roll-up, без BI): Spend, Leads, Qualified, Converted, Cost per Lead, Cost per Qualified, Cost per Outcome.  
-4. **Ownership intact** — Acquisition не владеет Candidate/Application/Inquiry/Client; Results поставляют destination modules.  
-5. **Contract tests** — полный путь chain; ссылки сохраняются; delete/forbidden rules; attribution не теряется; KPI без extra user steps; нет temporary special cases.  
-6. **Unlock** — после зелёных tests **ADR-007 Forms Sprint 1** разблокирован (Passport → Manifest → Public Contract → Adapter → Contract Tests; **не** Builder). Capability Contract practice — [`capability-contract.md`](capability-contract.md).
+1. **Attribution automatic** — via Universal Routing (`acquisition_routing_v1`); no manual links.  
+2. **Outcome progress** — `created` · `active` · `completed` · `failed` · `cancelled`.  
+3. **Primary KPI** — Flight + Campaign roll-up (Decimal); CPO from completed Outcomes.  
+4. **Ownership intact** — no Operations FKs.  
+5. **Contract tests** — PR-1…PR-3 suites + E2E; no xfail.  
+6. **Unlock** — Forms Sprint 1 **UNLOCKED**; Forms Builder **LOCKED**.
 
-**Вне 3D:** Timeline (3E); multi-Flight; Template; Forms Builder; manual attribution API.
+**Вне 3D:** Timeline (3E); multi-Flight; Template; Forms Builder; manual attribution API; KPI dashboard UI.
 
 #### Минимальный вертикальный срез V1 (3A→3D, базовый Timeline в 3E)
 
@@ -602,6 +605,7 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.  
 - 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); **Endpoint** as primary intake abstraction; Campaign → Endpoint → Submission; routing once per Lead; intake spine `Endpoint → Submission → Routing → Decision → Business Entity`.  
 - 2026-07-18: **Epic P / Stage 3D locked** — Outcome attribution + KPI; chain Campaign→…→Outcome; unlock Forms Sprint 1 after DoD; Capability Contract sequence.  
-- 2026-07-18: **Stage 3D PR-1 DONE** — Result attribution table/service from `acquisition_routing_v1` + submission_id; ownership intact; contract tests.
+- 2026-07-18: **Stage 3D PR-1 DONE** — Result attribution table/service from `acquisition_routing_v1` + submission_id; ownership intact; contract tests.  
+- 2026-07-18: **Epic P COMPLETE (PR-4)** — E2E contract + gates; Forms Sprint 1 unlocked; Builder locked.
   
 - 2026-07-18: Linked to **P-01…P-03** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-027`](ADR-027-capability-composition.md)); capability catalog §0.1.

@@ -73,9 +73,10 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - Канон intake: `Endpoint → Submission → Routing → Decision → Business Entity`.  
 - Stage 3B V1 Form/Intake associations = transitional Endpoint specializations.
 - Stage 3C: любой Endpoint → тот же Universal Routing.
-- **Gate:** Platform Forms только после **Epic P / Stage 3D DoD** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).
-- **Forms Sprint 1** (после gate): Passport → Manifest → Public Contract → Adapter → Contract Tests — цепочка `publish → endpoint → submission → result`. **Не** Builder первым. См. [`capability-contract.md`](capability-contract.md).
-- Builder / Themes / full Endpoint Engine — после Sprint 1.
+- **Gate:** Epic P / Stage 3D **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).  
+- **Forms Sprint 1:** **UNLOCKED** — Passport → Manifest → Public Contract → Adapter → Contract Tests — цепочка `publish → endpoint → submission → result`. См. [`capability-contract.md`](capability-contract.md).  
+- **Forms Builder:** **LOCKED** (drag-and-drop / schema editor / themes marketplace / branching UI — после Sprint 1).  
+- Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 
 ## Platform epic (roadmap)
 
@@ -98,4 +99,5 @@ Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versio
 - 2026-05: Forms как платформенная capability.  
 - 2026-07-02: C4 bridge MVP.  
 - 2026-07-18: Core Platform Module; Endpoint spine (ADR-024); Forms SoT + consent version pinning; Platform Forms epic; link **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).  
-- 2026-07-18: Forms Sprint 1 gated on Epic P / 3D DoD; sequence Passport → Manifest → Public Contract → Adapter → Tests (not Builder first).
+- 2026-07-18: Forms Sprint 1 gated on Epic P / 3D DoD; sequence Passport → Manifest → Public Contract → Adapter → Tests (not Builder first).  
+- 2026-07-18: Epic P COMPLETE — Forms Sprint 1 **UNLOCKED**; Builder **LOCKED**.
