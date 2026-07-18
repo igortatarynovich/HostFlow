@@ -70,7 +70,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 3 | ✅ **COMPLETE** (PR #38 · `f5771df6`) |
 | Forms Sprint 4 | ✅ **COMPLETE** (PR #39 · `779cffd3`) |
 | Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
-| Forms Sprint 6 | **IN PROGRESS** (submission envelope) |
+| Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
 | Forms Builder | **LOCKED** |
 
 Contract tests:
@@ -81,24 +81,22 @@ Contract tests:
 - Spec: [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)  
 - Migrations: `202607180004_acq_3d` → `202607180005_acq_3d_o` → `202607180006_acq_3d_k`
 
-### Forms Sprint 1 ✅ / Sprint 2 IN PROGRESS
+### Forms Sprint 1–6 ✅ (backend platform contour)
 
 ```text
 Passport → Manifest → Public Contract
-  resolve · publish → endpoint → submission → result
+  resolve · publish → endpoint → validate/normalize → envelope → result
 → Adapter → Contract Tests
 ```
 
 | Artifact | Path |
 |----------|------|
-| Sprint 1 task | [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) ✅ |
-| Sprint 2 task | [`../tasks/forms-sprint-2.md`](../tasks/forms-sprint-2.md) |
+| Sprint 1–6 tasks | [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ |
 | Public Contract | [`forms-public-contract.md`](forms-public-contract.md) |
 | Adapter | `backend/app/forms_platform/adapter.py` (`forms.endpoint_adapter_v1`) |
 | Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) · `forms_platform/manifest.py` |
-| Migration (Sprint 2) | `202607180007_forms_s2` (current pointer) |
-| Migration (Sprint 3) | `202607180008_forms_s3` (append-only ledger) |
-| Contract tests | `test_forms_sprint1_*.py` … `test_forms_sprint4_*.py` |
+| Migrations | `202607180007_forms_s2` … `202607180009_forms_s6` |
+| Contract tests | `test_forms_sprint1_*.py` … `test_forms_sprint6_*.py` |
 
 Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint / C4 publication bridge — не новая form engine.  
 **Не** Builder / drag-and-drop / schema editor / marketplace / новый routing / Forms Outcome-KPI.

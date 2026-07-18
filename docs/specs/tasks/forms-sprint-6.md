@@ -1,9 +1,22 @@
 # Forms Sprint 6 — Submission persistence envelope
 
-**Status:** READY FOR REVIEW  
+**Status:** **COMPLETE** (2026-07-18 · merge `7e259f22` · [PR #41](https://github.com/igortatarynovich/HostFlow/pull/41))  
 **Prerequisite:** Forms Sprint 5 **COMPLETE** ([`forms-sprint-5.md`](forms-sprint-5.md) · merge `a6df02f0` / PR #40)  
 **Canon:** [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **Builder:** **LOCKED**
+
+---
+
+## Closed gates
+
+| Gate | Status |
+|------|--------|
+| Forms Sprint 6 | ✅ **COMPLETE** |
+| Submission Envelope Contract | ✅ **ACTIVE** |
+| Immutable Submission Storage | ✅ **ACTIVE** |
+| Idempotent Submission Processing | ✅ **ACTIVE** |
+| Audit API | ✅ **ACTIVE** |
+| Builder | **LOCKED** |
 
 ---
 
@@ -21,7 +34,7 @@ validate/normalize → persist_submission_envelope
 
 ---
 
-## Scope
+## Scope delivered
 
 ### In
 
@@ -34,7 +47,7 @@ validate/normalize → persist_submission_envelope
 - Pin publication version on accepted persist  
 - Migration `202607180009_forms_s6`  
 
-### Out
+### Out (by design)
 
 - Builder / UI  
 - Domain mapping  
@@ -54,6 +67,17 @@ validate/normalize → persist_submission_envelope
 
 ---
 
+## Platform posture after Sprint 6
+
+Forms **backend platform contour** is complete for Phase 1 core:
+
+publication · version ledger · immutable snapshots · lifecycle · schema · validation · normalization · immutable submission envelope · Shared Intake handoff · audit.
+
+Next work shifts to **product capabilities** on top of this platform (Builder, publish runtime/UI, field catalog, themes, analytics) — not further storage/contract foundation.
+
+---
+
 ## History
 
-- 2026-07-18: Opened after Sprint 5 merge `a6df02f0` (#40).
+- 2026-07-18: Opened after Sprint 5 merge `a6df02f0` (#40).  
+- 2026-07-18: **COMPLETE** — merged as PR #41 (`7e259f22`).
