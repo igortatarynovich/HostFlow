@@ -109,17 +109,45 @@ Recruitment
 
 Settings остаются в Manifest (**P-05**).
 
+### G. Explicit Non-Goals (final seal)
+
+Каждый Passport содержит **Non-Goals** — что **не является задачей** capability (scope), отдельно от **Forbidden** (что нельзя реализовывать как SoT/стек).
+
+| | Forbidden | Non-Goals |
+|---|-----------|-----------|
+| Вопрос | Можно ли это *построить внутри*? | Является ли это *миссией* capability? |
+| Пример Forms | Свой SMTP | BPM, Workflow engine, CRM, Candidate Evaluation, Notifications |
+
+Тихое превращение Non-Goal → Owns без RFC запрещено (**INV-15**).
+
+### H. Contract Stability levels (final seal)
+
+Каждый публикуемый контракт в **Exposes** имеет уровень:
+
+| Level | Rule |
+|-------|------|
+| **Stable** | Платформенный; breaking только major + review (ADR-030 §C) |
+| **Experimental** | Может меняться; не единственная опора Business без плана стабилизации |
+| **Internal** | Только внутри owner; внешние модули не вызывают |
+
+### I. Architecture Invariants (final seal)
+
+Аксиомы INV-01…15 — [`architecture-invariants.md`](architecture-invariants.md). Не ADR; не могут стать ложными без L0 RFC.
+
+После §G–I L0 считается **окончательно FROZEN**.
+
 ## Consequences
 
-1. L0 перестаёт быть «ещё одним ADR-потоком» — становится конституцией.  
-2. Feature teams работают на L1–L3; RFC — редкость.  
-3. Checklist обязателен до ADR/PR.  
-4. Реализация registry/JSON/UI — L2, по шаблону L0, без переоткрытия P-rules.
+1. L0 — конституция; feature work на L1–L3.  
+2. Checklist + Invariants обязательны до ADR/PR.  
+3. Registry/JSON/UI — L2/L3.  
+4. Дальнейшие «улучшения фундамента» без RFC — нарушение freeze.
 
 ## Relationship
 
-[`L0-platform-architecture.md`](L0-platform-architecture.md) · ADR-025…029 · [`platform-capability-catalog.md`](platform-capability-catalog.md) · [`capability-settings-manifest.md`](capability-settings-manifest.md) · [`architecture-review-checklist.md`](architecture-review-checklist.md) · [`../../governance/hierarchy-of-truth.md`](../../governance/hierarchy-of-truth.md)
+[`L0-platform-architecture.md`](L0-platform-architecture.md) · [`architecture-invariants.md`](architecture-invariants.md) · ADR-025…029 · Catalog · Settings Manifest · Checklist · [`../../governance/hierarchy-of-truth.md`](../../governance/hierarchy-of-truth.md)
 
 ## История
 
 - 2026-07-18: L0 closed; lifecycle, versioning, licensing, dependencies accepted as L0 norms.
+- 2026-07-18: **Final seal** — Non-Goals, Contract Stability, Architecture Invariants → FROZEN.

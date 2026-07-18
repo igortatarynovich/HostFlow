@@ -1,28 +1,31 @@
 # Architecture Guide (platform canon)
 
-## L0 CLOSED
+## L0 FROZEN
 
-Конституция: [`L0-platform-architecture.md`](L0-platform-architecture.md) · закрытие [`ADR-030`](ADR-030-l0-platform-architecture-closure.md).
+[`L0-platform-architecture.md`](L0-platform-architecture.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · [`architecture-invariants.md`](architecture-invariants.md)
 
-Дальше работаем на **L1–L3**. Изменения L0 — только **Architecture RFC**.
+```text
+L0 Constitution → L1 Platform → L2 Business → L3 Implementation
+```
 
-## Канон
+Работа на L1–L3. L0 — только Architecture RFC / `l0-errata`.
 
-| Документ | Содержание |
-|----------|------------|
-| [`L0-platform-architecture.md`](L0-platform-architecture.md) | **Конституция** (frozen) |
-| [`platform-architecture-principles.md`](platform-architecture-principles.md) | §0 P-01…P-05 |
-| [`platform-capability-catalog.md`](platform-capability-catalog.md) | Passports + deps + license |
-| [`capability-settings-manifest.md`](capability-settings-manifest.md) | Settings Manifest (P-05) |
-| [`architecture-review-checklist.md`](architecture-review-checklist.md) | **Обязателен** перед ADR/PR |
-| ADR-025…029 | P-01…P-05 |
-| ADR-030 | Lifecycle · Versioning · Licensing · Dependencies · L0 freeze |
+## Артефакты
 
-## Десять вопросов
+| Doc | Role |
+|-----|------|
+| L0 constitution | Freeze + pyramid |
+| P-01…P-05 | ADR-025…029 |
+| Catalog Passports | Owns · **Non-Goals** · Exposes(+stability) · … |
+| Settings Manifest | P-05 ops |
+| Invariants | INV-01…15 axioms |
+| Checklist | Обязателен перед ADR/PR |
 
-См. checklist. Кратко: owner → уже есть? → adapter → boundary → settings → SoT → events → deps → license → contract version.
+## Forbidden ≠ Non-Goals
+
+- **Forbidden** — нельзя реализовать внутри.  
+- **Non-Goals** — не миссия capability.
 
 ## История
 
-- 2026-07-18: P-01…P-05.  
-- 2026-07-18: **L0 CLOSED**.
+- 2026-07-18: L0 closed then **final seal / FROZEN**.

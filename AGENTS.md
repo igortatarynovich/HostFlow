@@ -91,7 +91,7 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 
 **Жёсткие правила (выдержка из rules):**
 - Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage из domain map / module catalog).
-- Platform architecture **L0 CLOSED** — [`docs/specs/architecture/L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md). Rules **P-01…P-05** + lifecycle/versioning/licensing/deps ([`ADR-030`](docs/specs/architecture/ADR-030-l0-platform-architecture-closure.md)). Work on L1–L3; L0 changes only via Architecture RFC.
+- Platform architecture **L0 FROZEN** — [`docs/specs/architecture/L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md), invariants [`architecture-invariants.md`](docs/specs/architecture/architecture-invariants.md). P-01…P-05 + ADR-030. Work on L1–L3; L0 only via Architecture RFC.
 - Новый workflow — обязательная запись в `docs/specs/workflows/index.md`.
 - Изменение поведения модуля — обновление `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в одном PR.
 - Запрещено создавать спеки в корне репо (кроме `AGENTS.md`, `README.md` и т.п.) или в `docs/_drafts/**`.

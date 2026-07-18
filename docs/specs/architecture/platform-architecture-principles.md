@@ -12,8 +12,8 @@
 
 ## 0. Platform Rules (P-01…P-05) — **L0 CLOSED**
 
-**Конституция:** [`L0-platform-architecture.md`](L0-platform-architecture.md) · закрытие [`ADR-030`](ADR-030-l0-platform-architecture-closure.md).  
-Изменения этого фундамента — только **Architecture RFC** / `l0-errata`.
+**Конституция:** [`L0-platform-architecture.md`](L0-platform-architecture.md) (**FROZEN**) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · [`architecture-invariants.md`](architecture-invariants.md).  
+Изменения фундамента — только **Architecture RFC** / `l0-errata`.
 
 HostFlow — **платформа capabilities**. Поведение и конфигурация имеют владельцев; настройки публикуются контрактом; admin UI — пространства capability.
 
@@ -286,3 +286,4 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-07-18: [`ADR-028`](ADR-028-configuration-ownership.md) — **P-04 Configuration Ownership**; catalog v2 Owns/Configures/Exposes/Consumes; kinds Infrastructure/Platform/Business.
 - 2026-07-18: [`ADR-029`](ADR-029-settings-contract.md) — **P-05 Settings Contract**; Passport vs Settings Manifest; capability-scoped admin IA.
 - 2026-07-18: [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) + [`L0-platform-architecture.md`](L0-platform-architecture.md) — **L0 CLOSED / FROZEN**; lifecycle, versioning, licensing, dependencies.
+- 2026-07-18: Final seal — Non-Goals · Contract Stability · [`architecture-invariants.md`](architecture-invariants.md).

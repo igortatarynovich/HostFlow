@@ -1,6 +1,6 @@
 # Platform Capability Catalog
 
-**Status:** canonical · **L0 CLOSED** — [`L0-platform-architecture.md`](L0-platform-architecture.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md)  
+**Status:** canonical · **L0 FROZEN** — [`L0-platform-architecture.md`](L0-platform-architecture.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · [`architecture-invariants.md`](architecture-invariants.md)  
 **Rules:** P-01…P-05 ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-029`](ADR-029-settings-contract.md))  
 **Settings Manifest:** [`capability-settings-manifest.md`](capability-settings-manifest.md)  
 **Index:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1  
@@ -40,13 +40,16 @@ Admin IA:
 |---------|--------|--------|
 | **Owns** | Функциональный SoT | Documents: Registry, Metadata, Versions, Storage, Verification |
 | **Configures** | *Какие классы* настроек принадлежат capability (**P-04**) — детали в Manifest | Notifications: Email/SMS/Push/Retry/Quiet Hours |
-| **Exposes** | Adapters / contracts (**P-01**) | Document Adapter, Verification Adapter |
+| **Exposes** | Adapters / contracts (**P-01**) с уровнем **Stable \| Experimental \| Internal** |
 | **Consumes** | Чужие capabilities (**P-03**) | Recruitment → Forms, Documents, Notifications, AI, Search |
 
 | Документ | Тип | Содержание |
 |----------|-----|------------|
-| **Capability Passport** | Архитектурный | Purpose · Owns · Exposes · Consumes · Events · Forbidden · Data Ownership · Configures *(указатель)* |
+| **Capability Passport** | Архитектурный | Purpose · Owns · Non-Goals · Exposes(+stability) · Consumes · Events · Forbidden · Data Ownership · Configures · deps · license · lifecycle |
 | **Settings Manifest** | Эксплуатационный (**P-05**) | General · Integrations · Defaults · Policies · Feature Flags · License Gates · Validation Rules |
+| **Architecture Invariants** | Аксиомы L0 | [`architecture-invariants.md`](architecture-invariants.md) |
+
+**Forbidden vs Non-Goals:** Forbidden = нельзя реализовать внутри; Non-Goals = не миссия capability (анти-расползание scope).
 
 Knobs **не** перечисляются полностью в Passport — только в [`capability-settings-manifest.md`](capability-settings-manifest.md) / будущих JSON Manifests.
 
@@ -78,15 +81,16 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |---|--------|------------|
 | 1 | **Purpose** | Зачем существует |
 | 2 | **Owns** | Функциональный SoT |
-| 3 | **Configures** | Классы настроек → Settings Manifest (**P-04/P-05**) |
-| 4 | **Exposes** | Adapters / public contracts |
-| 5 | **Consumes** | Чужие capabilities (runtime use) |
-| 6 | **Requires / Optional / Forbidden** | Граф зависимостей (**ADR-030**) |
-| 7 | **License class** | Always Available \| Platform \| Licensed \| Enterprise Only |
-| 8 | **Lifecycle defaults** | Bootstrap Install/Enable/Configure/Disable intent |
-| 9 | **Events** | Publishes / Consumes |
-| 10 | **Forbidden** | Запреты реализации / config |
-| 11 | **Data Ownership** | SoT entities |
+| 3 | **Non-Goals** | Что **не** является задачей capability (scope) |
+| 4 | **Configures** | Классы настроек → Settings Manifest (**P-04/P-05**) |
+| 5 | **Exposes** | Adapters + **Stable \| Experimental \| Internal** |
+| 6 | **Consumes** | Чужие capabilities (runtime use) |
+| 7 | **Requires / Optional / Forbidden deps** | Граф зависимостей (**ADR-030**) |
+| 8 | **License class** | Always Available \| Platform \| Licensed \| Enterprise Only |
+| 9 | **Lifecycle defaults** | Bootstrap intent |
+| 10 | **Events** | Publishes / Consumes |
+| 11 | **Forbidden** | Что нельзя реализовывать / конфигурировать внутри |
+| 12 | **Data Ownership** | SoT entities |
 
 **Settings Manifest** (отдельно): [`capability-settings-manifest.md`](capability-settings-manifest.md).
 
@@ -134,7 +138,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Endpoint type registry; endpoint identity / binding metadata (не Form Builder) |
 | **Configures** | Endpoint type enablement; ingest auth / rate limits (platform) |
-| **Exposes** | Endpoint Adapter family |
+| **Exposes** | Endpoint Adapter family (**Stable**) |
+| **Non-Goals** | Business decisions; Form Builder; domain CRM; Result entity creation |
 | **Consumes** | Submission; Forms (когда type = HostFlow Form); Acquisition (campaign context) |
 | **Requires** | — |
 | **Optional** | Forms, Acquisition |
@@ -156,7 +161,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Universal Submission object; routing stamp / unresolved codes; append-before-decision; routing-once semantics |
 | **Configures** | Routing policy knobs (Intake/Acquisition — не Recruitment) |
-| **Exposes** | Submission / Intake contracts; universal routing resolve |
+| **Exposes** | Submission / Intake contracts (**Stable**); universal routing resolve (**Stable**) |
+| **Non-Goals** | Form Builder; Campaign creative; Decision / domain entity creation |
 | **Consumes** | Endpoint; Acquisition; Decision Layer (после routed) |
 | **Requires** | Endpoint |
 | **Optional** | Acquisition |
@@ -178,7 +184,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Channels; Delivery; Queue; Retry engine; Preference model; notification template runtime |
 | **Configures** | Email, SMS, WhatsApp, Push, working hours, Retry Policy → Manifest [Notifications](capability-settings-manifest.md#notifications) |
-| **Exposes** | Notification Adapter |
+| **Exposes** | Notification Adapter (**Stable**) |
+| **Non-Goals** | Domain pipelines; Document registry; Form Builder; Activity task SoT (compose Activity) |
 | **Consumes** | Integrations (provider connectors); Activity (compose внутри layer) |
 | **Requires** | — |
 | **Optional** | Integrations, Activity |
@@ -200,7 +207,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Activity / Task model; Reminders; Scheduler surfaces; Calendar views; operational timeline contracts |
 | **Configures** | Default reminder offsets; calendar / working-hours defaults (где owned by layer) |
-| **Exposes** | Activity contracts (create / assign / complete / schedule) |
+| **Exposes** | Activity contracts (**Stable**) |
+| **Non-Goals** | Hiring/Sales CRM; Notification delivery SoT; ADR-004 product module |
 | **Consumes** | Notifications; Search (optional) |
 | **Requires** | — |
 | **Optional** | Notifications, Search |
@@ -220,7 +228,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Search index & query; indexing contracts |
 | **Configures** | Index backends; ranking defaults |
-| **Exposes** | Search Adapter |
+| **Exposes** | Search Adapter (**Stable**) |
+| **Non-Goals** | Domain SoT; primary write path for business entities |
 | **Consumes** | Module Public Contracts (projectable fields) |
 | **Requires** | — |
 | **Optional** | — |
@@ -244,7 +253,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Form Builder; Templates; Versioning; Form Submission **surface**; Consent + version pin; Public/Internal Forms; Form Logic; Themes; CAPTCHA surface; multi-language copy; Endpoint Publishing **для HostFlow Form** |
 | **Configures** | Branding, default language, CAPTCHA, consent policy, public URLs, themes → Manifest [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) |
-| **Exposes** | Form Adapter; Endpoint Adapter (HostFlow Form specialization); Consent pin contract |
+| **Exposes** | Form Adapter (**Stable**); Endpoint Adapter HostFlow Form (**Stable**); Consent pin contract (**Stable**) |
+| **Non-Goals** | BPM; Workflow engine; Candidate Evaluation; CRM; Notifications; Documents SoT; Campaign SoT |
 | **Consumes** | Endpoint / Submission (routing after surface); Documents (file fields); Notifications; Automations (opt.); Field Registry |
 | **Requires** | Endpoint, Submission |
 | **Optional** | Documents, Notifications, Automations |
@@ -266,7 +276,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Registry; Metadata; Versions; Storage; Verification / Review; Preview; Digital Signature; OCR capability; Links; Required Document Sets |
 | **Configures** | OCR, file storage, retention, auto-deletion, e-sign → Manifest [Documents](capability-settings-manifest.md#documents) |
-| **Exposes** | Document Adapter; Verification Adapter; document set resolution |
+| **Exposes** | Document Adapter (**Stable**); Verification Adapter (**Stable**); document set resolution (**Stable**); OCR internals (**Internal**) |
+| **Non-Goals** | Employee/Candidate/Vehicle/Invoice domain; Recruitment pipeline; Notification delivery |
 | **Consumes** | Notifications (reminders); Automations (opt.); AI (opt. assist); Integrations (providers) |
 | **Requires** | — |
 | **Optional** | Notifications, Automations, AI, Integrations |
@@ -288,7 +299,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Automation definitions; triggers; actions catalog; run history; entitlement control plane |
 | **Configures** | Entitlements Basic/Advanced; rate limits / safety rails |
-| **Exposes** | Automation Adapter |
+| **Exposes** | Automation Adapter (**Stable**) |
+| **Non-Goals** | Domain SoT; Notification/Document stacks; embedded per-module engines |
 | **Consumes** | Notifications; Activity; Documents; AI; module Exposes (action targets) |
 | **Requires** | Notifications |
 | **Optional** | Activity, Documents, AI |
@@ -308,7 +320,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | AI Adapter / model routing; prompt/policy governance; usage metering hooks |
 | **Configures** | Provider, model, limits, Prompt Library, usage policies → Manifest [AI](capability-settings-manifest.md#ai) |
-| **Exposes** | AI Adapter |
+| **Exposes** | AI Adapter (**Stable**); Prompt Library API (**Experimental**) |
+| **Non-Goals** | Domain SoT; Forms/Documents ownership; direct Business LLM SDK surface |
 | **Consumes** | Integrations (model providers) |
 | **Requires** | — |
 | **Optional** | Integrations |
@@ -330,7 +343,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Integration registry; installation; connector credential patterns; marketplace catalog metadata |
 | **Configures** | Meta App / provider app bindings; installed scopes; connector enablement |
-| **Exposes** | Integration Adapters (per provider family) |
+| **Exposes** | Integration Adapters per provider family (**Stable**); connector internals (**Internal**) |
+| **Non-Goals** | Business domain logic; Form Builder; Notification content SoT |
 | **Consumes** | Module Exposes as install targets |
 | **Requires** | — |
 | **Optional** | — |
@@ -352,7 +366,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Campaign / CampaignRun / Flight; source / placement bindings; `route_intent` / eligibility; attribution for new Lead |
 | **Configures** | Campaign defaults / windows; source registry defaults |
-| **Exposes** | Campaign / Flight / routing APIs; binding APIs (uses-not-owns Form associations) |
+| **Exposes** | Campaign / Flight / routing APIs (**Stable**); binding APIs (**Stable**) |
+| **Non-Goals** | Result SoT (Application/Inquiry); Form Builder; Marketing product ADR-004; Document Hub |
 | **Consumes** | Endpoint; Submission; Forms (compose); Notifications (opt.) |
 | **Requires** | Endpoint, Submission |
 | **Optional** | Forms, Notifications |
@@ -374,7 +389,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Process definitions / profiles; transition rules / evaluator; handoff rule engine (engine-owned) |
 | **Configures** | Process profile defaults (engine-level) |
-| **Exposes** | Process contracts |
+| **Exposes** | Process contracts (**Stable**) |
+| **Non-Goals** | Domain entity SoT; Notification delivery; Form Builder |
 | **Consumes** | Module domain objects as subjects |
 | **Requires** | — |
 | **Optional** | — |
@@ -400,7 +416,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Vacancy; Job Post / Job Publishing surface; Candidate; Application; Evaluation; Hiring Pipeline; Interview; Offer; handoff intents to HR/Fleet |
 | **Configures** | Pipeline / stage definitions; hiring gates; interview defaults; job publishing **defaults** (каналы — через Integrations) |
-| **Exposes** | Recruitment domain APIs; handoff contracts |
+| **Exposes** | Recruitment domain APIs (**Stable**); handoff contracts (**Stable**) |
+| **Non-Goals** | Forms/Documents/Notifications/AI platforms; Campaign SoT; Finance invoices; HR Employee SoT |
 | **Consumes** | Forms; Documents; Notifications; Activity; AI; Search; Automations; Endpoint; Submission; Acquisition; Process Engine |
 | **Requires** | Forms, Documents, Notifications |
 | **Optional** | AI, Automations, Acquisition, Activity, Search, Process Engine |
@@ -423,7 +440,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Sales Inquiry; ClientAccount (sales scope); sales pipeline / qualification |
 | **Configures** | Sales pipeline / qualification defaults |
-| **Exposes** | Sales / inquiry APIs |
+| **Exposes** | Sales / inquiry APIs (**Stable**) |
+| **Non-Goals** | Recruitment Candidate/Vacancy; Platform Forms/Documents stacks; Invoice SoT |
 | **Consumes** | Forms; Endpoint; Submission; Acquisition; Documents; Notifications; Activity; Automations; AI; Search |
 | **Requires** | Forms, Documents, Notifications |
 | **Optional** | AI, Automations, Acquisition, Activity, Search |
@@ -445,7 +463,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Employee profile; HR cases; employment lifecycle; HR contracts / ZUS / permits (HR domain); payroll **data** (HR scope) |
 | **Configures** | HR process / case defaults |
-| **Exposes** | HR / workforce APIs; handoff accept |
+| **Exposes** | HR / workforce APIs (**Stable**); handoff accept (**Stable**) |
+| **Non-Goals** | Candidate pipeline; Document Hub storage; Fleet assignments; SMTP |
 | **Consumes** | Documents; Notifications; Activity; Forms; Automations; AI; Search |
 | **Requires** | Documents, Notifications |
 | **Optional** | Forms, Activity, Automations, AI, Search |
@@ -467,7 +486,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Vehicle; Fleet Assignment / handover; inspections / damage / readiness / return |
 | **Configures** | Fleet operational defaults |
-| **Exposes** | Fleet APIs |
+| **Exposes** | Fleet APIs (**Stable**) |
+| **Non-Goals** | Hiring pipeline; Forms platform; Notification delivery SoT |
 | **Consumes** | Documents; Notifications; Activity; Automations; Search |
 | **Requires** | Documents, Notifications |
 | **Optional** | Activity, Automations, Search |
@@ -489,7 +509,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Service catalog; Service Order / statuses; Billing Event **emission** |
 | **Configures** | Catalog / order defaults |
-| **Exposes** | Services / orders APIs; Billing Event producer contract |
+| **Exposes** | Services / orders APIs (**Stable**); Billing Event producer (**Stable**) |
+| **Non-Goals** | Invoice SoT; Platform Forms/Documents stacks |
 | **Consumes** | Documents; Notifications; Activity; Forms; Finance (consumer of events) |
 | **Requires** | Documents, Notifications |
 | **Optional** | Forms, Activity, Finance |
@@ -511,7 +532,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Invoice; Payment; tax / billing rules; billing profile (finance-owned) |
 | **Configures** | Tax / numbering; payment provider bindings (**finance-owned semantics**; connectors via Integrations) |
-| **Exposes** | Finance / invoice APIs; Billing Event consumer |
+| **Exposes** | Finance / invoice APIs (**Stable**); Billing Event consumer (**Stable**) |
+| **Non-Goals** | Recruitment/HR domain; Notification/Forms stacks; creating domain leads |
 | **Consumes** | Documents; Notifications; Activity; Search; Integrations |
 | **Requires** | — |
 | **Optional** | Documents, Notifications, Activity, Search, Integrations |
@@ -540,3 +562,4 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 - **2026-07-18** — v2: Owns / Configures / Exposes / Consumes; kinds; **P-04**.  
 - **2026-07-18** — v3: Passport vs **Settings Manifest**; **P-05** Settings Contract; capability-scoped admin IA.
 - **2026-07-18** — v4: License / Requires / Optional / Lifecycle defaults; **L0 CLOSED** ([`ADR-030`](ADR-030-l0-platform-architecture-closure.md)).
+- **2026-07-18** — v5 final: **Non-Goals** · Exposes stability · Invariants; L0 **FROZEN**.

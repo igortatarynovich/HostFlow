@@ -22,6 +22,7 @@
 | `docs/specs/architecture/platform-capability-catalog.md` | Capability Passport template + index (заполнение строк = применение L0) |
 | `docs/specs/architecture/capability-settings-manifest.md` | Settings Contract schema (P-05) |
 | `docs/specs/architecture/architecture-review-checklist.md` | Обязательный gate перед ADR/PR |
+| `docs/specs/architecture/architecture-invariants.md` | Аксиомы INV-01…15 (не ADR) |
 | `docs/specs/architecture/architecture-guide.md` | Навигация по канону |
 | `docs/specs/architecture/platform-architecture-principles.md` §0 | Сводка P-01…P-05 |
 

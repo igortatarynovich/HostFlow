@@ -1,102 +1,110 @@
 # L0 — Platform Architecture Constitution
 
-**Status:** **CLOSED / FROZEN** (2026-07-18)  
-**Normative closure:** [`ADR-030`](ADR-030-l0-platform-architecture-closure.md)  
+**Status:** **FROZEN** (final, 2026-07-18)  
+**Closure:** [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) (incl. final seal: Non-Goals · Contract Stability · Invariants)  
 **Owner:** Architecture canon owner ([`../../governance/ownership.md`](../../governance/ownership.md))
 
-> HostFlow **L0 Platform Architecture** — конституция платформы.  
-> Это **фундамент**, не рабочий черновик. Дальнейшая разработка идёт на **L1–L3**.  
-> Изменения L0 — **исключение**, только через **Architecture RFC** (см. ниже).
+> HostFlow **L0** — конституция платформы. Фундамент **заморожен**.  
+> Дальнейшая работа — **L1–L3**. Изменения L0 — только **Architecture RFC** / `l0-errata`.
 
 ---
 
 ## Freeze rule
 
-1. После закрытия L0 **запрещено** «улучшать фундамент» в обычных feature/ADR PR.  
-2. Изменение любого артефакта L0 допускается **только** через **Architecture RFC** с:
-   - явным обоснованием (почему нельзя на L1–L3);
-   - impact на Passport / Manifest / P-rules / checklist;
-   - аппрувом Architecture canon owner;
-   - отдельным PR с меткой `architecture-rfc` / `l0-change`.  
-3. Исправление **явных ошибок** (битая ссылка, опечатка, противоречие факту уже принятого ADR) — допустимо без полного RFC, но с пометкой `l0-errata` и аппрувом owner.  
-4. Новые продуктовые решения **не** меняют L0: они **применяются внутри** L0 (новый Passport / Manifest entry / L1 ADR / L2 module-scope).
+1. Обычные feature/ADR PR **не** меняют L0.  
+2. Изменение L0 — только **Architecture RFC** (`architecture-rfc` / `l0-change`): обоснование, impact, аппрув Architecture canon owner.  
+3. Явные ошибки — `l0-errata` + аппрув owner.  
+4. Новые capabilities / knobs / adapters — **применение** шаблонов L0 на L1–L3, не перепись конституции.
 
 ---
 
-## Completeness matrix (закрытие)
+## Completeness matrix (final)
 
-| # | Тема | Статус | Где закреплено |
-|---|------|--------|----------------|
-| 1 | Ownership данных / SoT | ✅ | P-02 · Catalog Data Ownership |
-| 2 | Границы ответственности | ✅ | Capability Boundary · Forbidden · Owns |
-| 3 | Взаимодействие | ✅ | P-01 · Exposes · Standard Adapter |
-| 4 | Композиция | ✅ | P-03 · Consumes |
-| 5 | Конфигурация | ✅ | P-04 · P-05 · Settings Manifest |
-| 6 | Жизненный цикл capability | ✅ | ADR-030 § Lifecycle |
-| 7 | Версионирование контрактов | ✅ | ADR-030 § Contract Versioning |
-| 8 | Лицензирование capability | ✅ | ADR-030 § Licensing |
-| 9 | Зависимости capability | ✅ | ADR-030 § Dependencies · Catalog |
-| 10 | Architecture Review Checklist | ✅ | [`architecture-review-checklist.md`](architecture-review-checklist.md) — **обязателен** перед ADR и PR |
+| # | Тема | Статус | Где |
+|---|------|--------|-----|
+| 1 | Ownership / SoT | ✅ | P-02 · Data Ownership |
+| 2 | Boundaries · Forbidden · **Non-Goals** | ✅ | Catalog Passport |
+| 3 | Interaction / Adapters | ✅ | P-01 · Exposes |
+| 4 | Composition | ✅ | P-03 |
+| 5 | Configuration | ✅ | P-04 · P-05 · Manifest |
+| 6 | Lifecycle | ✅ | ADR-030 |
+| 7 | Versioning + **Stability** (Stable/Experimental/Internal) | ✅ | ADR-030 |
+| 8 | Licensing | ✅ | ADR-030 |
+| 9 | Dependencies | ✅ | ADR-030 · Catalog |
+| 10 | Review Checklist | ✅ | Checklist (обязателен) |
+| 11 | **Architecture Invariants** | ✅ | [`architecture-invariants.md`](architecture-invariants.md) |
 
-**Вердикт:** L0 **закрыт**. Остаточные JSON Schema / registry API / UI shell — **реализация на L1–L2**, не переоткрытие конституции.
+**Вердикт:** L0 **окончательно заморожен**. JSON Manifest / registry / UI — L2/L3.
+
+---
+
+## L0 pyramid (constitution contents)
+
+```text
+L0 — Constitution
+  · Platform Principles (P-01…P-05)
+  · Capability Catalog + Passports
+  · Settings Manifest (schema)
+  · Architecture Invariants
+  · Architecture Review Checklist
+  · Lifecycle · Versioning/Stability · Licensing · Dependencies (ADR-030)
+        │
+        ▼
+L1 — Platform Architecture
+  Endpoint · Forms · Documents · Notifications · AI · Search · Activity · Integrations
+  (+ Acquisition, Automations, Process Engine, Submission as platform/infra specs)
+        │
+        ▼
+L2 — Business Architecture
+  Recruitment · Sales · HR · Fleet · Finance (+ Services)
+        │
+        ▼
+L3 — Implementation
+  Backend · Frontend · Database · API · Workers · UI
+```
+
+Любой новый функционал: **сначала L0** (checklist + invariants) → проектирование L1/L2 → реализация L3.
+
+> Примечание: нумерация L1/L2/L3 здесь — **архитектурная пирамида продукта**.  
+> Уровни документов в [`hierarchy-of-truth.md`](../../governance/hierarchy-of-truth.md) (L0 constitution / L1 domain canon / L2 operating / L3 notes) согласованы по смыслу freeze, но имена слоёв product pyramid ≠ каждый файл governance.
 
 ---
 
 ## L0 artifact index
 
-### Platform Rules (P-01…P-05)
-
-| Rule | ADR | One-liner |
-|------|-----|-----------|
-| **P-01** Standard Adapter Boundary | [`ADR-025`](ADR-025-standard-adapter-boundary.md) | Только канонические adapters (**Exposes**) |
-| **P-02** Capability Ownership | [`ADR-026`](ADR-026-capability-ownership.md) | Один owner функциональности (**Owns**) |
-| **P-03** Capability Composition | [`ADR-027`](ADR-027-capability-composition.md) | Новое = композиция (**Consumes**) |
-| **P-04** Configuration Ownership | [`ADR-028`](ADR-028-configuration-ownership.md) | Один owner конфигурации (**Configures**) |
-| **P-05** Settings Contract | [`ADR-029`](ADR-029-settings-contract.md) | Публикация через Settings Manifest |
-
-### L0 operating norms (non-P)
-
-| Norm | ADR / doc |
-|------|-----------|
-| Lifecycle (Install…Remove) | [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) |
-| Contract versioning | ADR-030 |
-| Licensing class | ADR-030 |
-| Dependency graph | ADR-030 + Catalog |
-| Capability Passport | [`platform-capability-catalog.md`](platform-capability-catalog.md) |
-| Settings Manifest | [`capability-settings-manifest.md`](capability-settings-manifest.md) |
-| Review Checklist | [`architecture-review-checklist.md`](architecture-review-checklist.md) |
+| Artifact | Doc |
+|----------|-----|
+| This constitution | `L0-platform-architecture.md` |
+| P-01…P-05 | ADR-025…029 |
+| Closure + lifecycle/versioning/licensing/deps + final seal | [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) |
+| Passports | [`platform-capability-catalog.md`](platform-capability-catalog.md) |
+| Settings Manifest schema | [`capability-settings-manifest.md`](capability-settings-manifest.md) |
+| Invariants | [`architecture-invariants.md`](architecture-invariants.md) |
+| Checklist | [`architecture-review-checklist.md`](architecture-review-checklist.md) |
 | Guide | [`architecture-guide.md`](architecture-guide.md) |
 | Principles §0 | [`platform-architecture-principles.md`](platform-architecture-principles.md) |
 
-### Related L1 (not L0, but adjacent)
+### Forbidden vs Non-Goals
 
-Domain map, ADR-003…024 product/domain ADRs, ADR-005 storage hierarchy, module-catalog product keys — развиваются на L1 **без** изменения P-rules / L0 freeze, если не требуют RFC.
+| | Forbidden | Non-Goals |
+|---|-----------|-----------|
+| Смысл | Что **нельзя реализовывать** внутри (нарушение ownership) | Что **вообще не задача** capability (scope) |
+| Пример Forms | Нельзя свой SMTP SoT | Не является BPM / CRM / Candidate Evaluation |
+| Риск без поля | Вторая реализация | Медленное расползание «ещё чуть-чуть» |
 
----
+### Contract stability
 
-## What L0 is / is not
+| Level | Meaning | Consumer rule |
+|-------|---------|---------------|
+| **Stable** | Платформенный контракт; breaking только major + review | Business может опираться |
+| **Experimental** | Может меняться быстрее; documented | Не единственная опора Business без плана |
+| **Internal** | Внутри owner; не публичный платформенный API | Внешние модули **не** вызывают |
 
-| L0 IS | L0 is NOT |
-|-------|-----------|
-| Конституция: правила, границы, passport shape, checklist | Список всех knobs в JSON (→ Manifest implementations L2) |
-| Kinds Infrastructure / Platform / Business | UI wireframes admin shell |
-| Dependency + license + lifecycle **модели** | Конкретные биллинг-SKU цены |
-| Freeze + RFC | Еженедельный рефакторинг принципов |
-
----
-
-## After L0: where work happens
-
-| Level | Работа |
-|-------|--------|
-| **L1** | Domain ADRs, module boundaries, API surfaces, process specs |
-| **L2** | Module-scope, workflows, Manifest JSON, adapter implementations |
-| **L3** | Implementation notes, runbooks, experiments |
-
-Новая capability: Passport + Manifest + deps/license/lifecycle fields **по шаблону L0** — это **применение** конституции, не изменение L0 (если не меняются сами P-rules / шаблоны границ).
+Каждый пункт **Exposes** в Passport помечается уровнем стабильности.
 
 ---
 
 ## History
 
-- **2026-07-18** — L0 declared **CLOSED**; completeness 1–10 accepted via [`ADR-030`](ADR-030-l0-platform-architecture-closure.md).
+- **2026-07-18** — L0 closed (ADR-030): lifecycle, versioning, licensing, deps.  
+- **2026-07-18** — **Final seal:** Non-Goals · Contract Stability · Architecture Invariants → **FROZEN**.
