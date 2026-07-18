@@ -1,6 +1,8 @@
 # Document Hub: охват платформенного слоя документов
 
-**Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**. В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
+**Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
+**Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
+В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение
 

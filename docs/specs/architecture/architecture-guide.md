@@ -7,7 +7,8 @@
 | Документ | Содержание |
 |----------|------------|
 | [`platform-architecture-principles.md`](platform-architecture-principles.md) | Tenant/Company/Modules + **§0 Platform Rules P-01…P-03** |
-| [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) | Product keys + **§0.1 Platform Capability Catalog** |
+| [`platform-capability-catalog.md`](platform-capability-catalog.md) | **Capability Boundary** + Module/Capability **Passport** (Owned / Forbidden / Settings / …) |
+| [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) | Product keys + **§0.1 owners index** |
 | [`ADR-025`](ADR-025-standard-adapter-boundary.md) | **P-01** Standard Adapter Boundary |
 | [`ADR-026`](ADR-026-capability-ownership.md) | **P-02** Capability Ownership |
 | [`ADR-027`](ADR-027-capability-composition.md) | **P-03** Capability Composition |
@@ -22,12 +23,16 @@ Endpoint → Submission → Routing → Decision → Business Entity   ← по�
 Module A → Standard Adapter → Module B                         ← граница
 ```
 
-## Три вопроса перед кодом
+## Четыре вопроса перед кодом
 
 1. Только стандартные адаптеры? (P-01)  
 2. Только к владельцу capability? (P-02)  
-3. Композиция существующих capabilities, а не дубликат? (P-03)
+3. Композиция существующих capabilities, а не дубликат? (P-03)  
+4. Не забираем ли чужую зону из **Forbidden** паспорта? (Capability Boundary)
+
+Проектирование: не «в какой модуль положить?», а **«какой capability в каталоге это принадлежит?»**.
 
 ## История
 
 - 2026-07-18: guide для вехи platform canon (P-01…P-03).
+- 2026-07-18: Platform Capability Catalog + Boundary как практический SoT.

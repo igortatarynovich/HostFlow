@@ -40,9 +40,10 @@
 
 1. Default path: compose existing capabilities via their Public contracts.  
 2. Новая capability = ADR + Owner (P-02) + Public contracts (P-01 template) + Catalog entry.  
-3. «У нас уже почти есть X, сделаем свой X' в модуле» — **запрещено**, если X уже в Platform Capability Catalog.  
+3. «У нас уже почти есть X, сделаем свой X' в модуле» — **запрещено**, если X уже в [`platform-capability-catalog.md`](platform-capability-catalog.md).  
 4. Допустимы **тонкие domain facades** в бизнес-модуле, которые **только** оркестрируют чужие adapters (не второй SoT).  
-5. Review checklist: [`architecture-review-checklist.md`](architecture-review-checklist.md).
+5. Review checklist: [`architecture-review-checklist.md`](architecture-review-checklist.md).  
+6. Перед новой capability — сверить **Capability Boundary** (Owned/Forbidden) в каталоге; расширение чужой границы запрещено.
 
 ### Когда новая capability допустима
 

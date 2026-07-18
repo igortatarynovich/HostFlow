@@ -1,11 +1,16 @@
 # Модуль Recruitment: цель и границы
 
-Документ фиксирует **продуктовый модуль Recruitment** в смысле [`ADR-004`](../specs/architecture/ADR-004-five-product-modules-and-billing-events.md). Детальные фичи CRM (кандидаты, воронки, документы) распределены по существующим спекам в `docs/specs/modules/*`; здесь — **охват и anti-scope**.
+Документ фиксирует **продуктовый модуль Recruitment** в смысле [`ADR-004`](../specs/architecture/ADR-004-five-product-modules-and-billing-events.md).  
+**Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#recruitment).  
+Детальные фичи CRM (кандидаты, воронки, документы) распределены по существующим спекам в `docs/specs/modules/*`; здесь — **охват и anti-scope**.
 
 ## Суть
 
-- **Входит:** лиды, кандидаты, вакансии, клиенты рекрутинга, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **публикация вакансий и распространение** (Job Publishing) как capability модуля — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md).
-- **Не входит:** каталог операционных заказов услуг как отдельный контур (→ **Services**), выставление счетов и агрегированный биллинг (→ **Finance** через **Billing Events**), кадровый жизненный цикл сотрудника (→ **HR**), операции автопарка (→ **Fleet**).
+- **Входит:** Applications (отклики), кандидаты, вакансии / подборы, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **Job Post / vacancy-facing publishing** как recruitment-specific surface — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md). **Кампании / рекламные кабинеты / универсальный intake routing** — Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Подбор остаётся SoT потребности, не кампании.
+- **Не входит:** Sales Inquiry / ClientAccount (→ **Sales**); Service Order (→ **Services**); Invoice / Payment (→ **Finance**); **Employee Workspace** и кадровый lifecycle (→ **HR** — Recruitment только handoff + ссылка); операции автопарка (→ **Fleet**); владение Campaign/Ad как SoT (→ **Acquisition**). См. [`ADR-023`](../specs/architecture/ADR-023-recruitment-sales-module-separation.md).
+- **`Lead`** — только внутренний transport intake; в UI модуля — **Отклик (Application)** / **Кандидат**, никогда «лид» как рабочий объект ([`ui-constitution-v1.md`](../specs/architecture/ui-constitution-v1.md)).
+- **Nav:** Employees **не** живут в секции Recruitment.
+- **Stage 2A product API:** `/api/v1/recruitment/applications/*`, `/api/v1/recruitment/candidates/*` (legacy `/api/v1/candidates` remains compat).
 
 ## Job Publishing / Job Distribution (ADR-008)
 
@@ -18,7 +23,9 @@
 | **Publishing Channel** | Куда публикуем: career page, HostFlow job page, Pracuj, Indeed, Meta, LinkedIn, OLX и т.д. |
 | **Application Form** | Контур [**Forms**](../forms/module-scope.md) / [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md): отклик, файлы, RODO, предквалификация. |
 
-**Flow:** `Vacancy → Job Post → Publishing Channel → Application Form → Lead/Candidate` с атрибуцией **source / channel / campaign** и метриками конверсии **channel → candidate**.
+**Flow:** `Vacancy → Job Post → Publishing Channel → Application Form → Application → Candidate` с атрибуцией **source / channel / campaign**. Долгосрочно **Campaign / ads / multi-module placement** живут в Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Job Post не становится владельцем Sales Inquiry.
+
+**Подбор ≠ Campaign:** Подбор = внутренняя потребность Recruitment; Campaign = объект Acquisition (канал, бюджет, креатив). Один Подбор → много кампаний.
 
 **Зависимость:** при выключенном **Recruitment** Job Publishing **недоступен**. При включённом — basic в составе Recruitment, advanced — addon; интеграции отдельных порталов — через Marketplace ([`ADR-006`](../specs/architecture/ADR-006-marketplace-and-integration-platform.md)).
 

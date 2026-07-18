@@ -1,7 +1,8 @@
 # Модуль Forms: Core Platform Module
 
 Норматив: **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.  
-Intake spine / Endpoint: **[`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)**.
+Intake spine / Endpoint: **[`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)**.  
+**Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#forms).
 
 ## Суть
 

@@ -13,7 +13,7 @@
 | Слой | Документы | Owner | Что делает owner |
 |---|---|---|---|
 | **Engineering canon** | `AGENTS.md` | Engineering lead | Контракт PR, security gate, RLS правило, AGENTS.md обновляется при изменении PR-контракта |
-| **Architecture canon** | `docs/specs/architecture/hostflow-core-domain-map-v1.md`, `platform-architecture-principles.md`, `module-catalog-and-routing-map.md`, `architecture-review-checklist.md`, `architecture-guide.md`, ADR-002…027 (incl. P-01…P-03) | Architecture canon owner | Аппрувит ADR, держит domain map / capability catalog консистентным, защищает P-01/P-02/P-03 |
+| **Architecture canon** | `docs/specs/architecture/hostflow-core-domain-map-v1.md`, `platform-architecture-principles.md`, `platform-capability-catalog.md`, `module-catalog-and-routing-map.md`, `architecture-review-checklist.md`, `architecture-guide.md`, ADR-002…027 (incl. P-01…P-03) | Architecture canon owner | Аппрувит ADR, держит domain map / capability catalog (boundaries + passports) консистентным, защищает P-01/P-02/P-03 |
 | **Security canon** | `docs/security/security-ssot.md`, `security-review-checklist.md`, `runtime-roadmap.md`, `threat-models/*.md` | Security owner | Аппрувит изменения в RLS / handoff / classification / IR / threat models; держит PR security gate |
 | **Module canon (per module)** | `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` | Module owner (recruitment / sales / hr / fleet / services / finance / forms / document-hub) | Аппрувит изменения scope модуля; следит, что module spec не противоречит ADR |
 | **Workflow canon** | `docs/specs/workflows/*.md` + `workflows/index.md` | Workflow index maintainer (engineering lead) | Любой новый workflow регистрируется в `index.md` и линкуется из ADR / module spec / кода |
@@ -37,7 +37,7 @@
 | Содержимое `archive/legacy/YYYY-MM-DD/README.md` | Тот, кто делает archive (PR author) |
 | Cross-ref check (любой move в archive должен иметь canon replacement) | PR reviewer + lint |
 | `workflows/index.md` ↔ `docs/specs/workflows/*` synchronization | Workflow index maintainer |
-| `module-catalog-and-routing-map.md` ↔ `module-scope.md` ↔ `modules/*.md` synchronization | Architecture canon owner |
+| `platform-capability-catalog.md` ↔ `module-catalog-and-routing-map.md` §0.1 ↔ `module-scope.md` synchronization | Architecture canon owner |
 | Stale link cleanup | Lint enforces; manual fix by PR author |
 | Promotion L3 → L2 (когда implementation note становится canon) | Module owner или architecture canon owner (через ADR) |
 | Demotion L2 → archive (когда заменяется новым canon) | Owner соответствующего слоя |

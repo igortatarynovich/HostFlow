@@ -3,7 +3,7 @@
 **Канон домена и границ (v1):** **[`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md)** — владение, скоупы, cross-company, взаимодействие модулей.
 
 **Обзор архитектуры платформы** (multi-company SaaS, Tenant vs Company, модули vs shared layer, RBAC, cross-company) — **[`platform-architecture-principles.md`](platform-architecture-principles.md)**.  
-**Platform Rules P-01…P-03** — [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-027`](ADR-027-capability-composition.md); PR checklist — [`architecture-review-checklist.md`](architecture-review-checklist.md); guide — [`architecture-guide.md`](architecture-guide.md).
+**Platform Rules P-01…P-03** — [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-027`](ADR-027-capability-composition.md); **Capability Boundary / passports** — [`platform-capability-catalog.md`](platform-capability-catalog.md); PR checklist — [`architecture-review-checklist.md`](architecture-review-checklist.md); guide — [`architecture-guide.md`](architecture-guide.md).
 
 Документ — **нормативная карта** для разработки: какие ключи модулей существуют, как они связаны с API и настройками тенанта/компании, и что уже имплементировано vs запланировано. Детали биллинга и владения данными — [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md). **Иерархия настроек** (Tenant → Company → Module Settings per company) — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md). **Интеграции, витрина Marketplace и слои платформы** (core integrations vs модули vs apps) — [`ADR-006`](ADR-006-marketplace-and-integration-platform.md). **Публичные формы как платформенный input layer** — [`ADR-007`](ADR-007-forms-platform-capability.md), scope — [`../../forms/module-scope.md`](../../forms/module-scope.md). **Acquisition / Campaigns and Intake Routing** — [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md). **Публикация вакансий (Vacancy / Job Post / каналы)** внутри Recruitment — [`ADR-008`](ADR-008-job-publishing-and-distribution.md). **Document Hub** — общий слой документов для всех модулей — [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md). **Единые списки сущностей в SPA** (таблицы, фильтры, колонки, rail/modal) — [`ADR-010`](ADR-010-unified-resource-list-shell.md). **Полный стандарт UI приложения** (кнопки, сетка, шрифты, формы, даты, языки, настройки) — [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md). **Activity & Notification Operating Layer** — единая capability для задач/напоминаний/уведомлений/планировщика/календаря — [`ADR-012`](ADR-012-activity-notification-operating-layer.md), canon — [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Граница Recruitment ↔ HR — [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md). **Разделение Recruitment ↔ Sales (продуктовая поверхность)** и **Deployment / URL Boundaries** (поддомены модулей) — [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) §3.7.
 
@@ -35,9 +35,12 @@
 
 *Дополнительно на уровне tenant: subscription, billing, security, audit — см. [`platform-architecture-principles.md`](platform-architecture-principles.md) §2.*
 
-### 0.1 Platform Capability Catalog (owners)
+### 0.1 Platform Capability Catalog (owners index)
 
-Канон владельцев (**P-02**). Потребление — только через канонические адаптеры (**P-01**). Новая функциональность — композиция (**P-03**), не вторая реализация.
+**Полный SoT границ (Owned / Forbidden / Settings / Events / Passport 1–8):**  
+→ [`platform-capability-catalog.md`](platform-capability-catalog.md)
+
+Ниже — **краткий индекс владельцев** (**P-02**). Потребление — через канонические адаптеры (**P-01**). Новое — композиция (**P-03**). Споры «что принадлежит владельцу?» решаются только по полному каталогу.
 
 | Capability | Owner (SoT) | Normative ADR / docs | Typical consumers | Canonical contract family |
 |------------|-------------|----------------------|-------------------|---------------------------|
@@ -58,7 +61,7 @@
 
 **Уточнение Submission vs Forms:** Forms владеет **form surface + consent version pin** для HostFlow Form. Универсальный **Submission** как intake object и routing envelope — Shared Intake (ADR-024 spine). Не два Form Builder; не два Document Hub.
 
-**Business modules** (Recruitment, Sales/Services, HR, Fleet, Finance) владеют **только** своими domain entities и **композируют** строки таблицы выше.
+**Business modules** (Recruitment, Sales/Services, HR, Fleet, Finance) владеют **только** своими domain entities и **композируют** platform capabilities — границы в [`platform-capability-catalog.md`](platform-capability-catalog.md).
 
 ### Business modules (пять продуктов ADR-004)
 

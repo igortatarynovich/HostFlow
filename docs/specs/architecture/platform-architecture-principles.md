@@ -6,7 +6,7 @@
 
 Документ фиксирует **главную архитектурную логику** продукта: HostFlow — **modular multi-company SaaS platform**, а не одна монолитная CRM. Детали по подсистемам — в ADR и scope-файлах; здесь — **согласованная картина** и **формула** для принятия решений.
 
-**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`platform-capability-catalog.md`](platform-capability-catalog.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
 
 ---
 
@@ -23,11 +23,12 @@ HostFlow — **платформа capabilities**, а не только набо�
 **Поток:** `Endpoint → Submission → Routing → Decision → Business Entity`  
 **Граница:** `Module A → Standard Adapter → Module B`
 
-**Catalog owners:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1  
+**Catalog (boundaries):** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
+**Owners index:** [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0.1  
 **PR checklist:** [`architecture-review-checklist.md`](architecture-review-checklist.md)  
 **Guide:** [`architecture-guide.md`](architecture-guide.md)
 
-Адаптер может быть локальным интерфейсом в modular monolith. Каждый модуль фиксирует Ownership / Public & Required contracts / Events / Forbidden deps / Contract tests / Versioning (шаблон ADR-025).
+Адаптер может быть локальным интерфейсом в modular monolith. Каждый модуль/capability фиксирует passport (Purpose, Owned, Public/Required contracts, Events, Settings, Data Ownership, Forbidden) — [`platform-capability-catalog.md`](platform-capability-catalog.md).
 
 ---
 
@@ -275,3 +276,4 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-07-18: P-01 strengthened — canonical contracts (not ad-hoc wrappers); blockers; module contract template; governs all future ADRs.  
 - 2026-07-18: [`ADR-026`](ADR-026-capability-ownership.md) — **Platform Rule P-02 Capability Ownership**; HostFlow as platform of capabilities; §0 = P-01 + P-02.  
 - 2026-07-18: [`ADR-027`](ADR-027-capability-composition.md) — **P-03 Capability Composition**; checklist + capability catalog §0.1; platform canon milestone.
+- 2026-07-18: [`platform-capability-catalog.md`](platform-capability-catalog.md) — **Capability Boundary** + Module/Capability Passport; P-02 operationalized.
