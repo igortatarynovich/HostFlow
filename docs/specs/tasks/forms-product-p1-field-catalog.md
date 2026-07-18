@@ -8,15 +8,18 @@
 
 ---
 
-## Closed / active gates (after PR #45)
+## Closed / active gates (after P1.1)
 
 | Gate | Status |
 |------|--------|
 | P1 decomposition (P1.1–P1.4) | ✅ **ACTIVE** |
-| **P1.1 Registry** | READY FOR REVIEW (this PR) |
-| P1.2 Descriptors | READY after P1.1 merge |
+| **P1.1 Registry** | ✅ **COMPLETE** (`644b102a` / #47) |
+| Field Catalog Registry | ✅ **ACTIVE** |
+| Component Identity and Versioning | ✅ **ACTIVE** |
+| Compatibility Resolution | ✅ **ACTIVE** |
+| **P1.2 Descriptors** | **READY** ([`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md)) |
 | P1.3 Standard library | pending — **Builder unlock condition** |
-| P1.4 Extension API | pending (after P1.3) |
+| P1.4 Extension API | pending |
 | Builder (P2) | **LOCKED** |
 | Unlock Builder | **completed P1.3 Standard Library** only |
 
@@ -60,14 +63,14 @@ Builder | Public Form | Entity cards | CRM | Mobile   ← clients, not owners
 
 | Sprint | Name | Outcome | Builder | Status |
 |--------|------|---------|---------|--------|
-| **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | **READY FOR IMPLEMENTATION** |
-| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | pending |
+| **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | ✅ **COMPLETE** |
+| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | **READY** |
 | **P1.3** | Standard library | First Basic component set | **unlock after DoD** | pending |
 | **P1.4** | Extension API | Modules register their own components | unlocked path | pending |
 
-### P1.1 — Registry (**READY FOR IMPLEMENTATION**)
+### P1.1 — Registry (✅ COMPLETE)
 
-First step. Component registry only. **No UI. No Builder.**
+See [`forms-product-p1-1-registry.md`](forms-product-p1-1-registry.md). Platform-wide register/get/find/resolve_compatible; semver compatibility within major.
 
 **Can:**
 
@@ -78,7 +81,9 @@ First step. Component registry only. **No UI. No Builder.**
 
 **Out:** Builder UI · descriptors surface · standard library · module extension API  
 
-### P1.2 — Runtime descriptors
+### P1.2 — Runtime descriptors (**READY**)
+
+See [`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md).
 
 Each component exposes descriptors. Builder learns nothing about Email or Phone specifically — only:
 
@@ -215,4 +220,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 - 2026-07-18: Design canon after Product Layer epic merge `29f4057f` (#43).  
 - 2026-07-18: Component registry framing `8320dc7a` (#44).  
 - 2026-07-18: Implementation split into P1.1–P1.4; Builder as thin Catalog client.  
-- 2026-07-18: **ACTIVE** — decomposition merged `51063d1c` (#45); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.
+- 2026-07-18: **ACTIVE** — decomposition merged `51063d1c` (#45); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.  
+- 2026-07-18: P1.1 **COMPLETE** (`644b102a` / #47); P1.2 Descriptors **READY**.

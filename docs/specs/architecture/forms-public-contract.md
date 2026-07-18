@@ -175,4 +175,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Product Layer epic — Field Catalog SoT; Builder must not invent types.  
 - 2026-07-18: Product Layer ACTIVE (`29f4057f`); P1 = component registry (id/version/config/validation/normalization/storage/renderers).  
 - 2026-07-18: P1.1–P1.4 plan; Builder = thin Field Catalog client (not owner).  
-- 2026-07-18: P1.1 Registry implementation — `forms.field_catalog.registry.v1`.
+- 2026-07-18: P1.1 Registry implementation — `forms.field_catalog.registry.v1`.  
+- 2026-07-18: P1.1 COMPLETE (`644b102a`); P1.2 Descriptors READY (four surfaces; no UI renderers / no stdlib yet).
