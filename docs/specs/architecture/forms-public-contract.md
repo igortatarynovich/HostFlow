@@ -93,6 +93,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 - **Field Catalog** is a **component registry** (SoT): type identity, properties, config schema, validation, normalization, **storage contract**, Builder palette, Public Form render.
 - Each component has stable `component_id` + `component_version` (stronger than a bare type string).
 - **P1.1 Registry** (`forms.field_catalog.registry.v1`): platform-wide register/get/find/resolve_compatible; semver major/minor/patch; no major auto-jump ([`forms-product-p1-1-registry.md`](../tasks/forms-product-p1-1-registry.md)).
+- **P1.2 Descriptors:** four surfaces (Builder / Public / Validation / Normalization) — **descriptions, not implementations**; **must be declarative** (no executable logic) ([`forms-product-p1-2-descriptors.md`](../tasks/forms-product-p1-2-descriptors.md)).
 - **Builder** is a Catalog **client** (not owner): composition only; same components may serve forms, entity cards, CRM, mobile.
 - P1 lands as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API**.
 - Published `forms.field_schema.v1` fields must resolve to Catalog components (enforced when Catalog ships).
@@ -106,6 +107,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 - Editing a published snapshot in place  
 - Creating Forms-local routing / attribution / Outcome / KPI engines  
 - Calling Builder APIs that invent field types outside Field Catalog  
+- Embedding executable logic inside Field Catalog descriptors  
 - Bypassing Acquisition for campaign↔result links when Acquisition context applies  
 - Duplicating Shared Intake
 - Rewriting Sprint 1–6 storage/validation contracts as a parallel stack
@@ -176,4 +178,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Product Layer ACTIVE (`29f4057f`); P1 = component registry (id/version/config/validation/normalization/storage/renderers).  
 - 2026-07-18: P1.1–P1.4 plan; Builder = thin Field Catalog client (not owner).  
 - 2026-07-18: P1.1 Registry implementation — `forms.field_catalog.registry.v1`.  
-- 2026-07-18: P1.1 COMPLETE (`644b102a`); P1.2 Descriptors READY (four surfaces; no UI renderers / no stdlib yet).
+- 2026-07-18: P1.1 COMPLETE (`644b102a`); P1.2 Descriptors READY (four surfaces; no UI renderers / no stdlib yet).  
+- 2026-07-18: P1.2 Design ACTIVE; Descriptor Contract READY FOR IMPLEMENTATION; declarative-only rule.

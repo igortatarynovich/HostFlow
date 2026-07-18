@@ -131,10 +131,12 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | P1 decomposition (P1.1–P1.4) | ✅ **ACTIVE** (`51063d1c` / #45) |
 | **P1.1 Registry** | ✅ **COMPLETE** (`644b102a` / #47) |
 | Field Catalog Registry / Identity / Compatibility | ✅ **ACTIVE** |
-| **P1.2 Descriptors** | **READY** |
+| **P1.2 Descriptors** | ✅ **ACTIVE** (design) · Descriptor Contract **READY FOR IMPLEMENTATION** |
+| P1.3 Standard Library | **LOCKED** until P1.2 DoD |
 | Builder (P2) | **LOCKED** |
 | Unlock Builder | **completed P1.3 Standard Library** only |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
+| Executable logic inside descriptors | **FORBIDDEN** |
 
 ---
 
@@ -144,4 +146,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).  
 - 2026-07-18: P1 split into Registry → Descriptors → Standard library → Extension API; Builder = Catalog client.  
 - 2026-07-18: P1 decomposition ACTIVE (`51063d1c` / #45); P1.1 READY FOR IMPLEMENTATION.  
-- 2026-07-18: P1.1 COMPLETE (`644b102a` / #47); P1.2 Descriptors READY.
+- 2026-07-18: P1.1 COMPLETE (`644b102a` / #47); P1.2 Descriptors READY.  
+- 2026-07-18: P1.2 Design ACTIVE; declarative-descriptors rule; Descriptor Contract READY FOR IMPLEMENTATION.
