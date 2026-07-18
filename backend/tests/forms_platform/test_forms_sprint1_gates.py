@@ -129,10 +129,8 @@ def test_forms_sprint1_manifest_builder_default_false() -> None:
 
 
 def test_forms_sprint1_adds_no_new_migration() -> None:
-    """Sprint 1 is governance/adapter only — no new revision files for this sprint."""
-    forbidden = list(_VERSIONS.glob("*forms_sprint*")) + list(
-        _VERSIONS.glob("*sprint1*")
-    ) + list(_VERSIONS.glob("20260718*forms*"))
+    """Sprint 1 was governance/adapter only — no Sprint-1-named revision files."""
+    forbidden = list(_VERSIONS.glob("*forms_sprint1*")) + list(_VERSIONS.glob("*sprint1*"))
     assert forbidden == [], f"unexpected Forms Sprint 1 migrations: {forbidden}"
 
 

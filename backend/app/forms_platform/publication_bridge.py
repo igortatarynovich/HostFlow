@@ -98,6 +98,19 @@ def build_forms_platform_publication_view(
         "title": str(lead_form.title or ""),
         "public_slug": public_slug,
         "is_active": bool(lead_form.is_active),
+        "lifecycle_status": str(getattr(lead_form, "lifecycle_status", None) or "active"),
+        "published_version": int(getattr(lead_form, "published_version", 1) or 1),
+        "published_at": (
+            lead_form.published_at.isoformat()
+            if getattr(lead_form, "published_at", None) is not None
+            else None
+        ),
+        "has_immutable_snapshot": bool(getattr(lead_form, "published_snapshot_v1", None)),
+        "consent_pin": (
+            (lead_form.published_snapshot_v1 or {}).get("consent_pin")
+            if getattr(lead_form, "published_snapshot_v1", None)
+            else None
+        ),
         "mode": publication_mode,
         "tier": FORMS_TIER_BASIC,
         "module_owner": handler["module_owner"],
@@ -112,6 +125,7 @@ def build_forms_platform_publication_view(
             "field_mapping": True,
             "consent_capture": True,
             "presentation_rules": True,
+            "immutable_publish": True,
         },
         "canon": "TenantLeadForm is bridged as ADR-007 publication until FormTemplate migration",
     }

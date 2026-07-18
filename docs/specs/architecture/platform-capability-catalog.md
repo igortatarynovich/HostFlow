@@ -248,8 +248,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
-**Sprint 1:** Passport ✅ · Manifest ✅ · Public Contract ✅ · Adapter `forms.endpoint_adapter_v1` · Contract tests  
-**Builder:** **LOCKED** · **Forms Outcome/KPI:** forbidden (compose Acquisition)
+**Sprint 1:** ✅ COMPLETE · **Sprint 2:** runtime hardening (immutable publish · activate/deactivate · version pin) · **Builder:** **LOCKED** · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 

@@ -26,13 +26,15 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 ## Platform epic (после Epic P DoD)
 
-**Forms Sprint 1 — IN PROGRESS** ([`../specs/tasks/forms-sprint-1.md`](../specs/tasks/forms-sprint-1.md)):
+**Forms Sprint 1 — ✅ COMPLETE** ([`../specs/tasks/forms-sprint-1.md`](../specs/tasks/forms-sprint-1.md) · merge `37b652af`):
 
 1. Passport (Catalog `#forms`)  
 2. Manifest keys — [`capability-settings-manifest.md`](../specs/architecture/capability-settings-manifest.md#forms)  
-3. Public Contract — [`forms-public-contract.md`](../specs/architecture/forms-public-contract.md): `publish → endpoint → submission → result`  
-4. Adapter — `backend/app/forms_platform/adapter.py` (`forms.endpoint_adapter_v1`)  
-5. Contract Tests — `test_forms_sprint1_contract.py`
+3. Public Contract — [`forms-public-contract.md`](../specs/architecture/forms-public-contract.md)  
+4. Adapter — `forms.endpoint_adapter_v1`  
+5. Contract Tests  
+
+**Forms Sprint 2 — IN PROGRESS** ([`../specs/tasks/forms-sprint-2.md`](../specs/tasks/forms-sprint-2.md)): immutable publish · activate/deactivate · version/consent pin · typed errors.
 
 **Forms Builder — LOCKED** (`forms.feature_flags.builder_enabled=false`).
 
@@ -46,4 +48,5 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-18: Core Platform Module + Endpoint spine.  
 - 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.  
 - 2026-07-18: Epic P COMPLETE — Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
-- 2026-07-18: Sprint 1 infra started — Public Contract + Adapter + contract tests.
+- 2026-07-18: Sprint 1 infra started — Public Contract + Adapter + contract tests.  
+- 2026-07-18: Sprint 1 **COMPLETE** (PR #36); Sprint 2 runtime hardening opened.

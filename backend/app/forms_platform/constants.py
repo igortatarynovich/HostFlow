@@ -14,3 +14,11 @@ HANDLER_RECRUITMENT_LEAD_DRAFT = "recruitment.lead_draft"
 HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT = "recruitment.client_lead_draft"
 
 FORMS_TIER_BASIC = "basic"
+
+# Sprint 2 lifecycle / error codes (stable)
+LIFECYCLE_DRAFT = "draft"
+LIFECYCLE_ACTIVE = "active"
+LIFECYCLE_ARCHIVED = "archived"
+
+PUBLIC_CONTRACT_ID = "forms.public_contract.v1"
+ADAPTER_ID = "forms.endpoint_adapter_v1"

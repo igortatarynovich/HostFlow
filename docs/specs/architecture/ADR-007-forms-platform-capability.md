@@ -101,4 +101,5 @@ Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versio
 - 2026-07-18: Core Platform Module; Endpoint spine (ADR-024); Forms SoT + consent version pinning; Platform Forms epic; link **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).  
 - 2026-07-18: Forms Sprint 1 gated on Epic P / 3D DoD; sequence Passport → Manifest → Public Contract → Adapter → Tests (not Builder first).  
 - 2026-07-18: Epic P COMPLETE — Forms Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
-- 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).
+- 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).  
+- 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.
