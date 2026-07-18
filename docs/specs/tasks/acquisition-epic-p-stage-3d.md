@@ -158,7 +158,7 @@ Epic P закрыт **только если**:
 | PR | Focus | Status |
 |----|--------|--------|
 | **PR-1** | Result attribution record/projection from `acquisition_routing_v1` + submission id; contract test skeleton | ✅ DONE 2026-07-18 · [PR #31](https://github.com/igortatarynovich/HostFlow/pull/31) |
-| **PR-2** | Outcome entity + lifecycle statuses + progress from attributed Results | 🔄 in progress |
+| **PR-2** | Outcome entity + lifecycle statuses + progress from attributed Results | ✅ DONE 2026-07-18 · [PR #32](https://github.com/igortatarynovich/HostFlow/pull/32) |
 | **PR-3** | Flight/Campaign KPI aggregates (Spend, Leads, Qualified, Converted, CPL, CPQ, Cost per Outcome) | planned |
 | **PR-4** | Full chain contract tests green; DoD checklist; unlock note in ADR-024 / ADR-007 | planned |
 
