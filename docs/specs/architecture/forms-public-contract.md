@@ -91,8 +91,9 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 **Normative** ([`forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · P1 [`forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)):
 
 - **Field Catalog** is a **component registry** (SoT): type identity, properties, config schema, validation, normalization, **storage contract**, Builder palette, Public Form render.
-- Each component has stable `component_id` + `component_version`.
-- **Builder** only selects Catalog components and order — it does **not** invent data types (avoids low-code editor dictating platform architecture).
+- Each component has stable `component_id` + `component_version` (stronger than a bare type string).
+- **Builder** is a Catalog **client** (not owner): composition only; same components may serve forms, entity cards, CRM, mobile.
+- P1 lands as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API** ([`forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).
 - Published `forms.field_schema.v1` fields must resolve to Catalog components (enforced when Catalog ships).
 - Gaps discovered during Builder work → surgical platform extension; **no** rewrite of Sprint 1–6 contour.
 
@@ -169,4 +170,5 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 6 — append-only `form_submission_envelopes` persistence.  
 - 2026-07-18: Sprint 6 COMPLETE (PR #41) — Submission Envelope Contract ACTIVE; Builder LOCKED.  
 - 2026-07-18: Product Layer epic — Field Catalog SoT; Builder must not invent types.  
-- 2026-07-18: Product Layer ACTIVE (`29f4057f`); P1 = component registry (id/version/config/validation/normalization/storage/renderers).
+- 2026-07-18: Product Layer ACTIVE (`29f4057f`); P1 = component registry (id/version/config/validation/normalization/storage/renderers).  
+- 2026-07-18: P1.1–P1.4 plan; Builder = thin Field Catalog client (not owner).

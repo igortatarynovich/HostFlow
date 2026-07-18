@@ -87,7 +87,18 @@ Consequences:
 
 See [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md).
 
-Each component has a stable descriptor: `component_id`, `component_version`, properties, `config_schema`, validation, normalization, storage contract, Builder renderer, Public Form renderer, category/search.
+**Not** a flat type enum (`text` / `email`) — **versioned components** (`TextInput` / `EmailInput` / `DriverLicense` / …) with full contracts.
+
+Implementation split:
+
+| Sprint | Focus |
+|--------|--------|
+| **P1.1** Registry | register · find · get(id/version) · version compatibility |
+| **P1.2** Runtime descriptors | Builder / Public / Validation / Normalization descriptors |
+| **P1.3** Standard library | Text · TextArea · Number · Email · Phone · Date · Checkbox · Radio · Select · MultiSelect · File · Hidden → **Builder may start** |
+| **P1.4** Extension API | Modules register own components (Recruitment / HR / Fleet / Service) |
+
+**Builder (P2)** is a thin Catalog **client**: show catalog · lay out · save composition. Not the owner of types. Same components may later serve entity cards, CRM internals, mobile, and other uniform input surfaces.
 
 Builder stores **composition only**; logic stays in Catalog.
 
@@ -117,8 +128,8 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 |------|--------|
 | Forms Sprint 1–6 (L0 platform) | ✅ COMPLETE |
 | Forms Product Layer epic | ✅ **ACTIVE** (canon · `29f4057f`) |
-| P1 Field Catalog (component registry) | **READY** (design) |
-| Builder (P2) | **LOCKED** until P1 DoD |
+| P1 Field Catalog (component registry) | **READY** — implement as P1.1→P1.4 |
+| Builder (P2) | **LOCKED** until **P1.3** (standard library) |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 
 ---
@@ -126,4 +137,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 ## History
 
 - 2026-07-18: Opened after Sprint 6 COMPLETE (`7e259f22` / #41). Backend contour closed; product surface next.  
-- 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).
+- 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).  
+- 2026-07-18: P1 split into Registry → Descriptors → Standard library → Extension API; Builder = Catalog client.
