@@ -520,12 +520,12 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 Должен доказать **всю** цепочку:
 
 ```text
-Campaign + Goal Type + Primary KPI → Target → Flight(1) → Form → Intake Source → Submission
+Campaign + Goal Type + Primary KPI → Target → Flight(1) → Endpoint → Submission
   → Route Intent → Recruitment Application | Sales Inquiry
   → Result attribution (Flight → Campaign) → Outcome progress
 ```
 
-**В минимальный V1 входит:** Campaign; **Goal Type + Primary KPI**; Targets; **один CampaignRun**; reusable Form; Intake Source; link existing Meta/external; Submission; routing в Recruitment **и** Sales; базовые spend/lead metrics; Result → Flight → Campaign; хотя бы одно **Outcome** + progress; Timeline событий.
+**В минимальный V1 входит:** Campaign; **Goal Type + Primary KPI**; Targets; **один CampaignRun**; **Endpoints** (V1: Form + Intake Source specializations); Submission; routing в Recruitment **и** Sales; базовые spend/lead metrics; Result → Flight → Campaign; хотя бы одно **Outcome** + progress; Timeline событий.
 
 **Места в модели уже закреплены, но идут после вертикали V1:** **CampaignTemplate** (instantiate playbook); multi-Flight UX / сравнение волн; Audience; Assets; полноценный Budget; расширенная Intelligence; create/manage ads in-provider (V2); Automation Campaigns / AI (V3).
 
