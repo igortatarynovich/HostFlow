@@ -17,8 +17,8 @@
 | Field Catalog Registry | ✅ **ACTIVE** |
 | Component Identity and Versioning | ✅ **ACTIVE** |
 | Compatibility Resolution | ✅ **ACTIVE** |
-| **P1.2 Descriptors** | **READY** ([`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md)) |
-| P1.3 Standard library | pending — **Builder unlock condition** |
+| **P1.2 Descriptors** | ✅ **ACTIVE** (design) · Descriptor Contract **READY FOR IMPLEMENTATION** ([`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md)) |
+| P1.3 Standard library | **LOCKED** until P1.2 DoD — then **Builder unlock condition** |
 | P1.4 Extension API | pending |
 | Builder (P2) | **LOCKED** |
 | Unlock Builder | **completed P1.3 Standard Library** only |
@@ -64,8 +64,8 @@ Builder | Public Form | Entity cards | CRM | Mobile   ← clients, not owners
 | Sprint | Name | Outcome | Builder | Status |
 |--------|------|---------|---------|--------|
 | **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | ✅ **COMPLETE** |
-| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | **READY** |
-| **P1.3** | Standard library | First Basic component set | **unlock after DoD** | pending |
+| **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | ✅ **ACTIVE** (design) · impl READY |
+| **P1.3** | Standard library | First Basic component set | **unlock after DoD** | **LOCKED** until P1.2 |
 | **P1.4** | Extension API | Modules register their own components | unlocked path | pending |
 
 ### P1.1 — Registry (✅ COMPLETE)
@@ -81,11 +81,11 @@ See [`forms-product-p1-1-registry.md`](forms-product-p1-1-registry.md). Platform
 
 **Out:** Builder UI · descriptors surface · standard library · module extension API  
 
-### P1.2 — Runtime descriptors (**READY**)
+### P1.2 — Runtime descriptors (✅ design ACTIVE · impl READY)
 
 See [`forms-product-p1-2-descriptors.md`](forms-product-p1-2-descriptors.md).
 
-Each component exposes descriptors. Builder learns nothing about Email or Phone specifically — only:
+Each component exposes four **declarative** descriptors (no executable logic). Builder learns nothing about Email or Phone specifically — only:
 
 > “Give me the descriptor.”
 
@@ -221,4 +221,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 - 2026-07-18: Component registry framing `8320dc7a` (#44).  
 - 2026-07-18: Implementation split into P1.1–P1.4; Builder as thin Catalog client.  
 - 2026-07-18: **ACTIVE** — decomposition merged `51063d1c` (#45); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.  
-- 2026-07-18: P1.1 **COMPLETE** (`644b102a` / #47); P1.2 Descriptors **READY**.
+- 2026-07-18: P1.1 **COMPLETE** (`644b102a` / #47); P1.2 Descriptors **READY**.  
+- 2026-07-18: P1.2 Design **ACTIVE**; Descriptor Contract READY FOR IMPLEMENTATION; descriptors must be declarative (no executable logic); P1.3 LOCKED.
