@@ -15,7 +15,7 @@
 Forms владеет **HostFlow Form surface** (immutable publish + consent pin + submission entry).  
 Универсальный Endpoint / Submission routing envelope / Result attribution / Outcome / KPI — **не** Forms SoT.
 
-Storage bridge: `TenantLeadForm` + `published_snapshot_v1` via C4 publication bridge until FormTemplate migration.
+Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + append-only ledger `form_publication_versions` (Sprint 3).
 
 ---
 
@@ -24,7 +24,8 @@ Storage bridge: `TenantLeadForm` + `published_snapshot_v1` via C4 publication br
 | Op | Stability | Description |
 |----|-----------|-------------|
 | `resolve` | **Stable** | Idempotent read of publication view (`form_id` or `public_slug`) |
-| `publish` | **Stable** | **Mutation:** bump `published_version`, freeze `published_snapshot_v1`, pin consent versions, optionally activate |
+| `publish` | **Stable** | **Mutation:** append ledger row + bump pointer `published_version` + freeze current snapshot + pin consent; optional `idempotency_key` |
+| `list_versions` / `get_version` | **Stable** | Audit/read historical ledger rows (immutable) |
 | `activate` / `deactivate` | **Stable** | Endpoint activation without rewriting published snapshot |
 | `endpoint` | **Stable** | Map **active** publication → Endpoint identity (`hostflow_public_form`) |
 | `submission` | **Stable** | Submission entry for Shared Intake; requires active endpoint + version pin metadata |
@@ -40,6 +41,8 @@ Storage bridge: `TenantLeadForm` + `published_snapshot_v1` via C4 publication br
 | `forms_stale_published_version` | 409 | Client version ≠ pinned `published_version` |
 | `forms_publication_key_required` | 422 | Missing `form_id` / `public_slug` |
 | `forms_builder_locked` | 403 | Builder surface attempted |
+| `forms_publication_version_not_found` | 404 | Unknown ledger version |
+| `forms_publication_version_pinned` | 409 | Delete/mutate version with submission pins or current pointer |
 
 ### Inputs / outputs (summary)
 
@@ -67,8 +70,8 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 ## Invariants
 
 1. HostFlow Public Form **is-a** Endpoint; Campaign binds Endpoint, not Form internals.  
-2. Published snapshot is **immutable**; new publish → new `published_version`. Live title edits do not rewrite frozen snapshot.  
-3. Submission must match pinned `published_version` (+ consent pin when required).  
+2. Published snapshot is **immutable** per version. `published_snapshot_v1` is the **current pointer** only; history is `form_publication_versions` (append-only). New publish → new ledger row + new pointer version.  
+3. Submission must match pinned `published_version` (+ consent pin when required) and may register a ledger **submission pin** (blocks delete).  
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
@@ -94,7 +97,8 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | resolve / publish / activate / deactivate / endpoint / submission / result | `backend/app/forms_platform/adapter.py` |
 | Publication view | `publication_bridge.py` |
 | Errors | `forms_platform/errors.py` |
-| Snapshot columns | migration `202607180007_forms_s2` |
+| Snapshot columns | migration `202607180007_forms_s2` (current pointer) |
+| Version ledger | migration `202607180008_forms_s3` · `publication_versions.py` |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -105,6 +109,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 
 - Sprint 1: `test_forms_sprint1_contract.py` · `test_forms_sprint1_gates.py`  
 - Sprint 2: `test_forms_sprint2_contract.py` · `test_forms_sprint2_gates.py`  
+- Sprint 3: `test_forms_sprint3_contract.py` · `test_forms_sprint3_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -127,4 +132,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 
 - 2026-07-18: Sprint 1 Public Contract after Epic P DoD.  
 - 2026-07-18: Sprint 1 COMPLETE (PR #36).  
-- 2026-07-18: Sprint 2 — resolve/publish split, snapshot, activate/deactivate, error codes, version pin.
+- 2026-07-18: Sprint 2 — resolve/publish split, snapshot, activate/deactivate, error codes, version pin.  
+- 2026-07-18: Sprint 2 COMPLETE (PR #37).  
+- 2026-07-18: Sprint 3 — append-only `form_publication_versions` ledger; `published_snapshot_v1` clarified as current pointer.

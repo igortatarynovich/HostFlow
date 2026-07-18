@@ -37,6 +37,14 @@ from backend.app.forms_platform.manifest import (
 from backend.app.forms_platform.publication_bridge import (
     resolve_forms_platform_publication,
 )
+from backend.app.forms_platform.publication_versions import (
+    append_publication_version,
+    find_version_by_idempotency_key,
+    get_publication_version,
+    list_publication_versions,
+    register_submission_pin,
+    version_row_to_dict,
+)
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.models.mixins import now_utc
 
@@ -140,8 +148,9 @@ async def commit_publish(
     terms_version: str | None = None,
     privacy_version: str | None = None,
     activate: bool = True,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
-    """Op: publish — freeze immutable snapshot and bump published_version."""
+    """Op: publish — append ledger row, update current pointer, bump version."""
     if not form_id:
         raise FormsMissingKeyError("form_id is required to publish")
 
@@ -150,6 +159,25 @@ async def commit_publish(
         raise FormsNotFoundError(details={"form_id": form_id})
     if str(lead_form.lifecycle_status) == LIFECYCLE_ARCHIVED:
         raise FormsArchivedError(details={"form_id": form_id})
+
+    # Idempotent publish: same key returns the original version (no new ledger row).
+    if idempotency_key:
+        existing = await find_version_by_idempotency_key(
+            db,
+            tenant_id=tenant_id,
+            form_id=form_id,
+            idempotency_key=idempotency_key,
+        )
+        if existing is not None:
+            publication = await resolve_publication(
+                db, tenant_id=tenant_id, form_id=str(form_id)
+            )
+            return {
+                **publication,
+                "idempotent_replay": True,
+                "replayed_version": int(existing.version),
+                "replayed_version_id": str(existing.id),
+            }
 
     pin_required = bool(
         FORMS_MANIFEST_KEYS["forms.policies.consent_version_pin"]["default"]
@@ -161,17 +189,53 @@ async def commit_publish(
     }
 
     next_version = int(lead_form.published_version or 0) + 1
-    lead_form.published_version = next_version
-    lead_form.published_snapshot_v1 = _build_snapshot(
+    snapshot = _build_snapshot(
         lead_form, published_version=next_version, consent_pin=consent_pin
     )
-    lead_form.published_at = now_utc()
+    published_at = now_utc()
+    await append_publication_version(
+        db,
+        tenant_id=tenant_id,
+        form_id=str(form_id),
+        version=next_version,
+        snapshot=snapshot,
+        consent_pin=consent_pin,
+        idempotency_key=idempotency_key,
+        published_at=published_at,
+    )
+    # Current pointer (denormalized cache of latest ledger row — not full history).
+    lead_form.published_version = next_version
+    lead_form.published_snapshot_v1 = snapshot
+    lead_form.published_at = published_at
     if activate:
         lead_form.is_active = True
         lead_form.lifecycle_status = LIFECYCLE_ACTIVE
     await db.flush()
 
     return await resolve_publication(db, tenant_id=tenant_id, form_id=str(form_id))
+
+
+async def get_version_for_audit(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    version: int,
+) -> dict[str, Any]:
+    """Read-only historical publication version (audit)."""
+    row = await get_publication_version(
+        db, tenant_id=tenant_id, form_id=form_id, version=version
+    )
+    return version_row_to_dict(row)
+
+
+async def list_versions_for_audit(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+) -> list[dict[str, Any]]:
+    return await list_publication_versions(db, tenant_id=tenant_id, form_id=form_id)
 
 
 async def activate_endpoint(
@@ -253,17 +317,39 @@ def submission_entry(publication: dict[str, Any]) -> dict[str, Any]:
         raise FormsInactiveError(
             details={"publication_id": publication.get("publication_id")}
         )
+    version = int(publication.get("published_version") or 1)
     return {
         "forms_role": "submission_surface",
         "public_intake_path": publication.get("public_intake_path") or "/api/v1/public/intake",
         "storage_backend": publication.get("storage_backend"),
         "submission_handler": publication.get("submission_handler"),
         "publication_id": publication.get("publication_id"),
-        "published_version": int(publication.get("published_version") or 1),
+        "published_version": version,
+        "publication_version_pin": {
+            "form_id": publication.get("publication_id"),
+            "version": version,
+        },
         "consent_pin": publication.get("consent_pin"),
         "contract_version": publication.get("contract_version") or FORMS_PLATFORM_CONTRACT_VERSION,
         "builder_locked": builder_is_locked_by_manifest(),
     }
+
+
+async def pin_submission_to_publication_version(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    published_version: int,
+) -> dict[str, Any]:
+    """Record that a submission is anchored to a ledger version (forbid later delete)."""
+    row = await register_submission_pin(
+        db,
+        tenant_id=tenant_id,
+        form_id=form_id,
+        version=int(published_version),
+    )
+    return version_row_to_dict(row)
 
 
 def assert_submission_version_compatible(
@@ -306,6 +392,7 @@ def result_handoff(*, submission_id: str | None = None) -> dict[str, Any]:
             "forms_owned_routing_engine",
             "forms_builder",
             "edit_published_version_in_place",
+            "delete_pinned_publication_version",
         ],
         "adapter_id": FORMS_ADAPTER_ID,
         "contract_id": FORMS_PUBLIC_CONTRACT_ID,
@@ -325,6 +412,8 @@ def adapter_identity() -> dict[str, Any]:
             "endpoint",
             "submission",
             "result",
+            "list_versions",
+            "get_version",
         ],
         "builder_locked": builder_is_locked_by_manifest(),
         "manifest_builder_flag_default": FORMS_MANIFEST_KEYS[

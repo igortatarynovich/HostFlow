@@ -66,7 +66,8 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 |------|--------|
 | Acquisition Stage 3D | ✅ COMPLETE |
 | Forms Sprint 1 | ✅ **COMPLETE** (PR #36 · `37b652af`) |
-| Forms Sprint 2 | **IN PROGRESS** (runtime hardening) |
+| Forms Sprint 2 | ✅ **COMPLETE** (PR #37 · `ec5fcd86`) |
+| Forms Sprint 3 | **IN PROGRESS** (publication version ledger) |
 | Forms Builder | **LOCKED** |
 
 Contract tests:
@@ -92,8 +93,9 @@ Passport → Manifest → Public Contract
 | Public Contract | [`forms-public-contract.md`](forms-public-contract.md) |
 | Adapter | `backend/app/forms_platform/adapter.py` (`forms.endpoint_adapter_v1`) |
 | Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) · `forms_platform/manifest.py` |
-| Migration (Sprint 2) | `202607180007_forms_s2` |
-| Contract tests | `test_forms_sprint1_*.py` · `test_forms_sprint2_*.py` |
+| Migration (Sprint 2) | `202607180007_forms_s2` (current pointer) |
+| Migration (Sprint 3) | `202607180008_forms_s3` (append-only ledger) |
+| Contract tests | `test_forms_sprint1_*.py` · `test_forms_sprint2_*.py` · `test_forms_sprint3_*.py` |
 
 Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint / C4 publication bridge — не новая form engine.  
 **Не** Builder / drag-and-drop / schema editor / marketplace / новый routing / Forms Outcome-KPI.

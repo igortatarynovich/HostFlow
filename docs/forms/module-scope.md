@@ -26,17 +26,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 ## Platform epic (после Epic P DoD)
 
-**Forms Sprint 1 — ✅ COMPLETE** ([`../specs/tasks/forms-sprint-1.md`](../specs/tasks/forms-sprint-1.md) · merge `37b652af`):
+**Forms Sprint 1 — ✅ COMPLETE** · **Forms Sprint 2 — ✅ COMPLETE** · **Forms Sprint 3 — IN PROGRESS** ([`../specs/tasks/forms-sprint-3.md`](../specs/tasks/forms-sprint-3.md)):
 
-1. Passport (Catalog `#forms`)  
-2. Manifest keys — [`capability-settings-manifest.md`](../specs/architecture/capability-settings-manifest.md#forms)  
-3. Public Contract — [`forms-public-contract.md`](../specs/architecture/forms-public-contract.md)  
-4. Adapter — `forms.endpoint_adapter_v1`  
-5. Contract Tests  
-
-**Forms Sprint 2 — IN PROGRESS** ([`../specs/tasks/forms-sprint-2.md`](../specs/tasks/forms-sprint-2.md)): immutable publish · activate/deactivate · version/consent pin · typed errors.
-
-**Forms Builder — LOCKED** (`forms.feature_flags.builder_enabled=false`).
+Append-only `form_publication_versions`; current pointer remains on form; Builder **LOCKED**.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
