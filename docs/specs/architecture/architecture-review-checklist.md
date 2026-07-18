@@ -37,11 +37,14 @@
 - [ ] ADR **ссылается** на P-01…P-05 / INV / Catalog — не дублирует L0  
 - [ ] L0 freeze: нет правки конституции без RFC / `l0-errata`; нет «ещё одного маленького правила» в L0 под задачу модуля  
 - [ ] Passport / Manifest / docs синхронизированы  
-- [ ] Новый модуль/capability: полный шаблон (Passport, Exposes, Data Ownership, deps, license; Manifest если config) 
+- [ ] Новый модуль/capability: полный шаблон (Passport, Exposes, Data Ownership, deps, license; Manifest если config)  
+- [ ] **L1 delivery:** Passport → Manifest → **Public Contract** → Adapter → Contract Tests → **только потом** UI ([`capability-contract.md`](capability-contract.md))  
+- [ ] Public Contract зафиксирован до merge Adapter; contract tests покрывают публичную цепочку  
 
 ---
 
 ## История
 
 - 2026-07-18: L0 closure checklist.  
-- 2026-07-18: Final seal — Non-Goals, stability, invariants.
+- 2026-07-18: Final seal — Non-Goals, stability, invariants.  
+- 2026-07-18: Capability Contract sequence added (Phase 1).

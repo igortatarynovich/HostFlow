@@ -1,4 +1,4 @@
-"""ADR-024 Stage 3A/3B — Campaign foundation + Flight Form/Intake Source bindings."""
+"""ADR-024 Stage 3A/3B/3D — Campaign foundation, Endpoint bindings, Result attribution."""
 
 from __future__ import annotations
 
@@ -202,3 +202,55 @@ class CampaignRunIntakeSource(Base, TimestampMixin):
     campaign_run: Mapped["CampaignRun"] = relationship(
         "CampaignRun", back_populates="intake_source_links"
     )
+
+
+class CampaignResultAttribution(Base, TimestampMixin):
+    """Stage 3D — automatic Result → Campaign/Flight/Endpoint/Submission attribution.
+
+    Ownership: Attribution is an Acquisition projection. Domain Results remain owned by
+    destination modules — ``result_type`` + ``result_id`` are opaque refs (no typed FK
+    to Candidate / Application / Inquiry / Client).
+    """
+
+    __tablename__ = "acq_result_attributions"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "result_type",
+            "result_id",
+            name="uq_acq_result_attributions_tenant_result",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "submission_id",
+            name="uq_acq_result_attributions_tenant_submission",
+        ),
+        Index("ix_acq_result_attributions_tenant_campaign", "tenant_id", "campaign_id"),
+        Index("ix_acq_result_attributions_tenant_flight", "tenant_id", "campaign_run_id"),
+        Index("ix_acq_result_attributions_tenant_lead", "tenant_id", "lead_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    campaign_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaign_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Opaque Operations Result identity (no FK into domain tables).
+    result_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    submission_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    lead_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    route_intent: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    # V1 transitional Endpoint identity (Form / Intake Source specializations).
+    endpoint_form_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    endpoint_intake_source_profile_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    routing_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

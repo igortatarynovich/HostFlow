@@ -24,11 +24,24 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 - First entry → Universal Routing (один раз на новый Lead).  
 - Continuation → наследование Routing/Attribution context Lead.
 
-## Platform epic (после Acquisition V1)
+## Platform epic (после Epic P / Stage 3D DoD)
 
-Form Builder; Endpoint Engine; Submission Engine; Versioning; Consent; Public Publishing; Internal Forms; Themes; Conditional Logic; File Upload; Multi-language; Automations / Documents / Entity Workspace.
+**Не начинать Builder до закрытия Acquisition V1 vertical.**
+
+**Forms Sprint 1** ([`capability-contract.md`](../specs/architecture/capability-contract.md)):
+
+1. Passport (полный)  
+2. Manifest keys (flags, limits, defaults, permissions, adapter config)  
+3. Public Contract: `publish → endpoint → submission → result`  
+4. Adapter поверх Endpoint  
+5. Contract Tests  
+
+Затем: Form Builder; Endpoint Engine; Consent; Themes; … (полный эпик ADR-007).
+
+Gate: [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md).
 
 ## История
 
 - 2026-05: платформенная capability.  
-- 2026-07-18: Core Platform Module + Endpoint spine.
+- 2026-07-18: Core Platform Module + Endpoint spine.  
+- 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.
