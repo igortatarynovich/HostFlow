@@ -26,9 +26,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 ## Platform epic (после Epic P DoD)
 
-**Forms Sprint 1 — ✅ COMPLETE** · **Forms Sprint 2 — ✅ COMPLETE** · **Forms Sprint 3 — IN PROGRESS** ([`../specs/tasks/forms-sprint-3.md`](../specs/tasks/forms-sprint-3.md)):
+**Forms Sprint 1–3 — ✅ COMPLETE** · **Forms Sprint 4 — IN PROGRESS** ([`../specs/tasks/forms-sprint-4.md`](../specs/tasks/forms-sprint-4.md)):
 
-Append-only `form_publication_versions`; current pointer remains on form; Builder **LOCKED**.
+Canonical field schema frozen in publication versions + `validate_submission`; Builder **LOCKED** (no visual schema editor / drag-and-drop).
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 

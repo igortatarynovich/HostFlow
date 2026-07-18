@@ -89,6 +89,12 @@ def build_forms_platform_publication_view(
     handler = resolve_submission_handler(route_intent=route_intent)
     ep_code = str(entity_profile_code or DRIVER_CE_PROFILE_CODE).strip() or DRIVER_CE_PROFILE_CODE
     presentation_code = str(getattr(intake_source, "presentation_code", None) or "").strip() or None
+    snap = getattr(lead_form, "published_snapshot_v1", None)
+    snap_dict = snap if isinstance(snap, dict) else {}
+    field_schema = snap_dict.get("field_schema") if isinstance(snap_dict.get("field_schema"), dict) else None
+    has_field_schema = bool(
+        field_schema and field_schema.get("schema_contract") == "forms.field_schema.v1"
+    )
 
     return {
         "contract_version": FORMS_PLATFORM_CONTRACT_VERSION,
@@ -105,12 +111,10 @@ def build_forms_platform_publication_view(
             if getattr(lead_form, "published_at", None) is not None
             else None
         ),
-        "has_immutable_snapshot": bool(getattr(lead_form, "published_snapshot_v1", None)),
-        "consent_pin": (
-            (lead_form.published_snapshot_v1 or {}).get("consent_pin")
-            if getattr(lead_form, "published_snapshot_v1", None)
-            else None
-        ),
+        "has_immutable_snapshot": bool(snap_dict),
+        "consent_pin": snap_dict.get("consent_pin"),
+        "has_field_schema": has_field_schema,
+        "field_schema": field_schema,
         "mode": publication_mode,
         "tier": FORMS_TIER_BASIC,
         "module_owner": handler["module_owner"],
@@ -126,6 +130,7 @@ def build_forms_platform_publication_view(
             "consent_capture": True,
             "presentation_rules": True,
             "immutable_publish": True,
+            "field_schema_validation": has_field_schema,
         },
         "canon": "TenantLeadForm is bridged as ADR-007 publication until FormTemplate migration",
     }

@@ -25,6 +25,7 @@ Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + app
 |----|-----------|-------------|
 | `resolve` | **Stable** | Idempotent read of publication view (`form_id` or `public_slug`) |
 | `publish` | **Stable** | **Mutation:** append ledger row + bump pointer `published_version` + freeze current snapshot + pin consent; optional `idempotency_key` |
+| `validate_submission` | **Stable** | Validate payload against frozen `forms.field_schema.v1` (or pre_schema compat) |
 | `list_versions` / `get_version` | **Stable** | Audit/read historical ledger rows (immutable) |
 | `activate` / `deactivate` | **Stable** | Endpoint activation without rewriting published snapshot |
 | `endpoint` | **Stable** | Map **active** publication → Endpoint identity (`hostflow_public_form`) |
@@ -43,12 +44,18 @@ Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + app
 | `forms_builder_locked` | 403 | Builder surface attempted |
 | `forms_publication_version_not_found` | 404 | Unknown ledger version |
 | `forms_publication_version_pinned` | 409 | Delete/mutate version with submission pins or current pointer |
+| `forms_submission_validation_failed` | 422 | Field schema validation failed (unknown/required/type) |
+| `forms_unknown_field` | 422 | Field not in frozen schema |
+| `forms_required_field_missing` | 422 | Required field empty |
+| `forms_field_type_invalid` | 422 | Value failed type check |
 
 ### Inputs / outputs (summary)
 
 **`resolve`** — In: `tenant_id` + `form_id` XOR `public_slug`; optional `require_active`. Out: publication DTO including `published_version`, `lifecycle_status`, `consent_pin`, `has_immutable_snapshot`.
 
-**`publish` (`commit_publish`)** — In: `tenant_id`, `form_id`, optional consent versions. Out: publication DTO at new version. Does **not** edit prior snapshot in place.
+**`publish` (`commit_publish`)** — In: `tenant_id`, `form_id`, optional consent versions, optional `field_schema` / `fields` / `presentation_runtime`. Out: publication DTO at new version with frozen `field_schema` when provided. Does **not** edit prior snapshot in place.
+
+**`validate_submission`** — In: frozen schema + payload. Out: `{ ok, normalized_values, errors[], compat_mode }`. Pre-schema snapshots skip unknown rejection.
 
 **`endpoint` / `submission`** — Reject inactive. Submission gate: `assert_submission_version_compatible`.
 
@@ -70,8 +77,8 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 ## Invariants
 
 1. HostFlow Public Form **is-a** Endpoint; Campaign binds Endpoint, not Form internals.  
-2. Published snapshot is **immutable** per version. `published_snapshot_v1` is the **current pointer** only; history is `form_publication_versions` (append-only). New publish → new ledger row + new pointer version.  
-3. Submission must match pinned `published_version` (+ consent pin when required) and may register a ledger **submission pin** (blocks delete).  
+2. Published snapshot is **immutable** per version. `published_snapshot_v1` is the **current pointer** only; history is `form_publication_versions` (append-only). New publish → new ledger row + new pointer version. Frozen `field_schema` (Sprint 4) is part of that immutable snapshot.  
+3. Submission must match pinned `published_version` (+ consent pin when required) and may register a ledger **submission pin** (blocks delete). When `forms.field_schema.v1` is present, validate against **that version's** schema only.  
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
@@ -99,6 +106,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Errors | `forms_platform/errors.py` |
 | Snapshot columns | migration `202607180007_forms_s2` (current pointer) |
 | Version ledger | migration `202607180008_forms_s3` · `publication_versions.py` |
+| Field schema / validation | `schema.py` · `validation.py` (`forms.field_schema.v1`) |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -110,6 +118,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - Sprint 1: `test_forms_sprint1_contract.py` · `test_forms_sprint1_gates.py`  
 - Sprint 2: `test_forms_sprint2_contract.py` · `test_forms_sprint2_gates.py`  
 - Sprint 3: `test_forms_sprint3_contract.py` · `test_forms_sprint3_gates.py`  
+- Sprint 4: `test_forms_sprint4_contract.py` · `test_forms_sprint4_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -134,4 +143,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 1 COMPLETE (PR #36).  
 - 2026-07-18: Sprint 2 — resolve/publish split, snapshot, activate/deactivate, error codes, version pin.  
 - 2026-07-18: Sprint 2 COMPLETE (PR #37).  
-- 2026-07-18: Sprint 3 — append-only `form_publication_versions` ledger; `published_snapshot_v1` clarified as current pointer.
+- 2026-07-18: Sprint 3 — append-only `form_publication_versions` ledger; `published_snapshot_v1` clarified as current pointer.  
+- 2026-07-18: Sprint 3 COMPLETE (PR #38).  
+- 2026-07-18: Sprint 4 — `forms.field_schema.v1` frozen in snapshot; `validate_submission` runtime (no Builder).

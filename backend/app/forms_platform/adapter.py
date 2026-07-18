@@ -34,6 +34,11 @@ from backend.app.forms_platform.manifest import (
     builder_is_locked_by_manifest,
     forms_manifest_document,
 )
+from backend.app.forms_platform.schema import (
+    FIELD_SCHEMA_CONTRACT,
+    build_field_schema_v1,
+    field_schema_from_presentation_runtime,
+)
 from backend.app.forms_platform.publication_bridge import (
     resolve_forms_platform_publication,
 )
@@ -125,8 +130,9 @@ def _build_snapshot(
     *,
     published_version: int,
     consent_pin: dict[str, Any],
+    field_schema: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    snap: dict[str, Any] = {
         "published_version": published_version,
         "title": str(lead_form.title or ""),
         "public_slug": str(lead_form.public_slug or "") or None,
@@ -138,6 +144,9 @@ def _build_snapshot(
         "frozen_at": datetime.now(timezone.utc).isoformat(),
         "immutable": True,
     }
+    if field_schema and field_schema.get("schema_contract") == FIELD_SCHEMA_CONTRACT:
+        snap["field_schema"] = field_schema
+    return snap
 
 
 async def commit_publish(
@@ -149,8 +158,15 @@ async def commit_publish(
     privacy_version: str | None = None,
     activate: bool = True,
     idempotency_key: str | None = None,
+    field_schema: dict[str, Any] | None = None,
+    fields: list[dict[str, Any]] | None = None,
+    presentation_runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Op: publish — append ledger row, update current pointer, bump version."""
+    """Op: publish — append ledger row, update current pointer, bump version.
+
+    Sprint 4: freeze field_schema into the immutable snapshot when provided
+    (or built from fields / presentation_runtime).
+    """
     if not form_id:
         raise FormsMissingKeyError("form_id is required to publish")
 
@@ -188,9 +204,21 @@ async def commit_publish(
         "privacy_version": (privacy_version or "privacy_v1").strip() or "privacy_v1",
     }
 
+    frozen_schema = field_schema
+    if frozen_schema is None and presentation_runtime is not None:
+        frozen_schema = field_schema_from_presentation_runtime(presentation_runtime)
+    if frozen_schema is None and fields is not None:
+        frozen_schema = build_field_schema_v1(
+            fields=fields,
+            entity_profile_code=lead_form.target_entity_profile_code,
+        )
+
     next_version = int(lead_form.published_version or 0) + 1
     snapshot = _build_snapshot(
-        lead_form, published_version=next_version, consent_pin=consent_pin
+        lead_form,
+        published_version=next_version,
+        consent_pin=consent_pin,
+        field_schema=frozen_schema,
     )
     published_at = now_utc()
     await append_publication_version(
@@ -414,6 +442,7 @@ def adapter_identity() -> dict[str, Any]:
             "result",
             "list_versions",
             "get_version",
+            "validate_submission",
         ],
         "builder_locked": builder_is_locked_by_manifest(),
         "manifest_builder_flag_default": FORMS_MANIFEST_KEYS[
