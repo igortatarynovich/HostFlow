@@ -14,8 +14,9 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 
 1. **Acquisition Stage 3D / Epic P:** ✅ **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).
 2. **Forms Sprint 1:** ✅ **COMPLETE** ([`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) · PR #36 · `37b652af`).
-3. **Forms Sprint 2:** **IN PROGRESS** — runtime hardening ([`../tasks/forms-sprint-2.md`](../tasks/forms-sprint-2.md)).
-4. **Forms Builder:** **LOCKED**.
+3. **Forms Sprint 2:** ✅ **COMPLETE** ([`../tasks/forms-sprint-2.md`](../tasks/forms-sprint-2.md) · PR #37 · `ec5fcd86`).
+4. **Forms Sprint 3:** **IN PROGRESS** — publication version ledger ([`../tasks/forms-sprint-3.md`](../tasks/forms-sprint-3.md)).
+5. **Forms Builder:** **LOCKED**.
 3. **Forms Builder:** **LOCKED** until Sprint 1 contracts land.  
 4. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 5. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).

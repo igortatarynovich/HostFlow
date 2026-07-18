@@ -71,7 +71,8 @@ def test_forms_sprint2_alembic_single_head() -> None:
         if line.strip() and not line.startswith("INFO")
     ]
     assert len(heads) == 1, f"Expected single Alembic head, got: {heads!r}\n{result.stdout}"
-    assert "202607180007_forms_s2" in result.stdout
+    # Sprint 2 revision remains in chain (may not be tip after Sprint 3+).
+    assert (_VERSIONS / "202607180007_forms_s2.py").is_file()
 
 
 def test_forms_sprint2_builder_still_locked() -> None:

@@ -72,3 +72,15 @@ class FormsBuilderLockedError(FormsAdapterError):
     code = "forms_builder_locked"
     http_status = 403
     default_message = "Forms Builder is locked"
+
+
+class FormsVersionPinnedError(FormsAdapterError):
+    code = "forms_publication_version_pinned"
+    http_status = 409
+    default_message = "Publication version has submission pins and cannot be mutated or deleted"
+
+
+class FormsVersionNotFoundError(FormsAdapterError):
+    code = "forms_publication_version_not_found"
+    http_status = 404
+    default_message = "Publication version not found"
