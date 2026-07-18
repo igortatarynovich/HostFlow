@@ -1,13 +1,16 @@
-"""Forms Sprint 4 — submission validation against frozen field schema.
+"""Forms Sprint 4–5 — submission validation + normalized answers.
 
-Pure functions. No dynamic code execution. No Builder.
+Pure functions. No dynamic code execution. No Builder. No domain mapping.
 """
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
+from backend.app.forms_platform.answers import (
+    ANSWER_CONTRACT,
+    build_normalized_answers,
+)
 from backend.app.forms_platform.errors import FormsAdapterError
 from backend.app.forms_platform.schema import (
     FIELD_SCHEMA_CONTRACT,
@@ -22,12 +25,8 @@ class FormsValidationError(FormsAdapterError):
     default_message = "Submission failed field schema validation"
 
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_PHONE_RE = re.compile(r"^\+?[0-9][0-9\s\-()]{5,}$")
-
-
 def normalize_submission_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
-    """Normalize intake payload to {field_id: value} flat map."""
+    """Extract flat raw field map from intake-shaped payload (pre-canonicalization)."""
     raw = dict(payload or {})
     if isinstance(raw.get("values"), dict):
         values = dict(raw["values"])
@@ -35,98 +34,12 @@ def normalize_submission_payload(payload: dict[str, Any] | None) -> dict[str, An
         values = {
             str(k): v
             for k, v in raw.items()
-            if str(k) not in LEGACY_PAYLOAD_KEYS or str(k) == "values"
+            if str(k) not in LEGACY_PAYLOAD_KEYS and str(k) != "presentation_values_v1"
         }
-        # Prefer presentation_values_v1 when present
         pv = raw.get("presentation_values_v1")
         if isinstance(pv, dict):
             values = {**values, **{str(k): v for k, v in pv.items()}}
     return {str(k).strip(): v for k, v in values.items() if str(k).strip()}
-
-
-def _is_empty(value: Any) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, str) and not value.strip():
-        return True
-    if isinstance(value, (list, dict)) and len(value) == 0:
-        return True
-    return False
-
-
-def _type_error(field_id: str, field_type: str, value: Any) -> dict[str, Any] | None:
-    if _is_empty(value):
-        return None
-    t = str(field_type or "text")
-    if t in {"text", "textarea", "string", "reference_code", "enum", "url", "file"}:
-        if not isinstance(value, (str, int, float, bool)):
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects scalar text-compatible value",
-                "expected_type": t,
-            }
-        return None
-    if t == "email":
-        if not isinstance(value, str) or not _EMAIL_RE.match(value.strip()):
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects email",
-                "expected_type": t,
-            }
-        return None
-    if t in {"phone", "phone_e164"}:
-        if not isinstance(value, str) or not _PHONE_RE.match(value.strip()):
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects phone",
-                "expected_type": t,
-            }
-        return None
-    if t == "boolean":
-        if not isinstance(value, bool) and str(value).lower() not in {"true", "false", "0", "1"}:
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects boolean",
-                "expected_type": t,
-            }
-        return None
-    if t in {"integer", "number"}:
-        try:
-            if t == "integer":
-                int(value)
-            else:
-                float(value)
-        except (TypeError, ValueError):
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects {t}",
-                "expected_type": t,
-            }
-        return None
-    if t in {"date", "datetime"}:
-        if not isinstance(value, str) or len(value.strip()) < 4:
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects {t} string",
-                "expected_type": t,
-            }
-        return None
-    if t == "json":
-        if not isinstance(value, (dict, list)):
-            return {
-                "code": "forms_field_type_invalid",
-                "field_id": field_id,
-                "message": f"Field {field_id} expects json object/array",
-                "expected_type": t,
-            }
-        return None
-    return None
 
 
 def validate_submission(
@@ -134,82 +47,43 @@ def validate_submission(
     payload: dict[str, Any] | None,
     *,
     published_version: int | None = None,
+    form_id: str | None = None,
     raise_on_error: bool = False,
 ) -> dict[str, Any]:
-    """Validate payload against frozen forms.field_schema.v1.
-
-    Pre-schema snapshots (schema is None / missing contract): compat_mode=pre_schema,
-    no unknown-field rejection (legacy).
-    """
-    normalized = normalize_submission_payload(payload)
-    if not schema or schema.get("schema_contract") != FIELD_SCHEMA_CONTRACT:
-        result = {
-            "ok": True,
-            "compat_mode": "pre_schema",
-            "published_version": published_version,
-            "normalized_values": normalized,
-            "errors": [],
-            "schema_contract": None,
-        }
-        return result
-
-    fields = schema.get("fields") if isinstance(schema.get("fields"), list) else []
-    by_id = {
-        str(f.get("id")): f
-        for f in fields
-        if isinstance(f, dict) and str(f.get("id") or "").strip()
-    }
-    allow = set(by_id.keys())
-    compat = schema.get("compat") if isinstance(schema.get("compat"), dict) else {}
-    unknown_mode = str(compat.get("unknown_fields") or "reject")
-    missing_mode = str(compat.get("missing_required") or "reject")
-
-    errors: list[dict[str, Any]] = []
-
-    unknown = sorted(k for k in normalized.keys() if k not in allow)
-    if unknown and unknown_mode == "reject":
-        for field_id in unknown:
-            errors.append(
-                {
-                    "code": "forms_unknown_field",
-                    "field_id": field_id,
-                    "message": f"Unknown field not in published schema: {field_id}",
-                }
-            )
-
-    for field_id, spec in by_id.items():
-        required = bool(spec.get("required"))
-        value = normalized.get(field_id)
-        if required and missing_mode == "reject" and _is_empty(value):
-            errors.append(
-                {
-                    "code": "forms_required_field_missing",
-                    "field_id": field_id,
-                    "message": f"Required field missing: {field_id}",
-                }
-            )
-            continue
-        type_err = _type_error(field_id, str(spec.get("type") or "text"), value)
-        if type_err is not None:
-            errors.append(type_err)
-
-    # Drop unknown keys from normalized output when rejecting unknowns
-    if unknown_mode == "reject":
-        normalized_out = {k: v for k, v in normalized.items() if k in allow}
-    else:
-        normalized_out = dict(normalized)
-
+    """Validate + normalize payload → forms.normalized_answers.v1 (+ Sprint 4 keys)."""
+    raw_values = normalize_submission_payload(payload)
+    answer = build_normalized_answers(
+        schema=schema,
+        raw_values=raw_values,
+        published_version=published_version,
+        form_id=form_id,
+        schema_contract=(
+            FIELD_SCHEMA_CONTRACT
+            if schema and schema.get("schema_contract") == FIELD_SCHEMA_CONTRACT
+            else None
+        ),
+    )
+    # Sprint 4-compatible top-level keys retained.
     result = {
-        "ok": len(errors) == 0,
-        "compat_mode": "field_schema_v1",
+        **answer,
+        "answer_contract": ANSWER_CONTRACT,
+        "schema_contract": answer.get("schema_contract"),
+        "compat_mode": answer.get("compat_mode"),
         "published_version": published_version,
-        "normalized_values": normalized_out,
-        "errors": errors,
-        "schema_contract": FIELD_SCHEMA_CONTRACT,
+        "normalized_values": answer.get("normalized_values") or {},
+        "raw_values": answer.get("raw_values") or {},
+        "errors": answer.get("errors") or [],
+        "ok": bool(answer.get("ok")),
+        "intake_handoff": answer.get("intake_handoff") or {},
     }
     if raise_on_error and not result["ok"]:
         raise FormsValidationError(
-            details={"errors": errors, "published_version": published_version}
+            details={
+                "errors": result["errors"],
+                "published_version": published_version,
+                "form_id": form_id,
+                "answer_contract": ANSWER_CONTRACT,
+            }
         )
     return result
 
@@ -224,9 +98,33 @@ def validate_submission_against_publication(
     version = publication_or_snapshot.get("published_version")
     if version is None and isinstance(publication_or_snapshot.get("snapshot"), dict):
         version = publication_or_snapshot["snapshot"].get("published_version")
+    form_id = publication_or_snapshot.get("publication_id") or publication_or_snapshot.get(
+        "form_id"
+    )
+    if form_id is None and isinstance(publication_or_snapshot.get("snapshot"), dict):
+        form_id = publication_or_snapshot.get("form_id")
     return validate_submission(
         schema,
         payload,
         published_version=int(version) if version is not None else None,
+        form_id=str(form_id) if form_id else None,
         raise_on_error=raise_on_error,
     )
+
+
+def shared_intake_payload_from_answers(answer: dict[str, Any]) -> dict[str, Any]:
+    """Map normalized answers → Shared Intake fragment (no domain mapping)."""
+    handoff = answer.get("intake_handoff") if isinstance(answer.get("intake_handoff"), dict) else {}
+    if handoff:
+        return dict(handoff)
+    return {
+        "presentation_values_v1": dict(answer.get("normalized_values") or {}),
+        "forms_answer_contract_v1": {
+            "answer_contract": ANSWER_CONTRACT,
+            "schema_contract": answer.get("schema_contract"),
+            "published_version": answer.get("published_version"),
+            "form_id": answer.get("form_id"),
+            "ok": answer.get("ok"),
+        },
+        "forms_raw_values_v1": dict(answer.get("raw_values") or {}),
+    }

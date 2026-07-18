@@ -25,7 +25,7 @@ Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + app
 |----|-----------|-------------|
 | `resolve` | **Stable** | Idempotent read of publication view (`form_id` or `public_slug`) |
 | `publish` | **Stable** | **Mutation:** append ledger row + bump pointer `published_version` + freeze current snapshot + pin consent; optional `idempotency_key` |
-| `validate_submission` | **Stable** | Validate payload against frozen `forms.field_schema.v1` (or pre_schema compat) |
+| `validate_submission` / `normalize_answers` | **Stable** | Validate + canonicalize → `forms.normalized_answers.v1` (raw/normalized + intake_handoff) |
 | `list_versions` / `get_version` | **Stable** | Audit/read historical ledger rows (immutable) |
 | `activate` / `deactivate` | **Stable** | Endpoint activation without rewriting published snapshot |
 | `endpoint` | **Stable** | Map **active** publication → Endpoint identity (`hostflow_public_form`) |
@@ -55,7 +55,7 @@ Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + app
 
 **`publish` (`commit_publish`)** — In: `tenant_id`, `form_id`, optional consent versions, optional `field_schema` / `fields` / `presentation_runtime`. Out: publication DTO at new version with frozen `field_schema` when provided. Does **not** edit prior snapshot in place.
 
-**`validate_submission`** — In: frozen schema + payload. Out: `{ ok, normalized_values, errors[], compat_mode }`. Pre-schema snapshots skip unknown rejection.
+**`validate_submission`** — In: frozen schema + payload. Out: `forms.normalized_answers.v1` with `raw_values`, `normalized_values`, `errors[{field_id,code,message_key,message}]`, `published_version`, `form_id`, `intake_handoff` for Shared Intake. Pre-schema snapshots skip unknown rejection.
 
 **`endpoint` / `submission`** — Reject inactive. Submission gate: `assert_submission_version_compatible`.
 
@@ -107,6 +107,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Snapshot columns | migration `202607180007_forms_s2` (current pointer) |
 | Version ledger | migration `202607180008_forms_s3` · `publication_versions.py` |
 | Field schema / validation | `schema.py` · `validation.py` (`forms.field_schema.v1`) |
+| Normalized answers | `answers.py` (`forms.normalized_answers.v1`) → Shared Intake handoff |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -119,6 +120,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - Sprint 2: `test_forms_sprint2_contract.py` · `test_forms_sprint2_gates.py`  
 - Sprint 3: `test_forms_sprint3_contract.py` · `test_forms_sprint3_gates.py`  
 - Sprint 4: `test_forms_sprint4_contract.py` · `test_forms_sprint4_gates.py`  
+- Sprint 5: `test_forms_sprint5_contract.py` · `test_forms_sprint5_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -145,4 +147,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 2 COMPLETE (PR #37).  
 - 2026-07-18: Sprint 3 — append-only `form_publication_versions` ledger; `published_snapshot_v1` clarified as current pointer.  
 - 2026-07-18: Sprint 3 COMPLETE (PR #38).  
-- 2026-07-18: Sprint 4 — `forms.field_schema.v1` frozen in snapshot; `validate_submission` runtime (no Builder).
+- 2026-07-18: Sprint 4 — `forms.field_schema.v1` frozen in snapshot; `validate_submission` runtime (no Builder).  
+- 2026-07-18: Sprint 4 COMPLETE (PR #39).  
+- 2026-07-18: Sprint 5 — `forms.normalized_answers.v1` (raw/normalized + Shared Intake handoff).
