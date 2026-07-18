@@ -380,7 +380,7 @@ Campaign Manager (growth engine)
     │     ├── Channels
     │     ├── Audiences (bindings)
     │     ├── Assets
-    │     ├── Forms (links)
+    │     ├── Endpoints (links)
     │     └── Budget (wave)
     ├── Attribution
     ├── Analytics
