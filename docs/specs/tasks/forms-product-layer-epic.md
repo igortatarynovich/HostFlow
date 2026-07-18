@@ -1,9 +1,10 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** (ready · not started)  
+**Status:** **OPEN** · **ACTIVE** (canon after merge `29f4057f` / [PR #43](https://github.com/igortatarynovich/HostFlow/pull/43))  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
-**Builder:** **LOCKED** until Product Layer P1 (Field Catalog) lands and unlocks P2 by gate
+**Builder:** **LOCKED** until Product Layer P1 (Field Catalog) lands and unlocks P2 by gate  
+**P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md)
 
 ---
 
@@ -14,12 +15,12 @@ Sprint 1–6 built the **L0 Forms platform** (publish → validate → normalize
 **Forms Product Layer** is the **user-facing product** on top of that platform. It does not rewrite foundation contracts; it configures and surfaces them.
 
 ```text
-Platform (done)                         Product Layer (this epic)
+Platform (COMPLETE)                     Product Layer (OPEN)
 ─────────────────────────────────       ─────────────────────────────────
-Publish / ledger / snapshots            P1 Field Catalog
-Schema / validation / normalization  →  P2 Builder
-Immutable submission envelope           P3 Publish UI
-Shared Intake handoff / audit           P4 Themes
+Runtime / Publication / Ledger          P1 Field Catalog (component registry)
+Validation / Normalization           →  P2 Builder
+Submission / Shared Intake / Audit      P3 Publish UI
+                                        P4 Themes
                                         P5 Analytics
 ```
 
@@ -43,27 +44,30 @@ Field Catalog определяет:
 
 | Concern | Owner |
 |---------|--------|
-| Which field types exist | **Field Catalog** |
-| Supported parameters / options | **Field Catalog** |
+| Which field / component types exist | **Field Catalog** |
+| Supported properties / config schema | **Field Catalog** |
 | Available validation rules | **Field Catalog** |
-| Normalization behavior | **Field Catalog** (must compose Sprint 5 canonical normalization) |
+| Normalization behavior | **Field Catalog** (compose Sprint 5 canonical normalization) |
+| Storage contract (raw/normalized shape) | **Field Catalog** |
 | Builder presentation (palette / editors) | **Field Catalog** |
 | Public Form render contract | **Field Catalog** |
 
 ### Builder must not invent field types
 
 **Rule:** Builder **не имеет права** изобретать новые типы данных.  
-Builder может **только** использовать типы и параметры из Field Catalog.
+Builder может **только** использовать компоненты и параметры из Field Catalog.
 
 | Layer | Answers |
 |-------|---------|
 | **Field Catalog** | *What exists?* |
-| **Builder** | *Which of those fields are on this form, in what order?* |
+| **Builder** | *Which of these components are on this form, in what order?* |
+
+This prevents the common low-code failure mode where the visual editor gradually **dictates** platform architecture.
 
 Consequences:
 
-1. New types (Address, Passport, Driver License, Company, Location, Salary Range, Vehicle, …) are added **once** to Field Catalog.  
-2. They become available in Builder, publish through existing runtime, and flow through existing validation / normalization / submission pipeline.  
+1. New components (Address, Passport, Driver License, Company, Location, Salary Range, Vehicle, …) are registered **once** in Field Catalog.  
+2. They become available in Builder, publish through existing runtime, and flow through existing validation / normalization / submission pipeline — **without Builder changes**.  
 3. Product work **extends** Sprint 1–6 contracts; it does **not** fork a second schema/validation/storage stack.  
 4. If Builder work discovers a genuine gap, extend the platform **surgically** — do not rewrite the contour.
 
@@ -73,27 +77,19 @@ Consequences:
 
 | Phase | Name | Goal | Depends on |
 |-------|------|------|------------|
-| **P1** | Field Catalog | Library of field types, params, validation, normalization, Builder + Public render contracts | Sprint 1–6 |
-| **P2** | Builder | Visual form assembly from Catalog blocks only | P1 |
+| **P1** | Field Catalog | **Component registry** (not a flat type list) | Sprint 1–6 |
+| **P2** | Builder | Visual form assembly from Catalog components only | P1 |
 | **P3** | Publish UI | Drafts, publish, version management over existing ledger/pointer | P2 (or thin admin on P1+) |
 | **P4** | Themes | Public form presentation skins | P2/P3 |
 | **P5** | Analytics | Views, submits, conversion, errors, sources | Envelope + Publish (read-only compose) |
 
-### P1 — Field Catalog (next)
+### P1 — Field Catalog as component registry
 
-**In**
+See [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md).
 
-- Canonical field type registry (text, textarea, select, checkbox, file, phone, email, …)  
-- Per-type params, validation hooks, normalization hooks  
-- Builder palette metadata + Public Form render metadata  
-- Contract tests that published schemas only reference Catalog types  
+Each component has a stable descriptor: `component_id`, `component_version`, properties, `config_schema`, validation, normalization, storage contract, Builder renderer, Public Form renderer, category/search.
 
-**Out**
-
-- Visual Builder UI (P2)  
-- Themes (P4)  
-- Analytics (P5)  
-- Domain mapping / second intake / Forms Outcome-KPI  
+Builder stores **composition only**; logic stays in Catalog.
 
 ### P2–P5
 
@@ -120,8 +116,8 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Gate | Status |
 |------|--------|
 | Forms Sprint 1–6 (L0 platform) | ✅ COMPLETE |
-| Product Layer epic | **OPEN** |
-| P1 Field Catalog | next |
+| Forms Product Layer epic | ✅ **ACTIVE** (canon · `29f4057f`) |
+| P1 Field Catalog (component registry) | **READY** (design) |
 | Builder (P2) | **LOCKED** until P1 DoD |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 
@@ -129,4 +125,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 
 ## History
 
-- 2026-07-18: Opened after Sprint 6 COMPLETE (`7e259f22` / #41). Backend contour closed; product surface next.
+- 2026-07-18: Opened after Sprint 6 COMPLETE (`7e259f22` / #41). Backend contour closed; product surface next.  
+- 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).

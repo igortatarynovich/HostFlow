@@ -75,8 +75,8 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - Stage 3C: любой Endpoint → тот же Universal Routing.
 - **Gate:** Epic P / Stage 3D **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).  
 - **Forms Sprint 1–6:** ✅ **COMPLETE** — L0 backend platform contour ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).  
-- **Forms Product Layer:** **OPEN** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)) — P1 Field Catalog next.  
-- **Architectural rule:** **Field Catalog is SoT** for field types / params / validation / normalization / Builder + Public render. **Builder must not invent field types** — only compose Catalog blocks.  
+- **Forms Product Layer:** **ACTIVE** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · `29f4057f`) — P1 Field Catalog as **component registry** ([`../tasks/forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).  
+- **Architectural rule:** **Field Catalog is SoT** for components (id/version/config/validation/normalization/storage/render). **Builder must not invent field types** — only compose Catalog blocks.  
 - **Forms Builder:** **LOCKED** until Product Layer P1 DoD.  
 - Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 

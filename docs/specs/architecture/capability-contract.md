@@ -71,7 +71,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 4 | ✅ **COMPLETE** (PR #39 · `779cffd3`) |
 | Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
 | Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
-| Forms Product Layer | **OPEN** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)) — P1 Field Catalog |
+| Forms Product Layer | ✅ **ACTIVE** (`29f4057f`) — P1 [`forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md) |
 | Forms Builder | **LOCKED** until P1; **must not invent field types** |
 
 Contract tests:
