@@ -78,16 +78,19 @@ L1-документ **не может** ссылаться на L3 как «ис
 ## §3 Как добавлять новые architecture decisions (ADR)
 
 1. **Создать файл:** `docs/specs/architecture/ADR-NNN-<short-slug>.md` (либо `docs/<module>/ADR-NNN-...md` если ADR полностью внутри модуля).
-2. **Структура (минимум):**
+2. **Сначала L0:** пройти [`architecture-review-checklist.md`](../specs/architecture/architecture-review-checklist.md); спор ownership/settings/adapter → [`L0-platform-architecture.md`](../specs/architecture/L0-platform-architecture.md) / Catalog. Найденный ответ L0 **не** пересматривается в ADR.
+3. **Не дублировать L0:** ADR **ссылается** на P-01…P-05 / INV-… / Passport, а не переписывает конституцию. Расширение L0 «под задачу» запрещено (только Architecture RFC).
+4. **Структура (минимум):**
    - `Status` (Proposed / Accepted / Superseded by ADR-MMM)
    - `Context`
-   - `Decision`
+   - `Decision` (с явными ссылками: «per P-01», «owner per Catalog…»)
    - `Consequences`
    - `Alternatives considered`
    - `Cross-references` (какие L1/L2 документы обновляются)
-3. **Linkage:** добавить в `module-catalog-and-routing-map.md` и/или `hostflow-core-domain-map-v1.md` явную ссылку.
-4. **Если ADR заменяет другой ADR** — в новом ADR указать `Supersedes: ADR-MMM`, в старом `Status: Superseded by ADR-NNN` (старый **не** удаляется).
-5. **PR security gate:** если ADR трогает security perimeter — заполнить `docs/security/security-review-checklist.md`.
+5. **Linkage:** добавить в `module-catalog-and-routing-map.md` и/или `hostflow-core-domain-map-v1.md` явную ссылку; при новой capability — Passport (+ Manifest) в Catalog.
+6. **Если ADR заменяет другой ADR** — в новом ADR указать `Supersedes: ADR-MMM`, в старом `Status: Superseded by ADR-NNN` (старый **не** удаляется).
+7. **PR security gate:** если ADR трогает security perimeter — заполнить `docs/security/security-review-checklist.md`.
+8. **Новый модуль / capability** без Passport, Exposes, Data Ownership, Dependencies, License Class (и Manifest при наличии config) — **не accept**.
 
 ---
 

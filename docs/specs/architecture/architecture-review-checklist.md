@@ -34,8 +34,10 @@
 - [ ] Exposes помечены Stable / Experimental / Internal  
 - [ ] Experimental/Internal не единственная опора Business без плана  
 - [ ] INV-09…12 (intake spine) если затрагивается intake  
-- [ ] L0 freeze: нет правки конституции без RFC / `l0-errata`  
+- [ ] ADR **ссылается** на P-01…P-05 / INV / Catalog — не дублирует L0  
+- [ ] L0 freeze: нет правки конституции без RFC / `l0-errata`; нет «ещё одного маленького правила» в L0 под задачу модуля  
 - [ ] Passport / Manifest / docs синхронизированы  
+- [ ] Новый модуль/capability: полный шаблон (Passport, Exposes, Data Ownership, deps, license; Manifest если config) 
 
 ---
 

@@ -104,7 +104,75 @@ L3 — Implementation
 
 ---
 
+## Organizational rules (keep L0 from spreading)
+
+Эти правила **не** расширяют архитектуру — они закрепляют, как команда **пользуется** конституцией.
+
+### 1. Любой спор сначала проверяется по L0
+
+Вопросы вида «куда положить сущность?», «кто владеет?», «где настройки?», «кто публикует Adapter?» → ответ в L0 / Catalog / Invariants / Checklist.
+
+**Если ответ найден — обсуждение заканчивается.** Не изобретаем параллельное правило.
+
+### 2. L0 не расширяется под конкретную задачу
+
+Запрещён паттерн: «давайте ещё одно маленькое правило в конституцию».
+
+Новое правило попадает в L0 **только** если меняет архитектуру **всей** платформы — и только через Architecture RFC. Проблема одного модуля решается на L1–L3.
+
+### 3. ADR не дублируют L0
+
+Новый ADR **ссылается** на принципы, а не переписывает их:
+
+- «Соответствует **P-01**…»
+- «Ownership по **P-02** / Catalog…»
+- «Configuration по **P-04** / **P-05**…»
+- «Не нарушает **INV-…**…»
+
+Пересказ P-rules в каждом ADR — drift.
+
+### 4. Capability Catalog — главный ежедневный справочник
+
+Последовательность проектирования:
+
+1. Проверить [`platform-capability-catalog.md`](platform-capability-catalog.md)  
+2. Найти владельца  
+3. Проверить Passport (Owns / Non-Goals / Forbidden / Exposes / deps)  
+4. Проверить Settings Manifest  
+5. Только потом код / L1 ADR деталей  
+
+L0 — нормативная база; **Catalog** — рабочий инструмент каждого дня.
+
+### 5. Новый модуль / capability только по шаблону
+
+Нельзя появиться без:
+
+- Capability Passport (полный шаблон L0)  
+- Settings Manifest (если есть config)  
+- Public Contracts (**Exposes** + stability)  
+- Data Ownership  
+- Dependencies (Requires / Optional / Forbidden)  
+- License Class  
+
+«Особенных» модулей вне шаблона нет.
+
+---
+
+## Delivery phases
+
+| Phase | Focus | Status |
+|-------|--------|--------|
+| **Phase 0** | Архитектурная конституция (**L0**) | ✅ **Complete** (2026-07-18) |
+| **Phase 1** | Платформенные capabilities (**L1**) | Next |
+| **Phase 2** | Бизнес-модули (**L2**) | After / alongside L1 as entitled |
+| **Phase 3** | Implementation, integrations, UX (**L3**) | Continuous on top of L1/L2 |
+
+С этого момента обсуждение фундамента прекращается, кроме RFC. Работа — **построение платформы поверх L0**.
+
+---
+
 ## History
 
 - **2026-07-18** — L0 closed (ADR-030): lifecycle, versioning, licensing, deps.  
-- **2026-07-18** — **Final seal:** Non-Goals · Contract Stability · Architecture Invariants → **FROZEN**.
+- **2026-07-18** — **Final seal:** Non-Goals · Contract Stability · Architecture Invariants → **FROZEN**.  
+- **2026-07-18** — Organizational rules + Phase 0 complete; switch to Phase 1.

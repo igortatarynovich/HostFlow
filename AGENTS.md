@@ -90,8 +90,8 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 - **`docs/governance/ownership.md`** — владельцы канона по слою (security / architecture / module / workflows / operational SSOT). Без явного owner-а новый канонический слой не создаётся.
 
 **Жёсткие правила (выдержка из rules):**
-- Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage из domain map / module catalog).
-- Platform architecture **L0 FROZEN** — [`docs/specs/architecture/L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md), invariants [`architecture-invariants.md`](docs/specs/architecture/architecture-invariants.md). P-01…P-05 + ADR-030. Work on L1–L3; L0 only via Architecture RFC.
+- Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage). ADR **ссылается** на L0 (P-01…P-05 / INV / Catalog), **не** переписывает конституцию. Сначала checklist + Catalog.
+- Platform architecture **L0 FROZEN · Phase 0 complete** — [`L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md). Дальше **Phase 1** (platform capabilities). L0 changes only via Architecture RFC. Design path: Catalog → Passport → Manifest → code.
 - Новый workflow — обязательная запись в `docs/specs/workflows/index.md`.
 - Изменение поведения модуля — обновление `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в одном PR.
 - Запрещено создавать спеки в корне репо (кроме `AGENTS.md`, `README.md` и т.п.) или в `docs/_drafts/**`.
