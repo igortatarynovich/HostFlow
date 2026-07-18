@@ -96,8 +96,7 @@ Passport → Manifest → Public Contract
 | Adapter | `backend/app/forms_platform/adapter.py` (`forms.endpoint_adapter_v1`) |
 | Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) · `forms_platform/manifest.py` |
 | Migrations | `202607180007_forms_s2` … `202607180009_forms_s6` |
-| Migration (Sprint 3) | `202607180008_forms_s3` (append-only ledger) |
-| Contract tests | `test_forms_sprint1_*.py` … `test_forms_sprint4_*.py` |
+| Contract tests | `test_forms_sprint1_*.py` … `test_forms_sprint6_*.py` |
 
 Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint / C4 publication bridge — не новая form engine.  
 **Не** Builder / drag-and-drop / schema editor / marketplace / новый routing / Forms Outcome-KPI.
