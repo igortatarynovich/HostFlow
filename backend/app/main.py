@@ -137,6 +137,7 @@ try:
     from backend.app.api.v1.platform import tenant_requirement_overrides as platform_tenant_requirement_overrides_router
     from backend.app.api.v1.platform import notification_events as platform_notification_events_router
     from backend.app.api.v1.platform import module_registry as platform_module_registry_router
+    from backend.app.api.v1.platform import campaigns as platform_campaigns_router
     from backend.app.api.v1.settings import leads as settings_leads_router
     from backend.app.api.v1.settings import team as settings_team_router
     from backend.app.api.v1.settings import billing as settings_billing_router
@@ -870,6 +871,7 @@ app.include_router(platform_requirement_rules_router.router, prefix="/api/v1", t
 app.include_router(platform_tenant_requirement_overrides_router.router, prefix="/api/v1", tags=["requirement-overrides"])
 app.include_router(platform_notification_events_router.router, prefix="/api/v1", tags=["notification-events"])
 app.include_router(platform_module_registry_router.router, prefix="/api/v1", tags=["module-registry"])
+app.include_router(platform_campaigns_router.router, prefix="/api/v1", tags=["campaigns"])
 app.include_router(admin_users_router.router, prefix="/api/v1")
 app.include_router(admin_companies_access_router.router, prefix="/api/v1")
 app.include_router(admin_audit_router.router, prefix="/api/v1")

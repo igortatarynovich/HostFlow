@@ -84,6 +84,12 @@ WorkforceHrDocumentControlTask = _load_model_module("workforce_hr_document_contr
 WorkforceLifecycleEvent = _load_model_module("workforce_lifecycle_event").WorkforceLifecycleEvent  # type: ignore[attr-defined]
 WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
 AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
+campaign_module = _load_model_module("campaign")
+Campaign = campaign_module.Campaign  # type: ignore[attr-defined]
+CampaignRun = campaign_module.CampaignRun  # type: ignore[attr-defined]
+CampaignTarget = campaign_module.CampaignTarget  # type: ignore[attr-defined]
+CampaignRunForm = campaign_module.CampaignRunForm  # type: ignore[attr-defined]
+CampaignRunIntakeSource = campaign_module.CampaignRunIntakeSource  # type: ignore[attr-defined]
 funnel_module = _load_model_module("funnel")
 Funnel = funnel_module.Funnel  # type: ignore[attr-defined]
 FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
@@ -273,6 +279,11 @@ __all__ = [
     "WorkforceLifecycleEvent",
     "WorkforceEmployment",
     "AutomationRule",
+    "Campaign",
+    "CampaignRun",
+    "CampaignTarget",
+    "CampaignRunForm",
+    "CampaignRunIntakeSource",
     "UserCompanyAccess",
     "VacancyRecruiter",
     "Lead",

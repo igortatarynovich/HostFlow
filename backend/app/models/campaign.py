@@ -1,0 +1,204 @@
+"""ADR-024 Stage 3A/3B — Campaign foundation + Flight Form/Intake Source bindings."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+from uuid import uuid4
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from ..db.base import Base
+from .mixins import TimestampMixin
+
+
+class Campaign(Base, TimestampMixin):
+    """Long-lived acquisition initiative (not a Meta campaign, not a single wave).
+
+    CampaignGoal (ADR-024): in Stage 3A / V1 the goal is stored inline as
+    ``goal_type`` + ``primary_kpi`` on this row (ADR allows Campaign or
+    CampaignGoal entity). No separate ``acq_campaign_goals`` table yet.
+    """
+
+    __tablename__ = "acq_campaigns"
+    __table_args__ = (
+        Index("ix_acq_campaigns_tenant_company", "tenant_id", "own_company_id"),
+        Index("ix_acq_campaigns_tenant_status", "tenant_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    own_company_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    # CampaignGoal fields — registry-validated pair (Goal Type + Primary KPI).
+    goal_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    primary_kpi: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_flight_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+    targets: Mapped[list["CampaignTarget"]] = relationship(
+        "CampaignTarget",
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    flights: Mapped[list["CampaignRun"]] = relationship(
+        "CampaignRun",
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="CampaignRun.created_at",
+    )
+
+
+class CampaignRun(Base, TimestampMixin):
+    """Flight / wave inside a Campaign. Stage 3A always creates exactly one."""
+
+    __tablename__ = "acq_campaign_runs"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "code", name="uq_acq_campaign_runs_campaign_code"),
+        Index("ix_acq_campaign_runs_tenant_campaign", "tenant_id", "campaign_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    code: Mapped[str] = mapped_column(String(64), nullable=False, default="flight_1")
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="Flight 1")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    starts_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="flights")
+    form_links: Mapped[list["CampaignRunForm"]] = relationship(
+        "CampaignRunForm",
+        back_populates="campaign_run",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    intake_source_links: Mapped[list["CampaignRunIntakeSource"]] = relationship(
+        "CampaignRunIntakeSource",
+        back_populates="campaign_run",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class CampaignTarget(Base, TimestampMixin):
+    """Universal promotion target — no typed FK to vacancy/service/client (ADR-024)."""
+
+    __tablename__ = "acq_campaign_targets"
+    __table_args__ = (
+        Index("ix_acq_campaign_targets_tenant_campaign", "tenant_id", "campaign_id"),
+        Index("ix_acq_campaign_targets_type_id", "target_type", "target_id"),
+        UniqueConstraint(
+            "campaign_id",
+            "target_type",
+            "target_id",
+            "role",
+            name="uq_acq_campaign_targets_campaign_type_id_role",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Always set from registry — never trusted from the client.
+    target_module: Mapped[str] = mapped_column(String(32), nullable=False)
+    route_intent: Mapped[str] = mapped_column(String(64), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="primary")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="targets")
+
+
+class CampaignRunForm(Base, TimestampMixin):
+    """Association: Flight uses Form (Forms remain SoT — ADR-024 Stage 3B)."""
+
+    __tablename__ = "acq_campaign_run_forms"
+    __table_args__ = (
+        UniqueConstraint("campaign_run_id", "form_id", name="uq_acq_campaign_run_forms_run_form"),
+        Index("ix_acq_campaign_run_forms_tenant_run", "tenant_id", "campaign_run_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaign_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    form_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("tenant_lead_forms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="primary")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    campaign_run: Mapped["CampaignRun"] = relationship("CampaignRun", back_populates="form_links")
+
+
+class CampaignRunIntakeSource(Base, TimestampMixin):
+    """Association: Flight uses IntakeSourceProfile (Intake remains SoT — ADR-024 Stage 3B).
+
+    No provider/external_ref snapshots — resolve from IntakeSourceProfile /
+    IntakeSourceBinding at read time (single SoT).
+    """
+
+    __tablename__ = "acq_campaign_run_intake_sources"
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_run_id",
+            "intake_source_profile_id",
+            name="uq_acq_campaign_run_intake_sources_run_profile",
+        ),
+        Index("ix_acq_campaign_run_intake_sources_tenant_run", "tenant_id", "campaign_run_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    campaign_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaign_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    intake_source_profile_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("intake_source_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="primary")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    campaign_run: Mapped["CampaignRun"] = relationship(
+        "CampaignRun", back_populates="intake_source_links"
+    )
