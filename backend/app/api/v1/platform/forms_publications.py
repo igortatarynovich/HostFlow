@@ -42,6 +42,8 @@ class FormPublicationOut(BaseModel):
     published_at: Optional[str] = None
     has_immutable_snapshot: Optional[bool] = None
     consent_pin: Optional[dict[str, Any]] = None
+    has_field_schema: Optional[bool] = None
+    field_schema: Optional[dict[str, Any]] = None
     mode: str
     tier: str
     module_owner: str
