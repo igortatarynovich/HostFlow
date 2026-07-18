@@ -1,12 +1,38 @@
 # Принципы архитектуры HostFlow: модульная multi-company SaaS-платформа
 
-**Позиционирование:** HostFlow — **modular multi-company SaaS platform** и **workforce operating ecosystem** для транспортной отрасли Европы: инфраструктура полного жизненного цикла транспортного персонала, документов, рекрутинга, HR, fleet operations, операционной коммуникации и **trusted workforce identity**, а не «ещё одна большая CRM». **Цель продукта** — **trusted workforce ecosystem**: работодатели, рекрутеры, HR, fleet managers и водители в одной операционной инфраструктуре с прозрачными процессами, проверяемыми данными и непрерывной профессиональной историей. Типичные боли рынка, на которые опирается продукт: дефицит кадров, хаос в документах, отсутствие единой истории водителя, операционный шум, слабая прозрачность работодателей, медленный onboarding, недостаток доверия между сторонами, разрозненная коммуникация, отсутствие сквозного lifecycle workforce management. **Стратегическая цель** — сделать HostFlow основной **профессиональной цифровой инфраструктурой** отрасли (workforce OS, compliance layer, operational data network). **Инженерная форма:** **modular monolith** со **strict bounded contexts** и жёсткими границами модулей.
+**Позиционирование:** HostFlow — **modular multi-company SaaS platform** и **workforce operating ecosystem** для транспортной отрасли Европы: инфраструктура полного жизненного цикла транспортного персонала, документов, рекрутинга, HR, fleet operations, операционной коммуникации и **trusted workforce identity**, а также **система управления ростом** (Growth → Intake → Operations → Intelligence — [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)), а не «ещё одна большая CRM». **Цель продукта** — **trusted workforce ecosystem**: работодатели, рекрутеры, HR, fleet managers и водители в одной операционной инфраструктуре с прозрачными процессами, проверяемыми данными и непрерывной профессиональной историей. Типичные боли рынка, на которые опирается продукт: дефицит кадров, хаос в документах, отсутствие единой истории водителя, операционный шум, слабая прозрачность работодателей, медленный onboarding, недостаток доверия между сторонами, разрозненная коммуникация, отсутствие сквозного lifecycle workforce management. **Стратегическая цель** — сделать HostFlow основной **профессиональной цифровой инфраструктурой** отрасли (workforce OS, compliance layer, operational data network). **Инженерная форма:** **modular monolith** со **strict bounded contexts** и жёсткими границами модулей.
 
 **Единая каноническая карта домена (v1):** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md) — цепочка Platform Core → Tenant → Company → тип → доступ к модулям → роли → scope → cross-company; таблицы GLOBAL / TENANT / COMPANY / MODULE; ownership matrix; bounded contexts и потоки событий.
 
 Документ фиксирует **главную архитектурную логику** продукта: HostFlow — **modular multi-company SaaS platform**, а не одна монолитная CRM. Детали по подсистемам — в ADR и scope-файлах; здесь — **согласованная картина** и **формула** для принятия решений.
 
-**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+
+---
+
+## 0. Platform Rule P-01 — Standard Adapter Boundary
+
+Норматив: **[`ADR-025`](ADR-025-standard-adapter-boundary.md)**.
+
+> Любое взаимодействие между модулями платформы и любыми внешними системами допускается **только через стандартизированные адаптеры**. Внутренние модели, схемы хранения и детали реализации не являются частью контракта.
+
+**Standard Adapters Only.** Ни один модуль не знает внутреннюю реализацию другого — только публичный Adapter.
+
+```text
+Consumer → Typed Adapter → Provider / External System
+```
+
+Примеры: Endpoint Adapter, Document Adapter, Notification Adapter, Automation Adapter, AI Adapter, Meta/SMS/WhatsApp/… Integration Adapters.
+
+Частный случай intake spine ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)):
+
+```text
+Endpoint → Submission → Routing → Decision → Business Entity
+```
+
+Acquisition работает с Endpoint Adapter / Submission — не с Form Builder. Recruitment работает с Document Adapter — не с S3. Модули шлют Notification Adapter — не SMTP напрямую.
+
+Нарушение P-01 в review — архитектурный блокер.
 
 ---
 
@@ -17,7 +43,7 @@
 | **Tenant** | **Workspace**, граница **subscription** и **billing**; не владелец рабочих операционных данных. |
 | **Company** | **Владелец данных, процессов**, включённых модулей и политик для своего контура; главная **operational / data boundary**. |
 | **Module** | **Независимый продуктовый блок** (лицензируется отдельно или в bundle). |
-| **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Document Hub, Process Engine, …). |
+| **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Acquisition/Campaigns, Document Hub, Process Engine, …). |
 | **User** | Доступ через **role + company scope + module scope**; не через «уникальные роли под каждого клиента». |
 
 **Cross-company доступ** возможен **только** явно: **handoff**, **shared access**, **relationship** между компаниями — никакой неявной видимости «всех данных tenant».
@@ -131,7 +157,7 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 
 | # | Capability | Назначение |
 |---|------------|------------|
-| 1 | **Forms / Public Forms** | Input layer для платформы ([`ADR-007`](ADR-007-forms-platform-capability.md)); Basic core / Advanced addon. |
+| 1 | **Forms / Public Forms** | Input layer ([`ADR-007`](ADR-007-forms-platform-capability.md)); consumers via **Endpoint Adapter** ([`ADR-025`](ADR-025-standard-adapter-boundary.md) / [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)). Basic core / Advanced addon. |
 | 2 | **Document Hub** | Единый слой документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md)). |
 | 3 | **Process Engine** | Единый движок процессов: system stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). |
 | 3a | **Field Registry & Card Configuration** | Канон полей, layouts, requirements ([`field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md)). |
@@ -249,3 +275,4 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-05: [`ADR-010`](ADR-010-unified-resource-list-shell.md) — единая оболочка списков (SPA), field kinds, rail/modal; capability #10 в §6 (после консолидации Activity/Notification — было #11).
 - 2026-05: [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) — платформенный UI-стандарт (всё стандартизируемое в приложении); capability #11 в §6; §12 — политика ревью против дрейфа.
 - 2026-05: [`ADR-012`](ADR-012-activity-notification-operating-layer.md) — Activity & Notification Operating Layer (единая capability вместо двух старых строк «Notifications» + «Activity / Tasks»); canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Уточнение: «Reminder», «Todo», «Planner», «Today», «Calendar» — **представления** Activity, не отдельные модули.
+- 2026-07-18: [`ADR-025`](ADR-025-standard-adapter-boundary.md) — **Platform Rule P-01 Standard Adapter Boundary** (Standard Adapters Only); §0 в этом документе.

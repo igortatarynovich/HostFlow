@@ -20,6 +20,8 @@
 Endpoint → Submission → Routing → Decision → Business Entity
 ```
 
+Подчиняется платформенному принципу **P-01 Standard Adapter Boundary** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)): Acquisition ↔ Forms только через **Endpoint Adapter**; внутренности Forms / Documents / Notifications / AI / Integrations не являются контрактом.
+
 | Слой | Ответственность |
 |------|-----------------|
 | **Endpoint** | Принимает обращение (любой внешний/внутренний вход) |
@@ -544,22 +546,23 @@ V1 **не** заменяет Meta Ads Manager.
 ## Consequences
 
 1. **Intake spine** HostFlow: `Endpoint → Submission → Routing → Decision → Business Entity` — базовый скелет для всех каналов и модулей.  
-2. **Endpoint** — главная платформенная абстракция входа; новый канал = новый `endpoint_type` в registry, не fork Campaign/Routing.  
-3. **Forms** = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)): SoT формы + согласий; не часть Acquisition.  
-4. Campaign отвечает за Attribution / Routing Context / Intent / Source — **не** за Form Builder.  
-5. HostFlow позиционируется как **система управления ростом**: Growth → Intake → Operations → Intelligence ↺ Growth.  
-6. Привлечение спроса и исполнение процессов — разные слои.  
-7. **Goal Type ≠ Primary KPI ≠ route_intent ≠ Outcome**.  
-8. **Campaign ≠ Flight**; **Template ≠ Campaign**.  
-9. **Result ≠ Outcome**; атрибуция Result → Flight → Campaign.  
-10. **Routing once per Lead**; continuation Submissions наследуют context, не меняют Attribution.  
-11. Stage 3A–3C DONE в V1; 3B Form/Intake links = transitional Endpoint specializations; **Platform Forms epic** после Acquisition V1.  
-12. Deep links: Campaign / Audience / Form на shell; Application/Inquiry — module hosts (6C).
+2. **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)): Standard Adapters Only — межмодульные и внешние взаимодействия только через адаптеры.  
+3. **Endpoint** — главная платформенная абстракция входа; новый канал = новый `endpoint_type` в registry, не fork Campaign/Routing.  
+4. **Forms** = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)): SoT формы + согласий; не часть Acquisition.  
+5. Campaign отвечает за Attribution / Routing Context / Intent / Source — **не** за Form Builder.  
+6. HostFlow позиционируется как **система управления ростом**: Growth → Intake → Operations → Intelligence ↺ Growth.  
+7. Привлечение спроса и исполнение процессов — разные слои.  
+8. **Goal Type ≠ Primary KPI ≠ route_intent ≠ Outcome**.  
+9. **Campaign ≠ Flight**; **Template ≠ Campaign**.  
+10. **Result ≠ Outcome**; атрибуция Result → Flight → Campaign.  
+11. **Routing once per Lead**; continuation Submissions наследуют context, не меняют Attribution.  
+12. Stage 3A–3C DONE в V1; 3B Form/Intake links = transitional Endpoint specializations; **Platform Forms epic** после Acquisition V1.  
+13. Deep links: Campaign / Audience / Form на shell; Application/Inquiry — module hosts (6C).
 
 ## References
 
 - [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md)  
-- [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md)
+- [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md) · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md)
 
 ## История
 
@@ -573,4 +576,5 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: **Stage 3B DONE** — Flight↔Form / Flight↔IntakeSource associations; Meta via existing profile bind.  
 - 2026-07-18: 3B fix — drop `provider`/`external_ref` snapshots; partial unique indexes for one active primary per Flight.  
 - 2026-07-18: **Stage 3C DONE** — UniversalSubmissionRouter; Form∪Profile matrix; Submission-before-DL; disposition-only unresolved.  
-- 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); **Endpoint** as primary intake abstraction; Campaign → Endpoint → Submission; routing once per Lead; intake spine `Endpoint → Submission → Routing → Decision → Business Entity`.
+- 2026-07-18: **Architecture lock** — Forms = Core Platform Module ([`ADR-007`](ADR-007-forms-platform-capability.md)); **Endpoint** as primary intake abstraction; Campaign → Endpoint → Submission; routing once per Lead; intake spine `Endpoint → Submission → Routing → Decision → Business Entity`.  
+- 2026-07-18: Linked to **P-01 Standard Adapter Boundary** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).

@@ -8,6 +8,8 @@
 **Связанное главное решение платформы:** абстракция **Endpoint** и spine  
 `Endpoint → Submission → Routing → Decision → Business Entity` — в [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md). Forms — SoT **сбора данных**, когда Endpoint типа HostFlow Public Form; Acquisition не зависит от Forms internals.
 
+**Платформенный принцип:** [`ADR-025`](ADR-025-standard-adapter-boundary.md) **P-01 Standard Adapter Boundary** — потребители Forms / HostFlow Form работают только через **Endpoint Adapter** (и родственные публичные контракты), не через Form Builder / SQL / внутренние модели.
+
 Имплементация **поэтапная**. Текущий код (`tenant_lead_forms`, `/public/intake`, квоты) — исторический bridge.
 
 ## Context
@@ -77,9 +79,9 @@ Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versio
 
 ## Consequences
 
-1. Главное изменение платформы — **Endpoint**, не «перенос Form Builder».  
+1. Главное изменение платформы — **Endpoint**, не «перенос Form Builder». Подчиняется **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).  
 2. Forms = единственный SoT формы и form-submission / consent.  
-3. Campaign / Acquisition потребляют Endpoint → Submission.  
+3. Campaign / Acquisition потребляют Endpoint → Submission через Adapter.  
 4. RODO/Terms/Privacy не живут в Recruitment settings.  
 5. Новый публичный сбор данных — только через Forms (HostFlow Form) или другой Endpoint type + handler.
 
@@ -91,4 +93,4 @@ Form Builder; Endpoint Engine (HostFlow Form publish); Submission Engine; Versio
 
 - 2026-05: Forms как платформенная capability.  
 - 2026-07-02: C4 bridge MVP.  
-- 2026-07-18: Core Platform Module; Endpoint spine (ADR-024); Forms SoT + consent version pinning; Platform Forms epic.
+- 2026-07-18: Core Platform Module; Endpoint spine (ADR-024); Forms SoT + consent version pinning; Platform Forms epic; link **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).
