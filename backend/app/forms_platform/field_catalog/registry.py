@@ -159,6 +159,36 @@ class FieldCatalogRegistry:
                 },
             )
 
+    def get_descriptors(
+        self,
+        component_id: str,
+        component_version: str,
+    ):
+        """Return declarative descriptor set for an exact component version."""
+        from backend.app.forms_platform.field_catalog.descriptors import ComponentDescriptors
+
+        record = self.get(component_id, component_version)
+        assert isinstance(record.descriptors, ComponentDescriptors)
+        return record.descriptors
+
+    def get_descriptor(
+        self,
+        component_id: str,
+        component_version: str,
+        kind: str,
+    ):
+        """Return one descriptor kind; raises missing/unsupported as typed errors."""
+        return self.get_descriptors(component_id, component_version).require(kind)
+
+    def get_descriptors_compatible(
+        self,
+        component_id: str,
+        requested_version: str,
+    ):
+        """Descriptors for latest compatible version (P1.1 resolve + P1.2 surfaces)."""
+        record = self.resolve_compatible(component_id, requested_version)
+        return record.descriptors
+
 
 # Process-wide platform registry (tenant-independent). Tests should use a fresh instance
 # or call reset_platform_registry().
