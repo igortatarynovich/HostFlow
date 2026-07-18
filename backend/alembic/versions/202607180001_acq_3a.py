@@ -1,8 +1,10 @@
 """Campaign foundation (ADR-024 Stage 3A).
 
-Revision ID: 202607180001_campaign_foundation_3a
+Revision ID: 202607180001_acq_3a
 Revises: 202607160002_comm_message_context
 Create Date: 2026-07-18
+
+NOTE: revision id kept ≤32 chars for alembic_version.version_num VARCHAR(32).
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ import sqlalchemy as sa
 
 RevisionType = Union[str, Sequence[str], None]
 
-revision: str = "202607180001_campaign_foundation_3a"
+revision: str = "202607180001_acq_3a"
 down_revision: RevisionType = "202607160002_comm_message_context"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None

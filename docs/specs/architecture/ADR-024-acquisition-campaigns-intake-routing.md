@@ -447,7 +447,7 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 - Company scope: Intake Source `own_company_id` must match Campaign; Form same tenant + active.
 - API: `…/campaigns/{id}/forms`, `…/intake-sources` (+ PATCH link flags; explicit `…/flights/{flight_id}/…`); nested on `CampaignOut.flights[]`.
 - No Application/Inquiry creation; no attribution metrics.
-- Tests: `backend/tests/api/test_stage_3b_form_intake_binding.py`; migrations `202607180002` + `202607180003` (snapshot drop + primary indexes).
+- Tests: `backend/tests/api/test_stage_3b_form_intake_binding.py`; migrations `202607180002_acq_3b` + `202607180003_acq_3b_fix` (snapshot drop + primary indexes; revision ids ≤32 chars).
 
 #### Минимальный вертикальный срез V1 (3A→3D, базовый Timeline в 3E)
 

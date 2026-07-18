@@ -1,8 +1,10 @@
 """Stage 3B fix: drop association snapshots; enforce one active primary per Flight.
 
-Revision ID: 202607180003_campaign_run_bindings_3b_fix
-Revises: 202607180002_campaign_run_bindings_3b
+Revision ID: 202607180003_acq_3b_fix
+Revises: 202607180002_acq_3b
 Create Date: 2026-07-18
+
+NOTE: revision id kept ≤32 chars for alembic_version.version_num VARCHAR(32).
 """
 
 from __future__ import annotations
@@ -15,8 +17,8 @@ import sqlalchemy as sa
 
 RevisionType = Union[str, Sequence[str], None]
 
-revision: str = "202607180003_campaign_run_bindings_3b_fix"
-down_revision: RevisionType = "202607180002_campaign_run_bindings_3b"
+revision: str = "202607180003_acq_3b_fix"
+down_revision: RevisionType = "202607180002_acq_3b"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None
 

@@ -1,8 +1,10 @@
 """CampaignRun Form + Intake Source bindings (ADR-024 Stage 3B).
 
-Revision ID: 202607180002_campaign_run_bindings_3b
-Revises: 202607180001_campaign_foundation_3a
+Revision ID: 202607180002_acq_3b
+Revises: 202607180001_acq_3a
 Create Date: 2026-07-18
+
+NOTE: revision id kept ≤32 chars for alembic_version.version_num VARCHAR(32).
 """
 
 from __future__ import annotations
@@ -16,8 +18,8 @@ from sqlalchemy.dialects import postgresql
 
 RevisionType = Union[str, Sequence[str], None]
 
-revision: str = "202607180002_campaign_run_bindings_3b"
-down_revision: RevisionType = "202607180001_campaign_foundation_3a"
+revision: str = "202607180002_acq_3b"
+down_revision: RevisionType = "202607180001_acq_3a"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None
 
