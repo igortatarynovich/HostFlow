@@ -245,24 +245,29 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ### Forms
 
-**Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)
+**Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)  
+**Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
+**Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
+**Sprint 1:** Passport ✅ · Manifest ✅ · Public Contract ✅ · Adapter `forms.endpoint_adapter_v1` · Contract tests  
+**Builder:** **LOCKED** · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 
 | | |
 |--|--|
-| **Owns** | Form Builder; Templates; Versioning; Form Submission **surface**; Consent + version pin; Public/Internal Forms; Form Logic; Themes; CAPTCHA surface; multi-language copy; Endpoint Publishing **для HostFlow Form** |
-| **Configures** | Branding, default language, CAPTCHA, consent policy, public URLs, themes → Manifest [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) |
-| **Exposes** | Form Adapter (**Stable**); Endpoint Adapter HostFlow Form (**Stable**); Consent pin contract (**Stable**) |
-| **Non-Goals** | BPM; Workflow engine; Candidate Evaluation; CRM; Notifications; Documents SoT; Campaign SoT |
-| **Consumes** | Endpoint / Submission (routing after surface); Documents (file fields); Notifications; Automations (opt.); Field Registry |
+| **Owns** | Form Submission **surface**; Consent + version pin **intent**; Public Form Endpoint publishing **для HostFlow Form**; publication bridge (`TenantLeadForm` until FormTemplate); handler registry metadata |
+| **Configures** | Default language, public URL base, consent defaults, limits, adapter ids, builder flag → Manifest [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) |
+| **Exposes** | Form / HostFlow Form Endpoint Adapter **`forms.endpoint_adapter_v1` (Stable)** — ops `publish` · `endpoint` · `submission` · `result` handoff; Consent pin policy key (**Stable** intent); C4 HTTP resolve (**Stable**) |
+| **Non-Goals** | BPM; Workflow engine; Candidate Evaluation; CRM; Notifications; Documents SoT; Campaign SoT; Outcome/KPI; Universal Routing engine; Visual Builder (Sprint 1) |
+| **Consumes** | Endpoint / Submission (routing after surface); Acquisition binding + attribution contracts; Documents (file fields); Notifications; Automations (opt.); Field Registry |
 | **Requires** | Endpoint, Submission |
 | **Optional** | Documents, Notifications, Automations |
 | **License class** | Platform (Basic); Licensed addons = Advanced Forms |
 | **Lifecycle defaults** | Install+Enable+Configure (default Manifest) on tenant create |
-| **Events** | Publishes: `form.published`, `form.version_created`, `form.submission_received`, consent accepted |
-| **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT |
-| **Data Ownership** | Form; FormVersion; FormTemplate; FormTheme; FormLogic; ConsentDefinition + pin; form-surface payload |
+| **Events** | Publishes: `form.published` (Experimental bridge), `form.submission_received` (Experimental); future: `form.version_created`, consent accepted |
+| **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT; Forms-owned Outcome/KPI/attribution engines; Builder unlock without contract DoD |
+| **Data Ownership** | Form surface / publication identity (bridge: `TenantLeadForm`); ConsentDefinition + pin (intent); form-surface payload. **Not yet:** FormTemplate / FormTheme / FormLogic SoT (post–Sprint 1) |
+| **Contract tests** | `backend/tests/forms_platform/test_forms_sprint1_contract.py` · gates `test_forms_sprint1_gates.py` · C4 `test_forms_platform_c4.py` |
 
 ---
 

@@ -65,7 +65,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Gate | Status |
 |------|--------|
 | Acquisition Stage 3D | ✅ COMPLETE |
-| Forms Sprint 1 | **UNLOCKED** |
+| Forms Sprint 1 | **IN PROGRESS** (infra) |
 | Forms Builder | **LOCKED** |
 
 Contract tests:
@@ -76,7 +76,7 @@ Contract tests:
 - Spec: [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)  
 - Migrations: `202607180004_acq_3d` → `202607180005_acq_3d_o` → `202607180006_acq_3d_k`
 
-### Forms Sprint 1 (UNLOCKED after Epic P)
+### Forms Sprint 1 (IN PROGRESS — infra after Epic P)
 
 ```text
 Passport → Manifest → Public Contract
@@ -84,7 +84,16 @@ Passport → Manifest → Public Contract
 → Adapter → Contract Tests
 ```
 
-Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint — не новая form engine.  
+| Artifact | Path |
+|----------|------|
+| Task | [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) |
+| Public Contract | [`forms-public-contract.md`](forms-public-contract.md) |
+| Adapter | `backend/app/forms_platform/adapter.py` (`forms.endpoint_adapter_v1`) |
+| Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) · `forms_platform/manifest.py` |
+| Contract tests | `backend/tests/forms_platform/test_forms_sprint1_contract.py` |
+| Gates | `backend/tests/forms_platform/test_forms_sprint1_gates.py` |
+
+Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint / C4 publication bridge — не новая form engine.  
 **Не** Builder / drag-and-drop / schema editor / marketplace / новый routing / Forms Outcome-KPI.
 
 ---
@@ -116,4 +125,5 @@ Passport → Manifest → Public Contract
 ## History
 
 - 2026-07-18: Introduced as Phase 1 mandatory artifact between Passport and Adapter.  
-- 2026-07-18: Epic P COMPLETE; Forms Sprint 1 unlocked; Builder locked.
+- 2026-07-18: Epic P COMPLETE; Forms Sprint 1 unlocked; Builder locked.  
+- 2026-07-18: Forms Sprint 1 infra — Public Contract + Adapter + contract tests linked.

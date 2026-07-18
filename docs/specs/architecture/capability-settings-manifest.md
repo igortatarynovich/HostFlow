@@ -77,14 +77,26 @@ sections:
 
 ### Forms
 
-| Section | Keys (illustrative) |
-|---------|---------------------|
-| General | Branding, default language, public URL base |
-| Integrations | CAPTCHA provider |
-| Defaults | Default theme, default locale |
-| Policies | Consent policy defaults |
-| Feature Flags | Themes advanced, multi-language |
-| License Gates | Forms Basic vs Advanced |
+**Sprint 1 status:** concrete keys below (code mirror: `backend/app/forms_platform/manifest.py`).  
+**Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) · Adapter `forms.endpoint_adapter_v1`.  
+**Builder:** `forms.feature_flags.builder_enabled` default **`false`** (LOCKED).
+
+| Section | Key | Type | Default | Scope |
+|---------|-----|------|---------|-------|
+| General | `forms.general.default_language` | string | `pl` | tenant |
+| General | `forms.general.public_url_base` | url | — | tenant |
+| Defaults | `forms.defaults.tier` | enum(`basic`,`advanced`) | `basic` | tenant |
+| Defaults | `forms.defaults.consent_required` | boolean | `true` | tenant |
+| Policies | `forms.policies.consent_version_pin` | boolean | `true` | tenant |
+| Policies | `forms.limits.max_active_publications` | number | `50` | tenant |
+| Feature Flags | `forms.feature_flags.builder_enabled` | boolean | **`false`** | tenant |
+| Feature Flags | `forms.feature_flags.themes_advanced` | boolean | `false` | tenant |
+| Feature Flags | `forms.feature_flags.multi_language` | boolean | `false` | tenant |
+| Integrations | `forms.adapter.contract_id` | string | `forms.public_contract.v1` | module |
+| Integrations | `forms.adapter.id` | string | `forms.endpoint_adapter_v1` | module |
+| License Gates | `forms.license.advanced_forms` | boolean | `false` | tenant |
+
+CAPTCHA provider / branding themes remain **Advanced** backlog — not Sprint 1 unlock.
 
 ### Documents
 
@@ -149,3 +161,4 @@ Configures ───────────────►  Validation Rules (+
 ## History
 
 - **2026-07-18** — introduced with **P-05** ([`ADR-029`](ADR-029-settings-contract.md)); operational half of capability configuration model.
+- **2026-07-18** — Forms Sprint 1: concrete Manifest keys (builder default `false`; adapter contract ids).
