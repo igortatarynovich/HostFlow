@@ -56,21 +56,36 @@ L0 уже требует Passport + Exposes + Manifest schema. Capability Contra
 
 ## Minimal example shapes
 
-### Acquisition vertical (Epic P)
+### Acquisition vertical (Epic P) — ✅ COMPLETE
 
 ```text
-Campaign → Flight → Endpoint → Submission → Result → Outcome
+Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 ```
 
-Contract tests: [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md).
+| Gate | Status |
+|------|--------|
+| Acquisition Stage 3D | ✅ COMPLETE |
+| Forms Sprint 1 | **UNLOCKED** |
+| Forms Builder | **LOCKED** |
 
-### Forms Sprint 1 (after Epic P)
+Contract tests:
+
+- E2E: `backend/tests/api/test_stage_3d_epic_p_contract.py`  
+- Suites: attribution · lifecycle · KPI · Stage 3A–3C  
+- Gates: `backend/tests/api/test_stage_3d_epic_p_gates.py`  
+- Spec: [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)  
+- Migrations: `202607180004_acq_3d` → `202607180005_acq_3d_o` → `202607180006_acq_3d_k`
+
+### Forms Sprint 1 (UNLOCKED after Epic P)
 
 ```text
-publish → endpoint → submission → result
+Passport → Manifest → Public Contract
+  publish → endpoint → submission → result
+→ Adapter → Contract Tests
 ```
 
-Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint — не новая form engine.
+Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint — не новая form engine.  
+**Не** Builder / drag-and-drop / schema editor / marketplace / новый routing / Forms Outcome-KPI.
 
 ---
 
@@ -100,4 +115,5 @@ publish → endpoint → submission → result
 
 ## History
 
-- 2026-07-18: Introduced as Phase 1 mandatory artifact between Passport and Adapter.
+- 2026-07-18: Introduced as Phase 1 mandatory artifact between Passport and Adapter.  
+- 2026-07-18: Epic P COMPLETE; Forms Sprint 1 unlocked; Builder locked.

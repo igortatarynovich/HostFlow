@@ -10,11 +10,13 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 
 Организационные правила (спор → L0; не раздувать конституцию; ADR ссылается на P-rules; Catalog ежедневно; модуль только по шаблону) — в L0 § Organizational rules.
 
-## Phase 1 lock (2026-07-18)
+## Phase 1 lock (2026-07-18 · updated after Epic P DoD)
 
-1. **Сейчас:** Epic P — Acquisition Stage **3D** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).  
-2. **После Epic P DoD:** Forms Sprint 1 = Passport + Manifest + Public Contract + Adapter + Contract Tests — **не** Builder.  
-3. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).
+1. **Acquisition Stage 3D / Epic P:** ✅ **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md); E2E `test_stage_3d_epic_p_contract.py`).  
+2. **Next:** Forms Sprint 1 = Passport → Manifest → Public Contract → Adapter → Contract Tests — **UNLOCKED**.  
+3. **Forms Builder:** **LOCKED** until Sprint 1 contracts land.  
+4. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
+5. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
 ## Ежедневный путь проектирования (L1)
 
@@ -47,4 +49,5 @@ UI **не** определяет архитектуру.
 ## История
 
 - 2026-07-18: L0 FROZEN; Phase 0 complete; switch to Phase 1.  
-- 2026-07-18: Phase 1 lock — Epic P first; Capability Contract sequence; Forms Sprint 1 after V1.
+- 2026-07-18: Phase 1 lock — Epic P first; Capability Contract sequence; Forms Sprint 1 after V1.  
+- 2026-07-18: Epic P COMPLETE — Forms Sprint 1 unlocked; Builder locked.

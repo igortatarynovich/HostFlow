@@ -364,9 +364,9 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 | | |
 |--|--|
-| **Owns** | Campaign / CampaignRun / Flight; source / placement bindings; `route_intent` / eligibility; attribution for new Lead |
+| **Owns** | Campaign / CampaignRun / Flight; source / placement bindings; `route_intent` / eligibility; attribution; Outcome progress; KPI read aggregates |
 | **Configures** | Campaign defaults / windows; source registry defaults |
-| **Exposes** | Campaign / Flight / routing APIs (**Stable**); binding APIs (**Stable**) |
+| **Exposes** | Campaign / Flight / routing APIs (**Stable**); binding APIs (**Stable**); Result attribution / Outcome / KPI read contracts (**Stable** after Epic P) |
 | **Non-Goals** | Result SoT (Application/Inquiry); Form Builder; Marketing product ADR-004; Document Hub |
 | **Consumes** | Endpoint; Submission; Forms (compose); Notifications (opt.) |
 | **Requires** | Endpoint, Submission |
@@ -375,7 +375,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Lifecycle defaults** | Install+Enable when growth surface used; Configure defaults |
 | **Events** | Campaign/Flight lifecycle; consumes submission routing outcomes |
 | **Forbidden** | Application / Candidate / Inquiry SoT; Form Builder / Consent; Document Hub; SMTP |
-| **Data Ownership** | Campaign; Flight; association tables; attribution on intake path |
+| **Data Ownership** | Campaign; Flight; association tables; `acq_result_attributions`; `acq_outcomes`; spend/qualification sources |
+| **Stage 3D / Epic P** | ✅ **COMPLETE** (2026-07-18) — E2E `test_stage_3d_epic_p_contract.py`; migrations `202607180004`…`006`; Forms Sprint 1 **UNLOCKED**; Builder **LOCKED** |
 
 ---
 

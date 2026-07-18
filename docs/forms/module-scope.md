@@ -24,11 +24,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 - First entry → Universal Routing (один раз на новый Lead).  
 - Continuation → наследование Routing/Attribution context Lead.
 
-## Platform epic (после Epic P / Stage 3D DoD)
+## Platform epic (после Epic P DoD)
 
-**Не начинать Builder до закрытия Acquisition V1 vertical.**
-
-**Forms Sprint 1** ([`capability-contract.md`](../specs/architecture/capability-contract.md)):
+**Forms Sprint 1 — UNLOCKED** ([`capability-contract.md`](../specs/architecture/capability-contract.md)):
 
 1. Passport (полный)  
 2. Manifest keys (flags, limits, defaults, permissions, adapter config)  
@@ -36,12 +34,13 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 4. Adapter поверх Endpoint  
 5. Contract Tests  
 
-Затем: Form Builder; Endpoint Engine; Consent; Themes; … (полный эпик ADR-007).
+**Forms Builder — LOCKED** until Sprint 1 contracts land.
 
-Gate: [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md).
+Gate evidence: [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · E2E `test_stage_3d_epic_p_contract.py`.
 
 ## История
 
 - 2026-05: платформенная capability.  
 - 2026-07-18: Core Platform Module + Endpoint spine.  
-- 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.
+- 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.  
+- 2026-07-18: Epic P COMPLETE — Sprint 1 **UNLOCKED**; Builder **LOCKED**.

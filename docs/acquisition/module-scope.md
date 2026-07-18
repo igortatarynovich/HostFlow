@@ -82,15 +82,16 @@ Campaign → Audience(s) → Flight → Channels
 1. **3A** ✅ — Campaign + Goal Type + Primary KPI + Target + reserved CampaignRun (**не** Template)  
 2. **3B** ✅ — Endpoint binding (V1: Form + Intake Source specializations; canon = CampaignRun ↔ Endpoint)  
 3. **3C** ✅ — routing → Application | Inquiry (Submission before Decision Layer; routing once per Lead)  
-4. **3D** 🔄 — **Epic P** Result → Flight → Campaign + Outcome progress + Primary KPI — [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md)  
+4. **3D** ✅ — **Epic P COMPLETE** — Result → Outcome → KPI — [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · E2E `test_stage_3d_epic_p_contract.py`  
 5. **3E** — Timeline + automation events  
 
-После **Epic P DoD** (Acquisition V1 vertical): **Forms Sprint 1** = Passport + Manifest + Public Contract + Adapter + Contract Tests — **не** Builder ([`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md), [`capability-contract.md`](../specs/architecture/capability-contract.md)).
+**Forms Sprint 1 UNLOCKED** (Passport → Manifest → Public Contract → Adapter → Tests). **Forms Builder LOCKED.**  
+See [`capability-contract.md`](../specs/architecture/capability-contract.md).
 
 V1 vertical:
 
 ```text
-Campaign → Flight → Endpoint → Submission → Result → Outcome
+Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 ```
 
 **CampaignTemplate** catalog + instantiate — после V1 (ориентир V2). Multi-Flight UX — тоже после V1.
