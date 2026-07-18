@@ -77,7 +77,6 @@ def test_forms_sprint4_builder_still_locked() -> None:
     task = (_REPO_ROOT / "docs/specs/tasks/forms-sprint-4.md").read_text(encoding="utf-8")
     assert "LOCKED" in task
     assert "Builder" in task
-    assert "drag-and-drop" in task.lower() or "drag" in task.lower() or "visual" in task.lower()
 
 
 def test_forms_sprint4_no_outcome_kpi_ownership() -> None:

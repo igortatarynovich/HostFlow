@@ -1,4 +1,4 @@
-"""Forms platform package — ADR-007 / Sprint 1–4 Adapter surface."""
+"""Forms platform package — ADR-007 / Sprint 1–5 Adapter surface."""
 
 from __future__ import annotations
 
@@ -20,17 +20,23 @@ from backend.app.forms_platform.adapter import (
     result_handoff,
     submission_entry,
 )
+from backend.app.forms_platform.answers import (
+    ANSWER_CONTRACT,
+    build_normalized_answers,
+)
 from backend.app.forms_platform.schema import (
     FIELD_SCHEMA_CONTRACT,
     build_field_schema_v1,
     extract_field_schema,
 )
 from backend.app.forms_platform.validation import (
+    shared_intake_payload_from_answers,
     validate_submission,
     validate_submission_against_publication,
 )
 
 __all__ = [
+    "ANSWER_CONTRACT",
     "FIELD_SCHEMA_CONTRACT",
     "FORMS_ADAPTER_ID",
     "FORMS_PUBLIC_CONTRACT_ID",
@@ -38,6 +44,7 @@ __all__ = [
     "adapter_identity",
     "assert_submission_version_compatible",
     "build_field_schema_v1",
+    "build_normalized_answers",
     "commit_publish",
     "deactivate_endpoint",
     "endpoint_from_publication",
@@ -49,6 +56,7 @@ __all__ = [
     "resolve_endpoint",
     "resolve_publication",
     "result_handoff",
+    "shared_intake_payload_from_answers",
     "submission_entry",
     "validate_submission",
     "validate_submission_against_publication",

@@ -358,6 +358,12 @@ def submission_entry(publication: dict[str, Any]) -> dict[str, Any]:
             "version": version,
         },
         "consent_pin": publication.get("consent_pin"),
+        "answer_contract": "forms.normalized_answers.v1",
+        "field_schema_contract": (
+            (publication.get("field_schema") or {}).get("schema_contract")
+            if isinstance(publication.get("field_schema"), dict)
+            else None
+        ),
         "contract_version": publication.get("contract_version") or FORMS_PLATFORM_CONTRACT_VERSION,
         "builder_locked": builder_is_locked_by_manifest(),
     }
@@ -443,6 +449,7 @@ def adapter_identity() -> dict[str, Any]:
             "list_versions",
             "get_version",
             "validate_submission",
+            "normalize_answers",
         ],
         "builder_locked": builder_is_locked_by_manifest(),
         "manifest_builder_flag_default": FORMS_MANIFEST_KEYS[
