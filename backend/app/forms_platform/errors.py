@@ -84,3 +84,21 @@ class FormsVersionNotFoundError(FormsAdapterError):
     code = "forms_publication_version_not_found"
     http_status = 404
     default_message = "Publication version not found"
+
+
+class FormsEnvelopeNotFoundError(FormsAdapterError):
+    code = "forms_submission_envelope_not_found"
+    http_status = 404
+    default_message = "Submission envelope not found"
+
+
+class FormsEnvelopeImmutableError(FormsAdapterError):
+    code = "forms_submission_envelope_immutable"
+    http_status = 409
+    default_message = "Submission envelope content is immutable"
+
+
+class FormsEnvelopeStatusError(FormsAdapterError):
+    code = "forms_submission_envelope_status_invalid"
+    http_status = 422
+    default_message = "Invalid submission envelope processing status"

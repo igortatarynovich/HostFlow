@@ -71,7 +71,8 @@ def test_forms_sprint3_alembic_single_head() -> None:
         if line.strip() and not line.startswith("INFO")
     ]
     assert len(heads) == 1, result.stdout
-    assert "202607180008_forms_s3" in result.stdout
+    # Sprint 3 revision remains in chain (may not be tip after Sprint 6+).
+    assert (_VERSIONS / "202607180008_forms_s3.py").is_file()
 
 
 def test_forms_sprint3_alembic_roundtrip() -> None:
@@ -79,11 +80,14 @@ def test_forms_sprint3_alembic_roundtrip() -> None:
     assert up.returncode == 0, up.stderr + up.stdout
     down = _run_alembic("downgrade", "202607180007_forms_s2")
     assert down.returncode == 0, down.stderr + down.stdout
+    to_s3 = _run_alembic("upgrade", "202607180008_forms_s3")
+    assert to_s3.returncode == 0, to_s3.stderr + to_s3.stdout
+    current_s3 = _run_alembic("current")
+    assert current_s3.returncode == 0, current_s3.stderr + current_s3.stdout
+    assert "202607180008_forms_s3" in current_s3.stdout
+    # Later sprints may advance head beyond Sprint 3; chain must still reach tip.
     up2 = _run_alembic("upgrade", "head")
     assert up2.returncode == 0, up2.stderr + up2.stdout
-    current = _run_alembic("current")
-    assert current.returncode == 0, current.stderr + current.stdout
-    assert "202607180008_forms_s3" in current.stdout
 
 
 def test_forms_sprint3_builder_still_locked() -> None:

@@ -69,7 +69,8 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 2 | ✅ **COMPLETE** (PR #37 · `ec5fcd86`) |
 | Forms Sprint 3 | ✅ **COMPLETE** (PR #38 · `f5771df6`) |
 | Forms Sprint 4 | ✅ **COMPLETE** (PR #39 · `779cffd3`) |
-| Forms Sprint 5 | **IN PROGRESS** (normalized answers) |
+| Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
+| Forms Sprint 6 | **IN PROGRESS** (submission envelope) |
 | Forms Builder | **LOCKED** |
 
 Contract tests:

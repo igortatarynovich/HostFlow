@@ -26,9 +26,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 ## Platform epic (после Epic P DoD)
 
-**Forms Sprint 1–4 — ✅ COMPLETE** · **Forms Sprint 5 — IN PROGRESS** ([`../specs/tasks/forms-sprint-5.md`](../specs/tasks/forms-sprint-5.md)):
+**Forms Sprint 1–5 — ✅ COMPLETE** · **Forms Sprint 6 — IN PROGRESS** ([`../specs/tasks/forms-sprint-6.md`](../specs/tasks/forms-sprint-6.md)):
 
-Normalized answers (`forms.normalized_answers.v1`) → Shared Intake; Builder **LOCKED**.
+Submission persistence envelope (append-only); Builder **LOCKED**.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 

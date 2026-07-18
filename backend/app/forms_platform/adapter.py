@@ -50,6 +50,12 @@ from backend.app.forms_platform.publication_versions import (
     register_submission_pin,
     version_row_to_dict,
 )
+from backend.app.forms_platform.submission_envelope import (
+    get_submission_envelope,
+    list_submission_envelopes,
+    persist_submission_envelope,
+    set_envelope_processing_status,
+)
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.models.mixins import now_utc
 
@@ -450,6 +456,9 @@ def adapter_identity() -> dict[str, Any]:
             "get_version",
             "validate_submission",
             "normalize_answers",
+            "persist_submission",
+            "get_submission",
+            "list_submissions",
         ],
         "builder_locked": builder_is_locked_by_manifest(),
         "manifest_builder_flag_default": FORMS_MANIFEST_KEYS[
@@ -457,3 +466,10 @@ def adapter_identity() -> dict[str, Any]:
         ]["default"],
         "manifest": forms_manifest_document(),
     }
+
+
+# Sprint 6 persistence surface (re-exported for adapter consumers)
+persist_submission = persist_submission_envelope
+get_submission = get_submission_envelope
+list_submissions = list_submission_envelopes
+set_submission_status = set_envelope_processing_status

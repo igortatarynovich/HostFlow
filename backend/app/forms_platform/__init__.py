@@ -1,4 +1,4 @@
-"""Forms platform package — ADR-007 / Sprint 1–5 Adapter surface."""
+"""Forms platform package — ADR-007 / Sprint 1–6 Adapter surface."""
 
 from __future__ import annotations
 
@@ -11,13 +11,17 @@ from backend.app.forms_platform.adapter import (
     commit_publish,
     deactivate_endpoint,
     endpoint_from_publication,
+    get_submission,
     get_version_for_audit,
+    list_submissions,
     list_versions_for_audit,
+    persist_submission,
     pin_submission_to_publication_version,
     publish,
     resolve_endpoint,
     resolve_publication,
     result_handoff,
+    set_submission_status,
     submission_entry,
 )
 from backend.app.forms_platform.answers import (
@@ -49,13 +53,17 @@ __all__ = [
     "deactivate_endpoint",
     "endpoint_from_publication",
     "extract_field_schema",
+    "get_submission",
     "get_version_for_audit",
+    "list_submissions",
     "list_versions_for_audit",
+    "persist_submission",
     "pin_submission_to_publication_version",
     "publish",
     "resolve_endpoint",
     "resolve_publication",
     "result_handoff",
+    "set_submission_status",
     "shared_intake_payload_from_answers",
     "submission_entry",
     "validate_submission",

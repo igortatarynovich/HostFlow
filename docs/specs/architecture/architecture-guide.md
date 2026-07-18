@@ -17,8 +17,9 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 3. **Forms Sprint 2:** ✅ **COMPLETE** ([`../tasks/forms-sprint-2.md`](../tasks/forms-sprint-2.md) · PR #37 · `ec5fcd86`).
 4. **Forms Sprint 3:** ✅ **COMPLETE** ([`../tasks/forms-sprint-3.md`](../tasks/forms-sprint-3.md) · PR #38 · `f5771df6`).
 5. **Forms Sprint 4:** ✅ **COMPLETE** ([`../tasks/forms-sprint-4.md`](../tasks/forms-sprint-4.md) · PR #39 · `779cffd3`).
-6. **Forms Sprint 5:** **IN PROGRESS** — normalized answer contract ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md)).
-7. **Forms Builder:** **LOCKED**.
+6. **Forms Sprint 5:** ✅ **COMPLETE** ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md) · PR #40 · `a6df02f0`).
+7. **Forms Sprint 6:** **IN PROGRESS** — submission persistence envelope ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).
+8. **Forms Builder:** **LOCKED**.
 3. **Forms Builder:** **LOCKED** until Sprint 1 contracts land.  
 4. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 5. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
