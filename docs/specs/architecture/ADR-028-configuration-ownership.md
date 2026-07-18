@@ -99,12 +99,15 @@ P-04 **не** запрещает:
 | [`ADR-026`](ADR-026-capability-ownership.md) | P-02 — кто владеет функциональностью |
 | [`ADR-027`](ADR-027-capability-composition.md) | P-03 — как композировать |
 | **ADR-028 (этот)** | P-04 — кто владеет конфигурацией |
-| [`platform-capability-catalog.md`](platform-capability-catalog.md) | Configures в каждом passport |
+| [`ADR-029`](ADR-029-settings-contract.md) | **P-05** — как конфигурация публикуется (Settings Contract) |
+| [`platform-capability-catalog.md`](platform-capability-catalog.md) | Configures pointer + Passport |
+| [`capability-settings-manifest.md`](capability-settings-manifest.md) | Settings Manifest schema |
 
 ## References
 
-[`platform-architecture-principles.md`](platform-architecture-principles.md) · [`architecture-review-checklist.md`](architecture-review-checklist.md) · ADR-005 · ADR-007 · ADR-009 · ADR-012 · ADR-006
+[`platform-architecture-principles.md`](platform-architecture-principles.md) · [`architecture-review-checklist.md`](architecture-review-checklist.md) · [`capability-settings-manifest.md`](capability-settings-manifest.md) · ADR-005 · ADR-007 · ADR-009 · ADR-012 · ADR-006 · ADR-029
 
 ## История
 
 - 2026-07-18: P-04 Configuration Ownership accepted; pairs with Capability Passport (Owns / Configures / Exposes / Consumes).
+- 2026-07-18: Clarified vs **P-05** Settings Contract — ownership vs publication.
