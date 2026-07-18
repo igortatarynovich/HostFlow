@@ -108,6 +108,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Version ledger | migration `202607180008_forms_s3` · `publication_versions.py` |
 | Field schema / validation | `schema.py` · `validation.py` (`forms.field_schema.v1`) |
 | Normalized answers | `answers.py` (`forms.normalized_answers.v1`) → Shared Intake handoff |
+| Submission envelope | `submission_envelope.py` · migration `202607180009_forms_s6` |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -121,6 +122,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - Sprint 3: `test_forms_sprint3_contract.py` · `test_forms_sprint3_gates.py`  
 - Sprint 4: `test_forms_sprint4_contract.py` · `test_forms_sprint4_gates.py`  
 - Sprint 5: `test_forms_sprint5_contract.py` · `test_forms_sprint5_gates.py`  
+- Sprint 6: `test_forms_sprint6_contract.py` · `test_forms_sprint6_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -149,4 +151,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: Sprint 3 COMPLETE (PR #38).  
 - 2026-07-18: Sprint 4 — `forms.field_schema.v1` frozen in snapshot; `validate_submission` runtime (no Builder).  
 - 2026-07-18: Sprint 4 COMPLETE (PR #39).  
-- 2026-07-18: Sprint 5 — `forms.normalized_answers.v1` (raw/normalized + Shared Intake handoff).
+- 2026-07-18: Sprint 5 — `forms.normalized_answers.v1` (raw/normalized + Shared Intake handoff).  
+- 2026-07-18: Sprint 5 COMPLETE (PR #40).  
+- 2026-07-18: Sprint 6 — append-only `form_submission_envelopes` persistence.

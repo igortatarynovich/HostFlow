@@ -1,58 +1,25 @@
 # Forms Sprint 5 — Normalized answer contract
 
-**Status:** READY FOR REVIEW  
+**Status:** **COMPLETE** (2026-07-18 · merge `a6df02f0` · [PR #40](https://github.com/igortatarynovich/HostFlow/pull/40))  
 **Prerequisite:** Forms Sprint 4 **COMPLETE** ([`forms-sprint-4.md`](forms-sprint-4.md) · merge `779cffd3` / PR #39)  
-**Canon:** [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
-**Builder:** **LOCKED**
+**Next:** [`forms-sprint-6.md`](forms-sprint-6.md) — submission persistence envelope · **Builder LOCKED**
 
 ---
 
-## Goal
+## Closed gates
 
-Stable answer format by `field_id` with raw/normalized split, canonical type normalization, and Shared Intake handoff — **without** domain mapping or Builder.
-
-```text
-raw payload → flat field map → canonicalize by frozen schema
-→ forms.normalized_answers.v1
-→ intake_handoff (presentation_values_v1 + version pins)
-```
-
----
-
-## Scope
-
-### In
-
-- `forms.normalized_answers.v1`  
-- `raw_values` vs `normalized_values`  
-- Canonical normalization: string, number, boolean, date, email, phone  
-- Error contract: `field_id`, `code`, `message_key`, `message`  
-- Unknown fields rejected **after** flat extraction / before accept  
-- `schema_contract` + `published_version` (+ `form_id`) stored with answers  
-- `intake_handoff` for Shared Intake (no Forms domain mapping)  
-- Contract + gates  
-
-### Out
-
-- Builder / visual schema editor / drag-and-drop  
-- Domain mapping (Candidate/Lead field ownership) inside Forms  
-- New submission engine  
-- New Alembic migration  
-
----
-
-## DoD
-
-- [x] Answer contract with raw + normalized  
-- [x] Canonical normalizers for core types  
-- [x] Validation errors include `message_key`  
-- [x] Unknown rejected post-normalization extract  
-- [x] Schema + publication version on answer  
-- [x] Shared Intake handoff without domain mapping  
-- [x] Builder locked; Sprint 1–4 regression green  
+| Gate | Status |
+|------|--------|
+| Forms Sprint 5 | ✅ **COMPLETE** |
+| Normalized Answers Contract v1 | ✅ **ACTIVE** |
+| Canonical Value Normalization | ✅ **ACTIVE** |
+| Stable Validation Error Contract | ✅ **ACTIVE** |
+| Shared Intake Handoff | ✅ **ACTIVE** |
+| Builder | **LOCKED** |
 
 ---
 
 ## History
 
-- 2026-07-18: Opened after Sprint 4 merge `779cffd3` (#39).
+- 2026-07-18: Opened after Sprint 4 merge `779cffd3` (#39).  
+- 2026-07-18: **COMPLETE** — merged as PR #40 (`a6df02f0`).
