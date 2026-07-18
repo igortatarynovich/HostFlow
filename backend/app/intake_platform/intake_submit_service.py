@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.acquisition.result_attribution import try_record_result_attribution_from_routing
 from backend.app.acquisition.submission_routing import (
     RoutingDecisionStatus,
     apply_unresolved_lead_disposition,
@@ -162,7 +163,7 @@ async def submit_client_public_intake_with_policy(
     routing_stamp = stamp_acquisition_routing_on_lead(target_lead, routing)
     await db.flush()
 
-    await append_submission(
+    submission_entry = await append_submission(
         db,
         tenant_id=str(tenant_id),
         lead_id=str(target_lead.id),
@@ -201,6 +202,13 @@ async def submit_client_public_intake_with_policy(
     )
     # Re-stamp after Decision Layer may rewrite normalized.
     stamp_acquisition_routing_on_lead(target_lead, routing)
+    await try_record_result_attribution_from_routing(
+        db,
+        tenant_id=str(tenant_id),
+        lead=target_lead,
+        submission_id=str(submission_entry.get("submission_id") or ""),
+        created_candidate_id=created_candidate_id,
+    )
     await db.flush()
 
     return decision, created_candidate_id, effective

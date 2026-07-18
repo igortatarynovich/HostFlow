@@ -82,16 +82,15 @@ Campaign → Audience(s) → Flight → Channels
 1. **3A** ✅ — Campaign + Goal Type + Primary KPI + Target + reserved CampaignRun (**не** Template)  
 2. **3B** ✅ — Endpoint binding (V1: Form + Intake Source specializations; canon = CampaignRun ↔ Endpoint)  
 3. **3C** ✅ — routing → Application | Inquiry (Submission before Decision Layer; routing once per Lead)  
-4. **3D** — Result → Flight → Campaign + Outcome progress ← next  
+4. **3D** 🔄 — **Epic P** Result → Flight → Campaign + Outcome progress + Primary KPI — [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md)  
 5. **3E** — Timeline + automation events  
 
-После Acquisition V1: эпик **Platform — Forms** ([`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)).
+После **Epic P DoD** (Acquisition V1 vertical): **Forms Sprint 1** = Passport + Manifest + Public Contract + Adapter + Contract Tests — **не** Builder ([`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md), [`capability-contract.md`](../specs/architecture/capability-contract.md)).
 
 V1 vertical:
 
 ```text
-Campaign + Goal Type + Primary KPI → Target → Flight(1) → Endpoint(s) → Submission
-  → Result attribution → Outcome progress
+Campaign → Flight → Endpoint → Submission → Result → Outcome
 ```
 
 **CampaignTemplate** catalog + instantiate — после V1 (ориентир V2). Multi-Flight UX — тоже после V1.
