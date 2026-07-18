@@ -37,6 +37,11 @@ class FormPublicationOut(BaseModel):
     title: str
     public_slug: Optional[str] = None
     is_active: bool
+    lifecycle_status: Optional[str] = None
+    published_version: Optional[int] = None
+    published_at: Optional[str] = None
+    has_immutable_snapshot: Optional[bool] = None
+    consent_pin: Optional[dict[str, Any]] = None
     mode: str
     tier: str
     module_owner: str

@@ -1,80 +1,32 @@
 # Forms Sprint 1 — Infrastructure (Capability Contract closure)
 
-**Status:** READY FOR REVIEW (infra PR)  
+**Status:** **COMPLETE** (2026-07-18 · merge `37b652af` · [PR #36](https://github.com/igortatarynovich/HostFlow/pull/36))  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **Module scope:** [`../../forms/module-scope.md`](../../forms/module-scope.md)  
-**Prerequisite:** Epic P / Acquisition Stage 3D **COMPLETE** ([`acquisition-epic-p-stage-3d.md`](acquisition-epic-p-stage-3d.md) · merge `df099d35`)  
-**Gate:** Forms Sprint 1 infra → **Builder remains LOCKED**
+**Prerequisite:** Epic P / Acquisition Stage 3D **COMPLETE** ([`acquisition-epic-p-stage-3d.md`](acquisition-epic-p-stage-3d.md))  
+**Next:** [`forms-sprint-2.md`](forms-sprint-2.md) — runtime hardening · **Builder LOCKED**
 
 ---
 
-## Why now
+## Closed gates
 
-Acquisition vertical is closed. Forms may proceed **only** as infrastructure:
-
-```text
-Passport → Manifest → Public Contract → Endpoint → Submission → Result → Adapter
-```
-
-UI / Builder **не** открываются этим спринтом.
-
----
-
-## Goal
-
-Зафиксировать публичную Forms-границу HostFlow Form поверх существующего Endpoint spine и C4 publication bridge — без FormTemplate migration, без Builder, без собственного routing/Outcome/KPI.
+| Gate | Status |
+|------|--------|
+| Forms Sprint 1 infra | ✅ **COMPLETE** |
+| Forms Public Contract v1 | ✅ **ACTIVE** |
+| P-01 HostFlow Form Adapter `forms.endpoint_adapter_v1` | ✅ **ACTIVE** |
+| Forms Builder | **LOCKED** |
+| Forms runtime expansion | not auto-unlocked (Sprint 2) |
 
 ---
 
-## Public chain (единственная)
+## Public chain
 
 ```text
 publish → endpoint → submission → result
 ```
 
-| Op | Meaning |
-|----|---------|
-| **publish** | Resolve HostFlow Form publication (ADR-007 view; bridge = `TenantLeadForm`) |
-| **endpoint** | HostFlow Public Form **is-a** Endpoint specialization |
-| **submission** | Form submission surface → Shared Intake / public intake path |
-| **result** | Result создаётся Decision / destination module; Forms **не** SoT Result. Attribution / Outcome / KPI — **Acquisition contracts** |
-
----
-
-## Scope
-
-### In
-
-1. **Passport** — Catalog `#forms` полный для Sprint 1 surface + links  
-2. **Manifest** — конкретные keys (flags, limits, defaults, permissions, adapter config)  
-3. **Public Contract** — [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
-4. **Adapter** — `backend/app/forms_platform/adapter.py` (P-01 facade over publication bridge)  
-5. **Contract tests** — `test_forms_sprint1_contract.py` (+ gates)
-
-### Out (LOCKED / forbidden)
-
-- Visual Form Builder; drag-and-drop; arbitrary schema editor  
-- Presentation designer; branching UI; themes marketplace  
-- Form marketplace  
-- New routing engine  
-- Forms-owned Outcome / KPI / attribution engines  
-- FormTemplate schema migration (unless a real schema blocker appears — none for Sprint 1)  
-- KPI dashboard / UI surfaces
-
-Forms **compose** Acquisition Endpoint / Submission / Result attribution — **не копируют**.
-
----
-
-## DoD
-
-- [x] Passport + Manifest + Public Contract linked from Catalog / module-scope / ADR-007  
-- [x] Adapter exposes `publish` / `endpoint` / `submission` / `result` handoff  
-- [x] Contract test: publish → endpoint → submission → result (compose Acquisition)  
-- [x] No Forms Outcome/KPI tables or services  
-- [x] No Builder unlock language in canon  
-- [x] C4 bridge regression retained  
-- [x] No new Alembic head / no new migration without schema cause  
-- [x] No new SPA `/app` literals on Forms Sprint 1 surface  
+Forms publishes / resolves HostFlow Form as Endpoint specialization, hands submission to Shared Intake, result handoff to Decision / Acquisition — **does not** own Result, Outcome, KPI, or routing.
 
 ---
 
@@ -85,8 +37,7 @@ Forms **compose** Acquisition Endpoint / Submission / Result attribution — **�
 | Task (this) | `docs/specs/tasks/forms-sprint-1.md` |
 | Public Contract | `docs/specs/architecture/forms-public-contract.md` |
 | Adapter | `backend/app/forms_platform/adapter.py` |
-| Manifest keys (docs) | `capability-settings-manifest.md` `#forms` |
-| Manifest keys (code) | `backend/app/forms_platform/manifest.py` |
+| Manifest keys | `capability-settings-manifest.md` `#forms` · `forms_platform/manifest.py` |
 | Contract test | `backend/tests/forms_platform/test_forms_sprint1_contract.py` |
 | Gates | `backend/tests/forms_platform/test_forms_sprint1_gates.py` |
 
@@ -94,4 +45,5 @@ Forms **compose** Acquisition Endpoint / Submission / Result attribution — **�
 
 ## History
 
-- 2026-07-18: Sprint opened after Epic P merge `df099d35` (#34).
+- 2026-07-18: Sprint opened after Epic P merge `df099d35` (#34).  
+- 2026-07-18: **COMPLETE** — merged as PR #36 (`37b652af`).

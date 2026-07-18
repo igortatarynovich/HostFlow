@@ -29,7 +29,7 @@ from backend.app.forms_platform.adapter import (
     FORMS_PUBLIC_CONTRACT_ID,
     adapter_identity,
     endpoint_from_publication,
-    publish,
+    resolve_publication,
     result_handoff,
     submission_entry,
 )
@@ -83,7 +83,11 @@ async def test_forms_sprint1_publish_endpoint_submission_result(
     assert identity["contract_id"] == FORMS_PUBLIC_CONTRACT_ID
     assert identity["builder_locked"] is True
     assert builder_is_locked_by_manifest() is True
-    assert set(identity["ops"]) == {"publish", "endpoint", "submission", "result"}
+    assert "publish" in identity["ops"]
+    assert "resolve" in identity["ops"]
+    assert "endpoint" in identity["ops"]
+    assert "submission" in identity["ops"]
+    assert "result" in identity["ops"]
 
     vac_id = str(uuid4())
     form_id = str(uuid4())
@@ -114,9 +118,9 @@ async def test_forms_sprint1_publish_endpoint_submission_result(
         )
         await session.commit()
 
-    # --- publish (Forms Adapter) ---
+    # --- resolve (Forms Adapter read) ---
     async with async_session_maker() as session:
-        publication = await publish(session, tenant_id=tenant_id, form_id=form_id)
+        publication = await resolve_publication(session, tenant_id=tenant_id, form_id=form_id)
         assert publication is not None
         assert publication["publication_id"] == form_id
         assert publication["public_slug"] == slug

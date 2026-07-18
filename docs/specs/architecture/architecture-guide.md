@@ -10,11 +10,12 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 
 Организационные правила (спор → L0; не раздувать конституцию; ADR ссылается на P-rules; Catalog ежедневно; модуль только по шаблону) — в L0 § Organizational rules.
 
-## Phase 1 lock (2026-07-18 · updated after Epic P DoD)
+## Phase 1 lock (2026-07-18 · updated after Forms Sprint 1)
 
-1. **Acquisition Stage 3D / Epic P:** ✅ **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md); E2E `test_stage_3d_epic_p_contract.py`).
-2. **Forms Sprint 1:** **IN PROGRESS** — Passport → Manifest → Public Contract → Adapter → Contract Tests ([`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) · [`forms-public-contract.md`](forms-public-contract.md)).
-3. **Forms Builder:** **LOCKED**.
+1. **Acquisition Stage 3D / Epic P:** ✅ **COMPLETE** ([`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md)).
+2. **Forms Sprint 1:** ✅ **COMPLETE** ([`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md) · PR #36 · `37b652af`).
+3. **Forms Sprint 2:** **IN PROGRESS** — runtime hardening ([`../tasks/forms-sprint-2.md`](../tasks/forms-sprint-2.md)).
+4. **Forms Builder:** **LOCKED**.
 3. **Forms Builder:** **LOCKED** until Sprint 1 contracts land.  
 4. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 5. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
