@@ -30,9 +30,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-**Next:** [`Forms Product Layer`](../specs/tasks/forms-product-layer-epic.md) (**ACTIVE** · `29f4057f`) — P1 [`Field Catalog`](../specs/tasks/forms-product-p1-field-catalog.md) as **component registry** → P2 Builder → P3 Publish UI → P4 Themes → P5 Analytics.
+**Next:** [`Forms Product Layer`](../specs/tasks/forms-product-layer-epic.md) (**ACTIVE**) — P1 [`Field Catalog`](../specs/tasks/forms-product-p1-field-catalog.md) as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API** → P2 Builder (Catalog client) → P3 Publish UI → P4 Themes → P5 Analytics.
 
-**Rule:** Field Catalog is SoT for components (id/version/config/validation/normalization/storage/render); Builder **must not** invent types — only compose Catalog blocks. Builder **LOCKED** until P1 DoD.
+**Rule:** Field Catalog is SoT; Builder is a Catalog **client** (not owner) — must not invent types. Builder **LOCKED** until **P1.3**.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
