@@ -13,8 +13,8 @@
 | Gate | Status |
 |------|--------|
 | P1 decomposition (P1.1–P1.4) | ✅ **ACTIVE** |
-| **P1.1 Registry** | **READY FOR IMPLEMENTATION** |
-| P1.2 Descriptors | pending (after P1.1) |
+| **P1.1 Registry** | READY FOR REVIEW (this PR) |
+| P1.2 Descriptors | READY after P1.1 merge |
 | P1.3 Standard library | pending — **Builder unlock condition** |
 | P1.4 Extension API | pending (after P1.3) |
 | Builder (P2) | **LOCKED** |
