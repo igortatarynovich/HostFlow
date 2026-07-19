@@ -8,6 +8,7 @@ on:
       - "scripts/codegen/**"
       - "scripts/architecture/**"
       - "scripts/security/**"
+      - "scripts/deploy/**"
       - "docs/specs/gates/**"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
@@ -22,6 +23,7 @@ on:
       - "scripts/codegen/**"
       - "scripts/architecture/**"
       - "scripts/security/**"
+      - "scripts/deploy/**"
       - "docs/specs/gates/**"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
@@ -59,6 +61,8 @@ jobs:
           pip install -r requirements.txt
       - name: Alembic heads guard (must be exactly 1)
         run: python3 backend/scripts/check_alembic_heads.py
+      - name: Alembic revision graph (every down_revision present + single head)
+        run: python3 backend/scripts/check_alembic_revision_graph.py --with-alembic
       - name: Alembic upgrade
         working-directory: backend
         env:
