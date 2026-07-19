@@ -1,6 +1,7 @@
 import axios, { AxiosHeaders } from "axios";
 import type { Lead } from "./types";
 import { isCandidateRecruiterIdCanonEnabled } from "../utils/featureFlags";
+import { CSRF_HEADER, readCsrfToken } from "./csrf";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
 export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
@@ -301,6 +302,45 @@ export const ownCompanySettings = {
 };
 
 // --- helper to attach headers
+let _refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessTokenViaCookie(): Promise<string | null> {
+  try {
+    const headers: Record<string, string> = {};
+    const csrf = readCsrfToken();
+    if (csrf) headers[CSRF_HEADER] = csrf;
+    const { data } = await apiInstance.post("/auth/refresh", {}, { headers });
+    const token = typeof data?.access_token === "string" ? data.access_token : null;
+    if (token) {
+      safeStorageSet("token", token);
+      safeStorageSet("access_token", token);
+    }
+    return token;
+  } catch {
+    safeStorageRemove("token");
+    safeStorageRemove("access_token");
+    return null;
+  }
+}
+
+/**
+ * Mint Domain=.hostflow.cc cookies from the current Bearer / access cookie.
+ * Required before hard-navigating shell → module host (Stage 6B).
+ */
+export async function ensureSharedSessionCookies(): Promise<boolean> {
+  try {
+    const { data } = await apiInstance.post("/auth/session/sync", {});
+    const token = typeof data?.access_token === "string" ? data.access_token : null;
+    if (token) {
+      safeStorageSet("token", token);
+      safeStorageSet("access_token", token);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: string) {
   inst.interceptors.request.use((config) => {
     const tid = tenantId ?? settings.get();
@@ -325,11 +365,11 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
 
     if (!config.headers) config.headers = new AxiosHeaders();
     if (config.headers instanceof AxiosHeaders) {
-      config.headers.set("X-Tenant-Id", tid);
+      if (tid) config.headers.set("X-Tenant-Id", tid);
       const ownId = ownCompanySettings.get();
       if (ownId) config.headers.set("X-Own-Company-Id", ownId);
     } else {
-      (config.headers as any)["X-Tenant-Id"] = tid;
+      if (tid) (config.headers as any)["X-Tenant-Id"] = tid;
       const ownId = ownCompanySettings.get();
       if (ownId) (config.headers as any)["X-Own-Company-Id"] = ownId;
     }
@@ -347,8 +387,52 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
       }
     }
 
+    // Stage 6B: double-submit CSRF for cookie session (and dual-write Bearer + cookie).
+    const isMutating =
+      method === "post" || method === "put" || method === "patch" || method === "delete";
+    if (isMutating) {
+      const csrf = readCsrfToken();
+      if (csrf) {
+        if (config.headers instanceof AxiosHeaders) {
+          config.headers.set(CSRF_HEADER, csrf);
+        } else {
+          (config.headers as any)[CSRF_HEADER] = csrf;
+        }
+      }
+    }
+
     return config;
   });
+
+  inst.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const status = error?.response?.status;
+      const original = error?.config as (typeof error.config & { __hfRetry?: boolean }) | undefined;
+      if (status !== 401 || !original || original.__hfRetry) {
+        return Promise.reject(error);
+      }
+      const url = String(original.url || "");
+      if (
+        url.includes("/auth/login") ||
+        url.includes("/auth/refresh") ||
+        url.includes("/auth/session/sync") ||
+        url.includes("/auth/logout") ||
+        url.includes("/auth/register")
+      ) {
+        return Promise.reject(error);
+      }
+      if (!_refreshInFlight) {
+        _refreshInFlight = refreshAccessTokenViaCookie().finally(() => {
+          _refreshInFlight = null;
+        });
+      }
+      const nextToken = await _refreshInFlight;
+      if (!nextToken) return Promise.reject(error);
+      original.__hfRetry = true;
+      return inst.request(original);
+    },
+  );
 }
 
 // --- base axios instances
@@ -918,6 +1002,21 @@ export async function getLeadTimeline(leadId: string) {
   return data;
 }
 
+export async function getClientAccountTimeline(accountId: string) {
+  const { data } = await api.get(`/client-accounts/${accountId}/timeline`);
+  return data;
+}
+
+export async function getServiceOrderTimeline(orderId: string) {
+  const { data } = await api.get(`/service-orders/${orderId}/timeline`);
+  return data;
+}
+
+export async function getInvoiceTimeline(invoiceId: string) {
+  const { data } = await api.get(`/invoices/${invoiceId}/timeline`);
+  return data;
+}
+
 export async function updateLeadStage(leadId: string, payload: {
   stage?: string | null
   assignment_locked?: boolean
@@ -1017,7 +1116,13 @@ export async function getLeadQuestionnaireInvite(leadId: string): Promise<LeadQu
 /** Stage Sales Intake 1 — personal questionnaire link for client leads (targeted advertising). */
 export async function createLeadQuestionnaireInvite(
   leadId: string,
-  payload?: { mark_sent?: boolean; lead_form_id?: string; form_locale?: string },
+  payload?: {
+    mark_sent?: boolean
+    lead_form_id?: string
+    form_locale?: string
+    sent_channel?: 'whatsapp' | 'link' | 'email'
+    force_new?: boolean
+  },
 ): Promise<LeadQuestionnaireInviteResult> {
   const { data } = await api.post<LeadQuestionnaireInviteResult>(
     `/leads/${leadId}/questionnaire-invite`,

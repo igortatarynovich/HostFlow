@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useLocation } from 'react-router-dom'
 import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
 import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
-import { api, setToken, settings as tenantSettings } from '../api/client'
+import { api, ensureSharedSessionCookies, setToken, settings as tenantSettings } from '../api/client'
 import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
 import { bindUserContext } from '../lib/observability'
@@ -70,7 +70,7 @@ type AuthCtx = {
   sessionId: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => void | Promise<void>
   refresh: (opts?: { force?: boolean }) => Promise<void>
   updateProfile: (update: Partial<WhoAmI>) => void
   updatePreferences: (prefs: UserPreferences) => void
@@ -116,10 +116,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     setLoading(true)
     try {
-      const [{ data: whoami }, meEnvelope] = await Promise.all([
-        api.get('/auth/whoami-verify'),
-        getUserMe(),
-      ])
+      // whoami first: on module hosts localStorage (X-Tenant-Id) is empty — seed tenant
+      // from JWT before /users/me, otherwise the API falls back to the demo tenant → 403 → logout loop.
+      const { data: whoami } = await api.get('/auth/whoami-verify')
+      const whoamiTenant = String(whoami?.tenant_id || '').trim()
+      if (whoamiTenant) {
+        tenantSettings.set(whoamiTenant)
+      }
+
+      // Shell-only localStorage / host-only cookies cannot authenticate module hosts.
+      // Mint Domain=.hostflow.cc cookies before any cross-subdomain navigation.
+      try {
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+        if (hostname === 'hostflow.cc' || hostname.endsWith('.hostflow.cc')) {
+          await ensureSharedSessionCookies()
+        }
+      } catch {
+        // Cookie sync must not block an otherwise valid shell session.
+      }
+
+      const meEnvelope = await getUserMe()
 
       const profile = meEnvelope.profile
       const computedFullName = profile.first_name || profile.last_name
@@ -228,19 +244,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const logout = useCallback(() => {
     invalidateBillingSubscriptionCache()
     invalidateBillingQuotaHeadroomCache()
-    setToken(null)
-    setMe(null)
-    setPreferences(null)
-    setSecurity(null)
-    setSessionId(null)
-    applyTheme('system')
-    clearLoginNotice()
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.removeItem(IMPERSONATION_BACKUP_KEY)
-      } catch {}
+    const finish = () => {
+      setToken(null)
+      setMe(null)
+      setPreferences(null)
+      setSecurity(null)
+      setSessionId(null)
+      applyTheme('system')
+      clearLoginNotice()
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.removeItem(IMPERSONATION_BACKUP_KEY)
+        } catch {}
+      }
+      setCanReturnToPlatform(false)
     }
-    setCanReturnToPlatform(false)
+    // Stage 6B: clear shared cookies on all *.hostflow.cc hosts.
+    void api
+      .post('/auth/logout')
+      .catch(() => undefined)
+      .finally(finish)
   }, [applyTheme])
 
   const beginImpersonation = useCallback(() => {

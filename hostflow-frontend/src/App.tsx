@@ -1,6 +1,7 @@
-import { Suspense, lazy, useMemo } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useMemo } from 'react'
+import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from './store/useAuth'
+import { ensureSharedSessionCookies, setToken } from './api/client'
 import Login from './pages/Login'
 import { AppShell } from './app/AppShell'
 import { WorkAreaLayout } from './app/WorkAreaLayout'
@@ -73,6 +74,14 @@ import {
 } from './constants/signupContext'
 import { DefaultAppEntryNavigate } from './components/nav/DefaultAppEntryNavigate'
 import { CRM_APP_PATHS } from './app/crmAppPaths'
+import {
+  filterNavItemsForDeployHost,
+  isAllowedHandoffNext,
+  isShellDeployHost,
+  resolveDeployHost,
+  withDeployAwareNavPaths,
+} from './platform/deployHosts'
+import { ModuleHostAuthRedirect } from './platform/ModuleHostAuthRedirect'
 
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
@@ -98,6 +107,42 @@ function SignupRedirectForAuthed() {
 
 function AuthedDefaultAppNavigate() {
   const { can } = usePermissions()
+  const { t } = useI18n()
+  const [searchParams] = useSearchParams()
+  const nextRaw = (searchParams.get('next') || '').trim()
+  const allowedNext = nextRaw && isAllowedHandoffNext(nextRaw) ? nextRaw : null
+  const absoluteNext = Boolean(allowedNext && /^https?:\/\//i.test(allowedNext))
+
+  // Already-authed visit to /login?next=https://recruitment... must return to the module host.
+  // Ensure Domain cookies exist first — otherwise module host bounces straight back here.
+  useEffect(() => {
+    if (!absoluteNext || !allowedNext) return
+    let cancelled = false
+    void (async () => {
+      const synced = await ensureSharedSessionCookies()
+      if (cancelled) return
+      if (!synced) {
+        // localStorage-only session cannot survive cross-subdomain nav — force password login
+        // so /auth/login mints Domain=.hostflow.cc cookies.
+        setToken(null)
+        const url = new URL(window.location.href)
+        // Keep next= for after the user signs in again.
+        window.location.replace(`${url.pathname}${url.search}`)
+        return
+      }
+      window.location.replace(allowedNext)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [absoluteNext, allowedNext])
+
+  if (absoluteNext) {
+    return <div className="grid h-screen place-items-center text-slate-500">{t('common.loading')}</div>
+  }
+  if (allowedNext && allowedNext.startsWith('/')) {
+    return <Navigate to={allowedNext} replace />
+  }
   return <DefaultAppEntryNavigate mode="href" canOpenTasks={can('notifications.view')} />
 }
 
@@ -110,18 +155,21 @@ export default function App(){
   const { me, loading, logout } = useAuth()
   const { can } = usePermissions()
   const { t } = useI18n()
+  const location = useLocation()
   const isSuperAdmin = (me?.role || '').toLowerCase() === 'superadmin'
 
-  const navItems = useMemo(
-    () =>
-      NAV_ITEMS.filter((item) => {
-        if (item.superadminOnly && !isSuperAdmin) return false
-        if (!item.permission) return true
-        const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
-        return perms.some((p) => can(p))
-      }),
-    [can, isSuperAdmin]
-  )
+  const deployHost = useMemo(() => resolveDeployHost({ search: location.search }), [location.search])
+  const shellHost = isShellDeployHost(deployHost)
+
+  const navItems = useMemo(() => {
+    const permitted = NAV_ITEMS.filter((item) => {
+      if (item.superadminOnly && !isSuperAdmin) return false
+      if (!item.permission) return true
+      const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
+      return perms.some((p) => can(p))
+    })
+    return withDeployAwareNavPaths(filterNavItemsForDeployHost(permitted, deployHost), deployHost)
+  }, [can, isSuperAdmin, deployHost])
 
   if (loading) {
     return <div className="grid h-screen place-items-center text-slate-500">{t('common.loading')}</div>
@@ -149,21 +197,32 @@ export default function App(){
 
       {!me && (
         <>
-          <Route path="/" element={<CrmLandingPage />} />
-          <Route path="/pricing" element={<CrmLandingPage />} />
-          <Route path="/features/candidate-pipeline" element={<FeatureCandidatePipelinePage />} />
-          <Route path="/features/document-control" element={<FeatureDocumentControlPage />} />
-          <Route path="/use-cases/trucking-recruitment" element={<UseCaseTruckingRecruitmentPage />} />
-          <Route path="/use-cases/high-volume-onboarding" element={<UseCaseHighVolumeOnboardingPage />} />
-          <Route path="/comparison/hostflow-vs-spreadsheets" element={<ComparisonHostflowVsSpreadsheetsPage />} />
-          <Route path="/comparison/recruitment-crm-vs-ats" element={<ComparisonRecruitmentCrmVsAtsPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/invite/accept" element={<InviteAcceptPage />} />
-          <Route path={`${CRM_APP_PATHS.appShellPrefix}/*`} element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<PublicNotFoundPage />} />
+          {shellHost ? (
+            <>
+              <Route path="/" element={<CrmLandingPage />} />
+              <Route path="/pricing" element={<CrmLandingPage />} />
+              <Route path="/features/candidate-pipeline" element={<FeatureCandidatePipelinePage />} />
+              <Route path="/features/document-control" element={<FeatureDocumentControlPage />} />
+              <Route path="/use-cases/trucking-recruitment" element={<UseCaseTruckingRecruitmentPage />} />
+              <Route path="/use-cases/high-volume-onboarding" element={<UseCaseHighVolumeOnboardingPage />} />
+              <Route path="/comparison/hostflow-vs-spreadsheets" element={<ComparisonHostflowVsSpreadsheetsPage />} />
+              <Route path="/comparison/recruitment-crm-vs-ats" element={<ComparisonRecruitmentCrmVsAtsPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/invite/accept" element={<InviteAcceptPage />} />
+              <Route path={`${CRM_APP_PATHS.appShellPrefix}/*`} element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<PublicNotFoundPage />} />
+            </>
+          ) : (
+            <>
+              <Route path="/login" element={<ModuleHostAuthRedirect />} />
+              <Route path="/" element={<ModuleHostAuthRedirect />} />
+              <Route path={`${CRM_APP_PATHS.appShellPrefix}/*`} element={<ModuleHostAuthRedirect />} />
+              <Route path="*" element={<ModuleHostAuthRedirect />} />
+            </>
+          )}
         </>
       )}
 

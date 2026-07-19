@@ -49,6 +49,9 @@ services:
     ports: ["127.0.0.1:8000:8000"]
     volumes:
       - ./backend:/app
+      # ADR-023 SSOT — cookie domain / module hosts (also at /app/shared via path fallback)
+      - ./shared:/shared:ro
+      - ./shared:/app/shared:ro
       # раздача собранного фронта Vite через FastAPI StaticFiles
       - ./hostflow-frontend/dist:/app/public:ro
       # Mount samples for template extraction
@@ -85,6 +88,8 @@ services:
     command: arq backend.app.core.arq_worker.WorkerSettings
     volumes:
       - ./backend:/app
+      - ./shared:/shared:ro
+      - ./shared:/app/shared:ro
       - ./samples:/opt/HostFlow/samples:ro
     profiles: ["arq", "full"]
 
