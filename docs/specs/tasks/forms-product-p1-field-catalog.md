@@ -8,22 +8,19 @@
 
 ---
 
-## Closed / active gates (after P1.2)
+## Closed / active gates (after P1.3)
 
 | Gate | Status |
 |------|--------|
 | P1 decomposition (P1.1–P1.4) | ✅ **ACTIVE** |
-| **P1.1 Registry** | ✅ **COMPLETE** (`644b102a` / #47) |
-| Field Catalog Registry | ✅ **ACTIVE** |
-| Component Identity and Versioning | ✅ **ACTIVE** |
-| Compatibility Resolution | ✅ **ACTIVE** |
-| **P1.2 Descriptors** | ✅ **COMPLETE** (`1f7b4aba` / #50) |
-| Descriptor Contract | ✅ **ACTIVE** |
-| Declarative Multi-client Surface | ✅ **ACTIVE** |
-| **P1.3 Standard library** | **READY FOR IMPLEMENTATION** ([`forms-product-p1-3-standard-library.md`](forms-product-p1-3-standard-library.md)) |
-| P1.4 Extension API | pending |
-| Builder (P2) | **LOCKED** until **P1.3** DoD |
-| Unlock Builder | **completed P1.3 Standard Library** only |
+| **P1.1 Registry** | ✅ **COMPLETE** |
+| **P1.2 Descriptors** | ✅ **COMPLETE** |
+| **P1.3 Standard library** | ✅ **COMPLETE** (`0cf7fc00` / #52) |
+| Basic Component Library | ✅ **ACTIVE** |
+| Builder | ✅ **UNLOCKED** |
+| `forms.feature_flags.builder_enabled` | **true** |
+| **P1.4 Extension API** | **READY FOR IMPLEMENTATION** ([`forms-product-p1-4-extension-api.md`](forms-product-p1-4-extension-api.md)) |
+| Unlock Builder | ✅ done (after P1.3) |
 
 ---
 
@@ -67,8 +64,8 @@ Builder | Public Form | Entity cards | CRM | Mobile   ← clients, not owners
 |--------|------|---------|---------|--------|
 | **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | ✅ **COMPLETE** |
 | **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | ✅ **COMPLETE** |
-| **P1.3** | Standard library | First Basic component set | **unlock after DoD** | **READY FOR IMPLEMENTATION** |
-| **P1.4** | Extension API | Modules register their own components | unlocked path | pending |
+| **P1.3** | Standard library | First Basic component set | **UNLOCKED after DoD** | ✅ **COMPLETE** |
+| **P1.4** | Extension API | Modules register own components | unlocked path | **READY FOR IMPLEMENTATION** |
 
 ### P1.1 — Registry (✅ COMPLETE)
 
@@ -98,30 +95,19 @@ Each component exposes four **declarative** descriptors (no executable logic). B
 | Validation descriptor | Compose Sprint 4/5 validation |
 | Normalization descriptor | Compose Sprint 5 canonical normalization |
 
-### P1.3 — Standard library (**READY FOR IMPLEMENTATION**)
+### P1.3 — Standard library (✅ COMPLETE)
 
 See [`forms-product-p1-3-standard-library.md`](forms-product-p1-3-standard-library.md).
 
 Register Basic components **only** via public Registry + Descriptors — no Catalog-core special cases.
 
-| Component | Role |
-|-----------|------|
-| Text | single-line |
-| TextArea | multi-line |
-| Number | numeric |
-| Email | email |
-| Phone | phone |
-| Date | date |
-| Checkbox | boolean |
-| Radio | single choice |
-| Select | single select |
-| MultiSelect | multi select |
-| File | upload |
-| Hidden | non-visible value |
+After P1.3 DoD, **Builder is UNLOCKED**. Preferred sequence: **P1.4** then P2 Builder.
 
-After P1.3 DoD, **Builder (P2) may start** — unlock condition is **completed Standard Library** only.
+### P1.4 — Extension API (**READY FOR IMPLEMENTATION**)
 
-### P1.4 — Extension API
+See [`forms-product-p1-4-extension-api.md`](forms-product-p1-4-extension-api.md).
+
+Modules register via a separate public surface; same validations; no Basic override; no silent version replace; `source` = platform | module; one module failure must not corrupt Catalog; no tenant extensions; Builder sees a unified catalog.
 
 Last P1 stage. Any module registers its own components; they appear in Catalog (and later Builder) automatically.
 
@@ -225,4 +211,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 - 2026-07-18: **ACTIVE** — decomposition merged `51063d1c` (#45); P1.1 READY FOR IMPLEMENTATION; Builder LOCKED until P1.3.  
 - 2026-07-18: P1.1 **COMPLETE** (`644b102a` / #47); P1.2 Descriptors **READY**.  
 - 2026-07-18: P1.2 Design **ACTIVE**; Descriptor Contract READY FOR IMPLEMENTATION; descriptors must be declarative (no executable logic); P1.3 LOCKED.  
-- 2026-07-18: P1.2 **COMPLETE** (`1f7b4aba` / #50); P1.3 Standard Library **READY FOR IMPLEMENTATION**.
+- 2026-07-18: P1.2 **COMPLETE** (`1f7b4aba` / #50); P1.3 Standard Library **READY FOR IMPLEMENTATION**.  
+- 2026-07-19: P1.3 **COMPLETE** (`0cf7fc00` / #52); Builder **UNLOCKED**; P1.4 Extension API **READY FOR IMPLEMENTATION**.
