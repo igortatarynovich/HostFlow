@@ -81,9 +81,9 @@ Forms Platform → Recruitment/Sales handler
 | R3 | Intent/handler split (intermediate) | ✅ |
 | R4 | Result objects (started; keep) | ✅ (creation ownership OK; dispatch ownership fixed in R3.5) |
 | **R3.5** | **Flights-owned dispatch boundary** | ✅ COMPLETE (`#66`) |
-| R5 | Transactional/idempotent provenance ledger | ✅ COMPLETE |
-| then | Communication Context Resolver | **NEXT** |
-| R6 | Separate APIs/queues | AFTER resolver |
+| R5 | Transactional/idempotent provenance ledger | ✅ COMPLETE (`#69`) |
+| then | Communication Context Resolver (C1–C6) | **NEXT** |
+| R6 | Separate APIs/queues | AFTER C1–C5 |
 
 Optional rename going forward: treat “Module Boundary Contracts” as the L0 framing for R3.5+; result objects stay module-owned behind ports.
 
