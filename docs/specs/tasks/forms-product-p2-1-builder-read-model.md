@@ -1,9 +1,9 @@
 # Forms Product Layer P2.1 — Builder Read Model
 
-**Status:** **COMPLETE**  
-**Epic / P2:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · design ACTIVE  
+**Status:** **COMPLETE** (`ae767201` / #57)  
+**Epic / P2:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Catalog Consumption **ACTIVE**  
 **Prerequisite:** P1 Foundation **CLOSED** · Field Catalog v1 **FROZEN**  
-**Unlocks:** P2.2 Composition Model — **READY FOR IMPLEMENTATION**  
+**Unlocks:** P2.2 Composition Model — ✅ COMPLETE · P2.3 Commands READY  
 **UI:** **FORBIDDEN** until P2.1–P2.4 + UI gate  
 
 ---

@@ -65,6 +65,7 @@ def test_forms_p2_1_uses_public_catalog_apis_only() -> None:
 
 
 def test_forms_p2_1_no_ui_or_later_sprint_surface() -> None:
+    """P2.1 read_model surface only — later sprint modules are out of scope here."""
     forbidden = (
         "react",
         "jsx",
@@ -77,10 +78,29 @@ def test_forms_p2_1_no_ui_or_later_sprint_surface() -> None:
         "instance_id",
         "reorder_instance",
     )
-    for path in _BUILDER_PKG.rglob("*.py"):
+    # Scope to P2.1 modules only (composition arrives in P2.2).
+    paths = [
+        _BUILDER_PKG / "read_model.py",
+        _BUILDER_PKG / "__init__.py",
+    ]
+    for path in paths:
+        if not path.is_file():
+            continue
         text = path.read_text(encoding="utf-8")
+        # __init__ may re-export later contracts; only enforce on read_model for model tokens
+        check = forbidden if path.name == "read_model.py" else (
+            "react",
+            "jsx",
+            "tsx",
+            "vue",
+            "fastapi",
+            "APIRouter",
+            "save_draft",
+            "load_draft",
+            "reorder_instance",
+        )
         lower = text.lower()
-        for token in forbidden:
+        for token in check:
             assert token.lower() not in lower, f"{path.name} contains {token}"
 
 
