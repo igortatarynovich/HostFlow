@@ -20,3 +20,9 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/alembic/versions/.*\.py$
+      - id: alembic-revision-graph
+        name: alembic revision graph (parents present + single head)
+        entry: python3 backend/scripts/check_alembic_revision_graph.py --quiet
+        language: system
+        pass_filenames: false
+        files: ^backend/alembic/versions/.*\.py$
