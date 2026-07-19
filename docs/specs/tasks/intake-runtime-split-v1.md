@@ -24,7 +24,7 @@
 | R4 independent result objects | **COMPLETE** |
 | Decision priority gate / INV-16 | **COMPLETE** — `#67` |
 | R5 provenance / exactly-once | **COMPLETE** — `#69` |
-| Communication Context Resolver | **NEXT** — C2 (C1 ✅) |
+| Communication Context Resolver | **NEXT** — C3 (C1–C2 ✅) |
 | Queues/UI | **LOCKED** |
 | Forms P3–P5 | **LOCKED** |
 

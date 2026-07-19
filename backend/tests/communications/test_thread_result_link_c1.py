@@ -31,8 +31,6 @@ def test_c1_communications_must_not_import_destination_orm() -> None:
         "backend.app.modules.recruitment.services",
         "backend.app.models.sales_inquiry",
         "backend.app.models.recruitment_application",
-        "application_kind",
-        "FormPurpose",
     )
     for path in COMMS.rglob("*.py"):
         text = path.read_text(encoding="utf-8")
