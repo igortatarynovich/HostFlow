@@ -32,7 +32,7 @@ Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — 
 
 **Next:** [`Forms Product Layer`](../specs/tasks/forms-product-layer-epic.md) (**ACTIVE**) — P1 [`Field Catalog`](../specs/tasks/forms-product-p1-field-catalog.md) as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API** → P2 Builder (Catalog client) → P3 Publish UI → P4 Themes → P5 Analytics.
 
-**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder Catalog Consumption ACTIVE** — P2.1–P2.3 **COMPLETE**; **P2.4 Persistence READY**. P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.
+**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder Catalog Consumption ACTIVE** — P2.1–P2.4 **COMPLETE**; **P2.5 UI READY**. P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
@@ -49,4 +49,5 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-18: Sprint 6 **COMPLETE**; Product Layer epic opened (Field Catalog first).  
 - 2026-07-19: P2.1 Read Model COMPLETE; P2.2 Composition READY.  
 - 2026-07-19: P2.2 Composition COMPLETE; P2.3 Commands READY.  
-- 2026-07-19: P2.3 Commands COMPLETE; P2.4 Persistence READY.
+- 2026-07-19: P2.3 Commands COMPLETE; P2.4 Persistence READY.  
+- 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.
