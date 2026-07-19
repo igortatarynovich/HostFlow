@@ -33,24 +33,37 @@ Skipping earlier steps is an architecture fail even if later steps look clean.
 
 ## Automatic reject signals
 
-A proposal is **architecturally wrong** (regardless of runtime behavior) if it requires any of:
+A proposal is **architecturally wrong** (regardless of tests / runtime behavior) if it requires any of:
 
 | Signal | Why |
 |--------|-----|
-| Direct knowledge of another module’s internals | Breaks independence |
-| Cross-package import of domain models/services | Hidden coupling |
-| Shared domain object as product SoT across modules | Ownership collision |
-| Hidden fallback across destinations (e.g. Sales → Recruitment) | Boundary erasure |
+| Direct knowledge of another module’s internal models or services | Breaks independence |
+| Cross-package domain imports | Hidden coupling |
+| Shared domain SoT for independent modules | Ownership collision |
+| Hidden fallback into another domain (e.g. Sales → Recruitment) | Boundary erasure |
+| Building one module as an internal part of another | Violates L0 module independence |
+| Bypassing a published contract with a direct implementation call | Contract is the only legal edge |
+| Inferring ownership from UI, URL, form, or legacy flags | Non-SoT masquerading as routing/ownership |
+
+Lower layers (implementation convenience, speed) **cannot** override or bypass higher layers (L0 → ownership → contracts).
 
 ---
 
 ## Application to Intake / Flights epic
 
-Correct boundary (frozen by R3.5):
+Correct boundary (frozen by R3.5 `#66`):
 
 ```text
-Flights-owned routing → published destination contract → module-owned adapter
+Forms → Flights → destination contract → module intake adapter → module-owned result
 ```
+
+| Segment | Owner |
+|---------|-------|
+| Submission and handoff | Forms |
+| Routing decision and dispatch provenance | Flights |
+| Destination contract | Published inter-module boundary |
+| Recruitment / Sales adapters | Recruitment / Sales |
+| Application / SalesInquiry | Recruitment / Sales |
 
 Incorrect (even if it “works”):
 
@@ -58,12 +71,11 @@ Incorrect (even if it “works”):
 Forms / Shared Intake → Recruitment/Sales handler directly
 ```
 
-**R3 retrospective:** placing dispatch callables inside Recruitment/Sales as the *routing owner* failed this gate. Isolation of intents was valuable; **dispatch ownership** was wrong. **R3.5** corrected the boundary before further communication/queue work. Result objects (R4) remain valid **behind** module adapters, not as a reason to reintroduce cross-module knowledge.
-
-Going forward: any PR in this epic that reintroduces Forms→Recruitment/Sales create calls, Flights→ORM imports, or destination fallback is rejected under this rule.
+**R3 retrospective:** placing dispatch callables inside Recruitment/Sales as the *routing owner* failed this gate. **R3.5** corrected ownership. **R5** must keep provenance Flights-owned and must **not** use a shared cross-module DB transaction as exactly-once (see [`../tasks/intake-r5-provenance-gate.md`](../tasks/intake-r5-provenance-gate.md)).
 
 ---
 
 ## History
 
 - 2026-07-19: Adopted as mandatory decision priority after L0 correction on Intake Runtime Split (R3.5).
+- 2026-07-19: Expanded reject signals; linked R5 gate (no cross-domain transactional monolith).

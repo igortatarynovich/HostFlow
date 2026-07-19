@@ -50,14 +50,16 @@ Form, Thread, and email automation **must not** independently infer type.
 | 1 | Runtime determination audit (concrete call sites) | **ACTIVE** |
 | 2 | Fail-closed routing | ✅ R1 (`#63`) |
 | 3 | Recruitment/Sales destination handlers | ✅ R3 (`#64`) — **superseded as dispatch owner by R3.5** |
-| 3.5 | Flights-owned dispatch boundary (L0) | **THIS PR** |
+| 3.5 | Flights-owned dispatch boundary (L0) | ✅ COMPLETE (`#66`) |
+| INV-16 | Decision Priority Rule | ✅ COMPLETE (`#67`) |
 | 4 | Independent result objects | ✅ R4 (`#65`) behind module ports |
 | 5 | Thread business-context resolution | AFTER R5 |
+| — | **R5 provenance / exactly-once** | **NEXT** — [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) |
 | 6 | Module-owned communication policies + template metadata | AFTER stage 5 |
-| 7 | Separate APIs and queues | Runtime Split R6 |
+| 7 | Separate APIs and queues | Runtime Split R6 · **LOCKED** until after R5 + Communication Context |
 | 8 | Legacy resolution queue | AFTER stage 7 |
 
-**Order rule:** do not split queues/UI (7) before handlers + result objects + communication resolver (3–6). Visual separation on mixed backend is not isolation.
+**Order rule:** do not split queues/UI (7) before R5 provenance + Communication Context Resolver (stages 5–6). Visual separation on mixed backend is not isolation. R5 must not use a cross-module shared DB transaction ([`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md)).
 
 ---
 
@@ -114,9 +116,10 @@ Runtime Split R1–R6 remains the backend isolation spine. This epic adds **comm
 |---------------|----------------------|
 | R1 fail-closed | Stage 2 |
 | R2 registry | Stage 2 |
-| R3 handlers | Stage 3 |
+| R3 handlers (intermediate) | Stage 3 |
+| R3.5 Flights dispatch | Stage 3 boundary |
 | R4 result objects | Stage 4 |
-| R5 transactional dispatch | supports stages 5–6 |
+| R5 Flights provenance / exactly-once | **required before** stages 5–6 |
 | R6 queues/APIs | Stage 7 |
 
 ---

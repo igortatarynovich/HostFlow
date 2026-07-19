@@ -1,26 +1,50 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1–R4 + R3.5 COMPLETE · R5 NEXT)  
+**Status:** **ACTIVE** (R1–R4 + R3.5 COMPLETE · **R5 NEXT**)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
-**L0 correction:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md) — Forms → Flights → destination port → Recruitment/Sales  
-**Decision gate:** [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md) · **INV-16**  
+**L0 boundary:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md)  
+**Decision gate:** [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md) · **INV-16** (`#67`)  
+**R5 gate:** [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md)  
 **Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
 **Parents:** [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`ADR-024`](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md)  
 **Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**)  
-**Still LOCKED:** Forms P3–P5  
+**Still LOCKED:** Forms P3–P5 · Queues/UI until after R5 + Communication Context  
 
 ---
 
-## Goal
+## Current status
 
-Split Candidate Application and Sales Inquiry at **backend routing + destination ownership**, not in UI filters.
+| Stage | Status |
+|-------|--------|
+| R1–R4 | **COMPLETE** |
+| R3 | Intermediate isolation (dispatch ownership corrected by R3.5) |
+| R3.5 Flights-owned boundary | **COMPLETE** — `#66` |
+| Decision priority gate / INV-16 | **COMPLETE** — `#67` |
+| R5 provenance / exactly-once | **NEXT** — [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) |
+| Communication Context Resolver | After R5 |
+| Queues/UI | **LOCKED** |
 
-Canonical chain (frozen):
+---
+
+## Canonical intake chain (frozen)
 
 ```text
-Source profile → Provider → Published form binding → route_intent → intake_handoff → Destination
+Forms → Flights → destination contract → module intake adapter → module-owned result
 ```
+
+| Segment | Owner |
+|---------|-------|
+| Submission and handoff | **Forms** |
+| Routing decision and dispatch provenance | **Flights** |
+| Destination contract | **Published inter-module boundary** |
+| Recruitment adapter | **Recruitment** |
+| Sales adapter | **Sales** |
+| Application | **Recruitment** |
+| SalesInquiry | **Sales** |
+
+Flights does **not** own Application or SalesInquiry and does not know how they are created internally.  
+Recruitment and Sales do **not** know Forms, Flight bindings, or routing internals.
 
 Routing SoT (only):
 
@@ -29,7 +53,7 @@ Routing SoT (only):
 | `candidate_application` | Recruitment intake |
 | `sales_inquiry` | Sales intake |
 
-Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `lead_type` · `lead_target_type`.
+Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `lead_type` · `lead_target_type` · UI · URL · legacy flags.
 
 ---
 
@@ -39,95 +63,41 @@ Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `l
 |------|-------|--------|
 | **R1** | Fail-closed route resolution | ✅ COMPLETE (`#63`) |
 | **R2** | Destination registry | ✅ COMPLETE (`#63`) |
-| **R3** | Intent split (intermediate module handlers) | ✅ COMPLETE (`#64`) — corrected by R3.5 |
+| **R3** | Intent split (intermediate) | ✅ COMPLETE (`#64`) — corrected by R3.5 |
 | **R4** | Independent result objects | ✅ COMPLETE (`#65`) |
 | **R3.5** | Flights-owned dispatch boundary (L0) | ✅ COMPLETE (`#66`) |
-| **R5** | Transactional dispatch + idempotent provenance | NEXT |
+| **INV-16** | Decision Priority Rule | ✅ COMPLETE (`#67`) |
+| **R5** | Provenance / exactly-once (Flights ledger) | **NEXT** — gate doc |
 | **R6** | Physically separate queues / APIs | LATER |
 
-**Do not start R6 (queues/UI) before R1–R5.** Mixing hidden only in the frontend leaves the old blend in the backend.
+**Do not start R6 (queues/UI) before R5 and Communication Context Resolver.**
 
-### R1 — Fail-closed route resolution
+### R5 — summary (see gate doc)
 
-Remove dangerous default: `missing profile / intent → candidate_application`.
+Provenance: `handoff_id → route_intent → destination → dispatcher_id → result_type → result_id`.
 
-| Rule | Behavior |
-|------|----------|
-| No explicit `route_intent` | Submission is **not** routed |
-| Typed routing failure / disposition | Created; no domain object |
-| Application / SalesInquiry | **Must not** be created |
+Exactly-once via **idempotent contract + Flights dispatch ledger + repeatable delivery** — **not** a shared cross-module DB transaction.
 
-### R2 — Destination registry
-
-Closed map: `route_intent` → `destination` → `handler`.
-
-| Intent | Destination | Handler (V1 bootstrap) |
-|--------|-------------|------------------------|
-| `candidate_application` | `recruitment` | `recruitment.lead_draft` |
-| `sales_inquiry` | `sales` | `sales.inquiry_draft` |
-
-Registry **must reject**:
-
-- unknown intent  
-- incompatible source profile  
-- incompatible promotion target  
-- missing handler  
-- duplicate intent registration  
-- Sales handler registered as Recruitment-owned (and reverse)
-
-Contract: `intake.destination_registry.v1` · package `backend.app.intake_platform.destination_registry`.
-
-### R3 — Split handlers
-
-| Rule | Behavior |
-|------|----------|
-| `sales.inquiry_draft` | Physically in `backend.app.modules.sales` |
-| `recruitment.lead_draft` | Physically in `backend.app.modules.recruitment` |
-| Shared Intake | Knows destination contract + dispatch only |
-| Cross-package imports | Forbidden (architectural test) |
-| `recruitment.client_lead_draft` | Legacy forbidden — not in runtime |
-| Missing Sales callable | Unresolved disposition — **no** Recruitment fallback |
-| Handler result | Must match destination domain (foreign domain rejected) |
-
-### R4 — Independent result objects
-
-| Rule | Behavior |
-|------|----------|
-| `candidate_application` | Creates **Application** (`recruitment_applications`) |
-| `sales_inquiry` | Creates **SalesInquiry** (`sales_inquiries`) |
-| Shared Intake / Forms | Do **not** create either object directly |
-| Lead | Optional transport only — not result, not queue SoT, not communication SoT |
-| Transport link | Immutable `normalized.intake_result_link_v1`; one Lead → one result type |
-| Typed handler result | `result_entity_type` + `result_entity_id` (+ `result_created`) |
-| Projections | `lead_to_sales_inquiry` / `lead_to_recruitment_application` marked **LEGACY** (remove in R6) |
-
-### R5–R6 (next PRs)
-
-- **R5:** Resolve binding → pinned intent → compatibility → one destination → one result → routing decision → mark handoff processed; redelivery returns existing result. Provenance: `handoff_id → route_intent → destination → handler → result_type → result_id`.  
-- **R6:** Recruitment API/queue reads only Application; Sales only SalesInquiry; no shared `type=` filter endpoint.
+Opaque Flights reference only: `module_owner` · `result_type` · `result_id`.
 
 ---
 
-## Negative tests (DoD for runtime close — accumulate across R1–R6)
+## Negative tests (DoD — accumulate across R1–R6)
 
-- [x] `sales_inquiry` never creates Application (R4 transport conflict + typed result)  
-- [x] `candidate_application` never creates SalesInquiry (R4)  
+- [x] `sales_inquiry` never creates Application  
+- [x] `candidate_application` never creates SalesInquiry  
 - [x] missing intent does not go to Recruitment (R1)  
 - [x] unknown intent does not enter a shared dispatch path (R1/R2)  
 - [x] incompatible source profile rejected (R2)  
-- [x] repeat ensure on same transport does not create second SalesInquiry (R4; full handoff ledger = R5)  
-- [x] Sales handler cannot register as Recruitment-owned (R2)  
-- [x] `sales_inquiry` invokes only `sales.inquiry_draft` (R3)  
-- [x] `candidate_application` invokes only `recruitment.lead_draft` (R3)  
 - [x] Sales↔Recruitment package imports forbidden (R3)  
-- [x] Removing Sales handler callable → unresolved, not Recruitment fallback (R3)  
-- [x] Handler cannot return foreign domain result (R3/R4)  
-- [x] Sales handler cannot return Application (R4)  
-- [x] Recruitment handler cannot return SalesInquiry (R4)  
+- [x] Flights dispatchers (`flights.*`) own routing metadata (R3.5)  
+- [x] Flights package forbids destination ORM/services (R3.5)  
+- [ ] Replay does not call module adapter twice after confirmed result (R5)  
+- [ ] Missing/ambiguous result fail-closed; no Recruitment fallback (R5)  
+- [ ] No cross-module shared transaction on dispatch path (R5)  
 - [ ] Recruitment API does not return Sales Inquiry (R6)  
 - [ ] Sales API does not return Candidate Application (R6)  
-- [ ] changing `application_kind` does not change route  
-- [ ] changing FormPurpose does not change route  
+- [ ] changing `application_kind` / FormPurpose / URL does not change route  
 
 ---
 
@@ -137,16 +107,19 @@ Contract: `intake.destination_registry.v1` · package `backend.app.intake_platfo
 |----------|--------|
 | Canonical Input Matrix | **ACCEPTED / FROZEN** |
 | Intake Canonical Input Matrix epic | **COMPLETE** |
-| Intake Runtime Split V1 | **ACTIVE** (R4) |
-| Communication Context V1 | **READY** (Stage 1 audit; B untouched until after R5) |
+| Intake Runtime Split V1 | **ACTIVE** (R5 next) |
+| Decision Priority / INV-16 | **COMPLETE** (`#67`) |
+| Communication Context V1 | **READY** (after R5) |
 | Flights / Intake Routing runtime | **UNLOCKED** |
 | Forms P3–P5 | **LOCKED** |
+| Queues/UI | **LOCKED** |
 
 ---
 
 ## History
 
-- 2026-07-19: Opened READY FOR IMPLEMENTATION after matrix acceptance; first PR = R1 + R2 only.
-- 2026-07-19: R1+R2 COMPLETE (`#63`); R3 destination-owned handlers + Communication Context epic opened.
-- 2026-07-19: R3 COMPLETE (`#64`); R4 independent Application / SalesInquiry result objects.
-- 2026-07-19: **L0 correction** — R3.5 Flights-owned dispatch boundary; Forms↛Recruitment/Sales; adapters only.
+- 2026-07-19: Opened READY after matrix acceptance; first PR = R1 + R2 only.
+- 2026-07-19: R1+R2 COMPLETE (`#63`); R3 handlers opened.
+- 2026-07-19: R3 COMPLETE (`#64`); R4 result objects (`#65`).
+- 2026-07-19: **L0 correction** — R3.5 Flights boundary (`#66`); INV-16 Decision Priority (`#67`).
+- 2026-07-19: Status freeze + R5 gate conditions accepted (provenance Flights-owned; no cross-domain monolith transaction).
