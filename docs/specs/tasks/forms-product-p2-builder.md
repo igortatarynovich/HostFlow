@@ -1,21 +1,22 @@
 # Forms Product Layer P2 — Builder
 
-**Status:** **ACTIVE** (design · after merge `a142bd0c` / [PR #55](https://github.com/igortatarynovich/HostFlow/pull/55))  
-**Prerequisite:** P1 Product Layer Foundation **CLOSED** (merge `97aac4e3` / [PR #54](https://github.com/igortatarynovich/HostFlow/pull/54) · status `a142bd0c` / #55)  
-**Catalog:** Field Catalog public contracts v1 **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md))  
+**Status:** **ACTIVE** (design · Catalog Consumption **ACTIVE**)  
+**Prerequisite:** P1 Product Layer Foundation **CLOSED** · Field Catalog v1 **FROZEN**  
 **Canon:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md)  
-**Next sprint:** P2.2 Composition Model — **READY FOR IMPLEMENTATION** (after P2.1 COMPLETE)  
-**Last complete:** [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md) · **COMPLETE**
+**Last complete:** [`forms-product-p2-2-composition-model.md`](forms-product-p2-2-composition-model.md) · **COMPLETE**  
+**Next sprint:** P2.3 Composition Commands — **READY FOR IMPLEMENTATION**
 
 ---
 
-## Closed / active gates (after PR #55)
+## Closed / active gates
 
 | Gate | Status |
 |------|--------|
 | P2 Builder Design | ✅ **ACTIVE** |
-| **P2.1 Builder Read Model** | ✅ **COMPLETE** |
-| **P2.2 Composition Model** | **READY FOR IMPLEMENTATION** |
+| **P2.1 Builder Read Model** | ✅ **COMPLETE** (`ae767201` / #57) |
+| **Builder Catalog Consumption** | ✅ **ACTIVE** |
+| **P2.2 Composition Model** | ✅ **COMPLETE** |
+| **P2.3 Composition Commands** | **READY FOR IMPLEMENTATION** |
 | Field Catalog v1 | **FROZEN** |
 | P1 Foundation | **CLOSED** |
 | P3 Publish UI | **LOCKED** |
@@ -30,7 +31,7 @@ Builder is a **thin client of frozen Field Catalog v1**. It may only:
 
 1. **Read** the unified Catalog (existing find / get / descriptors APIs).  
 2. **Assemble** form composition (instances, order, config).  
-3. **Persist** draft composition for the existing publish path.
+3. **Persist** draft composition for the existing publish path (P2.4 — not yet).
 
 Builder **must not**:
 
@@ -54,49 +55,42 @@ Catalog (frozen v1) → Builder reads unified list
 | Sprint | Name | Goal | UI? |
 |--------|------|------|-----|
 | **P2.1** | Builder Read Model | Stable read model over Catalog | no — ✅ COMPLETE |
-| **P2.2** | Composition Model | Canonical draft structure | no — **READY** |
-| **P2.3** | Composition Commands | add/remove/reorder/config/draft ops | no |
+| **P2.2** | Composition Model | Canonical draft structure | no — ✅ COMPLETE |
+| **P2.3** | Composition Commands | add/remove/reorder/config/draft ops | no — **READY** |
 | **P2.4** | Draft Persistence | Persist composition for existing publish | no |
 | **P2.5** | Minimal Builder UI | Palette · canvas · config · save | **yes** (after gate) |
-
-### P2.1 — Builder Read Model (**COMPLETE**)
-
-See [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md).
-
-- Load unified component list  
-- Search / filter / category grouping  
-- Get descriptor by `component_id` + version  
-- Map Catalog descriptor → Builder-facing read model  
-- **No** own component-type database  
-
-**Result:** palette data only from Catalog; Basic and extension visually equal; origin does not affect Builder behavior.
 
 ### Process rule (normative)
 
 Before opening a large new implementation: **check existing assets** in the current step. Do **not** invent an unplanned gate or reorder the approved sequence unless a **blocking conflict** is found.
 
-### P2.2 — Composition Model (**READY FOR IMPLEMENTATION**)
+### P2.1 — Builder Read Model (**COMPLETE**)
 
-Canonical draft instance (minimum):
+See [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md).
+
+### P2.2 — Composition Model (**COMPLETE**)
+
+See [`forms-product-p2-2-composition-model.md`](forms-product-p2-2-composition-model.md).
 
 | Field | Role |
 |-------|------|
+| `draft_id` | Stable form draft identity |
 | `instance_id` | Stable instance identity |
 | `component_id` | Catalog component |
 | `component_version` | Exact pinned version |
-| `config` | Instance config |
-| position | Order in composition |
+| `config` | Instance config (`config_fields` only) |
+| order | Sequence of instances |
 
-**Invariants:** same component may appear many times; order lives in composition (not descriptor); `config` limited to Builder Descriptor `config_fields`; unknown component/version cannot be saved; Builder does **not** interpret validation/normalization.
+**Invariants:** multi-use of one component; version pin; no `source`; no validation/normalization storage; unknown id/version → diagnosable error; no UI layout; no persistence/publish in P2.2.
 
-### P2.3 — Composition Commands
+### P2.3 — Composition Commands (**READY FOR IMPLEMENTATION**)
 
 Operate on the composition model (not raw UI state):
 
 - add / remove / reorder instance  
 - update config  
 - duplicate instance  
-- load draft / save draft  
+- load draft / save draft *(command shapes only — persistence adapter is P2.4)*  
 
 Same command layer usable from web, tests, and future clients.
 
@@ -106,18 +100,9 @@ Persist **only** composition suitable for the existing publish path.
 
 **Forbidden:** separate Builder publication schema; alternate schema contract; second storage pipeline; separate intake mapping.
 
-Saved draft must compose into the existing publish contract without manual type transforms.
-
 ### P2.5 — Minimal Builder UI
 
-Only after P2.1–P2.4 + UI gate:
-
-- Catalog palette · search · canvas  
-- add / remove / reorder  
-- config panel from `config_fields`  
-- save draft  
-
-**Out:** themes · deep Publish UI · analytics · conditional logic · layout designer · custom CSS · full public-form preview if it needs a separate runtime.
+Only after P2.1–P2.4 + UI gate.
 
 ---
 
@@ -139,7 +124,7 @@ Only after P2.1–P2.4 + UI gate:
 UI (**P2.5**) must not start until ready:
 
 - [x] Builder Read Model  
-- [ ] Composition Contract  
+- [x] Composition Contract  
 - [ ] Draft commands  
 - [ ] Persistence adapter  
 - [ ] Contract tests: no hardcode · no Catalog mutation  
@@ -148,7 +133,6 @@ UI (**P2.5**) must not start until ready:
 
 ## History
 
-- 2026-07-19: Opened READY after P1.4 (`97aac4e3` / #54); client-only boundary.  
-- 2026-07-19: Design **ACTIVE** after #55 (`a142bd0c`); P2.1–P2.5 decomposition + UI gate; P3–P5 LOCKED.  
-- 2026-07-19: Status fixate after #56 (`33011872`); process rule: check existing assets, no unplanned gates.  
-- 2026-07-19: **P2.1 COMPLETE** — `forms.builder.read_model.v1`; P2.2 READY.
+- 2026-07-19: Design **ACTIVE** after #55; P2.1–P2.5 decomposition; P3–P5 LOCKED.  
+- 2026-07-19: P2.1 COMPLETE (`ae767201` / #57); Builder Catalog Consumption **ACTIVE**; P2.2 opened.  
+- 2026-07-19: **P2.2 COMPLETE** — `forms.builder.composition.v1`; P2.3 READY.
