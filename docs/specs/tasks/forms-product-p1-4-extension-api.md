@@ -1,74 +1,41 @@
 # Forms Product Layer P1.4 — Extension API
 
-**Status:** **READY FOR IMPLEMENTATION**  
+**Status:** READY FOR REVIEW  
 **Prerequisite:** P1.3 Standard Library **COMPLETE** ([`forms-product-p1-3-standard-library.md`](forms-product-p1-3-standard-library.md) · `0cf7fc00` / #52)  
-**Closes:** Forms Product Layer **P1** (after this DoD)  
-**Then:** P2 Builder — without returning to Field Catalog architecture  
+**Closes:** Forms Product Layer **P1** foundation  
+**Then:** P2 Builder **READY**; Field Catalog public contracts v1 **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md))  
 **Canon:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md)
 
 ---
 
-## Goal
+## DoD delivered
 
-Modules register their own Catalog components through a **separate public extension surface**. Extension components use the **same** Registry + Descriptor validations as Basic. Builder sees one unified catalog via existing read APIs — it does **not** distinguish Basic vs extension.
-
-```text
-module → Extension API
-       → same Registry.register + Descriptor validation
-       → source = platform | module:<id>
-       → Builder/Public clients: find / get / get_descriptors (unchanged)
-```
-
----
-
-## Preferred boundaries (normative)
-
-1. **Separate public surface** for module registration (not Registry internals).  
-2. Extension components pass the **same** Registry + Descriptor validations as stdlib.  
-3. **Forbidden:** overriding Basic (`forms.field.*` stdlib) components.  
-4. **Forbidden:** silent replacement of an already-registered `(component_id, version)`.  
-5. **Source** recorded as `platform` or a concrete **module identifier**.  
-6. Failure of one module’s registration **must not** corrupt the whole Catalog.  
-7. **No tenant-level extensions** in P1.4 (platform/module scope only).  
-8. Builder does **not** know Basic vs extension — unified read surface after bootstrap.  
+- [x] Public extension registration (`register_extension_component` / `register_module_components`)  
+- [x] Source: `platform` | `module:<id>`  
+- [x] Unified find / Builder catalog (no Basic vs Extension split for composition)  
+- [x] Same Registry + Descriptor validation path  
+- [x] Basic override forbidden  
+- [x] No silent version replace (duplicate raises)  
+- [x] Per-module / per-component error isolation  
+- [x] Deterministic catalog independent of module load order  
+- [x] No tenant-level extensions  
+- [x] Contract + gate tests  
+- [x] v1 freeze documented  
 
 ---
 
-## Scope
+## Surface
 
-### In
-
-- Public extension registration API (e.g. `register_module_component` / pack bootstrap)  
-- `source` / ownership metadata on component records  
-- Reject Basic id override + reject silent version replace (typed errors)  
-- Isolated per-module registration errors (partial success OK)  
-- Contract tests: module components visible via public find/get/descriptors  
-- Gate: no Catalog-core `if module == ...` special cases; no tenant extensions  
-
-### Out
-
-- Builder UI (P2)  
-- Themes / Analytics  
-- Tenant-scoped component packs  
-- Rewriting Registry / Descriptors / Stdlib contracts  
-
----
-
-## DoD (implementation gate)
-
-- [ ] Public extension registration surface  
-- [ ] Same Registry + Descriptor validation path as Basic  
-- [ ] Basic override blocked; silent version replace blocked  
-- [ ] `source` = `platform` | `module:<id>`  
-- [ ] One module failure does not wipe Catalog  
-- [ ] No tenant-level extensions  
-- [ ] Builder/read APIs unchanged (unified catalog)  
-- [ ] Contract + gate tests green  
-- [ ] P1 marked COMPLETE; P2 Builder may start  
+| Artifact | Path |
+|----------|------|
+| Contract | `forms.field_catalog.extension.v1` |
+| Module | `backend/app/forms_platform/field_catalog/extensions.py` |
+| Tests | `test_forms_p1_4_extension_contract.py` · `test_forms_p1_4_extension_gates.py` |
 
 ---
 
 ## History
 
 - 2026-07-18: Stub opened with P1.3.  
-- 2026-07-19: **READY FOR IMPLEMENTATION** after P1.3 merge `0cf7fc00` (#52); boundaries fixed.
+- 2026-07-19: Boundaries READY after P1.3 merge.  
+- 2026-07-19: Implementation READY FOR REVIEW.

@@ -19,8 +19,10 @@
 | Basic Component Library | ✅ **ACTIVE** |
 | Builder | ✅ **UNLOCKED** |
 | `forms.feature_flags.builder_enabled` | **true** |
-| **P1.4 Extension API** | **READY FOR IMPLEMENTATION** ([`forms-product-p1-4-extension-api.md`](forms-product-p1-4-extension-api.md)) |
-| Unlock Builder | ✅ done (after P1.3) |
+| **P1.4 Extension API** | ✅ **COMPLETE** ([`forms-product-p1-4-extension-api.md`](forms-product-p1-4-extension-api.md)) |
+| P1 Product Layer Foundation | ✅ **COMPLETE** |
+| Catalog contracts v1 | **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md)) |
+| P2 Builder | **READY FOR IMPLEMENTATION** ([`forms-product-p2-builder.md`](forms-product-p2-builder.md)) |
 
 ---
 
@@ -65,7 +67,7 @@ Builder | Public Form | Entity cards | CRM | Mobile   ← clients, not owners
 | **P1.1** | Registry | Register / find / get by id+version / version compatibility | LOCKED | ✅ **COMPLETE** |
 | **P1.2** | Runtime descriptors | Builder / Public / Validation / Normalization descriptors via Catalog | LOCKED | ✅ **COMPLETE** |
 | **P1.3** | Standard library | First Basic component set | **UNLOCKED after DoD** | ✅ **COMPLETE** |
-| **P1.4** | Extension API | Modules register own components | unlocked path | **READY FOR IMPLEMENTATION** |
+| **P1.4** | Extension API | Modules register own components | unlocked path | ✅ **COMPLETE** |
 
 ### P1.1 — Registry (✅ COMPLETE)
 
@@ -103,13 +105,13 @@ Register Basic components **only** via public Registry + Descriptors — no Cata
 
 After P1.3 DoD, **Builder is UNLOCKED**. Preferred sequence: **P1.4** then P2 Builder.
 
-### P1.4 — Extension API (**READY FOR IMPLEMENTATION**)
+### P1.4 — Extension API (✅ COMPLETE)
 
 See [`forms-product-p1-4-extension-api.md`](forms-product-p1-4-extension-api.md).
 
 Modules register via a separate public surface; same validations; no Basic override; no silent version replace; `source` = platform | module; one module failure must not corrupt Catalog; no tenant extensions; Builder sees a unified catalog.
 
-Last P1 stage. Any module registers its own components; they appear in Catalog (and later Builder) automatically.
+P1 foundation **COMPLETE**. Catalog contracts v1 **FROZEN**. **P2 Builder READY.**
 
 | Module | Example components |
 |--------|-------------------|
@@ -117,8 +119,6 @@ Last P1 stage. Any module registers its own components; they appear in Catalog (
 | HR | PESEL · Bank Account |
 | Fleet | Vehicle · Trailer |
 | Service | Service Type |
-
-No Builder changes required to adopt new domain components.
 
 ---
 
@@ -212,4 +212,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 - 2026-07-18: P1.1 **COMPLETE** (`644b102a` / #47); P1.2 Descriptors **READY**.  
 - 2026-07-18: P1.2 Design **ACTIVE**; Descriptor Contract READY FOR IMPLEMENTATION; descriptors must be declarative (no executable logic); P1.3 LOCKED.  
 - 2026-07-18: P1.2 **COMPLETE** (`1f7b4aba` / #50); P1.3 Standard Library **READY FOR IMPLEMENTATION**.  
-- 2026-07-19: P1.3 **COMPLETE** (`0cf7fc00` / #52); Builder **UNLOCKED**; P1.4 Extension API **READY FOR IMPLEMENTATION**.
+- 2026-07-19: P1.3 **COMPLETE** (`0cf7fc00` / #52); Builder **UNLOCKED**; P1.4 Extension API **READY FOR IMPLEMENTATION**.  
+- 2026-07-19: P1.4 **COMPLETE**; Catalog v1 **FROZEN**; P1 foundation **COMPLETE**; P2 Builder **READY**.

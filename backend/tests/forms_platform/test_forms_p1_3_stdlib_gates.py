@@ -56,8 +56,8 @@ def test_forms_p1_3_stdlib_is_catalog_client_only() -> None:
     assert "._by_key" not in stdlib
     assert "react" not in stdlib.lower()
     assert "extension api" not in stdlib.lower()
-    assert "extensions.py" not in stdlib
-    assert not (_REPO_ROOT / "backend/app/forms_platform/field_catalog/extensions.py").exists()
+    # extensions.py is P1.4 — must not be imported/owned by stdlib
+    assert "from backend.app.forms_platform.field_catalog.extensions" not in stdlib
     assert not (_REPO_ROOT / "backend/app/forms_platform/field_catalog/renderers.py").exists()
 
 

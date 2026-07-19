@@ -150,3 +150,18 @@ class FormsCatalogDescriptorUnsupportedError(FormsAdapterError):
     code = "forms_catalog_descriptor_unsupported"
     http_status = 422
     default_message = "Catalog component descriptor kind is unsupported"
+
+
+# --- Field Catalog P1.4 ---
+
+
+class FormsCatalogBasicOverrideError(FormsAdapterError):
+    code = "forms_catalog_basic_override_forbidden"
+    http_status = 409
+    default_message = "Basic Standard Library components cannot be overridden"
+
+
+class FormsCatalogExtensionModuleInvalidError(FormsAdapterError):
+    code = "forms_catalog_extension_module_invalid"
+    http_status = 422
+    default_message = "Extension module_id is invalid"
