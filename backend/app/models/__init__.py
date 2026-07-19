@@ -69,6 +69,7 @@ LeadQuestionnaireInvite = _load_model_module("lead_questionnaire_invite").LeadQu
 CommunicationDelivery = _load_model_module("communication_delivery").CommunicationDelivery  # type: ignore[attr-defined]
 Candidate = _load_model_module("candidate").Candidate  # type: ignore[attr-defined]
 RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
+SalesInquiry = _load_model_module("sales_inquiry").SalesInquiry  # type: ignore[attr-defined]
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
@@ -233,6 +234,7 @@ __all__ = [
     "Base",
     "Candidate",
     "RecruitmentApplication",
+    "SalesInquiry",
     "CandidateHandoff",
     "CandidateEvidence",
     "CandidateEvidenceDocument",

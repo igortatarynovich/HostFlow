@@ -1,6 +1,6 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1+R2 COMPLETE · R3 IN THIS PR)  
+**Status:** **ACTIVE** (R1–R3 COMPLETE · R4 IN THIS PR)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
 **Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md) · Stage 1 audit [`../architecture/intake-communication-context-audit-v1.md`](../architecture/intake-communication-context-audit-v1.md)  
@@ -37,9 +37,9 @@ Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `l
 |------|-------|--------|
 | **R1** | Fail-closed route resolution | ✅ COMPLETE (`#63` / `41e83eae`) |
 | **R2** | Destination registry | ✅ COMPLETE (`#63`) |
-| **R3** | Split handlers (Sales-owned; no cross-module imports) | **IN THIS PR** |
-| **R4** | Independent result objects (Application / SalesInquiry) | NEXT |
-| **R5** | Transactional dispatch + idempotent redelivery | LATER |
+| **R3** | Split handlers (Sales-owned; no cross-module imports) | ✅ COMPLETE (`#64` / `5a9983a2`) |
+| **R4** | Independent result objects (Application / SalesInquiry) | **IN THIS PR** |
+| **R5** | Transactional dispatch + idempotent redelivery | NEXT |
 | **R6** | Physically separate queues / APIs | LATER |
 
 **Do not start R6 (queues/UI) before R1–R5.** Mixing hidden only in the frontend leaves the old blend in the backend.
@@ -86,28 +86,41 @@ Contract: `intake.destination_registry.v1` · package `backend.app.intake_platfo
 | Missing Sales callable | Unresolved disposition — **no** Recruitment fallback |
 | Handler result | Must match destination domain (foreign domain rejected) |
 
-### R4–R6 (next PRs)
+### R4 — Independent result objects
 
-- **R4:** Recruitment → Application; Sales → SalesInquiry. Lead may remain transport/legacy only — not destination result.  
-- **R5:** Resolve binding → pinned intent → compatibility → one destination → one result → routing decision → mark handoff processed; redelivery returns existing result.  
+| Rule | Behavior |
+|------|----------|
+| `candidate_application` | Creates **Application** (`recruitment_applications`) |
+| `sales_inquiry` | Creates **SalesInquiry** (`sales_inquiries`) |
+| Shared Intake / Forms | Do **not** create either object directly |
+| Lead | Optional transport only — not result, not queue SoT, not communication SoT |
+| Transport link | Immutable `normalized.intake_result_link_v1`; one Lead → one result type |
+| Typed handler result | `result_entity_type` + `result_entity_id` (+ `result_created`) |
+| Projections | `lead_to_sales_inquiry` / `lead_to_recruitment_application` marked **LEGACY** (remove in R6) |
+
+### R5–R6 (next PRs)
+
+- **R5:** Resolve binding → pinned intent → compatibility → one destination → one result → routing decision → mark handoff processed; redelivery returns existing result. Provenance: `handoff_id → route_intent → destination → handler → result_type → result_id`.  
 - **R6:** Recruitment API/queue reads only Application; Sales only SalesInquiry; no shared `type=` filter endpoint.
 
 ---
 
 ## Negative tests (DoD for runtime close — accumulate across R1–R6)
 
-- [ ] `sales_inquiry` never creates Application  
-- [ ] `candidate_application` never creates SalesInquiry  
+- [x] `sales_inquiry` never creates Application (R4 transport conflict + typed result)  
+- [x] `candidate_application` never creates SalesInquiry (R4)  
 - [x] missing intent does not go to Recruitment (R1)  
 - [x] unknown intent does not enter a shared dispatch path (R1/R2)  
 - [x] incompatible source profile rejected (R2)  
-- [ ] repeat handoff does not create a second object (R5)  
+- [x] repeat ensure on same transport does not create second SalesInquiry (R4; full handoff ledger = R5)  
 - [x] Sales handler cannot register as Recruitment-owned (R2)  
 - [x] `sales_inquiry` invokes only `sales.inquiry_draft` (R3)  
 - [x] `candidate_application` invokes only `recruitment.lead_draft` (R3)  
 - [x] Sales↔Recruitment package imports forbidden (R3)  
 - [x] Removing Sales handler callable → unresolved, not Recruitment fallback (R3)  
-- [x] Handler cannot return foreign domain result (R3)  
+- [x] Handler cannot return foreign domain result (R3/R4)  
+- [x] Sales handler cannot return Application (R4)  
+- [x] Recruitment handler cannot return SalesInquiry (R4)  
 - [ ] Recruitment API does not return Sales Inquiry (R6)  
 - [ ] Sales API does not return Candidate Application (R6)  
 - [ ] changing `application_kind` does not change route  
@@ -121,8 +134,8 @@ Contract: `intake.destination_registry.v1` · package `backend.app.intake_platfo
 |----------|--------|
 | Canonical Input Matrix | **ACCEPTED / FROZEN** |
 | Intake Canonical Input Matrix epic | **COMPLETE** |
-| Intake Runtime Split V1 | **ACTIVE** (R3) |
-| Communication Context V1 | **READY** (Stage 1 audit + R3) |
+| Intake Runtime Split V1 | **ACTIVE** (R4) |
+| Communication Context V1 | **READY** (Stage 1 audit; B untouched until after R5) |
 | Flights / Intake Routing runtime | **UNLOCKED** |
 | Forms P3–P5 | **LOCKED** |
 
@@ -132,3 +145,4 @@ Contract: `intake.destination_registry.v1` · package `backend.app.intake_platfo
 
 - 2026-07-19: Opened READY FOR IMPLEMENTATION after matrix acceptance; first PR = R1 + R2 only.
 - 2026-07-19: R1+R2 COMPLETE (`#63`); R3 destination-owned handlers + Communication Context epic opened.
+- 2026-07-19: R3 COMPLETE (`#64`); R4 independent Application / SalesInquiry result objects.

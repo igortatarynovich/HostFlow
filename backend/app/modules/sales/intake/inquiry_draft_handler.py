@@ -1,7 +1,7 @@
-"""Sales-owned intake handler — sales.inquiry_draft (Runtime Split R3).
+"""Sales-owned intake handler — sales.inquiry_draft (Runtime Split R3/R4).
 
 Must not import Recruitment models/services/packages.
-Lead remains temporary transport until R4 SalesInquiry result object.
+Creates SalesInquiry as destination result; Lead is optional transport only.
 """
 
 from __future__ import annotations
@@ -39,6 +39,9 @@ from backend.app.models.lead import Lead
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.modules.intake_routing import crud as intake_crud
 from backend.app.modules.leads.duplicate_resolution import LeadDuplicateMatch
+from backend.app.modules.sales.services.sales_inquiry_service import (
+    ensure_sales_inquiry_for_transport_lead,
+)
 from backend.app.services.outcome_resolver import resolve_outcomes
 
 HANDLER_ID = HANDLER_SALES_INQUIRY_DRAFT
@@ -208,6 +211,8 @@ async def handle_sales_inquiry_draft(
             created_candidate_id=None,
             transport_lead_id=str(target_lead.id),
             effective_policy=effective,
+            result_entity_id=None,
+            result_created=False,
         )
 
     # Derived label only — never SoT for destination choice.
@@ -229,6 +234,22 @@ async def handle_sales_inquiry_draft(
         submission_id=str(submission_entry.get("submission_id") or ""),
         created_candidate_id=created_candidate_id,
     )
+
+    lf_meta = _record(intake_state.get("lead_form"))
+    inquiry = await ensure_sales_inquiry_for_transport_lead(
+        db,
+        tenant_id=str(tenant_id),
+        lead=target_lead,
+        source=source,
+        idempotency_key=_submit_idempotency_key(draft_lead, intake_state),
+        entity_profile_code=str(intake_state.get("entity_profile_code") or "").strip() or None,
+        intake_source_profile_id=profile_id,
+        form_id=form_id or str(lf_meta.get("id") or "").strip() or None,
+        meta={
+            "submission_id": str(submission_entry.get("submission_id") or "") or None,
+            "acquisition_routing_v1": routing_stamp,
+        },
+    )
     await db.flush()
 
     return DestinationHandlerResult(
@@ -240,4 +261,6 @@ async def handle_sales_inquiry_draft(
         created_candidate_id=created_candidate_id,
         transport_lead_id=str(target_lead.id),
         effective_policy=effective,
+        result_entity_id=str(inquiry.id),
+        result_created=True,
     )

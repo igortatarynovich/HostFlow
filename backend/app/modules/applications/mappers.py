@@ -127,6 +127,12 @@ def _tab_bucket(status: ApplicationStatus) -> ApplicationTabBucket:
 
 
 def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
+    """LEGACY PROJECTION (Runtime Split R4 — deprecate for R6).
+
+    Maps Lead → ApplicationOut for current Sales inbox API.
+    SoT after R4 is ``SalesInquiry`` (``sales_inquiries`` table), not Lead.
+    Do not use this as destination identity or communication context.
+    """
     normalized = _record(getattr(lead, "normalized", None))
     company = _record(normalized.get("company_profile"))
     company_name = (
@@ -229,6 +235,11 @@ def _sales_questionnaire_summary(normalized: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
+    """LEGACY PROJECTION (Runtime Split R4 — deprecate for R6).
+
+    Maps Lead → ApplicationOut for current Recruitment inbox API.
+    SoT after R4 is ``RecruitmentApplication`` table rows, not Lead.
+    """
     normalized = _record(getattr(lead, "normalized", None))
     contact = _recruitment_contact(lead)
     subtitle = (

@@ -119,6 +119,7 @@ async def dispatch_destination_submit(
     result.assert_owns_domain(
         expected_destination=entry.destination,
         expected_result=_expected_result_for_destination(entry.destination),
+        require_result_id=bool(result.result_created),
     )
     if result.handler_id != entry.handler_id:
         raise DestinationHandlerDomainError(

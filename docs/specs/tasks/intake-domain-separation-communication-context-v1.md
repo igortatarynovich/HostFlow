@@ -47,11 +47,11 @@ Form, Thread, and email automation **must not** independently infer type.
 
 | # | Stage | Status |
 |---|-------|--------|
-| 1 | Runtime determination audit (concrete call sites) | **IN THIS PR** — [`intake-communication-context-audit-v1.md`](../architecture/intake-communication-context-audit-v1.md) |
+| 1 | Runtime determination audit (concrete call sites) | **ACTIVE** |
 | 2 | Fail-closed routing | ✅ R1 (`#63`) |
-| 3 | Recruitment/Sales destination handlers | **R3 (this PR)** |
-| 4 | Independent result objects | Runtime Split R4 |
-| 5 | Thread business-context resolution | AFTER R4 |
+| 3 | Recruitment/Sales destination handlers | ✅ R3 (`#64`) |
+| 4 | Independent result objects | ✅ R4 (this PR) |
+| 5 | Thread business-context resolution | AFTER R5 |
 | 6 | Module-owned communication policies + template metadata | AFTER stage 5 |
 | 7 | Separate APIs and queues | Runtime Split R6 |
 | 8 | Legacy resolution queue | AFTER stage 7 |
