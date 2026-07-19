@@ -54,6 +54,6 @@ class SalesInquiry(Base, TimestampMixin):
     intake_source_profile_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     form_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     idempotency_key: Mapped[Optional[str]] = mapped_column(String(191), nullable=True, index=True)
-    # Free-form provenance stamps until R5 ledger.
+    # Free-form stamps; Flights provenance SoT is acq_flight_dispatch_ledger (R5).
     meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONType, nullable=True, default=dict)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

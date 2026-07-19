@@ -70,6 +70,7 @@ CommunicationDelivery = _load_model_module("communication_delivery").Communicati
 Candidate = _load_model_module("candidate").Candidate  # type: ignore[attr-defined]
 RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
 SalesInquiry = _load_model_module("sales_inquiry").SalesInquiry  # type: ignore[attr-defined]
+FlightDispatchLedger = _load_model_module("flight_dispatch_ledger").FlightDispatchLedger  # type: ignore[attr-defined]
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
@@ -235,6 +236,7 @@ __all__ = [
     "Candidate",
     "RecruitmentApplication",
     "SalesInquiry",
+    "FlightDispatchLedger",
     "CandidateHandoff",
     "CandidateEvidence",
     "CandidateEvidenceDocument",

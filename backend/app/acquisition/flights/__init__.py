@@ -1,10 +1,11 @@
-"""Acquisition Flights package — routing dispatch boundary (ADR-024 / R3.5)."""
+"""Acquisition Flights package — routing dispatch boundary (ADR-024 / R3.5 + R5)."""
 
 from backend.app.acquisition.flights.destination_contract import (
     DISPATCHER_CANDIDATE_APPLICATION,
     DISPATCHER_SALES_INQUIRY,
     DestinationDispatchResult,
     DestinationSubmitRequest,
+    OpaqueResultRef,
 )
 from backend.app.acquisition.flights.destination_registry import (
     platform_destination_registry,
@@ -17,6 +18,7 @@ __all__ = [
     "DISPATCHER_SALES_INQUIRY",
     "DestinationDispatchResult",
     "DestinationSubmitRequest",
+    "OpaqueResultRef",
     "dispatch_destination_submit",
     "platform_destination_registry",
     "reset_platform_destination_registry_for_tests",

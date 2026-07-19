@@ -31,6 +31,17 @@ class DestinationSubmitRequest:
     route_intent: str
     presentation_code: Optional[str] = None
     source: str = "public_intake"
+    handoff_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
+
+
+@dataclass(frozen=True, slots=True)
+class OpaqueResultRef:
+    """Flights-stored destination pointer — no domain graph embedding."""
+
+    module_owner: str
+    result_type: str
+    result_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,10 +62,31 @@ class DestinationDispatchResult:
     effective_policy: Any = None
     result_entity_id: Optional[str] = None
     result_created: bool = False
+    opaque_result: Optional[OpaqueResultRef] = None
+    ledger_id: Optional[str] = None
+    replayed_from_ledger: bool = False
 
     @property
     def dispatcher_id(self) -> str:
         return self.handler_id
+
+    def opaque_ref(self) -> OpaqueResultRef:
+        if self.opaque_result is not None:
+            return self.opaque_result
+        rid = str(self.result_entity_id or "").strip()
+        if not rid:
+            raise DestinationContractError(
+                "opaque result reference requires result_entity_id",
+                details={
+                    "handler_id": self.handler_id,
+                    "result_entity_type": self.result_entity_type,
+                },
+            )
+        return OpaqueResultRef(
+            module_owner=str(self.destination),
+            result_type=str(self.result_entity_type),
+            result_id=rid,
+        )
 
     def assert_owns_domain(
         self,
