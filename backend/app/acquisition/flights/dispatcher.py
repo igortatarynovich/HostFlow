@@ -22,7 +22,6 @@ from backend.app.acquisition.flights.destination_contract import (
     DestinationContractError,
     DestinationDispatchResult,
     DestinationSubmitRequest,
-    OpaqueResultRef,
 )
 from backend.app.acquisition.flights.destination_registry import (
     DESTINATION_RECRUITMENT,
