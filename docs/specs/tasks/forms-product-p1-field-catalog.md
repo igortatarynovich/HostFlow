@@ -22,7 +22,8 @@
 | **P1.4 Extension API** | ✅ **COMPLETE** (`97aac4e3` / #54) |
 | P1 Product Layer Foundation | ✅ **COMPLETE** |
 | Catalog contracts v1 | **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md)) |
-| P2 Builder | **READY FOR IMPLEMENTATION** ([`forms-product-p2-builder.md`](forms-product-p2-builder.md)) |
+| P2 Builder | **Design ACTIVE** · P2.1 **READY** ([`forms-product-p2-builder.md`](forms-product-p2-builder.md)) |
+| P3–P5 | **LOCKED** |
 
 ---
 
