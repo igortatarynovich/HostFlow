@@ -28,6 +28,13 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.acquisition.flights.destination_contract import OpaqueResultRef
+from backend.app.communications.result_link import (
+    ThreadResultLinkError,
+    attach_thread_result_from_confirmed_ledger,
+    attach_thread_result_link,
+    get_thread_result_link,
+)
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id,
     resolve_active_own_company_id_optional,
@@ -63,11 +70,55 @@ from ..schemas import (
     CommunicationThreadListResponse,
     CommunicationThreadOut,
     CommunicationThreadPatch,
+    CommunicationThreadResultLinkAttach,
+    CommunicationThreadResultLinkOut,
     CommunicationUnreadReconcileRequest,
     CommunicationUnreadReconcileResponse,
 )
 
 router = APIRouter(tags=["communications"])
+
+
+async def _maybe_attach_result_link(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread_id: str,
+    module_owner: str | None,
+    result_type: str | None,
+    result_id: str | None,
+    provenance_ledger_id: str | None,
+):
+    ledger_id = str(provenance_ledger_id or "").strip() or None
+    if ledger_id and not (module_owner and result_type and result_id):
+        return await attach_thread_result_from_confirmed_ledger(
+            db,
+            tenant_id=tenant_id,
+            thread_id=thread_id,
+            ledger_id=ledger_id,
+        )
+    owner = str(module_owner or "").strip()
+    rtype = str(result_type or "").strip()
+    rid = str(result_id or "").strip()
+    if not (owner or rtype or rid or ledger_id):
+        return None
+    if not (owner and rtype and rid):
+        raise ThreadResultLinkError(
+            "result_module_owner, result_type, and result_id are required together "
+            "(or pass provenance_ledger_id alone)",
+            details={"reason": "incomplete_opaque_result_ref"},
+        )
+    return await attach_thread_result_link(
+        db,
+        tenant_id=tenant_id,
+        thread_id=thread_id,
+        opaque=OpaqueResultRef(
+            module_owner=owner,
+            result_type=rtype,
+            result_id=rid,
+        ),
+        ledger_id=ledger_id,
+    )
 
 
 @router.get("/threads", response_model=CommunicationThreadListResponse)
@@ -177,9 +228,30 @@ async def create_thread(
             thread=thread,
             actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
         )
+    await db.flush()
+    result_link_view = None
+    try:
+        result_link_view = await _maybe_attach_result_link(
+            db,
+            tenant_id=tenant_id,
+            thread_id=str(thread.id),
+            module_owner=body.result_module_owner,
+            result_type=body.result_type,
+            result_id=body.result_id,
+            provenance_ledger_id=body.provenance_ledger_id,
+        )
+    except ThreadResultLinkError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": getattr(exc, "code", "communication_thread_result_link_error"),
+                "message": str(getattr(exc, "message", None) or exc),
+                "details": dict(getattr(exc, "details", None) or {}),
+            },
+        ) from exc
     await db.commit()
     await db.refresh(thread)
-    return _thread_out(thread)
+    return _thread_out(thread, result_link=result_link_view)
 
 
 @router.get("/threads/{thread_id}", response_model=CommunicationThreadDetailResponse)
@@ -206,7 +278,71 @@ async def get_thread(
         .limit(messages_limit)
     )
     msgs = (await db.execute(messages_stmt)).scalars().all()
-    return CommunicationThreadDetailResponse(thread=_thread_out(thread), messages=[_message_out(m) for m in msgs])
+    result_link = await get_thread_result_link(db, tenant_id=tenant_id, thread_id=thread_id)
+    return CommunicationThreadDetailResponse(
+        thread=_thread_out(thread, result_link=result_link),
+        messages=[_message_out(m) for m in msgs],
+    )
+
+
+@router.post(
+    "/threads/{thread_id}/result-link",
+    response_model=CommunicationThreadResultLinkOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def attach_thread_result_link_endpoint(
+    thread_id: str,
+    body: CommunicationThreadResultLinkAttach,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> CommunicationThreadResultLinkOut:
+    """C1: bind Thread to opaque result ref / confirmed Flights ledger."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
+    assert_comm_feature_access(
+        tenant=tenant,
+        current_user=current_user,
+        tenant_id=tenant_id,
+        feature=_feature_for_channel(thread.channel),  # type: ignore[arg-type]
+    )
+    try:
+        view = await _maybe_attach_result_link(
+            db,
+            tenant_id=tenant_id,
+            thread_id=thread_id,
+            module_owner=body.module_owner,
+            result_type=body.result_type,
+            result_id=body.result_id,
+            provenance_ledger_id=body.provenance_ledger_id,
+        )
+    except ThreadResultLinkError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": getattr(exc, "code", "communication_thread_result_link_error"),
+                "message": str(getattr(exc, "message", None) or exc),
+                "details": dict(getattr(exc, "details", None) or {}),
+            },
+        ) from exc
+    if view is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "communication_thread_result_link_error",
+                "message": "opaque result ref or provenance_ledger_id is required",
+                "details": {"reason": "missing_result_link_payload"},
+            },
+        )
+    await db.commit()
+    from .._helpers.dto import _result_link_out
+
+    out = _result_link_out(view)
+    assert out is not None
+    return out
 
 
 @router.patch("/threads/{thread_id}", response_model=CommunicationThreadOut)

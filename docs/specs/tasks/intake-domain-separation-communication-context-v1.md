@@ -109,8 +109,8 @@ Minimum fields:
 
 | # | Slice | Status |
 |---|-------|--------|
-| **C1** | Thread Result Link Contract — Thread ↔ opaque result ref (not foreign ORM) | **NEXT** |
-| **C2** | Communication Context Resolver — unique owner + result type | AFTER C1 |
+| **C1** | Thread Result Link Contract — Thread ↔ opaque result ref (not foreign ORM) | ✅ COMPLETE — [`intake-communication-context-c1.md`](intake-communication-context-c1.md) |
+| **C2** | Communication Context Resolver — unique owner + result type | **NEXT** |
 | **C3** | Module-owned Communication Policy Ports — Recruitment/Sales publish purposes | AFTER C2 |
 | **C4** | Template Metadata Enforcement — backend rejects cross-domain templates | AFTER C3 |
 | **C5** | Send-path migration — email/SMS/WhatsApp/automations/Thread actions via resolver | AFTER C4 |

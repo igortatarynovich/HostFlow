@@ -205,6 +205,8 @@ from .schemas import (  # noqa: E402,F401
     NotificationSettingsIn,
     NotificationSettingsOut,
     CommunicationThreadOut,
+    CommunicationThreadResultLinkOut,
+    CommunicationThreadResultLinkAttach,
     CommunicationMessageOut,
     CommunicationThreadListResponse,
     CommunicationMessageListResponse,
