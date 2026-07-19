@@ -1,9 +1,10 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1–R4 COMPLETE · **R3.5 Flights dispatch boundary IN THIS PR**)  
+**Status:** **ACTIVE** (R1–R4 + R3.5 COMPLETE · R5 NEXT)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
 **L0 correction:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md) — Forms → Flights → destination port → Recruitment/Sales  
+**Decision gate:** [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md) · **INV-16**  
 **Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
 **Parents:** [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`ADR-024`](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md)  
 **Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**)  
@@ -40,7 +41,7 @@ Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `l
 | **R2** | Destination registry | ✅ COMPLETE (`#63`) |
 | **R3** | Intent split (intermediate module handlers) | ✅ COMPLETE (`#64`) — corrected by R3.5 |
 | **R4** | Independent result objects | ✅ COMPLETE (`#65`) |
-| **R3.5** | Flights-owned dispatch boundary (L0) | **IN THIS PR** |
+| **R3.5** | Flights-owned dispatch boundary (L0) | ✅ COMPLETE (`#66`) |
 | **R5** | Transactional dispatch + idempotent provenance | NEXT |
 | **R6** | Physically separate queues / APIs | LATER |
 

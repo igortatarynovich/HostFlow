@@ -44,11 +44,17 @@
 | **INV-14** | **Experimental** / **Internal** контракты не могут быть единственной опорой Business Capability без плана стабилизации. |
 | **INV-15** | Passport **Non-Goals** не превращаются в Owns без Architecture RFC (расползание scope запрещено «тихо»). |
 
+## Decision priority (accept / reject)
+
+| ID | Invariant |
+|----|-----------|
+| **INV-16** | Локальное удобство, ускорение PR или «временное» упрощение **не** имеют приоритета над L0, модульной независимостью и утверждёнными границами. Порядок проверки: (1) L0 · (2) L1/ADR ownership · (3) межмодульные контракты · (4) локальная реализация. Решение с прямым знанием внутренностей другого модуля, cross-package domain import, общим доменным SoT или скрытым fallback между destinations — **архитектурно неверно**, даже если функционально работает. SoT: [`decision-priority-rule.md`](decision-priority-rule.md). |
+
 ---
 
 ## How to use
 
-1. Перед ADR/PR — сверить изменение с INV-01…15 ([`architecture-review-checklist.md`](architecture-review-checklist.md)).  
+1. Перед ADR/PR — сверить изменение с INV-01…16 ([`architecture-review-checklist.md`](architecture-review-checklist.md)).  
 2. Если фича требует ложности инварианта — это не feature: это **L0 RFC**.  
 3. Errata: опечатка в формулировке — `l0-errata`; смена смысла инварианта — полный RFC.
 
@@ -57,3 +63,4 @@
 ## History
 
 - **2026-07-18** — приняты как финальный слой L0 перед полной заморозкой конституции.
+- **2026-07-19** — **INV-16** Decision Priority Rule (после L0-коррекции Intake / Flights R3.5).

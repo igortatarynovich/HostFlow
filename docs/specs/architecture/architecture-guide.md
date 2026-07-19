@@ -22,9 +22,10 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 8. **Forms Product Layer P1:** ✅ **CLOSED** (`97aac4e3` / #54 · status #55) — Catalog v1 **FROZEN**.
 9. **P2 Builder MVP:** ✅ **COMPLETE** (P2.1–P2.5). P3–P5 **LOCKED**.  
 10. **P2.5 UI gate:** ✅ **COMPLETE** (minimal Builder UI delivered).  
-11. **Intake Canonical Input Matrix:** ✅ **ACCEPTED / FROZEN** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); **Runtime Split V1** [`ACTIVE`](../tasks/intake-runtime-split-v1.md) (R1+R2 ✅); **Communication Context V1** [`READY`](../tasks/intake-domain-separation-communication-context-v1.md); Forms P3–P5 **LOCKED**.
-12. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
-13. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
+11. **Intake Canonical Input Matrix:** ✅ **ACCEPTED / FROZEN** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); **Runtime Split** R1–R4 + **R3.5 Flights dispatch** ✅ ([`../tasks/intake-runtime-split-v1.md`](../tasks/intake-runtime-split-v1.md) · [`../tasks/intake-r35-flights-dispatch-boundary.md`](../tasks/intake-r35-flights-dispatch-boundary.md)); **Communication Context V1** [`READY`](../tasks/intake-domain-separation-communication-context-v1.md); Forms P3–P5 **LOCKED**.  
+12. **Decision Priority (INV-16):** [`decision-priority-rule.md`](decision-priority-rule.md) — L0 → ownership → contracts → only then convenience.  
+13. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
+14. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
 ## Ежедневный путь проектирования (L1)
 

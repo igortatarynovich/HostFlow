@@ -32,7 +32,7 @@
 | 8 | Licensing | ✅ | ADR-030 |
 | 9 | Dependencies | ✅ | ADR-030 · Catalog |
 | 10 | Review Checklist | ✅ | Checklist (обязателен) |
-| 11 | **Architecture Invariants** | ✅ | [`architecture-invariants.md`](architecture-invariants.md) |
+| 11 | **Architecture Invariants** | ✅ | [`architecture-invariants.md`](architecture-invariants.md) · **INV-16** Decision Priority [`decision-priority-rule.md`](decision-priority-rule.md) |
 
 **Вердикт:** L0 **окончательно заморожен**. JSON Manifest / registry / UI — L2/L3.
 

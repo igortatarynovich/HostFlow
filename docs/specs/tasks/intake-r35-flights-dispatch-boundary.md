@@ -1,8 +1,9 @@
 # Intake Runtime Split — R3.5 Flights-owned Dispatch Boundary
 
-**Status:** **IN THIS PR**  
+**Status:** **COMPLETE** (`6571c3a7` / [PR #66](https://github.com/igortatarynovich/HostFlow/pull/66))  
 **L0 rule:** Modules are independent. No module is built around another. Interactions only via published contracts/adapters.  
-**Corrects:** R3 physical placement of create handlers inside Recruitment/Sales as the *dispatch* boundary (useful isolation, wrong ownership).  
+**Decision gate:** [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md) · **INV-16**  
+**Corrects:** R3 physical placement of create handlers inside Recruitment/Sales as the *dispatch* boundary (useful isolation, wrong ownership — failed L0 gate).  
 **Parents:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) · ADR-024  
 
 ---
@@ -79,7 +80,7 @@ Forms Platform → Recruitment/Sales handler
 | R1–R2 | Fail-closed + registry | ✅ |
 | R3 | Intent/handler split (intermediate) | ✅ |
 | R4 | Result objects (started; keep) | ✅ (creation ownership OK; dispatch ownership fixed in R3.5) |
-| **R3.5** | **Flights-owned dispatch boundary** | **THIS PR** |
+| **R3.5** | **Flights-owned dispatch boundary** | ✅ COMPLETE (`#66`) |
 | R5 | Transactional/idempotent provenance ledger | NEXT |
 | then | Communication Context Resolver | AFTER R5 |
 | R6 | Separate APIs/queues | AFTER resolver |
@@ -91,3 +92,4 @@ Optional rename going forward: treat “Module Boundary Contracts” as the L0 f
 ## History
 
 - 2026-07-19: Opened after L0 correction — Forms↛Recruitment/Sales; Flights owns acquisition intake through destination adapters.
+- 2026-07-19: COMPLETE `#66`; Decision Priority Rule (**INV-16**) adopted as mandatory accept gate.
