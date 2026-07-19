@@ -124,7 +124,7 @@ Shared **engines**; module-owned **definitions** (pipelines, metrics, templates,
 | 2 | Domain ownership | Documented + SSOT | Code + specs enforce owner per entity (§2.2) |
 | 3 | API contracts | Facades started | No operational `/leads` for both; modular product APIs |
 | 4 | Permissions & module gates | **Stage 2B DONE** (HTTP gates) | Fine-grained `recruitment.*` action strings beyond read/write matrix (incremental) |
-| 5 | Intake routing | Still Lead-centric | Intent before object: `candidate_application` → Recruitment; `sales_inquiry` → Sales |
+| 5 | Intake routing | Still Lead-centric | Intent before object: `candidate_application` → Recruitment; `sales_inquiry` → Sales — design SoT: [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) (**READY**) |
 | 6 | Workspaces & comms context | Workspaces exist | Distinct workspaces; Thread links entities, does not decide module |
 | 7 | Settings / automations / analytics | Split tabs only | Module-owned process & metric definitions on shared engines |
 | 8 | **Deployment and URL Boundaries** | **6A+6B+6C DONE**; production cutover open | Production DNS/TLS/proxy cutover closes full Stage 6 (§3.7) |

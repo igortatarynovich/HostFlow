@@ -8,6 +8,7 @@
 
 **Related:**
 
+- [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) — **Canonical Input Matrix READY** (Source profile → Provider → Published form → `route_intent` → handoff → Destination); epic [`../tasks/intake-canonical-input-matrix.md`](../tasks/intake-canonical-input-matrix.md) **ACTIVE**
 - [`../architecture/ADR-007-forms-platform-capability.md`](../architecture/ADR-007-forms-platform-capability.md) — Forms as input layer; bindings attach forms to intake configs
 - [`../platform/entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md) — Entity Profile (field composition); Intake Source Config references profile, does not define semantics
 - [`../workflows/lead-conversion-contract.md`](../workflows/lead-conversion-contract.md) — Lead → Candidate boundary; outcome rules must align

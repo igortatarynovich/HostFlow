@@ -608,4 +608,5 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: **Stage 3D PR-1 DONE** — Result attribution table/service from `acquisition_routing_v1` + submission_id; ownership intact; contract tests.  
 - 2026-07-18: **Epic P COMPLETE (PR-4)** — E2E contract + gates; Forms Sprint 1 unlocked; Builder locked.
   
-- 2026-07-18: Linked to **P-01…P-03** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-027`](ADR-027-capability-composition.md)); capability catalog §0.1.
+- 2026-07-18: Linked to **P-01…P-03** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-027`](ADR-027-capability-composition.md)); capability catalog §0.1.  
+- 2026-07-19: Forms Builder MVP COMPLETE; **Canonical Intake Input Matrix** opened READY — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) (design gate before further routing runtime; not Stage 3E).

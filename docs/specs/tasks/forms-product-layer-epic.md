@@ -4,7 +4,8 @@
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
-**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED
+**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
+**Next epic:** [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) · **ACTIVE** · matrix [`READY`](../architecture/intake-canonical-input-matrix.md)
 
 ---
 
@@ -169,4 +170,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-19: P2.1 merge `ae767201` (#57); Catalog Consumption ACTIVE; P2.2 COMPLETE; P2.3 READY.  
 - 2026-07-19: P2.3 Composition Commands COMPLETE; P2.4 Persistence READY.  
 - 2026-07-19: P2.4 Draft Persistence COMPLETE; P2.5 UI gate OPEN.  
-- 2026-07-19: P2.5 Minimal Builder UI COMPLETE — Builder MVP closed; next focus Flights / Intake Routing.
+- 2026-07-19: P2.5 Minimal Builder UI COMPLETE — Builder MVP closed; next focus Flights / Intake Routing.  
+- 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (no route implementation yet).
