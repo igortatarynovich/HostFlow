@@ -25,6 +25,8 @@ __all__ = [
     "NotificationSettingsIn",
     "NotificationSettingsOut",
     "CommunicationThreadOut",
+    "CommunicationThreadResultLinkOut",
+    "CommunicationThreadResultLinkAttach",
     "CommunicationMessageOut",
     "CommunicationThreadListResponse",
     "CommunicationMessageListResponse",
@@ -141,6 +143,19 @@ class NotificationSettingsOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class CommunicationThreadResultLinkOut(BaseModel):
+    """C1 opaque Thread → destination result pointer (no domain ORM)."""
+
+    link_id: str
+    thread_id: str
+    module_owner: str
+    result_type: str
+    result_id: str
+    ledger_id: str | None = None
+    status: str
+    provenance_ref: str | None = None
+
+
 class CommunicationThreadOut(BaseModel):
     id: str
     channel: str
@@ -169,6 +184,7 @@ class CommunicationThreadOut(BaseModel):
     is_archived: bool
     created_at: datetime
     updated_at: datetime
+    result_link: CommunicationThreadResultLinkOut | None = None
 
 
 class CommunicationMessageOut(BaseModel):
@@ -248,6 +264,20 @@ class CommunicationThreadCreate(BaseModel):
     channel_account_id: str | None = Field(default=None, max_length=36)
     channel_thread_ref: str | None = Field(default=None, max_length=255)
     auto_assign: bool = False
+    # C1 — opaque result link (SoT). Do not infer from entity_type / Lead / form.
+    result_module_owner: str | None = Field(default=None, max_length=32)
+    result_type: str | None = Field(default=None, max_length=64)
+    result_id: str | None = Field(default=None, max_length=64)
+    provenance_ledger_id: str | None = Field(default=None, max_length=36)
+
+
+class CommunicationThreadResultLinkAttach(BaseModel):
+    """Attach opaque result (or copy from confirmed Flights ledger)."""
+
+    module_owner: str | None = Field(default=None, max_length=32)
+    result_type: str | None = Field(default=None, max_length=64)
+    result_id: str | None = Field(default=None, max_length=64)
+    provenance_ledger_id: str | None = Field(default=None, max_length=36)
 
 
 class CommunicationThreadPatch(BaseModel):

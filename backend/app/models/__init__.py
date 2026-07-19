@@ -192,6 +192,9 @@ Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
 CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
 CommunicationThread = _load_model_module("communication").CommunicationThread  # type: ignore[attr-defined]
+CommunicationThreadResultLink = _load_model_module(
+    "communication_thread_result_link"
+).CommunicationThreadResultLink  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -344,6 +347,7 @@ __all__ = [
     "UserNotification",
     "CandidateProfile",
     "CommunicationThread",
+    "CommunicationThreadResultLink",
     "DocumentPolicy",
     "Stage",
     "MagicLink",

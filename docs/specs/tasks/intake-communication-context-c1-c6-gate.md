@@ -1,6 +1,6 @@
 # Communication Context — C1–C6 Gate
 
-**Status:** **READY FOR IMPLEMENTATION** · unlocked by R5 (`#69` / `ed781d70`)  
+**Status:** **ACTIVE** · C1 COMPLETE · **C2 NEXT** · unlocked by R5 (`#69` / `ed781d70`)  
 **Parent epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
 **Decision gate:** INV-16 · L0 · Flights provenance SoT  
 **Still LOCKED until C1–C5:** Queues / UI (R6) · Forms P3–P5  
@@ -60,8 +60,8 @@ No Lead / form / legacy-event fallback.
 
 | ID | Title | DoD (slice) |
 |----|-------|-------------|
-| **C1** | Thread Result Link Contract | Thread stores/links opaque ref only; no FK to foreign domain ORM as SoT |
-| **C2** | Communication Context Resolver | Unique owner + result type from confirmed provenance; ambiguous → unresolved |
+| **C1** | Thread Result Link Contract | ✅ COMPLETE — [`intake-communication-context-c1.md`](intake-communication-context-c1.md) |
+| **C2** | Communication Context Resolver | **NEXT** |
 | **C3** | Module-owned Communication Policy Ports | Recruitment and Sales independently publish allowed purposes |
 | **C4** | Template Metadata Enforcement | Backend rejects cross-domain template usage |
 | **C5** | Send-path migration | Email, SMS, WhatsApp, automations, Thread actions all call resolver |
@@ -86,3 +86,4 @@ Recruitment acknowledgement is unreachable on that path (backend enforce, not UI
 ## History
 
 - 2026-07-19: Opened after R5 merge; C1–C6 freeze accepted.
+- 2026-07-19: C1 Thread Result Link Contract COMPLETE.
