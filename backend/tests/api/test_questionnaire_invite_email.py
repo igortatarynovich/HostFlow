@@ -613,17 +613,102 @@ async def test_questionnaire_email_send_failure_does_not_mark_sent(
 
 
 @pytest.mark.asyncio
-async def test_questionnaire_email_send_requires_communication_pipeline(
+async def test_questionnaire_email_send_auto_binds_sales_pipeline(
     client: AsyncClient,
     tenant_id: str,
     manager_headers: dict,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """C5: send without thread/purpose/template_metadata is fail-closed."""
+    """Sales binder supplies C5 inputs when UI omits thread/purpose/template_metadata."""
     await _seed_sales_profile(tenant_id)
     await _seed_smtp(tenant_id)
     lead = await _create_meta_client_lead(tenant_id)
     lead_id = str(lead.id)
+
+    from backend.app.db.session import async_session_maker
+
+    async with async_session_maker() as db:
+        row = await db.get(type(lead), lead.id)
+        assert row is not None
+        normalized = dict(row.normalized or {})
+        normalized["email"] = "client@example.test"
+        row.normalized = normalized
+        await db.commit()
+
+    send_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        send_mock,
+    )
+
+    preview = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite/email/preview",
+        headers=manager_headers,
+        json={"form_locale": "pl", "recipient_email": "client@example.test"},
+    )
+    assert preview.status_code == 200, preview.text
+
+    send = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
+        headers=manager_headers,
+        json={
+            "form_locale": "pl",
+            "recipient_email": "client@example.test",
+            "subject": preview.json()["subject"],
+            "body": preview.json()["body"],
+        },
+    )
+    assert send.status_code == 200, send.text
+    assert send.json()["status"] == "sent"
+    send_mock.assert_awaited_once()
+
+    from backend.app.models.communication_thread_result_link import CommunicationThreadResultLink
+    from backend.app.models.sales_inquiry import SalesInquiry
+
+    async with async_session_maker() as db:
+        inquiry = await db.scalar(
+            select(SalesInquiry).where(SalesInquiry.lead_id == lead_id).limit(1)
+        )
+        assert inquiry is not None
+        link = await db.scalar(
+            select(CommunicationThreadResultLink).where(
+                CommunicationThreadResultLink.tenant_id == tenant_id,
+                CommunicationThreadResultLink.module_owner == "sales",
+                CommunicationThreadResultLink.result_type == "sales_inquiry",
+                CommunicationThreadResultLink.result_id == str(inquiry.id),
+            ).limit(1)
+        )
+        assert link is not None
+        assert link.status == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_questionnaire_email_send_fails_closed_for_recruitment_bound_lead(
+    client: AsyncClient,
+    tenant_id: str,
+    manager_headers: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No Sales→Recruitment fallback: Application-bound transport stays fail-closed."""
+    await _seed_sales_profile(tenant_id)
+    await _seed_smtp(tenant_id)
+    lead = await _create_meta_client_lead(tenant_id)
+    lead_id = str(lead.id)
+
+    from backend.app.db.session import async_session_maker
+
+    async with async_session_maker() as db:
+        row = await db.get(type(lead), lead.id)
+        assert row is not None
+        normalized = dict(row.normalized or {})
+        normalized["email"] = "client@example.test"
+        normalized["intake_result_link_v1"] = {
+            "result_type": "application",
+            "application_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        }
+        row.normalized = normalized
+        flag_modified(row, "normalized")
+        await db.commit()
 
     send_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(
@@ -649,5 +734,5 @@ async def test_questionnaire_email_send_requires_communication_pipeline(
         },
     )
     assert send.status_code == 422, send.text
-    assert send.json()["detail"]["code"] == "communication_pipeline_required"
+    assert send.json()["detail"]["code"] == "recruitment_result_bound"
     send_mock.assert_not_awaited()

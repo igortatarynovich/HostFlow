@@ -1344,7 +1344,13 @@ def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
             return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
         if code in {"invalid_email", "empty_message", "not_client_lead", "invite_error"}:
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
-        if code == "communication_pipeline_required" or "authorization" in (exc.extra or {}):
+        if code in {
+            "communication_pipeline_required",
+            "sales_questionnaire_pipeline_error",
+            "recruitment_result_bound",
+            "sales_inquiry_transport_conflict",
+            "thread_result_link_error",
+        } or "authorization" in (exc.extra or {}):
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
     return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))

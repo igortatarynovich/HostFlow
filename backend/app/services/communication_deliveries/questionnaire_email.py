@@ -253,11 +253,40 @@ async def send_questionnaire_invite_email(
     )
 
     # C5: no transport without full Communication Pipeline authorization.
+    # Sales UI may omit pipeline fields — module-owned binder resolves them from
+    # SalesInquiry (Thread Result Link + purpose + template metadata).
     thread = _trim(thread_id)
     purpose = _trim(communication_purpose)
     template = template_metadata_from_mapping(
         template_metadata if isinstance(template_metadata, dict) else None
     )
+    if not thread or not purpose or template is None:
+        from backend.app.modules.sales.communication.questionnaire_pipeline import (
+            SalesQuestionnairePipelineError,
+            ensure_sales_questionnaire_pipeline_binding,
+        )
+
+        try:
+            binding = await ensure_sales_questionnaire_pipeline_binding(
+                db,
+                tenant_id=str(tenant_id),
+                lead=lead,
+                locale=_trim(locale) or _trim(form_locale) or None,
+                actor_user_id=actor_user_id,
+                thread_id=thread or None,
+            )
+        except SalesQuestionnairePipelineError as exc:
+            reason = str((exc.details or {}).get("reason") or "").strip()
+            raise QuestionnaireEmailError(
+                reason or "sales_questionnaire_pipeline_error",
+                exc.message,
+                details=dict(exc.details or {}),
+            ) from exc
+        thread = thread or binding.thread_id
+        purpose = purpose or binding.communication_purpose
+        if template is None:
+            template = binding.template
+
     if not thread or not purpose or template is None:
         raise QuestionnaireEmailError(
             "communication_pipeline_required",
