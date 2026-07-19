@@ -1,11 +1,11 @@
 # Intake Domain Separation & Communication Context V1
 
-**Status:** **ACTIVE** · C1–C4 COMPLETE · **C5 NEXT** (R5 COMPLETE `#69`)  
+**Status:** **ACTIVE** · C1–C5 COMPLETE · **C6 NEXT** (R5 COMPLETE `#69`)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Runtime Split R1–R5 COMPLETE · INV-16 · R3.5  
 **Acceptance scenario (must close epic):** A Sales Inquiry that received a B2B questionnaire may send **only Sales-owned** communications. Recruitment acknowledgement is unavailable regardless of form, Thread UI, locale, or send path.  
 **Parents:** [`intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) · [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md)  
 **Gate:** [`intake-communication-context-c1-c6-gate.md`](intake-communication-context-c1-c6-gate.md)  
-**Still LOCKED:** Forms P3–P5 · Queues/UI until **C1–C5** complete  
+**Still LOCKED:** Forms P3–P5 · Queues/UI until product R6 (Communication Context C1–C5 complete)  
 
 ---
 
@@ -19,8 +19,9 @@
 | R3.5 Flights-owned boundary | ✅ COMPLETE (`#66`) |
 | R4 independent result objects | ✅ COMPLETE |
 | R5 provenance / exactly-once | ✅ COMPLETE (`#69`) |
-| **Communication Context Resolver** | **NEXT** (C1–C6) |
-| Queues/UI | **LOCKED** |
+| Communication Context C1–C5 | ✅ COMPLETE (C5 + INV-17) |
+| **C6 Legacy unresolved** | **NEXT** |
+| Queues/UI | Unlocked from C1–C5 gate (R6 product work) |
 | Forms P3–P5 | **LOCKED** |
 
 ### What R5 guarantees (foundation for this epic)
@@ -113,9 +114,9 @@ Minimum fields:
 | **C2** | Communication Context Resolver — unique owner + result type | ✅ COMPLETE — [`intake-communication-context-c2.md`](intake-communication-context-c2.md) |
 | **C3** | Module-owned Communication Policy Ports — Recruitment/Sales publish purposes | ✅ COMPLETE — [`intake-communication-context-c3.md`](intake-communication-context-c3.md) |
 | **C4** | Template Metadata Enforcement — backend rejects cross-domain templates | ✅ COMPLETE — [`intake-communication-context-c4.md`](intake-communication-context-c4.md) |
-| **C5** | Send-path migration — email/SMS/WhatsApp/automations/Thread actions via resolver | **NEXT** |
-| **C6** | Legacy unresolved handling — no send; resolution state | AFTER C5 |
-| — | Queues/UI (Runtime Split R6) | **LOCKED** until C1–C5 |
+| **C5** | Send-path migration — email/SMS/WhatsApp/automations/Thread actions via resolver | ✅ COMPLETE — [`intake-communication-context-c5.md`](intake-communication-context-c5.md) · **INV-17** |
+| **C6** | Legacy unresolved handling — no send; resolution state | **NEXT** |
+| — | Queues/UI (Runtime Split R6) | Unlocked from C1–C5 gate |
 
 ---
 
@@ -154,11 +155,12 @@ and must have **no technical access** to Recruitment acknowledgement.
 | R1–R2 fail-closed + registry | Foundation |
 | R3 / R3.5 / R4 | Isolation + result objects |
 | R5 Flights provenance | ✅ required SoT for C1–C6 |
-| R6 queues/APIs | AFTER C1–C5 |
+| R6 queues/APIs | AFTER C1–C5 (gate satisfied) |
 
 ---
 
 ## History
 
 - 2026-07-19: Opened after Sales Inquiry received Recruitment acknowledgement while B2B questionnaire was active.  
-- 2026-07-19: R5 COMPLETE `#69`; opened C1–C6 gate; queues/UI remain LOCKED until C1–C5.
+- 2026-07-19: R5 COMPLETE `#69`; opened C1–C6 gate; queues/UI remain LOCKED until C1–C5.  
+- 2026-07-19: C1–C5 COMPLETE; INV-17; C6 NEXT; Queues/UI unlocked from Communication Context gate.

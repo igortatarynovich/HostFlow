@@ -116,7 +116,7 @@ Opaque Flights reference only: `module_owner` · `result_type` · `result_id`.
 | Communication Context V1 | **ACTIVE** (C1–C6 gate) |
 | Flights / Intake Routing runtime | **UNLOCKED** |
 | Forms P3–P5 | **LOCKED** |
-| Queues/UI | **LOCKED** until C1–C5 |
+| Queues/UI | Unlocked from C1–C5 (R6) |
 
 ---
 

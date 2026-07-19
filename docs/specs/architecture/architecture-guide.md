@@ -24,6 +24,7 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 10. **P2.5 UI gate:** ✅ **COMPLETE** (minimal Builder UI delivered).  
 11. **Intake Canonical Input Matrix:** ✅ **ACCEPTED / FROZEN** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); **Runtime Split** R1–R4 + **R3.5 Flights dispatch** ✅ ([`../tasks/intake-runtime-split-v1.md`](../tasks/intake-runtime-split-v1.md) · [`../tasks/intake-r35-flights-dispatch-boundary.md`](../tasks/intake-r35-flights-dispatch-boundary.md)); **Communication Context V1** [`READY`](../tasks/intake-domain-separation-communication-context-v1.md); Forms P3–P5 **LOCKED**.  
 12. **Decision Priority (INV-16):** [`decision-priority-rule.md`](decision-priority-rule.md) — L0 → ownership → contracts → only then convenience.  
+13. **Outbound Communication (INV-17):** sole entry is the Communication Pipeline ([`../tasks/intake-communication-context-c5.md`](../tasks/intake-communication-context-c5.md)).
 13. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 14. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 

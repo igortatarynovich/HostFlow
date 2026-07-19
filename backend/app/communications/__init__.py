@@ -1,4 +1,4 @@
-"""Communications domain helpers (Communication Context C1–C4)."""
+"""Communications domain helpers (Communication Context C1–C5)."""
 
 from backend.app.communications.context_resolver import (
     CommunicationContext,
@@ -28,6 +28,14 @@ from backend.app.communications.result_link import (
     get_thread_result_link,
     require_confirmed_thread_result_link,
 )
+from backend.app.communications.send_pipeline import (
+    CommunicationSendAuthorization,
+    CommunicationSendRequest,
+    CommunicationSendResult,
+    authorize_outbound_communication,
+    send_via_communication_pipeline,
+    template_metadata_from_mapping,
+)
 from backend.app.communications.template_enforce import (
     TemplateEnforceDecision,
     enforce_template_metadata,
@@ -42,6 +50,9 @@ __all__ = [
     "CommunicationContextResolveError",
     "CommunicationPolicyDecision",
     "CommunicationPolicyRequest",
+    "CommunicationSendAuthorization",
+    "CommunicationSendRequest",
+    "CommunicationSendResult",
     "CommunicationTemplateMetadata",
     "TemplateEnforceDecision",
     "ThreadResultLinkConflictError",
@@ -50,6 +61,7 @@ __all__ = [
     "ThreadResultLinkView",
     "attach_thread_result_from_confirmed_ledger",
     "attach_thread_result_link",
+    "authorize_outbound_communication",
     "build_template_metadata",
     "enforce_template_metadata",
     "evaluate_communication_policy",
@@ -60,4 +72,6 @@ __all__ = [
     "reset_communication_domain_registry_for_tests",
     "reset_policy_adapters_for_tests",
     "resolve_communication_context",
+    "send_via_communication_pipeline",
+    "template_metadata_from_mapping",
 ]

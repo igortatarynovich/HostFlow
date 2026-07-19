@@ -207,6 +207,11 @@ class QuestionnaireInviteEmailSendRequest(BaseModel):
     subject: str = Field(..., min_length=1, max_length=500)
     body: str = Field(..., min_length=1, max_length=20000)
     save_email_to_lead: bool = True
+    # C5 — Communication Pipeline (required for outbound send).
+    thread_id: Optional[str] = Field(default=None, max_length=64)
+    communication_purpose: Optional[str] = Field(default=None, max_length=128)
+    template_metadata: Optional[Dict[str, Any]] = None
+    locale: Optional[str] = Field(default=None, max_length=16)
 
 
 class QuestionnaireInviteEmailSendOut(BaseModel):
