@@ -54,8 +54,8 @@ Palette · search · canvas · add/reorder/remove · properties from `config_fie
 ## Next (outside P2 Builder MVP)
 
 - **P3 Publish UI** remains LOCKED until explicitly opened.  
-- **Next platform focus:** [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) · **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → `intake_handoff` → Destination **before** Flights / Intake Routing runtime.  
-  Matrix SoT: [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) (**READY**).
+- **Next platform focus:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · **READY FOR IMPLEMENTATION** (R1–R6).  
+  Matrix SoT: [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) (**ACCEPTED / FROZEN**).
 
 ---
 
@@ -63,4 +63,5 @@ Palette · search · canvas · add/reorder/remove · properties from `config_fie
 
 - 2026-07-19: P2.4 COMPLETE (`7164a66d` / #60); UI gate OPEN.  
 - 2026-07-19: **P2.5 COMPLETE** — Builder MVP closed.  
-- 2026-07-19: Next epic opened — Intake Canonical Input Matrix ACTIVE / matrix READY.
+- 2026-07-19: Next epic opened — Intake Canonical Input Matrix ACTIVE / matrix READY.  
+- 2026-07-19: Matrix ACCEPTED / FROZEN; Runtime Split V1 READY FOR IMPLEMENTATION.

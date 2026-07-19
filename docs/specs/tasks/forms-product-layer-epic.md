@@ -5,7 +5,7 @@
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
 **P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
-**Next epic:** [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) · **ACTIVE** · matrix [`READY`](../architecture/intake-canonical-input-matrix.md)
+**Next epic:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · **READY FOR IMPLEMENTATION** · matrix [`ACCEPTED / FROZEN`](../architecture/intake-canonical-input-matrix.md)
 
 ---
 
@@ -171,4 +171,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-19: P2.3 Composition Commands COMPLETE; P2.4 Persistence READY.  
 - 2026-07-19: P2.4 Draft Persistence COMPLETE; P2.5 UI gate OPEN.  
 - 2026-07-19: P2.5 Minimal Builder UI COMPLETE — Builder MVP closed; next focus Flights / Intake Routing.  
-- 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (no route implementation yet).
+- 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (no route implementation yet).  
+- 2026-07-19: Matrix ACCEPTED / FROZEN; Intake Runtime Split V1 READY; Forms P3–P5 remain LOCKED.

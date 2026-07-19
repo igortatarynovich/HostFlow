@@ -17,7 +17,12 @@ from backend.app.forms_platform.constants import (
     PUBLICATION_MODE_STANDALONE,
     STORAGE_BACKEND_TENANT_LEAD_FORM,
 )
-from backend.app.forms_platform.handlers import list_registered_handlers, resolve_submission_handler
+from backend.app.forms_platform.errors import FormsRoutingUnresolvedError
+from backend.app.forms_platform.handlers import (
+    disposition_handler,
+    list_registered_handlers,
+    resolve_submission_handler,
+)
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.modules.intake_routing import crud as intake_crud
@@ -85,8 +90,27 @@ def build_forms_platform_publication_view(
     publication_mode: str,
 ) -> dict[str, Any]:
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
-    route_intent = str(getattr(intake_source, "route_intent", None) or "candidate_application")
-    handler = resolve_submission_handler(route_intent=route_intent)
+    raw_intent = None
+    if intake_source is not None:
+        raw_intent = str(getattr(intake_source, "route_intent", None) or "").strip() or None
+
+    routing_status = "resolved"
+    routing_reason: str | None = None
+    route_intent: str | None = raw_intent
+    try:
+        if intake_source is None or not raw_intent:
+            raise FormsRoutingUnresolvedError(
+                details={"reason": "missing_route_intent"},
+                message="Intake source profile with explicit route_intent is required",
+            )
+        handler = resolve_submission_handler(route_intent=raw_intent)
+        route_intent = str(handler.get("route_intent") or raw_intent)
+    except FormsRoutingUnresolvedError as exc:
+        routing_status = "unresolved"
+        routing_reason = str((exc.details or {}).get("reason") or "missing_route_intent")
+        handler = disposition_handler(reason=routing_reason, route_intent=raw_intent)
+        route_intent = None
+
     ep_code = str(entity_profile_code or DRIVER_CE_PROFILE_CODE).strip() or DRIVER_CE_PROFILE_CODE
     presentation_code = str(getattr(intake_source, "presentation_code", None) or "").strip() or None
     snap = getattr(lead_form, "published_snapshot_v1", None)
@@ -117,10 +141,13 @@ def build_forms_platform_publication_view(
         "field_schema": field_schema,
         "mode": publication_mode,
         "tier": FORMS_TIER_BASIC,
-        "module_owner": handler["module_owner"],
+        "module_owner": handler.get("module_owner"),
         "entity_profile_code": ep_code,
         "presentation_code": presentation_code,
         "intake_source_profile_id": str(intake_source.id) if intake_source else None,
+        "route_intent": route_intent,
+        "routing_status": routing_status,
+        "routing_reason": routing_reason,
         "public_intake_path": "/api/v1/public/intake",
         "public_apply_path_template": "/public/apply/{token}",
         "submission_handler": handler,

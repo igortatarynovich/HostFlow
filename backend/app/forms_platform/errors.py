@@ -207,3 +207,14 @@ class FormsBuilderDraftArchivedError(FormsAdapterError):
     code = "forms_builder_draft_archived"
     http_status = 409
     default_message = "Builder draft is archived"
+
+
+# --- Intake Runtime Split R1 ---
+
+
+class FormsRoutingUnresolvedError(FormsAdapterError):
+    """Fail-closed: missing/unknown route_intent — no Recruitment/Sales dispatch."""
+
+    code = "forms_routing_unresolved"
+    http_status = 422
+    default_message = "Submission route_intent is unresolved (fail-closed)"
