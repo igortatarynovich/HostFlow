@@ -186,3 +186,24 @@ class FormsBuilderCompositionCommandError(FormsAdapterError):
     code = "forms_builder_composition_command_invalid"
     http_status = 422
     default_message = "Builder composition command is invalid"
+
+
+# --- Builder P2.4 Draft Persistence ---
+
+
+class FormsBuilderDraftNotFoundError(FormsAdapterError):
+    code = "forms_builder_draft_not_found"
+    http_status = 404
+    default_message = "Builder draft not found"
+
+
+class FormsBuilderDraftConflictError(FormsAdapterError):
+    code = "forms_builder_draft_revision_conflict"
+    http_status = 409
+    default_message = "Builder draft revision conflict"
+
+
+class FormsBuilderDraftArchivedError(FormsAdapterError):
+    code = "forms_builder_draft_archived"
+    http_status = 409
+    default_message = "Builder draft is archived"

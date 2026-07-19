@@ -20,8 +20,8 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 6. **Forms Sprint 5:** ✅ **COMPLETE** ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md) · PR #40 · `a6df02f0`).
 7. **Forms Sprint 6:** ✅ **COMPLETE** ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md) · PR #41 · `7e259f22`) — backend platform contour closed.
 8. **Forms Product Layer P1:** ✅ **CLOSED** (`97aac4e3` / #54 · status #55) — Catalog v1 **FROZEN**.
-9. **P2 Builder:** Catalog Consumption **ACTIVE** — P2.1–P2.3 **COMPLETE**; P2.4 Persistence **READY**; P3–P5 **LOCKED**.
-10. **P2.5 UI gate:** blocked until Read Model · Composition · Commands · Persistence · hardcode/mutation tests.
+9. **P2 Builder:** Catalog Consumption **ACTIVE** — P2.1–P2.4 **COMPLETE**; P2.5 UI **READY** (gate open); P3–P5 **LOCKED**.
+10. **P2.5 UI gate:** ✅ **OPEN** after P2.1–P2.4 COMPLETE (Read Model · Composition · Commands · Persistence · hardcode/mutation tests).
 10. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 11. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
@@ -75,3 +75,4 @@ UI **не** определяет архитектуру.
 - 2026-07-19: P2.1 Builder Read Model COMPLETE; P2.2 Composition READY.
 - 2026-07-19: P2.1 merge #57; P2.2 Composition COMPLETE; P2.3 Commands READY.
 - 2026-07-19: P2.3 Composition Commands COMPLETE; P2.4 Persistence READY.
+- 2026-07-19: P2.4 Draft Persistence COMPLETE; P2.5 UI gate OPEN.

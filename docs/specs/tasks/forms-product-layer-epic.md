@@ -4,7 +4,7 @@
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
-**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Catalog Consumption **ACTIVE** · P2.1–P2.3 ✅ · P2.4 READY
+**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Catalog Consumption **ACTIVE** · P2.1–P2.4 ✅ · P2.5 UI READY
 
 ---
 
@@ -18,7 +18,7 @@ Sprint 1–6 built the **L0 Forms platform** (publish → validate → normalize
 Platform (COMPLETE)                     Product Layer
 ─────────────────────────────────       ─────────────────────────────────
 Runtime / Publication / Ledger          P1 Field Catalog ✅ CLOSED (v1 FROZEN)
-Validation / Normalization           →  P2 Builder Catalog Consumption ACTIVE (P2.1–P2.3 COMPLETE · P2.4 READY)
+Validation / Normalization           →  P2 Builder Catalog Consumption ACTIVE (P2.1–P2.4 COMPLETE · P2.5 UI READY)
 Submission / Shared Intake / Audit      P3 Publish UI LOCKED
                                         P4 Themes LOCKED
                                         P5 Analytics LOCKED
@@ -143,8 +143,9 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Builder Catalog Consumption | ✅ **ACTIVE** |
 | P2.1 Builder Read Model | ✅ **COMPLETE** (`ae767201` / #57) |
 | P2.2 Composition Model | ✅ **COMPLETE** (`fea96deb` / #58) |
-| P2.3 Composition Commands | ✅ **COMPLETE** |
-| P2.4 Draft Persistence | **READY FOR IMPLEMENTATION** |
+| P2.3 Composition Commands | ✅ **COMPLETE** (`e1de9e3e` / #59) |
+| P2.4 Draft Persistence | ✅ **COMPLETE** |
+| P2.5 Minimal Builder UI | **READY FOR IMPLEMENTATION** (UI gate OPEN) |
 | P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
@@ -152,7 +153,7 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Silent Basic override / silent version replace | **FORBIDDEN** |
 | Breaking changes to frozen Catalog v1 | **FORBIDDEN** (extend compatibly or add v2) |
 | Builder inventing types / forking validation | **FORBIDDEN** |
-| Builder UI before P2.1–P2.4 + UI gate | **FORBIDDEN** |
+| Builder UI before P2.1–P2.4 + UI gate | ✅ gate **OPEN** (P2.5 READY) |
 
 ---
 
@@ -171,4 +172,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-19: P2 Design ACTIVE (`a142bd0c` / #55); P2.1–P2.5 plan; P2.1 READY; P3–P5 LOCKED.  
 - 2026-07-19: P2.1 COMPLETE — `forms.builder.read_model.v1`; P2.2 READY; process rule: check existing assets.  
 - 2026-07-19: P2.1 merge `ae767201` (#57); Catalog Consumption ACTIVE; P2.2 COMPLETE; P2.3 READY.  
-- 2026-07-19: P2.3 Composition Commands COMPLETE; P2.4 Persistence READY.
+- 2026-07-19: P2.3 Composition Commands COMPLETE; P2.4 Persistence READY.  
+- 2026-07-19: P2.4 Draft Persistence COMPLETE; P2.5 UI gate OPEN.
