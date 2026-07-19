@@ -1,8 +1,9 @@
 # Canonical Intake Input Matrix
 
-**Status:** **READY** (design SoT · docs only)  
+**Status:** **ACCEPTED / FROZEN**  
 **Date:** 2026-07-19  
-**Epic:** [`../tasks/intake-canonical-input-matrix.md`](../tasks/intake-canonical-input-matrix.md) · **ACTIVE**  
+**Epic:** [`../tasks/intake-canonical-input-matrix.md`](../tasks/intake-canonical-input-matrix.md) · **COMPLETE**  
+**Next:** [`../tasks/intake-runtime-split-v1.md`](../tasks/intake-runtime-split-v1.md) · **READY FOR IMPLEMENTATION**  
 **Prerequisite:** Forms Builder MVP **COMPLETE** (`4cb2a148` / #61) · Acquisition Epic P Stage 3A–3D **COMPLETE**  
 **Normative parents:** [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) · [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md) · [`ADR-007`](ADR-007-forms-platform-capability.md)
 
@@ -16,7 +17,7 @@ Freeze the **canonical input resolution chain** so one Forms Platform can accept
 Source profile → Provider → Published form binding → route_intent → intake_handoff → Destination module
 ```
 
-**This document does not implement routes.** It is the design gate before Flights / Intake Routing runtime work that splits Candidate Application vs Sales Inquiry queues.
+**This document is accepted design SoT.** Runtime isolation is delivered by [`intake-runtime-split-v1.md`](../tasks/intake-runtime-split-v1.md) (R1–R6). Do not reopen this matrix for handler/queue work — implement against it.
 
 ---
 
@@ -39,6 +40,8 @@ Source profile → Provider → Published form binding → route_intent → inta
 - FormPurpose ≠ `route_intent`  
 - Routing once per Lead; continuation submissions inherit context  
 
+**Not routing SoT:** FormPurpose · Goal Type · Outcome · `application_kind` · `lead_type` · `lead_target_type`.
+
 ---
 
 ## Resolve order (normative)
@@ -51,8 +54,8 @@ Source profile → Provider → Published form binding → route_intent → inta
 6. **Destination module** — owns the resulting business object  
 
 Forms Platform **accepts** the submission and emits `intake_handoff`.  
-Intake Routing **decides** the destination.  
-Recruitment / Sales **do not** own the Public Form.
+Intake Routing **decides** the destination **once** and hands off to **exactly one** destination — no Recruitment↔Sales fallback.  
+Recruitment / Sales **do not** own the Public Form; they do not read publication directly; they do not analyze `application_kind`.
 
 ---
 
@@ -89,20 +92,22 @@ Aligned with `shared/campaign_registries.json` `promotion_targets`:
 
 ---
 
-## Known debt (document only — do not fix in this epic)
+## Known debt (tracked in Runtime Split — do not reopen matrix)
 
-| Debt | Today | Target |
-|------|-------|--------|
-| `forms_platform/handlers.py` | `sales_inquiry` handler still `module_owner: "recruitment"` (`recruitment.client_lead_draft`) | `module_owner: "sales"` (or Sales-owned handler id) |
-| Default missing profile | publication bridge defaults to `candidate_application` | Fail closed or require explicit profile |
-| Lead as universal product entity | Queues still mix via `lead_type` / `lead_target_type` | Lead = transport; module-owned Result objects |
-| `application_kind` | Dual public channel on shared plumbing | Derived label only; never SoT |
+| Debt | Target (Runtime Split) |
+|------|------------------------|
+| Fail-closed missing intent | R1 — no `candidate_application` default |
+| Destination registry | R2 — closed intent → destination → handler |
+| `sales_inquiry` still recruitment-owned in legacy paths | R3 — Sales-owned handler; no cross-package imports |
+| Lead as universal product entity | R4 — Application / SalesInquiry as result objects |
+| Non-idempotent / non-transactional dispatch | R5 |
+| Mixed queues / shared `type=` APIs | R6 |
 
 ---
 
 ## Out of scope for this document
 
-- Implementing new IntakeRouter branches  
+- Implementing IntakeRouter branches (see Runtime Split)  
 - Renaming handlers / migrations  
 - Stage 3E Timeline  
 - Publish UI (Forms P3)  
@@ -113,3 +118,4 @@ Aligned with `shared/campaign_registries.json` `promotion_targets`:
 ## History
 
 - 2026-07-19: Opened READY after Forms Builder MVP (`4cb2a148` / #61); design gate before Flights / Intake Routing runtime.
+- 2026-07-19: **ACCEPTED / FROZEN**; matrix epic COMPLETE; Intake Runtime Split V1 opened; Flights / Intake Routing runtime UNLOCKED; Forms P3–P5 remain LOCKED.

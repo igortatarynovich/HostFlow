@@ -22,7 +22,7 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 8. **Forms Product Layer P1:** ✅ **CLOSED** (`97aac4e3` / #54 · status #55) — Catalog v1 **FROZEN**.
 9. **P2 Builder MVP:** ✅ **COMPLETE** (P2.1–P2.5). P3–P5 **LOCKED**.  
 10. **P2.5 UI gate:** ✅ **COMPLETE** (minimal Builder UI delivered).  
-11. **Intake Canonical Input Matrix:** ✅ **ACTIVE** / matrix **READY** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); Flights / Intake Routing runtime locked until accepted.  
+11. **Intake Canonical Input Matrix:** ✅ **ACCEPTED / FROZEN** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); **Intake Runtime Split V1** [`READY`](../tasks/intake-runtime-split-v1.md); Flights / Intake Routing runtime **UNLOCKED**; Forms P3–P5 **LOCKED**.  
 12. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 13. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
@@ -79,3 +79,4 @@ UI **не** определяет архитектуру.
 - 2026-07-19: P2.4 Draft Persistence COMPLETE; P2.5 UI gate OPEN.
 - 2026-07-19: P2.5 Minimal Builder UI COMPLETE — Builder MVP closed.  
 - 2026-07-19: Intake Canonical Input Matrix ACTIVE / READY (docs-only; before routing runtime).
+- 2026-07-19: Matrix ACCEPTED / FROZEN; Intake Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.

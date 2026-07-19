@@ -11,8 +11,10 @@ from backend.app.entity_profile.constants import WAREHOUSE_WORKER_PROFILE_CODE
 from backend.app.forms_platform.constants import (
     FORMS_PLATFORM_CONTRACT_VERSION,
     HANDLER_RECRUITMENT_LEAD_DRAFT,
+    HANDLER_SALES_INQUIRY_DRAFT,
     STORAGE_BACKEND_TENANT_LEAD_FORM,
 )
+from backend.app.forms_platform.errors import FormsRoutingUnresolvedError
 from backend.app.forms_platform.handlers import list_registered_handlers, resolve_submission_handler
 from backend.tests.api.test_intake_forms_settings import _admin_headers
 from backend.tests.api.test_intake_forms_settings_p8 import _seed_entity_profiles
@@ -47,9 +49,15 @@ def test_c4_handler_registry_lists_recruitment_lead_draft() -> None:
     handlers = list_registered_handlers()
     ids = {row["handler_id"] for row in handlers}
     assert HANDLER_RECRUITMENT_LEAD_DRAFT in ids
+    assert HANDLER_SALES_INQUIRY_DRAFT in ids
     lead = resolve_submission_handler(route_intent="candidate_application")
-    assert lead["creates_on_create"]["lead_draft"] is True
+    assert lead["creates_on_create"]["application"] is True
+    assert lead["creates_on_create"]["lead_draft"] is False
     assert lead["creates_on_create"]["candidate"] is False
+    assert lead["destination"] == "recruitment"
+
+    with pytest.raises(FormsRoutingUnresolvedError):
+        resolve_submission_handler(route_intent=None)
 
 
 @pytest.mark.asyncio
