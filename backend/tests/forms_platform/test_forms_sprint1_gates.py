@@ -121,8 +121,8 @@ def test_forms_sprint1_manifest_builder_default_false() -> None:
         forms_manifest_document,
     )
 
-    assert builder_is_locked_by_manifest() is True
-    assert FORMS_MANIFEST_KEYS["forms.feature_flags.builder_enabled"]["default"] is False
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
+    assert FORMS_MANIFEST_KEYS["forms.feature_flags.builder_enabled"]["default"] is True  # unlocked after P1.3
     doc = forms_manifest_document()
     assert doc["capability_id"] == "forms"
     assert "forms.adapter.id" in doc["keys"]

@@ -79,7 +79,7 @@ sections:
 
 **Sprint 1 status:** concrete keys below (code mirror: `backend/app/forms_platform/manifest.py`).  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) · Adapter `forms.endpoint_adapter_v1`.  
-**Builder:** `forms.feature_flags.builder_enabled` default **`false`** (LOCKED).
+**Builder:** `forms.feature_flags.builder_enabled` default **`true`** (UNLOCKED after P1.3).
 
 | Section | Key | Type | Default | Scope |
 |---------|-----|------|---------|-------|
@@ -89,7 +89,7 @@ sections:
 | Defaults | `forms.defaults.consent_required` | boolean | `true` | tenant |
 | Policies | `forms.policies.consent_version_pin` | boolean | `true` | tenant |
 | Policies | `forms.limits.max_active_publications` | number | `50` | tenant |
-| Feature Flags | `forms.feature_flags.builder_enabled` | boolean | **`false`** | tenant |
+| Feature Flags | `forms.feature_flags.builder_enabled` | boolean | **`true`** (P1.3+) | tenant |
 | Feature Flags | `forms.feature_flags.themes_advanced` | boolean | `false` | tenant |
 | Feature Flags | `forms.feature_flags.multi_language` | boolean | `false` | tenant |
 | Integrations | `forms.adapter.contract_id` | string | `forms.public_contract.v1` | module |

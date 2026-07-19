@@ -81,8 +81,8 @@ async def test_forms_sprint1_publish_endpoint_submission_result(
     identity = adapter_identity()
     assert identity["adapter_id"] == FORMS_ADAPTER_ID
     assert identity["contract_id"] == FORMS_PUBLIC_CONTRACT_ID
-    assert identity["builder_locked"] is True
-    assert builder_is_locked_by_manifest() is True
+    assert identity["builder_locked"] is False  # unlocked after P1.3
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
     assert "publish" in identity["ops"]
     assert "resolve" in identity["ops"]
     assert "endpoint" in identity["ops"]
@@ -135,7 +135,7 @@ async def test_forms_sprint1_publish_endpoint_submission_result(
         # --- submission entry ---
         sub_entry = submission_entry(publication)
         assert sub_entry["forms_role"] == "submission_surface"
-        assert sub_entry["builder_locked"] is True
+        assert sub_entry["builder_locked"] is False  # unlocked after P1.3
         assert sub_entry["public_intake_path"] == endpoint.public_intake_path
         assert sub_entry["submission_handler"]["handler_id"]
 
@@ -304,4 +304,4 @@ async def test_forms_sprint1_publish_via_platform_api(
     body = resp.json()
     endpoint = endpoint_from_publication(body)
     assert endpoint.endpoint_type == ENDPOINT_TYPE_HOSTFLOW_PUBLIC_FORM
-    assert submission_entry(body)["builder_locked"] is True
+    assert submission_entry(body)["builder_locked"] is False  # unlocked after P1.3

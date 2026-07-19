@@ -93,7 +93,7 @@ def test_forms_sprint3_alembic_roundtrip() -> None:
 def test_forms_sprint3_builder_still_locked() -> None:
     from backend.app.forms_platform.manifest import builder_is_locked_by_manifest
 
-    assert builder_is_locked_by_manifest() is True
+    assert builder_is_locked_by_manifest() is False  # unlocked after P1.3
     task = (_REPO_ROOT / "docs/specs/tasks/forms-sprint-3.md").read_text(encoding="utf-8")
     assert "LOCKED" in task
 

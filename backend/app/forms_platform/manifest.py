@@ -58,7 +58,7 @@ FORMS_MANIFEST_KEYS: dict[str, dict[str, Any]] = {
         "section": "feature_flags",
         "type": "boolean",
         "required": True,
-        "default": False,
+        "default": True,
         "scope": "tenant",
         "label_key": "settings.forms.feature_flags.builder_enabled",
         "description_key": "settings.forms.feature_flags.builder_enabled.help",
