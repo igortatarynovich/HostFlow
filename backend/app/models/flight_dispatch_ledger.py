@@ -16,7 +16,8 @@ from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
-from backend.app.models.mixins import TimestampMixin
+
+from .mixins import TimestampMixin
 
 JSONType = SQLiteJSON().with_variant(JSONB, "postgresql")
 
