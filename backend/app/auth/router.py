@@ -8,11 +8,19 @@ import uuid
 from typing import Any, Dict, Optional
 
 import sqlalchemy as sa
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 
+from backend.app.auth.jwt_tools import decode as decode_jwt
 from backend.app.auth.jwt_tools import encode as encode_jwt
+from backend.app.auth.session_cookies import (
+    clear_session_cookies,
+    new_csrf_token,
+    read_refresh_token,
+    resolve_access_token,
+    set_session_cookies,
+)
 from backend.app.constants.spa_paths import SETTINGS_BILLING
 from backend.app.core.config import settings
 from backend.app.core.rate_limit import enforce_rate_limit, rate_limits
@@ -25,6 +33,12 @@ from backend.app.models.user import User
 from backend.app.schemas.user import UserDetailOut, UserInviteAccept
 from backend.app.services.system_email import send_system_email
 from backend.app.services import users as users_service
+from backend.app.services.auth import (
+    issue_refresh_token,
+    lookup_active_refresh_token,
+    revoke_refresh_token_raw,
+    revoke_refresh_tokens,
+)
 from backend.app.services.users import UserServiceError
 
 router = APIRouter()
@@ -305,9 +319,10 @@ async def auth_register(payload: RegisterIn, request: Request) -> RegisterOut:
 @router.post(
     "/login", response_model=TokenOut, tags=["auth"], summary="Auth Login"
 )
-async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
+async def auth_login(payload: LoginIn, request: Request, response: Response) -> TokenOut:
     """
-    Проверяет email/пароль по базе и выдаёт подписанный access-токен.
+    Проверяет email/пароль по базе и выдаёт подписанный access-токен
+    + shared session cookies (Stage 6B: Domain=.hostflow.cc).
     """
     await enforce_rate_limit(request, rate_limits().login, scope="auth:login")
     email = payload.email.lower().strip()
@@ -360,7 +375,9 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
 
         now = datetime.now(timezone.utc)
         ttl_minutes = max(5, int(getattr(settings, "auth_token_ttl_minutes", 720) or 720))
+        refresh_days = max(1, int(getattr(settings, "auth_refresh_ttl_days", 30) or 30))
         exp = now + timedelta(minutes=ttl_minutes)
+        refresh_exp = now + timedelta(days=refresh_days)
 
         token_payload: Dict[str, Any] = {
             "sub": user.id,
@@ -368,10 +385,26 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
             "role": role_value,
             "tenant_id": tenant_id,
             "type": "access",
+            "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
             "exp": int(exp.timestamp()),
         }
         token = encode_jwt(token_payload)
+
+        # One refresh family per login: revoke prior refresh rows for this user+tenant.
+        await revoke_refresh_tokens(
+            session,
+            user_id=user.id,
+            tenant_id=tenant_id,
+            actor_id=user.id,
+        )
+        refresh_raw = await issue_refresh_token(
+            session,
+            user_id=user.id,
+            tenant_id=tenant_id,
+            expires_at=refresh_exp,
+            payload={"session_kind": "web"},
+        )
 
         client_host = request.client.host if request.client else None
         user_agent = request.headers.get("User-Agent")
@@ -387,6 +420,226 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
         )
         await session.commit()
 
+    csrf = new_csrf_token()
+    set_session_cookies(
+        response,
+        request,
+        access_token=token,
+        refresh_token=refresh_raw,
+        csrf_token=csrf,
+        access_max_age=ttl_minutes * 60,
+        refresh_max_age=refresh_days * 86400,
+    )
+
+    return TokenOut(
+        access_token=token,
+        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
+        session_id=session_entry.id,
+    )
+
+
+@router.post("/logout", tags=["auth"], summary="Auth Logout")
+async def auth_logout(request: Request, response: Response) -> dict[str, bool]:
+    """Clear shared session cookies and revoke the refresh token (all subdomains)."""
+    raw_refresh = read_refresh_token(request)
+    if raw_refresh:
+        async with async_session_maker() as session:
+            await revoke_refresh_token_raw(session, raw_token=raw_refresh)
+            await session.commit()
+    clear_session_cookies(response, request)
+    return {"ok": True}
+
+
+@router.post(
+    "/session/sync",
+    response_model=TokenOut,
+    tags=["auth"],
+    summary="Sync cookie session for module hosts",
+)
+async def auth_session_sync(request: Request, response: Response) -> TokenOut:
+    """
+    Mint Domain=.hostflow.cc session cookies from a valid Bearer (or access cookie).
+
+    Needed when the SPA still has a shell-only localStorage token from before shared
+    cookies, or host-only cookies — otherwise module hosts bounce back to /login.
+    """
+    await enforce_rate_limit(request, rate_limits().login, scope="auth:session_sync")
+    raw = resolve_access_token(request)
+    if not raw:
+        raise HTTPException(status_code=401, detail="Missing session")
+    try:
+        claims = decode_jwt(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"Invalid session: {exc}") from exc
+
+    user_id = str(claims.get("sub") or "").strip()
+    tenant_id = str(claims.get("tenant_id") or "").strip()
+    if not user_id or not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid session claims")
+
+    async with async_session_maker() as session:
+        user_row = await session.execute(select(User).where(User.id == user_id))
+        user = user_row.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid session")
+
+        membership_row = await session.execute(
+            select(_user_memberships.c.role)
+            .where(_user_memberships.c.user_id == user.id)
+            .where(_user_memberships.c.tenant_id == tenant_id)
+            .limit(1)
+        )
+        membership = membership_row.first()
+        membership_role = membership.role if membership else None
+        role_value = _normalize_role(user.role, membership_role)
+        email = str(user.email or claims.get("email") or "").lower().strip()
+
+        now = datetime.now(timezone.utc)
+        ttl_minutes = max(5, int(getattr(settings, "auth_token_ttl_minutes", 720) or 720))
+        refresh_days = max(1, int(getattr(settings, "auth_refresh_ttl_days", 30) or 30))
+        exp = now + timedelta(minutes=ttl_minutes)
+        refresh_exp = now + timedelta(days=refresh_days)
+
+        token_payload: Dict[str, Any] = {
+            "sub": user.id,
+            "email": email,
+            "role": role_value,
+            "tenant_id": tenant_id,
+            "type": "access",
+            "jti": str(uuid.uuid4()),
+            "iat": int(now.timestamp()),
+            "exp": int(exp.timestamp()),
+        }
+        token = encode_jwt(token_payload)
+
+        # Keep one active refresh family for this user+tenant (same as login).
+        await revoke_refresh_tokens(
+            session,
+            user_id=user.id,
+            tenant_id=tenant_id,
+            actor_id=user.id,
+        )
+        refresh_raw = await issue_refresh_token(
+            session,
+            user_id=user.id,
+            tenant_id=tenant_id,
+            expires_at=refresh_exp,
+            payload={"session_kind": "web", "synced": True},
+        )
+        session_entry = await users_service.register_user_session(
+            session,
+            tenant_id=tenant_id,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("User-Agent"),
+            device_label=request.headers.get("X-Device-Name"),
+            expires_at=exp,
+        )
+        await session.commit()
+
+    csrf = new_csrf_token()
+    set_session_cookies(
+        response,
+        request,
+        access_token=token,
+        refresh_token=refresh_raw,
+        csrf_token=csrf,
+        access_max_age=ttl_minutes * 60,
+        refresh_max_age=refresh_days * 86400,
+    )
+    return TokenOut(
+        access_token=token,
+        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
+        session_id=session_entry.id,
+    )
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenOut,
+    tags=["auth"],
+    summary="Auth Refresh",
+)
+async def auth_refresh(request: Request, response: Response) -> TokenOut:
+    """Rotate access (and refresh) cookies from the HttpOnly refresh cookie."""
+    await enforce_rate_limit(request, rate_limits().login, scope="auth:refresh")
+    raw_refresh = read_refresh_token(request)
+    if not raw_refresh:
+        raise HTTPException(status_code=401, detail="Missing refresh session")
+
+    async with async_session_maker() as session:
+        entry = await lookup_active_refresh_token(session, raw_token=raw_refresh)
+        if entry is None:
+            clear_session_cookies(response, request)
+            raise HTTPException(status_code=401, detail="Invalid refresh session")
+
+        user_row = await session.execute(select(User).where(User.id == entry.user_id))
+        user = user_row.scalar_one_or_none()
+        if user is None:
+            await revoke_refresh_token_raw(session, raw_token=raw_refresh)
+            await session.commit()
+            clear_session_cookies(response, request)
+            raise HTTPException(status_code=401, detail="Invalid refresh session")
+
+        tenant_id = str(entry.tenant_id)
+        membership_row = await session.execute(
+            select(_user_memberships.c.role)
+            .where(_user_memberships.c.user_id == user.id)
+            .where(_user_memberships.c.tenant_id == tenant_id)
+            .limit(1)
+        )
+        membership = membership_row.first()
+        membership_role = membership.role if membership else None
+        role_value = _normalize_role(user.role, membership_role)
+        email = str(user.email or "").lower().strip()
+
+        now = datetime.now(timezone.utc)
+        ttl_minutes = max(5, int(getattr(settings, "auth_token_ttl_minutes", 720) or 720))
+        refresh_days = max(1, int(getattr(settings, "auth_refresh_ttl_days", 30) or 30))
+        exp = now + timedelta(minutes=ttl_minutes)
+        refresh_exp = now + timedelta(days=refresh_days)
+
+        token_payload: Dict[str, Any] = {
+            "sub": user.id,
+            "email": email,
+            "role": role_value,
+            "tenant_id": tenant_id,
+            "type": "access",
+            "jti": str(uuid.uuid4()),
+            "iat": int(now.timestamp()),
+            "exp": int(exp.timestamp()),
+        }
+        token = encode_jwt(token_payload)
+
+        await revoke_refresh_token_raw(session, raw_token=raw_refresh, actor_id=user.id)
+        new_refresh = await issue_refresh_token(
+            session,
+            user_id=user.id,
+            tenant_id=tenant_id,
+            expires_at=refresh_exp,
+            payload={"session_kind": "web", "rotated": True},
+        )
+        session_entry = await users_service.register_user_session(
+            session,
+            tenant_id=tenant_id,
+            user_id=user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("User-Agent"),
+            device_label=request.headers.get("X-Device-Name"),
+            expires_at=exp,
+        )
+        await session.commit()
+
+    csrf = new_csrf_token()
+    set_session_cookies(
+        response,
+        request,
+        access_token=token,
+        refresh_token=new_refresh,
+        csrf_token=csrf,
+        access_max_age=ttl_minutes * 60,
+        refresh_max_age=refresh_days * 86400,
+    )
     return TokenOut(
         access_token=token,
         user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
