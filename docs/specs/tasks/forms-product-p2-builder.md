@@ -4,7 +4,8 @@
 **Prerequisite:** P1 Product Layer Foundation **CLOSED** (merge `97aac4e3` / [PR #54](https://github.com/igortatarynovich/HostFlow/pull/54) · status `a142bd0c` / #55)  
 **Catalog:** Field Catalog public contracts v1 **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md))  
 **Canon:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md)  
-**Next sprint:** [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md) · **READY FOR IMPLEMENTATION**
+**Next sprint:** P2.2 Composition Model — **READY FOR IMPLEMENTATION** (after P2.1 COMPLETE)  
+**Last complete:** [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md) · **COMPLETE**
 
 ---
 
@@ -13,7 +14,8 @@
 | Gate | Status |
 |------|--------|
 | P2 Builder Design | ✅ **ACTIVE** |
-| **P2.1 Builder Read Model** | **READY FOR IMPLEMENTATION** |
+| **P2.1 Builder Read Model** | ✅ **COMPLETE** |
+| **P2.2 Composition Model** | **READY FOR IMPLEMENTATION** |
 | Field Catalog v1 | **FROZEN** |
 | P1 Foundation | **CLOSED** |
 | P3 Publish UI | **LOCKED** |
@@ -51,25 +53,29 @@ Catalog (frozen v1) → Builder reads unified list
 
 | Sprint | Name | Goal | UI? |
 |--------|------|------|-----|
-| **P2.1** | Builder Read Model | Stable read model over Catalog | no |
-| **P2.2** | Composition Model | Canonical draft structure | no |
+| **P2.1** | Builder Read Model | Stable read model over Catalog | no — ✅ COMPLETE |
+| **P2.2** | Composition Model | Canonical draft structure | no — **READY** |
 | **P2.3** | Composition Commands | add/remove/reorder/config/draft ops | no |
 | **P2.4** | Draft Persistence | Persist composition for existing publish | no |
 | **P2.5** | Minimal Builder UI | Palette · canvas · config · save | **yes** (after gate) |
 
-### P2.1 — Builder Read Model (**READY FOR IMPLEMENTATION**)
+### P2.1 — Builder Read Model (**COMPLETE**)
 
 See [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md).
 
 - Load unified component list  
-- Search / filter  
+- Search / filter / category grouping  
 - Get descriptor by `component_id` + version  
 - Map Catalog descriptor → Builder-facing read model  
 - **No** own component-type database  
 
 **Result:** palette data only from Catalog; Basic and extension visually equal; origin does not affect Builder behavior.
 
-### P2.2 — Composition Model
+### Process rule (normative)
+
+Before opening a large new implementation: **check existing assets** in the current step. Do **not** invent an unplanned gate or reorder the approved sequence unless a **blocking conflict** is found.
+
+### P2.2 — Composition Model (**READY FOR IMPLEMENTATION**)
 
 Canonical draft instance (minimum):
 
@@ -132,7 +138,7 @@ Only after P2.1–P2.4 + UI gate:
 
 UI (**P2.5**) must not start until ready:
 
-- [ ] Builder Read Model  
+- [x] Builder Read Model  
 - [ ] Composition Contract  
 - [ ] Draft commands  
 - [ ] Persistence adapter  
@@ -143,4 +149,6 @@ UI (**P2.5**) must not start until ready:
 ## History
 
 - 2026-07-19: Opened READY after P1.4 (`97aac4e3` / #54); client-only boundary.  
-- 2026-07-19: Design **ACTIVE** after #55 (`a142bd0c`); P2.1–P2.5 decomposition + UI gate; P3–P5 LOCKED.
+- 2026-07-19: Design **ACTIVE** after #55 (`a142bd0c`); P2.1–P2.5 decomposition + UI gate; P3–P5 LOCKED.  
+- 2026-07-19: Status fixate after #56 (`33011872`); process rule: check existing assets, no unplanned gates.  
+- 2026-07-19: **P2.1 COMPLETE** — `forms.builder.read_model.v1`; P2.2 READY.

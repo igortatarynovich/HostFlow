@@ -4,7 +4,7 @@
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
-**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Design **ACTIVE** · P2.1 [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md) **READY**
+**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Design **ACTIVE** · P2.1 [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md) ✅ **COMPLETE** · P2.2 READY
 
 ---
 
@@ -18,7 +18,7 @@ Sprint 1–6 built the **L0 Forms platform** (publish → validate → normalize
 Platform (COMPLETE)                     Product Layer
 ─────────────────────────────────       ─────────────────────────────────
 Runtime / Publication / Ledger          P1 Field Catalog ✅ CLOSED (v1 FROZEN)
-Validation / Normalization           →  P2 Builder Design ACTIVE (P2.1 READY)
+Validation / Normalization           →  P2 Builder Design ACTIVE (P2.1 COMPLETE · P2.2 READY)
 Submission / Shared Intake / Audit      P3 Publish UI LOCKED
                                         P4 Themes LOCKED
                                         P5 Analytics LOCKED
@@ -140,7 +140,8 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | P1 Product Layer Foundation | ✅ **CLOSED** |
 | Field Catalog contracts v1 | **FROZEN** |
 | P2 Builder Design | ✅ **ACTIVE** (`a142bd0c` / #55) |
-| P2.1 Builder Read Model | **READY FOR IMPLEMENTATION** |
+| P2.1 Builder Read Model | ✅ **COMPLETE** |
+| P2.2 Composition Model | **READY FOR IMPLEMENTATION** |
 | P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
@@ -164,4 +165,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-19: P1.3 COMPLETE (`0cf7fc00` / #52); Builder UNLOCKED; P1.4 READY FOR IMPLEMENTATION.  
 - 2026-07-19: P1.4 COMPLETE; Catalog v1 FROZEN; P1 foundation COMPLETE; P2 Builder READY.  
 - 2026-07-19: P1.4 merge `97aac4e3` (#54) recorded; P2 hard boundary: Catalog client only.  
-- 2026-07-19: P2 Design ACTIVE (`a142bd0c` / #55); P2.1–P2.5 plan; P2.1 READY; P3–P5 LOCKED.
+- 2026-07-19: P2 Design ACTIVE (`a142bd0c` / #55); P2.1–P2.5 plan; P2.1 READY; P3–P5 LOCKED.  
+- 2026-07-19: P2.1 COMPLETE — `forms.builder.read_model.v1`; P2.2 READY; process rule: check existing assets.
