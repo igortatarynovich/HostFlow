@@ -62,7 +62,7 @@ class FlightDispatchLedger(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        server_default=text(f"'{STATUS_PENDING}'"),
+        server_default=text("'pending'"),
         default=STATUS_PENDING,
     )
 
