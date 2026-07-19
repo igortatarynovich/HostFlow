@@ -3,8 +3,8 @@
 **Status:** **OPEN** · **ACTIVE** (canon after merge `29f4057f` / [PR #43](https://github.com/igortatarynovich/HostFlow/pull/43))  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
-**Builder:** **LOCKED** until Product Layer P1 (Field Catalog) lands and unlocks P2 by gate  
-**P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md)
+**P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
+**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Design **ACTIVE** · P2.1 [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read-model.md) **READY**
 
 ---
 
@@ -15,13 +15,13 @@ Sprint 1–6 built the **L0 Forms platform** (publish → validate → normalize
 **Forms Product Layer** is the **user-facing product** on top of that platform. It does not rewrite foundation contracts; it configures and surfaces them.
 
 ```text
-Platform (COMPLETE)                     Product Layer (OPEN)
+Platform (COMPLETE)                     Product Layer
 ─────────────────────────────────       ─────────────────────────────────
-Runtime / Publication / Ledger          P1 Field Catalog (component registry)
-Validation / Normalization           →  P2 Builder
-Submission / Shared Intake / Audit      P3 Publish UI
-                                        P4 Themes
-                                        P5 Analytics
+Runtime / Publication / Ledger          P1 Field Catalog ✅ CLOSED (v1 FROZEN)
+Validation / Normalization           →  P2 Builder Design ACTIVE (P2.1 READY)
+Submission / Shared Intake / Audit      P3 Publish UI LOCKED
+                                        P4 Themes LOCKED
+                                        P5 Analytics LOCKED
 ```
 
 Full chain (target):
@@ -137,15 +137,18 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Basic Component Library / Builder UNLOCKED | ✅ **ACTIVE** |
 | **P1.4 Extension API** | ✅ **COMPLETE** (`97aac4e3` / #54) |
 | Extension Component Platform / Module Registration | ✅ **ACTIVE** |
-| P1 Product Layer Foundation | ✅ **COMPLETE** |
+| P1 Product Layer Foundation | ✅ **CLOSED** |
 | Field Catalog contracts v1 | **FROZEN** |
-| P2 Builder | **READY FOR IMPLEMENTATION** |
+| P2 Builder Design | ✅ **ACTIVE** (`a142bd0c` / #55) |
+| P2.1 Builder Read Model | **READY FOR IMPLEMENTATION** |
+| P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
 | Catalog-core special cases for stdlib ids | **FORBIDDEN** |
 | Silent Basic override / silent version replace | **FORBIDDEN** |
 | Breaking changes to frozen Catalog v1 | **FORBIDDEN** (extend compatibly or add v2) |
 | Builder inventing types / forking validation | **FORBIDDEN** |
+| Builder UI before P2.1–P2.4 + UI gate | **FORBIDDEN** |
 
 ---
 
@@ -160,4 +163,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-18: P1.2 COMPLETE (`1f7b4aba` / #50); P1.3 READY FOR IMPLEMENTATION.  
 - 2026-07-19: P1.3 COMPLETE (`0cf7fc00` / #52); Builder UNLOCKED; P1.4 READY FOR IMPLEMENTATION.  
 - 2026-07-19: P1.4 COMPLETE; Catalog v1 FROZEN; P1 foundation COMPLETE; P2 Builder READY.  
-- 2026-07-19: P1.4 merge `97aac4e3` (#54) recorded; P2 hard boundary: Catalog client only.
+- 2026-07-19: P1.4 merge `97aac4e3` (#54) recorded; P2 hard boundary: Catalog client only.  
+- 2026-07-19: P2 Design ACTIVE (`a142bd0c` / #55); P2.1–P2.5 plan; P2.1 READY; P3–P5 LOCKED.

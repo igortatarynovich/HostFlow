@@ -36,6 +36,7 @@ After P1.4 (`97aac4e3`):
 |------|--------|
 | P1 Product Layer Foundation | ✅ **COMPLETE** |
 | Field Catalog v1 | **FROZEN** |
-| P2 Builder | **READY FOR IMPLEMENTATION** ([`forms-product-p2-builder.md`](../tasks/forms-product-p2-builder.md)) |
+| P2 Builder | **Design ACTIVE** · P2.1 READY ([`forms-product-p2-builder.md`](../tasks/forms-product-p2-builder.md)) |
+| P3–P5 | **LOCKED** |
 
 P2 consumes the frozen catalog read surface; it does not redefine Registry / Descriptors / Stdlib / Extension contracts.
