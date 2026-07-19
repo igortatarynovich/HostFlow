@@ -23,7 +23,20 @@
 | 9 | Нужна ли новая **лицензия**? |
 | 10 | Меняется ли **публичный контракт** (additive/deprecated/breaking)? |
 
-**Инварианты:** изменение не делает ложным ни один **INV-01…15**.
+**Инварианты:** изменение не делает ложным ни один **INV-01…16**.
+
+---
+
+## Приоритет принятия решений (обязателен)
+
+См. [`decision-priority-rule.md`](decision-priority-rule.md) · **INV-16**.
+
+1. L0 и фундаментальные принципы  
+2. Канонические L1 / ADR и ownership  
+3. Контракты между независимыми модулями  
+4. Только затем локальная реализация и удобство  
+
+**Reject без обсуждения «но оно работает»:** знание внутренностей чужого модуля · cross-package domain import · общий доменный SoT · скрытый fallback между destinations.
 
 ---
 
@@ -34,6 +47,7 @@
 - [ ] Exposes помечены Stable / Experimental / Internal  
 - [ ] Experimental/Internal не единственная опора Business без плана  
 - [ ] INV-09…12 (intake spine) если затрагивается intake  
+- [ ] **INV-16** Decision Priority соблюдён (удобство не выше L0 / ownership / contracts)  
 - [ ] ADR **ссылается** на P-01…P-05 / INV / Catalog — не дублирует L0  
 - [ ] L0 freeze: нет правки конституции без RFC / `l0-errata`; нет «ещё одного маленького правила» в L0 под задачу модуля  
 - [ ] Passport / Manifest / docs синхронизированы  
@@ -47,4 +61,5 @@
 
 - 2026-07-18: L0 closure checklist.  
 - 2026-07-18: Final seal — Non-Goals, stability, invariants.  
-- 2026-07-18: Capability Contract sequence added (Phase 1).
+- 2026-07-18: Capability Contract sequence added (Phase 1).  
+- 2026-07-19: INV-16 Decision Priority Rule + reject signals (Intake/Flights L0 correction).
