@@ -8,7 +8,7 @@ This is a **concrete call-site list**, not a narrative-only design note. Each ro
 
 ---
 
-## Closed by Runtime Split R1–R3
+## Closed by Runtime Split R1–R4
 
 | Call site | Was | Now |
 |-----------|-----|-----|
@@ -17,21 +17,26 @@ This is a **concrete call-site list**, not a narrative-only design note. Each ro
 | `handlers.py` `sales_inquiry` → `recruitment.client_lead_draft` | Sales owned by Recruitment metadata | **R2** → `sales.inquiry_draft` / `module_owner=sales` |
 | Destination dispatch | No callable handlers | **R3** `intake_platform/handler_dispatch.py` → `modules/sales` / `modules/recruitment` |
 | Public lead-draft submit branch on `application_kind` | SoT for client vs candidate path | **R3** pinned `route_intent` → `dispatch_public_intake_submit` |
+| Sales destination result | Lead projection only | **R4** `sales_inquiries` + `ensure_sales_inquiry_for_transport_lead` |
+| Recruitment destination result | Often Candidate without Application on public intake | **R4** `ensure_application_result_for_transport_lead` |
+| `lead_to_sales_inquiry` / `lead_to_recruitment_application` | Treated as product identity | **R4** marked **LEGACY PROJECTION** (remove in R6) |
 
 ---
 
 ## Still open (must close in later stages)
 
-### A. Destination / object creation still Lead-centric (R4)
+### A. Remaining creation / Lead-centric debt (R5–R6)
 
 | File | Lines / symbol | Independent determination |
 |------|----------------|---------------------------|
-| `entity_profile/public_intake_draft_session.py` | `submit_public_intake_lead_draft`, Decision Layer gates | Shared draft session for both destinations; Lead flags |
-| `modules/leads/service/_processing.py` | Meta ingest `lead_type_for_route_intent` | Creates Lead; mixes funnel helpers |
-| `modules/applications/mappers.py` | `lead_to_sales_inquiry` | SalesInquiry is a Lead projection |
-| `modules/applications/listing.py` | Lead type filters | Queue split via Lead flags (R6) |
+| `entity_profile/public_intake_draft_session.py` | Decision Layer still Lead-centric transport | OK as transport; must not become SoT again |
+| `modules/leads/service/_processing.py` | Meta ingest | Still creates Lead; should ensure destination results (follow-up) |
+| `modules/applications/listing.py` | Lead type filters | Queue split via Lead flags (**R6**) |
+| `modules/applications/mappers.py` | Legacy projections still used by API | Replace with Application / SalesInquiry reads (**R6**) |
 
 ### B. Communication / acknowledgement without destination object (stages 5–6)
+
+**Do not patch category B partially before R5.** Wait for Communication Context Resolver.
 
 | File | Lines / symbol | Independent determination |
 |------|----------------|---------------------------|
