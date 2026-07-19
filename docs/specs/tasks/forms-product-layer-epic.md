@@ -133,12 +133,13 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Field Catalog Registry / Identity / Compatibility | ✅ **ACTIVE** |
 | **P1.2 Descriptors** | ✅ **COMPLETE** (`1f7b4aba` / #50) |
 | Descriptor Contract / Declarative Multi-client Surface | ✅ **ACTIVE** |
-| **P1.3 Standard Library** | **READY FOR IMPLEMENTATION** |
-| Builder (P2) | **LOCKED** |
-| Unlock Builder | **completed P1.3 Standard Library** only |
+| **P1.3 Standard Library** | ✅ **COMPLETE** (`0cf7fc00` / #52) |
+| Basic Component Library / Builder UNLOCKED | ✅ **ACTIVE** |
+| **P1.4 Extension API** | **READY FOR IMPLEMENTATION** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
 | Catalog-core special cases for stdlib ids | **FORBIDDEN** |
+| Silent Basic override / silent version replace (P1.4) | **FORBIDDEN** |
 
 ---
 
@@ -150,4 +151,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-18: P1 decomposition ACTIVE (`51063d1c` / #45); P1.1 READY FOR IMPLEMENTATION.  
 - 2026-07-18: P1.1 COMPLETE (`644b102a` / #47); P1.2 Descriptors READY.  
 - 2026-07-18: P1.2 Design ACTIVE; declarative-descriptors rule; Descriptor Contract READY FOR IMPLEMENTATION.  
-- 2026-07-18: P1.2 COMPLETE (`1f7b4aba` / #50); P1.3 READY FOR IMPLEMENTATION.
+- 2026-07-18: P1.2 COMPLETE (`1f7b4aba` / #50); P1.3 READY FOR IMPLEMENTATION.  
+- 2026-07-19: P1.3 COMPLETE (`0cf7fc00` / #52); Builder UNLOCKED; P1.4 READY FOR IMPLEMENTATION.

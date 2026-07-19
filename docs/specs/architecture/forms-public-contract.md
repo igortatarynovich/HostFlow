@@ -185,5 +185,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: P1.1 COMPLETE (`644b102a`); P1.2 Descriptors READY (four surfaces; no UI renderers / no stdlib yet).  
 - 2026-07-18: P1.2 Design ACTIVE; Descriptor Contract READY FOR IMPLEMENTATION; declarative-only rule.  
 - 2026-07-18: P1.2 COMPLETE (`1f7b4aba`); P1.3 Standard Library READY FOR IMPLEMENTATION.  
-- 2026-07-18: P1.3 Standard Library — `forms.field_catalog.stdlib.v1`; Builder UNLOCKED; P1.4 READY.
+- 2026-07-18: P1.3 Standard Library — `forms.field_catalog.stdlib.v1`; Builder UNLOCKED; P1.4 READY.  
+- 2026-07-19: P1.3 COMPLETE (`0cf7fc00`); P1.4 Extension API READY FOR IMPLEMENTATION.
 - 2026-07-18: P1.2 Descriptor Contract implementation — `forms.field_catalog.descriptors.v1`.
