@@ -1,6 +1,6 @@
 # Forms Field Catalog — Public Contracts v1 FROZEN
 
-**Status:** **FROZEN** (after P1.4 · Product Layer P1 foundation complete)  
+**Status:** **FROZEN** (P1.4 COMPLETE · merge `97aac4e3` / [PR #54](https://github.com/igortatarynovich/HostFlow/pull/54))  
 **Date:** 2026-07-19  
 **Normative:** [`forms-public-contract.md`](forms-public-contract.md) · [`forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)
 
@@ -30,11 +30,12 @@ This keeps Builder, mobile clients, and modules stable without returning to Fiel
 
 ## P1 foundation closed
 
-After P1.4:
+After P1.4 (`97aac4e3`):
 
 | Gate | Status |
 |------|--------|
-| P1 Product Layer Foundation | **COMPLETE** |
-| P2 Builder | **READY FOR IMPLEMENTATION** |
+| P1 Product Layer Foundation | ✅ **COMPLETE** |
+| Field Catalog v1 | **FROZEN** |
+| P2 Builder | **READY FOR IMPLEMENTATION** ([`forms-product-p2-builder.md`](../tasks/forms-product-p2-builder.md)) |
 
 P2 consumes the frozen catalog read surface; it does not redefine Registry / Descriptors / Stdlib / Extension contracts.

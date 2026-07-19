@@ -135,7 +135,8 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Descriptor Contract / Declarative Multi-client Surface | ✅ **ACTIVE** |
 | **P1.3 Standard Library** | ✅ **COMPLETE** (`0cf7fc00` / #52) |
 | Basic Component Library / Builder UNLOCKED | ✅ **ACTIVE** |
-| **P1.4 Extension API** | ✅ **COMPLETE** (this PR) |
+| **P1.4 Extension API** | ✅ **COMPLETE** (`97aac4e3` / #54) |
+| Extension Component Platform / Module Registration | ✅ **ACTIVE** |
 | P1 Product Layer Foundation | ✅ **COMPLETE** |
 | Field Catalog contracts v1 | **FROZEN** |
 | P2 Builder | **READY FOR IMPLEMENTATION** |
@@ -144,6 +145,7 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Catalog-core special cases for stdlib ids | **FORBIDDEN** |
 | Silent Basic override / silent version replace | **FORBIDDEN** |
 | Breaking changes to frozen Catalog v1 | **FORBIDDEN** (extend compatibly or add v2) |
+| Builder inventing types / forking validation | **FORBIDDEN** |
 
 ---
 
@@ -157,4 +159,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-18: P1.2 Design ACTIVE; declarative-descriptors rule; Descriptor Contract READY FOR IMPLEMENTATION.  
 - 2026-07-18: P1.2 COMPLETE (`1f7b4aba` / #50); P1.3 READY FOR IMPLEMENTATION.  
 - 2026-07-19: P1.3 COMPLETE (`0cf7fc00` / #52); Builder UNLOCKED; P1.4 READY FOR IMPLEMENTATION.  
-- 2026-07-19: P1.4 COMPLETE; Catalog v1 FROZEN; P1 foundation COMPLETE; P2 Builder READY.
+- 2026-07-19: P1.4 COMPLETE; Catalog v1 FROZEN; P1 foundation COMPLETE; P2 Builder READY.  
+- 2026-07-19: P1.4 merge `97aac4e3` (#54) recorded; P2 hard boundary: Catalog client only.
