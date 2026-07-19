@@ -1,15 +1,15 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1–R4 + R3.5 COMPLETE · **R5 NEXT**)  
+**Status:** **ACTIVE** (R1–R5 + R3.5 + INV-16 COMPLETE · Communication Context NEXT)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
 **L0 boundary:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md)  
 **Decision gate:** [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md) · **INV-16** (`#67`)  
-**R5 gate:** [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md)  
+**R5 gate:** [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · **COMPLETE**  
 **Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
 **Parents:** [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`ADR-024`](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md)  
-**Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**)  
-**Still LOCKED:** Forms P3–P5 · Queues/UI until after R5 + Communication Context  
+**Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**) · Communication Context Resolver (**READY**)  
+**Still LOCKED:** Forms P3–P5 · Queues/UI until after Communication Context  
 
 ---
 
@@ -21,8 +21,8 @@
 | R3 | Intermediate isolation (dispatch ownership corrected by R3.5) |
 | R3.5 Flights-owned boundary | **COMPLETE** — `#66` |
 | Decision priority gate / INV-16 | **COMPLETE** — `#67` |
-| R5 provenance / exactly-once | **NEXT** — [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) |
-| Communication Context Resolver | After R5 |
+| R5 provenance / exactly-once | **COMPLETE** — [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) |
+| Communication Context Resolver | **NEXT** |
 | Queues/UI | **LOCKED** |
 
 ---
@@ -67,12 +67,12 @@ Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `l
 | **R4** | Independent result objects | ✅ COMPLETE (`#65`) |
 | **R3.5** | Flights-owned dispatch boundary (L0) | ✅ COMPLETE (`#66`) |
 | **INV-16** | Decision Priority Rule | ✅ COMPLETE (`#67`) |
-| **R5** | Provenance / exactly-once (Flights ledger) | **NEXT** — gate doc |
+| **R5** | Provenance / exactly-once (Flights ledger) | ✅ COMPLETE |
 | **R6** | Physically separate queues / APIs | LATER |
 
-**Do not start R6 (queues/UI) before R5 and Communication Context Resolver.**
+**Do not start R6 (queues/UI) before Communication Context Resolver.**
 
-### R5 — summary (see gate doc)
+### R5 — summary
 
 Provenance: `handoff_id → route_intent → destination → dispatcher_id → result_type → result_id`.
 
@@ -92,9 +92,9 @@ Opaque Flights reference only: `module_owner` · `result_type` · `result_id`.
 - [x] Sales↔Recruitment package imports forbidden (R3)  
 - [x] Flights dispatchers (`flights.*`) own routing metadata (R3.5)  
 - [x] Flights package forbids destination ORM/services (R3.5)  
-- [ ] Replay does not call module adapter twice after confirmed result (R5)  
-- [ ] Missing/ambiguous result fail-closed; no Recruitment fallback (R5)  
-- [ ] No cross-module shared transaction on dispatch path (R5)  
+- [x] Replay does not call module adapter twice after confirmed result (R5)  
+- [x] Missing/ambiguous result fail-closed; no Recruitment fallback (R5)  
+- [x] No cross-module shared transaction on dispatch path (R5)  
 - [ ] Recruitment API does not return Sales Inquiry (R6)  
 - [ ] Sales API does not return Candidate Application (R6)  
 - [ ] changing `application_kind` / FormPurpose / URL does not change route  
@@ -107,7 +107,7 @@ Opaque Flights reference only: `module_owner` · `result_type` · `result_id`.
 |----------|--------|
 | Canonical Input Matrix | **ACCEPTED / FROZEN** |
 | Intake Canonical Input Matrix epic | **COMPLETE** |
-| Intake Runtime Split V1 | **ACTIVE** (R5 next) |
+| Intake Runtime Split V1 | **ACTIVE** (R5 complete · Communication Context next) |
 | Decision Priority / INV-16 | **COMPLETE** (`#67`) |
 | Communication Context V1 | **READY** (after R5) |
 | Flights / Intake Routing runtime | **UNLOCKED** |
