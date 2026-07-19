@@ -3,7 +3,7 @@
 **Status:** **COMPLETE** (implementation)  
 **Parent gate:** [`intake-communication-context-c1-c6-gate.md`](intake-communication-context-c1-c6-gate.md)  
 **Prerequisite:** C1 Thread Result Link **COMPLETE** (`#71`)  
-**Unlocks:** C3 Module-owned Communication Policy Ports  
+**Unlocks:** C3 Module-owned Communication Policy Ports · **COMPLETE** (`#72` unlock)  
 
 ---
 

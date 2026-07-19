@@ -1,6 +1,6 @@
 # Intake Domain Separation & Communication Context V1
 
-**Status:** **ACTIVE** · C1–C2 COMPLETE · **C3 NEXT** (R5 COMPLETE `#69`)  
+**Status:** **ACTIVE** · C1–C3 COMPLETE · **C4 NEXT** (R5 COMPLETE `#69`)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Runtime Split R1–R5 COMPLETE · INV-16 · R3.5  
 **Acceptance scenario (must close epic):** A Sales Inquiry that received a B2B questionnaire may send **only Sales-owned** communications. Recruitment acknowledgement is unavailable regardless of form, Thread UI, locale, or send path.  
 **Parents:** [`intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) · [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md)  
@@ -111,8 +111,8 @@ Minimum fields:
 |---|-------|--------|
 | **C1** | Thread Result Link Contract — Thread ↔ opaque result ref (not foreign ORM) | ✅ COMPLETE — [`intake-communication-context-c1.md`](intake-communication-context-c1.md) |
 | **C2** | Communication Context Resolver — unique owner + result type | ✅ COMPLETE — [`intake-communication-context-c2.md`](intake-communication-context-c2.md) |
-| **C3** | Module-owned Communication Policy Ports — Recruitment/Sales publish purposes | **NEXT** |
-| **C4** | Template Metadata Enforcement — backend rejects cross-domain templates | AFTER C3 |
+| **C3** | Module-owned Communication Policy Ports — Recruitment/Sales publish purposes | ✅ COMPLETE — [`intake-communication-context-c3.md`](intake-communication-context-c3.md) |
+| **C4** | Template Metadata Enforcement — backend rejects cross-domain templates | **NEXT** |
 | **C5** | Send-path migration — email/SMS/WhatsApp/automations/Thread actions via resolver | AFTER C4 |
 | **C6** | Legacy unresolved handling — no send; resolution state | AFTER C5 |
 | — | Queues/UI (Runtime Split R6) | **LOCKED** until C1–C5 |
