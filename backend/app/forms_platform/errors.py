@@ -180,3 +180,9 @@ class FormsBuilderCompositionConfigError(FormsAdapterError):
     code = "forms_builder_composition_config_invalid"
     http_status = 422
     default_message = "Builder instance config is invalid"
+
+
+class FormsBuilderCompositionCommandError(FormsAdapterError):
+    code = "forms_builder_composition_command_invalid"
+    http_status = 422
+    default_message = "Builder composition command is invalid"

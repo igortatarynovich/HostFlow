@@ -1,10 +1,10 @@
 # Forms Product Layer P2 — Builder
 
-**Status:** **ACTIVE** (design · Catalog Consumption **ACTIVE**)  
+**Status:** **ACTIVE** (Catalog Consumption **ACTIVE**)  
 **Prerequisite:** P1 Product Layer Foundation **CLOSED** · Field Catalog v1 **FROZEN**  
 **Canon:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md)  
-**Last complete:** [`forms-product-p2-2-composition-model.md`](forms-product-p2-2-composition-model.md) · **COMPLETE**  
-**Next sprint:** P2.3 Composition Commands — **READY FOR IMPLEMENTATION**
+**Last complete:** [`forms-product-p2-3-composition-commands.md`](forms-product-p2-3-composition-commands.md) · **COMPLETE**  
+**Next sprint:** P2.4 Draft Persistence — **READY FOR IMPLEMENTATION**
 
 ---
 
@@ -15,8 +15,9 @@
 | P2 Builder Design | ✅ **ACTIVE** |
 | **P2.1 Builder Read Model** | ✅ **COMPLETE** (`ae767201` / #57) |
 | **Builder Catalog Consumption** | ✅ **ACTIVE** |
-| **P2.2 Composition Model** | ✅ **COMPLETE** |
-| **P2.3 Composition Commands** | **READY FOR IMPLEMENTATION** |
+| **P2.2 Composition Model** | ✅ **COMPLETE** (`fea96deb` / #58) |
+| **P2.3 Composition Commands** | ✅ **COMPLETE** |
+| **P2.4 Draft Persistence** | **READY FOR IMPLEMENTATION** |
 | Field Catalog v1 | **FROZEN** |
 | P1 Foundation | **CLOSED** |
 | P3 Publish UI | **LOCKED** |
@@ -31,7 +32,7 @@ Builder is a **thin client of frozen Field Catalog v1**. It may only:
 
 1. **Read** the unified Catalog (existing find / get / descriptors APIs).  
 2. **Assemble** form composition (instances, order, config).  
-3. **Persist** draft composition for the existing publish path (P2.4 — not yet).
+3. **Persist** draft composition for the existing publish path (P2.4).
 
 Builder **must not**:
 
@@ -41,13 +42,6 @@ Builder **must not**:
 - reopen Field Catalog architecture;  
 - own storage / domain mapping / second intake.
 
-```text
-Catalog (frozen v1) → Builder reads unified list
-                    → places instances + config
-                    → saves draft composition
-                    → Publish / Public / validate / normalize unchanged
-```
-
 ---
 
 ## Decomposition
@@ -56,8 +50,8 @@ Catalog (frozen v1) → Builder reads unified list
 |--------|------|------|-----|
 | **P2.1** | Builder Read Model | Stable read model over Catalog | no — ✅ COMPLETE |
 | **P2.2** | Composition Model | Canonical draft structure | no — ✅ COMPLETE |
-| **P2.3** | Composition Commands | add/remove/reorder/config/draft ops | no — **READY** |
-| **P2.4** | Draft Persistence | Persist composition for existing publish | no |
+| **P2.3** | Composition Commands | add/remove/reorder/config/duplicate/replace version | no — ✅ COMPLETE |
+| **P2.4** | Draft Persistence | Persist composition for existing publish | no — **READY** |
 | **P2.5** | Minimal Builder UI | Palette · canvas · config · save | **yes** (after gate) |
 
 ### Process rule (normative)
@@ -72,29 +66,13 @@ See [`forms-product-p2-1-builder-read-model.md`](forms-product-p2-1-builder-read
 
 See [`forms-product-p2-2-composition-model.md`](forms-product-p2-2-composition-model.md).
 
-| Field | Role |
-|-------|------|
-| `draft_id` | Stable form draft identity |
-| `instance_id` | Stable instance identity |
-| `component_id` | Catalog component |
-| `component_version` | Exact pinned version |
-| `config` | Instance config (`config_fields` only) |
-| order | Sequence of instances |
+### P2.3 — Composition Commands (**COMPLETE**)
 
-**Invariants:** multi-use of one component; version pin; no `source`; no validation/normalization storage; unknown id/version → diagnosable error; no UI layout; no persistence/publish in P2.2.
+See [`forms-product-p2-3-composition-commands.md`](forms-product-p2-3-composition-commands.md).
 
-### P2.3 — Composition Commands (**READY FOR IMPLEMENTATION**)
+Immutable commands: `add_instance` · `remove_instance` · `reorder_instance` · `update_config` · `duplicate_instance` · `replace_component_version` (explicit only). No save/load/publish in P2.3.
 
-Operate on the composition model (not raw UI state):
-
-- add / remove / reorder instance  
-- update config  
-- duplicate instance  
-- load draft / save draft *(command shapes only — persistence adapter is P2.4)*  
-
-Same command layer usable from web, tests, and future clients.
-
-### P2.4 — Draft Persistence
+### P2.4 — Draft Persistence (**READY FOR IMPLEMENTATION**)
 
 Persist **only** composition suitable for the existing publish path.
 
@@ -125,7 +103,7 @@ UI (**P2.5**) must not start until ready:
 
 - [x] Builder Read Model  
 - [x] Composition Contract  
-- [ ] Draft commands  
+- [x] Draft commands  
 - [ ] Persistence adapter  
 - [ ] Contract tests: no hardcode · no Catalog mutation  
 
@@ -133,6 +111,7 @@ UI (**P2.5**) must not start until ready:
 
 ## History
 
-- 2026-07-19: Design **ACTIVE** after #55; P2.1–P2.5 decomposition; P3–P5 LOCKED.  
-- 2026-07-19: P2.1 COMPLETE (`ae767201` / #57); Builder Catalog Consumption **ACTIVE**; P2.2 opened.  
-- 2026-07-19: **P2.2 COMPLETE** — `forms.builder.composition.v1`; P2.3 READY.
+- 2026-07-19: Design ACTIVE; P2.1–P2.5 decomposition; P3–P5 LOCKED.  
+- 2026-07-19: P2.1 COMPLETE (`ae767201` / #57); Catalog Consumption ACTIVE.  
+- 2026-07-19: P2.2 COMPLETE (`fea96deb` / #58).  
+- 2026-07-19: **P2.3 COMPLETE** — `forms.builder.composition_commands.v1`; P2.4 READY.
