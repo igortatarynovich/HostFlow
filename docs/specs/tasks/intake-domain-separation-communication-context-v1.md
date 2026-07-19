@@ -1,10 +1,43 @@
 # Intake Domain Separation & Communication Context V1
 
-**Status:** **READY FOR IMPLEMENTATION**  
-**Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Runtime Split R1+R2 merged (`41e83eae` / #63)  
+**Status:** **ACTIVE** · C1–C6 **READY** (R5 COMPLETE `#69`)  
+**Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Runtime Split R1–R5 COMPLETE · INV-16 · R3.5  
 **Acceptance scenario (must close epic):** A Sales Inquiry that received a B2B questionnaire may send **only Sales-owned** communications. Recruitment acknowledgement is unavailable regardless of form, Thread UI, locale, or send path.  
-**Parents:** [`intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) · [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md)  
-**Still LOCKED:** Forms P3–P5 · physical queues/UI until Runtime Split R4–R5 done  
+**Parents:** [`intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) · [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md)  
+**Gate:** [`intake-communication-context-c1-c6-gate.md`](intake-communication-context-c1-c6-gate.md)  
+**Still LOCKED:** Forms P3–P5 · Queues/UI until **C1–C5** complete  
+
+---
+
+## Current status
+
+| Stage | Status |
+|-------|--------|
+| R1 fail-closed routing | ✅ COMPLETE |
+| R2 destination registry | ✅ COMPLETE |
+| R3 intermediate split | ✅ COMPLETE |
+| R3.5 Flights-owned boundary | ✅ COMPLETE (`#66`) |
+| R4 independent result objects | ✅ COMPLETE |
+| R5 provenance / exactly-once | ✅ COMPLETE (`#69`) |
+| **Communication Context Resolver** | **NEXT** (C1–C6) |
+| Queues/UI | **LOCKED** |
+| Forms P3–P5 | **LOCKED** |
+
+### What R5 guarantees (foundation for this epic)
+
+- Flights owns dispatch provenance.  
+- `OpaqueResultRef` does not expose destination-module internals.  
+- Replay after `confirmed` does not reach the adapter.  
+- Reprocess does not create a second Application or SalesInquiry.  
+- Missing / ambiguous → fail-closed.  
+- No Recruitment fallback.  
+- Exactly-once is **not** a shared cross-module DB transaction.
+
+Canonical intake boundary (unchanged):
+
+```text
+Forms → Flights → Contract → Adapter → Module-owned Result
+```
 
 ---
 
@@ -18,17 +51,19 @@ Different surfaces independently “guess” Candidate vs Sales:
 | Questionnaire | Client / B2B questionnaire |
 | Email / automation | “recruitment team will review your application” |
 
-Root cause is **not** a wrong template string. There is no single communication context derived from the routing decision.
+Root cause is **not** a wrong template string. There is no single communication context derived from **confirmed Flights provenance**.
 
 ---
 
 ## Target rule
 
-After the primary routing decision, inbound type is fixed once and never recomputed:
+Resolver must rely **only** on confirmed R5 result:
 
 ```text
-route_intent → destination → result object → communication context
+Thread → confirmed Flights dispatch provenance → OpaqueResultRef → module communication contract
 ```
+
+**Not** on: Lead · `application_kind` · `lead_type` · FormPurpose · form title · URL · queue · frontend module · template text.
 
 | `route_intent` | Destination | Result object | Communication domain |
 |----------------|-------------|---------------|----------------------|
@@ -37,58 +72,62 @@ route_intent → destination → result object → communication context
 
 Form, Thread, and email automation **must not** independently infer type.
 
-**Forbidden SoT:** `application_kind` · `lead_type` · `lead_target_type` · form title · FormPurpose · URL · template text · vacancy presence · frontend module query · open queue.
+---
 
-**Fail closed:** if domain object cannot be resolved uniquely → do not send; do not run automation; enqueue Intake Resolution with exact reason. Never default to candidate flow.
+## Recommended resolver result contract
+
+Minimum fields:
+
+| Field | Meaning |
+|-------|---------|
+| `module_owner` | `recruitment` \| `sales` |
+| `result_type` | opaque type string (`application` \| `sales_inquiry`) |
+| `result_id` | opaque id for shared communication layer |
+| `communication_domain` | same owner domain for policies/templates |
+| `allowed_communication_purposes` | purposes published by module policy port |
+| `provenance_ref` | Flights ledger / dispatch id |
+| `resolution_status` | `resolved` \| `unresolved` \| `ambiguous` \| … |
+
+`result_id` remains **opaque** to the shared communication layer — no destination ORM graph.
 
 ---
 
-## Epic stages
+## Fail-closed (send blocked when)
 
-| # | Stage | Status |
+- Thread is not linked to a **confirmed** result object  
+- Multiple incompatible result references  
+- Provenance is not confirmed  
+- Module communication adapter / policy port missing  
+- Purpose not allowed by the result owner  
+- Template metadata does not match `module_owner` + purpose  
+
+**No fallback** via Lead, form, or legacy event type.
+
+---
+
+## Implementation slices (C1–C6)
+
+| # | Slice | Status |
 |---|-------|--------|
-| 1 | Runtime determination audit (concrete call sites) | **ACTIVE** |
-| 2 | Fail-closed routing | ✅ R1 (`#63`) |
-| 3 | Recruitment/Sales destination handlers | ✅ R3 (`#64`) — **superseded as dispatch owner by R3.5** |
-| 3.5 | Flights-owned dispatch boundary (L0) | ✅ COMPLETE (`#66`) |
-| INV-16 | Decision Priority Rule | ✅ COMPLETE (`#67`) |
-| 4 | Independent result objects | ✅ R4 (`#65`) behind module ports |
-| 5 | Thread business-context resolution | **NEXT** (after R5) |
-| — | **R5 provenance / exactly-once** | ✅ COMPLETE — [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) |
-| 6 | Module-owned communication policies + template metadata | AFTER stage 5 |
-| 7 | Separate APIs and queues | Runtime Split R6 · **LOCKED** until after Communication Context |
-| 8 | Legacy resolution queue | AFTER stage 7 |
-
-**Order rule:** do not split queues/UI (7) before R5 provenance + Communication Context Resolver (stages 5–6). Visual separation on mixed backend is not isolation. R5 must not use a cross-module shared DB transaction ([`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md)).
+| **C1** | Thread Result Link Contract — Thread ↔ opaque result ref (not foreign ORM) | **NEXT** |
+| **C2** | Communication Context Resolver — unique owner + result type | AFTER C1 |
+| **C3** | Module-owned Communication Policy Ports — Recruitment/Sales publish purposes | AFTER C2 |
+| **C4** | Template Metadata Enforcement — backend rejects cross-domain templates | AFTER C3 |
+| **C5** | Send-path migration — email/SMS/WhatsApp/automations/Thread actions via resolver | AFTER C4 |
+| **C6** | Legacy unresolved handling — no send; resolution state | AFTER C5 |
+| — | Queues/UI (Runtime Split R6) | **LOCKED** until C1–C5 |
 
 ---
 
-## Communication Context Resolver (stage 5–6)
+## Main acceptance test
+
+**SalesInquiry + B2B questionnaire + any send path** must always resolve as:
 
 ```text
-Thread → linked destination object → module_owner → allowed communication purposes
+sales + qualification_questionnaire_request
 ```
 
-Template selection:
-
-```text
-destination module + communication_purpose + locale
-```
-
-Example for the bug:
-
-```text
-sales + qualification_questionnaire_request + pl
-```
-
-Candidate templates must be **backend-rejected** for SalesInquiry threads.
-
-Separate acknowledgement handlers (shared transport only):
-
-- Recruitment acknowledgement  
-- Sales acknowledgement  
-
-No shared “application received” handler that branches on Candidate vs Client text.
+and must have **no technical access** to Recruitment acknowledgement.
 
 ---
 
@@ -99,7 +138,7 @@ No shared “application received” handler that branches on Candidate vs Clien
 - [ ] SalesInquiry cannot receive recruitment acknowledgement  
 - [ ] Application cannot receive B2B questionnaire  
 - [ ] Sales thread cannot invoke Recruitment template  
-- [ ] Missing routing context blocks send  
+- [ ] Missing routing / unconfirmed provenance blocks send  
 - [ ] Ambiguous entity links block send  
 - [ ] Changing URL / frontend module does not change domain  
 - [ ] Changing `application_kind` does not change domain  
@@ -110,20 +149,16 @@ No shared “application received” handler that branches on Candidate vs Clien
 
 ## Relation to Runtime Split V1
 
-Runtime Split R1–R6 remains the backend isolation spine. This epic adds **communication + Thread context** on top and tracks Stage 1 audit + acceptance scenario for the email bug.
-
 | Runtime Split | Communication Context |
 |---------------|----------------------|
-| R1 fail-closed | Stage 2 |
-| R2 registry | Stage 2 |
-| R3 handlers (intermediate) | Stage 3 |
-| R3.5 Flights dispatch | Stage 3 boundary |
-| R4 result objects | Stage 4 |
-| R5 Flights provenance / exactly-once | ✅ unlocks stages 5–6 |
-| R6 queues/APIs | Stage 7 |
+| R1–R2 fail-closed + registry | Foundation |
+| R3 / R3.5 / R4 | Isolation + result objects |
+| R5 Flights provenance | ✅ required SoT for C1–C6 |
+| R6 queues/APIs | AFTER C1–C5 |
 
 ---
 
 ## History
 
-- 2026-07-19: Opened after Sales Inquiry received Recruitment acknowledgement while B2B questionnaire was active; R1/R2 already merged.
+- 2026-07-19: Opened after Sales Inquiry received Recruitment acknowledgement while B2B questionnaire was active.  
+- 2026-07-19: R5 COMPLETE `#69`; opened C1–C6 gate; queues/UI remain LOCKED until C1–C5.

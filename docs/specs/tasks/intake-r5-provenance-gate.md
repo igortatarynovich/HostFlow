@@ -1,6 +1,6 @@
 # Intake Runtime Split — R5 Gate (Flights provenance / exactly-once)
 
-**Status:** **COMPLETE** · [PR pending] · gated by INV-16  
+**Status:** **COMPLETE** (`ed781d70` / [PR #69](https://github.com/igortatarynovich/HostFlow/pull/69)) · gated by INV-16  
 **Prerequisite:** R3.5 Flights-owned boundary **COMPLETE** (`#66`) · Decision Priority **COMPLETE** (`#67`)  
 **Parents:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md) · [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md)  
 **Unlocks after R5:** Communication Context Resolver  
@@ -69,3 +69,4 @@ Condition **7**: exactly-once via **idempotent contract + dispatch ledger + repe
 
 - 2026-07-19: Opened as NEXT after INV-16 / R3.5 freeze; gate conditions accepted.
 - 2026-07-19: Implemented Flights ledger + opaque refs + replay short-circuit.
+- 2026-07-19: COMPLETE `#69` (`ed781d70`); unlocks Communication Context C1–C6.

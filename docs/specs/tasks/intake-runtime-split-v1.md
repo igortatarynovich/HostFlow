@@ -1,15 +1,15 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1–R5 + R3.5 + INV-16 COMPLETE · Communication Context NEXT)  
+**Status:** **ACTIVE** (R1–R5 COMPLETE · **Communication Context NEXT**)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
 **L0 boundary:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md)  
 **Decision gate:** [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md) · **INV-16** (`#67`)  
-**R5 gate:** [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · **COMPLETE**  
-**Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
+**R5 gate:** [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · **COMPLETE** (`#69`)  
+**Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md) · [`intake-communication-context-c1-c6-gate.md`](intake-communication-context-c1-c6-gate.md)  
 **Parents:** [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`ADR-024`](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md)  
-**Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**) · Communication Context Resolver (**READY**)  
-**Still LOCKED:** Forms P3–P5 · Queues/UI until after Communication Context  
+**Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**) · Communication Context Resolver (**READY** — C1–C6)  
+**Still LOCKED:** Forms P3–P5 · Queues/UI until **C1–C5**  
 
 ---
 
@@ -17,13 +17,16 @@
 
 | Stage | Status |
 |-------|--------|
-| R1–R4 | **COMPLETE** |
-| R3 | Intermediate isolation (dispatch ownership corrected by R3.5) |
+| R1 fail-closed routing | **COMPLETE** |
+| R2 destination registry | **COMPLETE** |
+| R3 intermediate split | **COMPLETE** |
 | R3.5 Flights-owned boundary | **COMPLETE** — `#66` |
+| R4 independent result objects | **COMPLETE** |
 | Decision priority gate / INV-16 | **COMPLETE** — `#67` |
-| R5 provenance / exactly-once | **COMPLETE** — [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) |
-| Communication Context Resolver | **NEXT** |
+| R5 provenance / exactly-once | **COMPLETE** — `#69` |
+| Communication Context Resolver | **NEXT** — C1–C6 |
 | Queues/UI | **LOCKED** |
+| Forms P3–P5 | **LOCKED** |
 
 ---
 
@@ -67,10 +70,11 @@ Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `l
 | **R4** | Independent result objects | ✅ COMPLETE (`#65`) |
 | **R3.5** | Flights-owned dispatch boundary (L0) | ✅ COMPLETE (`#66`) |
 | **INV-16** | Decision Priority Rule | ✅ COMPLETE (`#67`) |
-| **R5** | Provenance / exactly-once (Flights ledger) | ✅ COMPLETE |
-| **R6** | Physically separate queues / APIs | LATER |
+| **R5** | Provenance / exactly-once (Flights ledger) | ✅ COMPLETE (`#69`) |
+| **C1–C6** | Communication Context | **NEXT** — [`intake-communication-context-c1-c6-gate.md`](intake-communication-context-c1-c6-gate.md) |
+| **R6** | Physically separate queues / APIs | LATER · **LOCKED** until C1–C5 |
 
-**Do not start R6 (queues/UI) before Communication Context Resolver.**
+**Do not start R6 (queues/UI) before Communication Context C1–C5.**
 
 ### R5 — summary
 
@@ -107,12 +111,12 @@ Opaque Flights reference only: `module_owner` · `result_type` · `result_id`.
 |----------|--------|
 | Canonical Input Matrix | **ACCEPTED / FROZEN** |
 | Intake Canonical Input Matrix epic | **COMPLETE** |
-| Intake Runtime Split V1 | **ACTIVE** (R5 complete · Communication Context next) |
+| Intake Runtime Split V1 | **ACTIVE** (R5 complete · Communication Context C1–C6 next) |
 | Decision Priority / INV-16 | **COMPLETE** (`#67`) |
-| Communication Context V1 | **READY** (after R5) |
+| Communication Context V1 | **ACTIVE** (C1–C6 gate) |
 | Flights / Intake Routing runtime | **UNLOCKED** |
 | Forms P3–P5 | **LOCKED** |
-| Queues/UI | **LOCKED** |
+| Queues/UI | **LOCKED** until C1–C5 |
 
 ---
 
