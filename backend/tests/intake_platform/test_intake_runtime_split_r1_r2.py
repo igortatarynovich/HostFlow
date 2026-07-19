@@ -1,9 +1,13 @@
-"""Intake Runtime Split V1 — R1 fail-closed + R2 destination registry."""
+"""Intake Runtime Split V1 — R1 fail-closed + R2 destination registry (R3.5 Flights ids)."""
 
 from __future__ import annotations
 
 import pytest
 
+from backend.app.acquisition.flights.destination_contract import (
+    DISPATCHER_CANDIDATE_APPLICATION,
+    DISPATCHER_SALES_INQUIRY,
+)
 from backend.app.forms_platform.constants import (
     HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT,
     HANDLER_RECRUITMENT_LEAD_DRAFT,
@@ -35,9 +39,6 @@ def _reset_registry() -> None:
     reset_platform_destination_registry_for_tests()
 
 
-# --- R1 fail-closed ---
-
-
 def test_r1_missing_route_intent_raises_unresolved() -> None:
     with pytest.raises(FormsRoutingUnresolvedError) as exc:
         resolve_submission_handler(route_intent=None)
@@ -61,54 +62,55 @@ def test_r1_unknown_route_intent_raises_unresolved() -> None:
 def test_r1_missing_intent_does_not_default_to_candidate_application() -> None:
     with pytest.raises(FormsRoutingUnresolvedError):
         resolve_submission_handler(route_intent=None)
-    # Explicit candidate still works — proves missing ≠ candidate
     row = resolve_submission_handler(route_intent="candidate_application")
     assert row["route_intent"] == "candidate_application"
     assert row["destination"] == DESTINATION_RECRUITMENT
 
 
-# --- R2 destination registry ---
-
-
-def test_r2_bootstrap_maps_intents_to_destinations() -> None:
+def test_r2_bootstrap_maps_intents_to_flights_dispatchers() -> None:
     registry = platform_destination_registry()
     cand = registry.resolve("candidate_application")
     assert cand.destination == DESTINATION_RECRUITMENT
-    assert cand.handler_id == HANDLER_RECRUITMENT_LEAD_DRAFT
-    assert cand.module_owner == DESTINATION_RECRUITMENT
+    assert cand.handler_id == DISPATCHER_CANDIDATE_APPLICATION
+    assert cand.module_owner == "flights"
+    assert cand.adapter_owner == DESTINATION_RECRUITMENT
 
     sales = registry.resolve("sales_inquiry")
     assert sales.destination == DESTINATION_SALES
-    assert sales.handler_id == HANDLER_SALES_INQUIRY_DRAFT
-    assert sales.module_owner == DESTINATION_SALES
+    assert sales.handler_id == DISPATCHER_SALES_INQUIRY
+    assert sales.module_owner == "flights"
+    assert sales.adapter_owner == DESTINATION_SALES
     assert sales.handler_id != HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT
+    assert sales.handler_id != HANDLER_SALES_INQUIRY_DRAFT
 
 
-def test_r2_sales_handler_not_recruitment_owned() -> None:
+def test_r2_sales_dispatch_not_recruitment_owned() -> None:
     sales = resolve_submission_handler(route_intent="sales_inquiry")
-    assert sales["module_owner"] == "sales"
+    assert sales["module_owner"] == "flights"
+    assert sales["adapter_owner"] == "sales"
     assert sales["destination"] == "sales"
-    assert sales["handler_id"] == HANDLER_SALES_INQUIRY_DRAFT
+    assert sales["handler_id"] == DISPATCHER_SALES_INQUIRY
     assert sales["creates_on_create"]["sales_inquiry"] is True
     assert sales["creates_on_create"]["application"] is False
-    assert "lead" not in sales["creates"]
 
 
-def test_r2_candidate_handler_recruitment_owned() -> None:
+def test_r2_candidate_dispatch_targets_recruitment_adapter() -> None:
     cand = resolve_submission_handler(route_intent="candidate_application")
-    assert cand["module_owner"] == "recruitment"
-    assert cand["handler_id"] == HANDLER_RECRUITMENT_LEAD_DRAFT
+    assert cand["module_owner"] == "flights"
+    assert cand["adapter_owner"] == "recruitment"
+    assert cand["handler_id"] == DISPATCHER_CANDIDATE_APPLICATION
     assert cand["creates_on_create"]["application"] is True
     assert cand["creates_on_create"]["sales_inquiry"] is False
-    assert cand["creates_on_create"]["lead_draft"] is False
 
 
-def test_r2_list_handlers_exposes_both_destinations() -> None:
+def test_r2_list_handlers_exposes_flights_dispatchers() -> None:
     handlers = list_registered_handlers()
     ids = {row["handler_id"] for row in handlers}
-    assert HANDLER_RECRUITMENT_LEAD_DRAFT in ids
-    assert HANDLER_SALES_INQUIRY_DRAFT in ids
+    assert DISPATCHER_CANDIDATE_APPLICATION in ids
+    assert DISPATCHER_SALES_INQUIRY in ids
     assert HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT not in ids
+    assert HANDLER_RECRUITMENT_LEAD_DRAFT not in ids
+    assert HANDLER_SALES_INQUIRY_DRAFT not in ids
     assert all(row.get("registry_contract") == DESTINATION_REGISTRY_CONTRACT for row in handlers)
 
 
@@ -117,13 +119,13 @@ def test_r2_rejects_duplicate_registration() -> None:
     registry.register(
         route_intent="candidate_application",
         destination=DESTINATION_RECRUITMENT,
-        handler_id=HANDLER_RECRUITMENT_LEAD_DRAFT,
+        dispatcher_id=DISPATCHER_CANDIDATE_APPLICATION,
     )
     with pytest.raises(DestinationDuplicateRegistrationError):
         registry.register(
             route_intent="candidate_application",
             destination=DESTINATION_RECRUITMENT,
-            handler_id=HANDLER_RECRUITMENT_LEAD_DRAFT,
+            dispatcher_id=DISPATCHER_CANDIDATE_APPLICATION,
         )
 
 
@@ -137,24 +139,25 @@ def test_r2_rejects_missing_handler_id() -> None:
         )
 
 
-def test_r2_rejects_sales_handler_as_recruitment_owned() -> None:
+def test_r2_rejects_non_flights_dispatcher_id() -> None:
     registry = DestinationRegistry()
     with pytest.raises(DestinationRegistryError) as exc:
         registry.register(
             route_intent="sales_inquiry",
-            destination=DESTINATION_RECRUITMENT,
+            destination=DESTINATION_SALES,
             handler_id=HANDLER_SALES_INQUIRY_DRAFT,
         )
-    assert "recruitment-owned" in str(exc.value.message)
+    assert "flights." in str(exc.value.message)
 
 
-def test_r2_rejects_sales_destination_with_recruitment_handler_prefix() -> None:
+def test_r2_rejects_adapter_owner_mismatch() -> None:
     registry = DestinationRegistry()
     with pytest.raises(DestinationRegistryError):
         registry.register(
             route_intent="sales_inquiry",
-            destination=DESTINATION_SALES,
-            handler_id=HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT,
+            destination=DESTINATION_RECRUITMENT,
+            dispatcher_id=DISPATCHER_SALES_INQUIRY,
+            adapter_owner=DESTINATION_SALES,
         )
 
 

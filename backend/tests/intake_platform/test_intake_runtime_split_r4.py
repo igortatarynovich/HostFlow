@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.app.forms_platform.constants import (
-    HANDLER_RECRUITMENT_LEAD_DRAFT,
-    HANDLER_SALES_INQUIRY_DRAFT,
+from backend.app.acquisition.flights.destination_contract import (
+    DISPATCHER_CANDIDATE_APPLICATION,
+    DISPATCHER_SALES_INQUIRY,
 )
 from backend.app.intake_platform.destination_handler_contract import (
     RESULT_APPLICATION,
@@ -51,7 +51,7 @@ def _reset_registries() -> None:
 
 def test_r4_typed_result_requires_id_when_created() -> None:
     row = DestinationHandlerResult(
-        handler_id=HANDLER_SALES_INQUIRY_DRAFT,
+        handler_id=DISPATCHER_SALES_INQUIRY,
         destination=DESTINATION_SALES,
         route_intent="sales_inquiry",
         result_entity_type=RESULT_SALES_INQUIRY,
@@ -69,7 +69,7 @@ def test_r4_typed_result_requires_id_when_created() -> None:
 
 def test_r4_sales_handler_cannot_return_application() -> None:
     row = DestinationHandlerResult(
-        handler_id=HANDLER_SALES_INQUIRY_DRAFT,
+        handler_id=DISPATCHER_SALES_INQUIRY,
         destination=DESTINATION_SALES,
         route_intent="sales_inquiry",
         result_entity_type=RESULT_APPLICATION,
@@ -86,7 +86,7 @@ def test_r4_sales_handler_cannot_return_application() -> None:
 
 def test_r4_recruitment_handler_cannot_return_sales_inquiry() -> None:
     row = DestinationHandlerResult(
-        handler_id=HANDLER_RECRUITMENT_LEAD_DRAFT,
+        handler_id=DISPATCHER_CANDIDATE_APPLICATION,
         destination=DESTINATION_RECRUITMENT,
         route_intent="candidate_application",
         result_entity_type=RESULT_SALES_INQUIRY,
@@ -105,7 +105,7 @@ def test_r4_recruitment_handler_cannot_return_sales_inquiry() -> None:
 async def test_r4_dispatch_rejects_sales_returning_application() -> None:
     async def _rogue(_db, **kwargs):  # noqa: ANN001, ANN003
         return DestinationHandlerResult(
-            handler_id=HANDLER_SALES_INQUIRY_DRAFT,
+            handler_id=DISPATCHER_SALES_INQUIRY,
             destination=DESTINATION_SALES,
             route_intent="sales_inquiry",
             result_entity_type=RESULT_APPLICATION,
@@ -114,13 +114,13 @@ async def test_r4_dispatch_rejects_sales_returning_application() -> None:
             result_created=True,
         )
 
-    reset_handler_callables_for_tests({HANDLER_SALES_INQUIRY_DRAFT: _rogue})
+    reset_handler_callables_for_tests({DISPATCHER_SALES_INQUIRY: _rogue})
     with pytest.raises(DestinationHandlerDomainError):
         await dispatch_destination_submit(
             None,  # type: ignore[arg-type]
             route_intent="sales_inquiry",
             tenant_id="t",
-            draft_lead=None,  # type: ignore[arg-type]
+            draft_lead=SimpleNamespace(id="lead-test"),  # type: ignore[arg-type]
             intake_state={},
         )
 

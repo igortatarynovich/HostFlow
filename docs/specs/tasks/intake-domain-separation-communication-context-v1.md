@@ -49,8 +49,9 @@ Form, Thread, and email automation **must not** independently infer type.
 |---|-------|--------|
 | 1 | Runtime determination audit (concrete call sites) | **ACTIVE** |
 | 2 | Fail-closed routing | ✅ R1 (`#63`) |
-| 3 | Recruitment/Sales destination handlers | ✅ R3 (`#64`) |
-| 4 | Independent result objects | ✅ R4 (this PR) |
+| 3 | Recruitment/Sales destination handlers | ✅ R3 (`#64`) — **superseded as dispatch owner by R3.5** |
+| 3.5 | Flights-owned dispatch boundary (L0) | **THIS PR** |
+| 4 | Independent result objects | ✅ R4 (`#65`) behind module ports |
 | 5 | Thread business-context resolution | AFTER R5 |
 | 6 | Module-owned communication policies + template metadata | AFTER stage 5 |
 | 7 | Separate APIs and queues | Runtime Split R6 |

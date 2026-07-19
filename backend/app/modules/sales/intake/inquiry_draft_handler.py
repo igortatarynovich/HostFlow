@@ -1,7 +1,7 @@
-"""Sales-owned intake handler — sales.inquiry_draft (Runtime Split R3/R4).
+"""Sales-owned intake create path — domain SalesInquiry result (R4).
 
+Called only via Flights SalesIntakePort adapter (R3.5).
 Must not import Recruitment models/services/packages.
-Creates SalesInquiry as destination result; Lead is optional transport only.
 """
 
 from __future__ import annotations
