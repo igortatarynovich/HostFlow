@@ -30,14 +30,17 @@ GRAPH_CHECK = BACKEND / "scripts" / "check_alembic_revision_graph.py"
 
 
 def _run(cmd: list[str], *, cwd: Path | None = None, env: dict | None = None) -> tuple[int, str]:
-    proc = subprocess.run(
-        cmd,
-        cwd=str(cwd or REPO_ROOT),
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(cwd or REPO_ROOT),
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        return 127, f"command not found: {cmd[0]} ({exc})"
     out = (proc.stdout or "") + (proc.stderr or "")
     return proc.returncode, out.strip()
 
