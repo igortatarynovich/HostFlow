@@ -4353,7 +4353,6 @@ async def submit_public_intake(
             mark_session_submitted,
             session_intake_state,
             session_intake_status,
-            submit_public_intake_lead_draft,
             write_session_intake_state,
         )
 
@@ -4410,23 +4409,56 @@ async def submit_public_intake(
         form_presentation_code = (
             str(form_presentation.get("presentation_code") or "") if form_presentation else None
         )
-        if application_kind == "client":
-            from backend.app.intake_platform.intake_submit_service import submit_client_public_intake_with_policy
+        # Runtime Split R3: destination is chosen by pinned route_intent via
+        # destination registry — never by application_kind / FormPurpose.
+        from backend.app.forms_platform.errors import FormsRoutingUnresolvedError
+        from backend.app.intake_platform.intake_submit_service import (
+            dispatch_public_intake_submit,
+            resolve_pinned_route_intent_for_submit,
+        )
 
-            decision, created_candidate_id, _effective = await submit_client_public_intake_with_policy(
+        try:
+            route_intent = await resolve_pinned_route_intent_for_submit(
+                db,
+                tenant_id=str(tenant_id),
+                intake_state=state,
+            )
+        except FormsRoutingUnresolvedError as exc:
+            raise HTTPException(
+                status_code=getattr(exc, "http_status", 422) or 422,
+                detail={
+                    "code": getattr(exc, "code", "forms_routing_unresolved"),
+                    "message": str(getattr(exc, "message", None) or exc),
+                    "details": dict(getattr(exc, "details", None) or {}),
+                },
+            ) from exc
+
+        # Derived label only (not SoT).
+        if route_intent == "sales_inquiry":
+            state["application_kind"] = "client"
+        elif route_intent == "candidate_application":
+            state["application_kind"] = "candidate"
+        write_session_intake_state(public_session, state)
+
+        try:
+            dest_result = await dispatch_public_intake_submit(
                 db,
                 tenant_id=str(tenant_id),
                 draft_lead=public_session.lead,
                 intake_state=state,
                 presentation_code=form_presentation_code,
+                route_intent=route_intent,
             )
-        else:
-            decision, created_candidate_id = await submit_public_intake_lead_draft(
-                db,
-                tenant_id=str(tenant_id),
-                lead=public_session.lead,
-                intake_state=state,
-            )
+        except FormsRoutingUnresolvedError as exc:
+            raise HTTPException(
+                status_code=getattr(exc, "http_status", 422) or 422,
+                detail={
+                    "code": getattr(exc, "code", "forms_routing_unresolved"),
+                    "message": str(getattr(exc, "message", None) or exc),
+                    "details": dict(getattr(exc, "details", None) or {}),
+                },
+            ) from exc
+        decision, created_candidate_id = dest_result.decision, dest_result.created_candidate_id
         if created_candidate_id:
             await _log_consent_snapshot(db, tenant_id, created_candidate_id, payload, client_ip, user_agent)
             employments_payload = state.get("employments") or []

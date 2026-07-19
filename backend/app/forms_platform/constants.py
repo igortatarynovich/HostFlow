@@ -11,9 +11,11 @@ PUBLICATION_MODE_LINKED = "linked"
 STORAGE_BACKEND_TENANT_LEAD_FORM = "tenant_lead_form"
 
 HANDLER_RECRUITMENT_LEAD_DRAFT = "recruitment.lead_draft"
-# Legacy — must NOT be used for sales_inquiry (Runtime Split R2/R3).
+# LEGACY FORBIDDEN — must NOT participate in runtime (Runtime Split R2/R3).
+# Kept only so tests can assert it is absent from the destination registry.
 HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT = "recruitment.client_lead_draft"
 HANDLER_SALES_INQUIRY_DRAFT = "sales.inquiry_draft"
+LEGACY_FORBIDDEN_HANDLERS = frozenset({HANDLER_RECRUITMENT_CLIENT_LEAD_DRAFT})
 
 FORMS_TIER_BASIC = "basic"
 
