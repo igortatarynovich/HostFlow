@@ -52,6 +52,20 @@ class ApplicationListResponse(BaseModel):
     counts: Optional[Dict[str, int]] = None
 
 
+class SalesInquiryDuplicateHintOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    application: ApplicationOut
+    match_reason: Literal["phone", "email", "phone_and_email"]
+
+
+class SalesInquiryDuplicateListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: List[SalesInquiryDuplicateHintOut]
+    total: int
+
+
 class ApplicationStagePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
