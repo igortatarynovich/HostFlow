@@ -23,7 +23,7 @@
 | 9 | Нужна ли новая **лицензия**? |
 | 10 | Меняется ли **публичный контракт** (additive/deprecated/breaking)? |
 
-**Инварианты:** изменение не делает ложным ни один **INV-01…16**.
+**Инварианты:** изменение не делает ложным ни один **INV-01…17**.
 
 ---
 
@@ -48,6 +48,7 @@
 - [ ] Experimental/Internal не единственная опора Business без плана  
 - [ ] INV-09…12 (intake spine) если затрагивается intake  
 - [ ] **INV-16** Decision Priority соблюдён (удобство не выше L0 / ownership / contracts)  
+- [ ] **INV-17** исходящая коммуникация только через Communication Pipeline (нет прямого transport / legacy domain guess)  
 - [ ] ADR **ссылается** на P-01…P-05 / INV / Catalog — не дублирует L0  
 - [ ] L0 freeze: нет правки конституции без RFC / `l0-errata`; нет «ещё одного маленького правила» в L0 под задачу модуля  
 - [ ] Passport / Manifest / docs синхронизированы  
@@ -62,4 +63,5 @@
 - 2026-07-18: L0 closure checklist.  
 - 2026-07-18: Final seal — Non-Goals, stability, invariants.  
 - 2026-07-18: Capability Contract sequence added (Phase 1).  
-- 2026-07-19: INV-16 Decision Priority Rule + reject signals (Intake/Flights L0 correction).
+- 2026-07-19: INV-16 Decision Priority Rule + reject signals (Intake/Flights L0 correction).  
+- 2026-07-19: INV-17 Communication Pipeline sole outbound entry (C5).

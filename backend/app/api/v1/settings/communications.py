@@ -360,6 +360,8 @@ def _default_settings() -> Dict[str, Any]:
                     "target": "messages",
                     "ownerUserId": None,
                     "enabled": True,
+                    # C5/INV-17: UI copy only. Outbound dispatch requires
+                    # Communication Pipeline purpose + template_metadata_v1.
                 },
                 {
                     "id": "msg_tpl_docs_request",

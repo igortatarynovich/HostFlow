@@ -247,10 +247,17 @@ async def maybe_send_lead_communication(
     event_type: str,
     cfg: Optional[LeadCommunicationSettings] = None,
     pipeline_normalized: Optional[Dict[str, Any]] = None,
+    thread_id: Optional[str] = None,
+    communication_purpose: Optional[str] = None,
+    template_metadata: Optional[Dict[str, Any]] = None,
+    locale: Optional[str] = None,
 ) -> bool:
     """
     Send one operational email if tenant flags allow. Idempotent per ``event_type``.
     Returns True when sent, False otherwise (skipped/failed/already sent).
+
+    C5: transport is unreachable without Communication Pipeline authorization
+    (thread result link → context → policy → template metadata).
     """
     ev = str(event_type or "").strip()
     if ev not in _COMMUNICATION_EVENTS:
@@ -268,6 +275,71 @@ async def maybe_send_lead_communication(
 
     norm = _lead_norm_for_communication(lead, pipeline_normalized)
     if communication_event_sent(norm, ev):
+        return False
+
+    from backend.app.communications.send_pipeline import (
+        CommunicationSendRequest,
+        authorize_outbound_communication,
+        template_metadata_from_mapping,
+    )
+
+    thread = str(thread_id or "").strip()
+    purpose = str(communication_purpose or "").strip()
+    template = template_metadata_from_mapping(
+        template_metadata if isinstance(template_metadata, dict) else None
+    )
+    if not thread or not purpose or template is None:
+        _stamp_event(
+            lead,
+            ev,
+            status="skipped",
+            reason="communication_pipeline_required",
+        )
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.lead_communication_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=None,
+            payload={
+                "event_type": ev,
+                "reason": "communication_pipeline_required",
+                "notice_status": "skipped",
+            },
+        )
+        return False
+
+    auth = await authorize_outbound_communication(
+        db,
+        CommunicationSendRequest(
+            tenant_id=str(tenant_id),
+            thread_id=thread,
+            channel="email",
+            communication_purpose=purpose,
+            template=template,
+            locale=str(locale).strip() if locale else None,
+        ),
+    )
+    if not auth.allowed:
+        reason = str(auth.reason_code or "communication_pipeline_denied")
+        _stamp_event(lead, ev, status="skipped", reason=reason)
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.lead_communication_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=None,
+            payload={
+                "event_type": ev,
+                "reason": reason,
+                "notice_status": "skipped",
+                "authorization": auth.to_dict(),
+            },
+        )
         return False
 
     email = _resolve_lead_email(lead, pipeline_normalized)

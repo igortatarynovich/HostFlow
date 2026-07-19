@@ -50,11 +50,17 @@
 |----|-----------|
 | **INV-16** | Локальное удобство, ускорение PR или «временное» упрощение **не** имеют приоритета над L0, модульной независимостью и утверждёнными границами. Порядок проверки: (1) L0 · (2) L1/ADR ownership · (3) межмодульные контракты · (4) локальная реализация. Решение с прямым знанием внутренностей другого модуля, cross-package domain import, общим доменным SoT или скрытым fallback между destinations — **архитектурно неверно**, даже если функционально работает. SoT: [`decision-priority-rule.md`](decision-priority-rule.md). |
 
+## Outbound communication
+
+| ID | Invariant |
+|----|-----------|
+| **INV-17** | Единственная допустимая точка входа в любую исходящую коммуникацию — **Communication Pipeline** (Thread Result Link → CommunicationContext → Module Policy → Template Metadata → transport). PR автоматически отклоняется, если: вызывает transport напрямую из business-модуля; самостоятельно определяет `module_owner`; выбирает template вне pipeline; пропускает Policy или Template Metadata Gate; использует Lead / `application_kind` / FormPurpose / иные legacy-признаки для определения коммуникации. SoT: [`../tasks/intake-communication-context-c5.md`](../tasks/intake-communication-context-c5.md). |
+
 ---
 
 ## How to use
 
-1. Перед ADR/PR — сверить изменение с INV-01…16 ([`architecture-review-checklist.md`](architecture-review-checklist.md)).  
+1. Перед ADR/PR — сверить изменение с INV-01…17 ([`architecture-review-checklist.md`](architecture-review-checklist.md)).  
 2. Если фича требует ложности инварианта — это не feature: это **L0 RFC**.  
 3. Errata: опечатка в формулировке — `l0-errata`; смена смысла инварианта — полный RFC.
 
@@ -64,3 +70,4 @@
 
 - **2026-07-18** — приняты как финальный слой L0 перед полной заморозкой конституции.
 - **2026-07-19** — **INV-16** Decision Priority Rule (после L0-коррекции Intake / Flights R3.5).
+- **2026-07-19** — **INV-17** Communication Pipeline sole outbound entry (после C5 send-path migration).

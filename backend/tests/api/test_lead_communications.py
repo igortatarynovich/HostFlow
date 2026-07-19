@@ -1,4 +1,8 @@
-"""Lead operational communication emails (separate from RODO)."""
+"""Lead operational communication emails (separate from RODO).
+
+C5: Lead-scoped autosends without Communication Pipeline args are fail-closed
+(skipped with ``communication_pipeline_required``). Transport is never reached.
+"""
 
 from __future__ import annotations
 
@@ -52,7 +56,10 @@ async def _comm_block(tenant_id: str, lead_id: str) -> dict[str, Any]:
 
 
 @pytest.mark.anyio
-async def test_application_received_sent_once_on_new_lead(client, manager_headers, tenant_id, monkeypatch):
+async def test_application_received_skipped_without_pipeline(
+    client, manager_headers, tenant_id, monkeypatch
+):
+    """C5: legacy Lead ingest cannot send without thread + purpose + template."""
     sent: List[dict[str, Any]] = []
 
     async def _fake_send(*_args, **kwargs):
@@ -91,13 +98,16 @@ async def test_application_received_sent_once_on_new_lead(client, manager_header
     lead_id = ingest.json()["lead_id"]
 
     block = await _comm_block(tenant_id, lead_id)
-    assert block.get(EVENT_APPLICATION_RECEIVED, {}).get("status") == "sent"
-    assert len(sent) == 1
-    assert sent[0].get("to") == email
+    rec = block.get(EVENT_APPLICATION_RECEIVED, {})
+    assert rec.get("status") == "skipped"
+    assert rec.get("failure_reason") == "communication_pipeline_required"
+    assert len(sent) == 0
 
 
 @pytest.mark.anyio
-async def test_replay_does_not_resend_application_received(client, manager_headers, tenant_id, monkeypatch):
+async def test_replay_does_not_reach_transport_without_pipeline(
+    client, manager_headers, tenant_id, monkeypatch
+):
     sent: List[dict[str, Any]] = []
 
     async def _fake_send(*_args, **kwargs):
@@ -130,11 +140,12 @@ async def test_replay_does_not_resend_application_received(client, manager_heade
     first = await client.post("/api/v1/leads/meta", headers=headers, content=json.dumps(payload))
     second = await client.post("/api/v1/leads/meta", headers=headers, content=json.dumps(payload))
     assert first.status_code == 200 and second.status_code == 200
-    assert len(sent) == 1
+    assert len(sent) == 0
 
 
 @pytest.mark.anyio
-async def test_no_email_pending_channel_without_500(client, manager_headers, tenant_id, monkeypatch):
+async def test_no_email_still_skips_pipeline_first(client, manager_headers, tenant_id, monkeypatch):
+    """Without pipeline args, C5 skips before the no-email channel check."""
     sent: List[dict[str, Any]] = []
 
     async def _fake_send(*_args, **kwargs):
@@ -171,7 +182,7 @@ async def test_no_email_pending_channel_without_500(client, manager_headers, ten
     assert ingest.status_code == 200, ingest.text
     lead_id = ingest.json()["lead_id"]
     block = await _comm_block(tenant_id, lead_id)
-    assert block.get(EVENT_APPLICATION_RECEIVED, {}).get("status") == "pending_channel"
+    assert block.get(EVENT_APPLICATION_RECEIVED, {}).get("status") == "skipped"
     assert len(sent) == 0
 
 
@@ -224,7 +235,7 @@ async def test_disabled_tenant_setting_does_not_send(client, manager_headers, te
 
 
 @pytest.mark.anyio
-async def test_reject_sends_rejection_notice(client, manager_headers, tenant_id, monkeypatch):
+async def test_reject_skips_without_pipeline(client, manager_headers, tenant_id, monkeypatch):
     sent: List[dict[str, Any]] = []
 
     async def _fake_send(*_args, **kwargs):
@@ -268,12 +279,14 @@ async def test_reject_sends_rejection_notice(client, manager_headers, tenant_id,
     )
     assert dec.status_code == 200, dec.text
     block = await _comm_block(tenant_id, lead_id)
-    assert block.get("lead_rejected", {}).get("status") == "sent"
-    assert len(sent) == 1
+    assert block.get("lead_rejected", {}).get("status") == "skipped"
+    assert len(sent) == 0
 
 
 @pytest.mark.anyio
-async def test_conversion_sends_moving_forward(client, manager_headers, tenant_id, monkeypatch):
+async def test_conversion_skips_moving_forward_without_pipeline(
+    client, manager_headers, tenant_id, monkeypatch
+):
     sent: List[dict[str, Any]] = []
 
     async def _fake_send(*_args, **kwargs):
@@ -349,5 +362,5 @@ async def test_conversion_sends_moving_forward(client, manager_headers, tenant_i
     assert proc.status_code == 200, proc.text
 
     block = await _comm_block(tenant_id, lead_id)
-    assert block.get("moving_forward", {}).get("status") == "sent"
-    assert any(s.get("to") == email for s in sent)
+    assert block.get("moving_forward", {}).get("status") == "skipped"
+    assert len(sent) == 0

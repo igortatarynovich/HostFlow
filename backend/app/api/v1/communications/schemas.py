@@ -545,6 +545,10 @@ class CommunicationDispatchRequest(BaseModel):
     simulate_failure: bool = False
     provider_message_ref: str | None = Field(default=None, max_length=255)
     provider_payload: Dict[str, Any] = Field(default_factory=dict)
+    # C5 — required for outbound (except internal notes): purpose + template metadata.
+    communication_purpose: str | None = Field(default=None, max_length=128)
+    template_metadata: Dict[str, Any] | None = None
+    locale: str | None = Field(default=None, max_length=16)
 
 
 class CommunicationDispatchResponse(BaseModel):

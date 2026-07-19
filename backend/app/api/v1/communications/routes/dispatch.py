@@ -26,6 +26,11 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.communications.send_pipeline import (
+    CommunicationSendRequest,
+    authorize_outbound_communication,
+    template_metadata_from_mapping,
+)
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id_optional,
 )
@@ -96,6 +101,60 @@ __all__ = [
 router = APIRouter(tags=["communications"])
 
 
+def _payload_dict(msg: CommunicationMessage) -> dict:
+    raw = getattr(msg, "payload", None)
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+async def _authorize_outbound_or_reason(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    msg: CommunicationMessage,
+    body: CommunicationDispatchRequest,
+) -> str | None:
+    """C5: outbound non-notes must pass the Communication Pipeline. Returns deny reason or None."""
+    if bool(getattr(msg, "is_internal_note", False)):
+        return None
+    if str(getattr(msg, "direction", "") or "") != "outbound":
+        return None
+    if body.simulate_failure:
+        # Still require authorization before simulated failure (no domain guess).
+        pass
+
+    payload = _payload_dict(msg)
+    purpose = (
+        str(body.communication_purpose or "").strip()
+        or str(payload.get("communication_purpose") or "").strip()
+    )
+    template_raw = body.template_metadata
+    if not isinstance(template_raw, dict):
+        template_raw = payload.get("template_metadata_v1")
+    template = template_metadata_from_mapping(
+        template_raw if isinstance(template_raw, dict) else None
+    )
+    locale = str(body.locale or payload.get("locale") or "").strip() or None
+
+    if not purpose or template is None:
+        return "communication_pipeline_required"
+
+    auth = await authorize_outbound_communication(
+        db,
+        CommunicationSendRequest(
+            tenant_id=tenant_id,
+            thread_id=str(thread.id),
+            channel=str(thread.channel or msg.channel or ""),
+            communication_purpose=purpose,
+            template=template,
+            locale=locale,
+        ),
+    )
+    if not auth.allowed:
+        return str(auth.reason_code or "communication_pipeline_denied")
+    return None
+
+
 @router.post(
     "/messages/{message_id}/dispatch",
     response_model=CommunicationDispatchResponse,
@@ -129,6 +188,24 @@ async def dispatch_message(
     ):
         _require_outbound_comms_not_billing_blocked(tenant, license_row)
     actor_id = str(current_user.sub) if getattr(current_user, "sub", None) else None
+
+    pipeline_reason = await _authorize_outbound_or_reason(
+        db, tenant_id=tenant_id, thread=thread, msg=msg, body=body
+    )
+    if pipeline_reason is not None:
+        msg.delivery_status = "failed"
+        msg.error_message = pipeline_reason[:500]
+        thread.updated_at = _now_utc()
+        await db.commit()
+        await db.refresh(msg)
+        await db.refresh(thread)
+        return CommunicationDispatchResponse(
+            dispatched=False,
+            message=_message_out(msg),
+            thread=_thread_out(thread),
+            reason=pipeline_reason,
+        )
+
     if thread.channel == "email" and not body.simulate_failure:
         reason = await _dispatch_email_message_via_tenant_smtp(
             db,
@@ -330,6 +407,27 @@ async def dispatch_queued_messages(
                 continue
         attempted_count += 1
         attempt_before = _dispatch_attempt_count(msg)
+        # C5: queued retries must re-enter the same Communication Pipeline.
+        queue_body = CommunicationDispatchRequest(
+            mark_delivered=bool(body.mark_delivered),
+            simulate_failure=bool(body.simulate_failure),
+        )
+        pipeline_reason = await _authorize_outbound_or_reason(
+            db, tenant_id=tenant_id, thread=thread, msg=msg, body=queue_body
+        )
+        if pipeline_reason is not None:
+            msg.delivery_status = "failed"
+            msg.error_message = pipeline_reason[:500]
+            failed_count += 1
+            items.append(
+                CommunicationDispatchResponse(
+                    dispatched=False,
+                    message=_message_out(msg),
+                    thread=_thread_out(thread),
+                    reason=pipeline_reason,
+                )
+            )
+            continue
         if thread.channel == "email" and not body.simulate_failure:
             reason = await _dispatch_email_message_via_tenant_smtp(
                 db,

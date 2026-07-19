@@ -20,6 +20,47 @@ from backend.tests.api.test_sales_targeted_advertising_intake import (
 pytestmark = pytest.mark.anyio
 
 
+def _c5_pipeline_fields(**overrides: object) -> dict:
+    """Outbound send must carry Communication Pipeline authorization inputs (C5)."""
+    payload = {
+        "thread_id": "11111111-1111-1111-1111-111111111111",
+        "communication_purpose": "qualification_questionnaire_request",
+        "locale": "pl",
+        "template_metadata": {
+            "template_id": "tpl_sales_questionnaire_v1",
+            "template_version": "1",
+            "module_owner": "sales",
+            "communication_domain": "sales",
+            "communication_purpose": "qualification_questionnaire_request",
+            "supported_channels": ["email"],
+            "supported_locales": ["pl", "en", "ru"],
+            "lifecycle_status": "active",
+            "policy_version": "sales.communication_policy.v1",
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _allow_c5_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    from backend.app.communications.send_pipeline import CommunicationSendAuthorization
+
+    async def _allow(_db, _request):  # noqa: ANN001
+        return CommunicationSendAuthorization(
+            allowed=True,
+            reason_code="authorized",
+            context=None,
+            policy=None,
+            template_decision=None,
+            authorization_id="test-c5-auth",
+        )
+
+    monkeypatch.setattr(
+        "backend.app.communications.send_pipeline.authorize_outbound_communication",
+        _allow,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _noop(*args, **kwargs):  # noqa: ANN002, ANN003
@@ -91,6 +132,7 @@ async def test_questionnaire_email_preview_and_send_reuses_invite(
         "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
         send_mock,
     )
+    _allow_c5_pipeline(monkeypatch)
 
     preview = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/preview",
@@ -111,6 +153,7 @@ async def test_questionnaire_email_preview_and_send_reuses_invite(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(),
             "form_locale": "pl",
             "recipient_email": "client@example.test",
             "subject": body["subject"],
@@ -148,6 +191,7 @@ async def test_questionnaire_email_preview_and_send_reuses_invite(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(locale="en"),
             "form_locale": "en",
             "recipient_email": "client@example.test",
             "subject": preview2.json()["subject"],
@@ -203,6 +247,7 @@ async def test_questionnaire_email_requires_smtp(
         "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
         AsyncMock(side_effect=ValueError("TENANT_EMAIL_NOT_CONFIGURED")),
     )
+    _allow_c5_pipeline(monkeypatch)
 
     preview = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/preview",
@@ -217,6 +262,7 @@ async def test_questionnaire_email_requires_smtp(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(locale="ru"),
             "form_locale": "ru",
             "recipient_email": "x@example.test",
             "subject": preview.json()["subject"],
@@ -369,6 +415,7 @@ async def test_questionnaire_email_send_ignores_stale_client_signature(
         "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
         send_mock,
     )
+    _allow_c5_pipeline(monkeypatch)
 
     preview = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/preview",
@@ -383,6 +430,7 @@ async def test_questionnaire_email_send_ignores_stale_client_signature(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(),
             "form_locale": "pl",
             "recipient_email": "client@example.test",
             "subject": preview.json()["subject"],
@@ -431,6 +479,7 @@ async def test_questionnaire_email_mints_new_invite_after_submitted(
         "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
         send_mock,
     )
+    _allow_c5_pipeline(monkeypatch)
 
     preview = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/preview",
@@ -444,6 +493,7 @@ async def test_questionnaire_email_mints_new_invite_after_submitted(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(),
             "form_locale": "pl",
             "recipient_email": "client@example.test",
             "subject": preview.json()["subject"],
@@ -487,6 +537,7 @@ async def test_questionnaire_email_mints_new_invite_after_submitted(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(),
             "form_locale": "en",
             "recipient_email": "client@example.test",
             "subject": body2["subject"],
@@ -534,11 +585,13 @@ async def test_questionnaire_email_send_failure_does_not_mark_sent(
         "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
         AsyncMock(side_effect=RuntimeError("SMTP timeout")),
     )
+    _allow_c5_pipeline(monkeypatch)
 
     send = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
         headers=manager_headers,
         json={
+            **_c5_pipeline_fields(),
             "form_locale": "pl",
             "recipient_email": "client@example.test",
             "subject": "Temat",
@@ -556,3 +609,45 @@ async def test_questionnaire_email_send_failure_does_not_mark_sent(
         )
         assert invite is not None
         assert invite.status == "not_sent"
+
+
+
+@pytest.mark.asyncio
+async def test_questionnaire_email_send_requires_communication_pipeline(
+    client: AsyncClient,
+    tenant_id: str,
+    manager_headers: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """C5: send without thread/purpose/template_metadata is fail-closed."""
+    await _seed_sales_profile(tenant_id)
+    await _seed_smtp(tenant_id)
+    lead = await _create_meta_client_lead(tenant_id)
+    lead_id = str(lead.id)
+
+    send_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        send_mock,
+    )
+
+    preview = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite/email/preview",
+        headers=manager_headers,
+        json={"form_locale": "pl", "recipient_email": "client@example.test"},
+    )
+    assert preview.status_code == 200, preview.text
+
+    send = await client.post(
+        f"/api/v1/leads/{lead_id}/questionnaire-invite/email/send",
+        headers=manager_headers,
+        json={
+            "form_locale": "pl",
+            "recipient_email": "client@example.test",
+            "subject": preview.json()["subject"],
+            "body": preview.json()["body"],
+        },
+    )
+    assert send.status_code == 422, send.text
+    assert send.json()["detail"]["code"] == "communication_pipeline_required"
+    send_mock.assert_not_awaited()

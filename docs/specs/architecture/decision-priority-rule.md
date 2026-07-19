@@ -44,6 +44,7 @@ A proposal is **architecturally wrong** (regardless of tests / runtime behavior)
 | Building one module as an internal part of another | Violates L0 module independence |
 | Bypassing a published contract with a direct implementation call | Contract is the only legal edge |
 | Inferring ownership from UI, URL, form, or legacy flags | Non-SoT masquerading as routing/ownership |
+| Direct transport send / template pick / module_owner guess outside Communication Pipeline | Bypasses C1–C5 chain (**INV-17**) |
 
 Lower layers (implementation convenience, speed) **cannot** override or bypass higher layers (L0 → ownership → contracts).
 
@@ -77,5 +78,6 @@ Forms / Shared Intake → Recruitment/Sales handler directly
 
 ## History
 
-- 2026-07-19: Adopted as mandatory decision priority after L0 correction on Intake Runtime Split (R3.5).
+- 2026-07-19: Adopted as mandatory decision priority after L0 correction on Intake Runtime Split (R3.5).  
+- 2026-07-19: INV-17 outbound Communication Pipeline reject signal added (C5).
 - 2026-07-19: Expanded reject signals; linked R5 gate (no cross-domain transactional monolith).

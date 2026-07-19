@@ -1344,6 +1344,8 @@ def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
             return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
         if code in {"invalid_email", "empty_message", "not_client_lead", "invite_error"}:
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        if code == "communication_pipeline_required" or "authorization" in (exc.extra or {}):
+            return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
     return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
@@ -1451,6 +1453,10 @@ async def send_lead_questionnaire_invite_email(
             body=payload.body,
             actor_user_id=str(current_user.sub or "").strip() or None,
             save_email_to_lead=payload.save_email_to_lead,
+            thread_id=payload.thread_id,
+            communication_purpose=payload.communication_purpose,
+            template_metadata=payload.template_metadata,
+            locale=payload.locale,
         )
     except QuestionnaireEmailError as exc:
         await db.commit()  # persist failed delivery journal row

@@ -140,12 +140,11 @@ async def compose_questionnaire_invite_email(
     force_new_invite: bool = False,
     recipient_email: str | None = None,
     actor_user_id: str | None = None,
+    thread_id: str | None = None,
 ) -> QuestionnaireEmailCompose:
-    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
-        raise QuestionnaireEmailError(
-            "not_client_lead",
-            "Questionnaire email is only available for client leads",
-        )
+    # C5: domain is not inferred from Lead.lead_type — pipeline owns eligibility.
+    # Compose may prepare content, but send requires thread_id + pipeline authorize.
+    _ = thread_id  # validated at send time
 
     locale = (_trim(form_locale) or "pl").lower()[:2]
     submitted_before = (
@@ -242,7 +241,48 @@ async def send_questionnaire_invite_email(
     body: str,
     actor_user_id: str | None = None,
     save_email_to_lead: bool = True,
+    thread_id: str | None = None,
+    communication_purpose: str | None = None,
+    template_metadata: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
+    from backend.app.communications.send_pipeline import (
+        CommunicationSendRequest,
+        authorize_outbound_communication,
+        template_metadata_from_mapping,
+    )
+
+    # C5: no transport without full Communication Pipeline authorization.
+    thread = _trim(thread_id)
+    purpose = _trim(communication_purpose)
+    template = template_metadata_from_mapping(
+        template_metadata if isinstance(template_metadata, dict) else None
+    )
+    if not thread or not purpose or template is None:
+        raise QuestionnaireEmailError(
+            "communication_pipeline_required",
+            "Outbound questionnaire email requires thread_id, communication_purpose, "
+            "and template_metadata approved by the Communication Pipeline.",
+        )
+
+    auth = await authorize_outbound_communication(
+        db,
+        CommunicationSendRequest(
+            tenant_id=str(tenant_id),
+            thread_id=thread,
+            channel=DELIVERY_CHANNEL_EMAIL,
+            communication_purpose=purpose,
+            template=template,
+            locale=_trim(locale) or _trim(form_locale) or None,
+        ),
+    )
+    if not auth.allowed:
+        raise QuestionnaireEmailError(
+            str(auth.reason_code or "communication_pipeline_denied"),
+            "Communication Pipeline denied questionnaire email send.",
+            authorization=auth.to_dict(),
+        )
+
     force_new = force_new_invite or _should_mint_new_invite_for_email(lead, force_new_invite=False)
     compose = await compose_questionnaire_invite_email(
         db,
@@ -253,6 +293,7 @@ async def send_questionnaire_invite_email(
         force_new_invite=force_new,
         recipient_email=recipient_email,
         actor_user_id=actor_user_id,
+        thread_id=thread,
     )
     if compose.invite is None:
         raise QuestionnaireEmailError("invite_error", "Questionnaire invite is missing")
