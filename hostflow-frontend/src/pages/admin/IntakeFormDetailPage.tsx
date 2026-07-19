@@ -12,7 +12,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, settingsLeadFormBuilderPath } from '../../app/crmAppPaths'
 import {
   getIntakeFormDetail,
   patchIntakeForm,
@@ -271,6 +271,25 @@ export default function IntakeFormDetailPage() {
                     })}
                   </p>
                 )}
+              </div>
+
+            <div className="rounded-xl border border-brand-100 bg-brand-50/30 p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('admin.forms_builder.entry_title', { defaultValue: 'Composition Builder' })}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {t('admin.forms_builder.entry_help', {
+                    defaultValue:
+                      'Assemble Field Catalog components into a draft. Save draft only — publish stays separate.',
+                  })}
+                </p>
+                <Link
+                  to={settingsLeadFormBuilderPath(formId)}
+                  className="btn btn-primary mt-3 inline-flex items-center gap-1.5"
+                >
+                  <IconForms size={16} />
+                  {t('admin.forms_builder.open', { defaultValue: 'Open Builder' })}
+                </Link>
               </div>
 
               <div className="rounded-xl border border-brand-100 bg-brand-50/30 p-4">

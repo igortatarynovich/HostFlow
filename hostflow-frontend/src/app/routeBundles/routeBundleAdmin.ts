@@ -25,5 +25,6 @@ export { default as EmailSettingsPage } from '../../pages/admin/EmailSettingsPag
 export { default as TenantLinksSettingsPage } from '../../pages/admin/TenantLinksSettingsPage'
 export { default as LeadFormsSettingsPage } from '../../pages/admin/LeadFormsSettingsPage'
 export { default as IntakeFormDetailPage } from '../../pages/admin/IntakeFormDetailPage'
+export { default as FormsBuilderPage } from '../../pages/admin/FormsBuilderPage'
 export { default as LegalDocumentsPage } from '../../pages/admin/LegalDocumentsPage'
 export { default as LeadMessageTemplatesPage } from '../../pages/admin/LeadMessageTemplatesPage'
