@@ -34,7 +34,9 @@ Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — 
 
 **Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
 **Matrix:** [`Intake Canonical Input Matrix`](../specs/architecture/intake-canonical-input-matrix.md) **ACCEPTED / FROZEN** · epic [`COMPLETE`](../specs/tasks/intake-canonical-input-matrix.md).  
-**Next:** [`Intake Runtime Split V1`](../specs/tasks/intake-runtime-split-v1.md) (**READY FOR IMPLEMENTATION**) — Flights / Intake Routing runtime **UNLOCKED**; Forms P3–P5 remain **LOCKED**.
+**Runtime:** [`Intake Runtime Split V1`](../specs/tasks/intake-runtime-split-v1.md) (**ACTIVE** · R1+R2 ✅ · R3) — Flights / Intake Routing runtime **UNLOCKED**.  
+**Communications:** [`Intake Domain Separation & Communication Context V1`](../specs/tasks/intake-domain-separation-communication-context-v1.md) (**READY**) · Stage 1 audit [`ACTIVE`](../specs/architecture/intake-communication-context-audit-v1.md).  
+**Forms P3–P5** remain **LOCKED**.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
@@ -55,4 +57,5 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.  
 - 2026-07-19: P2.5 Builder UI COMPLETE — MVP closed; next Flights / Intake Routing.  
 - 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (docs-only gate).  
-- 2026-07-19: Matrix ACCEPTED / FROZEN; Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.
+- 2026-07-19: Matrix ACCEPTED / FROZEN; Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.  
+- 2026-07-19: Runtime Split R1+R2 merged; R3 handlers + Communication Context epic / Stage 1 audit opened.

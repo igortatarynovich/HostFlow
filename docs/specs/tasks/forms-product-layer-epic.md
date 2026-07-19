@@ -5,7 +5,7 @@
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
 **P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
-**Next epic:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · **READY FOR IMPLEMENTATION** · matrix [`ACCEPTED / FROZEN`](../architecture/intake-canonical-input-matrix.md)
+**Next epic:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · **ACTIVE** (R3) · Communication Context [`READY`](intake-domain-separation-communication-context-v1.md) · matrix [`ACCEPTED / FROZEN`](../architecture/intake-canonical-input-matrix.md)
 
 ---
 

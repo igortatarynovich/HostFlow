@@ -455,7 +455,7 @@ async def test_submit_persists_submission_before_decision_layer_failure(
         await session.commit()
 
     monkeypatch.setattr(
-        "backend.app.intake_platform.intake_submit_service.submit_public_intake_lead_draft",
+        "backend.app.modules.sales.intake.inquiry_draft_handler.submit_public_intake_lead_draft",
         AsyncMock(side_effect=RuntimeError("decision_layer_boom")),
     )
 
@@ -581,7 +581,7 @@ async def test_unresolved_skip_decision_layer(client: AsyncClient, auth_headers:
 
     dl_mock = AsyncMock(return_value=(object(), "should-not-run"))
     monkeypatch.setattr(
-        "backend.app.intake_platform.intake_submit_service.submit_public_intake_lead_draft",
+        "backend.app.modules.sales.intake.inquiry_draft_handler.submit_public_intake_lead_draft",
         dl_mock,
     )
 
