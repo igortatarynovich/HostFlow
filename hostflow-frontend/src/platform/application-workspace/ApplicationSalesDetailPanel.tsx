@@ -1,6 +1,7 @@
 import type { Application } from '../../api/types/application'
 import { useI18n } from '../../i18n'
 import { clientDetailPath } from '../../services/platformHandoff'
+import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesInquiryPossibleDuplicatesSection'
 import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
 import { ContextRail } from '../context-rail'
 import {
@@ -119,10 +120,13 @@ export function ApplicationSalesDetailPanel({
           </div>
         ),
         summary: (
-          <SalesInquiryQuestionnaireSection
-            leadId={application.id}
-            onUpdated={onQuestionnaireUpdated}
-          />
+          <div className="space-y-4">
+            <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
+            <SalesInquiryQuestionnaireSection
+              leadId={application.id}
+              onUpdated={onQuestionnaireUpdated}
+            />
+          </div>
         ),
       }}
       contextTitles={{

@@ -906,6 +906,42 @@ export async function reconcileCommunicationThreadUnread(payload?: {
   return data as { processed: number; updated: number; total_unread: number }
 }
 
+export type CommunicationThreadRematchItem = {
+  thread_id: string
+  confidence: string
+  auto_linked: boolean
+  skipped?: boolean
+  skip_reason?: string | null
+  counterparty_email?: string | null
+  reasons?: string[]
+  hits?: Array<{ entity_type: string; entity_id: string; reason?: string }>
+}
+
+export type CommunicationThreadRematchResponse = {
+  processed: number
+  linked: number
+  ambiguous: number
+  none: number
+  skipped: number
+  dry_run: boolean
+  items: CommunicationThreadRematchItem[]
+  unavailable_reason?: string | null
+}
+
+/** Controlled G15 rematch for historically unlinked email threads (default dry_run). */
+export async function rematchUnlinkedCommunicationThreads(opts?: {
+  threadIds?: string[]
+  limit?: number
+  dryRun?: boolean
+}): Promise<CommunicationThreadRematchResponse> {
+  const { data } = await api.post('/communications/threads/rematch-unlinked', {
+    thread_ids: opts?.threadIds,
+    limit: opts?.limit ?? 100,
+    dry_run: opts?.dryRun ?? true,
+  })
+  return data as CommunicationThreadRematchResponse
+}
+
 export async function autoAssignCommunicationThread(
   threadId: string
 ): Promise<{ assigned: boolean; thread: CommunicationThread; reason?: string | null; strategy?: string | null; assignee_id?: string | null; candidates?: Array<Record<string, any>> }> {

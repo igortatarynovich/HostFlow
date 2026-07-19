@@ -44,6 +44,29 @@ export async function convertSalesInquiryToClient(applicationId: string): Promis
   return data
 }
 
+export type SalesInquiryDuplicateMatchReason = 'phone' | 'email' | 'phone_and_email'
+
+export type SalesInquiryDuplicateHint = {
+  application: Application
+  match_reason: SalesInquiryDuplicateMatchReason
+}
+
+export type SalesInquiryDuplicateListResponse = {
+  items: SalesInquiryDuplicateHint[]
+  total: number
+}
+
+export async function listSalesInquiryPossibleDuplicates(
+  applicationId: string,
+  opts?: { limit?: number },
+): Promise<SalesInquiryDuplicateListResponse> {
+  const { data } = await api.get<SalesInquiryDuplicateListResponse>(
+    `/sales/inquiries/${encodeURIComponent(applicationId)}/possible-duplicates`,
+    { params: { limit: opts?.limit ?? 10 } },
+  )
+  return data
+}
+
 export async function listRecruitmentApplications(opts?: {
   limit?: number
   offset?: number
