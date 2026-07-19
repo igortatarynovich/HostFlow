@@ -129,6 +129,8 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Field Catalog registry (P1.1) | `field_catalog/` · `forms.field_catalog.registry.v1` |
 | Field Catalog descriptors (P1.2) | `field_catalog/descriptors.py` · `forms.field_catalog.descriptors.v1` |
 | Field Catalog stdlib (P1.3) | `field_catalog/stdlib.py` · `forms.field_catalog.stdlib.v1` |
+| Field Catalog extension (P1.4) | `field_catalog/extensions.py` · `forms.field_catalog.extension.v1` |
+| Catalog v1 freeze | [`forms-field-catalog-v1-freeze.md`](forms-field-catalog-v1-freeze.md) |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
 HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
@@ -146,6 +148,7 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - P1.1: `test_forms_p1_1_registry_contract.py` · `test_forms_p1_1_registry_gates.py`  
 - P1.2: `test_forms_p1_2_descriptors_contract.py` · `test_forms_p1_2_descriptors_gates.py`  
 - P1.3: `test_forms_p1_3_stdlib_contract.py` · `test_forms_p1_3_stdlib_gates.py`  
+- P1.4: `test_forms_p1_4_extension_contract.py` · `test_forms_p1_4_extension_gates.py`  
 - C4: `test_forms_platform_c4.py`
 
 ---
@@ -186,5 +189,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: P1.2 Design ACTIVE; Descriptor Contract READY FOR IMPLEMENTATION; declarative-only rule.  
 - 2026-07-18: P1.2 COMPLETE (`1f7b4aba`); P1.3 Standard Library READY FOR IMPLEMENTATION.  
 - 2026-07-18: P1.3 Standard Library — `forms.field_catalog.stdlib.v1`; Builder UNLOCKED; P1.4 READY.  
-- 2026-07-19: P1.3 COMPLETE (`0cf7fc00`); P1.4 Extension API READY FOR IMPLEMENTATION.
+- 2026-07-19: P1.3 COMPLETE (`0cf7fc00`); P1.4 Extension API READY FOR IMPLEMENTATION.  
+- 2026-07-19: P1.4 Extension API — `forms.field_catalog.extension.v1`; Catalog v1 FROZEN; P2 Builder READY.
 - 2026-07-18: P1.2 Descriptor Contract implementation — `forms.field_catalog.descriptors.v1`.

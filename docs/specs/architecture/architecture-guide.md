@@ -19,8 +19,8 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 5. **Forms Sprint 4:** ✅ **COMPLETE** ([`../tasks/forms-sprint-4.md`](../tasks/forms-sprint-4.md) · PR #39 · `779cffd3`).
 6. **Forms Sprint 5:** ✅ **COMPLETE** ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md) · PR #40 · `a6df02f0`).
 7. **Forms Sprint 6:** ✅ **COMPLETE** ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md) · PR #41 · `7e259f22`) — backend platform contour closed.
-8. **Forms Product Layer:** **ACTIVE** — P1.1–P1.3 ✅ COMPLETE; **Builder UNLOCKED**; **P1.4 Extension API READY FOR IMPLEMENTATION**.
-9. Preferred sequence: close **P1.4**, then P2 Builder — without returning to Field Catalog architecture.
+8. **Forms Product Layer P1:** ✅ **COMPLETE** (Registry · Descriptors · Stdlib · Extension); Catalog contracts v1 **FROZEN**.
+9. **P2 Builder:** **READY FOR IMPLEMENTATION** ([`../tasks/forms-product-p2-builder.md`](../tasks/forms-product-p2-builder.md)) — Catalog client only; no v1 contract rewrites.
 10. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  
 11. Integration base-known CI failures: [`../tasks/acquisition-epic-p-base-known-ci-failures.md`](../tasks/acquisition-epic-p-base-known-ci-failures.md).
 
@@ -68,3 +68,4 @@ UI **не** определяет архитектуру.
 - 2026-07-18: P1.2 Descriptors COMPLETE (`1f7b4aba`); P1.3 Standard Library READY FOR IMPLEMENTATION; Builder LOCKED.
 - 2026-07-18: P1.3 Standard Library implementation — Basic pack via public Catalog APIs; Builder UNLOCKED; P1.4 READY.
 - 2026-07-19: P1.3 COMPLETE (`0cf7fc00`); P1.4 Extension API READY FOR IMPLEMENTATION.
+- 2026-07-19: P1.4 Extension API + Field Catalog v1 freeze; P1 foundation COMPLETE; P2 Builder READY.

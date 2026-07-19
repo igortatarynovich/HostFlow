@@ -9,7 +9,10 @@ from __future__ import annotations
 from typing import Any
 
 from backend.app.forms_platform.errors import FormsCatalogComponentDuplicateError
-from backend.app.forms_platform.field_catalog.models import build_component_record
+from backend.app.forms_platform.field_catalog.models import (
+    SOURCE_PLATFORM,
+    build_component_record,
+)
 from backend.app.forms_platform.field_catalog.registry import (
     FieldCatalogRegistry,
     platform_registry,
@@ -131,6 +134,7 @@ def _component(
             "normalization": normalization,
         },
         metadata={"stdlib_contract": STDLIB_CONTRACT},
+        source=SOURCE_PLATFORM,
         require_complete_descriptors=True,
     )
 
