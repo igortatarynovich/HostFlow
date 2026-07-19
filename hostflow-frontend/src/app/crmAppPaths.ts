@@ -27,6 +27,10 @@ export function settingsLeadFormDetailPath(formId: string): string {
   return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
 }
 
+export function settingsLeadFormBuilderPath(formId: string): string {
+  return `${settingsLeadFormDetailPath(formId)}/builder`
+}
+
 export function recruitmentSearchPath(searchId: string): string {
   return `${P.recruitmentSearches}/${encodeURIComponent(searchId)}`
 }

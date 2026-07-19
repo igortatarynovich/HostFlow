@@ -57,6 +57,7 @@ import {
   LegalDocumentsPage,
   LeadFormsSettingsPage,
   IntakeFormDetailPage,
+  FormsBuilderPage,
   LeadMessageTemplatesPage,
   IntegrationsHubPage,
   IntegrationsSourcePlaceholderPage,
@@ -749,6 +750,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'settings-lead-forms',
     path: seg(CRM.settingsLeadForms),
     Component: LeadFormsSettingsPage,
+    permission: ['admin.users', 'leads.view'],
+  },
+  {
+    key: 'settings-forms-builder',
+    path: `${seg(CRM.settingsLeadForms)}/:formId/builder`,
+    Component: FormsBuilderPage,
     permission: ['admin.users', 'leads.view'],
   },
   {
