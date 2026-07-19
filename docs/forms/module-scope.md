@@ -32,7 +32,7 @@ Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — 
 
 **Next:** [`Forms Product Layer`](../specs/tasks/forms-product-layer-epic.md) (**ACTIVE**) — P1 [`Field Catalog`](../specs/tasks/forms-product-p1-field-catalog.md) as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API** → P2 Builder (Catalog client) → P3 Publish UI → P4 Themes → P5 Analytics.
 
-**Rule:** Field Catalog SoT; P1 foundation **COMPLETE**; public contracts v1 **FROZEN**. **P2 Builder READY** — thin Catalog client; extend v1 compatibly or introduce v2.
+**Rule:** P1 foundation **COMPLETE** (`97aac4e3`); Field Catalog v1 **FROZEN**. **P2 Builder READY** — reads unified Catalog, assembles composition, saves config; does not invent types, fork validation/normalization, or distinguish Basic vs extension.
 
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 

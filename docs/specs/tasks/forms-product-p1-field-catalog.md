@@ -19,7 +19,7 @@
 | Basic Component Library | ✅ **ACTIVE** |
 | Builder | ✅ **UNLOCKED** |
 | `forms.feature_flags.builder_enabled` | **true** |
-| **P1.4 Extension API** | ✅ **COMPLETE** ([`forms-product-p1-4-extension-api.md`](forms-product-p1-4-extension-api.md)) |
+| **P1.4 Extension API** | ✅ **COMPLETE** (`97aac4e3` / #54) |
 | P1 Product Layer Foundation | ✅ **COMPLETE** |
 | Catalog contracts v1 | **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md)) |
 | P2 Builder | **READY FOR IMPLEMENTATION** ([`forms-product-p2-builder.md`](forms-product-p2-builder.md)) |
@@ -213,4 +213,5 @@ Public Form / validate / normalize / envelope use Catalog rules
 - 2026-07-18: P1.2 Design **ACTIVE**; Descriptor Contract READY FOR IMPLEMENTATION; descriptors must be declarative (no executable logic); P1.3 LOCKED.  
 - 2026-07-18: P1.2 **COMPLETE** (`1f7b4aba` / #50); P1.3 Standard Library **READY FOR IMPLEMENTATION**.  
 - 2026-07-19: P1.3 **COMPLETE** (`0cf7fc00` / #52); Builder **UNLOCKED**; P1.4 Extension API **READY FOR IMPLEMENTATION**.  
-- 2026-07-19: P1.4 **COMPLETE**; Catalog v1 **FROZEN**; P1 foundation **COMPLETE**; P2 Builder **READY**.
+- 2026-07-19: P1.4 **COMPLETE**; Catalog v1 **FROZEN**; P1 foundation **COMPLETE**; P2 Builder **READY**.  
+- 2026-07-19: P1.4 merge `97aac4e3` (#54); P2 boundary: read Catalog · compose · save only.

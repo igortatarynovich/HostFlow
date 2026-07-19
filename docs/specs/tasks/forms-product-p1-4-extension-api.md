@@ -1,26 +1,36 @@
 # Forms Product Layer P1.4 — Extension API
 
-**Status:** READY FOR REVIEW  
+**Status:** **COMPLETE** (2026-07-19 · merge `97aac4e3` · [PR #54](https://github.com/igortatarynovich/HostFlow/pull/54))  
 **Prerequisite:** P1.3 Standard Library **COMPLETE** ([`forms-product-p1-3-standard-library.md`](forms-product-p1-3-standard-library.md) · `0cf7fc00` / #52)  
 **Closes:** Forms Product Layer **P1** foundation  
-**Then:** P2 Builder **READY**; Field Catalog public contracts v1 **FROZEN** ([`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md))  
-**Canon:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md)
+**Next:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · **READY FOR IMPLEMENTATION**  
+**Canon:** [`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md)
 
 ---
 
-## DoD delivered
+## Closed gates
 
-- [x] Public extension registration (`register_extension_component` / `register_module_components`)  
-- [x] Source: `platform` | `module:<id>`  
-- [x] Unified find / Builder catalog (no Basic vs Extension split for composition)  
-- [x] Same Registry + Descriptor validation path  
-- [x] Basic override forbidden  
-- [x] No silent version replace (duplicate raises)  
-- [x] Per-module / per-component error isolation  
-- [x] Deterministic catalog independent of module load order  
-- [x] No tenant-level extensions  
-- [x] Contract + gate tests  
-- [x] v1 freeze documented  
+| Gate | Status |
+|------|--------|
+| P1.4 Extension API | ✅ **COMPLETE** |
+| Extension Component Platform | ✅ **ACTIVE** (`forms.field_catalog.extension.v1`) |
+| Module Component Registration | ✅ **ACTIVE** |
+| P1 Product Layer Foundation | ✅ **COMPLETE** |
+| Field Catalog v1 | **FROZEN** |
+| P2 Builder | **READY FOR IMPLEMENTATION** |
+
+---
+
+## Delivered
+
+- Public extension / module pack registration  
+- Same Registry + Descriptor contracts as Basic  
+- `source` = `platform` | `module:<id>`  
+- Basic override protection; no silent version replace  
+- Isolated module errors; deterministic unified catalog  
+- No tenant extensions  
+- Catalog contracts v1 freeze documented  
+- 123 forms_platform tests covering P1.1–P1.4  
 
 ---
 
@@ -30,6 +40,7 @@
 |----------|------|
 | Contract | `forms.field_catalog.extension.v1` |
 | Module | `backend/app/forms_platform/field_catalog/extensions.py` |
+| Freeze | [`forms-field-catalog-v1-freeze.md`](../architecture/forms-field-catalog-v1-freeze.md) |
 | Tests | `test_forms_p1_4_extension_contract.py` · `test_forms_p1_4_extension_gates.py` |
 
 ---
@@ -38,4 +49,4 @@
 
 - 2026-07-18: Stub opened with P1.3.  
 - 2026-07-19: Boundaries READY after P1.3 merge.  
-- 2026-07-19: Implementation READY FOR REVIEW.
+- 2026-07-19: **COMPLETE** — merged PR #54 (`97aac4e3`).
