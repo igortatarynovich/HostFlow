@@ -1,7 +1,7 @@
-"""Recruitment-owned intake handler — recruitment.lead_draft (Runtime Split R3/R4).
+"""Recruitment-owned intake create path — domain Application result (R4).
 
+Called only via Flights RecruitmentIntakePort adapter (R3.5).
 Must not import Sales models/services/packages.
-Creates Application as destination result; Lead is optional transport only.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from backend.app.modules.recruitment.services.application_result_service import 
     ensure_application_result_for_transport_lead,
 )
 
+# Domain create path id (internal). Flights dispatcher id is applied by port adapter.
 HANDLER_ID = HANDLER_RECRUITMENT_LEAD_DRAFT
 ROUTE_INTENT = RouteIntent.candidate_application.value
 

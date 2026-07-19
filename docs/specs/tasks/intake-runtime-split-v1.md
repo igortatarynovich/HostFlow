@@ -1,9 +1,10 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1–R3 COMPLETE · R4 IN THIS PR)  
+**Status:** **ACTIVE** (R1–R4 COMPLETE · **R3.5 Flights dispatch boundary IN THIS PR**)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
-**Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md) · Stage 1 audit [`../architecture/intake-communication-context-audit-v1.md`](../architecture/intake-communication-context-audit-v1.md)  
+**L0 correction:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md) — Forms → Flights → destination port → Recruitment/Sales  
+**Communication epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
 **Parents:** [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`ADR-024`](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [`intake-routing-foundation.md`](../modules/intake-routing-foundation.md)  
 **Unlocks:** Flights / Intake Routing runtime (**UNLOCKED**)  
 **Still LOCKED:** Forms P3–P5  
@@ -35,11 +36,12 @@ Not routing SoT: FormPurpose · Goal Type · Outcome · `application_kind` · `l
 
 | Step | Title | Status |
 |------|-------|--------|
-| **R1** | Fail-closed route resolution | ✅ COMPLETE (`#63` / `41e83eae`) |
+| **R1** | Fail-closed route resolution | ✅ COMPLETE (`#63`) |
 | **R2** | Destination registry | ✅ COMPLETE (`#63`) |
-| **R3** | Split handlers (Sales-owned; no cross-module imports) | ✅ COMPLETE (`#64` / `5a9983a2`) |
-| **R4** | Independent result objects (Application / SalesInquiry) | **IN THIS PR** |
-| **R5** | Transactional dispatch + idempotent redelivery | NEXT |
+| **R3** | Intent split (intermediate module handlers) | ✅ COMPLETE (`#64`) — corrected by R3.5 |
+| **R4** | Independent result objects | ✅ COMPLETE (`#65`) |
+| **R3.5** | Flights-owned dispatch boundary (L0) | **IN THIS PR** |
+| **R5** | Transactional dispatch + idempotent provenance | NEXT |
 | **R6** | Physically separate queues / APIs | LATER |
 
 **Do not start R6 (queues/UI) before R1–R5.** Mixing hidden only in the frontend leaves the old blend in the backend.
@@ -146,3 +148,4 @@ Contract: `intake.destination_registry.v1` · package `backend.app.intake_platfo
 - 2026-07-19: Opened READY FOR IMPLEMENTATION after matrix acceptance; first PR = R1 + R2 only.
 - 2026-07-19: R1+R2 COMPLETE (`#63`); R3 destination-owned handlers + Communication Context epic opened.
 - 2026-07-19: R3 COMPLETE (`#64`); R4 independent Application / SalesInquiry result objects.
+- 2026-07-19: **L0 correction** — R3.5 Flights-owned dispatch boundary; Forms↛Recruitment/Sales; adapters only.

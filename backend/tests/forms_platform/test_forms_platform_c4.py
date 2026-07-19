@@ -9,9 +9,9 @@ from httpx import AsyncClient
 
 from backend.app.entity_profile.constants import WAREHOUSE_WORKER_PROFILE_CODE
 from backend.app.forms_platform.constants import (
+    DISPATCHER_CANDIDATE_APPLICATION,
+    DISPATCHER_SALES_INQUIRY,
     FORMS_PLATFORM_CONTRACT_VERSION,
-    HANDLER_RECRUITMENT_LEAD_DRAFT,
-    HANDLER_SALES_INQUIRY_DRAFT,
     STORAGE_BACKEND_TENANT_LEAD_FORM,
 )
 from backend.app.forms_platform.errors import FormsRoutingUnresolvedError
@@ -48,8 +48,8 @@ def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_c4_handler_registry_lists_recruitment_lead_draft() -> None:
     handlers = list_registered_handlers()
     ids = {row["handler_id"] for row in handlers}
-    assert HANDLER_RECRUITMENT_LEAD_DRAFT in ids
-    assert HANDLER_SALES_INQUIRY_DRAFT in ids
+    assert DISPATCHER_CANDIDATE_APPLICATION in ids
+    assert DISPATCHER_SALES_INQUIRY in ids
     lead = resolve_submission_handler(route_intent="candidate_application")
     assert lead["creates_on_create"]["application"] is True
     assert lead["creates_on_create"]["lead_draft"] is False
@@ -66,7 +66,7 @@ async def test_c4_handlers_api(client: AsyncClient, tenant_id: str) -> None:
     resp = await client.get("/api/v1/platform/forms/handlers", headers=headers)
     assert resp.status_code == 200, resp.text
     ids = {row["handler_id"] for row in resp.json()["handlers"]}
-    assert HANDLER_RECRUITMENT_LEAD_DRAFT in ids
+    assert DISPATCHER_CANDIDATE_APPLICATION in ids
 
 
 @pytest.mark.asyncio
@@ -102,7 +102,7 @@ async def test_c4_publication_resolve_api(client: AsyncClient, tenant_id: str) -
     assert body["storage_backend"] == STORAGE_BACKEND_TENANT_LEAD_FORM
     assert body["public_slug"] == slug
     assert body["entity_profile_code"] == WAREHOUSE_WORKER_PROFILE_CODE
-    assert body["submission_handler"]["handler_id"] == HANDLER_RECRUITMENT_LEAD_DRAFT
+    assert body["submission_handler"]["handler_id"] == DISPATCHER_CANDIDATE_APPLICATION
 
     by_slug = await client.get(
         "/api/v1/platform/forms/publications/resolve",
@@ -138,4 +138,4 @@ async def test_c4_intake_form_detail_includes_forms_platform(client: AsyncClient
     assert detail.status_code == 200, detail.text
     fp = detail.json().get("forms_platform") or {}
     assert fp.get("contract_version") == FORMS_PLATFORM_CONTRACT_VERSION
-    assert fp.get("submission_handler", {}).get("handler_id") == HANDLER_RECRUITMENT_LEAD_DRAFT
+    assert fp.get("submission_handler", {}).get("handler_id") == DISPATCHER_CANDIDATE_APPLICATION
