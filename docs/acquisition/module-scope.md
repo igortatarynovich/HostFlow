@@ -83,9 +83,10 @@ Campaign → Audience(s) → Flight → Channels
 2. **3B** ✅ — Endpoint binding (V1: Form + Intake Source specializations; canon = CampaignRun ↔ Endpoint)  
 3. **3C** ✅ — routing → Application | Inquiry (Submission before Decision Layer; routing once per Lead)  
 4. **3D** ✅ — **Epic P COMPLETE** — Result → Outcome → KPI — [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · E2E `test_stage_3d_epic_p_contract.py`  
-5. **3E** — Timeline + automation events  
+5. **Canonical Input Matrix** ✅ **READY** (design) — [`../specs/architecture/intake-canonical-input-matrix.md`](../specs/architecture/intake-canonical-input-matrix.md) · epic [`../specs/tasks/intake-canonical-input-matrix.md`](../specs/tasks/intake-canonical-input-matrix.md) **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → handoff → Destination **before** further routing runtime  
+6. **3E** — Timeline + automation events  
 
-**Forms Sprint 1 UNLOCKED** (Passport → Manifest → Public Contract → Adapter → Tests). **Forms Builder LOCKED.**  
+**Forms Builder MVP COMPLETE** (P2.1–P2.5). Forms P3 Publish UI **LOCKED**.  
 See [`capability-contract.md`](../specs/architecture/capability-contract.md).
 
 V1 vertical:

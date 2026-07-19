@@ -54,11 +54,13 @@ Palette · search · canvas · add/reorder/remove · properties from `config_fie
 ## Next (outside P2 Builder MVP)
 
 - **P3 Publish UI** remains LOCKED until explicitly opened.  
-- Recommended platform next: **Flights / Intake Routing** — separate Candidate Application vs Sales Inquiry intake streams.
+- **Next platform focus:** [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) · **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → `intake_handoff` → Destination **before** Flights / Intake Routing runtime.  
+  Matrix SoT: [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) (**READY**).
 
 ---
 
 ## History
 
 - 2026-07-19: P2.4 COMPLETE (`7164a66d` / #60); UI gate OPEN.  
-- 2026-07-19: **P2.5 COMPLETE** — Builder MVP closed.
+- 2026-07-19: **P2.5 COMPLETE** — Builder MVP closed.  
+- 2026-07-19: Next epic opened — Intake Canonical Input Matrix ACTIVE / matrix READY.
