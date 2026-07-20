@@ -66,6 +66,82 @@ class SalesInquiryDuplicateListResponse(BaseModel):
     total: int
 
 
+class SalesCapabilitySpineCapabilityOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: Optional[str] = None
+    source: Literal["entity_profile", "undecided"]
+    decided: bool = False
+
+
+class SalesCapabilitySpineReviewOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Optional[str] = None
+    decision: Optional[Dict[str, Any]] = None
+    candidates: List[Any] = Field(default_factory=list)
+    convert_allowed: bool = False
+    blocks_convert: bool = False
+    present: bool = False
+    reason: Optional[str] = None
+    version: Optional[int] = None
+
+
+class SalesCapabilitySpineConvertMappingOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    client_account_id: Optional[str] = None
+    flights_ledger_id: Optional[str] = None
+    destination: Optional[str] = None
+    converted_at: Optional[Any] = None
+
+
+class SalesCapabilitySpineConvertOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    available: bool = False
+    reason: Optional[str] = None
+    inquiry_status: Optional[str] = None
+    client_account_id: Optional[str] = None
+    mapping_present: bool = False
+    mapping: Optional[SalesCapabilitySpineConvertMappingOut] = None
+
+
+class SalesCapabilitySpineLineageOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sales_inquiry_id: Optional[str] = None
+    client_account_id: Optional[str] = None
+    flights_ledger_id: Optional[str] = None
+    company_id: Optional[str] = None
+    destination: Optional[str] = None
+    recorded_at: Optional[Any] = None
+    chain: List[Any] = Field(default_factory=list)
+
+
+class SalesCapabilitySpineTraceabilityOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    present: bool = False
+    lineage: Optional[SalesCapabilitySpineLineageOut] = None
+
+
+class SalesCapabilitySpineOut(BaseModel):
+    """Read-only Pipeline v1 spine projection for Capability UI."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    contract: str
+    sales_inquiry_id: Optional[str] = None
+    transport_lead_id: Optional[str] = None
+    inquiry_status: Optional[str] = None
+    capability: SalesCapabilitySpineCapabilityOut
+    review: SalesCapabilitySpineReviewOut
+    convert: SalesCapabilitySpineConvertOut
+    traceability: SalesCapabilitySpineTraceabilityOut
+    missing_sales_inquiry: bool = False
+
+
 class ApplicationStagePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

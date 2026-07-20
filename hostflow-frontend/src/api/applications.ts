@@ -44,6 +44,63 @@ export async function convertSalesInquiryToClient(applicationId: string): Promis
   return data
 }
 
+export type SalesCapabilitySpine = {
+  contract: string
+  sales_inquiry_id: string | null
+  transport_lead_id: string | null
+  inquiry_status: string | null
+  capability: {
+    code: string | null
+    source: 'entity_profile' | 'undecided'
+    decided: boolean
+  }
+  review: {
+    status: string | null
+    decision: Record<string, unknown> | null
+    candidates: unknown[]
+    convert_allowed: boolean
+    blocks_convert: boolean
+    present: boolean
+    reason?: string | null
+    version?: number | null
+  }
+  convert: {
+    available: boolean
+    reason: string | null
+    inquiry_status: string | null
+    client_account_id: string | null
+    mapping_present: boolean
+    mapping: {
+      client_account_id: string | null
+      flights_ledger_id: string | null
+      destination: string | null
+      converted_at?: unknown
+    } | null
+  }
+  traceability: {
+    present: boolean
+    lineage: {
+      sales_inquiry_id: string | null
+      client_account_id: string | null
+      flights_ledger_id: string | null
+      company_id: string | null
+      destination: string | null
+      recorded_at?: unknown
+      chain: unknown[]
+    } | null
+  }
+  missing_sales_inquiry: boolean
+}
+
+/** Display-only Pipeline v1 spine (Capability / Review / Convert / Traceability). */
+export async function getSalesInquiryCapabilitySpine(
+  applicationId: string,
+): Promise<SalesCapabilitySpine> {
+  const { data } = await api.get<SalesCapabilitySpine>(
+    `/sales/inquiries/${encodeURIComponent(applicationId)}/capability-spine`,
+  )
+  return data
+}
 
 export type SalesInquiryDuplicateMatchReason = 'phone' | 'email' | 'phone_and_email'
 

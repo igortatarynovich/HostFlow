@@ -29,6 +29,7 @@ from backend.app.modules.applications.schemas import (
     ApplicationProcessResult,
     ApplicationStagePatch,
     ApplicationVacancyConfirmIn,
+    SalesCapabilitySpineOut,
     SalesInquiryDuplicateHintOut,
     SalesInquiryDuplicateListResponse,
 )
@@ -79,6 +80,37 @@ async def get_sales_inquiry(
     db, tenant_id = db_tenant
     return await mutations._reload_sales(db, str(tenant_id), own_company_id, application_id)
 
+
+@sales_router.get(
+    "/{application_id}/capability-spine",
+    response_model=SalesCapabilitySpineOut,
+)
+async def get_sales_inquiry_capability_spine(
+    application_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+) -> SalesCapabilitySpineOut:
+    """Display-only Pipeline v1 spine: Capability / Review / Convert / Traceability.
+
+    Does not match, resolve review, convert, or invent Capability decisions.
+    """
+    from backend.app.modules.sales.services.capability_spine_read import (
+        get_capability_spine_for_application,
+    )
+
+    db, tenant_id = db_tenant
+    lead = await _get_lead_or_404(db, str(tenant_id), application_id)
+    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") not in ("", str(own_company_id)):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    payload = await get_capability_spine_for_application(
+        db,
+        tenant_id=str(tenant_id),
+        application_id=application_id,
+    )
+    return SalesCapabilitySpineOut.model_validate(payload)
 
 
 @sales_router.get(
