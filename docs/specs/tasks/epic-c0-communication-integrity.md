@@ -24,20 +24,21 @@ Continuing Sales product flow on unbound / mis-linked threads (or module-specifi
 ## Slice C0.0 — Communication Canon & Contracts
 
 **Task:** [c0-0-communication-canon.md](c0-0-communication-canon.md)  
-**Type:** docs + contracts only — **no production writers**
+**Type:** normative docs + **contract seams in PR #100** (no new product features)
 
 ### Delivers
 
+- **Communication Intent** as the primary business layer  
 - Scope / ownership of the Communication platform  
-- `CommunicationCommand`, template, link intent, PublicActionLinkService  
-- Action policy, capabilities resolver, thread resolution, message snapshot  
-- Consent/RODO contract, automation contract, settings ownership  
+- `CommunicationCommand`, TemplateResolver, LinkResolver, CapabilityResolver  
+- Action policy, thread resolution, message snapshot contracts  
+- Consent/RODO, automation, settings ownership (contracts)  
 - Idempotency + transaction boundaries  
-- Migration path for existing writers + anti-patterns  
+- Migration path + anti-patterns  
 
 ### Acceptance
 
-Canon linked from queue + this epic; C2 scope expanded; PR #100 framed as vertical slice. No requirement to change runtime code in C0.0 itself.
+Canon linked from queue + this epic; Intent-first documented; C2 scope expanded; PR #100 implements seams without shipping C2/Inbox/consent engines.
 
 ---
 
@@ -45,7 +46,7 @@ Canon linked from queue + this epic; C2 scope expanded; PR #100 framed as vertic
 
 **Branch:** `fix/communication-c0-outbound-linkage`  
 **Worktree:** `/tmp/hf-c0-outbound-linkage`  
-**PR:** [#100](https://github.com/igortatarynovich/HostFlow/pull/100) — **vertical slice, not completed foundation**  
+**PR:** [#100](https://github.com/igortatarynovich/HostFlow/pull/100) — **first Canon implementation (outbound), not full Communication product**  
 **Normative capability note:** [c0-1-platform-outbound.md](c0-1-platform-outbound.md)  
 **Canon:** [c0-0-communication-canon.md](c0-0-communication-canon.md)
 
@@ -59,26 +60,24 @@ Canon linked from queue + this epic; C2 scope expanded; PR #100 framed as vertic
 
 **Done:** [c0-1-outbound-linkage-gap-audit.md](c0-1-outbound-linkage-gap-audit.md) @ `2569b3ea`.
 
-### Locked vertical slice (PR #100 — do not expand)
+### Locked in PR #100 (contract alignment — do not expand into product)
 
-- Platform `send_communication` (origin, recipients, channel, content → thread + G13 + message + delivery)  
-- G13 ORM + `ensure_thread_entity_link` + outbound gate when origin known  
-- Questionnaire invite as **first caller** (not a forever-special engine)  
+- `CommunicationIntent` + IntentPolicy seed  
+- `CommunicationCommand` + `prepare_and_send_communication` + `CommunicationSender`  
+- `CapabilityResolver` / `TemplateResolver` / `LinkResolver` (thin impls)  
+- Platform `send_communication` executor (thread + G13 + message + delivery)  
+- Questionnaire as **first intent caller** through resolvers + sender port  
 - Thread API/UI `entity_links` with temporary legacy fallback  
 
-### Follow-up (separate slice after C0.0 docs): align C0.1 to canon
-
-Bring the vertical path to:
-
 ```text
-questionnaire → policy → template → link intent → thread → G13 → message snapshot → outbox
+request_questionnaire → TemplateResolver + LinkResolver → CommunicationCommand
+  → prepare_and_send → send_communication → G13 + snapshot + outbox
 ```
 
-via universal contracts — still **not** full C2 catalog/automation/campaign UI.
-
-### Not in C0.1
+### Not in C0.1 / #100
 
 - Bulk/campaign engine, template admin product, automation authoring UI → [Epic C2](epic-c2-communication-campaigns.md)  
+- Full PublicActionLinkService, consent evidence engine  
 - Inbound resolver (C0.2), delivery diagnostics UX (C0.3), Inbox (C1)
 
 ### Acceptance / DoD (vertical)

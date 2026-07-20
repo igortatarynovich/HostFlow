@@ -1,8 +1,8 @@
-"""Platform outbound contour — SendCommunication (C0.1).
+"""Platform outbound executor — SendCommunication (C0.1).
 
-All product modules start correspondence through this operation.
-Questionnaire invite is the first caller; Sales/Recruitment/HR/Services
-must not invent parallel email writers.
+Business entry is Communication Intent → CommunicationCommand →
+``prepare_and_send_communication``. This module persists thread + G13 +
+message + delivery. Product modules must not invent parallel email writers.
 
 Atomic unit (same session / flush boundary before transport):
   resolve|create thread → G13 origin (+ related) → CommunicationMessage → delivery/outbox
@@ -11,22 +11,29 @@ Atomic unit (same session / flush boundary before transport):
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Optional, Sequence
+from typing import Any, Awaitable, Callable
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.communications._helpers.sla import _touch_thread_from_message
+from backend.app.communications.command import (
+    CommunicationCommand,
+    CommunicationOrigin,
+    CommunicationRecipient,
+    SendCommunicationContent,
+    SendCommunicationRequest,
+)
 from backend.app.communications.entity_link import (
     ThreadEntityLinkError,
     ThreadEntityLinkRequiredError,
     ensure_thread_entity_link,
     get_thread_entity_links,
-    _normalize_entity_type,
 )
+from backend.app.communications.intent import normalize_intent
 from backend.app.models.communication import CommunicationMessage, CommunicationThread
 from backend.app.models.communication_delivery import (
     DELIVERY_CHANNEL_EMAIL,
@@ -62,54 +69,6 @@ class SendCommunicationError(Exception):
 
 
 @dataclass(frozen=True, slots=True)
-class CommunicationOrigin:
-    entity_type: str
-    entity_id: str
-
-    def normalized(self) -> "CommunicationOrigin":
-        return CommunicationOrigin(
-            entity_type=_normalize_entity_type(self.entity_type),
-            entity_id=str(self.entity_id or "").strip(),
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class CommunicationRecipient:
-    address: str
-    label: str | None = None
-    recipient_type: str | None = None
-    recipient_id: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class SendCommunicationContent:
-    subject: str | None = None
-    body_text: str | None = None
-    body_html: str | None = None
-    message_type: str = "email"
-
-
-@dataclass(frozen=True, slots=True)
-class SendCommunicationRequest:
-    tenant_id: str
-    origin: CommunicationOrigin
-    recipients: Sequence[CommunicationRecipient]
-    channel: str
-    content: SendCommunicationContent
-    actor_id: str | None = None
-    own_company_id: str | None = None
-    related_entities: Sequence[CommunicationOrigin] = ()
-    thread_id: str | None = None
-    idempotency_key: str | None = None
-    purpose: str | None = None
-    thread_subject: str | None = None
-    delivery_purpose: str | None = None
-    template_key: str | None = None
-    template_version: int = 1
-    meta: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True, slots=True)
 class SendCommunicationResult:
     thread_id: str
     message_id: str
@@ -122,6 +81,21 @@ class SendCommunicationResult:
 
 
 TransportFn = Callable[[], Awaitable[Any]]
+
+# Re-export command types for existing imports.
+__all__ = [
+    "CommunicationCommand",
+    "CommunicationOrigin",
+    "CommunicationRecipient",
+    "SendCommunicationContent",
+    "SendCommunicationError",
+    "SendCommunicationRequest",
+    "SendCommunicationResult",
+    "SUPPORTED_ORIGIN_TYPES",
+    "TransportFn",
+    "find_thread_id_for_origin",
+    "send_communication",
+]
 
 
 def _trim(value: Any) -> str:
@@ -210,7 +184,7 @@ async def _load_message_by_idempotency(
 
 async def send_communication(
     db: AsyncSession,
-    request: SendCommunicationRequest,
+    request: CommunicationCommand | SendCommunicationRequest,
     *,
     transport: TransportFn | None = None,
     skip_transport: bool = False,
@@ -227,6 +201,13 @@ async def send_communication(
             f"unsupported origin entity_type: {origin.entity_type}",
             details={"reason": "unsupported_origin", "entity_type": origin.entity_type},
         )
+    content = request.content
+    if content is None:
+        raise SendCommunicationError(
+            "content is required",
+            details={"reason": "missing_content"},
+        )
+    intent = normalize_intent(getattr(request, "intent", None))
     channel = _trim(request.channel).lower() or "email"
     if not request.recipients:
         raise SendCommunicationError(
@@ -293,7 +274,7 @@ async def send_communication(
     else:
         subject = (
             _trim(request.thread_subject)
-            or _trim(request.content.subject)
+            or _trim(content.subject)
             or f"{origin.entity_type} · {origin.entity_id[:8]}"
         )
         thread = CommunicationThread(
@@ -310,6 +291,7 @@ async def send_communication(
             participants_json={"recipients": [address]},
             thread_meta={
                 "source": "communications.send_communication",
+                "intent": intent.value,
                 "origin_entity_type": origin.entity_type,
                 "origin_entity_id": origin.entity_id,
                 **dict(request.meta or {}),
@@ -377,7 +359,7 @@ async def send_communication(
         thread_id=str(thread_id),
         own_company_id=_trim(request.own_company_id) or getattr(thread, "own_company_id", None),
         channel=channel,
-        message_type=_trim(request.content.message_type) or ("email" if channel == "email" else "text"),
+        message_type=_trim(content.message_type) or ("email" if channel == "email" else "text"),
         direction="outbound",
         sender_type="user",
         sender_id=_trim(request.actor_id) or None,
@@ -385,16 +367,19 @@ async def send_communication(
         recipient_id=_trim(primary.recipient_id) or origin.entity_id,
         recipient_label=_trim(primary.label) or None,
         recipient_address=address,
-        subject=_trim(request.content.subject) or None,
-        body_text=_trim(request.content.body_text) or None,
-        body_html=request.content.body_html,
+        subject=_trim(content.subject) or None,
+        body_text=_trim(content.body_text) or None,
+        body_html=content.body_html,
         delivery_status="queued",
         payload={
             "platform": "communications.send_communication.v1",
+            "intent": intent.value,
             "purpose": _trim(request.purpose) or None,
             "origin_entity_type": origin.entity_type,
             "origin_entity_id": origin.entity_id,
             "idempotency_key": idem,
+            "template_key": _trim(request.template_key) or None,
+            "template_version": int(request.template_version or 1),
             **{k: v for k, v in dict(request.meta or {}).items() if k not in {"source"}},
         },
     )

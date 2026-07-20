@@ -1,5 +1,17 @@
-"""Communications domain helpers (Communication Context C1–C5)."""
+"""Communications domain helpers (Communication Context C1–C5 + C0 platform)."""
 
+from backend.app.communications.capability_resolver import (
+    CommunicationCapabilities,
+    DefaultCapabilityResolver,
+    resolve_communication_capabilities,
+)
+from backend.app.communications.command import (
+    CommunicationCommand,
+    CommunicationOrigin,
+    CommunicationRecipient,
+    SendCommunicationContent,
+    SendCommunicationRequest,
+)
 from backend.app.communications.context_resolver import (
     CommunicationContext,
     CommunicationContextResolveError,
@@ -8,6 +20,26 @@ from backend.app.communications.context_resolver import (
 from backend.app.communications.domain_registry import (
     platform_communication_domain_registry,
     reset_communication_domain_registry_for_tests,
+)
+from backend.app.communications.entity_link import (
+    ThreadEntityLinkError,
+    ThreadEntityLinkRequiredError,
+    ThreadEntityLinkView,
+    ensure_links_for_known_thread_origin,
+    ensure_thread_entity_link,
+    get_thread_entity_links,
+    require_entity_links_for_outbound,
+)
+from backend.app.communications.intent import (
+    CommunicationIntent,
+    IntentPolicy,
+    resolve_intent_policy,
+)
+from backend.app.communications.link_resolver import (
+    LinkResolveRequest,
+    QuestionnaireLinkResolver,
+    ResolvedPublicLink,
+    get_link_resolver,
 )
 from backend.app.communications.policy_contract import (
     CommunicationPolicyDecision,
@@ -18,14 +50,10 @@ from backend.app.communications.policy_gate import (
     evaluate_policy_for_context,
     reset_policy_adapters_for_tests,
 )
-from backend.app.communications.entity_link import (
-    ThreadEntityLinkError,
-    ThreadEntityLinkRequiredError,
-    ThreadEntityLinkView,
-    ensure_links_for_known_thread_origin,
-    ensure_thread_entity_link,
-    get_thread_entity_links,
-    require_entity_links_for_outbound,
+from backend.app.communications.prepare_send import (
+    PlatformCommunicationSender,
+    get_communication_sender,
+    prepare_and_send_communication,
 )
 from backend.app.communications.result_link import (
     ThreadResultLinkConflictError,
@@ -38,11 +66,7 @@ from backend.app.communications.result_link import (
     require_confirmed_thread_result_link,
 )
 from backend.app.communications.send_communication import (
-    CommunicationOrigin,
-    CommunicationRecipient,
-    SendCommunicationContent,
     SendCommunicationError,
-    SendCommunicationRequest,
     SendCommunicationResult,
     find_thread_id_for_origin,
     send_communication,
@@ -63,18 +87,34 @@ from backend.app.communications.template_metadata import (
     CommunicationTemplateMetadata,
     build_template_metadata,
 )
+from backend.app.communications.template_resolver import (
+    ResolvedTemplate,
+    SeedTemplateResolver,
+    get_template_resolver,
+)
 
 __all__ = [
+    "CommunicationCapabilities",
+    "CommunicationCommand",
     "CommunicationContext",
     "CommunicationContextResolveError",
+    "CommunicationIntent",
+    "CommunicationOrigin",
     "CommunicationPolicyDecision",
     "CommunicationPolicyRequest",
-    "CommunicationOrigin",
     "CommunicationRecipient",
     "CommunicationSendAuthorization",
     "CommunicationSendRequest",
     "CommunicationSendResult",
     "CommunicationTemplateMetadata",
+    "DefaultCapabilityResolver",
+    "IntentPolicy",
+    "LinkResolveRequest",
+    "PlatformCommunicationSender",
+    "QuestionnaireLinkResolver",
+    "ResolvedPublicLink",
+    "ResolvedTemplate",
+    "SeedTemplateResolver",
     "SendCommunicationContent",
     "SendCommunicationError",
     "SendCommunicationRequest",
@@ -97,14 +137,20 @@ __all__ = [
     "evaluate_communication_policy",
     "evaluate_policy_for_context",
     "find_thread_id_for_origin",
+    "get_communication_sender",
+    "get_link_resolver",
+    "get_template_resolver",
     "get_thread_entity_links",
     "get_thread_result_link",
     "platform_communication_domain_registry",
+    "prepare_and_send_communication",
     "require_confirmed_thread_result_link",
     "require_entity_links_for_outbound",
     "reset_communication_domain_registry_for_tests",
     "reset_policy_adapters_for_tests",
+    "resolve_communication_capabilities",
     "resolve_communication_context",
+    "resolve_intent_policy",
     "send_communication",
     "send_via_communication_pipeline",
     "template_metadata_from_mapping",

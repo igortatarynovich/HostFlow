@@ -1,4 +1,8 @@
-"""Send questionnaire invite by email via tenant SMTP."""
+"""Send questionnaire invite by email via tenant SMTP.
+
+Compose uses platform TemplateResolver + LinkResolver.
+Send goes through CommunicationSender / prepare_and_send (not a private engine).
+"""
 
 from __future__ import annotations
 
@@ -10,7 +14,28 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.settings import settings
+from backend.app.communications.command import (
+    CommunicationCommand,
+    CommunicationOrigin,
+    CommunicationRecipient,
+    SendCommunicationContent,
+)
+from backend.app.communications.intent import CommunicationIntent
+from backend.app.communications.link_resolver import (
+    LinkResolveRequest,
+    LinkResolver,
+    absolute_public_url,
+    get_link_resolver,
+)
+from backend.app.communications.prepare_send import (
+    CommunicationSender,
+    get_communication_sender,
+)
+from backend.app.communications.send_communication import SendCommunicationError
+from backend.app.communications.template_resolver import (
+    TemplateResolver,
+    get_template_resolver,
+)
 from backend.app.models import Lead
 from backend.app.models.communication_delivery import (
     DELIVERY_CHANNEL_EMAIL,
@@ -23,7 +48,6 @@ from backend.app.modules.leads.lead_questionnaire_invite import (
     questionnaire_invite_out_payload,
 )
 from backend.app.services.audit import log_activity
-from backend.app.services.communication_templates import render_template, resolve_template
 from backend.app.services.email_signature import (
     append_outgoing_signature,
     append_outgoing_signature_html,
@@ -32,8 +56,8 @@ from backend.app.services.email_signature import (
 )
 from backend.app.services.tenant_email import get_tenant_email_config, send_email_for_tenant
 
-TEMPLATE_KEY = "questionnaire_invite_email_v1"
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_QUESTIONNAIRE_LINK_INTENT = "sales_questionnaire"
 
 
 class QuestionnaireEmailError(Exception):
@@ -82,14 +106,8 @@ def lead_contact_name(lead: Lead) -> str:
 
 
 def absolute_questionnaire_url(apply_url: str) -> str:
-    url = _trim(apply_url)
-    if not url:
-        return ""
-    if re.match(r"^https?://", url, flags=re.I):
-        return url
-    base = _trim(getattr(settings, "frontend_url", None) or "") or "https://hostflow.cc"
-    base = base.rstrip("/")
-    return f"{base}{url if url.startswith('/') else '/' + url}"
+    """Back-compat wrapper — prefer LinkResolver in new code."""
+    return absolute_public_url(apply_url)
 
 
 def normalize_recipient_email(value: str) -> str:
@@ -117,6 +135,10 @@ class QuestionnaireEmailCompose:
     clarification_required: bool
     invite_reused: bool
     locale: str
+    template_key: str
+    template_version: int
+    link_intent: str
+    intent: str
 
 
 def _should_mint_new_invite_for_email(lead: Lead, *, force_new_invite: bool) -> bool:
@@ -137,6 +159,8 @@ async def compose_questionnaire_invite_email(
     recipient_email: str | None = None,
     actor_user_id: str | None = None,
     thread_id: str | None = None,
+    template_resolver: TemplateResolver | None = None,
+    link_resolver: LinkResolver | None = None,
 ) -> QuestionnaireEmailCompose:
     # C5: domain is not inferred from Lead.lead_type — pipeline owns eligibility.
     # Compose may prepare content, but send requires thread_id + pipeline authorize.
@@ -180,7 +204,25 @@ async def compose_questionnaire_invite_email(
 
     invite_reused = bool(existing_before is not None and not mint_new)
     invite_payload = questionnaire_invite_out_payload(invite)
-    questionnaire_url = absolute_questionnaire_url(str(invite_payload.get("apply_url") or ""))
+
+    templates = template_resolver or get_template_resolver()
+    links = link_resolver or get_link_resolver()
+    resolved_tpl = templates.resolve_for_intent(
+        CommunicationIntent.REQUEST_QUESTIONNAIRE,
+        channel=DELIVERY_CHANNEL_EMAIL,
+    )
+    resolved_link = await links.resolve(
+        LinkResolveRequest(
+            tenant_id=str(tenant_id),
+            link_intent=_QUESTIONNAIRE_LINK_INTENT,
+            entity_type="lead",
+            entity_id=str(lead.id),
+            locale=locale,
+            apply_path_or_url=str(invite_payload.get("apply_url") or ""),
+            actor_id=_trim(actor_user_id) or None,
+        )
+    )
+    questionnaire_url = resolved_link.public_url
 
     contact_name = lead_contact_name(lead)
     signature = await resolve_outgoing_signature(
@@ -193,12 +235,12 @@ async def compose_questionnaire_invite_email(
     signature_plain = signature.plain_text() if signature is not None else ""
     signature_html = signature.html() if signature is not None else ""
 
-    template = resolve_template(TEMPLATE_KEY)
-    rendered = render_template(
-        template,
+    rendered = templates.render(
+        resolved_tpl,
         locale=locale,
         variables={
             "contact_name": contact_name,
+            resolved_link.variable_name: questionnaire_url,
             "questionnaire_url": questionnaire_url,
         },
     )
@@ -221,6 +263,10 @@ async def compose_questionnaire_invite_email(
         clarification_required=submitted_before,
         invite_reused=invite_reused,
         locale=locale,
+        template_key=resolved_tpl.key,
+        template_version=resolved_tpl.version,
+        link_intent=resolved_link.link_intent,
+        intent=CommunicationIntent.REQUEST_QUESTIONNAIRE.value,
     )
 
 
@@ -241,6 +287,9 @@ async def send_questionnaire_invite_email(
     communication_purpose: str | None = None,
     template_metadata: dict[str, Any] | None = None,
     locale: str | None = None,
+    sender: CommunicationSender | None = None,
+    template_resolver: TemplateResolver | None = None,
+    link_resolver: LinkResolver | None = None,
 ) -> dict[str, Any]:
     from backend.app.communications.send_pipeline import (
         CommunicationSendRequest,
@@ -319,6 +368,8 @@ async def send_questionnaire_invite_email(
         recipient_email=recipient_email,
         actor_user_id=actor_user_id,
         thread_id=thread,
+        template_resolver=template_resolver,
+        link_resolver=link_resolver,
     )
     if compose.invite is None:
         raise QuestionnaireEmailError("invite_error", "Questionnaire invite is missing")
@@ -347,23 +398,11 @@ async def send_questionnaire_invite_email(
     questionnaire_url = compose.questionnaire_url
     now = _now()
 
-    # Platform contour: SendCommunication is the sole message/link/delivery writer.
-    # Binder already ensured C1 + G13 for sales_inquiry + lead on ``thread``.
-    from backend.app.communications.send_communication import (
-        CommunicationOrigin,
-        CommunicationRecipient,
-        SendCommunicationContent,
-        SendCommunicationError,
-        SendCommunicationRequest,
-        send_communication,
-    )
+    from backend.app.communications.entity_link import get_thread_entity_links
     from backend.app.models.communication import CommunicationMessage
     from backend.app.models.communication_delivery import CommunicationDelivery
 
     sales_inquiry_id = None
-    # Prefer opaque id from binder thread meta / prior G13 when available.
-    from backend.app.communications.entity_link import get_thread_entity_links
-
     for lnk in await get_thread_entity_links(db, tenant_id=str(tenant_id), thread_id=str(thread)):
         if lnk.entity_type == "sales_inquiry":
             sales_inquiry_id = lnk.entity_id
@@ -385,46 +424,52 @@ async def send_questionnaire_invite_email(
             html_body=compose.body_html,
         )
 
+    command = CommunicationCommand(
+        tenant_id=str(tenant_id),
+        intent=CommunicationIntent.REQUEST_QUESTIONNAIRE,
+        origin=CommunicationOrigin(
+            entity_type="sales_inquiry",
+            entity_id=str(sales_inquiry_id),
+        ),
+        recipients=[
+            CommunicationRecipient(
+                address=email,
+                recipient_type="lead",
+                recipient_id=str(lead.id),
+            )
+        ],
+        channel=DELIVERY_CHANNEL_EMAIL,
+        content=SendCommunicationContent(
+            subject=subject_final,
+            body_text=body_final,
+            body_html=compose.body_html,
+            message_type="email",
+        ),
+        actor_id=_trim(actor_user_id) or None,
+        own_company_id=str(getattr(lead, "own_company_id", None) or "") or None,
+        related_entities=[
+            CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
+        ],
+        thread_id=str(thread),
+        purpose=PURPOSE_QUESTIONNAIRE_INVITE,
+        delivery_purpose=PURPOSE_QUESTIONNAIRE_INVITE,
+        template_key=compose.template_key,
+        template_version=compose.template_version,
+        locale=compose.locale,
+        requested_link_intents=(_QUESTIONNAIRE_LINK_INTENT,),
+        meta={
+            "invite_id": str(compose.invite.id),
+            "questionnaire_url": questionnaire_url,
+            "link_intent": compose.link_intent,
+            "form_locale": compose.locale,
+            "message_hash": _message_hash(subject=subject_final, body=body_final),
+        },
+    )
+
     try:
-        send_result = await send_communication(
+        send_result = await (sender or get_communication_sender()).send(
             db,
-            SendCommunicationRequest(
-                tenant_id=str(tenant_id),
-                origin=CommunicationOrigin(
-                    entity_type="sales_inquiry",
-                    entity_id=str(sales_inquiry_id),
-                ),
-                recipients=[
-                    CommunicationRecipient(
-                        address=email,
-                        recipient_type="lead",
-                        recipient_id=str(lead.id),
-                    )
-                ],
-                channel=DELIVERY_CHANNEL_EMAIL,
-                content=SendCommunicationContent(
-                    subject=subject_final,
-                    body_text=body_final,
-                    body_html=compose.body_html,
-                    message_type="email",
-                ),
-                actor_id=_trim(actor_user_id) or None,
-                own_company_id=str(getattr(lead, "own_company_id", None) or "") or None,
-                related_entities=[
-                    CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
-                ],
-                thread_id=str(thread),
-                purpose=PURPOSE_QUESTIONNAIRE_INVITE,
-                delivery_purpose=PURPOSE_QUESTIONNAIRE_INVITE,
-                template_key=TEMPLATE_KEY,
-                template_version=1,
-                meta={
-                    "invite_id": str(compose.invite.id),
-                    "questionnaire_url": questionnaire_url,
-                    "form_locale": compose.locale,
-                    "message_hash": _message_hash(subject=subject_final, body=body_final),
-                },
-            ),
+            command,
             transport=_transport,
         )
     except SendCommunicationError as exc:
@@ -446,6 +491,7 @@ async def send_questionnaire_invite_email(
                 "recipient": email,
                 "error": exc.message,
                 "error_code": code,
+                "intent": compose.intent,
                 "delivery_id": (exc.details or {}).get("delivery_id"),
                 "message_id": (exc.details or {}).get("message_id"),
                 "questionnaire_url": questionnaire_url,
@@ -465,8 +511,8 @@ async def send_questionnaire_invite_email(
         delivery_row = await db.get(CommunicationDelivery, send_result.delivery_id)
         if delivery_row is not None:
             delivery_row.invite_id = str(compose.invite.id)
-            delivery_row.template_key = TEMPLATE_KEY
-            delivery_row.template_version = 1
+            delivery_row.template_key = compose.template_key
+            delivery_row.template_version = compose.template_version
             delivery_row.message_hash = _message_hash(subject=subject_final, body=body_final)
             delivery_row.encoding = "utf8"
             delivery_row.parts_count = 1
@@ -474,6 +520,8 @@ async def send_questionnaire_invite_email(
             meta.update(
                 {
                     "questionnaire_url": questionnaire_url,
+                    "link_intent": compose.link_intent,
+                    "intent": compose.intent,
                     "form_locale": compose.locale,
                     "invite_id": str(compose.invite.id),
                 }
@@ -481,9 +529,8 @@ async def send_questionnaire_invite_email(
             delivery_row.meta = meta
             await db.flush()
 
-    message = await db.get(CommunicationMessage, send_result.message_id)
+    _ = await db.get(CommunicationMessage, send_result.message_id)
     delivery_id = send_result.delivery_id
-    thread = send_result.thread_id
 
     invite = await attach_questionnaire_invite_to_lead(
         db,
@@ -513,6 +560,7 @@ async def send_questionnaire_invite_email(
             "channel": DELIVERY_CHANNEL_EMAIL,
             "recipient": email,
             "sent_at": now.isoformat(),
+            "intent": compose.intent,
             "questionnaire_url": questionnaire_url,
             "delivery_id": delivery_id,
             "message_id": send_result.message_id,
@@ -532,4 +580,5 @@ async def send_questionnaire_invite_email(
         "questionnaire_url": questionnaire_url,
         "subject": subject_final,
         "status": "sent",
+        "intent": compose.intent,
     }

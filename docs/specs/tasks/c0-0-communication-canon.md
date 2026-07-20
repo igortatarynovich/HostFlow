@@ -1,12 +1,19 @@
 # C0.0 — Communication Canon & Contracts
 
-**Status:** NORMATIVE (docs + contracts only; no production writers in this slice)  
-**Date:** 2026-07-20  
+**Status:** NORMATIVE  
+**Date:** 2026-07-20 (rev. Intent-first + PR #100 contract alignment)  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.1 platform outbound](c0-1-platform-outbound.md) · [Epic C2](epic-c2-communication-campaigns.md)
 
-> Short design gate before expanding the outbound foundation.  
-> Fixes Source of Truth and boundaries so C0.1 does not become another module-specific questionnaire sender.  
-> **Not** months of design: contracts only. Production alignment of C0.1 to this canon is a **separate** follow-up slice.
+> Canon + **extension-point alignment** in the same iteration as PR #100.  
+> Docs fix SoT; code in #100 is brought to those contracts **without** adding product features  
+> (no template admin UI, automation engine, consent engine, campaigns, Inbox, full Public Link Service).
+
+**Working rule:** do not hard-split “docs then code”. Iterate:
+
+1. Fix the canon (this doc).  
+2. Align existing PR #100 code to contracts (Command, Intent, resolvers).  
+3. No new capabilities — only architectural seams.  
+4. Then close PR #100 as the **first implementation of the approved Communication Canon**.
 
 ---
 
@@ -16,6 +23,7 @@
 
 Communication owns:
 
+- communication **intents** and intent policy  
 - manual send  
 - automatic send  
 - templates  
@@ -31,17 +39,19 @@ Communication owns:
 ### Product modules do not send
 
 Sales, Recruitment, HR, and Services **must not** form or send email/SMS/WhatsApp themselves.  
-They only express intent:
+They express a **Communication Intent** against an origin entity:
 
 ```text
-Send a message to this object, in this business context, for this purpose.
+Request Questionnaire for this SalesInquiry / CandidateApplication
 ```
+
+not “compose and SMTP this email”.
 
 Modules may:
 
 - raise domain events  
-- request a manual action (UI “Write”)  
-- pass origin entity, purpose, recipient role, template key, link intents  
+- request a manual action (UI “Write” → intent)  
+- pass origin entity, intent, recipient role  
 
 Modules must not:
 
@@ -49,36 +59,100 @@ Modules must not:
 - call provider transport directly  
 - maintain parallel “questionnaire / RODO / stage email” engines  
 - embed template composition or channel policy in module code or frontend  
+- call `resolve_template` / hardcode apply URLs in callers  
 
 ### In scope of this document
 
-Contracts and ownership only:
+1. **Communication Intent** (primary layer)  
+2. Entity ownership  
+3. CommunicationCommand  
+4. Template model + TemplateResolver  
+5. LinkIntent + LinkResolver / PublicActionLinkService  
+6. CommunicationActionPolicy  
+7. Capability resolver  
+8. Thread resolution  
+9. Automation rule  
+10. Consent / compliance  
+11. Message snapshot  
+12. Idempotency and transaction boundaries  
+13. Migration path + anti-patterns  
 
-1. Entity ownership  
-2. Template model  
-3. Communication command  
-4. Link intent model  
-5. Capability resolver  
-6. Thread resolution  
-7. Automation rule  
-8. Consent / compliance  
-9. Message snapshot  
-10. Idempotency and transaction boundaries  
-
-### Out of scope (later slices)
+### Out of scope as product features (later)
 
 | Slice | Owns |
 |-------|------|
-| C0.1 (vertical + align-to-canon) | First writers through universal contracts |
+| C0.1 (this PR) | Canon seams + first durable outbound path |
 | C0.2 | Inbound resolver |
 | C0.3 | Delivery diagnostics |
 | C1 | Inbox UX |
 | C2 | Templates catalog UX, automations product, campaigns |
 | Legal review | Exact RODO bases, retention periods, notice texts |
 
+### Allowed in PR #100 (contract alignment only)
+
+- `CommunicationIntent` + intent policy seed  
+- `CommunicationCommand`  
+- `CapabilityResolver` / `TemplateResolver` / `LinkResolver` seams (thin impls)  
+- `prepare_and_send_communication` + `CommunicationSender` port  
+- Questionnaire as first intent caller through those seams  
+- G13 + message/delivery atomicity (already in slice)  
+
+### Forbidden in PR #100
+
+- Full template registry persistence / admin UI  
+- Automation engine product  
+- Consent evidence engine product  
+- Campaigns / bulk  
+- Inbox redesign  
+- Full PublicActionLinkService (token store, reuse matrix, multi-intent catalog) — **interface + one impl only** |
+
 ---
 
-## 2. Entity ownership
+## 2. Communication Intent (primary layer)
+
+**Intent is first. `send_communication()` is the executor, not the business API.**
+
+Every outbound starts as a named intent, for example:
+
+| Intent | Meaning |
+|--------|---------|
+| `request_questionnaire` | Ask contact to fill a questionnaire |
+| `request_documents` | Ask for documents |
+| `invite_to_interview` | Meeting / interview invite |
+| `send_offer` | Offer / proposal for review |
+| `follow_up` | Generic follow-up |
+| `marketing_campaign` | Marketing (consent-gated) |
+| `gdpr_notice` | Privacy / RODO notice |
+| `document_expiry_reminder` | Expiry reminder |
+| `manual_outbound` | Escape hatch while callers migrate |
+
+Intent policy determines:
+
+- which templates are allowed  
+- which channels are allowed  
+- whether a public link is required and which **link intent**  
+- whether consent is required  
+- who may initiate (manual / automation flags)  
+- whether automation may fire  
+
+```text
+UI / DomainEvent
+  → CommunicationIntent (+ origin entity)
+  → IntentPolicy + ActionPolicy + Capabilities
+  → CommunicationCommand
+  → TemplateResolver + LinkResolver (+ signature, consent)
+  → prepare_and_send_communication
+  → send_communication (thread + G13 + snapshot + outbox)
+```
+
+This layer prevents a year of `if stage == …` / `if module == recruitment` forks.  
+Stages and modules select **intents**; they do not own send pipelines.
+
+Code seams (PR #100): `backend/app/communications/intent.py`, `command.py`, `prepare_send.py`.
+
+---
+
+## 3. Entity ownership
 
 | Entity / concept | Owner | Notes |
 |------------------|-------|--------|
@@ -102,7 +176,7 @@ Contracts and ownership only:
 
 ---
 
-## 3. CommunicationCommand
+## 4. CommunicationCommand
 
 Unified application entry for manual and automatic outbound:
 
@@ -114,14 +188,15 @@ Logical command fields:
 
 | Field | Role |
 |-------|------|
+| **`intent`** | Primary business key (see §2) |
 | `origin_entity_type` / `origin_entity_id` | Work context (mandatory when known) |
 | `related_entities[]` | Extra G13 links (e.g. lead facade + inquiry) |
 | `recipient` | Resolved person/address or role (`primary_contact`, …) |
 | `channel` | `email` \| `sms` \| `whatsapp` \| … |
-| `purpose` | `transaction` \| `workflow` \| `marketing` \| … |
-| `template_key` **or** manual `content` | Exactly one composition path |
+| `purpose` | Derived from intent policy when omitted |
+| `template_key` **or** manual `content` | Composition path after TemplateResolver |
 | `locale` | Rendering locale |
-| `requested_link_intents[]` | Logical links to mint |
+| `requested_link_intents[]` | Logical links to mint via LinkResolver |
 | `actor` **or** `automation_identity` | Who/what initiated |
 | `idempotency_key` | Deduplicate retries |
 | `correlation` / `source_event_id` | Trace to domain event / UI action |
@@ -129,27 +204,28 @@ Logical command fields:
 
 **Pipeline inside the platform (normative order):**
 
-1. Authorization  
-2. Capability resolution  
-3. Recipient resolution  
-4. Policy / consent check  
-5. Template version resolution (or accept manual content)  
-6. Variable validation  
-7. Public link generation (`PublicActionLinkService`)  
-8. Signature resolution  
-9. Thread resolution  
-10. G13 linkage  
-11. `CommunicationMessage` snapshot  
-12. Delivery / outbox creation  
-13. Audit  
+1. Intent normalization + IntentPolicy  
+2. Authorization  
+3. Capability resolution  
+4. Recipient resolution  
+5. Policy / consent check  
+6. Template version resolution (`TemplateResolver`)  
+7. Variable validation  
+8. Public link generation (`LinkResolver` → later `PublicActionLinkService`)  
+9. Signature resolution  
+10. Thread resolution  
+11. G13 linkage  
+12. `CommunicationMessage` snapshot  
+13. Delivery / outbox creation  
+14. Audit  
 
 Transport may run after the atomic unit (async worker); durable message + delivery + G13 must exist before “accepted”.
 
-**Relation to PR #100 `send_communication`:** that API is a **vertical slice** approximating this command (origin, recipients, channel, content, G13, message, delivery). Aligning field names, consent, template/link/signature steps to this contract is a **follow-up C0.1 align slice**, not “foundation complete”.
+**PR #100 code:** `CommunicationCommand` + `prepare_and_send_communication` gate intent/capabilities; `send_communication` is the persistence executor. Questionnaire depends on `CommunicationSender`, not on SMTP helpers directly for the platform write path.
 
 ---
 
-## 4. CommunicationTemplate
+## 5. CommunicationTemplate
 
 Single registry. A template is a **contract**, not a pasted marketing email.
 
@@ -190,7 +266,7 @@ Concrete URLs exist only in the message snapshot after `PublicActionLinkService`
 
 ---
 
-## 5. LinkIntent
+## 6. LinkIntent
 
 Logical name of a public action the message may include.
 
@@ -210,9 +286,12 @@ Templates reference intents; stages/policies authorize intents; the link service
 
 ---
 
-## 6. PublicActionLinkService
+## 7. PublicActionLinkService / LinkResolver
 
-Sole owner of public URL creation.
+**Seam now:** `LinkResolver` (protocol) + first impl `QuestionnaireLinkResolver`.  
+**Later:** full `PublicActionLinkService` (token store, reuse, auth modes, audit).
+
+Sole owner of public URL creation for outbound prepare.
 
 **Input:**
 
@@ -246,7 +325,7 @@ Forbids: string-concat URLs in templates, modules, or frontend.
 
 ---
 
-## 7. CommunicationActionPolicy
+## 8. CommunicationActionPolicy
 
 Business-process rules: **which action / link intent is allowed on which stage**.  
 Not template text. Not automation timing.
@@ -276,7 +355,7 @@ Stages **must not** store message body copy as the SoT for outbound content.
 
 ---
 
-## 8. `resolve_communication_capabilities`
+## 9. `resolve_communication_capabilities`
 
 Platform resolver (not per-frontend hardcoding):
 
@@ -312,7 +391,7 @@ Illustrative capability matrix (normative intent; exact rows live in registry da
 
 ---
 
-## 9. Thread resolution
+## 10. Thread resolution
 
 | Rule | Contract |
 |------|----------|
@@ -327,7 +406,7 @@ Inbound preference order is **C0.2** (reply headers → provider ids → contact
 
 ---
 
-## 10. Message snapshot
+## 11. Message snapshot
 
 After send, `CommunicationMessage` **must not** depend on live template edits.
 
@@ -350,7 +429,7 @@ Yesterday’s email stays exactly as sent if the template changes tomorrow.
 
 ---
 
-## 11. Consent / RODO contract
+## 12. Consent / RODO contract
 
 RODO is **not** `consent=true` on a contact.
 
@@ -387,7 +466,7 @@ Exact legal bases, retention, and copy require separate legal review; architectu
 
 ---
 
-## 12. Automation contract
+## 13. Automation contract
 
 `CommunicationAutomationRule` fields (logical):
 
@@ -420,7 +499,7 @@ Product UX for authoring rules is **Epic C2**; C0 only requires the contract and
 
 ---
 
-## 13. Settings ownership
+## 14. Settings ownership
 
 Do **not** pile everything into one tenant JSON blob.
 
@@ -437,7 +516,7 @@ Legacy JSON keys (e.g. `lead_communication_v1`, `lead_rodo_v1`) are migration de
 
 ---
 
-## 14. Idempotency
+## 15. Idempotency
 
 | Key | Scope |
 |-----|--------|
@@ -451,7 +530,7 @@ Unknown delivery result is allowed; duplicate successful business send for the s
 
 ---
 
-## 15. Transaction boundaries
+## 16. Transaction boundaries
 
 **Atomic unit (same DB transaction / UoW):**
 
@@ -471,26 +550,26 @@ Unknown delivery result is allowed; duplicate successful business send for the s
 
 ---
 
-## 16. Migration path for existing writers
+## 17. Migration path for existing writers
 
 Target: every outbound path becomes a caller of `prepare_and_send_communication` (or thin adapter → command).
 
 | Current path | Migration |
 |--------------|-----------|
-| Questionnaire invite → `send_communication` (PR #100) | First vertical caller; align to full command (template intents, PublicActionLink, consent, snapshot fields) in C0.1-align |
-| `lead_communications` / auto lead ops | Adapter → command; retire direct `send_email_for_tenant` for product mail |
+| Questionnaire invite (PR #100) | **Done as first intent caller:** Intent → TemplateResolver → LinkResolver → CommunicationCommand → CommunicationSender |
+| `lead_communications` / auto lead ops | Adapter → intent + command; retire direct `send_email_for_tenant` for product mail |
 | `lead_rodo` / ingest auto-send | DomainEvent → automation/command; stop sync send in ingest handler |
-| `candidate_notifications` / stage Telegram-or-email | DomainEvent → command; shared engine |
+| `candidate_notifications` / stage Telegram-or-email | DomainEvent → intent + command; shared engine |
 | Inbox `create_thread_message` + dispatch | Gate already G13-aware; compose path must resolve capabilities + command |
-| Hardcoded `/public/apply/{token}` | Replace with `LinkIntent` + `PublicActionLinkService` |
-| Seed `CommunicationTemplate` dataclass / C4 metadata | Evolve into durable registry matching §4 |
-| Tenant JSON communication settings | Split into settings buckets (§13) |
+| Hardcoded `/public/apply/{token}` | Callers use `LinkResolver`; evolve impl into full `PublicActionLinkService` |
+| Seed `CommunicationTemplate` dataclass / C4 metadata | Evolve into durable registry matching §5; callers stay on `TemplateResolver` |
+| Tenant JSON communication settings | Split into settings buckets (§14) |
 
-**Order:** C0.0 (this doc) → finish/align C0.1 vertical under contracts → C0.2 / C0.3 → C2 for catalog/automation/campaign product surfaces. Do not add new module-specific senders during migration.
+**Order:** Canon + PR #100 contract seams → close #100 → C0.2 / C0.3 → C2 product surfaces. Do not add new module-specific senders during migration.
 
 ---
 
-## 17. Anti-patterns (forbidden)
+## 18. Anti-patterns (forbidden)
 
 | Anti-pattern | Why |
 |--------------|-----|
@@ -498,28 +577,28 @@ Target: every outbound path becomes a caller of `prepare_and_send_communication`
 | **Module-specific senders** (questionnaire / recruitment / sales / RODO / bulk each composing differently) | Divergent G13, snapshot, consent, idempotency |
 | **Sync send from stage or RODO handlers** inside domain transactions | Couples pipeline to provider; double-sends; weak audit |
 | **Template / channel logic inside frontend or domain modules** | Capability matrix and policies drift per screen |
-| Treating **`ensure_thread_entity_link` alone** as completed Communication foundation | Linkage is necessary but not templates, links, consent, automation, or one engine |
+| Treating **`ensure_thread_entity_link` alone** as completed Communication foundation | Linkage is necessary but not Intent, templates, links, consent, automation, or one engine |
+| Starting from **`send_communication` without Intent** | Business rules leak into callers; stage/module forks proliferate |
 | **Address-primary threading** when origin is known | Collapses distinct work contexts into one person-thread |
 | **One consent boolean** for all purposes | Violates purpose separation / RODO evidence needs |
 | **Campaign = N× Write in the browser** | Must be server-side campaign orchestration (C2) on the same command |
 
 ---
 
-## 18. Relationship to PR #100 and follow-up slices
+## 19. Relationship to PR #100
 
 | Artifact | Role under this canon |
 |----------|------------------------|
-| PR #100 | **Vertical slice only:** `send_communication`, G13 writer/gate, questionnaire first caller, entity_links API/UI. **Not** completed Communication foundation. |
-| C0.1 align (next code slice after this doc) | Questionnaire (and shared command) through: policy → template → link intent → thread → G13 → message snapshot → outbox |
+| PR #100 | **First implementation of the Communication Canon** for the outbound path: Intent + Command + resolvers + G13 + questionnaire first caller + entity_links API/UI. Not the full Communication *product* (C2), and not Inbox/consent/campaign engines. |
 | C0.2 / C0.3 | Inbound + delivery diagnostics |
-| C2 | Templates product, automations product, campaigns — all on the same command |
+| C2 | Templates product, automations product, campaigns — all on the same Intent → Command path |
 
 ---
 
-## 19. Acceptance for C0.0 itself
+## 20. Acceptance for C0.0 itself
 
 - [x] This document exists and is linked from the sequential queue and Epic C0  
+- [x] Communication Intent is documented as the primary layer  
 - [x] C2 scope states templates + automations + campaigns  
-- [x] PR #100 described as vertical slice, not foundation complete  
-- [ ] No production code required for C0.0 merge/land  
-- [ ] Subsequent C0.1 code changes cite this canon and do not introduce anti-patterns in §17  
+- [x] PR #100 aligns code to Intent / Command / TemplateResolver / LinkResolver / CapabilityResolver seams  
+- [x] PR #100 does **not** ship template admin, automation engine, consent engine, campaigns, Inbox, or full Public Link Service  

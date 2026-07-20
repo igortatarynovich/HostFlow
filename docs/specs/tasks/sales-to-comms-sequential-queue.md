@@ -51,7 +51,7 @@
 | **8** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
 | **9** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
-**PR #100 framing:** vertical slice (`send_communication` + G13 + questionnaire first caller + entity_links API/UI) — **not** completed Communication foundation. After C0.0 lands in docs, a separate thin slice aligns C0.1 to the canon (policy → template → link → thread → G13 → snapshot → outbox).
+**PR #100 framing:** first implementation of the Communication Canon for outbound — Intent + Command + resolvers + G13 + questionnaire first caller + entity_links. **Not** full Communication product (no template admin, automation engine, consent engine, campaigns, Inbox). Docs and contract seams land together; no hard “docs-only then code” split.
 
 **Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
 
