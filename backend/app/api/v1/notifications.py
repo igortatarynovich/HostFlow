@@ -121,7 +121,7 @@ async def list_notification_templates_endpoint() -> NotificationTemplateListResp
 @router.get("", response_model=NotificationListResponse)
 @router.get("/", response_model=NotificationListResponse, include_in_schema=False)
 async def list_notifications(
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=50),
     include_read: bool = Query(False),
     scope: Literal["all", "direct"] = Query("direct"),
     include_completed_entities: bool = Query(

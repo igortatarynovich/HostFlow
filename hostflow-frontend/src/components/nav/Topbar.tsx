@@ -198,6 +198,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const [bellBadgeCount, setBellBadgeCount] = useState(0)
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
   const lastUnreadNotificationsRef = useRef<NotificationItem[]>([])
+  const notifPollInFlightRef = useRef(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const pendingHandoffsCount = usePendingHandoffsCount()
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
@@ -402,14 +403,24 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     let timeout: number
 
     const fetchCount = async () => {
+      // Prevent parallel polls when commPollKey / visibility remounts the effect
+      // while the previous GET /notifications is still in flight.
+      if (notifPollInFlightRef.current) {
+        if (!cancelled) {
+          timeout = window.setTimeout(fetchCount, 5_000)
+        }
+        return
+      }
+      notifPollInFlightRef.current = true
       try {
         try {
           await reconcileCommunicationThreadUnread({ limit: 5000 })
         } catch {
           // keep polling even when reconcile is temporarily unavailable
         }
+        if (cancelled) return
         const [notifData, commData] = await Promise.all([
-          listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
+          listNotifications({ includeRead: false, limit: 50, scope: 'direct' }) as Promise<NotificationListResponse>,
           listCommunicationThreads({ limit: 500 }).catch(() => ({ items: [], total: 0 })),
         ])
         const data = notifData
@@ -455,6 +466,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       } catch (err) {
         if (!cancelled) console.warn('[Topbar] reminders count failed', err)
       } finally {
+        notifPollInFlightRef.current = false
         if (!cancelled) {
           timeout = window.setTimeout(fetchCount, 60_000)
         }
@@ -467,7 +479,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, canUseCommunicationsFeature, commPollKey, notify, t])
+  }, [can, canUseCommunicationsFeature, commPollKey, notify])
 
   useEffect(() => {
     setBellAttentionCount(
@@ -548,7 +560,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         // ignore reconcile errors; regular loading still works
       }
       const [notifData, threadsRes] = await Promise.all([
-        listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
+        listNotifications({ includeRead: false, limit: 50, scope: 'direct' }) as Promise<NotificationListResponse>,
         listCommunicationThreads({ limit: 200 }).catch(() => ({ items: [] as CommunicationThread[] })),
       ])
       const rawItems = Array.isArray(notifData?.items) ? notifData.items : []

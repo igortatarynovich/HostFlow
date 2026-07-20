@@ -219,6 +219,48 @@ def _tenant_leads_sla_create_notifications(tenant: Tenant) -> bool:
     return bool(cfg.get("createNotifications", True))
 
 
+def _leads_stuck_notifications_enabled() -> bool:
+    """Kill switch for lead_stuck_stage bell spam (default OFF after runaway loop)."""
+    return _env_bool("COMM_SCHEDULER_LEADS_STUCK_NOTIFICATIONS_ENABLED", False)
+
+
+def _tenant_leads_stuck_create_notifications(tenant: Tenant) -> bool:
+    return _leads_stuck_notifications_enabled() and _tenant_leads_sla_create_notifications(tenant)
+
+
+def _entity_sla_via_arq() -> bool:
+    """When True (default), leads/invoice SLA scans run only in ARQ — not in the API loop."""
+    return _env_bool("COMM_SCHEDULER_ENTITY_SLA_VIA_ARQ", True)
+
+
+def _iso_episode_ts(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _stuck_stage_source_event_id(*, lead_id: str, stage: str, stage_entered_at: datetime) -> str:
+    """Episode key: one notification per (lead, stage, stage_entered_at) breach."""
+    return (
+        f"lead_stuck_stage:v2:{lead_id}:{str(stage or 'new')}:"
+        f"{_iso_episode_ts(stage_entered_at)}"
+    )
+
+
+def _no_next_action_source_event_id(
+    *, lead_id: str, threshold_hours: int, episode_started_at: datetime
+) -> str:
+    """Episode key: re-breach after a prior next-action cycle gets a new id."""
+    return (
+        f"lead_no_next_action:v2:{lead_id}:{int(threshold_hours)}:"
+        f"{_iso_episode_ts(episode_started_at)}"
+    )
+
+
+def _invoice_overdue_source_event_id(*, invoice_id: str, due_date: Any) -> str:
+    return f"invoice_overdue:v2:{invoice_id}:overdue:{due_date}"
+
+
 def _tenant_leads_sla_create_reminders(tenant: Tenant) -> bool:
     cfg = _tenant_leads_sla_settings(tenant)
     return bool(cfg.get("createReminders", True))
@@ -542,6 +584,31 @@ async def _latest_lead_stage_change_map(db, *, tenant_id: str, lead_ids: list[st
     return {str(tid): ts for tid, ts in rows if tid and ts}
 
 
+async def _latest_no_next_action_episode_map(
+    db, *, tenant_id: str, lead_ids: list[str]
+) -> Dict[str, datetime]:
+    """Last terminal leads_no_next_action activity → starts the next no-action episode."""
+    from backend.app.models.reminder import Reminder, ReminderStatus
+
+    if not lead_ids:
+        return {}
+    terminal = (ReminderStatus.done, ReminderStatus.cancelled)
+    completed_ts = sa.func.coalesce(Reminder.completed_at, Reminder.cancelled_at, Reminder.updated_at)
+    stmt = (
+        sa.select(Reminder.entity_id, sa.func.max(completed_ts))
+        .where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.entity_type == "lead",
+            Reminder.entity_id.in_(lead_ids),
+            Reminder.type == "leads_no_next_action",
+            Reminder.status.in_(list(terminal)),
+        )
+        .group_by(Reminder.entity_id)
+    )
+    rows = (await db.execute(stmt)).all()
+    return {str(eid): ts for eid, ts in rows if eid and ts}
+
+
 async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: datetime) -> Dict[str, int]:
     """
     Leads SLA nudge: if a processed lead has no next action for N hours, create:
@@ -553,7 +620,15 @@ async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: date
     from backend.app.models.reminder import Reminder, ReminderStatus
     from backend.app.services.user_notifications import create_notification
 
-    stats = {"checked": 0, "due": 0, "notifications": 0, "reminders": 0, "skipped_unassigned": 0}
+    stats = {
+        "checked": 0,
+        "due": 0,
+        "notifications": 0,
+        "deduplicated": 0,
+        "reminders": 0,
+        "skipped_unassigned": 0,
+        "failed": 0,
+    }
     if not _tenant_leads_next_action_sla_enabled(tenant):
         return stats
 
@@ -601,37 +676,61 @@ async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: date
     if not rows:
         return stats
 
+    lead_ids = [str(lid) for lid, _c, _s in rows if lid]
+    episode_map = await _latest_no_next_action_episode_map(db, tenant_id=tenant_id, lead_ids=lead_ids)
+
     for lead_id, created_at, stage in rows:
         lid = str(lead_id)
         stats["due"] += 1
-        due_key = f"{tenant_id}:{lid}:{threshold_hours}"
+        created_dt = created_at if isinstance(created_at, datetime) else now
+        if created_dt.tzinfo is None:
+            created_dt = created_dt.replace(tzinfo=timezone.utc)
+        prior_done = episode_map.get(lid)
+        if prior_done is not None and getattr(prior_done, "tzinfo", None) is None:
+            prior_done = prior_done.replace(tzinfo=timezone.utc)
+        episode_started = prior_done if prior_done is not None and prior_done > created_dt else created_dt
+        source_event_id = _no_next_action_source_event_id(
+            lead_id=lid,
+            threshold_hours=threshold_hours,
+            episode_started_at=episode_started,
+        )
+        due_key = f"{tenant_id}:{lid}:{threshold_hours}:{_iso_episode_ts(episode_started)}"
 
         if create_notifications:
-            created_n = await create_notification(
-                db,
-                tenant_id=tenant_id,
-                user_id=str(assignee_id),
-                event_type="lead_no_next_action",
-                entity_type="lead",
-                entity_id=lid,
-                payload={
-                    "type": "lead_no_next_action",
-                    "source": "leads_next_action_sla",
-                    "severity": "medium",
-                    "requires_action": True,
-                    "title": "Lead without next action",
-                    "description": f"Processed lead has no next action for {threshold_hours}h+.",
-                    "lead_id": lid,
-                    "stage": str(stage or ""),
-                    "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else None,
-                    "threshold_hours": int(threshold_hours),
-                    "dedupe_key": f"lead_no_next_action:{due_key}",
-                },
-                # Keep bell signal low-noise; reminders are the primary actionable queue.
-                dedupe_window_minutes=60 * 24 * 30,
-            )
-            if created_n is not None:
-                stats["notifications"] += 1
+            try:
+                created_n = await create_notification(
+                    db,
+                    tenant_id=tenant_id,
+                    user_id=str(assignee_id),
+                    event_type="lead_no_next_action",
+                    entity_type="lead",
+                    entity_id=lid,
+                    payload={
+                        "type": "lead_no_next_action",
+                        "source": "leads_next_action_sla",
+                        "source_event_id": source_event_id,
+                        "priority": "medium",
+                        "requires_action": True,
+                        "title": "Lead without next action",
+                        "description": f"Processed lead has no next action for {threshold_hours}h+.",
+                        "lead_id": lid,
+                        "stage": str(stage or ""),
+                        "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else None,
+                        "episode_started_at": episode_started.isoformat(),
+                        "threshold_hours": int(threshold_hours),
+                        "dedupe_key": f"lead_no_next_action:{due_key}",
+                    },
+                    source_event_id=source_event_id,
+                    require_idempotency_key=True,
+                    dedupe_window_minutes=60 * 24 * 30,
+                )
+                if created_n is not None and getattr(created_n, "_hf_notification_created", False):
+                    stats["notifications"] += 1
+                elif created_n is not None:
+                    stats["deduplicated"] += 1
+            except Exception:
+                stats["failed"] += 1
+                raise
 
         if create_reminders:
             # Idempotency: avoid duplicate active reminders of this type.
@@ -689,7 +788,15 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
     from backend.app.models.reminder import Reminder, ReminderStatus
     from backend.app.services.user_notifications import create_notification
 
-    stats = {"checked": 0, "due": 0, "notifications": 0, "reminders": 0, "skipped_unassigned": 0}
+    stats = {
+        "checked": 0,
+        "due": 0,
+        "notifications": 0,
+        "deduplicated": 0,
+        "reminders": 0,
+        "skipped_unassigned": 0,
+        "failed": 0,
+    }
     if not _tenant_leads_next_action_sla_enabled(tenant):
         return stats
 
@@ -697,7 +804,7 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
     limit = _tenant_leads_sla_limit(tenant)
     stages = _tenant_leads_stuck_stages(tenant)
     stuck_days = _tenant_leads_stuck_after_days(tenant)
-    create_notifications = _tenant_leads_sla_create_notifications(tenant)
+    create_notifications = _tenant_leads_stuck_create_notifications(tenant)
     create_reminders = _tenant_leads_sla_create_reminders(tenant)
     cutoff_dt = now - timedelta(days=int(stuck_days))
 
@@ -736,34 +843,47 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
             continue
 
         stats["due"] += 1
-        due_key = f"{tenant_id}:{lid}:{stuck_days}:{str(stage or '')}"
+        stage_key = str(stage or "new")
+        # Episode = this stage stay (lead + stage + stage_entered_at), not lead lifetime.
+        source_event_id = _stuck_stage_source_event_id(
+            lead_id=lid, stage=stage_key, stage_entered_at=last_change_at
+        )
+        due_key = f"{tenant_id}:{lid}:{stuck_days}:{stage_key}:{_iso_episode_ts(last_change_at)}"
 
         if create_notifications:
-            created_n = await create_notification(
-                db,
-                tenant_id=tenant_id,
-                user_id=str(assignee_id),
-                event_type="lead_stuck_stage",
-                entity_type="lead",
-                entity_id=lid,
-                payload={
-                    "type": "lead_stuck_stage",
-                    "source": "leads_next_action_sla",
-                    "severity": "medium",
-                    "requires_action": True,
-                    "title": "Lead stuck in stage",
-                    "description": f"No stage change for {stuck_days}d+.",
-                    "lead_id": lid,
-                    "stage": str(stage or "new"),
-                    "last_stage_change_at": last_change_at.isoformat(),
-                    "stuck_days": int(stuck_days),
-                    "dedupe_key": f"lead_stuck_stage:{due_key}",
-                },
-                # Keep bell signal low-noise; reminders are the primary actionable queue.
-                dedupe_window_minutes=60 * 24 * 30,
-            )
-            if created_n is not None:
-                stats["notifications"] += 1
+            try:
+                created_n = await create_notification(
+                    db,
+                    tenant_id=tenant_id,
+                    user_id=str(assignee_id),
+                    event_type="lead_stuck_stage",
+                    entity_type="lead",
+                    entity_id=lid,
+                    payload={
+                        "type": "lead_stuck_stage",
+                        "source": "leads_next_action_sla",
+                        "source_event_id": source_event_id,
+                        "priority": "medium",
+                        "requires_action": True,
+                        "title": "Lead stuck in stage",
+                        "description": f"No stage change for {stuck_days}d+.",
+                        "lead_id": lid,
+                        "stage": stage_key,
+                        "last_stage_change_at": last_change_at.isoformat(),
+                        "stuck_days": int(stuck_days),
+                        "dedupe_key": f"lead_stuck_stage:{due_key}",
+                    },
+                    source_event_id=source_event_id,
+                    require_idempotency_key=True,
+                    dedupe_window_minutes=60 * 24 * 30,
+                )
+                if created_n is not None and getattr(created_n, "_hf_notification_created", False):
+                    stats["notifications"] += 1
+                elif created_n is not None:
+                    stats["deduplicated"] += 1
+            except Exception:
+                stats["failed"] += 1
+                raise
 
         if create_reminders:
             existing = (
@@ -822,7 +942,15 @@ async def _run_invoices_overdue_sla_for_tenant(db, *, tenant: Tenant, now: datet
     from backend.app.models.reminder import Reminder, ReminderStatus
     from backend.app.services.user_notifications import create_notification
 
-    stats = {"checked": 0, "due": 0, "notifications": 0, "reminders": 0, "skipped_unassigned": 0}
+    stats = {
+        "checked": 0,
+        "due": 0,
+        "notifications": 0,
+        "deduplicated": 0,
+        "reminders": 0,
+        "skipped_unassigned": 0,
+        "failed": 0,
+    }
     if not _tenant_invoices_overdue_sla_enabled(tenant):
         return stats
 
@@ -879,34 +1007,44 @@ async def _run_invoices_overdue_sla_for_tenant(db, *, tenant: Tenant, now: datet
         description = f"Invoice {str(inv_number or iid)[:32]} is overdue. Outstanding: {round(outstanding, 2)}."
 
         if create_notifications:
-            created_n = await create_notification(
-                db,
-                tenant_id=tenant_id,
-                user_id=str(assignee_id),
-                event_type="invoice_overdue",
-                entity_type="invoice",
-                entity_id=iid,
-                payload={
-                    "type": "invoice_overdue",
-                    "source": "invoice_overdue_sla",
-                    "severity": "high",
-                    "requires_action": True,
-                    "title": title,
-                    "description": description,
-                    "invoice_id": iid,
-                    "invoice_number": str(inv_number or ""),
-                    "invoice_status": str(inv_status or ""),
-                    "due_date": str(due_date) if due_date else None,
-                    "outstanding_amount": round(outstanding, 2),
-                    "service_order_id": str(service_order_id) if service_order_id else None,
-                    "company_id": str(company_id) if company_id else None,
-                    "candidate_id": str(candidate_id) if candidate_id else None,
-                    "dedupe_key": f"invoice_overdue:{due_key}",
-                },
-                dedupe_window_minutes=60 * 24,
-            )
-            if created_n is not None:
-                stats["notifications"] += 1
+            source_event_id = _invoice_overdue_source_event_id(invoice_id=iid, due_date=due_date)
+            try:
+                created_n = await create_notification(
+                    db,
+                    tenant_id=tenant_id,
+                    user_id=str(assignee_id),
+                    event_type="invoice_overdue",
+                    entity_type="invoice",
+                    entity_id=iid,
+                    payload={
+                        "type": "invoice_overdue",
+                        "source": "invoice_overdue_sla",
+                        "source_event_id": source_event_id,
+                        "priority": "high",
+                        "requires_action": True,
+                        "title": title,
+                        "description": description,
+                        "invoice_id": iid,
+                        "invoice_number": str(inv_number or ""),
+                        "invoice_status": str(inv_status or ""),
+                        "due_date": str(due_date) if due_date else None,
+                        "outstanding_amount": round(outstanding, 2),
+                        "service_order_id": str(service_order_id) if service_order_id else None,
+                        "company_id": str(company_id) if company_id else None,
+                        "candidate_id": str(candidate_id) if candidate_id else None,
+                        "dedupe_key": f"invoice_overdue:{due_key}",
+                    },
+                    source_event_id=source_event_id,
+                    require_idempotency_key=True,
+                    dedupe_window_minutes=60 * 24,
+                )
+                if created_n is not None and getattr(created_n, "_hf_notification_created", False):
+                    stats["notifications"] += 1
+                elif created_n is not None:
+                    stats["deduplicated"] += 1
+            except Exception:
+                stats["failed"] += 1
+                raise
 
         if create_reminders:
             existing = (
@@ -1070,6 +1208,7 @@ async def _run_sla_escalations_for_tenant(db, *, tenant: Tenant, now: datetime) 
 
         if create_notifications:
             event_type = "communications_sla_overdue"
+            source_event_id = f"communications_sla_overdue:v1:{thread.id}:{due_key}"
             notif = await create_notification(
                 db,
                 tenant_id=tenant_id,
@@ -1086,14 +1225,17 @@ async def _run_sla_escalations_for_tenant(db, *, tenant: Tenant, now: datetime) 
                     "subject": thread.subject,
                     "title": f"SLA overdue: {thread.channel.upper()}",
                     "description": (thread.subject or thread.last_message_preview or str(thread.id))[:500],
-                    "severity": "high",
+                    "priority": "high",
                     "requires_action": True,
                     "source": "communications_sla",
+                    "source_event_id": source_event_id,
                     "dedupe_key": f"sla:{tenant_id}:{recipient_user_id}:{thread.id}:{due_key}",
                 },
+                source_event_id=source_event_id,
+                require_idempotency_key=True,
                 dedupe_window_minutes=240,
             )
-            if notif is not None:
+            if notif is not None and getattr(notif, "_hf_notification_created", False):
                 stats["notifications"] += 1
 
         if create_reminders:
@@ -1259,6 +1401,7 @@ async def _run_candidate_docs_deadlines_for_tenant(db, *, tenant: Tenant, now: d
                     stats["candidate_telegram"] = int(stats["candidate_telegram"]) + 1
 
             if manager_id and not str(marker.get("manager_notification_at") or "").strip():
+                source_event_id = f"candidate_docs_pending:v1:{cand.id}:{h}"
                 created_doc_n = await create_notification(
                     db,
                     tenant_id=tenant_id,
@@ -1269,7 +1412,8 @@ async def _run_candidate_docs_deadlines_for_tenant(db, *, tenant: Tenant, now: d
                     payload={
                         "type": "candidate_docs_pending_upload",
                         "source": "candidate_docs",
-                        "severity": "medium",
+                        "source_event_id": source_event_id,
+                        "priority": "medium",
                         "requires_action": True,
                         "title": "Ожидаются документы кандидата",
                         "description": (
@@ -1282,9 +1426,11 @@ async def _run_candidate_docs_deadlines_for_tenant(db, *, tenant: Tenant, now: d
                         "hours_since_ready": hours_since_ready,
                         "dedupe_key": f"candidate_docs_pending:{tenant_id}:{manager_id}:{cand.id}:{h}",
                     },
+                    source_event_id=source_event_id,
+                    require_idempotency_key=True,
                     dedupe_window_minutes=60 * 24 * 30,
                 )
-                if created_doc_n is not None:
+                if created_doc_n is not None and getattr(created_doc_n, "_hf_notification_created", False):
                     marker["manager_notification_at"] = now.isoformat()
                     stats["manager_notifications"] = int(stats["manager_notifications"]) + 1
 
@@ -1516,91 +1662,95 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
                 tenant_runtime["last_docs_deadline_error"] = str(exc)
                 logger.warning("[communications-scheduler] docs deadlines failed tenant=%s (%s)", tenant_id, exc)
 
-            # Leads next-action SLA nudges: processed leads without next action for N hours.
-            try:
-                leads_stats = await _run_leads_next_action_sla_for_tenant(db, tenant=tenant, now=now)
-                tenant_runtime["last_leads_sla_check_at"] = now.isoformat()
-                tenant_runtime["last_leads_sla_stats"] = dict(leads_stats)
-                tick_summary["leads_sla_runs"] = int(tick_summary["leads_sla_runs"]) + 1
-                tick_summary["leads_sla_due"] = int(tick_summary["leads_sla_due"]) + int(leads_stats.get("due", 0) or 0)
-                tick_summary["leads_sla_notifications"] = int(tick_summary["leads_sla_notifications"]) + int(
-                    leads_stats.get("notifications", 0) or 0
-                )
-                tick_summary["leads_sla_reminders"] = int(tick_summary["leads_sla_reminders"]) + int(leads_stats.get("reminders", 0) or 0)
-                if int(leads_stats.get("reminders", 0) or 0) > 0 or int(leads_stats.get("notifications", 0) or 0) > 0:
-                    logger.info(
-                        "[communications-scheduler] leads SLA tenant=%s due=%s notifications=%s reminders=%s",
-                        tenant_id,
-                        leads_stats.get("due", 0),
-                        leads_stats.get("notifications", 0),
-                        leads_stats.get("reminders", 0),
-                    )
-                await db.commit()
-            except Exception as exc:
-                try:
-                    await db.rollback()
-                except Exception:
-                    pass
-                tenant_runtime["last_leads_sla_error"] = str(exc)
-                logger.warning("[communications-scheduler] leads SLA failed tenant=%s (%s)", tenant_id, exc)
+            # Leads / invoice entity SLA: owned by ARQ when COMM_SCHEDULER_ENTITY_SLA_VIA_ARQ=1 (default).
+            if not _entity_sla_via_arq():
+                            # Leads next-action SLA nudges: processed leads without next action for N hours.
+                            try:
+                                leads_stats = await _run_leads_next_action_sla_for_tenant(db, tenant=tenant, now=now)
+                                tenant_runtime["last_leads_sla_check_at"] = now.isoformat()
+                                tenant_runtime["last_leads_sla_stats"] = dict(leads_stats)
+                                tick_summary["leads_sla_runs"] = int(tick_summary["leads_sla_runs"]) + 1
+                                tick_summary["leads_sla_due"] = int(tick_summary["leads_sla_due"]) + int(leads_stats.get("due", 0) or 0)
+                                tick_summary["leads_sla_notifications"] = int(tick_summary["leads_sla_notifications"]) + int(
+                                    leads_stats.get("notifications", 0) or 0
+                                )
+                                tick_summary["leads_sla_reminders"] = int(tick_summary["leads_sla_reminders"]) + int(leads_stats.get("reminders", 0) or 0)
+                                if int(leads_stats.get("reminders", 0) or 0) > 0 or int(leads_stats.get("notifications", 0) or 0) > 0:
+                                    logger.info(
+                                        "[communications-scheduler] leads SLA tenant=%s due=%s notifications=%s reminders=%s",
+                                        tenant_id,
+                                        leads_stats.get("due", 0),
+                                        leads_stats.get("notifications", 0),
+                                        leads_stats.get("reminders", 0),
+                                    )
+                                await db.commit()
+                            except Exception as exc:
+                                try:
+                                    await db.rollback()
+                                except Exception:
+                                    pass
+                                tenant_runtime["last_leads_sla_error"] = str(exc)
+                                logger.warning("[communications-scheduler] leads SLA failed tenant=%s (%s)", tenant_id, exc)
 
-            # Leads stuck-in-stage SLA nudges.
-            try:
-                stuck_stats = await _run_leads_stuck_stage_sla_for_tenant(db, tenant=tenant, now=now)
-                tenant_runtime["last_leads_stuck_check_at"] = now.isoformat()
-                tenant_runtime["last_leads_stuck_stats"] = dict(stuck_stats)
-                tick_summary["leads_sla_runs"] = int(tick_summary["leads_sla_runs"]) + 1
-                tick_summary["leads_sla_due"] = int(tick_summary["leads_sla_due"]) + int(stuck_stats.get("due", 0) or 0)
-                tick_summary["leads_sla_notifications"] = int(tick_summary["leads_sla_notifications"]) + int(
-                    stuck_stats.get("notifications", 0) or 0
-                )
-                tick_summary["leads_sla_reminders"] = int(tick_summary["leads_sla_reminders"]) + int(stuck_stats.get("reminders", 0) or 0)
-                if int(stuck_stats.get("reminders", 0) or 0) > 0 or int(stuck_stats.get("notifications", 0) or 0) > 0:
-                    logger.info(
-                        "[communications-scheduler] leads stuck tenant=%s due=%s notifications=%s reminders=%s",
-                        tenant_id,
-                        stuck_stats.get("due", 0),
-                        stuck_stats.get("notifications", 0),
-                        stuck_stats.get("reminders", 0),
-                    )
-                await db.commit()
-            except Exception as exc:
-                try:
-                    await db.rollback()
-                except Exception:
-                    pass
-                tenant_runtime["last_leads_stuck_error"] = str(exc)
-                logger.warning("[communications-scheduler] leads stuck failed tenant=%s (%s)", tenant_id, exc)
+                            # Leads stuck-in-stage SLA nudges.
+                            try:
+                                stuck_stats = await _run_leads_stuck_stage_sla_for_tenant(db, tenant=tenant, now=now)
+                                tenant_runtime["last_leads_stuck_check_at"] = now.isoformat()
+                                tenant_runtime["last_leads_stuck_stats"] = dict(stuck_stats)
+                                tick_summary["leads_sla_runs"] = int(tick_summary["leads_sla_runs"]) + 1
+                                tick_summary["leads_sla_due"] = int(tick_summary["leads_sla_due"]) + int(stuck_stats.get("due", 0) or 0)
+                                tick_summary["leads_sla_notifications"] = int(tick_summary["leads_sla_notifications"]) + int(
+                                    stuck_stats.get("notifications", 0) or 0
+                                )
+                                tick_summary["leads_sla_reminders"] = int(tick_summary["leads_sla_reminders"]) + int(stuck_stats.get("reminders", 0) or 0)
+                                if int(stuck_stats.get("reminders", 0) or 0) > 0 or int(stuck_stats.get("notifications", 0) or 0) > 0:
+                                    logger.info(
+                                        "[communications-scheduler] leads stuck tenant=%s due=%s notifications=%s reminders=%s",
+                                        tenant_id,
+                                        stuck_stats.get("due", 0),
+                                        stuck_stats.get("notifications", 0),
+                                        stuck_stats.get("reminders", 0),
+                                    )
+                                await db.commit()
+                            except Exception as exc:
+                                try:
+                                    await db.rollback()
+                                except Exception:
+                                    pass
+                                tenant_runtime["last_leads_stuck_error"] = str(exc)
+                                logger.warning("[communications-scheduler] leads stuck failed tenant=%s (%s)", tenant_id, exc)
 
-            # Invoice overdue SLA nudges.
-            try:
-                invoices_stats = await _run_invoices_overdue_sla_for_tenant(db, tenant=tenant, now=now)
-                tenant_runtime["last_invoices_sla_check_at"] = now.isoformat()
-                tenant_runtime["last_invoices_sla_stats"] = dict(invoices_stats)
-                tick_summary["invoices_sla_runs"] = int(tick_summary["invoices_sla_runs"]) + 1
-                tick_summary["invoices_sla_due"] = int(tick_summary["invoices_sla_due"]) + int(invoices_stats.get("due", 0) or 0)
-                tick_summary["invoices_sla_notifications"] = int(tick_summary["invoices_sla_notifications"]) + int(
-                    invoices_stats.get("notifications", 0) or 0
-                )
-                tick_summary["invoices_sla_reminders"] = int(tick_summary["invoices_sla_reminders"]) + int(
-                    invoices_stats.get("reminders", 0) or 0
-                )
-                if int(invoices_stats.get("reminders", 0) or 0) > 0 or int(invoices_stats.get("notifications", 0) or 0) > 0:
-                    logger.info(
-                        "[communications-scheduler] invoices SLA tenant=%s due=%s notifications=%s reminders=%s",
-                        tenant_id,
-                        invoices_stats.get("due", 0),
-                        invoices_stats.get("notifications", 0),
-                        invoices_stats.get("reminders", 0),
-                    )
-                await db.commit()
-            except Exception as exc:
-                try:
-                    await db.rollback()
-                except Exception:
-                    pass
-                tenant_runtime["last_invoices_sla_error"] = str(exc)
-                logger.warning("[communications-scheduler] invoices SLA failed tenant=%s (%s)", tenant_id, exc)
+                            # Invoice overdue SLA nudges.
+                            try:
+                                invoices_stats = await _run_invoices_overdue_sla_for_tenant(db, tenant=tenant, now=now)
+                                tenant_runtime["last_invoices_sla_check_at"] = now.isoformat()
+                                tenant_runtime["last_invoices_sla_stats"] = dict(invoices_stats)
+                                tick_summary["invoices_sla_runs"] = int(tick_summary["invoices_sla_runs"]) + 1
+                                tick_summary["invoices_sla_due"] = int(tick_summary["invoices_sla_due"]) + int(invoices_stats.get("due", 0) or 0)
+                                tick_summary["invoices_sla_notifications"] = int(tick_summary["invoices_sla_notifications"]) + int(
+                                    invoices_stats.get("notifications", 0) or 0
+                                )
+                                tick_summary["invoices_sla_reminders"] = int(tick_summary["invoices_sla_reminders"]) + int(
+                                    invoices_stats.get("reminders", 0) or 0
+                                )
+                                if int(invoices_stats.get("reminders", 0) or 0) > 0 or int(invoices_stats.get("notifications", 0) or 0) > 0:
+                                    logger.info(
+                                        "[communications-scheduler] invoices SLA tenant=%s due=%s notifications=%s reminders=%s",
+                                        tenant_id,
+                                        invoices_stats.get("due", 0),
+                                        invoices_stats.get("notifications", 0),
+                                        invoices_stats.get("reminders", 0),
+                                    )
+                                await db.commit()
+                            except Exception as exc:
+                                try:
+                                    await db.rollback()
+                                except Exception:
+                                    pass
+                                tenant_runtime["last_invoices_sla_error"] = str(exc)
+                                logger.warning("[communications-scheduler] invoices SLA failed tenant=%s (%s)", tenant_id, exc)
+            else:
+                tenant_runtime["entity_sla_via_arq"] = True
 
             # Calendar maintenance: keep provider subscriptions healthy and queue reconcile.
             try:
@@ -1757,6 +1907,172 @@ async def _run_risk_intel_hourly_pass(
         except Exception as exc:
             tick_summary["risk_intel_errors"] = int(tick_summary.get("risk_intel_errors") or 0) + 1
             logger.warning("[communications-scheduler] risk_intel hourly failed tenant=%s (%s)", tid, exc)
+
+
+
+_ENTITY_SLA_LOCK_KEY = "hostflow:lock:entity_sla_scan"
+_ENTITY_SLA_CHECKPOINT: Dict[str, Any] = {
+    "last_started_at": None,
+    "last_finished_at": None,
+    "last_success_at": None,
+    "last_error": None,
+    "last_stats": {},
+}
+
+
+async def run_entity_sla_scans_once(*, use_lock: bool = True) -> Dict[str, Any]:
+    """Single-authority leads/invoice SLA scan (ARQ cron).
+
+    Metrics: scanned / eligible / created / deduplicated / failed.
+    """
+    from contextlib import asynccontextmanager
+
+    now = datetime.now(timezone.utc)
+    _ENTITY_SLA_CHECKPOINT["last_started_at"] = now.isoformat()
+    _ENTITY_SLA_CHECKPOINT["last_error"] = None
+
+    totals: Dict[str, Any] = {
+        "skipped": 0,
+        "tenants": 0,
+        "scanned": 0,
+        "eligible": 0,
+        "created": 0,
+        "deduplicated": 0,
+        "failed": 0,
+        "reminders": 0,
+        "leads_next_action": {},
+        "leads_stuck": {},
+        "invoices": {},
+    }
+
+    @asynccontextmanager
+    async def _redis_lock(ttl_sec: int = 90):
+        client = None
+        token = None
+        acquired = True
+        try:
+            import redis.asyncio as redis_async
+
+            url = (
+                (os.getenv("JOB_QUEUE_REDIS_URL") or "").strip()
+                or (os.getenv("REDIS_URL") or "").strip()
+            )
+            if url:
+                client = redis_async.from_url(url, encoding="utf-8", decode_responses=True)
+                token = f"{os.getpid()}:{id(object())}"
+                acquired = bool(
+                    await client.set(_ENTITY_SLA_LOCK_KEY, token, nx=True, ex=max(30, int(ttl_sec)))
+                )
+        except Exception:
+            logger.exception("[entity-sla] redis lock unavailable; proceeding without lock")
+            acquired = True
+            client = None
+        try:
+            yield acquired
+        finally:
+            if client is not None and token is not None and acquired:
+                try:
+                    await client.eval(
+                        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+                        1,
+                        _ENTITY_SLA_LOCK_KEY,
+                        token,
+                    )
+                except Exception:
+                    pass
+                try:
+                    await client.aclose()
+                except Exception:
+                    pass
+
+    @asynccontextmanager
+    async def _maybe_lock():
+        if not use_lock:
+            yield True
+            return
+        async with _redis_lock(ttl_sec=90) as acquired:
+            yield acquired
+
+    async with _maybe_lock() as acquired:
+        if use_lock and not acquired:
+            totals["skipped"] = 1
+            logger.info("[entity-sla] skipped — lock held by another worker")
+            _ENTITY_SLA_CHECKPOINT["last_finished_at"] = datetime.now(timezone.utc).isoformat()
+            _ENTITY_SLA_CHECKPOINT["last_stats"] = dict(totals)
+            return totals
+
+        async with async_session_maker() as db:
+            tenants = (
+                await db.execute(
+                    sa.select(Tenant).where(Tenant.is_active.is_(True)).order_by(sa.asc(Tenant.name))
+                )
+            ).scalars().all()
+            totals["tenants"] = len(tenants)
+            for tenant in tenants:
+                tid = str(tenant.id)
+                try:
+                    leads_stats = await _run_leads_next_action_sla_for_tenant(db, tenant=tenant, now=now)
+                    stuck_stats = await _run_leads_stuck_stage_sla_for_tenant(db, tenant=tenant, now=now)
+                    inv_stats = await _run_invoices_overdue_sla_for_tenant(db, tenant=tenant, now=now)
+                    await db.commit()
+                except Exception as exc:
+                    try:
+                        await db.rollback()
+                    except Exception:
+                        pass
+                    totals["failed"] = int(totals["failed"]) + 1
+                    _ENTITY_SLA_CHECKPOINT["last_error"] = str(exc)
+                    logger.warning("[entity-sla] tenant=%s failed: %s", tid, exc)
+                    continue
+
+                for part in (leads_stats, stuck_stats, inv_stats):
+                    totals["scanned"] = int(totals["scanned"]) + int(part.get("checked", 0) or 0)
+                    totals["eligible"] = int(totals["eligible"]) + int(part.get("due", 0) or 0)
+                    totals["created"] = int(totals["created"]) + int(part.get("notifications", 0) or 0)
+                    totals["deduplicated"] = int(totals["deduplicated"]) + int(part.get("deduplicated", 0) or 0)
+                    totals["failed"] = int(totals["failed"]) + int(part.get("failed", 0) or 0)
+                    totals["reminders"] = int(totals["reminders"]) + int(part.get("reminders", 0) or 0)
+                totals["leads_next_action"][tid] = dict(leads_stats)
+                totals["leads_stuck"][tid] = dict(stuck_stats)
+                totals["invoices"][tid] = dict(inv_stats)
+
+    finished = datetime.now(timezone.utc)
+    _ENTITY_SLA_CHECKPOINT["last_finished_at"] = finished.isoformat()
+    if not totals.get("failed"):
+        _ENTITY_SLA_CHECKPOINT["last_success_at"] = finished.isoformat()
+    _ENTITY_SLA_CHECKPOINT["last_stats"] = {
+        k: totals[k]
+        for k in (
+            "skipped",
+            "tenants",
+            "scanned",
+            "eligible",
+            "created",
+            "deduplicated",
+            "failed",
+            "reminders",
+        )
+    }
+    logger.info(
+        "[entity-sla] scanned=%s eligible=%s created=%s deduplicated=%s failed=%s reminders=%s tenants=%s",
+        totals["scanned"],
+        totals["eligible"],
+        totals["created"],
+        totals["deduplicated"],
+        totals["failed"],
+        totals["reminders"],
+        totals["tenants"],
+    )
+    return totals
+
+
+def entity_sla_runtime_status() -> Dict[str, Any]:
+    return {
+        "via_arq": bool(_entity_sla_via_arq()),
+        "stuck_notifications_enabled": bool(_leads_stuck_notifications_enabled()),
+        **dict(_ENTITY_SLA_CHECKPOINT),
+    }
+
 
 
 async def communications_scheduler_loop(stop_event: asyncio.Event) -> None:

@@ -17,6 +17,8 @@ Registered jobs (Phase 0 #5)
     job_stripe_webhook_process       — process Stripe webhook event out-of-band.
     job_communications_dispatch_once — run one outgoing-comms dispatch for a tenant.
     job_automation_evaluate_trigger  — evaluate automation rules for a trigger.
+    job_notifications_retention_purge — TTL purge for in-app notifications (batched).
+    job_entity_sla_scan              — leads/invoice SLA scans (single authority + lock).
 
 All jobs are idempotent and safe to retry; failures bubble up so ARQ's
 retry policy (exponential backoff up to `settings.job_queue_max_tries`)
@@ -807,6 +809,60 @@ async def job_calendar_sync_ingest(
             raise
 
 
+async def job_notifications_retention_purge(
+    ctx: Dict[str, Any],
+    *,
+    tenant_id: Optional[str] = None,
+    max_batches: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Purge/collapse expired + duplicate in-app notifications (ARQ-only scheduler)."""
+    from backend.app.services.notification_retention import run_notifications_retention_once
+
+    _ = ctx
+    stats = await run_notifications_retention_once(
+        tenant_id=tenant_id,
+        max_batches=max_batches,
+        collapse_duplicates=True,
+        enforce_caps=True,
+        use_lock=True,
+    )
+    logger.info(
+        "[arq] notifications_retention_purge tenant=%s skipped=%s collapsed=%s "
+        "read=%s unread=%s critical=%s batches=%s caps=%s",
+        tenant_id or "*",
+        stats.get("skipped"),
+        stats.get("collapsed"),
+        stats.get("read"),
+        stats.get("unread"),
+        stats.get("critical"),
+        stats.get("batches"),
+        stats.get("caps"),
+    )
+    return stats
+
+
+async def job_entity_sla_scan(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Leads next-action / stuck-stage + invoice overdue SLA (single ARQ authority)."""
+    # Ensure relationship targets are registered (ARQ has no FastAPI model bootstrap).
+    import backend.app.models  # noqa: F401
+    from backend.app.services.communications_scheduler import run_entity_sla_scans_once
+
+    _ = ctx
+    stats = await run_entity_sla_scans_once(use_lock=True)
+    logger.info(
+        "[arq] entity_sla_scan skipped=%s scanned=%s eligible=%s created=%s "
+        "deduplicated=%s failed=%s reminders=%s",
+        stats.get("skipped"),
+        stats.get("scanned"),
+        stats.get("eligible"),
+        stats.get("created"),
+        stats.get("deduplicated"),
+        stats.get("failed"),
+        stats.get("reminders"),
+    )
+    return stats
+
+
 def _utcnow_fallback():
     from datetime import datetime, timezone
 
@@ -820,6 +876,8 @@ JOB_REGISTRY: Dict[str, Callable[..., Awaitable[Any]]] = {
     "communications_dispatch_once": job_communications_dispatch_once,
     "automation_evaluate_trigger": job_automation_evaluate_trigger,
     "calendar_sync_ingest": job_calendar_sync_ingest,
+    "notifications_retention_purge": job_notifications_retention_purge,
+    "entity_sla_scan": job_entity_sla_scan,
 }
 
 
@@ -828,6 +886,7 @@ JOB_REGISTRY: Dict[str, Callable[..., Awaitable[Any]]] = {
 # ---------------------------------------------------------------------------
 
 if _ARQ_AVAILABLE:
+    from arq import cron  # type: ignore
 
     async def _startup(ctx: Dict[str, Any]) -> None:  # pragma: no cover - arq runtime
         logger.info("[arq] worker started queue=%s", settings.job_queue_name)
@@ -840,13 +899,44 @@ if _ARQ_AVAILABLE:
         ARQ picks this class up via `arq backend.app.core.arq_worker.WorkerSettings`.
         Functions are registered from `JOB_REGISTRY` so adding a job is a one-line
         dict mutation above.
+
+        Production retention authority is ARQ cron only (no API in-process loop).
         """
 
         functions: List[Callable[..., Awaitable[Any]]] = list(JOB_REGISTRY.values())
+        cron_jobs = [
+            # Hourly at :17 — unique=True prevents overlapping runs across workers.
+            cron(
+                job_notifications_retention_purge,
+                hour=set(range(24)),
+                minute={17},
+                unique=True,
+                timeout=settings.job_queue_default_timeout_sec * 30,
+                keep_result=0,
+            ),
+            # Entity SLA scan every minute — single authority (API loop skips when VIA_ARQ).
+            cron(
+                job_entity_sla_scan,
+                minute=set(range(60)),
+                unique=True,
+                timeout=settings.job_queue_default_timeout_sec * 5,
+                keep_result=0,
+            ),
+        ]
         redis_settings = build_redis_settings()
         queue_name = settings.job_queue_name
         max_tries = settings.job_queue_max_tries
         job_timeout = settings.job_queue_default_timeout_sec
         on_startup = _startup
         on_shutdown = _shutdown
+        allow_abort_jobs = True
+else:  # pragma: no cover
+
+    class WorkerSettings:  # type: ignore[no-redef]
+        functions: List[Callable[..., Awaitable[Any]]] = list(JOB_REGISTRY.values())
+        cron_jobs: List[Any] = []
+        redis_settings = None
+        queue_name = settings.job_queue_name
+        max_tries = settings.job_queue_max_tries
+        job_timeout = settings.job_queue_default_timeout_sec
         allow_abort_jobs = True

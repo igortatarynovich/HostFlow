@@ -84,6 +84,33 @@ class Notification(Base):
             "related_entity_type",
             "related_entity_id",
         ),
+        # Unread poll list: tenant+user + created_at, only unread rows.
+        Index(
+            "ix_notifications_unread_user_created",
+            "tenant_id",
+            "user_id",
+            text("created_at DESC"),
+            postgresql_where=text("is_read = false"),
+            sqlite_where=text("is_read = 0"),
+        ),
+        # Unread dedupe / typed lookups.
+        Index(
+            "ix_notifications_unread_user_type_channel_created",
+            "tenant_id",
+            "user_id",
+            "type",
+            "channel",
+            text("created_at DESC"),
+            postgresql_where=text("is_read = false"),
+            sqlite_where=text("is_read = 0"),
+        ),
+        Index(
+            "uq_notifications_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+            sqlite_where=text("idempotency_key IS NOT NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(
@@ -106,6 +133,8 @@ class Notification(Base):
     channel: Mapped[str] = mapped_column(
         String(16), nullable=False, default="in_app", server_default=text("'in_app'")
     )
+    # Stable insert identity for SLA/domain events (NULL = legacy / non-idempotent rows).
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(191), nullable=True)
     is_read: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )

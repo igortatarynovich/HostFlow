@@ -213,6 +213,20 @@ class Settings(BaseSettings):
     # on the request path. Set this to false to force inline processing even with ARQ.
     job_queue_stripe_webhook_async: bool = True
 
+    # In-app notifications retention (attention queue, not an audit log).
+    # Unread ordinary rows expire after N days; read rows after N hours;
+    # critical rows after N days. Per-user unread cap drops oldest non-critical.
+    notifications_retention_enabled: bool = True
+    notifications_retention_read_hours: int = 24
+    notifications_retention_unread_days: int = 7
+    notifications_retention_critical_days: int = 30
+    notifications_max_unread_per_user: int = 100
+    notifications_list_max_limit: int = 50
+    notifications_retention_batch_size: int = 5000
+    notifications_retention_max_batches_per_run: int = 400
+    # Kept for CLI/docs; production purge is ARQ cron only (no API loop).
+    notifications_retention_interval_sec: int = 3600
+
     # Object storage (Phase 0 #6). "fs" keeps the historical UPLOAD_DIR layout served
     # via `/uploads/<path>` (default, zero-migration). "s3" routes writes through
     # `app.core.object_storage` to an S3-compatible bucket (AWS S3, MinIO, Cloudflare R2, …)

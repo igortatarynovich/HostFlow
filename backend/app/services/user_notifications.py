@@ -190,6 +190,36 @@ def _normalize_payload(
     return data
 
 
+def build_notification_idempotency_key(
+    *,
+    tenant_id: str,
+    user_id: str,
+    event_type: str,
+    channel: str = "in_app",
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    source_event_id: Optional[str] = None,
+) -> Optional[str]:
+    """Build insert identity from an explicit source_event_id (episode / breach id).
+
+    ``source_event_id`` must identify the *business episode* (e.g. stuck stage +
+    stage_entered_at), not merely the entity. Without it we refuse to invent a
+    lead-lifetime key — callers must pass a real episode id.
+    """
+    src = str(source_event_id or "").strip()
+    if not src:
+        return None
+    key = (
+        f"{str(tenant_id).strip()}:{str(user_id).strip()}:"
+        f"{str(channel or 'in_app').strip()}:{str(event_type).strip()}:{src}"
+    )
+    return key[:191]
+
+
+class NotificationIdempotencyRequired(ValueError):
+    """Automated notification create without a stable source_event_id / key."""
+
+
 async def create_notification(
     db: AsyncSession,
     *,
@@ -203,6 +233,8 @@ async def create_notification(
     delivered_at: Optional[datetime] = None,
     dedupe_window_minutes: Optional[int] = None,
     priority: Optional[str] = None,
+    source_event_id: Optional[str] = None,
+    require_idempotency_key: bool = False,
 ) -> Optional[UserNotification]:
     normalized_payload = _normalize_payload(
         event_type=event_type,
@@ -220,6 +252,29 @@ async def create_notification(
     normalized_payload["priority"] = resolved_priority
     dedupe_key = str(normalized_payload.get("dedupe_key") or "").strip() or None
 
+    src = (
+        str(source_event_id or "").strip()
+        or str(normalized_payload.get("source_event_id") or "").strip()
+        or None
+    )
+    if src:
+        normalized_payload["source_event_id"] = src
+
+    idem_key = build_notification_idempotency_key(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        event_type=event_type,
+        channel=channel,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        source_event_id=src,
+    )
+    if require_idempotency_key and not idem_key:
+        raise NotificationIdempotencyRequired(
+            f"automated notification {event_type!r} requires source_event_id "
+            f"(tenant={tenant_id} user={user_id} entity={entity_type}/{entity_id})"
+        )
+
     now_utc = datetime.now(timezone.utc)
     user_row = (
         await db.execute(select(User).where(User.id == user_id, User.tenant_id == tenant_id).limit(1))
@@ -236,43 +291,38 @@ async def create_notification(
     ):
         return None
 
-    if dedupe_window_minutes is not None and int(dedupe_window_minutes) > 0:
-        now = now_utc
-        since = now - timedelta(minutes=max(1, int(dedupe_window_minutes)))
-        base_filters = [
-            UserNotification.tenant_id == tenant_id,
-            UserNotification.user_id == user_id,
-            UserNotification.event_type == event_type,
-            UserNotification.channel == channel,
-            UserNotification.created_at >= since,
-            UserNotification.is_read.is_(False),
-        ]
-        # Backward-compatible dedupe:
-        # 1) exact dedupe_key match (preferred),
-        # 2) fallback to entity-based match when no dedupe_key provided.
-        recent = (
+    # Fast path: absolute idempotency by key (survives is_read flips / scheduler ticks).
+    if idem_key:
+        existing = (
             await db.execute(
                 select(UserNotification)
-                .where(*base_filters)
-                .order_by(UserNotification.created_at.desc())
-                .limit(50)
+                .where(UserNotification.idempotency_key == idem_key)
+                .limit(1)
             )
-        ).scalars().all()
-        for existing in recent:
-            existing_payload = existing.payload if isinstance(existing.payload, dict) else {}
-            existing_key = str(existing_payload.get("dedupe_key") or "").strip() or None
-            if dedupe_key:
-                if existing_key and existing_key == dedupe_key:
-                    return existing
-                continue
-            if entity_type is None and existing.entity_type is not None:
-                continue
-            if entity_type is not None and existing.entity_type != entity_type:
-                continue
-            if entity_id is None and existing.entity_id is not None:
-                continue
-            if entity_id is not None and existing.entity_id != entity_id:
-                continue
+        ).scalar_one_or_none()
+        if existing is not None:
+            setattr(existing, "_hf_notification_created", False)
+            return existing
+
+    # Legacy windowed unread dedupe when no idempotency key.
+    effective_window = dedupe_window_minutes
+    if effective_window is None and (dedupe_key or (entity_type and entity_id)):
+        effective_window = 60 * 24
+    if not idem_key and effective_window is not None and int(effective_window) > 0:
+        since = now_utc - timedelta(minutes=max(1, int(effective_window)))
+        existing = await _find_duplicate_unread(
+            db,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            event_type=event_type,
+            channel=channel,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            dedupe_key=dedupe_key,
+            since=since,
+        )
+        if existing is not None:
+            setattr(existing, "_hf_notification_created", False)
             return existing
 
     notification = UserNotification(
@@ -286,9 +336,172 @@ async def create_notification(
         payload=normalized_payload,
         channel=channel,
         delivered_at=delivered_at,
+        idempotency_key=idem_key,
     )
-    db.add(notification)
+    try:
+        async with db.begin_nested():
+            db.add(notification)
+            await db.flush()
+    except Exception as exc:
+        from sqlalchemy.exc import IntegrityError
+
+        if not isinstance(exc, IntegrityError):
+            raise
+        if idem_key:
+            existing = (
+                await db.execute(
+                    select(UserNotification)
+                    .where(UserNotification.idempotency_key == idem_key)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                setattr(existing, "_hf_notification_created", False)
+                return existing
+        existing = await _find_duplicate_unread(
+            db,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            event_type=event_type,
+            channel=channel,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            dedupe_key=dedupe_key,
+            since=now_utc - timedelta(minutes=max(1, int(effective_window or 1))),
+        )
+        if existing is not None:
+            setattr(existing, "_hf_notification_created", False)
+            return existing
+        raise
+    setattr(notification, "_hf_notification_created", True)
     return notification
+
+
+async def _find_duplicate_unread(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str,
+    event_type: str,
+    channel: str,
+    entity_type: Optional[str],
+    entity_id: Optional[str],
+    dedupe_key: Optional[str],
+    since: datetime,
+) -> Optional[UserNotification]:
+    """Indexed identity lookup — never scan only the latest N rows.
+
+    Root-cause of the multi-million duplicate flood: previous dedupe scanned
+    ``LIMIT 50`` newest unread of the type, so once a user had >50 distinct
+    SLA entities the older ones fell out of the window and were recreated
+    every scheduler tick (~60s).
+    """
+    # 1) Stable entity identity (preferred — uses related_entity indexes).
+    if entity_type is not None and entity_id is not None:
+        row = (
+            await db.execute(
+                select(UserNotification)
+                .where(
+                    UserNotification.tenant_id == tenant_id,
+                    UserNotification.user_id == user_id,
+                    UserNotification.event_type == event_type,
+                    UserNotification.channel == channel,
+                    UserNotification.entity_type == entity_type,
+                    UserNotification.entity_id == entity_id,
+                    UserNotification.is_read.is_(False),
+                    UserNotification.created_at >= since,
+                )
+                .order_by(UserNotification.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return row
+
+    # 2) Explicit dedupe_key in metadata (JSONB path on Postgres).
+    if dedupe_key:
+        try:
+            bind = db.get_bind()
+            dialect = bind.dialect.name if bind is not None else ""
+        except Exception:
+            dialect = ""
+        if dialect == "postgresql":
+            from sqlalchemy import text as sa_text
+
+            row_id = (
+                await db.execute(
+                    sa_text(
+                        """
+                        SELECT id FROM notifications
+                        WHERE tenant_id = :tenant_id
+                          AND user_id = :user_id
+                          AND type = :event_type
+                          AND channel = :channel
+                          AND is_read = false
+                          AND created_at >= :since
+                          AND metadata->>'dedupe_key' = :dedupe_key
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "user_id": user_id,
+                        "event_type": event_type,
+                        "channel": channel,
+                        "since": since,
+                        "dedupe_key": dedupe_key,
+                    },
+                )
+            ).scalar_one_or_none()
+            if row_id:
+                return (
+                    await db.execute(
+                        select(UserNotification).where(UserNotification.id == str(row_id)).limit(1)
+                    )
+                ).scalar_one_or_none()
+        else:
+            # SQLite / tests: scan a bounded recent set only when no entity identity.
+            candidates = (
+                await db.execute(
+                    select(UserNotification)
+                    .where(
+                        UserNotification.tenant_id == tenant_id,
+                        UserNotification.user_id == user_id,
+                        UserNotification.event_type == event_type,
+                        UserNotification.channel == channel,
+                        UserNotification.is_read.is_(False),
+                        UserNotification.created_at >= since,
+                    )
+                    .order_by(UserNotification.created_at.desc())
+                    .limit(200)
+                )
+            ).scalars().all()
+            for existing in candidates:
+                payload = existing.payload if isinstance(existing.payload, dict) else {}
+                if str(payload.get("dedupe_key") or "").strip() == dedupe_key:
+                    return existing
+
+    # 3) Entity-less events: small recent window scan (safe when volume is low).
+    if entity_type is None and entity_id is None and not dedupe_key:
+        recent = (
+            await db.execute(
+                select(UserNotification)
+                .where(
+                    UserNotification.tenant_id == tenant_id,
+                    UserNotification.user_id == user_id,
+                    UserNotification.event_type == event_type,
+                    UserNotification.channel == channel,
+                    UserNotification.is_read.is_(False),
+                    UserNotification.created_at >= since,
+                )
+                .order_by(UserNotification.created_at.desc())
+                .limit(50)
+            )
+        ).scalars().all()
+        return recent[0] if recent else None
+
+    return None
 
 
 async def list_notifications(
@@ -304,6 +517,10 @@ async def list_notifications(
     # Current data model stores only user-bound notifications.
     # Keep `scope` parameter for API compatibility and future expansion.
     _ = scope
+    from backend.app.core.settings import settings as app_settings
+
+    max_limit = max(1, int(getattr(app_settings, "notifications_list_max_limit", 50) or 50))
+    limit = max(1, min(int(limit or max_limit), max_limit))
     stmt = (
         select(UserNotification)
         .where(

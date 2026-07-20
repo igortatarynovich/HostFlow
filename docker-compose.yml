@@ -12,6 +12,7 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    shm_size: "512mb"
     environment:
       POSTGRES_USER: hostflow
       POSTGRES_PASSWORD: hostflow
