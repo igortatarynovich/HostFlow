@@ -6,7 +6,7 @@
 **Authors:** Product + Platform architecture  
 **Supersedes / clarifies:** implicit behaviour in [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform presentation layer), [ADR-013](ADR-013-public-intake-strategy.md) (public intake transport), targeted-advertising seed and channel-specific submit paths
 
-**Related (not replaced):** [ADR-021](ADR-021-unified-intake-resolution-model.md) (Application / Submission / resolution), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Entity Profile, Decision Layer, Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
+**Related (not replaced):** [ADR-021](ADR-021-unified-intake-resolution-model.md) (Application / Submission / resolution), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Entity Profile, Decision Layer, Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [ADR-022 Phase 2 Sales-only flow](../workflows/adr022-phase2-sales-only-capability-flow.md) (F3-B-10 product spine)
 
 **Review artifact:** [ADR-022-review-checklist.md](ADR-022-review-checklist.md)
 
