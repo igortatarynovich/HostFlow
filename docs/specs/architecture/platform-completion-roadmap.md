@@ -39,20 +39,23 @@ Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/
 
 ### A1. Communication (Epic C)
 
-Close the Communication Platform end-to-end:
+**Communication Platform Foundation — complete** (after C0.3 / PR #104).  
+See [communication-platform-foundation.md](communication-platform-foundation.md).  
+This is **not** “Epic C complete” — C1 + C2 remain.
 
 | Slice | Focus | Status |
 |-------|--------|--------|
 | C0.0 Canon & Contracts | Intent-first SoT | ✅ |
 | C0.1 / C0.1b Outbound + policy/snapshot | Canon writer path | ✅ |
 | C0.2 Inbound Resolver | Linked or explicit unresolved | ✅ (PR #102) |
-| **C0.3** Delivery Diagnostics | One record explains failure | **active** |
-| **C1** Inbox UX | Working messages module | queued |
+| C0.3 Delivery Diagnostics | Attempts + canonical diagnostics | ✅ (PR #104) |
+| **C1** Communication Inbox Workspace | Thread workplace for managers | **active** |
 | **C2** Templates, Automations & Campaigns | Product on platform command | queued |
 
-**Result:** one Communication Platform, no parallel module senders / lost inbound.
+**Foundation result:** Intent, Policy, Registry, Sender, Snapshot, Inbound Resolver, G13, unresolved inbound, delivery attempts/diagnostics/retry/callbacks/timeline.  
+**Epic C complete only after C2.**
 
-**Refs:** [Epic C0](../tasks/epic-c0-communication-integrity.md) · [C2 epic](../tasks/epic-c2-communication-campaigns.md) · [Canon](../tasks/c0-0-communication-canon.md)
+**Refs:** [Foundation](communication-platform-foundation.md) · [C1](../tasks/c1-communication-inbox-workspace.md) · [Epic C0](../tasks/epic-c0-communication-integrity.md) · [C2 epic](../tasks/epic-c2-communication-campaigns.md) · [Canon](../tasks/c0-0-communication-canon.md)
 
 ### A2. Platform Governance Review (L0 gate)
 

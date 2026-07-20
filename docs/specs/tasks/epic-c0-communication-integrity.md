@@ -1,12 +1,11 @@
 # Epic C0 — Communication Integrity
 
-**Status:** Active — C0.1 ✅ · C0.1b ✅ · C0.2 ✅ (PR #102); **current slice C0.3**  
-**Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · G13 thread entity links · Thread-primary Communication
+**Status:** C0.0–C0.3 ✅ — **Communication Platform Foundation complete** (not Epic C complete)  
+**Parents:** [Foundation](../architecture/communication-platform-foundation.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md)
 
-> Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence — and risks parallel module senders.  
-> Part of **Phase A1** in [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md).  
-> This epic is **not** Stage 3 Sales slice 3. Inbox (C1) and Templates/Automations/Campaigns (C2) close Epic C after C0.3.  
-> **C0.0** locks contracts; **C0.1–C0.3** implement thin integrity slices under that canon.
+> Platform integrity slices C0.0–C0.3 are done.  
+> Next product slice is **[C1 Communication Inbox Workspace](c1-communication-inbox-workspace.md)**; Epic C closes only after **C2**.  
+> This epic is **not** Stage 3 Sales.
 
 ## Why before Stage 3 slice 3
 
@@ -104,35 +103,23 @@ Every inbound message is deterministically linked to a thread/entity **or** ente
 
 ---
 
-## Slice C0.3 — Delivery diagnostics and history (**current**)
+## Slice C0.3 — Delivery diagnostics and history ✅
 
 **Task:** [c0-3-delivery-diagnostics.md](c0-3-delivery-diagnostics.md)  
 **Legacy map:** [c0-3-legacy-delivery-migration-map.md](c0-3-legacy-delivery-migration-map.md)  
-**Branch:** `fix/communication-c0-delivery-diagnostics`  
-**Worktree:** `/tmp/hf-c0-3-delivery-diagnostics`
+**PR:** [#104](https://github.com/igortatarynovich/HostFlow/pull/104) — **merged** (`95f2a525`)
 
 ### Main contract
 
-For every send and delivery attempt the operator knows what happened, where it failed, whether retry is allowed, and what to show — without server logs.  
-Message / Delivery / Attempt statuses are separate; provider status ≠ canonical status.
+For every send and delivery attempt the operator knows what happened, where it failed, whether retry is allowed, and what to show — without server logs.
 
-### Scope
+### Foundation lock
 
-- Canonical states: `queued → accepted → sent → delivered` + terminal negatives  
-- Immutable `CommunicationDeliveryAttempt`  
-- Error taxonomy + retry policy by reason code  
-- Unified callback path (normalize → resolve → transition → audit)  
-- Operator diagnostics API / timeline (not Inbox redesign)  
-- Retire `lead.communication.failed` producer → `communication.delivery.failed`  
-- Contract test: no provider status polling outside diagnostics platform  
+After C0.3: [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md).
 
-### Acceptance
+### Next
 
-Any send failure is explainable from diagnostics (status, last attempt, reason_code, retryable, next retry, provider ref, timeline) without server logs.
-
-### Next after merge
-
-**C1 Inbox UX** — not Stage 3.
+**[C1 Communication Inbox Workspace](c1-communication-inbox-workspace.md)** — not Stage 3.
 
 ---
 
