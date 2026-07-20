@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` @ `23656b54`+  
 **Kind:** L2 architecture seal (revision evidence — not a bug hunt)  
 **Parents:** [Phase 2 Flow Spec](../workflows/adr022-phase2-sales-only-capability-flow.md) · [Convert mapping](../tasks/sales-questionnaire-convert-mapping.md) · [Ambiguous match review](../tasks/sales-ambiguous-match-review.md) · [Traceability](../tasks/sales-inquiry-traceability.md) · [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) · [ADR-023](ADR-023-recruitment-sales-module-separation.md)  
-**Next:** [ClientAccount Creation Origins v1](client-account-creation-origins-v1.md) → Capability UI (display-only) → product wiring closeout
+**Next:** Capability UI (display-only) → `create_client_account_manually` implementation → product wiring closeout (Pipeline v1 §3)
 
 > This document records the Phase 2 revision. It seals what the four domain slices **own** as a coherent Sales Domain Pipeline v1, and lists **open product gaps** that must not be papered over before Marketing → Intake → CRM Client is claimed end-to-end.
 
@@ -131,3 +131,4 @@ Additional seal invariants:
 ## 7. History
 
 - 2026-07-20: Phase 2 domain slices 1–4 merged; architectural revision recorded; domain contracts sealed; product wiring gaps listed; ingress wording amended.
+- 2026-07-20: ClientAccount Creation Origins v1 landed — next is Capability UI (display-only), then manual create service.
