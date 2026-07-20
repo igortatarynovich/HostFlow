@@ -9,6 +9,7 @@ import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 import { NextActionBadge } from '../candidate/NextActionBadge'
 import { primaryThreadEntityLabel } from '../../utils/communicationThreadEntityLinks'
+import ThreadDeliveryDiagnosticsStrip from './ThreadDeliveryDiagnosticsStrip'
 import { useThreadNextAction } from './useThreadNextAction'
 
 export function formatThreadDateTime(value?: string | null): string {
@@ -168,6 +169,9 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       <h2 className="mb-3 shrink-0 text-sm font-semibold text-slate-900">
         {t('app.communications.thread.timeline')}
       </h2>
+      <div className="mb-2">
+        <ThreadDeliveryDiagnosticsStrip messages={sortedMessages} />
+      </div>
       <div
         className={clsx(
           'space-y-3 overflow-auto pr-1',

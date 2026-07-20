@@ -13,6 +13,27 @@
 
 **`CommunicationThread`** — conversations, not individual messages, drive the workspace.
 
+## Architectural rule (locked)
+
+> **Thread is the work object. Message is an event inside the Thread.**
+
+Consequences (do not invert):
+
+| Concern | Belongs to |
+|---------|------------|
+| List rows | Thread |
+| Unread | Thread |
+| Ownership / assignee | Thread |
+| SLA | Thread |
+| Next action | Thread |
+| Working queues / filters | Thread |
+| Entity links (G13) | Thread |
+| Timeline | Chronology of events *on* the Thread (not a first-class list entity) |
+
+Composer and allowed intents/channels come from the Communication Platform — UI does not invent them.
+
+Maturity: Communication **Workspace** stage — see [platform-capability-maturity.md](../architecture/platform-capability-maturity.md).
+
 ## Goal
 
 Managers see what needs action without reading server logs or provider internals:
@@ -81,8 +102,9 @@ C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …
 
 ## Acceptance (draft)
 
-- [ ] Primary navigation lands on thread queues, not a flat message list  
-- [ ] Each queue is backed by platform facts (not ad-hoc FE heuristics where contracts exist)  
-- [ ] Thread card shows G13 links, diagnostics summary, and policy-allowed actions  
-- [ ] Composer cannot offer intents/channels the platform did not authorize  
+- [x] Primary navigation lands on thread queues, not a flat message list  
+- [x] Working queues backed by platform `GET /threads?queue=` (not FE-only heuristics)  
+- [x] Thread card shows delivery diagnostics summary (C0.3)  
+- [x] `GET /threads/{id}/capabilities` exposes allowed intents/channels from platform  
+- [ ] Composer UI consumes capabilities (no inventing intents/channels)  
 - [ ] Modules deep-link / filter workspace via adapters — no parallel inbox engines  

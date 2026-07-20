@@ -206,6 +206,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 |-----|------|
 | [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order inside Phase A (and handoff into B) |
 | This roadmap | **Horizon** order of platform phases A–G |
+| [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
 
 Amendments to this roadmap require an explicit PR note and update to the near-term sequential queue when the active phase changes.

@@ -136,6 +136,13 @@ async def list_threads(
     entity_id: str | None = Query(None),
     include_archived: bool = Query(False),
     q: str | None = Query(None),
+    queue: str | None = Query(
+        None,
+        description=(
+            "C1 working queue: requires_reply | new_inbound | delivery_errors | "
+            "unresolved | assigned_to_me | unassigned | waiting_for_reply | closed"
+        ),
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
@@ -173,7 +180,31 @@ async def list_threads(
         )
     elif entity_id:
         filters.append(CommunicationThread.entity_id == entity_id)
-    if not include_archived:
+
+    queue_key = str(queue or "").strip().lower() or None
+    if queue_key:
+        from backend.app.communications.thread_queues import (
+            QUEUE_CLOSED,
+            normalize_thread_queue,
+            thread_queue_clause,
+        )
+
+        try:
+            normalize_thread_queue(queue_key)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        actor = str(getattr(current_user, "sub", "") or "").strip() or None
+        filters.append(
+            thread_queue_clause(
+                queue_key,
+                tenant_id=tenant_id,
+                actor_user_id=actor,
+            )
+        )
+        # Closed queue may include archived; other queues stay non-archived unless asked.
+        if queue_key != QUEUE_CLOSED and not include_archived:
+            filters.append(CommunicationThread.is_archived.is_(False))
+    elif not include_archived:
         filters.append(CommunicationThread.is_archived.is_(False))
     if q:
         like = f"%{q.strip().lower()}%"
@@ -332,6 +363,65 @@ async def get_thread(
         thread=_thread_out(thread, result_link=result_link, entity_links=entity_links),
         messages=[_message_out(m) for m in msgs],
     )
+
+
+@router.get("/threads/{thread_id}/capabilities")
+async def get_thread_capabilities(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    """C1: allowed intents/channels from Communication Platform (UI must not invent them)."""
+    from backend.app.communications.capability_resolver import DefaultCapabilityResolver
+    from backend.app.communications.command import CommunicationOrigin
+    from backend.app.communications.entity_link import get_thread_entity_links
+
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
+    assert_comm_feature_access(
+        tenant=tenant,
+        current_user=current_user,
+        tenant_id=tenant_id,
+        feature=_feature_for_channel(thread.channel),  # type: ignore[arg-type]
+    )
+    links = await get_thread_entity_links(db, tenant_id=tenant_id, thread_id=thread_id)
+    if links:
+        origin = CommunicationOrigin(
+            entity_type=links[0].entity_type, entity_id=links[0].entity_id
+        )
+    else:
+        origin = CommunicationOrigin(
+            entity_type=str(thread.entity_type or "lead"),
+            entity_id=str(thread.entity_id or thread.id),
+        )
+    caps = await DefaultCapabilityResolver().resolve(
+        tenant_id=tenant_id,
+        origin=origin,
+        actor_id=str(getattr(current_user, "sub", "") or "") or None,
+    )
+    # Restrict channel list to the thread's channel when platform allows it.
+    thread_channel = str(thread.channel or "").strip().lower()
+    allowed_channels = list(caps.allowed_channels)
+    if thread_channel and thread_channel in allowed_channels:
+        allowed_channels = [thread_channel]
+    elif thread_channel and not allowed_channels:
+        allowed_channels = []
+    return {
+        "thread_id": str(thread.id),
+        "origin": {
+            "entity_type": caps.entity_type,
+            "entity_id": caps.entity_id,
+        },
+        "allowed_intents": list(caps.allowed_intents),
+        "allowed_channels": allowed_channels,
+        "bulk_allowed": bool(caps.bulk_allowed),
+        "denial_reasons": dict(caps.denial_reasons or {}),
+        "source": "communication.capability_resolver",
+    }
 
 
 @router.post(

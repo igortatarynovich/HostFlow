@@ -812,6 +812,37 @@ export async function listCommunicationMessageTemplates(
   return { items, total: Number((data as any)?.total || items.length) }
 }
 
+/** C1 platform working queues — Thread is the work object. */
+export type CommunicationThreadQueue =
+  | 'requires_reply'
+  | 'new_inbound'
+  | 'delivery_errors'
+  | 'unresolved'
+  | 'assigned_to_me'
+  | 'unassigned'
+  | 'waiting_for_reply'
+  | 'closed'
+
+export type ThreadCapabilities = {
+  thread_id: string
+  origin: { entity_type: string; entity_id: string }
+  allowed_intents: string[]
+  allowed_channels: string[]
+  bulk_allowed: boolean
+  denial_reasons: Record<string, string>
+  source: string
+}
+
+export type DeliveryDiagnostics = {
+  message_id: string
+  delivery_id?: string | null
+  status: string
+  last_attempt?: Record<string, unknown>
+  next_retry_at?: string | null
+  provider_reference?: string | null
+  timeline?: Array<Record<string, unknown>>
+}
+
 export async function listCommunicationThreads(opts?: {
   limit?: number
   offset?: number
@@ -822,6 +853,8 @@ export async function listCommunicationThreads(opts?: {
   entityId?: string
   includeArchived?: boolean
   q?: string
+  /** C1 working queue (server-side Thread filter). */
+  queue?: CommunicationThreadQueue | string
   signal?: AbortSignal
 }): Promise<CommunicationThreadListResponse> {
   const params: Record<string, any> = {}
@@ -834,8 +867,19 @@ export async function listCommunicationThreads(opts?: {
   if (opts?.entityId) params.entity_id = opts.entityId
   if (opts?.includeArchived) params.include_archived = true
   if (opts?.q) params.q = opts.q
+  if (opts?.queue) params.queue = opts.queue
   const { data } = await api.get('/communications/threads', { params, signal: opts?.signal })
   return data as CommunicationThreadListResponse
+}
+
+export async function getThreadCapabilities(threadId: string): Promise<ThreadCapabilities> {
+  const { data } = await api.get(`/communications/threads/${threadId}/capabilities`)
+  return data as ThreadCapabilities
+}
+
+export async function getMessageDeliveryDiagnostics(messageId: string): Promise<DeliveryDiagnostics> {
+  const { data } = await api.get(`/communications/messages/${messageId}/delivery-diagnostics`)
+  return data as DeliveryDiagnostics
 }
 
 export async function getCommunicationThread(

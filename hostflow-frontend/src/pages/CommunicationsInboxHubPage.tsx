@@ -18,7 +18,10 @@ import { useAuth } from '../store/useAuth'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { useCommunicationsSetupStatus } from '../hooks/useCommunicationsSetupStatus'
 import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
-import InboxUnifiedThreadList, { type InboxHubFilter } from '../components/communications/InboxUnifiedThreadList'
+import InboxUnifiedThreadList, {
+  inboxHubFilterToQueue,
+  type InboxHubFilter,
+} from '../components/communications/InboxUnifiedThreadList'
 import InboxEmailFolderRail from '../components/communications/InboxEmailFolderRail'
 import { emailThreadInFolder, type EmailFolderKey } from '../utils/emailInboxFolders'
 import { fetchInboxThreadPool } from '../utils/inboxThreadLoad'
@@ -228,6 +231,7 @@ export default function CommunicationsInboxHubPage() {
         hasEmail,
         hasMessages,
         q: listQuery.q,
+        queue: inboxHubFilterToQueue(hubFilter),
       })
       setThreads(items)
       const cfg = await getCommunicationsSettings().catch(() => null)
@@ -249,7 +253,7 @@ export default function CommunicationsInboxHubPage() {
     } finally {
       setLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, planLimitModal, t])
+  }, [effectiveChannel, hasEmail, hasMessages, hubFilter, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void load()

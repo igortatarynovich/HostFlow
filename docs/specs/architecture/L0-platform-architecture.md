@@ -84,6 +84,7 @@ L3 — Implementation
 | Guide | [`architecture-guide.md`](architecture-guide.md) |
 | Principles §0 | [`platform-architecture-principles.md`](platform-architecture-principles.md) |
 | Product/platform sequencing (L2, not this freeze) | [`platform-completion-roadmap.md`](platform-completion-roadmap.md) |
+| Platform capability maturity (L2, not this freeze) | [`platform-capability-maturity.md`](platform-capability-maturity.md) |
 
 ### Forbidden vs Non-Goals
 
