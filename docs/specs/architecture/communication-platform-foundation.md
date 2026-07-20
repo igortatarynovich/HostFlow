@@ -52,12 +52,22 @@ Do **not** report this as “Epic C complete”.
 
 ---
 
+## Status transition (locked)
+
+| Status | When |
+|--------|------|
+| **Communication Platform Foundation — complete** | After C0.3 (current) |
+| **Epic C — complete** | Only after [Epic C Complete Gate](../gates/epic-c-complete-gate.md) PASS |
+
+Do **not** promote to Epic C complete after C1 or C2 alone.
+
 ## Next
 
 1. **C1 — Communication Inbox Workspace** — [c1-communication-inbox-workspace.md](../tasks/c1-communication-inbox-workspace.md)  
 2. **C2 — Templates, Automations & Campaigns**  
-3. Only after C2 may **Epic C** be marked fully complete  
-4. Then **A2 Platform Governance Review** → Acquisition / Stage 3  
+3. **Epic C Complete Gate** — [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md)  
+4. **A2 Platform Governance Review**  
+5. Acquisition (Stage 3 + Meta) → Forms → Entity Workspace → Documents → Billing → AI  
 
 ---
 
@@ -66,4 +76,5 @@ Do **not** report this as “Epic C complete”.
 - C0.2: [c0-2-inbound-resolver.md](../tasks/c0-2-inbound-resolver.md) (PR #102)  
 - C0.3: [c0-3-delivery-diagnostics.md](../tasks/c0-3-delivery-diagnostics.md) (PR #104)  
 - Legacy delivery map: [c0-3-legacy-delivery-migration-map.md](../tasks/c0-3-legacy-delivery-migration-map.md)  
+- Epic C Complete Gate: [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md)  
 - Near-term queue: [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md)  

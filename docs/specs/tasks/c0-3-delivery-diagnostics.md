@@ -63,5 +63,6 @@ Provider status is never the operator-facing fact — only normalized canonical 
 
 ## Next after merge
 
-**[C1 Communication Inbox Workspace](c1-communication-inbox-workspace.md)** — not Stage 3.  
-Foundation status: [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md).
+**[C1 Communication Inbox Workspace](c1-communication-inbox-workspace.md)** → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance.  
+Foundation status: [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md).  
+Epic C status stays incomplete until the Complete Gate PASS.

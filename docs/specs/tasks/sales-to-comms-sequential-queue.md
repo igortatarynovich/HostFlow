@@ -8,7 +8,8 @@
 > Sales domain contracts are sealed. Product convert engine unification is complete (Stage 3 slice 2 / PR #99).  
 > **Horizon SoT:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) — finish **Epic C**, then **Governance Review**, then Acquisition/Stage 3.  
 > This file is the **near-term slice queue** inside Phase A (Communication).  
-> **Communication Platform Foundation is complete** (C0.0–C0.3). Do **not** jump to Stage 3; next is **C1 Inbox Workspace**, then C2.
+> **Communication Platform Foundation is complete** (C0.0–C0.3). Do **not** jump to Stage 3.  
+> Locked close-out: **C1 → C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …**
 
 ---
 
@@ -29,8 +30,9 @@
 
 - Communication Inbox Workspace (C1 — **active**)  
 - Templates/Automations/Campaigns (C2)  
-- Platform Governance Review (after Epic C = after C2)  
-- Meta intake completeness · Stage 3 slice 3–4 (Acquisition phase — **after** Epic C + governance)  
+- Epic C Complete Gate (after C2; before Governance)  
+- Platform Governance Review (after **Epic C — complete**)  
+- Meta intake completeness · Stage 3 slice 3–4 (Acquisition — **after** Epic C + governance)  
 
 ---
 
@@ -45,16 +47,19 @@
 | **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` (**PR #104 merged**) | ✅ Failures explainable without server logs |
 | **6** | **C1** Communication Inbox Workspace | `feat/communication-c1-inbox-workspace` (**current**) | Thread workplace; queues + policy-bound composer |
 | **7** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
-| **8** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Stable SoT / contracts gate |
-| **9** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
-| **10** | Stage 3 slice 3 | *(TBD)* | Full SalesInquiry product flow |
-| **11** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
+| **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | Single Communication capability; status → Epic C complete |
+| **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Boundary principle across platforms |
+| **10** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
+| **11** | Stage 3 slice 3 | *(TBD)* | Full SalesInquiry product flow |
+| **12** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
 **C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
 **Active:** **C1 Communication Inbox Workspace** — [c1-communication-inbox-workspace.md](c1-communication-inbox-workspace.md).  
-**After C1:** C2 (not Stage 3). Epic C complete only after C2.
+**Close-out:** C1 → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
+**Epic C — complete** only after gate PASS (not after C2 alone).
 
-**After row 8:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G (Forms → Workspace → Documents → Billing → AI).
+**After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  
+(Acquisition/Stage 3 + Meta → Forms → Entity Workspace → Documents → Billing → AI).
 
 **Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
 

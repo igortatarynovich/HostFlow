@@ -22,14 +22,20 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 ---
 
-## Immediate rule (after Epic C)
+## Immediate rule (through Epic C)
 
-Do **not** return to Stage 3 Sales product wiring the moment Communication integrity slices close.  
-Order after Epic C:
+Do **not** return to Stage 3 while Communication Phase A is open.  
+Locked Communication close-out:
 
-1. **A2 — Platform Governance Review (L0 gate)** — short architectural pass  
-2. **Phase B — Acquisition / Stage 3 completion**  
-3. Then Forms → Entity Workspace → Documents → Billing → AI  
+```text
+C1 → C2 → Epic C Complete Gate → A2 Governance → Stage 3 / Meta → …
+```
+
+Order **after Epic C — complete** (gate PASS):
+
+1. **A2 — Platform Governance Review (L0 gate)** — boundary-principle audit across platforms  
+2. **Phase B — Acquisition / Stage 3 + Meta**  
+3. Forms → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -41,7 +47,7 @@ Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/
 
 **Communication Platform Foundation — complete** (after C0.3 / PR #104).  
 See [communication-platform-foundation.md](communication-platform-foundation.md).  
-This is **not** “Epic C complete” — C1 + C2 remain.
+This is **not** “Epic C complete” — C1 + C2 + **Epic C Complete Gate** remain.
 
 | Slice | Focus | Status |
 |-------|--------|--------|
@@ -51,15 +57,26 @@ This is **not** “Epic C complete” — C1 + C2 remain.
 | C0.3 Delivery Diagnostics | Attempts + canonical diagnostics | ✅ (PR #104) |
 | **C1** Communication Inbox Workspace | Thread workplace for managers | **active** |
 | **C2** Templates, Automations & Campaigns | Product on platform command | queued |
+| **Epic C Complete Gate** | Single Communication capability check | queued |
 
 **Foundation result:** Intent, Policy, Registry, Sender, Snapshot, Inbound Resolver, G13, unresolved inbound, delivery attempts/diagnostics/retry/callbacks/timeline.  
-**Epic C complete only after C2.**
+**Epic C — complete** only after [Epic C Complete Gate](../gates/epic-c-complete-gate.md) PASS (not after C2 alone).
 
-**Refs:** [Foundation](communication-platform-foundation.md) · [C1](../tasks/c1-communication-inbox-workspace.md) · [Epic C0](../tasks/epic-c0-communication-integrity.md) · [C2 epic](../tasks/epic-c2-communication-campaigns.md) · [Canon](../tasks/c0-0-communication-canon.md)
+**Refs:** [Foundation](communication-platform-foundation.md) · [C1](../tasks/c1-communication-inbox-workspace.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md) · [Epic C0](../tasks/epic-c0-communication-integrity.md) · [C2 epic](../tasks/epic-c2-communication-campaigns.md) · [Canon](../tasks/c0-0-communication-canon.md)
+
+### A1b. Epic C Complete Gate (mandatory)
+
+**Not** a product feature. Final Communication capability gate — see [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md).
+
+Runs **after C2**, **before** A2 Governance. Only on PASS may status change to **Epic C — complete**.
 
 ### A2. Platform Governance Review (L0 gate)
 
-**Not** a product feature. Short architectural gate after Epic C volume:
+**Not** a product feature. Cross-platform audit **after Epic C — complete**.
+
+Purpose: verify the boundary principle was not violated during platform growth  
+(platforms independent; modules integrate only via public contracts/adapters) —  
+not a re-validation of Communication wiring (that is the Epic C Complete Gate).
 
 - One SoT per platform (Acquisition, Communication, Documents, Forms, Entity, Automation)
 - Remaining legacy contracts mapped or removed
@@ -76,7 +93,7 @@ This is **not** “Epic C complete” — C1 + C2 remain.
 
 ## Phase B — Acquisition Completion (Epic P / Stage 3)
 
-Return to Acquisition after A1 + A2.
+Return to Acquisition only after **Epic C — complete** (Complete Gate PASS) + **A2 Governance**.
 
 Close:
 

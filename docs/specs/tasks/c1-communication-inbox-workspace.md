@@ -71,8 +71,13 @@ The workspace receives allowed intents and channels from the Communication Platf
 
 ## After C1
 
-**C2 — Templates, Automations & Campaigns.**  
-Only after C2 may Epic C be marked fully complete. Not Stage 3 next.
+```text
+C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …
+```
+
+**C2 — Templates, Automations & Campaigns**, then mandatory  
+[Epic C Complete Gate](../gates/epic-c-complete-gate.md).  
+**Epic C — complete** only after that gate. Not Stage 3 next.
 
 ## Acceptance (draft)
 
