@@ -64,6 +64,7 @@ _SMTP_ALLOWLIST = {
 # Direct CommunicationMessage( construction outside Canon writer / inbound / inbox.
 _MESSAGE_CTOR_ALLOWLIST = {
     "backend/app/communications/send_communication.py",
+    "backend/app/communications/inbound_ingest.py",
     "backend/app/api/v1/communications/routes/messages.py",
     "backend/app/api/v1/communications/routes/ingest.py",
     "backend/app/api/v1/communications/_helpers/ingest.py",

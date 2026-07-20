@@ -47,11 +47,24 @@ Resolution reasons (audit):
 
 ## Acceptance
 
-- [ ] Reply to a HostFlow-sent email joins the **same** thread and surfaces on the **same** entity  
-- [ ] Unknown inbound never disappears — always message + thread + unresolved reason when unlinked  
-- [ ] Duplicate provider message ID is idempotent  
-- [ ] G13 written when entity is resolved  
-- [ ] Contract tests for resolution chain + unresolved path + idempotency  
+- [x] Reply to a HostFlow-sent email joins the **same** thread and surfaces on the **same** entity  
+- [x] Unknown inbound never disappears — always message + thread + unresolved reason when unlinked  
+- [x] Duplicate provider message ID is idempotent  
+- [x] G13 written when entity is resolved  
+- [x] Contract tests for resolution chain + unresolved path + idempotency  
+
+### Implementation map
+
+| Piece | Location |
+|-------|----------|
+| Normalized DTO | `backend/app/communications/inbound_dto.py` |
+| Provider normalize | `backend/app/communications/inbound_normalize.py` |
+| Resolution chain | `backend/app/communications/inbound_resolve.py` |
+| Ingest + G13 / unresolved | `backend/app/communications/inbound_ingest.py` |
+| Unresolved queue model | `backend/app/models/communication_inbound_unresolved.py` |
+| Outbound Message-ID stamp | `backend/app/communications/send_communication.py` |
+| API wire | `backend/app/api/v1/communications/routes/ingest.py` |
+| Contract tests | `backend/tests/communications/test_c0_2_inbound_resolver.py` |
 
 ## Post-#101 gate (done)
 

@@ -198,6 +198,9 @@ CommunicationThreadResultLink = _load_model_module(
 CommunicationThreadEntityLink = _load_model_module(
     "communication_thread_entity_link"
 ).CommunicationThreadEntityLink  # type: ignore[attr-defined]
+CommunicationInboundUnresolved = _load_model_module(
+    "communication_inbound_unresolved"
+).CommunicationInboundUnresolved  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -352,6 +355,7 @@ __all__ = [
     "CommunicationThread",
     "CommunicationThreadResultLink",
     "CommunicationThreadEntityLink",
+    "CommunicationInboundUnresolved",
     "DocumentPolicy",
     "Stage",
     "MagicLink",

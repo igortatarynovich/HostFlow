@@ -386,7 +386,11 @@ async def send_communication(
     meta_snapshot = dict((request.meta or {}).get("snapshot") or {})
     if meta_snapshot.get("schema_version"):
         snapshot_dict = meta_snapshot
+    # Stable Message-ID so inbound In-Reply-To / References can join this thread (C0.2).
+    msg_uuid = str(uuid4())
+    message_id_hdr = f"<hf-{msg_uuid}@hostflow.local>"
     message = CommunicationMessage(
+        id=msg_uuid,
         tenant_id=str(request.tenant_id),
         thread_id=str(thread_id),
         own_company_id=_trim(request.own_company_id) or getattr(thread, "own_company_id", None),
@@ -403,6 +407,7 @@ async def send_communication(
         body_text=_trim(content.body_text) or None,
         body_html=content.body_html,
         delivery_status="queued",
+        external_message_ref=message_id_hdr[:255],
         payload={
             "platform": "communications.send_communication.v1",
             "snapshot": snapshot_dict,
@@ -426,6 +431,7 @@ async def send_communication(
             "source_event_id": snapshot_dict.get("source_event_id"),
             "automation_identity": snapshot_dict.get("automation_identity"),
             "render_variables": snapshot_dict.get("resolved_variables") or {},
+            "headers": {"Message-ID": message_id_hdr},
             **{
                 k: v
                 for k, v in dict(request.meta or {}).items()
@@ -437,6 +443,7 @@ async def send_communication(
                     "policy_decision",
                     "render_variables",
                     "snapshot",
+                    "headers",
                 }
             },
         },

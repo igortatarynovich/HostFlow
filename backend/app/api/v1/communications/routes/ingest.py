@@ -26,11 +26,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
+from backend.app.communications.inbound_ingest import ingest_inbound_message
+from backend.app.communications.inbound_normalize import (
+    normalize_email_fields,
+    normalize_generic_fields,
+)
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.communication import (
     CommunicationChannelAccount,
     CommunicationMessage,
-    CommunicationThread,
 )
 from backend.app.services.communications_access import assert_comm_feature_access
 from backend.app.services.communications_allocator import allocate_thread
@@ -51,8 +55,6 @@ from .._helpers.access import (
 from .._helpers.channels import _imap_config_from_account_settings
 from .._helpers.dto import _message_out, _thread_out
 from .._helpers.ingest import (
-    _find_thread_for_inbound_channel,
-    _find_thread_for_inbound_email,
     _ingest_email_outbound_from_mailbox,
 )
 from .._helpers.oauth import (
@@ -60,7 +62,6 @@ from .._helpers.oauth import (
     _oauth_refresh_token,
     _refresh_oauth_tokens_in_settings_json,
 )
-from .._helpers.sla import _touch_thread_from_message
 from .._helpers.utils import _as_dict, _clamp_db_str, _coerce_datetime, _now_utc
 from ..schemas import (
     CommunicationEmailWorkerPollRequest,
@@ -461,151 +462,69 @@ async def ingest_email(
         if account is None or str(account.tenant_id) != tenant_id or account.channel != "email":
             raise HTTPException(status_code=404, detail="Email channel account not found")
 
-    if body.external_message_ref:
-        existing_msg_stmt = sa.select(CommunicationMessage).where(
-            CommunicationMessage.tenant_id == tenant_id,
-            CommunicationMessage.channel == "email",
-            CommunicationMessage.external_message_ref == body.external_message_ref,
-        ).limit(1)
-        existing_msg = (await db.execute(existing_msg_stmt)).scalars().first()
-        if existing_msg:
-            thread = await _get_thread_or_404(db, tenant_id, str(existing_msg.thread_id))
-            return EmailIngestResponse(
-                created_thread=False,
-                duplicate_message=True,
-                auto_assigned=False,
-                auto_assign_reason="duplicate_message",
-                thread=_thread_out(thread),
-                message=_message_out(existing_msg),
-            )
-
-    thread = await _find_thread_for_inbound_email(
-        db,
+    inbound = normalize_email_fields(
         tenant_id=tenant_id,
         channel_account_id=body.channel_account_id,
+        provider=body.provider,
         provider_thread_ref=body.provider_thread_ref,
+        external_message_ref=body.external_message_ref,
         subject=body.subject,
         from_address=body.from_address,
+        from_name=body.from_name,
+        to_address=body.to_address,
+        to_name=body.to_name,
+        cc=body.cc,
+        bcc=body.bcc,
+        text=body.text,
+        html=body.html,
+        received_at=body.received_at,
+        headers=body.headers,
+        payload=body.payload,
+        entity_type=body.entity_type,
+        entity_id=body.entity_id,
+        linked_candidate_id=body.linked_candidate_id,
+        linked_company_id=body.linked_company_id,
     )
-    created_thread = False
+    result = await ingest_inbound_message(
+        db,
+        inbound=inbound,
+        own_company_id=default_own_id,
+        tenant=tenant,
+    )
+    thread = await _get_thread_or_404(db, tenant_id, result.thread_id)
+    msg = await db.get(CommunicationMessage, result.message_id)
+    if msg is None:
+        raise HTTPException(status_code=500, detail="Inbound message persist failed")
 
-    if thread is None:
-        participants = {
-            "senders": [body.from_address] if body.from_address else [],
-            "recipients": [body.to_address] if body.to_address else [],
-            "cc": body.cc,
-            "bcc": body.bcc,
-        }
-        thread = CommunicationThread(
-            tenant_id=tenant_id,
-            own_company_id=default_own_id,
-            channel="email",
-            channel_account_id=body.channel_account_id,
-            channel_thread_ref=body.provider_thread_ref,
-            subject=body.subject,
-            status="open",
-            direction_hint="inbound",
-            entity_type=body.entity_type,
-            entity_id=body.entity_id,
-            linked_candidate_id=body.linked_candidate_id,
-            linked_company_id=body.linked_company_id,
-            assignee_id=body.assignee_id,
-            owner_id=actor_id,
-            queue_assigned_by="manual" if body.assignee_id else None,
-            priority="normal",
-            participants_json=participants,
-            tags_json=[],
-            thread_meta={"provider": body.provider} if body.provider else {},
-        )
-        db.add(thread)
+    if body.assignee_id and not thread.assignee_id:
+        thread.assignee_id = body.assignee_id
+        thread.queue_assigned_by = "manual"
+        thread.owner_id = actor_id or thread.owner_id
         await db.flush()
-        created_thread = True
-    else:
-        participants = _as_dict(thread.participants_json)
-        senders = participants.get("senders")
-        if not isinstance(senders, list):
-            senders = []
-        if body.from_address and body.from_address not in senders:
-            senders.append(body.from_address)
-        participants["senders"] = senders
-        recipients = participants.get("recipients")
-        if not isinstance(recipients, list):
-            recipients = []
-        if body.to_address and body.to_address not in recipients:
-            recipients.append(body.to_address)
-        participants["recipients"] = recipients
-        if body.cc:
-            participants["cc"] = body.cc
-        thread.participants_json = participants
-        if body.subject and not thread.subject:
-            thread.subject = body.subject
-        if body.entity_type and not thread.entity_type:
-            thread.entity_type = body.entity_type
-        if body.entity_id and not thread.entity_id:
-            thread.entity_id = body.entity_id
-        if body.linked_candidate_id and not thread.linked_candidate_id:
-            thread.linked_candidate_id = body.linked_candidate_id
-        if body.linked_company_id and not thread.linked_company_id:
-            thread.linked_company_id = body.linked_company_id
-        if not getattr(thread, "own_company_id", None) and default_own_id:
-            thread.own_company_id = default_own_id
-
-    received_at = body.received_at or _now_utc()
-    msg = CommunicationMessage(
-        tenant_id=tenant_id,
-        thread_id=str(thread.id),
-        own_company_id=getattr(thread, "own_company_id", None),
-        channel="email",
-        message_type="email",
-        direction="inbound",
-        sender_type="external",
-        sender_label=body.from_name,
-        sender_address=body.from_address,
-        recipient_type="tenant",
-        recipient_label=body.to_name,
-        recipient_address=body.to_address,
-        subject=body.subject,
-        body_text=body.text,
-        body_html=body.html,
-        attachments_json=[],
-        payload={
-            **(body.payload or {}),
-            "headers": body.headers or {},
-            "cc": body.cc,
-            "bcc": body.bcc,
-            "provider": body.provider,
-        },
-        external_message_ref=body.external_message_ref,
-        delivery_status="delivered",
-        sent_at=received_at,
-        delivered_at=received_at,
-        read_at=None,
-        is_internal_note=False,
-    )
-    db.add(msg)
-    await db.flush()
-    _touch_thread_from_message(thread, msg, tenant=tenant)
 
     auto_assigned = False
     auto_assign_reason: str | None = None
-    if body.auto_assign and not thread.assignee_id:
+    if result.duplicate_message:
+        auto_assign_reason = "duplicate_message"
+    elif body.auto_assign and not thread.assignee_id:
         alloc = await allocate_thread(db, tenant=tenant, thread=thread, actor_user_id=actor_id)
         auto_assigned = bool(alloc.get("assigned"))
         auto_assign_reason = None if auto_assigned else str(alloc.get("reason") or "no_eligible_managers")
 
-    try:
-        from backend.app.services import uos_auto_activities
+    if not result.duplicate_message:
+        try:
+            from backend.app.services import uos_auto_activities
 
-        await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, actor_id, thread)
-    except Exception:
-        pass
+            await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, actor_id, thread)
+        except Exception:
+            pass
 
     await db.commit()
     await db.refresh(thread)
     await db.refresh(msg)
     return EmailIngestResponse(
-        created_thread=created_thread,
-        duplicate_message=False,
+        created_thread=result.created_thread,
+        duplicate_message=result.duplicate_message,
         auto_assigned=auto_assigned,
         auto_assign_reason=auto_assign_reason,
         thread=_thread_out(thread),
@@ -635,150 +554,81 @@ async def ingest_generic_channel(
         if account is None or str(account.tenant_id) != tenant_id or str(account.channel).lower() != channel_norm:
             raise HTTPException(status_code=404, detail="Channel account not found")
 
-    if body.external_message_ref:
-        existing_msg_stmt = sa.select(CommunicationMessage).where(
-            CommunicationMessage.tenant_id == tenant_id,
-            CommunicationMessage.channel == channel_norm,
-            CommunicationMessage.external_message_ref == body.external_message_ref,
-        ).limit(1)
-        existing_msg = (await db.execute(existing_msg_stmt)).scalars().first()
-        if existing_msg:
-            thread = await _get_thread_or_404(db, tenant_id, str(existing_msg.thread_id))
-            return GenericInboundIngestResponse(
-                created_thread=False,
-                duplicate_message=True,
-                auto_assigned=False,
-                auto_assign_reason="duplicate_message",
-                thread=_thread_out(thread),
-                message=_message_out(existing_msg),
-            )
-
-    provider_thread_ref = body.provider_thread_ref or body.provider_chat_ref
-    thread = await _find_thread_for_inbound_channel(
-        db,
+    inbound = normalize_generic_fields(
         tenant_id=tenant_id,
         channel=channel_norm,
         channel_account_id=body.channel_account_id,
-        provider_thread_ref=provider_thread_ref,
+        provider=body.provider,
+        provider_thread_ref=body.provider_thread_ref,
+        provider_chat_ref=body.provider_chat_ref,
+        external_message_ref=body.external_message_ref,
         sender_address=body.sender_address,
-    )
-    created_thread = False
-    if thread is None:
-        participants = {
-            "senders": [body.sender_address] if body.sender_address else [],
-            "recipients": [body.recipient_address] if body.recipient_address else [],
-        }
-        thread = CommunicationThread(
-            tenant_id=tenant_id,
-            own_company_id=default_own_id,
-            channel=channel_norm,
-            channel_account_id=body.channel_account_id,
-            channel_thread_ref=provider_thread_ref,
-            subject=body.subject,
-            status="open",
-            direction_hint="inbound",
-            entity_type=body.entity_type,
-            entity_id=body.entity_id,
-            linked_candidate_id=body.linked_candidate_id,
-            linked_company_id=body.linked_company_id,
-            assignee_id=body.assignee_id,
-            owner_id=actor_id,
-            queue_assigned_by="manual" if body.assignee_id else None,
-            priority="normal",
-            participants_json=participants,
-            tags_json=[],
-            thread_meta={"provider": body.provider} if body.provider else {},
-        )
-        db.add(thread)
-        await db.flush()
-        created_thread = True
-    else:
-        participants = _as_dict(thread.participants_json)
-        senders = participants.get("senders")
-        if not isinstance(senders, list):
-            senders = []
-        if body.sender_address and body.sender_address not in senders:
-            senders.append(body.sender_address)
-        participants["senders"] = senders
-        recipients = participants.get("recipients")
-        if not isinstance(recipients, list):
-            recipients = []
-        if body.recipient_address and body.recipient_address not in recipients:
-            recipients.append(body.recipient_address)
-        participants["recipients"] = recipients
-        thread.participants_json = participants
-        if body.subject and not thread.subject:
-            thread.subject = body.subject
-        if provider_thread_ref and not thread.channel_thread_ref:
-            thread.channel_thread_ref = provider_thread_ref
-        if body.entity_type and not thread.entity_type:
-            thread.entity_type = body.entity_type
-        if body.entity_id and not thread.entity_id:
-            thread.entity_id = body.entity_id
-        if body.linked_candidate_id and str(thread.linked_candidate_id or "").strip() != str(body.linked_candidate_id).strip():
-            thread.linked_candidate_id = body.linked_candidate_id
-        if body.linked_company_id and str(thread.linked_company_id or "").strip() != str(body.linked_company_id).strip():
-            thread.linked_company_id = body.linked_company_id
-        if not getattr(thread, "own_company_id", None) and default_own_id:
-            thread.own_company_id = default_own_id
-
-    received_at = body.received_at or _now_utc()
-    msg = CommunicationMessage(
-        tenant_id=tenant_id,
-        thread_id=str(thread.id),
-        own_company_id=getattr(thread, "own_company_id", None),
-        channel=channel_norm,
-        message_type="text" if not body.html else "rich_text",
-        direction="inbound",
-        sender_type="external",
         sender_label=body.sender_label,
-        sender_address=body.sender_address,
-        recipient_type="tenant",
-        recipient_label=body.recipient_label,
         recipient_address=body.recipient_address,
+        recipient_label=body.recipient_label,
         subject=body.subject,
-        body_text=body.text,
-        body_html=body.html,
-        attachments_json=body.attachments,
+        text=body.text,
+        html=body.html,
+        received_at=body.received_at,
+        headers=body.headers,
         payload={
             **(body.payload or {}),
-            "headers": body.headers or {},
-            "provider": body.provider,
             "provider_chat_ref": body.provider_chat_ref,
         },
-        external_message_ref=body.external_message_ref,
-        delivery_status="delivered",
-        sent_at=received_at,
-        delivered_at=received_at,
-        read_at=received_at
-        if channel_norm == "telegram" and bool(_as_dict(body.payload).get("telegram_command"))
-        else None,
-        is_internal_note=False,
+        attachments=body.attachments,
+        entity_type=body.entity_type,
+        entity_id=body.entity_id,
+        linked_candidate_id=body.linked_candidate_id,
+        linked_company_id=body.linked_company_id,
     )
-    db.add(msg)
-    await db.flush()
-    _touch_thread_from_message(thread, msg, tenant=tenant)
+    result = await ingest_inbound_message(
+        db,
+        inbound=inbound,
+        own_company_id=default_own_id,
+        tenant=tenant,
+    )
+    thread = await _get_thread_or_404(db, tenant_id, result.thread_id)
+    msg = await db.get(CommunicationMessage, result.message_id)
+    if msg is None:
+        raise HTTPException(status_code=500, detail="Inbound message persist failed")
+
+    if (
+        channel_norm == "telegram"
+        and bool(_as_dict(body.payload).get("telegram_command"))
+        and msg.read_at is None
+    ):
+        msg.read_at = msg.delivered_at or _now_utc()
+        await db.flush()
+
+    if body.assignee_id and not thread.assignee_id:
+        thread.assignee_id = body.assignee_id
+        thread.queue_assigned_by = "manual"
+        thread.owner_id = actor_id or thread.owner_id
+        await db.flush()
 
     auto_assigned = False
     auto_assign_reason: str | None = None
-    if body.auto_assign and not thread.assignee_id:
+    if result.duplicate_message:
+        auto_assign_reason = "duplicate_message"
+    elif body.auto_assign and not thread.assignee_id:
         alloc = await allocate_thread(db, tenant=tenant, thread=thread, actor_user_id=actor_id)
         auto_assigned = bool(alloc.get("assigned"))
         auto_assign_reason = None if auto_assigned else str(alloc.get("reason") or "no_eligible_managers")
 
-    try:
-        from backend.app.services import uos_auto_activities
+    if not result.duplicate_message:
+        try:
+            from backend.app.services import uos_auto_activities
 
-        await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, actor_id, thread)
-    except Exception:
-        pass
+            await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, actor_id, thread)
+        except Exception:
+            pass
 
     await db.commit()
     await db.refresh(thread)
     await db.refresh(msg)
     return GenericInboundIngestResponse(
-        created_thread=created_thread,
-        duplicate_message=False,
+        created_thread=result.created_thread,
+        duplicate_message=result.duplicate_message,
         auto_assigned=auto_assigned,
         auto_assign_reason=auto_assign_reason,
         thread=_thread_out(thread),
