@@ -95,6 +95,17 @@ make repo-health
 
 Кратко: единственный trusted base — `integration/release-product-a-b` (FF only); работа через worktree; один concern — один PR; `/tmp` и `recovery/*` не SoT; GIT-IMPORT-INTEGRITY + Repository Health обязательны. Нарушение = process fail.
 
+## Platform completion sequencing (mandatory)
+
+Horizon order of platform epics (does **not** amend frozen L0 constitution):
+
+[`docs/specs/architecture/platform-completion-roadmap.md`](docs/specs/architecture/platform-completion-roadmap.md)
+
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md).
+
+**Locked:** finish Epic C (Communication) → Platform Governance Review → Acquisition/Stage 3 → Forms Platform → Entity Workspace → Documents → Billing → AI.  
+Do **not** open Stage 3 product slices while Communication Phase A is active unless the roadmap is explicitly amended.
+
 ## Documentation governance
 
 Перед созданием или изменением любого `.md` файла прочитайте `docs/governance/` (читать все):

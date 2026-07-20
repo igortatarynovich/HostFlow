@@ -1,7 +1,7 @@
 # Meta Intake Completeness
 
-**Status:** Queued (after Epic C0 integrity slices; **not** inside Communication)  
-**Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · Acquisition / Flights / SalesInquiry
+**Status:** Queued (Phase B — Acquisition; after Epic C + Platform Governance Review)  
+**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · Acquisition / Flights / SalesInquiry
 
 ## Problem
 

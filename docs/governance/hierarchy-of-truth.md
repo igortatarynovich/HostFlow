@@ -64,7 +64,7 @@
 | **Workflows** | `docs/specs/workflows/*.md` (зарегистрированы в `workflows/index.md`) | Workflow owner + index maintainer |
 | **Architecture supplementary** | `docs/specs/architecture/*.md` (recruitment-domain-model, handoff-contract, multi_tenant_model, rbac_matrix, object_storage, job_queue, applications-operating-model, и т.д.) | Architecture canon owner |
 | **Operational SSOT** | `docs/SSOT.md`, `docs/HOSTFLOW_AUDIT_AND_PLAN.md`, `docs/specs/operations-loop.md`, `docs/specs/manager-assignment.md`, `docs/specs/vacancy-statuses.md`, `docs/specs/plans-matrix.md`, `docs/specs/personas.md`, `docs/specs/operational-metrics.md`, `docs/specs/lead-types.md`, `docs/specs/tenant-types.md`, `docs/specs/own-company-model.md` | Operational owner |
-| **Phase / roadmap** | `docs/specs/phase-8-roadmap.md`, `phases-2-8-engineering-closure.md`, `phase-1-3-…`, `phase-2-1-…`, `phase-3-cleanup-inventory.md`, `runbooks/phase-2-1-drop-runbook.md` | Engineering lead |
+| **Phase / roadmap** | [`platform-completion-roadmap.md`](../specs/architecture/platform-completion-roadmap.md) (**horizon SoT** Phases A–G), `docs/specs/tasks/sales-to-comms-sequential-queue.md` (near-term slices), `docs/specs/phase-8-roadmap.md`, `phases-2-8-engineering-closure.md`, `phase-1-3-…`, `phase-2-1-…`, `phase-3-cleanup-inventory.md`, `runbooks/phase-2-1-drop-runbook.md` | Engineering lead + Architecture canon owner |
 | **Journeys** | `docs/specs/journeys/*.md` | UX / product owner |
 | **DB / Frontend / Platform / Integrations** | `docs/specs/db/`, `docs/specs/frontend/`, `docs/specs/platform/`, `docs/specs/integrations/` | Соответствующая команда |
 | **Glossary** | `docs/specs/glossary.md` | Cross-team |
