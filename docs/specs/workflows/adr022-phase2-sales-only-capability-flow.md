@@ -58,7 +58,7 @@ Not: Forms → Sales handler. Not: Forms → Recruitment. Not: Forms → shared 
 
 ## 3. Normative product rules
 
-1. **SalesInquiry** is the only Sales-owned ingress object for this flow.  
+1. **SalesInquiry** is the only Sales-owned **Flights-handoff ingress** for this advertising/intake spine (not the only possible origin of a ClientAccount — see [Sales Domain Pipeline v1](../architecture/sales-domain-pipeline-v1.md) §5 and [ClientAccount Creation Origins v1](../architecture/client-account-creation-origins-v1.md)).  
 2. **Flights** owns destination resolution and dispatch provenance.  
 3. **Capability** is determined only in **Sales** context for this spine.  
 4. **Recruitment Capability does not participate.**  
@@ -148,7 +148,7 @@ Not: Forms → Sales handler. Not: Forms → Recruitment. Not: Forms → shared 
 ## 6. Invariants
 
 1. **INV-SI-01** — One Sales form publication / invite path resolves to **exactly one** Flights destination for Sales (`sales_inquiry`). Missing destination → fail-closed.  
-2. **INV-SI-02** — SalesInquiry is created/attached only via Sales intake port after Flights handoff.  
+2. **INV-SI-02** — SalesInquiry is created/attached only via Sales intake port after Flights handoff (**intake spine ingress**). ClientAccount may also originate outside this spine with a truthful origin (Origins v1) — that does not create a second SalesInquiry ingress.  
 3. **INV-SI-03** — Capability codes in this flow ⊆ Sales Capability set; Recruitment codes are invalid input.  
 4. **INV-SI-04** — Match never targets ClientAccount or Candidate directly at submit (ADR-022 / ADR-021).  
 5. **INV-SI-05** — Ambiguous / unresolved match ⇒ review-required; convert blocked.  
@@ -189,12 +189,16 @@ Not: Forms → Sales handler. Not: Forms → Recruitment. Not: Forms → shared 
 
 | From | Event | To | Guard |
 |------|-------|----|-------|
-| (none) | Flights destination OK + create | SalesInquiry `open` | Destination = Sales |
+| (none) | Flights destination OK + create | SalesInquiry `received` / `open` | Destination = Sales |
 | (none) | Flights destination OK + strong attach | Existing SalesInquiry `open` | Match matrix satisfied |
-| SalesInquiry `open` | Ambiguous match recorded | `review-required` | Fail-closed; no attach |
-| `review-required` | Manager resolves match | `open` (confirmed) | Explicit decision |
-| `open` + capability decided | Convert | Result linked | Not review-required; destination confirmed |
-| Any | Convert without confirmed context | **No transition** | Refuse |
+| SalesInquiry active | Unique match recorded | review `not_required` | Fail-closed matrix |
+| SalesInquiry active | Ambiguous match recorded | `review_required` + review `required` | Fail-closed; no attach |
+| `review_required` | Manager resolves match | `open` + `resolved_match` / `resolved_create_new` | Explicit decision |
+| `open` + review not blocking | Convert Mapping | `converted` + ClientAccount + lineage | Destination confirmed; review gate clear |
+| Any | Convert without confirmed context / review still required | **No transition** | Refuse |
+| Any | Terminal reject/close/abandon | blocked terminals | Convert refused |
+
+Additional work statuses (`reviewing`, `waiting_for_information`) are convertible when the review gate is clear; they do not invent destination or match. Capability “decided” is a Sales contract step — runtime UI later.
 
 Lead lifecycle fields, if present, are **projections/facade**, not authoritative for these transitions.
 
@@ -296,12 +300,14 @@ Audit must answer: *which SalesInquiry, which Flights dispatch, which Capability
 | Capability-first create UI | **Later** Sales-only create card (not shared wizard) |
 | Traceability panel on Lead paths | **Later** SalesInquiry / ClientAccount paths |
 
-Order after this docs PR:
+Order after Phase 2 domain slices:
 
-1. Convert mapping implementation  
-2. Ambiguous-match review on SalesInquiry  
-3. Traceability implementation (**no UI**)  
-4. Sales-only Capability create card (UI last)  
+1. ~~Convert mapping implementation~~ **Done**  
+2. ~~Ambiguous-match review on SalesInquiry~~ **Done**  
+3. ~~Traceability implementation (**no UI**)~~ **Done**  
+4. **Pipeline v1 architectural seal** (this revision)  
+5. **ClientAccount Creation Origins v1** (docs)  
+6. Sales-only Capability create card (UI last — display-only)  
 
 ---
 
@@ -323,16 +329,15 @@ Branch `feat/adr022-intake-policy-phase1-backend` must **not** be checked out as
 
 ## 15. Next implementation step
 
-**Immediately after merge of this docs-slice:**
+**Domain slices 1–4 are merged.** Next docs:
 
 ```text
-feat/sales-questionnaire-convert-mapping
+docs/sales-domain-pipeline-v1-seal   (revision + seal — recorded)
+docs/client-account-creation-origins-v1
 ```
 
-Scope: Convert mapping only — see [`../tasks/sales-questionnaire-convert-mapping.md`](../tasks/sales-questionnaire-convert-mapping.md).
+Then Capability UI (display-only). Product wiring gaps in [Pipeline v1 §3](../architecture/sales-domain-pipeline-v1.md) remain open until thin follow-up PRs.
 
-**Then:** Review implementation → Traceability → Capability UI (last).
-
-**Not in Convert PR:** wizard, Capability create UI, Recruitment anything, Flights changes, mixed integrity fixes.
+**Not in Capability UI:** inventing convert/review decisions, fake Lead/SalesInquiry for manual clients, Recruitment catalog.
 
 Start gate: `make repo-health` on integration tip (Repository Operational Canon).
