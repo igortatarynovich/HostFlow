@@ -25,6 +25,7 @@ from backend.app.modules.leads import crud as leads_crud
 from backend.app.modules.sales.services.ambiguous_match_review import (
     AmbiguityCandidateRef,
     ReviewDecision,
+    mark_unique_match_not_required,
     open_ambiguous_match_review,
     resolve_ambiguous_match_review,
 )
@@ -95,6 +96,16 @@ async def _seed_product_bundle(db, *, tenant_id: str, suffix: str):
         )
     )
     await db.flush()
+    await mark_unique_match_not_required(
+        db,
+        tenant_id=tenant_id,
+        sales_inquiry_id=str(inquiry.id),
+        destination=DESTINATION_SALES,
+        flights_ledger_id=ledger_id,
+        own_company_id=own_company_id,
+        actor_id="seed-actor",
+    )
+    await db.refresh(inquiry)
     return lead, inquiry, ledger_id, own_company_id
 
 

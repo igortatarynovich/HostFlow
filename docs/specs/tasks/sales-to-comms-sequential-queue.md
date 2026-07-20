@@ -66,7 +66,7 @@ Display-only spine: Capability proxy, Review status, Convert availability/result
 
 **Branch:** `fix/sales-pipeline-v1-product-wiring`  
 **Task:** [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md)  
-**Allowed (slice 1):** product convert → `convert_sales_inquiry_mapping`; apply Review SoT (`match_existing` / `create_new`); idempotent replay.  
+**Allowed (slice 1):** product convert → `convert_sales_inquiry_mapping`; apply Review SoT (`match_existing` / `create_new` / explicit `not_required`); mandatory convert audit; idempotent replay.  
 **Forbidden in this slice:** Communication; full Lead demotion UI; deleting Lead `convert-client` HTTP.
 
 ---

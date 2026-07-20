@@ -20,11 +20,13 @@ from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.client_accounts.conversion import convert_client_lead
 from backend.app.modules.client_accounts import crud as account_crud
 from backend.app.modules.leads import crud as leads_crud
+from backend.app.modules.sales.services.ambiguous_match_review import mark_unique_match_not_required
 from backend.app.modules.sales.services.convert_mapping import (
     CONVERT_MAPPING_KEY,
     ConvertMappingError,
     convert_sales_inquiry_mapping,
 )
+from backend.app.modules.sales.services.sales_inquiry_traceability import LINEAGE_KEY
 
 
 async def _own_company_id(db, tenant_id: str) -> str:
@@ -49,6 +51,7 @@ async def _seed_inquiry_bundle(
     suffix: str,
     status: str = "received",
     review_required: bool = False,
+    stamp_review: bool = True,
     ledger_destination: str = DESTINATION_SALES,
     ledger_status: str = STATUS_CONFIRMED,
     ledger_result_id: str | None = None,
@@ -128,6 +131,24 @@ async def _seed_inquiry_bundle(
             )
         )
         await db.flush()
+        # Convert requires an explicit Review stamp (not_required / resolved_*).
+        if (
+            stamp_review
+            and not review_required
+            and status not in {"rejected", "closed", "abandoned", "review_required"}
+            and ledger_destination == DESTINATION_SALES
+            and ledger_status == STATUS_CONFIRMED
+        ):
+            await mark_unique_match_not_required(
+                db,
+                tenant_id=tenant_id,
+                sales_inquiry_id=str(inquiry.id),
+                destination=DESTINATION_SALES,
+                flights_ledger_id=ledger_id,
+                own_company_id=own_company_id,
+                actor_id="seed-actor",
+            )
+            await db.refresh(inquiry)
 
     return inquiry, ledger_id
 
@@ -463,3 +484,77 @@ async def test_legacy_convert_then_mapping_replay_is_stable(db, tenant_id: str) 
     assert mapped.client_account_id == str(legacy.client_account.id)
     assert mapped.mapping["client_account_id"] == str(legacy.client_account.id)
     assert mapped.mapping["flights_ledger_id"] == ledger_id
+
+
+@pytest.mark.asyncio
+async def test_missing_review_decision_fails_closed(db, tenant_id: str) -> None:
+    suffix = uuid.uuid4().hex[:8]
+    inquiry, ledger_id = await _seed_inquiry_bundle(
+        db,
+        tenant_id=tenant_id,
+        suffix=suffix,
+        stamp_review=False,
+    )
+    inquiry_id = str(inquiry.id)
+    await db.commit()
+    with pytest.raises(ConvertMappingError) as exc:
+        await convert_sales_inquiry_mapping(
+            db,
+            tenant_id=tenant_id,
+            sales_inquiry_id=inquiry_id,
+            destination=DESTINATION_SALES,
+            flights_ledger_id=str(ledger_id),
+        )
+    assert exc.value.reason == "missing_review_decision"
+    await db.rollback()
+    reloaded = await db.get(SalesInquiry, inquiry_id)
+    assert reloaded is not None
+    assert reloaded.status != "converted"
+    assert CONVERT_MAPPING_KEY not in (reloaded.meta or {})
+
+
+@pytest.mark.asyncio
+async def test_audit_failure_rolls_back_convert_unit(db, tenant_id: str, monkeypatch) -> None:
+    """Audit is mandatory: failure must leave no ClientAccount / mapping / lineage / lead bind."""
+    suffix = uuid.uuid4().hex[:8]
+    inquiry, ledger_id = await _seed_inquiry_bundle(db, tenant_id=tenant_id, suffix=suffix)
+    inquiry_id = str(inquiry.id)
+    lead_id = str(inquiry.lead_id)
+    await db.commit()
+
+    async def _boom(*_args, **_kwargs):
+        raise RuntimeError("forced audit failure")
+
+    monkeypatch.setattr(
+        "backend.app.modules.sales.services.convert_mapping.log_activity",
+        _boom,
+    )
+
+    with pytest.raises(ConvertMappingError) as exc:
+        await convert_sales_inquiry_mapping(
+            db,
+            tenant_id=tenant_id,
+            sales_inquiry_id=inquiry_id,
+            destination=DESTINATION_SALES,
+            flights_ledger_id=str(ledger_id),
+            actor_id=None,
+        )
+    assert exc.value.reason == "audit_write_failed"
+    await db.rollback()
+
+    reloaded = await db.get(SalesInquiry, inquiry_id)
+    assert reloaded is not None
+    assert reloaded.status != "converted"
+    assert CONVERT_MAPPING_KEY not in (reloaded.meta or {})
+    assert LINEAGE_KEY not in (reloaded.meta or {})
+
+    lead = await leads_crud.get_lead(db, tenant_id=tenant_id, lead_id=lead_id)
+    assert lead is not None
+    assert not getattr(lead, "client_account_id", None)
+
+    account_count = await db.scalar(
+        select(func.count())
+        .select_from(ClientAccount)
+        .where(ClientAccount.source_lead_id == lead_id)
+    )
+    assert account_count == 0

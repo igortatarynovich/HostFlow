@@ -129,7 +129,12 @@ async def create_company_service(
     _billing_require_full_access(t, lic)
     session = crud._extract_session(db)
     try:
-        company = await crud.create_company(session, data, actor_user_id=actor_user_id)
+        company = await crud.create_company(
+            session,
+            data,
+            actor_user_id=actor_user_id,
+            commit=commit,
+        )
     except ValueError as exc:
         raise _map_value_error(exc) from exc
     if not commit:

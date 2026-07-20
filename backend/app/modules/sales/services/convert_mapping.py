@@ -238,14 +238,22 @@ def _assert_inquiry_convertible(inquiry: SalesInquiry) -> None:
 
 
 def _review_convert_decision(inquiry: SalesInquiry) -> tuple[str, Optional[str]]:
-    """Apply Review SoT: explicit ``match_existing`` / ``create_new`` when present.
+    """Apply Review SoT — fail closed unless Review explicitly stamped a decision path.
 
-    Returns ``(action, client_account_id)``. Missing review → create_new.
-    Resolved review without a usable decision fails closed.
+    Allowed:
+    - ``resolved_match`` → ``match_existing`` (+ client_account_id)
+    - ``resolved_create_new`` → ``create_new``
+    - ``not_required`` → ``create_new`` (or auto ``match_existing`` when stamped)
+
+    Missing review / unknown status → fail closed (no invented create_new).
     """
     state = read_review_state(inquiry)
     if state is None:
-        return DECISION_CREATE_NEW, None
+        raise ConvertMappingError(
+            "SalesInquiry has no Review decision stamp",
+            reason="missing_review_decision",
+            details={"sales_inquiry_id": str(inquiry.id)},
+        )
 
     review_status = str(state.get("status") or "").strip()
     decision = state.get("decision")
@@ -284,14 +292,9 @@ def _review_convert_decision(inquiry: SalesInquiry) -> tuple[str, Optional[str]]
             return DECISION_MATCH_EXISTING, selected_id
         return DECISION_CREATE_NEW, None
 
-    # Legacy / unknown non-blocking review — fail closed rather than invent.
-    if action == DECISION_MATCH_EXISTING and selected_id:
-        return DECISION_MATCH_EXISTING, selected_id
-    if action == DECISION_CREATE_NEW or action is None:
-        return DECISION_CREATE_NEW, None
     raise ConvertMappingError(
-        "review decision is not usable for convert",
-        reason="review_decision_incomplete",
+        "review status is not convertible",
+        reason="missing_review_decision",
         details={
             "sales_inquiry_id": str(inquiry.id),
             "review_status": review_status,
@@ -724,29 +727,36 @@ async def convert_sales_inquiry_mapping(
             details=exc.details,
         ) from exc
 
-    # Mapping + lineage + convert audit stay in the caller's open transaction.
-    # Use a savepoint so a soft audit failure cannot invalidate the convert unit of work.
+    # Mapping + lineage + convert audit are one mandatory unit of work.
+    # Audit failure must fail the convert; caller rolls back the whole transaction.
+    # actor_id on activity_log is FK(users) — only persist real user UUIDs.
     try:
-        async with db.begin_nested():
-            await log_activity(
-                db,
-                tenant_id=tid,
-                actor_id=actor_id,
-                action="sales_inquiry.convert_mapping",
-                target_type="sales_inquiry",
-                target_id=sid,
-                payload={
-                    "client_account_id": account_id,
-                    "company_id": company_id,
-                    "flights_ledger_id": ledger_id,
-                    "destination": dest,
-                    "review_decision": mapping.get("review_decision"),
-                    "idempotent_replay": bool(conversion.idempotent_replay),
-                    "origin_type": ORIGIN_SALES_INQUIRY_CONVERSION,
-                },
-            )
-    except Exception:
-        pass
+        await log_activity(
+            db,
+            tenant_id=tid,
+            actor_id=company_actor,
+            action="sales_inquiry.convert_mapping",
+            target_type="sales_inquiry",
+            target_id=sid,
+            payload={
+                "client_account_id": account_id,
+                "company_id": company_id,
+                "flights_ledger_id": ledger_id,
+                "destination": dest,
+                "review_decision": mapping.get("review_decision"),
+                "idempotent_replay": bool(conversion.idempotent_replay),
+                "origin_type": ORIGIN_SALES_INQUIRY_CONVERSION,
+                "converted_by": actor_id,
+            },
+        )
+    except ConvertMappingError:
+        raise
+    except Exception as exc:
+        raise ConvertMappingError(
+            "convert audit write failed",
+            reason="audit_write_failed",
+            details={"sales_inquiry_id": sid, "error": str(exc)},
+        ) from exc
 
     return ConvertMappingResult(
         client_account_id=account_id,

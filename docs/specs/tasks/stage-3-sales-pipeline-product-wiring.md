@@ -13,9 +13,10 @@ Wire **product** Sales convert to domain Convert Mapping and apply Review SoT.
 | Product convert → `convert_sales_inquiry_mapping` | `applications.mutations.convert_sales_inquiry` |
 | SalesInquiry remains SoT | resolve SI from transport Lead facade; convert by `sales_inquiry_id` |
 | Review decision `match_existing` / `create_new` applied | `_review_convert_decision` + bind before `convert_client_lead` |
+| Review SoT fail-closed | missing / unknown review → `missing_review_decision` (no invented create_new) |
 | Idempotent re-convert | existing `convert_mapping_v1` replay (no second ClientAccount) |
 | Tenant / company ownership before write | match-target assert + ledger tenant filter |
-| Mapping + audit in one transaction | stamp mapping + lineage + `sales_inquiry.convert_mapping` audit; commit in mutation |
+| Mapping + lineage + audit one transaction | mandatory `log_activity`; audit failure rolls back the whole convert |
 
 ## Out of scope
 
