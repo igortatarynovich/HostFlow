@@ -75,6 +75,7 @@ def extract_lead_conversion_context(lead: Lead) -> dict[str, Any]:
     company_name = (
         _trim(company_profile.get("name"))
         or _trim(normalized.get("company_name"))
+        or _trim(normalized.get("company_name_hint"))
         or _trim(payload.get("company_name"))
     )
     display_name = company_name or contact_full_name or "Клиент"

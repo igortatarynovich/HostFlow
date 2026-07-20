@@ -118,6 +118,9 @@ export default function LeadQualificationSummaryCard({
       : 'app.leads.detail.qualification_summary.contact_missing'
 
   const poolIntent = n.recruitment_pool_intent_v1 === true
+  const fieldAnswers = Array.isArray(n.field_answers)
+    ? (n.field_answers as Array<{ name?: unknown; values?: unknown }>)
+    : []
 
   const hasAny =
     preview ||
@@ -144,6 +147,7 @@ export default function LeadQualificationSummaryCard({
     lead.funnel_id != null ||
     poolIntent ||
     fitEffectiveKnown ||
+    fieldAnswers.length > 0 ||
     (ruleMatch && (ruleMatch.rule_id || ruleMatch.note))
 
   if (!hasAny) return null
@@ -299,6 +303,22 @@ export default function LeadQualificationSummaryCard({
         <Section title={t('app.leads.detail.qualification_summary.section_rule')}>
           <Row label={t('app.leads.detail.qualification_summary.rule_id')} value={ruleMatch.rule_id} />
           <Row label={t('app.leads.detail.qualification_summary.rule_note')} value={ruleMatch.note} />
+        </Section>
+      ) : null}
+
+      {fieldAnswers.length > 0 ? (
+        <Section
+          title={t('app.leads.detail.qualification_summary.section_form_answers', {
+            defaultValue: 'Form answers',
+          })}
+        >
+          {fieldAnswers.map((item, idx) => (
+            <Row
+              key={`${str(item.name) || 'field'}-${idx}`}
+              label={str(item.name) || `Field ${idx + 1}`}
+              value={listStr(item.values) || (Array.isArray(item.values) ? null : str(item.values))}
+            />
+          ))}
         </Section>
       ) : null}
     </div>

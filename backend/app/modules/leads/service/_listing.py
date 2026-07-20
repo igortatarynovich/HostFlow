@@ -617,6 +617,7 @@ async def list_leads(
         for value in (
             profile.get("name"),
             norm.get("company_name"),
+            norm.get("company_name_hint"),
             payload_company.get("name"),
             joined_company_name,
         ):

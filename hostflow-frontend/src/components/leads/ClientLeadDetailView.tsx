@@ -84,7 +84,16 @@ export default function ClientLeadDetailView({
   const meta = record(normalized.meta)
   const consent = record(normalized.consent)
   const sourceProfile = record(meta.source_profile)
-  const companyName = text(company.name) || text(normalized.company_name) || text(payloadCompany.name) || lead.company_name || 'Client Lead'
+  const fieldAnswers = Array.isArray(normalized.field_answers)
+    ? (normalized.field_answers as Array<{ name?: unknown; values?: unknown }>)
+    : []
+  const companyName =
+    text(company.name) ||
+    text(normalized.company_name) ||
+    text(normalized.company_name_hint) ||
+    text(payloadCompany.name) ||
+    lead.company_name ||
+    'Client Lead'
   const convertedId = text(lead.converted_client_id)
   const terminal = leadIntakeResolutionRejected(lead)
   const statusLabel = terminal
@@ -163,7 +172,10 @@ export default function ClientLeadDetailView({
       </header>
 
       <Section title="Компания">
-        <Field label="Название" value={company.name || payloadCompany.name || lead.company_name} />
+        <Field
+          label="Название"
+          value={company.name || normalized.company_name || normalized.company_name_hint || payloadCompany.name || lead.company_name}
+        />
         <Field label="Юр. название" value={company.legal_name || payloadCompany.legal_name} />
         <Field label="NIP / VAT" value={company.tax_id || company.nip || company.vat || payloadCompany.tax_id} />
         <Field label="Страна" value={company.country || payloadCompany.country} />
@@ -174,20 +186,34 @@ export default function ClientLeadDetailView({
       </Section>
 
       <Section title="Контактное лицо">
-        <Field label="Имя" value={contact.full_name || payloadContact.full_name} />
+        <Field label="Имя" value={contact.full_name || payloadContact.full_name || normalized.full_name} />
         <Field label="Должность" value={contact.role || payloadContact.role} />
-        <Field label="Email" value={contact.email || payloadContact.email} />
-        <Field label="Телефон" value={contact.phone || payloadContact.phone} />
+        <Field label="Email" value={contact.email || payloadContact.email || normalized.email} />
+        <Field label="Телефон" value={contact.phone || payloadContact.phone || normalized.phone} />
         <Field label="WhatsApp" value={contact.whatsapp ?? payloadContact.whatsapp} />
       </Section>
 
       <Section title="Потребность">
         <Field label="Что нужно" value={need.what_needed || payloadNeed.what_needed} />
+        <Field label="Сводка" value={need.summary || payloadNeed.summary} />
         <Field label="Сколько людей" value={need.people_count || payloadNeed.people_count} />
         <Field label="Тип сотрудничества" value={need.cooperation_type || payloadNeed.cooperation_type} />
         <Field label="Когда нужны" value={need.start_date || need.when_needed || payloadNeed.start_date || payloadNeed.when_needed} />
         <Field label="Требования" value={need.requirements || payloadNeed.requirements} />
+        <Field label="Платные кампании" value={marketing.runs_paid_ads} />
       </Section>
+
+      {fieldAnswers.length > 0 ? (
+        <Section title="Ответы из формы Meta">
+          {fieldAnswers.map((item, idx) => (
+            <Field
+              key={`${text(item.name) || 'field'}-${idx}`}
+              label={text(item.name) || `Field ${idx + 1}`}
+              value={item.values}
+            />
+          ))}
+        </Section>
+      ) : null}
 
       <Section title="Условия работы">
         <Field label="Ставка" value={terms.rate || normalized.rate} />
