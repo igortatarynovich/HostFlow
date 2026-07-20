@@ -10,6 +10,19 @@
 > Build the manager’s workplace around **Thread** mutations — without growing Composer  
 > and without letting Workspace “sprawl” into field-level PATCH APIs.
 
+## Architecture freeze
+
+**C1 architecture is frozen.** No further architectural redesign until C1 close-out.  
+Remaining work = implement Commands → projections → Workspace UX (C1.3) → close C1 → C2.
+
+### Merge gates (every C1.2+ PR — blockers)
+
+1. **No API bypasses Commands** — any Thread state change must go through a typed Command. New direct-mutation endpoints (field PATCH for ownership/unread/next_action/SLA/queues) = review blocker.  
+2. **ThreadContext is the only Workspace read model** — new UX fields land in ThreadContext first; Workspace must not reassemble state from many endpoints.  
+3. **Queue stays a projection** — no MoveThreadToQueue / queue write API, even as a “quick button”. Change Thread state → queues recompute.
+
+---
+
 ## Locked principle (entire C1)
 
 > **Workspace changes Thread only through Commands.  
@@ -246,22 +259,22 @@ Composer **unchanged** (C1.1). No `module == …` branches.
 
 ## Definition of Done
 
-- [ ] All Workspace actions are typed Commands from the table above  
-- [ ] No `PATCH /threads/{id}` (or field-level PATCH) used by Workspace UI  
-- [ ] No `MoveThreadToQueue` (or equivalent) API exists  
-- [ ] Every successful Command response body includes ThreadContext (`context_version`, `generated_at`)  
-- [ ] Idempotent no-ops documented above; no spurious audit on no-op  
-- [ ] Real transitions are audited  
-- [ ] Stale write → typed conflict  
-- [ ] Queue membership is projection-only (not a second SoT)  
-- [ ] Next Action persisted as platform entity; ThreadContext projects active one  
-- [ ] SLA breach is derived; no stored `sla_breached` SoT flag  
-- [ ] `AssignmentReason` recorded on assign/reassign  
-- [ ] Thread invariants covered by contract tests  
+- [x] Merge gates locked (Commands-only / ThreadContext-only read / queue projection)  
+- [x] Ownership + read Commands: Assign / Reassign / Unassign / MarkRead / MarkUnread  
+- [x] Successful Command response includes ThreadContext (`context_version`, `generated_at`)  
+- [x] Idempotent no-ops; no spurious audit on no-op  
+- [x] Real transitions audited (`CommunicationCommandAudit`)  
+- [x] `AssignmentReason` on assign/reassign/unassign  
+- [x] Contract test: no queue-mutation in Workspace Command routes  
+- [ ] Remaining Commands: Set/Complete/Cancel NextAction, Pause/Resume SLA, Close/Reopen  
+- [ ] Optimistic concurrency → typed conflict  
+- [ ] Next Action platform entity  
+- [ ] SLA event clock; breached derived  
+- [ ] Workspace UI uses Commands only (no field PATCH)  
+- [ ] Stale legacy PATCH paths deprecated / gated  
 - [ ] Composer unchanged  
 - [ ] No `module == …` branches  
-- [ ] Contract test: modules use public Communication Workspace Command API via adapters  
-- [ ] Contract test: no queue-mutation routes; no generic Thread PATCH for Workspace fields  
+- [ ] Contract test: modules use public Communication Workspace Command API via adapters 
 
 ## After C1.2 → C1.3 Workspace Experience
 

@@ -58,6 +58,7 @@
 **C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
 **C1 / C1.1** ✅ → PR #107 (`dbeb36ed`) — [ThreadContext](c1-1-thread-context-composer.md).  
 **Active:** **C1.2 Workspace Actions** — [c1-2-workspace-actions.md](c1-2-workspace-actions.md).  
+**Architecture freeze:** no further C1 redesign; three merge gates (Commands-only · ThreadContext read model · queue projection).  
 **Close-out:** C1.2 → [C1.3 Workspace Experience](c1-3-workspace-experience.md) → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
 **Epic C — complete** only after gate PASS (not after C2 alone).
 
