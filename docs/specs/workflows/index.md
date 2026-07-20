@@ -15,6 +15,7 @@
 
 | Документ | Назначение | Основные сущности | Автоматизация |
 |-----------|-------------|-------------------|----------------|
+| [**adr022-phase2-sales-only-capability-flow.md**](adr022-phase2-sales-only-capability-flow.md) | **ADR-022 Phase 2 / F3-B-10:** Sales-only spine SalesInquiry → Flights → Capability → Review → Convert → Traceability; contracts; fail-closed; no shared wizard | SalesInquiry, Flights destination, ClientAccount | Flights dispatch; Sales convert (next PR) |
 | [**recruitment-operational-goals-and-order.md**](recruitment-operational-goals-and-order.md) | **Hub:** цели, порядок этапов Lead → Candidate → Handoff → HR; requirements-driven flow; кто решает обязательность; очередь работ по трём направлениям | Lead, Candidate, Requirement, Handoff, WorkforceEmployee | Requirement Engine gates; читать **в любой ветке** |
 | [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) | **A3 backlog:** экраны, API bundle, срезы PR, acceptance по типам требований | Candidate, Requirement, CandidateEvidence | Workspace route + evidence flow |
 | [document_expiry.md](document_expiry.md) | Контроль сроков действия документов и напоминания | Document, Candidate, Reminder | Автоматические напоминания, изменение статуса |
