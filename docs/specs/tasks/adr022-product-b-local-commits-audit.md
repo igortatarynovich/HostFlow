@@ -8,6 +8,9 @@
 
 **Normative filters:** L0 · INV-16 (Decision Priority) · Flights R3.5 · ADR-021/022 · INV-17 (Communication Pipeline — already restored on integration)
 
+**Next stage (not “audit”):** [`adr022-phase2-kickoff.md`](adr022-phase2-kickoff.md) — implement on current architecture spine; historical commits = requirements only.  
+**Repo process:** [`../../governance/repository-operational-canon.md`](../../governance/repository-operational-canon.md)
+
 ---
 
 ## Executive verdict
