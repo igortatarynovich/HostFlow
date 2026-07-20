@@ -1,6 +1,6 @@
 # Epic C0 — Communication Integrity
 
-**Status:** Active — C0.1 ✅ (PR #100 @ `f8569fa9`); **current slice C0.1b**  
+**Status:** Active — C0.1 ✅ · C0.1b ✅ (PR #101 @ `7bc13d57`); **current slice C0.2**  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · G13 thread entity links · Thread-primary Communication
 
 > Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence — and risks parallel module senders.  

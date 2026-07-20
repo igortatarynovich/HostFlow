@@ -43,8 +43,8 @@
 |---|------|-------------------|--------|
 | **1** | **C0.0** Communication Canon & Contracts | *(with PR #100)* | ✅ SoT + Intent-first contracts |
 | **2** | **C0.1** First Canon implementation (outbound) | `fix/communication-c0-outbound-linkage` (**PR #100 merged**) | ✅ Intent → Policy → Resolvers → Command → Sender + G13 |
-| **3** | **C0.1b** Intent Policy & Snapshot Hardening | `fix/communication-c0-intent-policy-hardening` (**current**) | Typed policies, full snapshot, writer migration map |
-| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` | Replies land on correct thread/entity |
+| **3** | **C0.1b** Intent Policy & Snapshot Hardening | `fix/communication-c0-intent-policy-hardening` (**PR #101 merged**) | ✅ Typed policies, full snapshot, writer migration map |
+| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**current**) | Deterministic thread/entity or unresolved queue |
 | **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` | Failures explainable without server logs |
 | **6** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
 | **7** | Stage 3 slice 3 | *(TBD thin Sales product flow)* | Full SalesInquiry product flow |
@@ -52,8 +52,8 @@
 | **9** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
 | **10** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
-**C0.1 closed** at integration `f8569fa9` (PR #100). **Do not open a new writer.**  
-**Active:** [C0.1b](c0-1b-intent-policy-snapshot-hardening.md) — Intent Policy & Snapshot Hardening.
+**C0.1** ✅ `f8569fa9` (PR #100). **C0.1b** ✅ `7bc13d57` (PR #101).  
+**Active:** [C0.2 inbound resolver](c0-2-inbound-resolver.md) — every inbound linked or explicitly unresolved.
 
 **Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
 
