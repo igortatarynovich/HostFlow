@@ -1,24 +1,54 @@
+import { useState } from 'react'
 import clsx from 'clsx'
-import type { ThreadContext } from '../../api/communications'
+import type {
+  ThreadContext,
+  WorkspaceCommandName,
+  WorkspaceCommandResult,
+} from '../../api/communications'
 import { useI18n } from '../../i18n'
 import { formatThreadDateTime } from './CommunicationsThreadWorkArea'
 
-/** C1.3 — SLA indicator from ThreadContext.work_state.sla (event clock projection). */
+type RunCommand = (
+  command: WorkspaceCommandName,
+  body?: Record<string, unknown>,
+) => Promise<WorkspaceCommandResult>
+
+/** C1.3 — SLA indicator from ThreadContext + Pause/Resume Commands. */
 export default function ThreadWorkspaceSlaChip({
   workState,
+  runCommand,
+  interactive,
 }: {
   workState?: ThreadContext['work_state'] | null
+  runCommand?: RunCommand
+  /** Show Pause/Resume controls (header/control panel). */
+  interactive?: boolean
 }) {
   const { t } = useI18n()
+  const [busy, setBusy] = useState(false)
   const sla = workState?.sla
   if (!sla && !workState?.sla_due_at) return null
 
   const status = String(sla?.status || '').toLowerCase()
   const breached = Boolean(sla?.breached) || status === 'breached'
   const paused = Boolean(sla?.paused) || status === 'paused'
+  const resolved = status === 'resolved' || status === 'none'
   const due = sla?.target_due_at || workState?.sla_due_at || null
+  const canToggle = Boolean(interactive && runCommand && !resolved && (due || paused || status === 'running' || breached))
 
-  if (!due && !breached && !paused && status === 'none') return null
+  if (!due && !breached && !paused && (status === 'none' || !status)) return null
+
+  const onToggle = async () => {
+    if (!runCommand || busy) return
+    setBusy(true)
+    try {
+      await runCommand(paused ? 'ResumeSLA' : 'PauseSLA')
+    } catch {
+      // parent surfaces errors via threadError when using model.runCommand
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <span
@@ -38,6 +68,24 @@ export default function ThreadWorkspaceSlaChip({
           ? t('app.communications.sla.paused', { defaultValue: 'SLA paused' })
           : t('app.communications.sla.due', { defaultValue: 'SLA' })}
       {due ? <span className="font-normal opacity-80">· {formatThreadDateTime(due)}</span> : null}
+      {canToggle ? (
+        <button
+          type="button"
+          className="ml-0.5 rounded border border-current/20 px-1 py-px text-[10px] font-semibold uppercase tracking-wide opacity-90 hover:opacity-100 disabled:opacity-50"
+          disabled={busy}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void onToggle()
+          }}
+        >
+          {busy
+            ? '…'
+            : paused
+              ? t('app.communications.sla.resume', { defaultValue: 'Resume' })
+              : t('app.communications.sla.pause', { defaultValue: 'Pause' })}
+        </button>
+      ) : null}
     </span>
   )
 }

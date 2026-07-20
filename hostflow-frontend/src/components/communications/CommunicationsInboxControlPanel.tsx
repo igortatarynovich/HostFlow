@@ -354,7 +354,11 @@ export default function CommunicationsInboxControlPanel({
           <div className="flex justify-between gap-2">
             <dt>{t('app.communications_inbox_center.sla_due')}</dt>
             <dd className="text-right">
-              <ThreadWorkspaceSlaChip workState={threadContext?.work_state} />
+              <ThreadWorkspaceSlaChip
+                workState={threadContext?.work_state}
+                runCommand={runCommand}
+                interactive
+              />
               {!threadContext?.work_state?.sla && !threadContext?.work_state?.sla_due_at
                 ? formatThreadDateTime(thread.sla_due_at)
                 : null}

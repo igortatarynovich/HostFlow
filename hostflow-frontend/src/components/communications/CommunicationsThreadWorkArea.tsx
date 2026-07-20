@@ -7,13 +7,11 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
-import { NextActionBadge } from '../candidate/NextActionBadge'
 import { primaryThreadEntityLabel } from '../../utils/communicationThreadEntityLinks'
 import ThreadComposer from './ThreadComposer'
 import ThreadDeliveryDiagnosticsStrip from './ThreadDeliveryDiagnosticsStrip'
 import ThreadNextActionPanel from './ThreadNextActionPanel'
 import ThreadWorkspaceSlaChip from './ThreadWorkspaceSlaChip'
-import { useThreadNextAction } from './useThreadNextAction'
 
 export function formatThreadDateTime(value?: string | null): string {
   if (!value) return '—'
@@ -80,14 +78,6 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
     `${String(headerChannel || '').toUpperCase()} thread`
 
   const btn = layout === 'inboxCenter' ? 'btn-secondary btn-sm' : 'btn-secondary'
-
-  // Legacy G-8 ladder badge (heuristic). Prefer ThreadContext next_action panel for C1.3 Commands.
-  const threadNextActionFingerprint = `${headerStatus ?? ''}|${work?.is_archived ? 1 : 0}|${headerUnread ?? 0}|${work?.sla_due_at ?? thread.sla_due_at ?? ''}|${thread.last_inbound_at ?? ''}|${thread.last_outbound_at ?? ''}`
-  const {
-    data: threadNextAction,
-    loading: threadNextActionLoading,
-    error: threadNextActionError,
-  } = useThreadNextAction(thread.id, threadNextActionFingerprint)
 
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
@@ -348,7 +338,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           {threadContext?.work_state?.unread_count ?? thread.unread_count}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ThreadWorkspaceSlaChip workState={work} />
+          <ThreadWorkspaceSlaChip workState={work} runCommand={runCommand} interactive />
         </div>
         <div>
           {t('app.communications.labels.entity')}:{' '}
@@ -388,12 +378,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                   </span>
                 </>
               ) : null}
-              <ThreadWorkspaceSlaChip workState={work} />
-              <NextActionBadge
-                dto={threadNextAction}
-                loading={threadNextActionLoading}
-                error={threadNextActionError}
-              />
+              <ThreadWorkspaceSlaChip workState={work} runCommand={runCommand} interactive />
             </div>
           </div>
           {actionBar}
@@ -444,12 +429,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             <span>
               {t('app.communications.labels.unread')}: {headerUnread ?? 0}
             </span>
-            <ThreadWorkspaceSlaChip workState={work} />
-            <NextActionBadge
-              dto={threadNextAction}
-              loading={threadNextActionLoading}
-              error={threadNextActionError}
-            />
+            <ThreadWorkspaceSlaChip workState={work} runCommand={runCommand} interactive />
           </div>
         </div>
         {actionBar}

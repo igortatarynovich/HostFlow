@@ -35,9 +35,10 @@ optimistic concurrency (`work_version`); no mixed PATCH path.
 - [x] Next action panel (Set / Complete / Cancel Commands)  
 - [x] Diagnostics strip prefers context delivery summary  
 - [x] Keyboard shortcuts → Commands  
-- [ ] PauseSLA / ResumeSLA quick actions in SLA chip  
-- [ ] Realtime / push apply of ThreadContext  
-- [ ] Drop legacy G-8 next-action badge once panel covers operator need  
+- [x] PauseSLA / ResumeSLA quick actions in SLA chip  
+- [x] Soft realtime: poll ThreadContext and apply on `work_version` advance  
+- [x] Drop legacy G-8 next-action badge from Thread WorkArea (panel is SoT)  
+- [ ] True push/WebSocket ThreadContext (optional; poll covers C1.3)  
 
 ## Out of scope
 

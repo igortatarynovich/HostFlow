@@ -281,6 +281,45 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     [applyCommandResult, threadId],
   )
 
+  // C1.3: soft realtime — poll ThreadContext while the thread is open and apply
+  // when work_version (or generated_at) advances. No alternate mutation path.
+  useEffect(() => {
+    if (!threadId) return
+    let cancelled = false
+    const tick = async () => {
+      if (cancelled || document.visibilityState === 'hidden') return
+      try {
+        const ctx = await getThreadContext(threadId)
+        if (cancelled) return
+        const prev = threadContextRef.current
+        const prevVer = Number(prev?.work_state?.work_version ?? 0)
+        const nextVer = Number(ctx.work_state?.work_version ?? 0)
+        // generated_at changes every rebuild — only apply on work_version advance
+        // (or first successful poll if context missing).
+        if (!prev || nextVer > prevVer) {
+          applyCommandResult({
+            command: 'ThreadContextPoll',
+            applied: false,
+            audit_id: null,
+            context: ctx,
+          })
+        }
+      } catch {
+        // ignore transient poll errors
+      }
+    }
+    const id = window.setInterval(() => void tick(), 12_000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void tick()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [applyCommandResult, threadId])
+
   const handleMarkRead = useCallback(async () => {
     if (!threadId) return
     setBusyAction('read')
