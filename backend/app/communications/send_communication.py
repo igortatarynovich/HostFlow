@@ -34,6 +34,8 @@ from backend.app.communications.entity_link import (
     get_thread_entity_links,
 )
 from backend.app.communications.intent import normalize_intent
+from backend.app.communications.intent_policy import evaluate_intent_policy
+from backend.app.communications.snapshot import build_outbound_snapshot
 from backend.app.models.communication import CommunicationMessage, CommunicationThread
 from backend.app.models.communication_delivery import (
     DELIVERY_CHANNEL_EMAIL,
@@ -214,22 +216,25 @@ async def send_communication(
             details={"reason": "intent_required"},
         )
     intent = normalize_intent(raw_intent)
-    # Product templates are bound to named intents — block MANUAL_OUTBOUND bypass.
-    _INTENT_BOUND_TEMPLATES = {
-        "questionnaire_invite_email_v1": "request_questionnaire",
-    }
-    tpl_key = _trim(request.template_key)
-    if tpl_key in _INTENT_BOUND_TEMPLATES and intent.value != _INTENT_BOUND_TEMPLATES[tpl_key]:
+    channel = _trim(request.channel).lower() or "email"
+    policy = evaluate_intent_policy(
+        intent_key=intent.value,
+        entity_type=origin.entity_type,
+        channel=channel,
+        automation=bool(_trim(getattr(request, "automation_identity", None))),
+        template_key=request.template_key,
+    )
+    if not policy.allowed:
         raise SendCommunicationError(
-            f"template {tpl_key!r} requires intent {_INTENT_BOUND_TEMPLATES[tpl_key]!r}",
+            policy.reason_message,
             details={
-                "reason": "intent_required_for_template",
-                "template_key": tpl_key,
-                "required_intent": _INTENT_BOUND_TEMPLATES[tpl_key],
-                "intent": intent.value,
+                "reason": policy.reason_code,
+                "intent": policy.intent_key,
+                "entity_type": origin.entity_type,
+                "channel": channel,
+                "policy": policy.to_dict(),
             },
         )
-    channel = _trim(request.channel).lower() or "email"
     if not request.recipients:
         raise SendCommunicationError(
             "at least one recipient is required",
@@ -375,6 +380,12 @@ async def send_communication(
         )
 
     now = _now()
+    snapshot = build_outbound_snapshot(request, policy=policy)
+    snapshot_dict = snapshot.to_dict()
+    # Prefer snapshot already stamped by prepare_and_send when present.
+    meta_snapshot = dict((request.meta or {}).get("snapshot") or {})
+    if meta_snapshot.get("schema_version"):
+        snapshot_dict = meta_snapshot
     message = CommunicationMessage(
         tenant_id=str(request.tenant_id),
         thread_id=str(thread_id),
@@ -394,26 +405,27 @@ async def send_communication(
         delivery_status="queued",
         payload={
             "platform": "communications.send_communication.v1",
-            "intent": intent.value,
-            "purpose": _trim(request.purpose) or None,
-            "origin": {
+            "snapshot": snapshot_dict,
+            "intent": snapshot_dict.get("intent_key") or intent.value,
+            "intent_version": snapshot_dict.get("intent_version"),
+            "purpose": _trim(request.purpose) or snapshot_dict.get("purpose"),
+            "origin": snapshot_dict.get("origin")
+            or {
                 "entity_type": origin.entity_type,
                 "entity_id": origin.entity_id,
             },
             "origin_entity_type": origin.entity_type,
             "origin_entity_id": origin.entity_id,
             "idempotency_key": idem,
-            "template_key": _trim(request.template_key) or None,
-            "template_version": int(request.template_version or 1),
-            "resolved_links": [
-                lnk.to_dict() if hasattr(lnk, "to_dict") else dict(lnk)
-                for lnk in (getattr(request, "resolved_links", None) or ())
-            ],
-            "policy_decision": dict(getattr(request, "policy_decision", None) or {}),
-            "correlation_id": _trim(getattr(request, "correlation_id", None)) or None,
-            "source_event_id": _trim(getattr(request, "source_event_id", None)) or None,
-            "automation_identity": _trim(getattr(request, "automation_identity", None))
-            or None,
+            "template_key": snapshot_dict.get("template_key"),
+            "template_version": snapshot_dict.get("template_version"),
+            "resolved_links": snapshot_dict.get("links") or [],
+            "policy_decision": snapshot_dict.get("policy_decision") or policy.to_dict(),
+            "compliance_decision": snapshot_dict.get("compliance_decision") or {},
+            "correlation_id": snapshot_dict.get("correlation_id"),
+            "source_event_id": snapshot_dict.get("source_event_id"),
+            "automation_identity": snapshot_dict.get("automation_identity"),
+            "render_variables": snapshot_dict.get("resolved_variables") or {},
             **{
                 k: v
                 for k, v in dict(request.meta or {}).items()
@@ -424,9 +436,9 @@ async def send_communication(
                     "resolved_links",
                     "policy_decision",
                     "render_variables",
+                    "snapshot",
                 }
             },
-            "render_variables": dict(getattr(request, "render_variables", None) or {}),
         },
     )
     db.add(message)
@@ -461,22 +473,23 @@ async def send_communication(
                 "subject": message.subject,
                 "communication_message_id": str(message.id),
                 "thread_id": str(thread_id),
-                "intent": intent.value,
-                "origin": {
+                "snapshot": snapshot_dict,
+                "intent": snapshot_dict.get("intent_key") or intent.value,
+                "intent_version": snapshot_dict.get("intent_version"),
+                "origin": snapshot_dict.get("origin")
+                or {
                     "entity_type": origin.entity_type,
                     "entity_id": origin.entity_id,
                 },
                 "origin_entity_type": origin.entity_type,
                 "origin_entity_id": origin.entity_id,
-                "template_key": _trim(request.template_key) or None,
-                "template_version": int(request.template_version or 1),
-                "resolved_links": [
-                    lnk.to_dict() if hasattr(lnk, "to_dict") else dict(lnk)
-                    for lnk in (getattr(request, "resolved_links", None) or ())
-                ],
-                "policy_decision": dict(getattr(request, "policy_decision", None) or {}),
-                "correlation_id": _trim(getattr(request, "correlation_id", None)) or None,
-                "source_event_id": _trim(getattr(request, "source_event_id", None)) or None,
+                "template_key": snapshot_dict.get("template_key"),
+                "template_version": snapshot_dict.get("template_version"),
+                "resolved_links": snapshot_dict.get("links") or [],
+                "policy_decision": snapshot_dict.get("policy_decision") or policy.to_dict(),
+                "compliance_decision": snapshot_dict.get("compliance_decision") or {},
+                "correlation_id": snapshot_dict.get("correlation_id"),
+                "source_event_id": snapshot_dict.get("source_event_id"),
             },
         )
         db.add(delivery)

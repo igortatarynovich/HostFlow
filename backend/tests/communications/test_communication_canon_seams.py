@@ -144,7 +144,7 @@ async def test_capability_denial_blocks_send(db, tenant_id: str) -> None:
             ),
             skip_transport=True,
         )
-    assert (exc.value.details or {}).get("reason") == "capability_intent_denied"
+    assert (exc.value.details or {}).get("reason") == "intent_entity_denied"
     count = await db.scalar(
         select(func.count()).select_from(CommunicationMessage).where(
             CommunicationMessage.tenant_id == tenant_id
