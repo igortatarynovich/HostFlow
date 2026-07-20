@@ -40,4 +40,4 @@ UI · search · analytics · new screens/routes · moving ownership to Flights
 
 ## Next after merge
 
-Sales Phase 2 domain complete. Remaining: **Capability UI** only (thin interface). Then stop for CRM-stage revision.
+Sales Phase 2 domain complete. **Pipeline v1 seal** + **ClientAccount Creation Origins v1** before Capability UI.
