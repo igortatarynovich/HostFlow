@@ -164,14 +164,20 @@ This docs-slice does **not** change runtime behaviour.
 
 ## 9. Implementation order (after this PR)
 
-1. Optional: persist `origin_type` (+ creation ref) on ClientAccount / Sales meta.  
-2. Implement `create_client_account_manually` (Sales module) per §5–§6.  
-3. Rewire ClientAccounts create HTTP to the manual service.  
-4. Close Pipeline v1 product wiring gaps (convert via mapping; consume Review SoT; demote Lead UI).  
-5. Capability UI (display-only).
+**Superseded for global sequencing** by [`../tasks/sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md).
+
+Locked product order (relevant excerpt):
+
+1. **Capability UI** (`feat/sales-capability-ui`) — display-only.  
+2. **Manual ClientAccount creation** (`feat/manual-client-account-creation`) — implement `create_client_account_manually` per §5–§6; optional persist `origin_type`; rewire ClientAccounts create HTTP.  
+3. **Pipeline v1 product wiring** — convert via mapping; consume Review SoT; demote Lead UI.  
+4. Communication Stages 4–7 (after Sales 1–3).
+
+This Origins document remains the **contract** for `manual_creation`; it no longer defines queue order ahead of Capability UI.
 
 ---
 
 ## 10. History
 
-- 2026-07-20: Origins v1 docs-slice — `sales_inquiry_conversion` + `manual_creation`; forbid fake Lead/SI/Flights for manual path.
+- 2026-07-20: Origins v1 docs-slice — `sales_inquiry_conversion` + `manual_creation`; forbid fake Lead/SI/Flights for manual path.  
+- 2026-07-20: §9 order superseded by Sales→Comms sequential queue (Capability UI before manual create runtime).

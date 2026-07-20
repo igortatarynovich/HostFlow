@@ -1,8 +1,8 @@
 # ADR-022 Phase 2 — kickoff (Product B on current architecture)
 
-**Status:** DOMAIN SLICES 1–4 **DONE** · Pipeline v1 seal **DONE** · Creation Origins **CURRENT** · Capability UI after Origins  
+**Status:** DOMAIN SLICES 1–4 **DONE** · Pipeline v1 seal **DONE** · Creation Origins **DONE** · **NEXT:** Capability UI (queue Stage 1)  
 **Date:** 2026-07-20  
-**Trusted base:** `integration/release-product-a-b` @ `328506f7`+ (fast-forward only)  
+**Trusted base:** `integration/release-product-a-b` @ `e276e81f`+ (fast-forward only)  
 **Supersedes naming:** not “ADR022 audit” — audit is **done** ([`adr022-product-b-local-commits-audit.md`](adr022-product-b-local-commits-audit.md))  
 **Normative parents:** ADR-022 · ADR-021 · Flights R3.5 · INV-16 · INV-17 · [`repository-operational-canon.md`](../../governance/repository-operational-canon.md)
 
@@ -11,7 +11,8 @@
 **Ambiguous match review (slice 3):** [`sales-ambiguous-match-review.md`](sales-ambiguous-match-review.md)  
 **Traceability (slice 4):** [`sales-inquiry-traceability.md`](sales-inquiry-traceability.md)  
 **Pipeline v1 seal:** [`../architecture/sales-domain-pipeline-v1.md`](../architecture/sales-domain-pipeline-v1.md)  
-**Creation Origins (next):** [`../architecture/client-account-creation-origins-v1.md`](../architecture/client-account-creation-origins-v1.md)
+**Creation Origins:** [`../architecture/client-account-creation-origins-v1.md`](../architecture/client-account-creation-origins-v1.md)  
+**Sequential product queue (locked):** [`sales-to-comms-sequential-queue.md`](sales-to-comms-sequential-queue.md)
 
 ---
 
@@ -52,14 +53,18 @@ Historical commits on `feat/adr022-intake-policy-phase1-backend` are a **require
 | 3 | `feat/sales-ambiguous-match-review` | SalesInquiry-owned review | **Done** |
 | 4 | `feat/sales-inquiry-traceability` | Immutable lineage (**no UI**) | **Done** |
 | 4b | `docs/sales-domain-pipeline-v1-seal` | Architectural revision + seal | **Done** |
-| 4c | `docs/client-account-creation-origins-v1` | ClientAccount origins (conversion + manual) | **CURRENT** |
-| 5 | `feat/sales-capability-create-card` | Sales-only create + post-save card (UI last) | pending — **after Origins** |
+| 4c | `docs/client-account-creation-origins-v1` | ClientAccount origins (conversion + manual) | **Done** |
+| Q | `docs/sales-comms-sequential-queue` | Lock Sales→Comms product sequence | **CURRENT** |
+| 5 | `feat/sales-capability-ui` | Display-only Capability / Review / Convert / Traceability | **NEXT** after Q |
+| 6 | `feat/manual-client-account-creation` | `create_client_account_manually` | queued |
+| 7 | `fix/sales-pipeline-v1-product-wiring` | Close Pipeline v1 §3 product GAPs | queued |
+| 8+ | Communication Stages 4–7 | See sequential queue | **after Sales 5–7** |
 
 Stop after each PR for ownership / INV-16 review.
 
-**Linear order:** Docs → Convert → Review → Traceability → **Pipeline seal → Creation Origins** → Capability UI.
+**Linear order (locked):** … → Pipeline seal → Origins → **Capability UI → Manual create → Pipeline wiring → Communication (outbound binding → signatures → composer → integrity)**.
 
-Domain contracts are sealed with **product wiring gaps open** (see Pipeline v1 §3). Do **not** start Capability UI until Origins v1 is merged.
+Domain contracts are sealed; **product wiring gaps remain** (Pipeline v1 §3). One product slice at a time — see [`sales-to-comms-sequential-queue.md`](sales-to-comms-sequential-queue.md).
 
 ---
 
