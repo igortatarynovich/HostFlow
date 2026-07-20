@@ -340,7 +340,9 @@ os.environ.setdefault("CONFIG_DIR", _default_config_dir)
 _default_upload_dir = os.path.abspath(os.path.join(_backend_root, "uploads"))
 os.environ.setdefault("UPLOAD_DIR", _default_upload_dir)
 
-ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+from backend.app.auth.session_cookies import cors_allowed_origins, origin_is_allowed
+
+ALLOWED_ORIGINS = cors_allowed_origins()
 
 # Increase multipart upload limit to 10 MB (configurable via env override).
 MULTIPART_MAX_FILE_SIZE = int(os.environ.get("UPLOAD_MAX_FILE_SIZE", 10 * 1024 * 1024))
@@ -361,7 +363,7 @@ class ForceCORSHeadersMiddleware(BaseHTTPMiddleware):
             response = JSONResponse(
                 {"detail": err_msg}, status_code=500
             )
-        if origin in ALLOWED_ORIGINS:
+        if origin_is_allowed(origin, ALLOWED_ORIGINS):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             vary = response.headers.get("Vary")
