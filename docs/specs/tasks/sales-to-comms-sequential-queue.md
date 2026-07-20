@@ -28,7 +28,7 @@
 
 **Open product GAPs (queued below / in roadmap):**
 
-- Communication Inbox Workspace (C1 — **active**)  
+- Communication Inbox Workspace (C1 — **active**, slice **C1.2**)  
 - Templates/Automations/Campaigns (C2)  
 - Epic C Complete Gate (after C2; before Governance)  
 - Platform Governance Review (after **Epic C — complete**)  
@@ -45,7 +45,8 @@
 | **3** | **C0.1b** Intent Policy & Snapshot Hardening | `fix/communication-c0-intent-policy-hardening` (**PR #101 merged**) | ✅ Typed policies, full snapshot, writer migration map |
 | **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**PR #102 merged**) | ✅ Deterministic thread/entity or unresolved queue |
 | **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` (**PR #104 merged**) | ✅ Failures explainable without server logs |
-| **6** | **C1** Communication Inbox Workspace | `feat/communication-c1-inbox-workspace` (**current**) | Thread workplace; queues + policy-bound composer |
+| **6** | **C1** Communication Inbox Workspace | `feat/communication-c1-inbox-workspace` (**PR #107 merged**) | ✅ Queues + ThreadContext + capability Composer (C1.1) |
+| **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**current**) | Ownership, read, next action, SLA, queue projections |
 | **7** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
 | **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | Single Communication capability; status → Epic C complete |
 | **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Boundary principle across platforms |
@@ -54,8 +55,9 @@
 | **12** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
 **C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
-**Active:** **C1 Communication Inbox Workspace** — [c1-communication-inbox-workspace.md](c1-communication-inbox-workspace.md).  
-**Close-out:** C1 → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
+**C1 / C1.1** ✅ → PR #107 (`dbeb36ed`) — [ThreadContext](c1-1-thread-context-composer.md).  
+**Active:** **C1.2 Workspace Actions** — [c1-2-workspace-actions.md](c1-2-workspace-actions.md).  
+**Close-out:** C1.2 → C1 UX close-out → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
 **Epic C — complete** only after gate PASS (not after C2 alone).
 
 **After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  
@@ -120,6 +122,9 @@ Full prepare-send chain (canon): authorization → capabilities → recipient �
 
 Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs reply, Assigned to me, Sent, Archive, Unresolved). Thread title priority: company → contact name → email/phone → readable fallback (**never** UUID stubs). Settings / signatures / templates live under **Настройки → Коммуникации**.
 
+- [C1 kickoff](c1-communication-inbox-workspace.md) · [C1.1 ThreadContext](c1-1-thread-context-composer.md) ✅  
+- **[C1.2 Workspace Actions](c1-2-workspace-actions.md)** ← active
+
 ---
 
 ## 5b. Epic C2 — Templates, Automations & Campaigns
@@ -167,3 +172,4 @@ Next branch only after:
 - 2026-07-20 (rev): After Stage 3 slice 2, insert **Epic C0 Communication Integrity** (C0.1–C0.3) + **Meta Intake Completeness** before Stage 3 slice 3; then C1 Inbox; then Stage 3 slice 4.  
 - 2026-07-20 (rev. C0.0): Insert **C0.0 Communication Canon & Contracts** before treating C0.1 as foundation; expand **C2** to templates + automations + campaigns; PR #100 = vertical slice only.  
 - 2026-07-20 (rev. Platform Completion Roadmap): Finish **full Epic C** (C0.2–C0.3, C1, C2) → **Governance Review** → Acquisition/Stage 3; horizon phases Forms → Workspace → Documents → Billing → AI.  
+- 2026-07-20: PR #107 merged (`dbeb36ed`) — C1 queues + C1.1 ThreadContext; open **C1.2 Workspace Actions**.  

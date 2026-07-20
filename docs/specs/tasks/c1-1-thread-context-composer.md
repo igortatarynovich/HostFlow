@@ -90,4 +90,4 @@ Interactive read models must not become mandatory dependencies of server-side en
 
 ## After C1.1 → C1.2 Workspace Actions
 
-Ownership, assign/reassign, unread/read, next action, SLA, queue transitions — around **Thread**, without growing Composer responsibility.
+See [C1.2 Workspace Actions](c1-2-workspace-actions.md): ownership, assign/reassign, unread/read, next action, SLA, queue transitions — around **Thread**, without growing Composer responsibility.

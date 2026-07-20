@@ -135,4 +135,4 @@ C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …
 - [x] `GET /threads/{id}/capabilities` is a compat slice of `capabilities`  
 - [x] Composer consumes ThreadContext only; backend re-applies policy on outbound  
 - [ ] Modules deep-link / filter workspace via adapters — no parallel inbox engines  
-- See also [C1.1 DoD](c1-1-thread-context-composer.md) 
+- See also [C1.1 DoD](c1-1-thread-context-composer.md) · [C1.2 Workspace Actions](c1-2-workspace-actions.md)

@@ -36,7 +36,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 Notes:
 
 - Communication Foundation = C0.0–C0.3 ([foundation doc](communication-platform-foundation.md)).  
-- Communication Workspace = C1 Inbox Workspace.  
+- Communication Workspace = C1 Inbox Workspace (C1.1 ThreadContext ✅ · **C1.2 Workspace Actions** active).  
 - Communication Automation = C2 Templates / Automations / Campaigns.  
 - Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) PASS → **Epic C — complete**.  
 - Acquisition Automation in progress = Stage 3 / Meta / campaign automation remaining work (see roadmap Phase B).  
