@@ -18,6 +18,8 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Principle:** platform layer + clear contracts first → product scenarios on top → AI last as a consumer, never a parallel entity model.
 
+**Boundary rule:** platforms do **not** depend on product modules. Integration is only through **public contracts and adapters** (Passport / Manifest / Exposes). Modules consume platforms; they do not own parallel senders, document stores, or form runtimes.
+
 ---
 
 ## Immediate rule (after Epic C)
@@ -43,8 +45,8 @@ Close the Communication Platform end-to-end:
 |-------|--------|--------|
 | C0.0 Canon & Contracts | Intent-first SoT | ✅ |
 | C0.1 / C0.1b Outbound + policy/snapshot | Canon writer path | ✅ |
-| **C0.2** Inbound Resolver | Linked or explicit unresolved | **active** |
-| **C0.3** Delivery Diagnostics | One record explains failure | queued |
+| C0.2 Inbound Resolver | Linked or explicit unresolved | ✅ (PR #102) |
+| **C0.3** Delivery Diagnostics | One record explains failure | **active** |
 | **C1** Inbox UX | Working messages module | queued |
 | **C2** Templates, Automations & Campaigns | Product on platform command | queued |
 
