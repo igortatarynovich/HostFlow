@@ -70,6 +70,9 @@ from ..schemas import (
     CommunicationThreadListResponse,
     CommunicationThreadOut,
     CommunicationThreadPatch,
+    CommunicationThreadRematchItemOut,
+    CommunicationThreadRematchRequest,
+    CommunicationThreadRematchResponse,
     CommunicationThreadResultLinkAttach,
     CommunicationThreadResultLinkOut,
     CommunicationUnreadReconcileRequest,
@@ -616,6 +619,44 @@ async def mark_thread_read(
     await db.commit()
     await db.refresh(thread)
     return _thread_out(thread)
+
+
+
+@router.post("/threads/rematch-unlinked", response_model=CommunicationThreadRematchResponse)
+async def rematch_unlinked_threads(
+    body: CommunicationThreadRematchRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> CommunicationThreadRematchResponse:
+    """G15 rematch stub — full inbound-matching service not on this release line."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await _require_comm_feature(
+        db, tenant_id=tenant_id, current_user=current_user, feature="email"
+    )
+    _ = own_company_id
+    ids = [str(x).strip() for x in (body.thread_ids or []) if str(x).strip()]
+    items = [
+        CommunicationThreadRematchItemOut(
+            thread_id=tid,
+            confidence="none",
+            auto_linked=False,
+            skipped=True,
+            skip_reason="rematch_service_unavailable",
+        )
+        for tid in ids[: max(1, min(int(body.limit or 100), 500))]
+    ]
+    return CommunicationThreadRematchResponse(
+        processed=len(items),
+        linked=0,
+        ambiguous=0,
+        none=0,
+        skipped=len(items),
+        dry_run=bool(body.dry_run),
+        items=items,
+        unavailable_reason="inbound_matching_service_not_deployed",
+    )
 
 
 @router.post("/threads/reconcile-unread", response_model=CommunicationUnreadReconcileResponse)
