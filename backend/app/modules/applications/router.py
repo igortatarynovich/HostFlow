@@ -29,8 +29,6 @@ from backend.app.modules.applications.schemas import (
     ApplicationProcessResult,
     ApplicationStagePatch,
     ApplicationVacancyConfirmIn,
-    SalesInquiryDuplicateHintOut,
-    SalesInquiryDuplicateListResponse,
 )
 from backend.app.modules.leads import crud, service
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
@@ -78,43 +76,6 @@ async def get_sales_inquiry(
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations._reload_sales(db, str(tenant_id), own_company_id, application_id)
-
-
-
-@sales_router.get(
-    "/{application_id}/possible-duplicates",
-    response_model=SalesInquiryDuplicateListResponse,
-)
-async def list_sales_inquiry_possible_duplicates(
-    application_id: str,
-    limit: int = Query(10, ge=1, le=20),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
-) -> SalesInquiryDuplicateListResponse:
-    """Sibling client inquiries sharing phone and/or email (operator duplicate hint)."""
-    from backend.app.modules.applications.sales_inquiry_duplicates import (
-        find_possible_duplicate_sales_inquiries,
-    )
-
-    db, tenant_id = db_tenant
-    lead = await _get_lead_or_404(db, str(tenant_id), application_id)
-    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    if own_company_id and str(getattr(lead, "own_company_id", "") or "") not in ("", str(own_company_id)):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    hits = await find_possible_duplicate_sales_inquiries(
-        db,
-        tenant_id=str(tenant_id),
-        lead=lead,
-        own_company_id=own_company_id,
-        limit=limit,
-    )
-    items = [
-        SalesInquiryDuplicateHintOut(application=app, match_reason=reason)
-        for app, reason in hits
-    ]
-    return SalesInquiryDuplicateListResponse(items=items, total=len(items))
 
 
 @sales_router.patch("/{application_id}", response_model=ApplicationOut)

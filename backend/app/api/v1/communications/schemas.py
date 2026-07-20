@@ -40,9 +40,6 @@ __all__ = [
     "CommunicationMarkReadRequest",
     "CommunicationUnreadReconcileRequest",
     "CommunicationUnreadReconcileResponse",
-    "CommunicationThreadRematchRequest",
-    "CommunicationThreadRematchItemOut",
-    "CommunicationThreadRematchResponse",
     "CommunicationAutoAssignResponse",
     "CommunicationAllocatorPreviewRequest",
     "CommunicationAllocatorPreviewResponse",
@@ -345,34 +342,6 @@ class CommunicationUnreadReconcileResponse(BaseModel):
     processed: int
     updated: int
     total_unread: int
-
-
-class CommunicationThreadRematchRequest(BaseModel):
-    thread_ids: list[str] | None = None
-    limit: int = Field(default=100, ge=1, le=500)
-    dry_run: bool = True
-
-
-class CommunicationThreadRematchItemOut(BaseModel):
-    thread_id: str
-    confidence: str
-    auto_linked: bool
-    skipped: bool = False
-    skip_reason: str | None = None
-    counterparty_email: str | None = None
-    reasons: list[str] = Field(default_factory=list)
-    hits: list[dict[str, Any]] = Field(default_factory=list)
-
-
-class CommunicationThreadRematchResponse(BaseModel):
-    processed: int
-    linked: int
-    ambiguous: int
-    none: int
-    skipped: int
-    dry_run: bool
-    items: list[CommunicationThreadRematchItemOut] = Field(default_factory=list)
-    unavailable_reason: str | None = None
 
 
 class CommunicationAutoAssignResponse(BaseModel):
