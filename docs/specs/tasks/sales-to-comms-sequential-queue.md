@@ -50,7 +50,7 @@
 | **11** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
 **C0.1** ✅ `f8569fa9` (PR #100). **C0.1b** ✅ `7bc13d57` (PR #101). **C0.2** ✅ `00ea61e9` (PR #102).  
-**Active:** [C0.3 delivery diagnostics](c0-3-delivery-diagnostics.md) — operator-readable delivery facts without server logs.  
+**Active:** **C0.3 Delivery Diagnostics** — operator-readable delivery facts without server logs ([Epic C0 § C0.3](epic-c0-communication-integrity.md); task doc lands with the C0.3 implementation PR).  
 **After C0.3:** C1 Inbox UX (not Stage 3).
 
 **After row 8:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G (Forms → Workspace → Documents → Billing → AI).
