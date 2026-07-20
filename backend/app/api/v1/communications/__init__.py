@@ -308,6 +308,7 @@ from .routes import planner as _planner_routes  # noqa: E402
 from .routes import threads as _threads_routes  # noqa: E402
 from .routes import threads_next_action as _threads_next_action_routes  # noqa: E402
 from .routes import webhooks as _webhooks_routes  # noqa: E402
+from .routes import delivery_diagnostics as _delivery_diagnostics_routes  # noqa: E402
 
 # Re-export route handlers that other modules import as functions
 # (notably ``services.communications_scheduler`` calls
@@ -379,3 +380,4 @@ router.include_router(_threads_next_action_routes.router)
 router.include_router(_messages_routes.router)
 router.include_router(_ingest_routes.router)
 router.include_router(_webhooks_routes.router)
+router.include_router(_delivery_diagnostics_routes.router)

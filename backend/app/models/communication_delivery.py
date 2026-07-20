@@ -19,11 +19,16 @@ JSONType = MutableDict.as_mutable(JSONB().with_variant(SQLiteJSON(), "sqlite"))
 
 DELIVERY_STATUS_QUEUED = "queued"
 DELIVERY_STATUS_ACCEPTED = "accepted"
+DELIVERY_STATUS_SENT = "sent"
 DELIVERY_STATUS_DELIVERED = "delivered"
-DELIVERY_STATUS_UNDELIVERED = "undelivered"
+DELIVERY_STATUS_UNDELIVERED = "undelivered"  # legacy alias → undeliverable
+DELIVERY_STATUS_UNDELIVERABLE = "undeliverable"
 DELIVERY_STATUS_FAILED = "failed"
+DELIVERY_STATUS_REJECTED = "rejected"
+DELIVERY_STATUS_BOUNCED = "bounced"
+DELIVERY_STATUS_EXPIRED = "expired"
 DELIVERY_STATUS_CANCELLED = "cancelled"
-DELIVERY_STATUS_UNKNOWN = "unknown"
+DELIVERY_STATUS_UNKNOWN = "unknown"  # legacy; normalize via delivery_canon
 
 DELIVERY_CHANNEL_SMS = "sms"
 DELIVERY_CHANNEL_EMAIL = "email"

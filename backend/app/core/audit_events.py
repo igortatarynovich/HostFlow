@@ -29,7 +29,10 @@ class AuditEventType(str, Enum):
     lead_communication_application_received_sent = "lead.communication.application_received_sent"
     lead_communication_rejection_sent = "lead.communication.rejection_sent"
     lead_communication_moving_forward_sent = "lead.communication.moving_forward_sent"
+    # Deprecated producer (C0.3): do not emit for new failures — use communication.delivery.*.
     lead_communication_failed = "lead.communication.failed"
+    communication_delivery_failed = "communication.delivery.failed"
+    communication_delivery_retry_manual = "communication.delivery.retry_manual"
     # Contact attempts
     contact_attempt_logged = "contact_attempt_logged"
     # Auto-reject

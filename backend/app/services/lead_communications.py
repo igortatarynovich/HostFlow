@@ -175,13 +175,35 @@ def _template_id_for_event(cfg: LeadCommunicationSettings, event_type: str) -> O
 
 
 def _audit_type_for_event(event_type: str, *, failed: bool) -> AuditEventType:
+    # C0.3: delivery/skip failures use communication.delivery.failed (not lead.communication.failed).
     if failed:
-        return AuditEventType.lead_communication_failed
+        return AuditEventType.communication_delivery_failed
     if event_type == EVENT_APPLICATION_RECEIVED:
         return AuditEventType.lead_communication_application_received_sent
     if event_type == EVENT_LEAD_REJECTED:
         return AuditEventType.lead_communication_rejection_sent
     return AuditEventType.lead_communication_moving_forward_sent
+
+
+def _delivery_failure_payload(
+    *,
+    event_type: str,
+    reason_code: str,
+    notice_status: str,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Operator-safe failure facts (C0.3). Never emit bare failed without reason_code."""
+    out: Dict[str, Any] = {
+        "event_type": event_type,
+        "reason_code": reason_code,
+        "reason": reason_code,
+        "notice_status": notice_status,
+        "source": "lead_communications",
+        "fact_source": "communication.delivery",
+    }
+    if extra:
+        out.update(extra)
+    return out
 
 
 def _stamp_event(
@@ -299,15 +321,16 @@ async def maybe_send_lead_communication(
         await log_audit_event(
             db,
             tenant_id=tenant_id,
-            event_type=AuditEventType.lead_communication_failed,
+            event_type=AuditEventType.communication_delivery_failed,
             entity_type=AuditEntityType.lead,
             entity_id=str(lead.id),
             actor_id=None,
-            payload={
-                "event_type": ev,
-                "reason": "communication_pipeline_required",
-                "notice_status": "skipped",
-            },
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code="authentication_configuration",
+                notice_status="skipped",
+                extra={"detail": "communication_pipeline_required"},
+            ),
         )
         return False
 
@@ -329,16 +352,18 @@ async def maybe_send_lead_communication(
         await log_audit_event(
             db,
             tenant_id=tenant_id,
-            event_type=AuditEventType.lead_communication_failed,
+            event_type=AuditEventType.communication_delivery_failed,
             entity_type=AuditEntityType.lead,
             entity_id=str(lead.id),
             actor_id=None,
-            payload={
-                "event_type": ev,
-                "reason": reason,
-                "notice_status": "skipped",
-                "authorization": auth.to_dict(),
-            },
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code="consent_policy_denial"
+                if "consent" in reason or "policy" in reason
+                else "authentication_configuration",
+                notice_status="skipped",
+                extra={"detail": reason, "authorization": auth.to_dict()},
+            ),
         )
         return False
 
@@ -349,11 +374,16 @@ async def maybe_send_lead_communication(
         await log_audit_event(
             db,
             tenant_id=tenant_id,
-            event_type=AuditEventType.lead_communication_failed,
+            event_type=AuditEventType.communication_delivery_failed,
             entity_type=AuditEntityType.lead,
             entity_id=str(lead.id),
             actor_id=None,
-            payload={"event_type": ev, "reason": "no_email", "notice_status": "pending_channel"},
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code="invalid_recipient",
+                notice_status="pending_channel",
+                extra={"detail": "no_email"},
+            ),
         )
         return False
 
@@ -384,11 +414,16 @@ async def maybe_send_lead_communication(
         await log_audit_event(
             db,
             tenant_id=tenant_id,
-            event_type=AuditEventType.lead_communication_failed,
+            event_type=AuditEventType.communication_delivery_failed,
             entity_type=AuditEntityType.lead,
             entity_id=str(lead.id),
             actor_id=None,
-            payload={"event_type": ev, "reason": reason, "notice_status": "failed"},
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code="send_failed",
+                notice_status="failed",
+                extra={"detail": reason[:500]},
+            ),
         )
         logger.info(
             "lead_communication_send_failed",
