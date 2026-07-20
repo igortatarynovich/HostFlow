@@ -41,17 +41,18 @@
 
 | # | Work | Branch (proposed) | Result |
 |---|------|-------------------|--------|
-| **1** | **C0.0** Communication Canon & Contracts | *(docs on active C0 branch / PR #100)* | SoT + contracts before more writers |
-| **2** | **C0.1** Universal outbound foundation | `fix/communication-c0-outbound-linkage` (PR #100) | Vertical slice now; **align to C0.0** in follow-up |
-| **3** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` | Replies land on correct thread/entity |
-| **4** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` | Failures explainable without server logs |
-| **5** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
-| **6** | Stage 3 slice 3 | *(TBD thin Sales product flow)* | Full SalesInquiry product flow |
-| **7** | **C1** Inbox UX | *(TBD)* | Simple working messages module |
-| **8** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
-| **9** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
+| **1** | **C0.0** Communication Canon & Contracts | *(with PR #100)* | SoT + Intent-first contracts |
+| **2** | **C0.1** First Canon implementation (outbound) | `fix/communication-c0-outbound-linkage` (PR #100) | Intent → Resolvers → Command → Sender + G13 |
+| **3** | **C0.1b** Intent Policy & Snapshot Hardening | `fix/communication-c0-intent-policy-hardening` | Typed policies, full snapshot, writer migration map |
+| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` | Replies land on correct thread/entity |
+| **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` | Failures explainable without server logs |
+| **6** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
+| **7** | Stage 3 slice 3 | *(TBD thin Sales product flow)* | Full SalesInquiry product flow |
+| **8** | **C1** Inbox UX | *(TBD)* | Simple working messages module |
+| **9** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
+| **10** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
-**PR #100 framing:** first implementation of the Communication Canon for outbound — Intent + Command + resolvers + G13 + questionnaire first caller + entity_links. **Not** full Communication product (no template admin, automation engine, consent engine, campaigns, Inbox). Docs and contract seams land together; no hard “docs-only then code” split.
+**PR #100 framing:** first working Communication Canon implementation for outbound (Intent-first). Pre-merge gate: seams must control the flow (contract tests). **Next after merge:** [C0.1b](c0-1b-intent-policy-snapshot-hardening.md) — not another writer.
 
 **Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
 

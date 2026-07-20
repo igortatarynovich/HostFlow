@@ -207,7 +207,28 @@ async def send_communication(
             "content is required",
             details={"reason": "missing_content"},
         )
-    intent = normalize_intent(getattr(request, "intent", None))
+    raw_intent = getattr(request, "intent", None)
+    if raw_intent is None or (isinstance(raw_intent, str) and not str(raw_intent).strip()):
+        raise SendCommunicationError(
+            "CommunicationIntent is required; do not call send_communication with template_key alone",
+            details={"reason": "intent_required"},
+        )
+    intent = normalize_intent(raw_intent)
+    # Product templates are bound to named intents — block MANUAL_OUTBOUND bypass.
+    _INTENT_BOUND_TEMPLATES = {
+        "questionnaire_invite_email_v1": "request_questionnaire",
+    }
+    tpl_key = _trim(request.template_key)
+    if tpl_key in _INTENT_BOUND_TEMPLATES and intent.value != _INTENT_BOUND_TEMPLATES[tpl_key]:
+        raise SendCommunicationError(
+            f"template {tpl_key!r} requires intent {_INTENT_BOUND_TEMPLATES[tpl_key]!r}",
+            details={
+                "reason": "intent_required_for_template",
+                "template_key": tpl_key,
+                "required_intent": _INTENT_BOUND_TEMPLATES[tpl_key],
+                "intent": intent.value,
+            },
+        )
     channel = _trim(request.channel).lower() or "email"
     if not request.recipients:
         raise SendCommunicationError(
@@ -375,12 +396,37 @@ async def send_communication(
             "platform": "communications.send_communication.v1",
             "intent": intent.value,
             "purpose": _trim(request.purpose) or None,
+            "origin": {
+                "entity_type": origin.entity_type,
+                "entity_id": origin.entity_id,
+            },
             "origin_entity_type": origin.entity_type,
             "origin_entity_id": origin.entity_id,
             "idempotency_key": idem,
             "template_key": _trim(request.template_key) or None,
             "template_version": int(request.template_version or 1),
-            **{k: v for k, v in dict(request.meta or {}).items() if k not in {"source"}},
+            "resolved_links": [
+                lnk.to_dict() if hasattr(lnk, "to_dict") else dict(lnk)
+                for lnk in (getattr(request, "resolved_links", None) or ())
+            ],
+            "policy_decision": dict(getattr(request, "policy_decision", None) or {}),
+            "correlation_id": _trim(getattr(request, "correlation_id", None)) or None,
+            "source_event_id": _trim(getattr(request, "source_event_id", None)) or None,
+            "automation_identity": _trim(getattr(request, "automation_identity", None))
+            or None,
+            **{
+                k: v
+                for k, v in dict(request.meta or {}).items()
+                if k
+                not in {
+                    "source",
+                    "intent",
+                    "resolved_links",
+                    "policy_decision",
+                    "render_variables",
+                }
+            },
+            "render_variables": dict(getattr(request, "render_variables", None) or {}),
         },
     )
     db.add(message)
@@ -415,8 +461,22 @@ async def send_communication(
                 "subject": message.subject,
                 "communication_message_id": str(message.id),
                 "thread_id": str(thread_id),
+                "intent": intent.value,
+                "origin": {
+                    "entity_type": origin.entity_type,
+                    "entity_id": origin.entity_id,
+                },
                 "origin_entity_type": origin.entity_type,
                 "origin_entity_id": origin.entity_id,
+                "template_key": _trim(request.template_key) or None,
+                "template_version": int(request.template_version or 1),
+                "resolved_links": [
+                    lnk.to_dict() if hasattr(lnk, "to_dict") else dict(lnk)
+                    for lnk in (getattr(request, "resolved_links", None) or ())
+                ],
+                "policy_decision": dict(getattr(request, "policy_decision", None) or {}),
+                "correlation_id": _trim(getattr(request, "correlation_id", None)) or None,
+                "source_event_id": _trim(getattr(request, "source_event_id", None)) or None,
             },
         )
         db.add(delivery)

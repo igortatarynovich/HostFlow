@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from backend.app.communications.entity_link import _normalize_entity_type
 from backend.app.communications.intent import CommunicationIntent, normalize_intent
@@ -38,18 +38,38 @@ class SendCommunicationContent:
 
 
 @dataclass(frozen=True, slots=True)
-class CommunicationCommand:
-    """Business command: intent + origin + channel + content or template path.
+class ResolvedLinkSnapshot:
+    """Provenance of a link minted for this command (LinkResolver result)."""
 
-    ``send_communication`` executes durable writes. Callers should prefer this
-    shape over ad-hoc keyword bags.
+    link_intent: str
+    public_url: str
+    token: str | None = None
+    expires_at: str | None = None
+    variable_name: str = "public_action_url"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "link_intent": self.link_intent,
+            "public_url": self.public_url,
+            "token": self.token,
+            "expires_at": self.expires_at,
+            "variable_name": self.variable_name,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CommunicationCommand:
+    """Business command produced after Intent → Policy → Resolvers.
+
+    ``intent`` is required — callers must not invent template-only sends.
+    ``send_communication`` executes durable writes; it re-validates intent/capabilities.
     """
 
     tenant_id: str
     origin: CommunicationOrigin
     recipients: Sequence[CommunicationRecipient]
     channel: str
-    intent: CommunicationIntent | str = CommunicationIntent.MANUAL_OUTBOUND
+    intent: CommunicationIntent | str
     content: SendCommunicationContent | None = None
     actor_id: str | None = None
     automation_identity: str | None = None
@@ -64,6 +84,9 @@ class CommunicationCommand:
     template_version: int = 1
     locale: str | None = None
     requested_link_intents: Sequence[str] = ()
+    resolved_links: Sequence[ResolvedLinkSnapshot] = ()
+    render_variables: Mapping[str, Any] = field(default_factory=dict)
+    policy_decision: Mapping[str, Any] = field(default_factory=dict)
     correlation_id: str | None = None
     source_event_id: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)

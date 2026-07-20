@@ -80,6 +80,15 @@ request_questionnaire → TemplateResolver + LinkResolver → CommunicationComma
 - Full PublicActionLinkService, consent evidence engine  
 - Inbound resolver (C0.2), delivery diagnostics UX (C0.3), Inbox (C1)
 
+---
+
+## Slice C0.1b — Intent Policy & Snapshot Hardening
+
+**Task:** [c0-1b-intent-policy-snapshot-hardening.md](c0-1b-intent-policy-snapshot-hardening.md)  
+**After:** PR #100 merge  
+
+Typed Intent policies, full snapshots, entity/channel matrix, migration map for remaining writers — **not** a new module email sender.
+
 ### Acceptance / DoD (vertical)
 
 - Email / message started from a supported entity appears on that entity’s history immediately (before provider reply).  

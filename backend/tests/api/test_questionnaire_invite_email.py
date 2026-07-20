@@ -129,7 +129,7 @@ async def test_questionnaire_email_preview_and_send_reuses_invite(
 
     send_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         send_mock,
     )
     _allow_c5_pipeline(monkeypatch)
@@ -208,14 +208,20 @@ async def test_questionnaire_email_preview_and_send_reuses_invite(
             )
         ).scalars().all()
         assert len(invites) == 1
-        deliveries = (
+        # Origin entity on delivery is sales_inquiry; correlate via invite stamp in meta.
+        all_rows = (
             await db.execute(
                 select(CommunicationDelivery).where(
-                    CommunicationDelivery.entity_id == lead_id,
                     CommunicationDelivery.channel == "email",
+                    CommunicationDelivery.purpose == "questionnaire_invite",
                 )
             )
         ).scalars().all()
+        deliveries = [
+            d
+            for d in all_rows
+            if str((d.meta or {}).get("invite_id") or "") == str(invites[0].id)
+        ]
         assert len(deliveries) >= 2
 
 
@@ -244,7 +250,7 @@ async def test_questionnaire_email_requires_smtp(
     lead_id = str(lead.id)
 
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         AsyncMock(side_effect=ValueError("TENANT_EMAIL_NOT_CONFIGURED")),
     )
     _allow_c5_pipeline(monkeypatch)
@@ -412,7 +418,7 @@ async def test_questionnaire_email_send_ignores_stale_client_signature(
 
     send_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         send_mock,
     )
     _allow_c5_pipeline(monkeypatch)
@@ -476,7 +482,7 @@ async def test_questionnaire_email_mints_new_invite_after_submitted(
 
     send_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         send_mock,
     )
     _allow_c5_pipeline(monkeypatch)
@@ -582,7 +588,7 @@ async def test_questionnaire_email_send_failure_does_not_mark_sent(
     lead_id = str(lead.id)
 
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         AsyncMock(side_effect=RuntimeError("SMTP timeout")),
     )
     _allow_c5_pipeline(monkeypatch)
@@ -637,7 +643,7 @@ async def test_questionnaire_email_send_auto_binds_sales_pipeline(
 
     send_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         send_mock,
     )
 
@@ -712,7 +718,7 @@ async def test_questionnaire_email_send_fails_closed_for_recruitment_bound_lead(
 
     send_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(
-        "backend.app.services.communication_deliveries.questionnaire_email.send_email_for_tenant",
+        "backend.app.services.tenant_email.send_email_for_tenant",
         send_mock,
     )
 

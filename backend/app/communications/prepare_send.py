@@ -1,4 +1,8 @@
-"""prepare_and_send_communication — intent/capabilities gate then platform send."""
+"""prepare_and_send_communication — validate Command then platform send.
+
+Receives a ready CommunicationCommand (after Intent → Resolvers).
+Does not re-make template/link business decisions; re-checks intent/capabilities.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ from backend.app.communications.send_communication import (
 
 
 class CommunicationSender(Protocol):
-    """Injectable send port — questionnaire and future callers depend on this, not SMTP."""
+    """Injectable send port — product callers depend on this, not SMTP/G13 writers."""
 
     async def send(
         self,
@@ -31,6 +35,31 @@ class CommunicationSender(Protocol):
         transport: TransportFn | None = None,
         skip_transport: bool = False,
     ) -> SendCommunicationResult: ...
+
+
+def _trim(value: Any) -> str:
+    return str(value or "").strip()
+
+
+async def _default_email_transport(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    to: str,
+    subject: str,
+    body: str,
+    html_body: str | None,
+) -> None:
+    from backend.app.services.tenant_email import send_email_for_tenant
+
+    await send_email_for_tenant(
+        db,
+        tenant_id=str(tenant_id),
+        to=to,
+        subject=subject,
+        body=body,
+        html_body=html_body,
+    )
 
 
 class PlatformCommunicationSender:
@@ -65,23 +94,22 @@ async def prepare_and_send_communication(
     skip_transport: bool = False,
     capability_resolver: CapabilityResolver | None = None,
 ) -> SendCommunicationResult:
-    """Validate intent/capabilities, then execute durable SendCommunication.
+    """Validate intent/capabilities on a ready Command, then execute durable send.
 
-    Template/link composition stays with the caller for now (questionnaire compose),
-    but must go through TemplateResolver / LinkResolver — not ad-hoc registry/URL code.
+    When ``transport`` is omitted and channel is email and not ``skip_transport``,
+    the platform supplies the SMTP transport — callers must not.
     """
     if command.content is None or (
         not (command.content.subject or command.content.body_text or command.content.body_html)
     ):
         raise SendCommunicationError(
-            "CommunicationCommand.content is required before send "
-            "(resolve template/links via TemplateResolver / LinkResolver first)",
+            "CommunicationCommand.content is required before send",
             details={"reason": "missing_content"},
         )
 
     intent = command.normalized_intent()
     policy = resolve_intent_policy(intent)
-    channel = str(command.channel or "").strip().lower() or "email"
+    channel = _trim(command.channel).lower() or "email"
     if channel not in policy.allowed_channels:
         raise SendCommunicationError(
             f"channel {channel!r} is not allowed for intent {intent.value}",
@@ -104,7 +132,7 @@ async def prepare_and_send_communication(
                 "reason": "capability_channel_denied",
                 "entity_type": caps.entity_type,
                 "channel": channel,
-                "denial": caps.denial_reasons.get(channel),
+                "denial": caps.denial_reasons.get(channel) or "channel_not_allowed",
             },
         )
     if intent.value not in caps.allowed_intents:
@@ -114,6 +142,7 @@ async def prepare_and_send_communication(
                 "reason": "capability_intent_denied",
                 "entity_type": caps.entity_type,
                 "intent": intent.value,
+                "denial": caps.denial_reasons.get("intent") or "intent_not_allowed",
             },
         )
 
@@ -128,10 +157,36 @@ async def prepare_and_send_communication(
                 },
             )
 
+    # Intent-bound product templates cannot ride MANUAL_OUTBOUND.
+    _INTENT_BOUND_TEMPLATES = {
+        "questionnaire_invite_email_v1": "request_questionnaire",
+    }
+    tpl = _trim(command.template_key)
+    if tpl in _INTENT_BOUND_TEMPLATES and intent.value != _INTENT_BOUND_TEMPLATES[tpl]:
+        raise SendCommunicationError(
+            f"template {tpl!r} requires intent {_INTENT_BOUND_TEMPLATES[tpl]!r}, got {intent.value!r}",
+            details={
+                "reason": "intent_required_for_template",
+                "template_key": tpl,
+                "required_intent": _INTENT_BOUND_TEMPLATES[tpl],
+                "intent": intent.value,
+            },
+        )
+
+    policy_decision = dict(command.policy_decision or {})
+    policy_decision.setdefault("allowed", True)
+    policy_decision.setdefault("intent", intent.value)
+    policy_decision.setdefault("intent_purpose", policy.purpose)
+    policy_decision.setdefault("channel", channel)
+    policy_decision.setdefault("entity_type", caps.entity_type)
+
     enriched_meta: dict[str, Any] = {
         **dict(command.meta or {}),
         "intent": intent.value,
         "intent_purpose": policy.purpose,
+        "policy_decision": policy_decision,
+        "resolved_links": [lnk.to_dict() for lnk in (command.resolved_links or ())],
+        "render_variables": dict(command.render_variables or {}),
     }
     if command.correlation_id:
         enriched_meta["correlation_id"] = command.correlation_id
@@ -169,13 +224,42 @@ async def prepare_and_send_communication(
         template_version=command.template_version,
         locale=command.locale,
         requested_link_intents=command.requested_link_intents,
+        resolved_links=command.resolved_links,
+        render_variables=command.render_variables,
+        policy_decision=policy_decision,
         correlation_id=command.correlation_id,
         source_event_id=command.source_event_id,
         meta=enriched_meta,
     )
+
+    effective_transport = transport
+    if (
+        effective_transport is None
+        and not skip_transport
+        and channel == "email"
+        and content.body_text is not None
+    ):
+        primary = command.recipients[0]
+        to_addr = _trim(primary.address)
+        subject = _trim(content.subject) or ""
+        body = _trim(content.body_text) or ""
+        html = content.body_html
+
+        async def _platform_email_transport() -> None:
+            await _default_email_transport(
+                db,
+                tenant_id=command.tenant_id,
+                to=to_addr,
+                subject=subject,
+                body=body,
+                html_body=html,
+            )
+
+        effective_transport = _platform_email_transport
+
     return await send_communication(
         db,
         executable,
-        transport=transport,
+        transport=effective_transport,
         skip_transport=skip_transport,
     )

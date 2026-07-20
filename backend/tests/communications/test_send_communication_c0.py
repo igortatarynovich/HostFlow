@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import func, select
 
 from backend.app.communications.entity_link import get_thread_entity_links
+from backend.app.communications.intent import CommunicationIntent
 from backend.app.communications.send_communication import (
     CommunicationOrigin,
     CommunicationRecipient,
@@ -56,6 +57,7 @@ async def _send(
             origin=CommunicationOrigin(entity_type=entity_type, entity_id=entity_id),
             recipients=[CommunicationRecipient(address=f"{entity_type}@example.test")],
             channel="email",
+            intent=CommunicationIntent.MANUAL_OUTBOUND,
             content=SendCommunicationContent(
                 subject=f"Hello {entity_type}",
                 body_text=f"Body for {entity_type}",
