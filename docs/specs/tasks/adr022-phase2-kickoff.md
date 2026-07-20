@@ -1,8 +1,8 @@
 # ADR-022 Phase 2 — kickoff (Product B on current architecture)
 
-**Status:** DOMAIN SLICES 1–4 **DONE** · Pipeline v1 seal recorded · Origins next · Capability UI after Origins  
+**Status:** DOMAIN SLICES 1–4 **DONE** · Pipeline v1 seal **DONE** · Creation Origins **CURRENT** · Capability UI after Origins  
 **Date:** 2026-07-20  
-**Trusted base:** `integration/release-product-a-b` @ `23656b54`+ (fast-forward only)  
+**Trusted base:** `integration/release-product-a-b` @ `328506f7`+ (fast-forward only)  
 **Supersedes naming:** not “ADR022 audit” — audit is **done** ([`adr022-product-b-local-commits-audit.md`](adr022-product-b-local-commits-audit.md))  
 **Normative parents:** ADR-022 · ADR-021 · Flights R3.5 · INV-16 · INV-17 · [`repository-operational-canon.md`](../../governance/repository-operational-canon.md)
 
@@ -51,8 +51,8 @@ Historical commits on `feat/adr022-intake-policy-phase1-backend` are a **require
 | 2 | `feat/sales-questionnaire-convert-mapping` | Convert mapping | **Done** |
 | 3 | `feat/sales-ambiguous-match-review` | SalesInquiry-owned review | **Done** |
 | 4 | `feat/sales-inquiry-traceability` | Immutable lineage (**no UI**) | **Done** |
-| 4b | `docs/sales-domain-pipeline-v1-seal` | Architectural revision + seal | **CURRENT** |
-| 4c | `docs/client-account-creation-origins-v1` | ClientAccount origins (conversion + manual) | next |
+| 4b | `docs/sales-domain-pipeline-v1-seal` | Architectural revision + seal | **Done** |
+| 4c | `docs/client-account-creation-origins-v1` | ClientAccount origins (conversion + manual) | **CURRENT** |
 | 5 | `feat/sales-capability-create-card` | Sales-only create + post-save card (UI last) | pending — **after Origins** |
 
 Stop after each PR for ownership / INV-16 review.
