@@ -26,8 +26,7 @@
 
 **Open product GAPs (queued below / in roadmap):**
 
-- Inbound resolver (C0.2 — active)  
-- Delivery diagnostics (C0.3)  
+- Delivery diagnostics (C0.3 — **active**)  
 - Inbox UX (C1) · Templates/Automations/Campaigns (C2)  
 - Platform Governance Review (after Epic C)  
 - Meta intake completeness · Stage 3 slice 3–4 (Acquisition phase — **after** Epic C + governance)  
@@ -41,8 +40,8 @@
 | **1** | **C0.0** Communication Canon & Contracts | *(with PR #100)* | ✅ SoT + Intent-first contracts |
 | **2** | **C0.1** First Canon implementation (outbound) | `fix/communication-c0-outbound-linkage` (**PR #100 merged**) | ✅ Intent → Policy → Resolvers → Command → Sender + G13 |
 | **3** | **C0.1b** Intent Policy & Snapshot Hardening | `fix/communication-c0-intent-policy-hardening` (**PR #101 merged**) | ✅ Typed policies, full snapshot, writer migration map |
-| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**current**) | Deterministic thread/entity or unresolved queue |
-| **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` | Failures explainable without server logs |
+| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**PR #102 merged**) | ✅ Deterministic thread/entity or unresolved queue |
+| **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` (**current**) | Failures explainable without server logs |
 | **6** | **C1** Inbox UX | *(TBD)* | Simple working messages module |
 | **7** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
 | **8** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Stable SoT / contracts gate |
@@ -50,8 +49,9 @@
 | **10** | Stage 3 slice 3 | *(TBD)* | Full SalesInquiry product flow |
 | **11** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
-**C0.1** ✅ `f8569fa9` (PR #100). **C0.1b** ✅ `7bc13d57` (PR #101).  
-**Active:** [C0.2 inbound resolver](c0-2-inbound-resolver.md) — every inbound linked or explicitly unresolved.
+**C0.1** ✅ `f8569fa9` (PR #100). **C0.1b** ✅ `7bc13d57` (PR #101). **C0.2** ✅ `00ea61e9` (PR #102).  
+**Active:** [C0.3 delivery diagnostics](c0-3-delivery-diagnostics.md) — operator-readable delivery facts without server logs.  
+**After C0.3:** C1 Inbox UX (not Stage 3).
 
 **After row 8:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G (Forms → Workspace → Documents → Billing → AI).
 
