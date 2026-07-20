@@ -12,5 +12,6 @@
 | [client-portal.md](./client-portal.md) | Фильтрация данных, company scope, комментарии |
 | [automations.md](./automations.md) | Исходящие HTTP, права сервисных аккаунтов, side effects |
 | [exports.md](./exports.md) | Insider, bulk CSV, скрытые поля, rate limits |
+| [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).
