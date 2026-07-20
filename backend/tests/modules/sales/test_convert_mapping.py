@@ -181,6 +181,80 @@ async def test_missing_destination(db, tenant_id: str) -> None:
 
 
 @pytest.mark.asyncio
+async def test_match_existing_review_decision_is_applied(db, tenant_id: str) -> None:
+    from backend.app.modules.sales.services.ambiguous_match_review import (
+        AmbiguityCandidateRef,
+        ReviewDecision,
+        open_ambiguous_match_review,
+        resolve_ambiguous_match_review,
+    )
+
+    suffix = uuid.uuid4().hex[:8]
+    inquiry, ledger_id = await _seed_inquiry_bundle(db, tenant_id=tenant_id, suffix=suffix)
+    own_company_id = str(inquiry.own_company_id)
+    existing = ClientAccount(
+        id=account_crud.new_client_account_id(),
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        display_name=f"Existing {suffix}",
+        status="prospect",
+    )
+    other = ClientAccount(
+        id=account_crud.new_client_account_id(),
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        display_name=f"Other {suffix}",
+        status="prospect",
+    )
+    db.add_all([existing, other])
+    await db.flush()
+
+    await open_ambiguous_match_review(
+        db,
+        tenant_id=tenant_id,
+        sales_inquiry_id=str(inquiry.id),
+        destination=DESTINATION_SALES,
+        flights_ledger_id=str(ledger_id),
+        candidates=[
+            AmbiguityCandidateRef(client_account_id=str(existing.id)),
+            AmbiguityCandidateRef(client_account_id=str(other.id)),
+        ],
+        own_company_id=own_company_id,
+    )
+    await resolve_ambiguous_match_review(
+        db,
+        tenant_id=tenant_id,
+        sales_inquiry_id=str(inquiry.id),
+        destination=DESTINATION_SALES,
+        flights_ledger_id=str(ledger_id),
+        decision=ReviewDecision(action="match_existing", client_account_id=str(existing.id)),
+        expected_version=1,
+        actor_id="actor-1",
+        actor_role="manager",
+        own_company_id=own_company_id,
+    )
+
+    result = await convert_sales_inquiry_mapping(
+        db,
+        tenant_id=tenant_id,
+        sales_inquiry_id=str(inquiry.id),
+        destination=DESTINATION_SALES,
+        flights_ledger_id=str(ledger_id),
+        actor_id="actor-1",
+    )
+    await db.commit()
+
+    assert result.client_account_id == str(existing.id)
+    assert result.mapping["review_decision"]["action"] == "match_existing"
+    created = await db.scalar(
+        select(func.count())
+        .select_from(ClientAccount)
+        .where(ClientAccount.source_lead_id == str(inquiry.lead_id))
+    )
+    assert created == 0
+
+
+@pytest.mark.asyncio
 async def test_unresolved_review_blocks_convert(db, tenant_id: str) -> None:
     suffix = uuid.uuid4().hex[:8]
     inquiry, ledger_id = await _seed_inquiry_bundle(
