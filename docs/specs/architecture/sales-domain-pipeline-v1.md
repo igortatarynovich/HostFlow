@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` @ `23656b54`+  
 **Kind:** L2 architecture seal (revision evidence — not a bug hunt)  
 **Parents:** [Phase 2 Flow Spec](../workflows/adr022-phase2-sales-only-capability-flow.md) · [Convert mapping](../tasks/sales-questionnaire-convert-mapping.md) · [Ambiguous match review](../tasks/sales-ambiguous-match-review.md) · [Traceability](../tasks/sales-inquiry-traceability.md) · [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) · [ADR-023](ADR-023-recruitment-sales-module-separation.md)  
-**Next:** Capability UI (display-only) → `create_client_account_manually` implementation → product wiring closeout (Pipeline v1 §3)
+**Next (locked queue):** Capability UI (`feat/sales-capability-ui`) → Manual ClientAccount create → Pipeline product wiring → Communication Stages 4–7 — see [`../tasks/sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md)
 
 > This document records the Phase 2 revision. It seals what the four domain slices **own** as a coherent Sales Domain Pipeline v1, and lists **open product gaps** that must not be papered over before Marketing → Intake → CRM Client is claimed end-to-end.
 
@@ -57,10 +57,10 @@ These are **architecture follow-ups**, not silent exceptions:
 1. **Wire product convert** to `convert_sales_inquiry_mapping` (retire Sales spine use of Lead `convert-client` without review).  
 2. **Convert must consume Review SoT** (`match_existing` / `create_new`) — gate alone is insufficient.  
 3. **Demote Lead in Sales UI/API** to transport facade; SalesInquiry is product SoT.  
-4. **ClientAccount Creation Origins v1** — name truthful origins; do not fake Lead/SalesInquiry/Flights for manual create.  
-5. **Capability UI** — display-only after Origins docs; UI must not invent domain decisions.
+4. **ClientAccount Creation Origins v1** — ✅ docs sealed (PR #94); runtime `create_client_account_manually` is Stage 2 of the locked queue.  
+5. **Capability UI** — display-only (Stage 1 of locked queue); UI must not invent domain decisions.
 
-Capability UI must not start until Origins v1 is merged. Closing gaps 1–3 may proceed in thin PRs interleaved with Capability UI, but claiming “Marketing → Intake → CRM Client complete” requires 1–3.
+**Product closeout order is locked** in [`../tasks/sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md): Capability UI → Manual create → Pipeline wiring (this §3 gaps 1–3) → Communication. Do **not** run Communication product branches in parallel with Sales Stages 1–3. Claiming “Marketing → Intake → CRM Client complete” requires Stages 1–3 closed.
 
 ---
 
