@@ -1706,7 +1706,14 @@
       "scoped_candidate_clear": "Pokaż wszystkie wątki"
     },
     "communications_api": {
-      "thread_unlinked_outbound_blocked": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji)."
+      "thread_unlinked_outbound_blocked": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji).",
+      "pipeline": {
+        "communication_pipeline_required": "Aby wysłać wiadomość, powiąż wątek z rekordem Sales lub Recruitment.",
+        "missing_result_link": "Przed wysyłką powiąż wątek z zapytaniem Sales lub aplikacją Recruitment.",
+        "communication_pipeline_denied": "Wysyłka zablokowana przez politykę komunikacji dla tego wątku.",
+        "unknown_purpose": "Ten typ odpowiedzi nie jest dozwolony dla powiązanego rekordu.",
+        "result_link_missing": "Przed wysyłką powiąż wątek z zapytaniem Sales lub aplikacją Recruitment."
+      }
     },
     "communications_messages": {
       "reply_required": "Wymagana odpowiedź",
@@ -7708,6 +7715,7 @@
       },
       "email": {
         "dispatch_failed": "E-mail jest w kolejce, ale wysyłka nie powiodła się.",
+        "dispatch_failed_reason": "Wysyłka zablokowana: {reason}",
         "incoming_disabled_title": "Serwerowa synchronizacja poczty przychodzącej jest wyłączona",
         "incoming_disabled_body_inbox": "Nowa poczta jest pobierana po otwarciu skrzynki (zakres e-mail) lub po kliknięciu Synchronizuj, chyba że włączono synchronizację w tle.",
         "incoming_enable_cta": "Włącz synchronizację w tle",

@@ -1708,7 +1708,14 @@
       "scoped_candidate_clear": "Показать все треды"
     },
     "communications_api": {
-      "thread_unlinked_outbound_blocked": "Привяжите тред к кандидату, компании-клиенту или заказу UOS перед отправкой (операционная политика)."
+      "thread_unlinked_outbound_blocked": "Привяжите тред к кандидату, компании-клиенту или заказу UOS перед отправкой (операционная политика).",
+      "pipeline": {
+        "communication_pipeline_required": "Чтобы отправить сообщение, привяжите тред к записи Sales или Recruitment.",
+        "missing_result_link": "Перед отправкой привяжите тред к Sales inquiry или заявке Recruitment.",
+        "communication_pipeline_denied": "Отправка заблокирована политикой коммуникаций для этого треда.",
+        "unknown_purpose": "Этот тип ответа не разрешён для связанной записи.",
+        "result_link_missing": "Перед отправкой привяжите тред к Sales inquiry или заявке Recruitment."
+      }
     },
     "communications_messages": {
       "reply_required": "Требуется ответ",
@@ -7710,6 +7717,7 @@
       },
       "email": {
         "dispatch_failed": "Письмо в очереди, но отправка не удалась.",
+        "dispatch_failed_reason": "Отправка заблокирована: {reason}",
         "incoming_disabled_title": "Серверная синхронизация входящей почты выключена",
         "incoming_disabled_body_inbox": "Новая почта подтягивается при открытии входящих (область email) или по кнопке «Синхронизировать», если не включена фоновая синхронизация.",
         "incoming_enable_cta": "Включить фоновую синхронизацию",

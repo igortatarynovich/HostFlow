@@ -1779,7 +1779,14 @@
       "scoped_candidate_clear": "Show all threads"
     },
     "communications_api": {
-      "thread_unlinked_outbound_blocked": "Link this thread to a candidate, client company, or UOS service order before sending (operations policy)."
+      "thread_unlinked_outbound_blocked": "Link this thread to a candidate, client company, or UOS service order before sending (operations policy).",
+      "pipeline": {
+        "communication_pipeline_required": "This message needs a linked Sales or Recruitment record before it can be sent.",
+        "missing_result_link": "Link this thread to a Sales inquiry or Recruitment application before sending.",
+        "communication_pipeline_denied": "Send was blocked by the communication policy for this thread.",
+        "unknown_purpose": "This reply type is not allowed for the linked record.",
+        "result_link_missing": "Link this thread to a Sales inquiry or Recruitment application before sending."
+      }
     },
     "communications_messages": {
       "reply_required": "Reply required",
@@ -7781,6 +7788,7 @@
       },
       "email": {
         "dispatch_failed": "Email is queued but dispatch failed.",
+        "dispatch_failed_reason": "Send blocked: {reason}",
         "incoming_disabled_title": "Server-side incoming email sync is off",
         "incoming_disabled_body_inbox": "New mail is fetched when you open the Inbox (email scope) or tap Sync unless background sync is enabled.",
         "incoming_enable_cta": "Enable background sync",
