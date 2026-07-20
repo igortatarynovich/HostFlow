@@ -7,11 +7,11 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
-import { NextActionBadge } from '../candidate/NextActionBadge'
 import { primaryThreadEntityLabel } from '../../utils/communicationThreadEntityLinks'
 import ThreadComposer from './ThreadComposer'
 import ThreadDeliveryDiagnosticsStrip from './ThreadDeliveryDiagnosticsStrip'
-import { useThreadNextAction } from './useThreadNextAction'
+import ThreadNextActionPanel from './ThreadNextActionPanel'
+import ThreadWorkspaceSlaChip from './ThreadWorkspaceSlaChip'
 
 export function formatThreadDateTime(value?: string | null): string {
   if (!value) return '—'
@@ -58,6 +58,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
     threadUnlinked,
     sortedMessages,
     load,
+    runCommand,
     handleMarkRead,
     handleAutoAssign,
     handleSend,
@@ -66,22 +67,17 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   } = model
 
   const threadLoadErrorBanner = threadError
+  const work = threadContext?.work_state
+  const headerStatus = threadContext?.identity?.thread?.status || thread.status
+  const headerChannel = threadContext?.identity?.thread?.channel || thread.channel
+  const headerUnread = work?.unread_count ?? thread.unread_count
+  const headerSubject =
+    threadContext?.identity?.thread?.subject ||
+    thread.subject ||
+    thread.last_message_preview ||
+    `${String(headerChannel || '').toUpperCase()} thread`
 
   const btn = layout === 'inboxCenter' ? 'btn-secondary btn-sm' : 'btn-secondary'
-
-  // G-8 stage 2.3: per-thread "what to do next" badge. We compose a
-  // fingerprint over every field the backend ladder reads
-  // (`compute_thread_next_action` in `services/next_action.py`), so any
-  // in-place mutation that flips one of these surfaces a fresh DTO
-  // without an explicit `dispatchEvent('thread-updated')` call.
-  // `is_archived` and `status` cover the terminal branches; the SLA / unread
-  // / inbound-vs-outbound trio drives the active branches.
-  const threadNextActionFingerprint = `${thread.status ?? ''}|${thread.is_archived ? 1 : 0}|${thread.unread_count ?? 0}|${thread.sla_due_at ?? ''}|${thread.last_inbound_at ?? ''}|${thread.last_outbound_at ?? ''}`
-  const {
-    data: threadNextAction,
-    loading: threadNextActionLoading,
-    error: threadNextActionError,
-  } = useThreadNextAction(thread.id, threadNextActionFingerprint)
 
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
@@ -161,8 +157,16 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       <h2 className="mb-3 shrink-0 text-sm font-semibold text-slate-900">
         {t('app.communications.thread.timeline')}
       </h2>
-      <div className="mb-2">
-        <ThreadDeliveryDiagnosticsStrip messages={sortedMessages} />
+      <div className="mb-2 space-y-2">
+        <ThreadDeliveryDiagnosticsStrip
+          messages={sortedMessages}
+          deliverySummary={threadContext?.workspace?.delivery_summary}
+        />
+        <ThreadNextActionPanel
+          nextAction={work?.next_action}
+          runCommand={runCommand}
+          compact={layout === 'inboxCenter'}
+        />
       </div>
       <div
         className={clsx(
@@ -333,6 +337,9 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           {t('app.communications.labels.unread')}:{' '}
           {threadContext?.work_state?.unread_count ?? thread.unread_count}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ThreadWorkspaceSlaChip workState={work} runCommand={runCommand} interactive />
+        </div>
         <div>
           {t('app.communications.labels.entity')}:{' '}
           {threadContext?.identity?.linked_entities?.length
@@ -358,26 +365,20 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       <div className="flex min-h-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200 pb-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-slate-900">
-              {thread.subject || thread.last_message_preview || `${String(thread.channel || '').toUpperCase()} thread`}
-            </div>
+            <div className="truncate text-sm font-semibold text-slate-900">{headerSubject}</div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
-              <span>{String(thread.channel || '').toUpperCase()}</span>
+              <span>{String(headerChannel || '').toUpperCase()}</span>
               <span>·</span>
-              <span>{thread.status || '—'}</span>
-              {thread.unread_count ? (
+              <span>{headerStatus || '—'}</span>
+              {headerUnread ? (
                 <>
                   <span>·</span>
                   <span>
-                    {thread.unread_count} {t('app.communications.labels.unread_lower')}
+                    {headerUnread} {t('app.communications.labels.unread_lower')}
                   </span>
                 </>
               ) : null}
-              <NextActionBadge
-                dto={threadNextAction}
-                loading={threadNextActionLoading}
-                error={threadNextActionError}
-              />
+              <ThreadWorkspaceSlaChip workState={work} runCommand={runCommand} interactive />
             </div>
           </div>
           {actionBar}
@@ -411,30 +412,24 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               {t('app.communications.actions.back_to_hub')}
             </Link>
           </div>
-          <h1 className="mt-1 text-xl font-semibold text-slate-900">
-            {thread.subject || thread.last_message_preview || `${String(thread.channel || '').toUpperCase()} thread`}
-          </h1>
+          <h1 className="mt-1 text-xl font-semibold text-slate-900">{headerSubject}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
             <span>
               {t('app.communications.labels.thread')}: <span className="font-mono">{thread.id}</span>
             </span>
             <span>
-              {t('app.communications.labels.channel')}: {String(thread.channel || '').toUpperCase()}
+              {t('app.communications.labels.channel')}: {String(headerChannel || '').toUpperCase()}
             </span>
             <span>
-              {t('app.communications.queue.assignee')}: {thread.assignee_id || '—'}
+              {t('app.communications.queue.assignee')}: {work?.assignee_id || thread.assignee_id || '—'}
             </span>
             <span>
-              {t('app.communications.labels.status')}: {thread.status}
+              {t('app.communications.labels.status')}: {headerStatus}
             </span>
             <span>
-              {t('app.communications.labels.unread')}: {thread.unread_count ?? 0}
+              {t('app.communications.labels.unread')}: {headerUnread ?? 0}
             </span>
-            <NextActionBadge
-              dto={threadNextAction}
-              loading={threadNextActionLoading}
-              error={threadNextActionError}
-            />
+            <ThreadWorkspaceSlaChip workState={work} runCommand={runCommand} interactive />
           </div>
         </div>
         {actionBar}

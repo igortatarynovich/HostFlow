@@ -8,9 +8,11 @@ import {
   getCommunicationsSettings,
   executeWorkspaceCommand,
   getThreadContext,
+  withExpectedWorkVersion,
   type CommunicationMessage,
   type CommunicationThread,
   type ThreadContext,
+  type WorkspaceCommandName,
   type WorkspaceCommandResult,
 } from '../api/communications'
 import { draftFromThreadContext, type ThreadComposerDraft } from '../components/communications/ThreadComposer'
@@ -235,6 +237,9 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     [messages],
   )
 
+  const threadContextRef = useRef<ThreadContext | null>(null)
+  threadContextRef.current = threadContext
+
   const applyCommandResult = useCallback((result: WorkspaceCommandResult) => {
     const ctx = result.context
     setThreadContext(ctx)
@@ -261,12 +266,65 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     )
   }, [])
 
+  const runCommand = useCallback(
+    async (command: WorkspaceCommandName, body?: Record<string, unknown>) => {
+      if (!threadId) throw new Error('missing thread')
+      const version = threadContextRef.current?.work_state?.work_version
+      const result = await executeWorkspaceCommand(
+        threadId,
+        command,
+        withExpectedWorkVersion(body, version),
+      )
+      applyCommandResult(result)
+      return result
+    },
+    [applyCommandResult, threadId],
+  )
+
+  // C1.3: soft realtime — poll ThreadContext while the thread is open and apply
+  // when work_version (or generated_at) advances. No alternate mutation path.
+  useEffect(() => {
+    if (!threadId) return
+    let cancelled = false
+    const tick = async () => {
+      if (cancelled || document.visibilityState === 'hidden') return
+      try {
+        const ctx = await getThreadContext(threadId)
+        if (cancelled) return
+        const prev = threadContextRef.current
+        const prevVer = Number(prev?.work_state?.work_version ?? 0)
+        const nextVer = Number(ctx.work_state?.work_version ?? 0)
+        // generated_at changes every rebuild — only apply on work_version advance
+        // (or first successful poll if context missing).
+        if (!prev || nextVer > prevVer) {
+          applyCommandResult({
+            command: 'ThreadContextPoll',
+            applied: false,
+            audit_id: null,
+            context: ctx,
+          })
+        }
+      } catch {
+        // ignore transient poll errors
+      }
+    }
+    const id = window.setInterval(() => void tick(), 12_000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void tick()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [applyCommandResult, threadId])
+
   const handleMarkRead = useCallback(async () => {
     if (!threadId) return
     setBusyAction('read')
     try {
-      const result = await executeWorkspaceCommand(threadId, 'MarkThreadRead')
-      applyCommandResult(result)
+      await runCommand('MarkThreadRead')
       setMessages((prev) =>
         prev.map((m) =>
           m.direction === 'inbound' && !m.read_at
@@ -281,7 +339,34 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     } finally {
       setBusyAction(null)
     }
-  }, [applyCommandResult, planLimitModal, t, threadId])
+  }, [planLimitModal, runCommand, t, threadId])
+
+  // C1.3 keyboard shortcuts → Workspace Commands only.
+  useEffect(() => {
+    if (!threadId) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tag = String(target?.tagName || '').toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (event.key === 'e' || event.key === 'E') {
+        event.preventDefault()
+        void handleMarkRead()
+        return
+      }
+      if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault()
+        void runCommand('CloseThread').catch(() => {})
+        return
+      }
+      if (event.key === 'u' || event.key === 'U') {
+        event.preventDefault()
+        void runCommand('MarkThreadUnread').catch(() => {})
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [handleMarkRead, runCommand, threadId])
 
   const handleAutoAssign = useCallback(async () => {
     if (!threadId) return
@@ -548,6 +633,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     sortedMessages,
     load,
     applyCommandResult,
+    runCommand,
     handleMarkRead,
     handleAutoAssign,
     handleSend,
