@@ -49,6 +49,10 @@ from backend.app.models.communication_inbound_unresolved import (
     UNRESOLVED_STATUS_OPEN,
     CommunicationInboundUnresolved,
 )
+from backend.app.models.communication_thread_next_action import (
+    NEXT_ACTION_STATUS_ACTIVE,
+    CommunicationThreadNextAction,
+)
 
 
 @dataclass(slots=True)
@@ -248,6 +252,19 @@ async def build_thread_context(
         )
     )
 
+    active_na = (
+        await db.execute(
+            select(CommunicationThreadNextAction)
+            .where(
+                CommunicationThreadNextAction.tenant_id == tenant_id,
+                CommunicationThreadNextAction.thread_id == thread_id,
+                CommunicationThreadNextAction.status == NEXT_ACTION_STATUS_ACTIVE,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    next_action_proj = active_na.to_projection() if active_na is not None else None
+
     can_compose = bool(allowed_intents) and bool(allowed_channels) and not thread.is_archived
     defaults = {
         "channel": thread_channel or (allowed_channels[0] if allowed_channels else None),
@@ -289,7 +306,7 @@ async def build_thread_context(
             "sla_due_at": getattr(thread, "sla_due_at", None).isoformat()
             if getattr(thread, "sla_due_at", None) is not None
             else None,
-            "next_action": None,  # filled by dedicated next-action path; not owned here
+            "next_action": next_action_proj,
         },
         capabilities={
             "allowed_intents": allowed_intents,

@@ -7,6 +7,7 @@ Every success returns ThreadContext (not bare ThreadOut).
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional, Tuple
 from uuid import UUID
 
@@ -19,8 +20,11 @@ from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.communications.workspace_commands import (
     WorkspaceCommandError,
     assign_thread,
+    cancel_next_action,
+    complete_next_action,
     mark_thread_read,
     mark_thread_unread,
+    set_next_action,
     unassign_thread,
 )
 from backend.app.db.deps import get_db_with_tenant
@@ -43,6 +47,18 @@ class AssignThreadBody(BaseModel):
 
 class UnassignThreadBody(BaseModel):
     reason: str = Field(default="manual", max_length=64)
+
+
+class SetNextActionBody(BaseModel):
+    action_type: str = Field(..., min_length=1, max_length=64)
+    owner_id: str | None = Field(default=None, max_length=36)
+    due_at: datetime | None = None
+    source: str = Field(default="manual", max_length=32)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class NextActionTargetBody(BaseModel):
+    next_action_id: str | None = Field(default=None, max_length=36)
 
 
 def _http_command_error(exc: WorkspaceCommandError) -> HTTPException:
@@ -204,4 +220,89 @@ async def command_mark_thread_unread(
         thread=thread,
         actor_user_id=actor,
     )
+    return result.to_dict()
+
+
+@router.post("/threads/{thread_id}/commands/SetNextAction")
+async def command_set_next_action(
+    thread_id: str,
+    body: SetNextActionBody,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    try:
+        result = await set_next_action(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor,
+            action_type=body.action_type,
+            owner_id=body.owner_id,
+            due_at=body.due_at,
+            source=body.source,
+            note=body.note,
+        )
+    except WorkspaceCommandError as exc:
+        raise _http_command_error(exc) from exc
+    return result.to_dict()
+
+
+@router.post("/threads/{thread_id}/commands/CompleteNextAction")
+async def command_complete_next_action(
+    thread_id: str,
+    body: NextActionTargetBody | None = None,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    try:
+        result = await complete_next_action(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor,
+            next_action_id=body.next_action_id if body else None,
+        )
+    except WorkspaceCommandError as exc:
+        raise _http_command_error(exc) from exc
+    return result.to_dict()
+
+
+@router.post("/threads/{thread_id}/commands/CancelNextAction")
+async def command_cancel_next_action(
+    thread_id: str,
+    body: NextActionTargetBody | None = None,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    try:
+        result = await cancel_next_action(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor,
+            next_action_id=body.next_action_id if body else None,
+        )
+    except WorkspaceCommandError as exc:
+        raise _http_command_error(exc) from exc
     return result.to_dict()

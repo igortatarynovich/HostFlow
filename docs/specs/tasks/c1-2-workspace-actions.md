@@ -21,6 +21,19 @@ Remaining work = implement Commands → projections → Workspace UX (C1.3) → 
 2. **ThreadContext is the only Workspace read model** — new UX fields land in ThreadContext first; Workspace must not reassemble state from many endpoints.  
 3. **Queue stays a projection** — no MoveThreadToQueue / queue write API, even as a “quick button”. Change Thread state → queues recompute.
 
+### C1.2 close-out gate — no mixed path
+
+While C1.2 PRs are open, legacy mutation APIs may still exist.  
+**Before declaring C1.2 complete / merging the close-out:** the codebase must have **zero** remaining Thread mutations outside Commands (grep + contract test). Dual API is temporary only.
+
+### Implementation priority (remaining)
+
+1. ThreadNextAction entity + Set / Complete / Cancel ← **in progress**  
+2. SLA event clock (start/pause/resume/resolve; breached derived)  
+3. CloseThread / ReopenThread (+ invariants vs Next Action / SLA)  
+4. Deprecate legacy PATCH → migrate internal callers → delete in one PR  
+5. Frontend: Commands only; apply returned ThreadContext (no extra refresh)
+
 ---
 
 ## Locked principle (entire C1)
@@ -266,12 +279,13 @@ Composer **unchanged** (C1.1). No `module == …` branches.
 - [x] Real transitions audited (`CommunicationCommandAudit`)  
 - [x] `AssignmentReason` on assign/reassign/unassign  
 - [x] Contract test: no queue-mutation in Workspace Command routes  
-- [ ] Remaining Commands: Set/Complete/Cancel NextAction, Pause/Resume SLA, Close/Reopen  
+- [x] ThreadNextAction entity + Set / Complete / Cancel (+ projection in ThreadContext)  
+- [ ] Pause/Resume SLA + Close/Reopen Commands  
 - [ ] Optimistic concurrency → typed conflict  
-- [ ] Next Action platform entity  
 - [ ] SLA event clock; breached derived  
 - [ ] Workspace UI uses Commands only (no field PATCH)  
-- [ ] Stale legacy PATCH paths deprecated / gated  
+- [ ] Legacy PATCH deprecated → internals on Commands → delete  
+- [ ] **Close-out:** no-mixed-path contract test (zero Thread mutations outside Commands)  
 - [ ] Composer unchanged  
 - [ ] No `module == …` branches  
 - [ ] Contract test: modules use public Communication Workspace Command API via adapters 
