@@ -1,13 +1,13 @@
 # Sales → Communication — sequential product queue (locked)
 
 **Status:** **NORMATIVE QUEUE** (one active product slice at a time)  
-**Date:** 2026-07-20 (rev. C0.0 Communication Canon gate)  
+**Date:** 2026-07-20 (rev. Platform Completion Roadmap)  
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
-**Parents:** [Pipeline v1 seal](../architecture/sales-domain-pipeline-v1.md) · [Creation Origins v1](../architecture/client-account-creation-origins-v1.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
+**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Pipeline v1 seal](../architecture/sales-domain-pipeline-v1.md) · [Creation Origins v1](../architecture/client-account-creation-origins-v1.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
 > Sales domain contracts are sealed. Product convert engine unification is complete (Stage 3 slice 2 / PR #99).  
-> **Communication Integrity (Epic C0) runs before Stage 3 slice 3** — starting with **C0.0 Canon & Contracts**, then outbound foundation.  
-> Communication does **not** cancel Flights / Stage 3; it prevents building Sales flow on unreliable messaging.
+> **Horizon SoT:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) — finish **Epic C**, then **Governance Review**, then Acquisition/Stage 3.  
+> This file is the **near-term slice queue** inside Phase A (Communication). Do **not** jump to Stage 3 when C0.3 closes.
 
 ---
 
@@ -24,40 +24,40 @@
 | Stage 3 slice 2 — convert entrypoints | ✅ PR #99 |
 | Repository Health | ✅ required PASS before each new branch |
 
-**Open product GAPs (queued below):**
+**Open product GAPs (queued below / in roadmap):**
 
-- Communication Canon / contracts not yet normative SoT (C0.0)  
-- Outbound platform incomplete vs canon (C0.1 vertical in PR #100; align after C0.0)  
-- Inbound resolver leaves too many unlinked threads  
-- `lead.communication.failed` vs Message/Delivery model  
-- Meta intake drops / under-shows raw answers  
-- Remaining SalesInquiry product flow (Stage 3 slice 3+)  
-- Inbox UX not a usable work module  
-- Templates / automations / campaigns product (Epic C2)  
+- Delivery diagnostics (C0.3 — **active**)  
+- Inbox UX (C1) · Templates/Automations/Campaigns (C2)  
+- Platform Governance Review (after Epic C)  
+- Meta intake completeness · Stage 3 slice 3–4 (Acquisition phase — **after** Epic C + governance)  
 
 ---
 
-## 2. Locked near-term sequence (no parallel product branches)
+## 2. Locked near-term sequence (Phase A — Epic C)
 
 | # | Work | Branch (proposed) | Result |
 |---|------|-------------------|--------|
 | **1** | **C0.0** Communication Canon & Contracts | *(with PR #100)* | ✅ SoT + Intent-first contracts |
 | **2** | **C0.1** First Canon implementation (outbound) | `fix/communication-c0-outbound-linkage` (**PR #100 merged**) | ✅ Intent → Policy → Resolvers → Command → Sender + G13 |
 | **3** | **C0.1b** Intent Policy & Snapshot Hardening | `fix/communication-c0-intent-policy-hardening` (**PR #101 merged**) | ✅ Typed policies, full snapshot, writer migration map |
-| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**current**) | Deterministic thread/entity or unresolved queue |
-| **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` | Failures explainable without server logs |
-| **6** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
-| **7** | Stage 3 slice 3 | *(TBD thin Sales product flow)* | Full SalesInquiry product flow |
-| **8** | **C1** Inbox UX | *(TBD)* | Simple working messages module |
-| **9** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
-| **10** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
+| **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**PR #102 merged**) | ✅ Deterministic thread/entity or unresolved queue |
+| **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` (**current**) | Failures explainable without server logs |
+| **6** | **C1** Inbox UX | *(TBD)* | Simple working messages module |
+| **7** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on platform command |
+| **8** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Stable SoT / contracts gate |
+| **9** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
+| **10** | Stage 3 slice 3 | *(TBD)* | Full SalesInquiry product flow |
+| **11** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
-**C0.1** ✅ `f8569fa9` (PR #100). **C0.1b** ✅ `7bc13d57` (PR #101).  
-**Active:** [C0.2 inbound resolver](c0-2-inbound-resolver.md) — every inbound linked or explicitly unresolved.
+**C0.1** ✅ `f8569fa9` (PR #100). **C0.1b** ✅ `7bc13d57` (PR #101). **C0.2** ✅ `00ea61e9` (PR #102).  
+**Active:** **C0.3 Delivery Diagnostics** — operator-readable delivery facts without server logs ([Epic C0 § C0.3](epic-c0-communication-integrity.md); task doc lands with the C0.3 implementation PR).  
+**After C0.3:** C1 Inbox UX (not Stage 3).
+
+**After row 8:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G (Forms → Workspace → Documents → Billing → AI).
 
 **Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
 
-**Supersedes (this revision):** queue that started Epic C0 at C0.1 without a canon gate; C2 scoped as campaigns-only.
+**Supersedes (this revision):** Stage 3 slice 3 immediately after C0.3/Meta; C1/C2 after Stage 3.
 
 ---
 
@@ -79,9 +79,10 @@
 **Slice 1 ✅** — [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md) (PR #98)  
 **Slice 2 ✅** — [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md) (PR #99)
 
-### Slice 3+ — **blocked until C0 (+ Meta Intake)**
+### Slice 3+ — **blocked until Epic C + Governance Review**
 
-Do **not** start Stage 3 slice 3 while C0.0–C0.3 (and Meta Intake Completeness) are incomplete, unless this queue is explicitly amended.
+Do **not** start Stage 3 slice 3 until **A1 Epic C** (through C2) and **A2 Platform Governance Review** are done, unless the [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) is explicitly amended.  
+Meta Intake Completeness runs at the start of Phase B (with Stage 3), not as a shortcut past Epic C.
 
 ---
 
@@ -109,25 +110,31 @@ Full prepare-send chain (canon): authorization → capabilities → recipient �
 
 ---
 
-## 5. Meta Intake Completeness (after C0)
-
-**Task:** [meta-intake-completeness.md](meta-intake-completeness.md)
-
-Separate from Communication. Chain: Meta payload → Submission raw → normalized → SalesInquiry → UI. No answer may disappear before normalization (show as additional answers).
-
----
-
-## 6. Epic C1 — Inbox UX (after integrity + Meta)
+## 5. Epic C1 — Inbox UX (after C0.3)
 
 Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs reply, Assigned to me, Sent, Archive, Unresolved). Thread title priority: company → contact name → email/phone → readable fallback (**never** UUID stubs). Settings / signatures / templates live under **Настройки → Коммуникации**.
 
 ---
 
-## 6b. Epic C2 — Templates, Automations & Campaigns
+## 5b. Epic C2 — Templates, Automations & Campaigns
 
 **Task:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)
 
-After C0 (+ C1 as queued): product surfaces for template catalog, automation rules, and campaigns — all calling the same platform command. Not a second send engine.
+After C0 + C1: product surfaces for template catalog, automation rules, and campaigns — all calling the same platform command. Not a second send engine. Closes Phase A1.
+
+---
+
+## 5c. A2 — Platform Governance Review (after Epic C)
+
+Short L0 gate — see [Platform Completion Roadmap § A2](../architecture/platform-completion-roadmap.md). Not a feature sprint.
+
+---
+
+## 6. Meta Intake Completeness (Phase B — with Acquisition)
+
+**Task:** [meta-intake-completeness.md](meta-intake-completeness.md)
+
+Separate from Communication. Chain: Meta payload → Submission raw → normalized → SalesInquiry → UI. No answer may disappear before normalization (show as additional answers). Runs **after** A2, before/with Stage 3 slice 3.
 
 ---
 
@@ -143,8 +150,8 @@ Next branch only after:
 4. Stale worktrees pruned  
 5. One dedicated worktree  
 
-**Do not** open Stage 3 slice 3, C1 Inbox, or C2 product branches while C0 is the active epic (unless this queue is explicitly amended).  
-**Do not** expand PR #100 beyond the locked vertical slice; align-to-canon is a separate follow-up after C0.0 docs.
+**Do not** open Stage 3 / Meta / Forms / Workspace while Phase A Communication slices are active (unless roadmap + this queue are explicitly amended).  
+**Do not** expand the active Communication PR beyond its locked slice.
 
 ---
 
@@ -153,3 +160,4 @@ Next branch only after:
 - 2026-07-20: Queue locked — Capability UI → Manual create → Pipeline wiring → Communication (old 4–7) → CRM.  
 - 2026-07-20 (rev): After Stage 3 slice 2, insert **Epic C0 Communication Integrity** (C0.1–C0.3) + **Meta Intake Completeness** before Stage 3 slice 3; then C1 Inbox; then Stage 3 slice 4.  
 - 2026-07-20 (rev. C0.0): Insert **C0.0 Communication Canon & Contracts** before treating C0.1 as foundation; expand **C2** to templates + automations + campaigns; PR #100 = vertical slice only.  
+- 2026-07-20 (rev. Platform Completion Roadmap): Finish **full Epic C** (C0.2–C0.3, C1, C2) → **Governance Review** → Acquisition/Stage 3; horizon phases Forms → Workspace → Documents → Billing → AI.  

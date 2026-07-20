@@ -4,7 +4,8 @@
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · G13 thread entity links · Thread-primary Communication
 
 > Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence — and risks parallel module senders.  
-> This epic is **not** Inbox UX, **not** Stage 3 Sales slice 3, and **not** full Templates/Automations/Campaigns (Epic C2).  
+> Part of **Phase A1** in [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md).  
+> This epic is **not** Stage 3 Sales slice 3. Inbox (C1) and Templates/Automations/Campaigns (C2) close Epic C after C0.3.  
 > **C0.0** locks contracts; **C0.1–C0.3** implement thin integrity slices under that canon.
 
 ## Why before Stage 3 slice 3

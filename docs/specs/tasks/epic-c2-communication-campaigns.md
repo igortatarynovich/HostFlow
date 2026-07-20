@@ -1,7 +1,7 @@
 # Epic C2 — Templates, Automations & Campaigns
 
-**Status:** Queued (after Epic C0 integrity; after C1 per sequential queue)  
-**Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · platform `prepare_and_send_communication` / `SendCommunication`
+**Status:** Queued (Phase A1 — closes Epic C after C0.3 + C1)  
+**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · platform `prepare_and_send_communication` / `SendCommunication`
 
 > Product surfaces for **templates**, **automation rules**, and **campaigns** — all on top of the same Communication platform command.  
 > Do **not** implement inside C0.1. Do **not** invent a second send engine.
