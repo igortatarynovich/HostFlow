@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl as plLocale, ru as ruLocale } from 'date-fns/locale'
 import { listNotifications, markNotificationsRead, reconcileNotifications } from '../api/client'
-import { listCommunicationThreads, patchCommunicationThread, type CommunicationThread } from '../api/communications'
+import {
+  executeWorkspaceCommand,
+  listCommunicationThreads,
+  type CommunicationThread,
+} from '../api/communications'
 import type { NotificationItem, NotificationListResponse } from '../api/types'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
@@ -241,8 +245,7 @@ export default function CommunicationsSlaIncidentsPage() {
       const nowIso = new Date().toISOString()
       const noReply = mode === 'no_reply_needed'
       const shouldClose = mode === 'no_reply_needed'
-      await patchCommunicationThread(threadId, {
-        priority: mode === 'escalated' ? 'high' : undefined,
+      await executeWorkspaceCommand(threadId, 'UpdateThreadWorkflow', {
         thread_meta: {
           ops: {
             mode,
@@ -255,6 +258,9 @@ export default function CommunicationsSlaIncidentsPage() {
           },
         },
       })
+      if (mode === 'escalated') {
+        await executeWorkspaceCommand(threadId, 'SetThreadPriority', { priority: 'high' })
+      }
       if (shouldClose && !item.is_read) {
         await markNotificationsRead({ ids: [item.id] })
       }

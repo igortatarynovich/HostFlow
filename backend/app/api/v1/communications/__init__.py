@@ -335,8 +335,6 @@ from .routes.threads import (  # noqa: E402,F401
     create_thread,
     get_thread,
     list_threads,
-    mark_thread_read,
-    patch_thread,
     reconcile_thread_unread,
 )
 from .routes.messages import (  # noqa: E402,F401

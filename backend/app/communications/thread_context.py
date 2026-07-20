@@ -307,6 +307,12 @@ async def build_thread_context(
             "owner_id": getattr(thread, "owner_id", None),
             "unread_count": int(thread.unread_count or 0),
             "is_archived": bool(thread.is_archived),
+            "work_version": int(getattr(thread, "work_version", 1) or 1),
+            "priority": str(getattr(thread, "priority", None) or "normal"),
+            "tags_json": list(getattr(thread, "tags_json", None) or []),
+            "thread_meta": dict(getattr(thread, "thread_meta", None) or {}),
+            "linked_candidate_id": getattr(thread, "linked_candidate_id", None),
+            "linked_company_id": getattr(thread, "linked_company_id", None),
             "active_queues": _queue_memberships_from_thread(
                 thread,
                 actor_user_id=actor_user_id,

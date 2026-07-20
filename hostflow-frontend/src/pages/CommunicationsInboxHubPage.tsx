@@ -8,7 +8,6 @@ import {
   getCommunicationsSettings,
   listCommunicationCommandAudit,
   mergeThreadFromContext,
-  patchCommunicationThread,
   patchCommunicationsSettings,
   type CommunicationCommandAudit,
   type CommunicationCommandTemplate,
@@ -509,11 +508,18 @@ export default function CommunicationsInboxHubPage() {
               continue
             }
             if (type === 'priority_high' || type === 'priority_normal') {
-              current = await patchCommunicationThread(current.id, { priority: type === 'priority_high' ? 'high' : 'normal' })
+              const result = await executeWorkspaceCommand(current.id, 'SetThreadPriority', {
+                priority: type === 'priority_high' ? 'high' : 'normal',
+              })
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'delete' || type === 'restore') {
-              current = await patchCommunicationThread(current.id, { status: type === 'delete' ? 'deleted' : 'open' })
+              const result = await executeWorkspaceCommand(
+                current.id,
+                type === 'delete' ? 'DeleteThread' : 'RestoreThread',
+              )
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'tag_add' || type === 'tag_remove' || type === 'move_folder') {
@@ -532,7 +538,8 @@ export default function CommunicationsInboxHubPage() {
                 nextTags = nextTags.filter((x) => !x.toLowerCase().startsWith('folder:'))
                 if (value) nextTags.push(`folder:${value}`)
               }
-              current = await patchCommunicationThread(current.id, { tags_json: nextTags })
+              const result = await executeWorkspaceCommand(current.id, 'SetThreadTags', { tags: nextTags })
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             skippedActions += 1
@@ -665,7 +672,6 @@ export default function CommunicationsInboxHubPage() {
       let failed = 0
       for (const snap of lastBulkUndo.snapshots) {
         try {
-          // Workspace SoT for archive/read; remaining fields still via deprecated PATCH until dedicated Commands exist.
           let row: CommunicationThread = {
             id: snap.id,
             status: snap.status,
@@ -674,17 +680,41 @@ export default function CommunicationsInboxHubPage() {
             tags_json: snap.tags_json,
             unread_count: snap.unread_count,
           } as CommunicationThread
-          const archiveCmd = snap.is_archived ? 'CloseThread' : 'ReopenThread'
-          const archiveResult = await executeWorkspaceCommand(snap.id, archiveCmd)
-          row = mergeThreadFromContext(row, archiveResult.context)
+          if (String(snap.status || '').toLowerCase() === 'deleted') {
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'DeleteThread')).context,
+            )
+          } else if (snap.is_archived) {
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'CloseThread')).context,
+            )
+          } else {
+            // Idempotent: undo delete/close back to open inbox.
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'RestoreThread')).context,
+            )
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'ReopenThread')).context,
+            )
+          }
           const readCmd = snap.unread_count > 0 ? 'MarkThreadUnread' : 'MarkThreadRead'
-          const readResult = await executeWorkspaceCommand(snap.id, readCmd)
-          row = mergeThreadFromContext(row, readResult.context)
-          row = await patchCommunicationThread(snap.id, {
-            status: snap.status,
-            priority: snap.priority,
-            tags_json: snap.tags_json,
-          })
+          row = mergeThreadFromContext(
+            row,
+            (await executeWorkspaceCommand(snap.id, readCmd)).context,
+          )
+          row = mergeThreadFromContext(
+            row,
+            (await executeWorkspaceCommand(snap.id, 'SetThreadPriority', { priority: snap.priority || 'normal' }))
+              .context,
+          )
+          row = mergeThreadFromContext(
+            row,
+            (await executeWorkspaceCommand(snap.id, 'SetThreadTags', { tags: snap.tags_json || [] })).context,
+          )
           updated.set(String(row.id), row)
           ok += 1
         } catch {

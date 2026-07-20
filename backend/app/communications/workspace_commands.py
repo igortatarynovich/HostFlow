@@ -6,9 +6,11 @@ Aligned with outbound Intent → Policy → Command pattern, but for workplace s
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -70,7 +72,44 @@ WorkspaceCommandName = Literal[
     "ResumeSLA",
     "CloseThread",
     "ReopenThread",
+    "SetThreadPriority",
+    "SetThreadTags",
+    "DeleteThread",
+    "RestoreThread",
+    "UpdateThreadWorkflow",
+    "SetThreadLinks",
 ]
+
+# Every Workspace-visible Thread field mutation must map to a Command name here.
+THREAD_FIELD_COMMAND_COVERAGE: dict[str, tuple[str, ...]] = {
+    "assignee_id": ("AssignThread", "ReassignThread", "UnassignThread"),
+    "queue_assigned_by": ("AssignThread", "ReassignThread", "UnassignThread"),
+    "unread_count": ("MarkThreadRead", "MarkThreadUnread"),
+    "is_archived": ("CloseThread", "ReopenThread", "DeleteThread", "RestoreThread"),
+    "status": ("CloseThread", "ReopenThread", "DeleteThread", "RestoreThread"),
+    "sla_due_at": ("PauseSLA", "ResumeSLA", "CloseThread", "UpdateThreadWorkflow"),
+    "priority": ("SetThreadPriority", "UpdateThreadWorkflow"),
+    "tags_json": ("SetThreadTags",),
+    "thread_meta": ("UpdateThreadWorkflow", "SetThreadLinks"),
+    "linked_candidate_id": ("SetThreadLinks",),
+    "linked_company_id": ("SetThreadLinks",),
+    "work_version": tuple(),  # platform-managed concurrency token
+}
+
+_expected_work_version: ContextVar[int | None] = ContextVar(
+    "workspace_cmd_expected_work_version", default=None
+)
+
+
+@contextmanager
+def expect_work_version(version: int | None) -> Iterator[None]:
+    """Optional optimistic concurrency envelope for a Command invocation."""
+    token = _expected_work_version.set(version)
+    try:
+        yield
+    finally:
+        _expected_work_version.reset(token)
+
 
 NEXT_ACTION_SOURCES: frozenset[str] = frozenset(
     {NEXT_ACTION_SOURCE_MANUAL, NEXT_ACTION_SOURCE_AUTOMATION}
@@ -103,6 +142,24 @@ class WorkspaceCommandError(Exception):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _guard_work_version(thread: CommunicationThread) -> None:
+    expected = _expected_work_version.get()
+    if expected is None:
+        return
+    current = int(getattr(thread, "work_version", 1) or 1)
+    if int(expected) != current:
+        raise WorkspaceCommandError(
+            "stale_work_version",
+            "Thread was modified; refresh ThreadContext and retry",
+            {"expected": int(expected), "current": current},
+        )
+
+
+def _bump_work_version(thread: CommunicationThread) -> None:
+    thread.work_version = int(getattr(thread, "work_version", 1) or 1) + 1
+    thread.updated_at = _now()
 
 
 def _normalize_reason(reason: str | None) -> str:
@@ -181,6 +238,7 @@ async def assign_thread(
     reason: str | None = "manual",
     command_id: str = "AssignThread",
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     assignee = str(assignee_id or "").strip()
     if not assignee:
         raise WorkspaceCommandError("assignee_required", "assignee_id is required")
@@ -202,7 +260,7 @@ async def assign_thread(
     now = _now()
     thread.assignee_id = assignee
     thread.queue_assigned_by = reason_key
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -238,6 +296,7 @@ async def unassign_thread(
     actor_user_id: str | None,
     reason: str | None = "manual",
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     reason_key = _normalize_reason(reason)
     prev = thread.assignee_id
     if prev is None:
@@ -253,7 +312,7 @@ async def unassign_thread(
     now = _now()
     thread.assignee_id = None
     thread.queue_assigned_by = None
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -289,6 +348,7 @@ async def mark_thread_read(
     actor_user_id: str | None,
 ) -> WorkspaceCommandResult:
     """Thread-level read SoT: unread_count → 0 (also stamps inbound read_at)."""
+    _guard_work_version(thread)
     already = int(thread.unread_count or 0) == 0
     now = _now()
     await db.execute(
@@ -319,7 +379,7 @@ async def mark_thread_read(
         )
     prev = int(thread.unread_count or 0)
     thread.unread_count = 0
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -347,6 +407,7 @@ async def mark_thread_unread(
     actor_user_id: str | None,
 ) -> WorkspaceCommandResult:
     """Thread-level unread SoT — not a sum of messages."""
+    _guard_work_version(thread)
     prev = int(thread.unread_count or 0)
     if prev > 0:
         return await _finish(
@@ -360,7 +421,7 @@ async def mark_thread_unread(
         )
     now = _now()
     thread.unread_count = 1
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -408,6 +469,7 @@ async def set_next_action(
     note: str | None = None,
 ) -> WorkspaceCommandResult:
     """Create active ThreadNextAction; supersede any previous active (cancel + new)."""
+    _guard_work_version(thread)
     atype = str(action_type or "").strip()
     if not atype:
         raise WorkspaceCommandError("action_type_required", "action_type is required")
@@ -454,7 +516,7 @@ async def set_next_action(
             payload={},
         )
     )
-    thread.updated_at = now
+    _bump_work_version(thread)
     actions.append(
         {
             "field": "next_action",
@@ -493,6 +555,7 @@ async def complete_next_action(
     actor_user_id: str | None,
     next_action_id: str | None = None,
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     active = await _get_active_next_action(
         db, tenant_id=tenant_id, thread_id=str(thread.id)
     )
@@ -517,7 +580,7 @@ async def complete_next_action(
     active.completed_at = now
     active.completed_by = actor_user_id
     active.updated_at = now
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -554,6 +617,7 @@ async def cancel_next_action(
     actor_user_id: str | None,
     next_action_id: str | None = None,
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     active = await _get_active_next_action(
         db, tenant_id=tenant_id, thread_id=str(thread.id)
     )
@@ -578,7 +642,7 @@ async def cancel_next_action(
     active.completed_at = now
     active.completed_by = actor_user_id
     active.updated_at = now
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -614,6 +678,7 @@ async def pause_sla(
     thread: CommunicationThread,
     actor_user_id: str | None,
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     clock = await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
     if clock.status == "none" and thread.sla_due_at is not None:
         # Bootstrap start from legacy column so Pause has a clock to freeze.
@@ -651,7 +716,7 @@ async def pause_sla(
     )
     # Keep scheduler quiet while paused (projection still knows frozen due).
     thread.sla_due_at = None
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -679,6 +744,7 @@ async def resume_sla(
     actor_user_id: str | None,
     target_due_at: datetime | None = None,
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     from backend.app.communications.sla_clock import list_sla_events
 
     clock = await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
@@ -722,7 +788,7 @@ async def resume_sla(
         payload={"target_due_at": due.isoformat() if due else None},
     )
     thread.sla_due_at = due
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -756,6 +822,7 @@ async def close_thread(
     actor_user_id: str | None,
     cancel_active_next_action: bool = True,
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     already = bool(thread.is_archived) or str(thread.status or "").lower() in {
         "closed",
         "archived",
@@ -806,7 +873,7 @@ async def close_thread(
     thread.is_archived = True
     thread.status = "closed"
     thread.sla_due_at = None
-    thread.updated_at = now
+    _bump_work_version(thread)
     actions.append(
         {
             "field": "status",
@@ -841,6 +908,7 @@ async def reopen_thread(
     thread: CommunicationThread,
     actor_user_id: str | None,
 ) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
     closed = bool(thread.is_archived) or str(thread.status or "").lower() in {
         "closed",
         "archived",
@@ -862,7 +930,7 @@ async def reopen_thread(
     prev_status = thread.status
     thread.is_archived = False
     thread.status = "open"
-    thread.updated_at = now
+    _bump_work_version(thread)
     audit_id = await _write_audit(
         db,
         tenant_id=tenant_id,
@@ -889,9 +957,323 @@ async def reopen_thread(
     )
 
 
+async def set_thread_priority(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+    priority: str,
+) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
+    key = str(priority or "").strip().lower()
+    if key not in {"low", "normal", "high", "urgent"}:
+        raise WorkspaceCommandError(
+            "invalid_priority",
+            f"Unknown priority: {priority}",
+            {"allowed": ["low", "normal", "high", "urgent"]},
+        )
+    prev = str(thread.priority or "normal")
+    if prev == key:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="SetThreadPriority",
+            applied=False,
+            audit_id=None,
+        )
+    thread.priority = key
+    _bump_work_version(thread)
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="SetThreadPriority",
+        actions=[{"field": "priority", "from": prev, "to": key}],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="SetThreadPriority",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def set_thread_tags(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+    tags: list[Any],
+) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
+    next_tags = [str(x).strip() for x in (tags or []) if str(x).strip()]
+    prev = list(thread.tags_json or [])
+    if prev == next_tags:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="SetThreadTags",
+            applied=False,
+            audit_id=None,
+        )
+    thread.tags_json = next_tags
+    _bump_work_version(thread)
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="SetThreadTags",
+        actions=[{"field": "tags_json", "from": prev, "to": next_tags}],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="SetThreadTags",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def delete_thread(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
+    if str(thread.status or "").lower() == "deleted":
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="DeleteThread",
+            applied=False,
+            audit_id=None,
+        )
+    prev_status = thread.status
+    prev_archived = bool(thread.is_archived)
+    thread.status = "deleted"
+    thread.is_archived = True
+    _bump_work_version(thread)
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="DeleteThread",
+        actions=[
+            {
+                "field": "status",
+                "from": prev_status,
+                "to": "deleted",
+                "is_archived": {"from": prev_archived, "to": True},
+            }
+        ],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="DeleteThread",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def restore_thread(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
+    if str(thread.status or "").lower() != "deleted":
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="RestoreThread",
+            applied=False,
+            audit_id=None,
+        )
+    prev_status = thread.status
+    thread.status = "open"
+    thread.is_archived = False
+    _bump_work_version(thread)
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="RestoreThread",
+        actions=[
+            {
+                "field": "status",
+                "from": prev_status,
+                "to": "open",
+                "is_archived": False,
+            }
+        ],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="RestoreThread",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def update_thread_workflow(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    tenant: Any,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+    thread_meta: dict[str, Any],
+) -> WorkspaceCommandResult:
+    _guard_work_version(thread)
+    from backend.app.communications.workspace_workflow import apply_thread_workflow_meta
+
+    before = dict(thread.thread_meta or {})
+    actions = await apply_thread_workflow_meta(
+        db,
+        tenant_id=tenant_id,
+        tenant=tenant,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        meta_patch=dict(thread_meta or {}),
+    )
+    after = dict(thread.thread_meta or {})
+    if before == after and not any(
+        a.get("field") == "priority" for a in actions
+    ):
+        # Side-effects may still change sla_due_at/priority — treat as applied if dirty.
+        pass
+    _bump_work_version(thread)
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="UpdateThreadWorkflow",
+        actions=actions,
+        payload={"thread_meta_keys": sorted(str(k) for k in (thread_meta or {}).keys())},
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="UpdateThreadWorkflow",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+_UNSET: Any = object()
+
+
+async def set_thread_links(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+    linked_candidate_id: Any = _UNSET,
+    linked_company_id: Any = _UNSET,
+    thread_meta: dict[str, Any] | None = None,
+) -> WorkspaceCommandResult:
+    """Set CRM entity links on the Thread (+ optional meta name/uos projection)."""
+    _guard_work_version(thread)
+    actions: list[dict[str, Any]] = []
+    if linked_candidate_id is not _UNSET:
+        prev = thread.linked_candidate_id
+        nxt = str(linked_candidate_id).strip() if linked_candidate_id else None
+        if prev != nxt:
+            thread.linked_candidate_id = nxt
+            actions.append(
+                {"field": "linked_candidate_id", "from": prev, "to": nxt}
+            )
+    if linked_company_id is not _UNSET:
+        prev = thread.linked_company_id
+        nxt = str(linked_company_id).strip() if linked_company_id else None
+        if prev != nxt:
+            thread.linked_company_id = nxt
+            actions.append(
+                {"field": "linked_company_id", "from": prev, "to": nxt}
+            )
+    if thread_meta is not None:
+        from backend.app.api.v1.communications._helpers.utils import (
+            _as_dict,
+            _deep_merge_dict,
+        )
+
+        before = _as_dict(thread.thread_meta)
+        merged = _deep_merge_dict(before, _as_dict(thread_meta))
+        if merged != before:
+            thread.thread_meta = merged
+            actions.append({"field": "thread_meta", "op": "merge_links"})
+
+    from backend.app.communications.entity_link import ensure_links_for_known_thread_origin
+
+    await ensure_links_for_known_thread_origin(db, tenant_id=tenant_id, thread=thread)
+
+    if not actions:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="SetThreadLinks",
+            applied=False,
+            audit_id=None,
+        )
+    _bump_work_version(thread)
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="SetThreadLinks",
+        actions=actions,
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="SetThreadLinks",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
 __all__ = [
     "ASSIGNMENT_REASONS",
     "AssignmentReason",
+    "THREAD_FIELD_COMMAND_COVERAGE",
     "WorkspaceCommandError",
     "WorkspaceCommandName",
     "WorkspaceCommandResult",
@@ -899,11 +1281,18 @@ __all__ = [
     "cancel_next_action",
     "close_thread",
     "complete_next_action",
+    "delete_thread",
+    "expect_work_version",
     "mark_thread_read",
     "mark_thread_unread",
     "pause_sla",
     "reopen_thread",
+    "restore_thread",
     "resume_sla",
     "set_next_action",
+    "set_thread_links",
+    "set_thread_priority",
+    "set_thread_tags",
     "unassign_thread",
+    "update_thread_workflow",
 ]

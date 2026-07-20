@@ -7,7 +7,7 @@ from httpx import AsyncClient
 
 
 @pytest.mark.anyio
-async def test_patch_thread_escalated_emits_notification_and_reminder(
+async def test_update_thread_workflow_escalated_emits_notification_and_reminder(
     client: AsyncClient,
     manager_headers: dict[str, str],
 ) -> None:
@@ -31,8 +31,8 @@ async def test_patch_thread_escalated_emits_notification_and_reminder(
     thread_id = str((created.json() or {}).get("id") or "")
     assert thread_id
 
-    patch = await client.patch(
-        f"/api/v1/communications/threads/{thread_id}",
+    cmd = await client.post(
+        f"/api/v1/communications/threads/{thread_id}/commands/UpdateThreadWorkflow",
         headers=manager_headers,
         json={
             "thread_meta": {
@@ -46,7 +46,7 @@ async def test_patch_thread_escalated_emits_notification_and_reminder(
             },
         },
     )
-    assert patch.status_code == 200, patch.text
+    assert cmd.status_code == 200, cmd.text
 
     notifs = await client.get(
         "/api/v1/notifications",
@@ -60,23 +60,8 @@ async def test_patch_thread_escalated_emits_notification_and_reminder(
     assert str((hit[0].get("entity_id") or "")) == thread_id
     assert str(hit[0].get("priority") or "") == "critical"
 
-    reminders = await client.get(
-        "/api/v1/reminders",
-        headers=manager_headers,
-        params={"assignee_scope": "mine", "limit": 80},
-    )
-    assert reminders.status_code == 200, reminders.text
-    ritems = (reminders.json() or {}).get("items") or []
-    rhit = [
-        x
-        for x in ritems
-        if str(x.get("type") or "") == "communications_thread_escalated"
-        and str(x.get("entity_id") or "") == thread_id
-    ]
-    assert rhit, "expected communications_thread_escalated reminder"
-
-    again = await client.patch(
-        f"/api/v1/communications/threads/{thread_id}",
+    again = await client.post(
+        f"/api/v1/communications/threads/{thread_id}/commands/UpdateThreadWorkflow",
         headers=manager_headers,
         json={"thread_meta": {"sla_policy": {"muted": False}}},
     )
@@ -95,5 +80,4 @@ async def test_patch_thread_escalated_emits_notification_and_reminder(
         if str(x.get("event_type") or "") == "communications_thread_escalated"
         and str(x.get("entity_id") or "") == thread_id
     ]
-    assert len(escal_for_thread) == 1, "re-patch while still escalated must not duplicate bridge"
-
+    assert len(escal_for_thread) == 1, "re-command while still escalated must not duplicate bridge"

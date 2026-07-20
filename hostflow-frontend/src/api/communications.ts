@@ -854,6 +854,12 @@ export type ThreadContext = {
     owner_id?: string | null
     unread_count: number
     is_archived: boolean
+    work_version?: number
+    priority?: string
+    tags_json?: string[]
+    thread_meta?: Record<string, unknown>
+    linked_candidate_id?: string | null
+    linked_company_id?: string | null
     active_queues: string[]
     sla_due_at?: string | null
     sla?: {
@@ -969,6 +975,12 @@ export type WorkspaceCommandName =
   | 'ResumeSLA'
   | 'CloseThread'
   | 'ReopenThread'
+  | 'SetThreadPriority'
+  | 'SetThreadTags'
+  | 'DeleteThread'
+  | 'RestoreThread'
+  | 'UpdateThreadWorkflow'
+  | 'SetThreadLinks'
 
 export async function executeWorkspaceCommand(
   threadId: string,
@@ -996,7 +1008,24 @@ export function mergeThreadFromContext(
     subject: ctx.identity?.thread?.subject ?? thread.subject,
     channel: (ctx.identity?.thread?.channel as CommunicationThread['channel']) || thread.channel,
     sla_due_at: ctx.work_state?.sla_due_at ?? thread.sla_due_at,
+    priority: (ctx.work_state?.priority as CommunicationThread['priority']) || thread.priority,
+    tags_json: Array.isArray(ctx.work_state?.tags_json) ? ctx.work_state.tags_json : thread.tags_json,
+    thread_meta: (ctx.work_state?.thread_meta as CommunicationThread['thread_meta']) || thread.thread_meta,
+    linked_candidate_id: ctx.work_state?.linked_candidate_id ?? thread.linked_candidate_id,
+    linked_company_id: ctx.work_state?.linked_company_id ?? thread.linked_company_id,
   }
+}
+
+/** Include expected_work_version when the client has a ThreadContext snapshot. */
+export function withExpectedWorkVersion(
+  body: Record<string, unknown> | undefined,
+  workVersion: number | null | undefined,
+): Record<string, unknown> {
+  const next = { ...(body || {}) }
+  if (workVersion != null && Number.isFinite(Number(workVersion))) {
+    next.expected_work_version = Number(workVersion)
+  }
+  return next
 }
 
 export async function getThreadCapabilities(threadId: string): Promise<ThreadCapabilities> {
@@ -1024,9 +1053,14 @@ export async function createCommunicationThread(payload: Record<string, any>): P
   return data as CommunicationThread
 }
 
-export async function patchCommunicationThread(threadId: string, payload: Record<string, any>): Promise<CommunicationThread> {
-  const { data } = await api.patch(`/communications/threads/${threadId}`, payload)
-  return data as CommunicationThread
+/** @deprecated C1.2 — removed. Use executeWorkspaceCommand. */
+export async function patchCommunicationThread(
+  _threadId: string,
+  _payload: Record<string, any>,
+): Promise<CommunicationThread> {
+  throw new Error(
+    'patchCommunicationThread removed in C1.2 — use executeWorkspaceCommand (SetThreadTags, UpdateThreadWorkflow, …)',
+  )
 }
 
 export async function listCommunicationMessages(
@@ -1068,13 +1102,8 @@ export async function uploadCommunicationThreadMessageAttachment(
 
 export async function markCommunicationThreadRead(
   threadId: string,
-  payload?: { message_ids?: string[]; mark_thread?: boolean }
+  _payload?: { message_ids?: string[]; mark_thread?: boolean }
 ): Promise<CommunicationThread> {
-  // C1.2: thread-level read goes through Workspace Command. Selective message_ids keep legacy POST.
-  if (payload?.message_ids?.length) {
-    const { data } = await api.post(`/communications/threads/${threadId}/read`, payload)
-    return data as CommunicationThread
-  }
   await executeWorkspaceCommand(threadId, 'MarkThreadRead')
   const detail = await getCommunicationThread(threadId)
   return detail.thread

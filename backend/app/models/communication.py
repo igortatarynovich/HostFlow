@@ -67,6 +67,8 @@ class CommunicationThread(Base, TimestampMixin):
     hostflow_search_tsv: Mapped[Optional[Any]] = mapped_column(TsVector, nullable=True)
     unread_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # C1.2 optimistic concurrency — bumped on every applied Workspace Command.
+    work_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 
 class CommunicationMessage(Base, TimestampMixin):

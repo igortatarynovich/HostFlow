@@ -1,6 +1,6 @@
 # C1.2 — Workspace Actions
 
-**Status:** Active (kickoff)  
+**Status:** Close-out (Command coverage + no mixed path)  
 **Branch:** `feat/communication-c1-2-workspace-actions`  
 **Worktree:** `/tmp/hf-c1-2-workspace-actions`  
 **Base:** `integration/release-product-a-b` @ `dbeb36ed` (after PR #107)  
@@ -21,18 +21,13 @@ Remaining work = implement Commands → projections → Workspace UX (C1.3) → 
 2. **ThreadContext is the only Workspace read model** — new UX fields land in ThreadContext first; Workspace must not reassemble state from many endpoints.  
 3. **Queue stays a projection** — no MoveThreadToQueue / queue write API, even as a “quick button”. Change Thread state → queues recompute.
 
-### C1.2 close-out gate — no mixed path
+### C1.2 close-out gates
 
-While C1.2 PRs are open, legacy mutation APIs may still exist.  
-**Before declaring C1.2 complete / merging the close-out:** the codebase must have **zero** remaining Thread mutations outside Commands (grep + contract test). Dual API is temporary only.
+1. **No mixed path** — Workspace HTTP must not mutate Thread outside Commands (contract test).  
+2. **Command coverage = 100%** — every Workspace-visible Thread field maps to a named Command (`THREAD_FIELD_COMMAND_COVERAGE`).  
+3. **Optimistic concurrency** — `work_version` on Thread; optional `expected_work_version` → typed `stale_work_version` (HTTP 409).
 
-### Implementation priority (remaining)
-
-1. ThreadNextAction entity + Set / Complete / Cancel ← **in progress**  
-2. SLA event clock (start/pause/resume/resolve; breached derived)  
-3. CloseThread / ReopenThread (+ invariants vs Next Action / SLA)  
-4. Deprecate legacy PATCH → migrate internal callers → delete in one PR  
-5. Frontend: Commands only; apply returned ThreadContext (no extra refresh)
+Legacy `PATCH /threads/{id}` and `POST /threads/{id}/read` are **removed**.
 
 ---
 
@@ -93,6 +88,11 @@ C2 (Automation / Campaigns / Templates) **must reuse the same Commands** — not
 | `ResumeSLA` | Resume SLA clock |
 | `CloseThread` | Terminal / archived |
 | `ReopenThread` | Leave closed |
+| `SetThreadPriority` | Priority |
+| `SetThreadTags` | Tags / folder tags |
+| `DeleteThread` / `RestoreThread` | Soft-delete lifecycle |
+| `UpdateThreadWorkflow` | Ops mode / SLA policy meta |
+| `SetThreadLinks` | Candidate / company / UOS links |
 
 ### Command response contract
 
@@ -285,13 +285,13 @@ Composer **unchanged** (C1.1). No `module == …` branches.
 - [x] Legacy PATCH /read marked `deprecated=True`  
 - [x] Workspace ControlPanel + mark-read use Commands + returned ThreadContext  
 - [x] Hub bulk mark_read / archive / unarchive + Topbar dismiss → Commands  
-- [ ] Optimistic concurrency → typed conflict  
-- [ ] Hub tags/priority/delete + WorkflowCard meta still on deprecated PATCH  
-- [ ] Delete deprecated PATCH/read after remaining callers migrated  
-- [ ] **Close-out:** no-mixed-path contract test (zero Thread mutations outside Commands)  
-- [ ] Composer unchanged  
-- [ ] No `module == …` branches  
-- [ ] Contract test: modules use public Communication Workspace Command API via adapters
+- [x] Optimistic concurrency → `work_version` + `stale_work_version` (409)  
+- [x] Hub tags/priority/delete + WorkflowCard + entity links + SLA incidents → Commands  
+- [x] Deleted deprecated PATCH /read endpoints  
+- [x] **Close-out:** no-mixed-path + Command coverage contract tests  
+- [x] Composer unchanged  
+- [x] No `module == …` branches  
+- [ ] Contract test: modules use public Communication Workspace Command API via adapters (C2)
 
 ## After C1.2 → C1.3 Workspace Experience
 

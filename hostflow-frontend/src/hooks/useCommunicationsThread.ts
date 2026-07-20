@@ -248,6 +248,14 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
             status: ctx.identity?.thread?.status || prev.status,
             subject: ctx.identity?.thread?.subject ?? prev.subject,
             channel: ctx.identity?.thread?.channel || prev.channel,
+            priority: ctx.work_state?.priority || prev.priority,
+            tags_json: Array.isArray(ctx.work_state?.tags_json)
+              ? ctx.work_state.tags_json
+              : prev.tags_json,
+            thread_meta: ctx.work_state?.thread_meta || prev.thread_meta,
+            linked_candidate_id: ctx.work_state?.linked_candidate_id ?? prev.linked_candidate_id,
+            linked_company_id: ctx.work_state?.linked_company_id ?? prev.linked_company_id,
+            sla_due_at: ctx.work_state?.sla_due_at ?? prev.sla_due_at,
           }
         : prev,
     )

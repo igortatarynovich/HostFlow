@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import { searchCandidates } from '../../api/candidates'
 import { getServiceOrder, listServiceOrders } from '../../api/additionalServices'
-import { patchCommunicationThread, type CommunicationThread } from '../../api/communications'
+import { executeWorkspaceCommand, type CommunicationThread } from '../../api/communications'
 import { api, listCompanies } from '../../api/client'
 import type { AdditionalServiceOrder, Candidate } from '../../api/types'
 import { useI18n } from '../../i18n'
@@ -161,7 +161,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         ...(thread.thread_meta || {}),
         linked_candidate_name: candidateId ? linkedName || undefined : null,
       }
-      await patchCommunicationThread(thread.id, {
+      await executeWorkspaceCommand(thread.id, 'SetThreadLinks', {
         linked_candidate_id: candidateId,
         thread_meta: nextMeta,
       })
@@ -238,7 +238,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         ...(thread.thread_meta || {}),
         linked_company_name: companyId ? linkedName || undefined : null,
       }
-      await patchCommunicationThread(thread.id, {
+      await executeWorkspaceCommand(thread.id, 'SetThreadLinks', {
         linked_company_id: companyId,
         thread_meta: nextMeta,
       })
@@ -291,7 +291,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         delete prevUos.linked_service_order_label
       }
       meta.uos = prevUos
-      await patchCommunicationThread(thread.id, { thread_meta: meta })
+      await executeWorkspaceCommand(thread.id, 'SetThreadLinks', { thread_meta: meta })
       setOrderPickId(orderId || '')
       setLinkOk(
         orderId
@@ -334,7 +334,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       prevUos.linked_service_order_id = id
       prevUos.linked_service_order_label = `${id.slice(0, 8)}…`
       meta.uos = prevUos
-      await patchCommunicationThread(thread.id, { thread_meta: meta })
+      await executeWorkspaceCommand(thread.id, 'SetThreadLinks', { thread_meta: meta })
       setOrderIdManual('')
       setLinkOk(t('app.communications_inbox_center.link_ok_order', { defaultValue: 'Заказ привязан.' }))
       await onAfterPatch()

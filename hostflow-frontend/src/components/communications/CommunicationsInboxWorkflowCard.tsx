@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { getCommunicationsSettings, patchCommunicationThread, type CommunicationThread } from '../../api/communications'
+import {
+  executeWorkspaceCommand,
+  getCommunicationsSettings,
+  type CommunicationThread,
+} from '../../api/communications'
 import type { ManagerOption } from '../../api/types'
 import { listTenantManagers } from '../../api/users'
 import { useI18n } from '../../i18n'
@@ -182,7 +186,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const current = noReplyNeededFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await patchCommunicationThread(thread.id, {
+      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: !current,
@@ -215,7 +219,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const current = slaMutedFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await patchCommunicationThread(thread.id, {
+      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           sla_muted: !current,
@@ -254,7 +258,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const until = new Date(Date.now() + Math.max(1, hours) * 60 * 60 * 1000).toISOString()
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await patchCommunicationThread(thread.id, {
+      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: false,
@@ -326,8 +330,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
           escalated_at: nowIso,
         }
       }
-      await patchCommunicationThread(thread.id, {
-        priority: mode === 'escalated' ? 'high' : thread.priority,
+      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: noReply,
@@ -340,6 +343,9 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
           },
         },
       })
+      if (mode === 'escalated' && String(thread.priority || '').toLowerCase() !== 'high') {
+        await executeWorkspaceCommand(thread.id, 'SetThreadPriority', { priority: 'high' })
+      }
       await onRefresh()
     } catch (err: unknown) {
       if (
