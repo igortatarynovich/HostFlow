@@ -365,17 +365,15 @@ async def get_thread(
     )
 
 
-@router.get("/threads/{thread_id}/capabilities")
-async def get_thread_capabilities(
+@router.get("/threads/{thread_id}/context")
+async def get_thread_context(
     thread_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> dict:
-    """C1: allowed intents/channels from Communication Platform (UI must not invent them)."""
-    from backend.app.communications.capability_resolver import DefaultCapabilityResolver
-    from backend.app.communications.command import CommunicationOrigin
-    from backend.app.communications.entity_link import get_thread_entity_links
+    """C1: ThreadContext — sole Workspace/Composer input from the platform."""
+    from backend.app.communications.thread_context import build_thread_context
 
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -388,39 +386,55 @@ async def get_thread_capabilities(
         tenant_id=tenant_id,
         feature=_feature_for_channel(thread.channel),  # type: ignore[arg-type]
     )
-    links = await get_thread_entity_links(db, tenant_id=tenant_id, thread_id=thread_id)
-    if links:
-        origin = CommunicationOrigin(
-            entity_type=links[0].entity_type, entity_id=links[0].entity_id
-        )
-    else:
-        origin = CommunicationOrigin(
-            entity_type=str(thread.entity_type or "lead"),
-            entity_id=str(thread.entity_id or thread.id),
-        )
-    caps = await DefaultCapabilityResolver().resolve(
+    ctx = await build_thread_context(
+        db,
         tenant_id=tenant_id,
-        origin=origin,
-        actor_id=str(getattr(current_user, "sub", "") or "") or None,
+        thread=thread,
+        actor_user_id=str(getattr(current_user, "sub", "") or "") or None,
     )
-    # Restrict channel list to the thread's channel when platform allows it.
-    thread_channel = str(thread.channel or "").strip().lower()
-    allowed_channels = list(caps.allowed_channels)
-    if thread_channel and thread_channel in allowed_channels:
-        allowed_channels = [thread_channel]
-    elif thread_channel and not allowed_channels:
-        allowed_channels = []
+    return ctx.to_dict()
+
+
+@router.get("/threads/{thread_id}/capabilities")
+async def get_thread_capabilities(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    """Compat slice of ThreadContext (prefer GET …/context for Composer)."""
+    from backend.app.communications.thread_context import build_thread_context
+
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
+    assert_comm_feature_access(
+        tenant=tenant,
+        current_user=current_user,
+        tenant_id=tenant_id,
+        feature=_feature_for_channel(thread.channel),  # type: ignore[arg-type]
+    )
+    full = (
+        await build_thread_context(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=str(getattr(current_user, "sub", "") or "") or None,
+        )
+    ).to_dict()
+    caps = full.get("capabilities") or {}
+    identity = full.get("identity") or {}
+    thread_proj = identity.get("thread") or {}
     return {
-        "thread_id": str(thread.id),
-        "origin": {
-            "entity_type": caps.entity_type,
-            "entity_id": caps.entity_id,
-        },
-        "allowed_intents": list(caps.allowed_intents),
-        "allowed_channels": allowed_channels,
-        "bulk_allowed": bool(caps.bulk_allowed),
-        "denial_reasons": dict(caps.denial_reasons or {}),
-        "source": "communication.capability_resolver",
+        "thread_id": thread_proj.get("id") or thread_id,
+        "origin": identity.get("origin"),
+        "allowed_intents": caps.get("allowed_intents") or [],
+        "allowed_channels": caps.get("allowed_channels") or [],
+        "bulk_allowed": bool(caps.get("bulk_allowed")),
+        "denial_reasons": caps.get("policy_denials") or {},
+        "source": full.get("source") or "communication.thread_context.v1",
     }
 
 

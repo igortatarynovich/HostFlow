@@ -124,8 +124,34 @@ async def create_thread_message(
     _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     license_row = await _load_tenant_license_row(db, tenant_id)
+    policy_audit: dict | None = None
     if body.direction == "outbound" and not body.is_internal_note:
         _require_outbound_comms_not_billing_blocked(tenant, license_row)
+        # C1.1: backend policy is authority (FE ThreadContext is display-only).
+        from backend.app.communications.composer_policy import (
+            ComposerPolicyError,
+            enforce_manual_outbound_policy,
+        )
+
+        try:
+            policy_audit = await enforce_manual_outbound_policy(
+                db,
+                tenant_id=tenant_id,
+                thread=thread,
+                actor_id=str(getattr(current_user, "sub", "") or "") or None,
+                intent_key=body.intent,
+                channel=thread.channel,
+            )
+        except ComposerPolicyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "composer_policy_denied",
+                    "reason_code": exc.denial.reason_code,
+                    "message": exc.denial.reason_message,
+                    "details": dict(exc.denial.details or {}),
+                },
+            ) from exc
         # C0.1: known origin → durable G13 link required (auto-ensure from thread origin).
         from backend.app.communications.entity_link import (
             ThreadEntityLinkError,
@@ -146,6 +172,10 @@ async def create_thread_message(
                 },
             ) from exc
     now = _now_utc()
+    payload = dict(body.payload or {})
+    if policy_audit:
+        payload.setdefault("intent", policy_audit.get("intent"))
+        payload.setdefault("policy_decision", policy_audit.get("policy"))
     msg = CommunicationMessage(
         tenant_id=tenant_id,
         thread_id=thread_id,
@@ -165,7 +195,7 @@ async def create_thread_message(
         body_text=body.body_text,
         body_html=body.body_html,
         attachments_json=body.attachments_json,
-        payload=body.payload,
+        payload=payload,
         external_message_ref=body.external_message_ref,
         delivery_status=body.delivery_status,
         is_internal_note=body.is_internal_note,

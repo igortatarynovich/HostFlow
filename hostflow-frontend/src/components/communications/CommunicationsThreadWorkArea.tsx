@@ -9,6 +9,7 @@ import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 import { NextActionBadge } from '../candidate/NextActionBadge'
 import { primaryThreadEntityLabel } from '../../utils/communicationThreadEntityLinks'
+import ThreadComposer from './ThreadComposer'
 import ThreadDeliveryDiagnosticsStrip from './ThreadDeliveryDiagnosticsStrip'
 import { useThreadNextAction } from './useThreadNextAction'
 
@@ -47,23 +48,14 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
     setOpenActionMenu,
     workflowMenuRef,
     deliveryMenuRef,
-    draftText,
+    threadContext,
+    composerDraft,
+    patchComposerDraft,
     setDraftText,
-    draftSubject,
-    setDraftSubject,
-    recipientAddress,
-    setRecipientAddress,
-    internalNote,
-    setInternalNote,
-    sendImmediately,
-    setSendImmediately,
     templates,
     selectedTemplateId,
     setSelectedTemplateId,
-    applySignature,
-    setApplySignature,
     threadUnlinked,
-    inferredSignature,
     sortedMessages,
     load,
     handleMarkRead,
@@ -255,6 +247,38 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
     </section>
   )
 
+  const templatesSlot =
+    String(composerDraft.channel || thread.channel || '').toLowerCase() === 'email' &&
+    !composerDraft.internalNote &&
+    templates.length > 0 ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="input" value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)}>
+          {templates.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            const tpl = templates.find((x) => x.id === selectedTemplateId)
+            if (!tpl) return
+            const body = String(tpl.body || '').trim()
+            if (!body) return
+            setDraftText((prev) => {
+              const base = String(prev || '')
+              if (!base.trim()) return body
+              return `${base.trimEnd()}\n\n${body}`
+            })
+          }}
+        >
+          {t('common.actions.insert')}
+        </button>
+      </div>
+    ) : null
+
   const composeSection = (
     <div className="card p-4">
       <h2 className="mb-3 text-sm font-semibold text-slate-900">
@@ -267,82 +291,23 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             : t('app.communications_messages.mandatory_link.composer_banner')}
         </div>
       )}
-      <form className="space-y-3" onSubmit={handleSend}>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={internalNote} onChange={(e) => setInternalNote(e.target.checked)} />
-          {t('app.communications.thread.internal_note')}
-        </label>
-        {!internalNote && (
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={sendImmediately} onChange={(e) => setSendImmediately(e.target.checked)} />
-            {t('app.communications.thread.send_immediately')}
-          </label>
-        )}
-        {thread.channel === 'email' && !internalNote && (
-          <input
-            value={draftSubject}
-            onChange={(e) => setDraftSubject(e.target.value)}
-            className="w-full input"
-            placeholder={t('app.communications.thread.subject')}
-          />
-        )}
-        {!internalNote && (
-          <input
-            value={recipientAddress}
-            onChange={(e) => setRecipientAddress(e.target.value)}
-            className="w-full input"
-            placeholder={t('app.communications.thread.recipient')}
-          />
-        )}
-        {thread.channel === 'email' && !internalNote && templates.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <select className="input" value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)}>
-              {templates.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                const tpl = templates.find((x) => x.id === selectedTemplateId)
-                if (!tpl) return
-                const body = String(tpl.body || '').trim()
-                if (!body) return
-                setDraftText((prev) => {
-                  const base = String(prev || '')
-                  if (!base.trim()) return body
-                  return `${base.trimEnd()}\n\n${body}`
-                })
-              }}
-            >
-              {t('common.actions.insert')}
-            </button>
-          </div>
-        )}
-        {thread.channel === 'email' && !internalNote && inferredSignature && (
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={applySignature} onChange={(e) => setApplySignature(e.target.checked)} />
-            {t('app.communications.email.signature.apply')}
-          </label>
-        )}
-        <textarea
-          rows={layout === 'inboxCenter' ? 5 : 8}
-          value={draftText}
-          onChange={(e) => setDraftText(e.target.value)}
-          className="w-full textarea"
-          placeholder={t('app.communications.thread.message')}
+      {threadContext ? (
+        <ThreadComposer
+          context={threadContext}
+          draft={composerDraft}
+          onDraftChange={patchComposerDraft}
+          onSubmit={handleSend}
+          sending={sending}
+          templatesSlot={templatesSlot}
+          compact={layout === 'inboxCenter'}
         />
-        <button
-          type="submit"
-          disabled={sending || !draftText.trim()}
-          className="w-full btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {sending ? t('common.loading') : t('app.communications.thread.send')}
-        </button>
-      </form>
+      ) : (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+          {t('app.communications.composer.context_loading', {
+            defaultValue: 'Loading composer context from Communication Platform…',
+          })}
+        </div>
+      )}
     </div>
   )
 
@@ -353,20 +318,35 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       </h3>
       <div className="mt-3 space-y-1 text-xs text-slate-600">
         <div>
-          {t('app.communications.labels.channel')}: {thread.channel}
+          {t('app.communications.labels.channel')}:{' '}
+          {threadContext?.identity?.thread?.channel || thread.channel}
         </div>
         <div>
-          {t('app.communications.labels.status')}: {thread.status}
+          {t('app.communications.labels.status')}:{' '}
+          {threadContext?.identity?.thread?.status || thread.status}
         </div>
         <div>
-          {t('app.communications.queue.assignee')}: {thread.assignee_id || '—'}
+          {t('app.communications.queue.assignee')}:{' '}
+          {threadContext?.work_state?.assignee_id || thread.assignee_id || '—'}
         </div>
         <div>
-          {t('app.communications.labels.unread')}: {thread.unread_count}
+          {t('app.communications.labels.unread')}:{' '}
+          {threadContext?.work_state?.unread_count ?? thread.unread_count}
         </div>
         <div>
-          {t('app.communications.labels.entity')}: {primaryThreadEntityLabel(thread)}
+          {t('app.communications.labels.entity')}:{' '}
+          {threadContext?.identity?.linked_entities?.length
+            ? threadContext.identity.linked_entities
+                .map((e) => String(e.entity_type || e.entityType || 'entity'))
+                .join(', ')
+            : primaryThreadEntityLabel(thread)}
         </div>
+        {threadContext?.work_state?.active_queues?.length ? (
+          <div>
+            {t('app.communications.queues.title', { defaultValue: 'Queues' })}:{' '}
+            {threadContext.work_state.active_queues.join(', ')}
+          </div>
+        ) : null}
         <div>Last message: {formatThreadDateTime(thread.last_message_at)}</div>
         <div>Updated: {formatThreadDateTime(thread.updated_at)}</div>
       </div>

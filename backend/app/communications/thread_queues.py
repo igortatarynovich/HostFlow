@@ -36,7 +36,8 @@ THREAD_QUEUES: frozenset[str] = frozenset(
     }
 )
 
-_CLOSED_STATUSES = frozenset({"closed", "done", "resolved", "archived"})
+CLOSED_THREAD_STATUSES = frozenset({"closed", "done", "resolved", "archived"})
+_CLOSED_STATUSES = CLOSED_THREAD_STATUSES  # compat alias
 
 
 def normalize_thread_queue(value: str | None) -> str | None:

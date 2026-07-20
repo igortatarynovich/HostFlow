@@ -336,6 +336,8 @@ class CommunicationMessageCreate(BaseModel):
     external_message_ref: str | None = Field(default=None, max_length=255)
     delivery_status: str = Field(default="queued", max_length=32)
     is_internal_note: bool = False
+    # C1.1: Composer selection — backend re-validates; never trust FE allow-list alone.
+    intent: str | None = Field(default=None, max_length=64)
     sent_at: datetime | None = None
     delivered_at: datetime | None = None
     read_at: datetime | None = None
