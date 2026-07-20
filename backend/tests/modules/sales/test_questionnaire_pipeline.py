@@ -72,6 +72,11 @@ async def test_binder_creates_email_thread_and_result_link() -> None:
             new_callable=AsyncMock,
             return_value=fake_link,
         ) as attach,
+        patch(
+            "backend.app.modules.sales.communication.questionnaire_pipeline"
+            ".ensure_thread_entity_link",
+            new_callable=AsyncMock,
+        ) as ensure_g13,
     ):
         binding = await ensure_sales_questionnaire_pipeline_binding(
             db, tenant_id="t1", lead=lead, locale="pl", actor_user_id="u1"
@@ -88,3 +93,6 @@ async def test_binder_creates_email_thread_and_result_link() -> None:
     assert attach.await_args.kwargs["opaque"].module_owner == "sales"
     assert attach.await_args.kwargs["opaque"].result_type == "sales_inquiry"
     assert attach.await_args.kwargs["opaque"].result_id == "si-1"
+    assert ensure_g13.await_count == 2
+    g13_types = {c.kwargs["entity_type"] for c in ensure_g13.await_args_list}
+    assert g13_types == {"sales_inquiry", "lead"}
