@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listCandidateDocuments } from '../api/documents'
-import type { Document } from '../../api/types'
+import type { Document } from '../api/types'
 
 export function useCandidateRequirementDocuments(
   candidateId: string | null | undefined,
