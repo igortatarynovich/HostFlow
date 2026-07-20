@@ -1,12 +1,13 @@
 # ADR-022 Phase 2 — kickoff (Product B on current architecture)
 
-**Status:** SLICE 1 DELIVERED (docs) — ready for Convert mapping  
+**Status:** SLICE 2 IN PROGRESS (Convert mapping) — Review is next after merge  
 **Date:** 2026-07-20  
-**Trusted base:** `integration/release-product-a-b` @ `8224cc7a` (and successors via fast-forward only)  
+**Trusted base:** `integration/release-product-a-b` @ `70733762` (and successors via fast-forward only)  
 **Supersedes naming:** not “ADR022 audit” — audit is **done** ([`adr022-product-b-local-commits-audit.md`](adr022-product-b-local-commits-audit.md))  
 **Normative parents:** ADR-022 · ADR-021 · Flights R3.5 · INV-16 · INV-17 · [`repository-operational-canon.md`](../../governance/repository-operational-canon.md)
 
-**Canonical Flow Spec (slice 1):** [`../workflows/adr022-phase2-sales-only-capability-flow.md`](../workflows/adr022-phase2-sales-only-capability-flow.md)
+**Canonical Flow Spec (slice 1):** [`../workflows/adr022-phase2-sales-only-capability-flow.md`](../workflows/adr022-phase2-sales-only-capability-flow.md)  
+**Convert mapping (slice 2):** [`sales-questionnaire-convert-mapping.md`](sales-questionnaire-convert-mapping.md)
 
 ---
 
@@ -42,13 +43,16 @@ Historical commits on `feat/adr022-intake-policy-phase1-backend` are a **require
 
 | Order | Branch hint | Outcome | Status |
 |-------|-------------|---------|--------|
-| 1 | `docs/f3-b-10-sales-capability-flow` | Flow Spec: Sales-only Capability, ADR-022 axes, Flights + contracts | **This docs PR** → [`adr022-phase2-sales-only-capability-flow.md`](../workflows/adr022-phase2-sales-only-capability-flow.md) |
-| 2 | `feat/sales-questionnaire-convert-mapping` | Convert + invite enrichment from questionnaire fields | **NEXT** |
-| 3 | `feat/sales-ambiguous-match-review` | Review signal on **SalesInquiry** (not Lead.stage as SoT) | pending |
-| 4 | `feat/sales-capability-create-card` | Sales-only create + post-save card (new UI) | pending |
-| 5 | `feat/sales-inquiry-traceability-ui` | Traceability panel on SalesInquiry / client-acquisition paths | pending |
+| 1 | `docs/f3-b-10-sales-capability-flow` | Flow Spec: Sales-only Capability, ADR-022 axes, Flights + contracts | **Done** → [`adr022-phase2-sales-only-capability-flow.md`](../workflows/adr022-phase2-sales-only-capability-flow.md) |
+| 2 | `feat/sales-questionnaire-convert-mapping` | Convert mapping only (no wizard / UI / Review) | **CURRENT** → [`sales-questionnaire-convert-mapping.md`](sales-questionnaire-convert-mapping.md) |
+| 3 | `feat/sales-ambiguous-match-review` | Review signal on **SalesInquiry** (not Lead.stage as SoT) | **NEXT after convert** |
+| 4 | `feat/sales-inquiry-traceability` | Traceability lineage (implementation; UI later if needed) | pending |
+| 5 | `feat/sales-capability-create-card` | Sales-only create + post-save card (UI last) | pending |
 
 Stop after each PR for ownership / INV-16 review.
+
+**Linear order (domain before UI):** Docs → Convert mapping → Review → Traceability → Capability UI.
+
 
 ---
 

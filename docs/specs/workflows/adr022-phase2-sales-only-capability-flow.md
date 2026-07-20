@@ -275,7 +275,8 @@ Audit must answer: *which SalesInquiry, which Flights dispatch, which Capability
 - [x] Convert explicitly non-routing  
 - [x] Historical ADR022 commits mapped to requirements without porting code  
 - [x] Workflow registered in [`index.md`](index.md)  
-- [ ] Next implementation PR = **Convert mapping only** (no wizard, no UI shell)
+- [x] Next implementation PR = **Convert mapping only** (no wizard, no UI shell) → [`../tasks/sales-questionnaire-convert-mapping.md`](../tasks/sales-questionnaire-convert-mapping.md)
+- [ ] After Convert: **Review implementation** (not Traceability first)
 
 ---
 
@@ -297,8 +298,8 @@ Order after this docs PR:
 
 1. Convert mapping implementation  
 2. Ambiguous-match review on SalesInquiry  
-3. Sales-only create card  
-4. Traceability UI  
+3. Traceability implementation  
+4. Sales-only Capability create card (UI last)  
 
 ---
 
@@ -326,8 +327,10 @@ Branch `feat/adr022-intake-policy-phase1-backend` must **not** be checked out as
 feat/sales-questionnaire-convert-mapping
 ```
 
-Scope: Convert mapping only — questionnaire projections → Sales-owned result fields; confirmed inquiry + destination context; idempotent; fail-closed if review-required.
+Scope: Convert mapping only — see [`../tasks/sales-questionnaire-convert-mapping.md`](../tasks/sales-questionnaire-convert-mapping.md).
 
-**Not in that PR:** wizard, Capability create UI, Recruitment anything, Flights changes, mixed integrity fixes.
+**Then:** Review implementation → Traceability → Capability UI (last).
+
+**Not in Convert PR:** wizard, Capability create UI, Recruitment anything, Flights changes, mixed integrity fixes.
 
 Start gate: `make repo-health` on integration tip (Repository Operational Canon).
