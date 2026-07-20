@@ -103,6 +103,10 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 
 Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md).
 
+**Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
+[`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
+This is **not** Epic C complete. **Active:** C1 Inbox Workspace → then C2 → then Epic C done → Governance Review → Stage 3.
+
 **Locked:** finish Epic C (Communication) → Platform Governance Review → Acquisition/Stage 3 → Forms Platform → Entity Workspace → Documents → Billing → AI.  
 Do **not** open Stage 3 product slices while Communication Phase A is active unless the roadmap is explicitly amended.
 

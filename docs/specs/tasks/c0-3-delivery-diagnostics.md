@@ -1,10 +1,9 @@
 # C0.3 — Delivery Diagnostics
 
-**Status:** Active  
+**Status:** ✅ Merged (PR #104 @ `95f2a525`)  
 **Branch:** `fix/communication-c0-delivery-diagnostics`  
-**Worktree:** `/tmp/hf-c0-3-delivery-diagnostics`  
-**Base:** `integration/release-product-a-b` @ `b1bf5bdf` (after PR #103)  
-**Parents:** [Epic C0](epic-c0-communication-integrity.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.2](c0-2-inbound-resolver.md)
+**Base:** `integration/release-product-a-b`  
+**Parents:** [Epic C0](epic-c0-communication-integrity.md) · [Foundation](../architecture/communication-platform-foundation.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.2](c0-2-inbound-resolver.md)
 
 > For every send and delivery attempt the operator must know what happened, where it failed, whether retry is allowed, and what to show in UI — without server logs.
 
@@ -64,4 +63,5 @@ Provider status is never the operator-facing fact — only normalized canonical 
 
 ## Next after merge
 
-**C1 Inbox UX** — not Stage 3.
+**[C1 Communication Inbox Workspace](c1-communication-inbox-workspace.md)** — not Stage 3.  
+Foundation status: [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md).
