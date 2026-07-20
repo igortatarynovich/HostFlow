@@ -129,15 +129,63 @@ async def convert_sales_inquiry(
     application_id: str,
     current_user: UserCtx,
 ) -> ApplicationOut:
-    from backend.app.modules.leads.router import convert_client_lead_to_client_endpoint
+    """Product convert — SalesInquiry SoT via ``convert_sales_inquiry_mapping``.
 
-    await convert_client_lead_to_client_endpoint(
-        application_id,
-        db_tenant=(db, UUID(tenant_id)),
-        current_user=current_user,
-        own_company_id=own_company_id,
-        _role="manager",
+    Transport Lead id remains the Sales HTTP facade key; domain write path is
+    Convert Mapping (review gate + Review SoT + immutable mapping + lineage).
+    """
+    from backend.app.modules.sales.services.capability_spine_read import (
+        load_sales_inquiry_for_spine,
     )
+    from backend.app.modules.sales.services.convert_mapping import (
+        ConvertMappingError,
+        convert_sales_inquiry_mapping,
+        resolve_convert_provenance_for_inquiry,
+    )
+
+    inquiry = await load_sales_inquiry_for_spine(
+        db, tenant_id=tenant_id, application_id=application_id
+    )
+    if inquiry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    inquiry_oc = str(getattr(inquiry, "own_company_id", "") or "").strip()
+    if own_company_id and inquiry_oc and inquiry_oc != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    actor_id = str(current_user.sub or "").strip() or None
+    try:
+        destination, flights_ledger_id = await resolve_convert_provenance_for_inquiry(
+            db,
+            tenant_id=tenant_id,
+            inquiry=inquiry,
+        )
+        await convert_sales_inquiry_mapping(
+            db,
+            tenant_id=tenant_id,
+            sales_inquiry_id=str(inquiry.id),
+            destination=destination,
+            flights_ledger_id=flights_ledger_id,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except ConvertMappingError as exc:
+        await db.rollback()
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        if exc.reason in {"invalid_inquiry_state", "missing_flights_reference"}:
+            # Missing SI / ledger looks like a bad product target from the facade.
+            if exc.reason == "invalid_inquiry_state" and "not found" in exc.message.lower():
+                status_code = status.HTTP_404_NOT_FOUND
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "code": exc.code,
+                "reason": exc.reason,
+                "message": exc.message,
+                "details": exc.details,
+            },
+        ) from exc
+
     return await _reload_sales(db, tenant_id, own_company_id, application_id)
 
 

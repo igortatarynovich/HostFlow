@@ -55,12 +55,19 @@ Display-only spine: Capability proxy, Review status, Convert availability/result
 
 ---
 
-## 3b. Stage 2 — Manual ClientAccount creation (current)
+## 3b. Stage 2 — Manual ClientAccount creation ✅
 
-**Branch:** `feat/manual-client-account-creation`  
-**Task:** [stage-2-manual-client-account-creation.md](stage-2-manual-client-account-creation.md)  
-**Allowed:** backend `create_client_account_manually` + POST rewire; Origins §5–§6 contract.  
-**Forbidden in this slice:** manual-create UI; Pipeline wiring; Communication; import/API origins; universal duplicate review engine.
+**Branch:** `feat/manual-client-account-creation` (merged PR #97)  
+**Task:** [stage-2-manual-client-account-creation.md](stage-2-manual-client-account-creation.md)
+
+---
+
+## 3c. Stage 3 — Sales Pipeline product wiring (current)
+
+**Branch:** `fix/sales-pipeline-v1-product-wiring`  
+**Task:** [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md)  
+**Allowed (slice 1):** product convert → `convert_sales_inquiry_mapping`; apply Review SoT (`match_existing` / `create_new` / explicit `not_required`); mandatory convert audit; idempotent replay.  
+**Forbidden in this slice:** Communication; full Lead demotion UI; deleting Lead `convert-client` HTTP.
 
 ---
 

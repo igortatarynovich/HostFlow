@@ -1195,12 +1195,21 @@ async def get_company(db: AsyncSession, company_id: UUID) -> Optional[Company]:
     return company
 
 
-async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = None) -> Company:
+async def create_company(
+    db: AsyncSession,
+    data,
+    *,
+    actor_user_id: str | None = None,
+    commit: bool = True,
+) -> Company:
     """
     Создать компанию в пределах текущего tenant.
     Генерируем id сами (uuid4), т.к. в модели/БД нет дефолта.
     Если это первая компания и передан company_type (agency|employer|services),
     выставляем Tenant.type + bootstrap settings/modules.
+
+    ``commit=False`` keeps the row in the caller's open transaction (required for
+    Convert Mapping atomicity: ClientAccount + company + mapping + audit).
     """
     session = _extract_session(db)
     tenant_id = _tenant_id_from_session(session)
@@ -1317,8 +1326,11 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
             client_company_id=str(obj.id),
         )
 
-    await session.commit()
-    await session.refresh(obj)
+    if commit:
+        await session.commit()
+        await session.refresh(obj)
+    else:
+        await session.flush()
     return obj
 
 

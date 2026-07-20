@@ -20,19 +20,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.acquisition.flights.destination_registry import DESTINATION_RECRUITMENT, DESTINATION_SALES
+from backend.app.models.client_account import ClientAccount
 from backend.app.models.flight_dispatch_ledger import STATUS_CONFIRMED, FlightDispatchLedger
 from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.client_accounts import crud as account_crud
 from backend.app.modules.client_accounts.conversion import convert_client_lead
-from backend.app.modules.sales.services.ambiguous_match_review import review_blocks_convert
+from backend.app.modules.sales.services.ambiguous_match_review import (
+    DECISION_CREATE_NEW,
+    DECISION_MATCH_EXISTING,
+    STATUS_NOT_REQUIRED,
+    STATUS_RESOLVED_CREATE_NEW,
+    STATUS_RESOLVED_MATCH,
+    read_review_state,
+    review_blocks_convert,
+)
 from backend.app.modules.sales.services.sales_inquiry_traceability import (
     SalesInquiryTraceabilityError,
     read_lineage,
     record_lineage_after_convert,
 )
+from backend.app.services.audit import log_activity
 
 CONVERT_MAPPING_KEY = "convert_mapping_v1"
 CONVERT_MAPPING_VERSION = 1
+ORIGIN_SALES_INQUIRY_CONVERSION = "sales_inquiry_conversion"
+CREATION_ORIGIN_CONTRACT = "client_account.creation_origin.v1"
 
 # States that may enter convert (including already-converted for idempotent replay).
 _CONVERTIBLE_STATUSES = frozenset(
@@ -223,6 +235,206 @@ def _assert_inquiry_convertible(inquiry: SalesInquiry) -> None:
             reason="unresolved_review",
             details={"sales_inquiry_id": str(inquiry.id), "status": status},
         )
+
+
+def _review_convert_decision(inquiry: SalesInquiry) -> tuple[str, Optional[str]]:
+    """Apply Review SoT — fail closed unless Review explicitly stamped a decision path.
+
+    Allowed:
+    - ``resolved_match`` → ``match_existing`` (+ client_account_id)
+    - ``resolved_create_new`` → ``create_new``
+    - ``not_required`` → ``create_new`` (or auto ``match_existing`` when stamped)
+
+    Missing review / unknown status → fail closed (no invented create_new).
+    """
+    state = read_review_state(inquiry)
+    if state is None:
+        raise ConvertMappingError(
+            "SalesInquiry has no Review decision stamp",
+            reason="missing_review_decision",
+            details={"sales_inquiry_id": str(inquiry.id)},
+        )
+
+    review_status = str(state.get("status") or "").strip()
+    decision = state.get("decision")
+    row = dict(decision) if isinstance(decision, dict) else {}
+    action = _trim(row.get("action"))
+    selected_id = _trim(row.get("client_account_id"))
+
+    if review_status == STATUS_RESOLVED_MATCH:
+        if action != DECISION_MATCH_EXISTING or not selected_id:
+            raise ConvertMappingError(
+                "resolved_match review lacks match_existing decision",
+                reason="review_decision_incomplete",
+                details={
+                    "sales_inquiry_id": str(inquiry.id),
+                    "review_status": review_status,
+                    "decision": row,
+                },
+            )
+        return DECISION_MATCH_EXISTING, selected_id
+
+    if review_status == STATUS_RESOLVED_CREATE_NEW:
+        if action and action != DECISION_CREATE_NEW:
+            raise ConvertMappingError(
+                "resolved_create_new review has conflicting decision",
+                reason="review_decision_incomplete",
+                details={
+                    "sales_inquiry_id": str(inquiry.id),
+                    "review_status": review_status,
+                    "decision": row,
+                },
+            )
+        return DECISION_CREATE_NEW, None
+
+    if review_status == STATUS_NOT_REQUIRED:
+        if action == DECISION_MATCH_EXISTING and selected_id:
+            return DECISION_MATCH_EXISTING, selected_id
+        return DECISION_CREATE_NEW, None
+
+    raise ConvertMappingError(
+        "review status is not convertible",
+        reason="missing_review_decision",
+        details={
+            "sales_inquiry_id": str(inquiry.id),
+            "review_status": review_status,
+            "decision": row,
+        },
+    )
+
+
+async def _assert_match_target_ownership(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    inquiry: SalesInquiry,
+    client_account_id: str,
+) -> ClientAccount:
+    """Tenant / own_company ownership check before binding match_existing."""
+    cid = _trim(client_account_id)
+    if not cid:
+        raise ConvertMappingError(
+            "match_existing requires client_account_id",
+            reason="review_decision_incomplete",
+            details={"sales_inquiry_id": str(inquiry.id)},
+        )
+    account = await db.scalar(
+        select(ClientAccount).where(
+            ClientAccount.id == cid,
+            ClientAccount.tenant_id == tenant_id,
+        )
+    )
+    if account is None:
+        foreign = await db.get(ClientAccount, cid)
+        if foreign is not None and str(foreign.tenant_id) != tenant_id:
+            raise ConvertMappingError(
+                "match target ClientAccount belongs to another tenant",
+                reason="match_target_out_of_scope",
+                details={"client_account_id": cid},
+            )
+        raise ConvertMappingError(
+            "match target ClientAccount not found in tenant",
+            reason="match_target_out_of_scope",
+            details={"client_account_id": cid},
+        )
+    inquiry_oc = _trim(getattr(inquiry, "own_company_id", None))
+    account_oc = _trim(getattr(account, "own_company_id", None))
+    if inquiry_oc and account_oc and inquiry_oc != account_oc:
+        raise ConvertMappingError(
+            "match target ClientAccount own_company outside inquiry scope",
+            reason="match_target_out_of_scope",
+            details={
+                "client_account_id": cid,
+                "inquiry_own_company_id": inquiry_oc,
+                "account_own_company_id": account_oc,
+            },
+        )
+    return account
+
+
+def _stamp_conversion_origin(
+    account: ClientAccount,
+    *,
+    sales_inquiry_id: str,
+    actor_id: Optional[str],
+) -> None:
+    """Stamp Origins v1 conversion origin on newly created accounts only."""
+    if _trim(getattr(account, "origin_type", None)):
+        return
+    creation_ref = str(uuid.uuid4())
+    account.origin_type = ORIGIN_SALES_INQUIRY_CONVERSION
+    account.creation_ref = creation_ref
+    account.creation_origin_v1 = {
+        "contract": CREATION_ORIGIN_CONTRACT,
+        "origin_type": ORIGIN_SALES_INQUIRY_CONVERSION,
+        "creation_ref": creation_ref,
+        "sales_inquiry_id": sales_inquiry_id,
+        "created_by": actor_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def resolve_convert_provenance_for_inquiry(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    inquiry: SalesInquiry,
+) -> tuple[str, str]:
+    """Resolve confirmed Sales destination + opaque Flights ledger for product convert.
+
+    Prefer Review SoT provenance, then confirmed ledger by SalesInquiry result_id,
+    then confirmed ledger by transport lead.
+    """
+    tid = _trim(tenant_id)
+    sid = _trim(getattr(inquiry, "id", None))
+    if not tid or not sid:
+        raise ConvertMappingError(
+            "tenant_id and sales_inquiry_id are required",
+            reason="invalid_inquiry_state",
+            details={},
+        )
+
+    review = read_review_state(inquiry) or {}
+    review_ledger = _trim(review.get("flights_ledger_id"))
+    review_dest = _trim(review.get("destination")) or DESTINATION_SALES
+    if review_ledger:
+        return _assert_destination(review_dest), review_ledger
+
+    by_result = await db.scalar(
+        select(FlightDispatchLedger)
+        .where(
+            FlightDispatchLedger.tenant_id == tid,
+            FlightDispatchLedger.result_id == sid,
+            FlightDispatchLedger.destination == DESTINATION_SALES,
+            FlightDispatchLedger.status == STATUS_CONFIRMED,
+        )
+        .order_by(FlightDispatchLedger.confirmed_at.desc().nullslast())
+        .limit(1)
+    )
+    if by_result is not None:
+        return DESTINATION_SALES, str(by_result.id)
+
+    lead_id = _trim(getattr(inquiry, "lead_id", None))
+    if lead_id:
+        by_lead = await db.scalar(
+            select(FlightDispatchLedger)
+            .where(
+                FlightDispatchLedger.tenant_id == tid,
+                FlightDispatchLedger.transport_lead_id == lead_id,
+                FlightDispatchLedger.destination == DESTINATION_SALES,
+                FlightDispatchLedger.status == STATUS_CONFIRMED,
+            )
+            .order_by(FlightDispatchLedger.confirmed_at.desc().nullslast())
+            .limit(1)
+        )
+        if by_lead is not None:
+            return DESTINATION_SALES, str(by_lead.id)
+
+    raise ConvertMappingError(
+        "opaque Flights reference not found for SalesInquiry",
+        reason="missing_flights_reference",
+        details={"sales_inquiry_id": sid, "lead_id": lead_id},
+    )
 
 
 def _assert_destination(destination: str) -> str:
@@ -436,15 +648,46 @@ async def convert_sales_inquiry_mapping(
     )
     _merge_projections_into_lead_normalized(lead, projections)
 
+    decision_action, match_account_id = _review_convert_decision(inquiry)
+    company_actor = _actor_id_for_company_convert(actor_id)
+
+    if decision_action == DECISION_MATCH_EXISTING:
+        await _assert_match_target_ownership(
+            db,
+            tenant_id=tid,
+            inquiry=inquiry,
+            client_account_id=str(match_account_id),
+        )
+        # Bind transport Lead to Review SoT account before convert (no second create).
+        lead.client_account_id = str(match_account_id)
+
     conversion = await convert_client_lead(
         db,
         tenant_id=tid,
         lead=lead,
-        actor_id=_actor_id_for_company_convert(actor_id),
+        actor_id=company_actor,
         conversion_reason="sales_inquiry_convert_mapping",
     )
     account_id = str(conversion.client_account.id)
     company_id = str(conversion.company.id) if conversion.company is not None else None
+
+    if decision_action == DECISION_MATCH_EXISTING and account_id != str(match_account_id):
+        raise ConvertMappingError(
+            "convert did not bind Review match_existing ClientAccount",
+            reason="match_target_not_applied",
+            details={
+                "sales_inquiry_id": sid,
+                "expected_client_account_id": match_account_id,
+                "actual_client_account_id": account_id,
+            },
+        )
+
+    if decision_action == DECISION_CREATE_NEW and not conversion.idempotent_replay:
+        _stamp_conversion_origin(
+            conversion.client_account,
+            sales_inquiry_id=sid,
+            actor_id=actor_id,
+        )
 
     mapping = _build_mapping_snapshot(
         sales_inquiry_id=sid,
@@ -456,6 +699,11 @@ async def convert_sales_inquiry_mapping(
         questionnaire_projections=projections,
         actor_id=actor_id,
     )
+    # Capture review decision in immutable mapping for auditability.
+    mapping["review_decision"] = {
+        "action": decision_action,
+        "client_account_id": match_account_id if decision_action == DECISION_MATCH_EXISTING else None,
+    }
     _stamp_immutable_mapping(inquiry, mapping)
     await db.flush()
 
@@ -477,6 +725,37 @@ async def convert_sales_inquiry_mapping(
             exc.message,
             reason=exc.reason,
             details=exc.details,
+        ) from exc
+
+    # Mapping + lineage + convert audit are one mandatory unit of work.
+    # Audit failure must fail the convert; caller rolls back the whole transaction.
+    # actor_id on activity_log is FK(users) — only persist real user UUIDs.
+    try:
+        await log_activity(
+            db,
+            tenant_id=tid,
+            actor_id=company_actor,
+            action="sales_inquiry.convert_mapping",
+            target_type="sales_inquiry",
+            target_id=sid,
+            payload={
+                "client_account_id": account_id,
+                "company_id": company_id,
+                "flights_ledger_id": ledger_id,
+                "destination": dest,
+                "review_decision": mapping.get("review_decision"),
+                "idempotent_replay": bool(conversion.idempotent_replay),
+                "origin_type": ORIGIN_SALES_INQUIRY_CONVERSION,
+                "converted_by": actor_id,
+            },
+        )
+    except ConvertMappingError:
+        raise
+    except Exception as exc:
+        raise ConvertMappingError(
+            "convert audit write failed",
+            reason="audit_write_failed",
+            details={"sales_inquiry_id": sid, "error": str(exc)},
         ) from exc
 
     return ConvertMappingResult(
