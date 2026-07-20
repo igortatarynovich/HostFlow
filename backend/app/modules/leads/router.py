@@ -1487,13 +1487,17 @@ async def convert_client_lead_to_client_endpoint(
     own_company_id: str = Depends(resolve_active_own_company_id),
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
 ) -> LeadOut:
-    from backend.app.modules.client_accounts.conversion import convert_client_lead
-    from backend.app.modules.client_accounts import crud as account_crud
+    """Compatibility facade — same engine as ``POST /sales/inquiries/{id}/convert-client``.
+
+    Resolves SalesInquiry by transport Lead id and runs ``convert_sales_inquiry_mapping``.
+    Does not call ``convert_client_lead`` directly and adds no separate transaction boundary.
+    """
+    from backend.app.modules.applications.mutations import run_product_convert_via_mapping
     from backend.app.modules.leads import crud
+    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal
 
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
-    actor_id = str(current_user.sub or "").strip() or None
 
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
@@ -1508,7 +1512,6 @@ async def convert_client_lead_to_client_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Only Client Leads can be converted to Client",
         )
-    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal
 
     if client_lead_is_terminal(lead):
         raise HTTPException(
@@ -1521,18 +1524,14 @@ async def convert_client_lead_to_client_endpoint(
             detail="Client Lead has no owner company",
         )
 
-    locked_lead = await account_crud.get_lead_for_update(db, tenant_id=tenant_id_str, lead_id=lead_id)
-    if not locked_lead:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-
-    await convert_client_lead(
+    await run_product_convert_via_mapping(
         db,
         tenant_id=tenant_id_str,
-        lead=locked_lead,
-        actor_id=actor_id,
-        conversion_reason="manual_convert_client",
+        own_company_id=own_company_id,
+        application_id=lead_id,
+        current_user=current_user,
+        missing_detail="Lead not found",
     )
-    await db.commit()
 
     res = await service.list_leads(
         db,

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { IconArrowLeft } from '@tabler/icons-react'
-import { convertClientLeadToClient, getLead, updateLeadStage } from '../../api/client'
+import { convertSalesInquiryToClient } from '../../api/applications'
+import { getLead, updateLeadStage } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { clientAcquisitionChannelPath } from '../../app/clientAcquisitionPaths'
 import ClientLeadDetailView from '../../components/leads/ClientLeadDetailView'
@@ -124,7 +125,8 @@ export default function ClientInquiryWorkPage() {
     if (!lead?.id) return
     setConverting(true)
     try {
-      const updated = await convertClientLeadToClient(lead.id)
+      await convertSalesInquiryToClient(lead.id)
+      const updated = await getLead(lead.id)
       setLead(updated)
       notify({
         title: t('app.client_inquiry.client_created', { defaultValue: 'Компания сохранена в клиенты' }),

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { convertSalesInquiryToClient } from '../api/applications'
 import {
   completeActivity,
   confirmLeadVacancy,
-  convertClientLeadToClient,
   createActivity,
   deleteLead,
   getLead,
@@ -719,10 +719,11 @@ export default function LeadDetailPage() {
     if (!lead?.id) return
     setConvertingClientLead(true)
     try {
-      const updated = await convertClientLeadToClient(lead.id)
+      const app = await convertSalesInquiryToClient(lead.id)
+      const updated = await getLead(lead.id)
       setLead(updated)
       bumpNextActionTick()
-      const clientId = String(updated.converted_client_id || '').trim()
+      const clientId = String(updated.converted_client_id || app.outcome_entity_id || '').trim()
       notify({ title: t('app.clients.created_from_lead', { defaultValue: 'Клиент создан из анкеты' }), variant: 'success' })
       void loadTimeline()
       if (clientId) {

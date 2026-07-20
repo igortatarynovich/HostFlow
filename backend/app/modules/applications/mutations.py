@@ -121,18 +121,20 @@ async def patch_sales_stage(
     return await _reload_sales(db, tenant_id, own_company_id, application_id)
 
 
-async def convert_sales_inquiry(
+async def run_product_convert_via_mapping(
     db: AsyncSession,
     *,
     tenant_id: str,
     own_company_id: str,
     application_id: str,
     current_user: UserCtx,
-) -> ApplicationOut:
-    """Product convert — SalesInquiry SoT via ``convert_sales_inquiry_mapping``.
+    missing_detail: str = "Application not found",
+) -> str:
+    """Single product convert engine for all HTTP entrypoints.
 
-    Transport Lead id remains the Sales HTTP facade key; domain write path is
-    Convert Mapping (review gate + Review SoT + immutable mapping + lineage).
+    Resolves SalesInquiry from the transport Lead facade key (or SI id), runs
+    ``convert_sales_inquiry_mapping`` (Review SoT + mapping + lineage + audit),
+    and commits. Returns ``sales_inquiry_id``.
     """
     from backend.app.modules.sales.services.capability_spine_read import (
         load_sales_inquiry_for_spine,
@@ -147,11 +149,11 @@ async def convert_sales_inquiry(
         db, tenant_id=tenant_id, application_id=application_id
     )
     if inquiry is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=missing_detail)
 
     inquiry_oc = str(getattr(inquiry, "own_company_id", "") or "").strip()
     if own_company_id and inquiry_oc and inquiry_oc != str(own_company_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=missing_detail)
 
     actor_id = str(current_user.sub or "").strip() or None
     try:
@@ -186,6 +188,30 @@ async def convert_sales_inquiry(
             },
         ) from exc
 
+    return str(inquiry.id)
+
+
+async def convert_sales_inquiry(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+    application_id: str,
+    current_user: UserCtx,
+) -> ApplicationOut:
+    """Product convert — SalesInquiry SoT via ``convert_sales_inquiry_mapping``.
+
+    Transport Lead id remains the Sales HTTP facade key; domain write path is
+    Convert Mapping (review gate + Review SoT + immutable mapping + lineage).
+    """
+    await run_product_convert_via_mapping(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        application_id=application_id,
+        current_user=current_user,
+        missing_detail="Application not found",
+    )
     return await _reload_sales(db, tenant_id, own_company_id, application_id)
 
 
