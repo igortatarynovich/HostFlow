@@ -48,7 +48,7 @@
 | **7** | **C1** Inbox UX | *(TBD)* | Simple working messages module |
 | **8** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
-**Deferred (after C0 / as needed):** signature policy product polish, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
+**Deferred (after C0 / as needed):** signature policy product polish, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals, **Epic C2 Communication Campaigns** ([epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)).
 
 **Supersedes (this revision):** earlier rule “no Communication until all of Stage 3 closed”. Integrity slices C0.1–C0.3 run **after** Stage 3 slice 2 and **before** Stage 3 slice 3. Still **one** active product slice at a time.
 

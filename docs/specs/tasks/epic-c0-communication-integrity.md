@@ -57,16 +57,21 @@ Continuing Sales product flow on unbound / mis-linked threads makes every later 
 
 ### Scope (implementation, after audit)
 
-- Every send action requires origin context: `tenant_id`, `entity_type`, `entity_id`, `actor`, `recipient`.
-- Thread is created or resolved **before** provider handoff.
-- Entity link written in the **same** business operation; re-send does not duplicate links.
-- Send from SalesInquiry links thread at least to: SalesInquiry + transport Lead/Submission for traceability.
-- After convert: add ClientAccount link **without** removing Inquiry link.
-- UI reads G13 entity links, not only legacy `entity_type` / `entity_id` columns.
+**Normative capability:** [c0-1-platform-outbound.md](c0-1-platform-outbound.md)
 
-### Acceptance
+- Platform operation `SendCommunication(origin, recipients, channel, content, context)` — single outbound contour for all modules.
+- Mandatory **origin**; G13 link to origin (+ optional related entities) in the same atomic unit as `CommunicationMessage` + delivery/outbox.
+- Thread resolved by **work context / origin**, not recipient address alone; one person may have multiple threads.
+- Product modules do **not** own separate email writers; questionnaire invite is the first caller.
+- UI reads G13 entity links, with temporary legacy fallback.
+- After convert: ClientAccount G13 link may be added without removing Inquiry link (later callers).
 
-Email sent from an inquiry card appears in that inquiry’s history **immediately**, before provider reply/webhook.
+**Not in C0.1:** bulk/campaign engine → [Epic C2](epic-c2-communication-campaigns.md).
+
+### Acceptance / DoD
+
+- Email / message started from a supported entity appears on that entity’s history immediately (before provider reply).
+- Contract scenarios: send from `candidate`, `application`, `sales_inquiry`, `client_account`, `lead`; re-send reuses origin thread; every new thread has G13 origin; cannot send with known origin without G13.
 
 ---
 
