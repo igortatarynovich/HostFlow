@@ -12,7 +12,7 @@
 
 | Слой | Документы | Owner | Что делает owner |
 |---|---|---|---|
-| **Engineering canon** | `AGENTS.md` | Engineering lead | Контракт PR, security gate, RLS правило, AGENTS.md обновляется при изменении PR-контракта |
+| **Engineering canon** | `AGENTS.md`, [`repository-operational-canon.md`](repository-operational-canon.md) | Engineering lead | Контракт PR, security gate, RLS правило; worktree / trusted integration / health+import gates; AGENTS.md обновляется при изменении PR-контракта |
 | **Architecture canon** | `docs/specs/architecture/L0-platform-architecture.md`, `architecture-invariants.md`, `platform-architecture-principles.md`, `platform-capability-catalog.md`, `capability-settings-manifest.md`, `module-catalog-and-routing-map.md`, `architecture-review-checklist.md`, `architecture-guide.md`, ADR-002…030 (L0 = ADR-025…030 / P-01…P-05) | Architecture canon owner | Держит L0 **FROZEN**; аппрувит Architecture RFC / l0-errata; защищает P-01…P-05 + INV-01…15 |
 | **Security canon** | `docs/security/security-ssot.md`, `security-review-checklist.md`, `runtime-roadmap.md`, `threat-models/*.md` | Security owner | Аппрувит изменения в RLS / handoff / classification / IR / threat models; держит PR security gate |
 | **Module canon (per module)** | `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` | Module owner (recruitment / sales / hr / fleet / services / finance / forms / document-hub) | Аппрувит изменения scope модуля; следит, что module spec не противоречит ADR |

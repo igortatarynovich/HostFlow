@@ -37,6 +37,8 @@ The FastAPI backend lives in `backend/app` with API routes under `backend/app/ap
 - `make docs-lint` — documentation governance lint.
 - `make docs-lint-strict` — same as `docs-lint` but ignores baseline (zero tolerance).
 - `make docs-lint-baseline` — rewrite `scripts/docs/governance_baseline.txt` with current violations (use sparingly).
+- `make repo-health` — Repository Health Gate (clean tree, FF integration, alembic head, import integrity, worktrees).
+- `make check-ts-imports` — GIT-IMPORT-INTEGRITY only.
 
 Для клиента: установите зависимости в `hostflow-frontend` и используйте `npm run dev` для локальной разработки, `npm run build` для сборки, и `npm run preview` для проверки production-версии.
 
@@ -61,6 +63,8 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 - [ ] Если PR затрагивает модули / shared capabilities / integrations / settings / contracts — пройден [`docs/specs/architecture/architecture-review-checklist.md`](docs/specs/architecture/architecture-review-checklist.md) (**10 вопросов L0**; обязателен также перед новым ADR)
 - [ ] Если PR меняет L0 (P-rules, Passport/Manifest **shape**, freeze docs) — есть **Architecture RFC** (`architecture-rfc` / `l0-change`) или `l0-errata` + аппрув Architecture canon owner — [`L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md)
 - [ ] Если PR трогает `*.md` — пройден `make docs-lint` и контрибьютор-чеклист (`docs/governance/documentation-rules.md` §9)
+- [ ] Перед стартом Product PR — `make repo-health` зелёный (`docs/governance/repository-operational-canon.md`)
+- [ ] PR не смешанный (один concern); base = `integration/release-product-a-b` для integration line
 
 ---
 
@@ -81,13 +85,24 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 - **Авто-метки:** `.github/workflows/pull-request-labeler.yml` + `.github/labeler.yml` (метки создать один раз: `docs/security/github-labels.md`).
 - Threat models по поверхностям: `docs/security/threat-models/`.
 
+## Repository operational canon (mandatory)
+
+Перед **любой** новой продуктовой работой прочитайте [`docs/governance/repository-operational-canon.md`](docs/governance/repository-operational-canon.md) и прогоните:
+
+```bash
+make repo-health
+```
+
+Кратко: единственный trusted base — `integration/release-product-a-b` (FF only); работа через worktree; один concern — один PR; `/tmp` и `recovery/*` не SoT; GIT-IMPORT-INTEGRITY + Repository Health обязательны. Нарушение = process fail.
+
 ## Documentation governance
 
-Перед созданием или изменением любого `.md` файла прочитайте `docs/governance/` (три файла, читать все три):
+Перед созданием или изменением любого `.md` файла прочитайте `docs/governance/` (читать все):
 
 - **`docs/governance/hierarchy-of-truth.md`** — три уровня источников истины (L1 canon / L2 operating canon / L3 implementation context). При конфликте выигрывает более высокий уровень. L1 не может ссылаться на L3 как на «канон».
 - **`docs/governance/documentation-rules.md`** — куда класть новый ADR / workflow / module spec / runbook, что запрещено (`*-draft.md`, `*-final-v2.md`, и т.д.), как архивировать с canon replacement, контрибьютор-checklist (§9).
 - **`docs/governance/ownership.md`** — владельцы канона по слою (security / architecture / module / workflows / operational SSOT). Без явного owner-а новый канонический слой не создаётся.
+- **`docs/governance/repository-operational-canon.md`** — операционный канон репозитория (worktree, gates, PR split, recovery).
 
 **Жёсткие правила (выдержка из rules):**
 - Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage). ADR **ссылается** на L0 (P-01…P-05 / INV / Catalog), **не** переписывает конституцию. Сначала checklist + Catalog.

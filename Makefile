@@ -153,6 +153,14 @@ docs-lint-strict:
 docs-lint-baseline:
 	python3 scripts/docs/check_doc_governance.py --init-baseline
 
+.PHONY: repo-health
+repo-health:
+	python3 scripts/repo_health_gate.py --strict-worktrees
+
+.PHONY: check-ts-imports
+check-ts-imports:
+	python3 hostflow-frontend/scripts/check_ts_import_integrity.py
+
 # ---- Utils ----
 .PHONY: env-print
 env-print:
