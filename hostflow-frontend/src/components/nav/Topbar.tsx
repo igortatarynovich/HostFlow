@@ -23,8 +23,8 @@ import {
   resolveNotificationOpenPath,
 } from '../../utils/resolveNotificationOpenPath'
 import {
+  executeWorkspaceCommand,
   listCommunicationThreads,
-  markCommunicationThreadRead,
   reconcileCommunicationThreadUnread,
   type CommunicationThread,
 } from '../../api/communications'
@@ -612,7 +612,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   const dismissThread = async (threadId: string) => {
     try {
-      await markCommunicationThreadRead(threadId)
+      await executeWorkspaceCommand(threadId, 'MarkThreadRead')
       setPanelThreads((prev) => prev.filter((t) => t.id !== threadId))
       setCommPollKey((k) => k + 1)
     } catch {
@@ -624,7 +624,9 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     const threadsSnap = [...panelThreads]
     try {
       await markNotificationsRead({ markAll: true })
-      await Promise.all(threadsSnap.map((th) => markCommunicationThreadRead(th.id).catch(() => {})))
+      await Promise.all(
+        threadsSnap.map((th) => executeWorkspaceCommand(th.id, 'MarkThreadRead').catch(() => {})),
+      )
       setPanelThreads([])
       setNotifItems([])
       lastUnreadNotificationsRef.current = []

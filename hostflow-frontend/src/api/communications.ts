@@ -856,6 +856,15 @@ export type ThreadContext = {
     is_archived: boolean
     active_queues: string[]
     sla_due_at?: string | null
+    sla?: {
+      started_at?: string | null
+      target_due_at?: string | null
+      resolved_at?: string | null
+      paused?: boolean
+      paused_intervals?: Array<{ paused_at?: string | null; resumed_at?: string | null }>
+      breached?: boolean
+      status?: string
+    }
     next_action?: Record<string, unknown> | null
   }
   capabilities: {
@@ -939,6 +948,57 @@ export async function getThreadContext(threadId: string): Promise<ThreadContext>
   return data as ThreadContext
 }
 
+/** C1.2 Workspace Command result — apply `context` without a second refresh GET. */
+export type WorkspaceCommandResult = {
+  command: string
+  applied: boolean
+  audit_id?: string | null
+  context: ThreadContext
+}
+
+export type WorkspaceCommandName =
+  | 'AssignThread'
+  | 'ReassignThread'
+  | 'UnassignThread'
+  | 'MarkThreadRead'
+  | 'MarkThreadUnread'
+  | 'SetNextAction'
+  | 'CompleteNextAction'
+  | 'CancelNextAction'
+  | 'PauseSLA'
+  | 'ResumeSLA'
+  | 'CloseThread'
+  | 'ReopenThread'
+
+export async function executeWorkspaceCommand(
+  threadId: string,
+  command: WorkspaceCommandName,
+  body?: Record<string, unknown>,
+): Promise<WorkspaceCommandResult> {
+  const { data } = await api.post(
+    `/communications/threads/${threadId}/commands/${command}`,
+    body ?? {},
+  )
+  return data as WorkspaceCommandResult
+}
+
+/** Merge Command/ThreadContext projection into a list/detail thread row (no extra GET). */
+export function mergeThreadFromContext(
+  thread: CommunicationThread,
+  ctx: ThreadContext,
+): CommunicationThread {
+  return {
+    ...thread,
+    assignee_id: ctx.work_state?.assignee_id ?? thread.assignee_id,
+    unread_count: ctx.work_state?.unread_count ?? thread.unread_count,
+    is_archived: ctx.work_state?.is_archived ?? thread.is_archived,
+    status: (ctx.identity?.thread?.status as CommunicationThread['status']) || thread.status,
+    subject: ctx.identity?.thread?.subject ?? thread.subject,
+    channel: (ctx.identity?.thread?.channel as CommunicationThread['channel']) || thread.channel,
+    sla_due_at: ctx.work_state?.sla_due_at ?? thread.sla_due_at,
+  }
+}
+
 export async function getThreadCapabilities(threadId: string): Promise<ThreadCapabilities> {
   const { data } = await api.get(`/communications/threads/${threadId}/capabilities`)
   return data as ThreadCapabilities
@@ -1010,8 +1070,14 @@ export async function markCommunicationThreadRead(
   threadId: string,
   payload?: { message_ids?: string[]; mark_thread?: boolean }
 ): Promise<CommunicationThread> {
-  const { data } = await api.post(`/communications/threads/${threadId}/read`, payload || { mark_thread: true })
-  return data as CommunicationThread
+  // C1.2: thread-level read goes through Workspace Command. Selective message_ids keep legacy POST.
+  if (payload?.message_ids?.length) {
+    const { data } = await api.post(`/communications/threads/${threadId}/read`, payload)
+    return data as CommunicationThread
+  }
+  await executeWorkspaceCommand(threadId, 'MarkThreadRead')
+  const detail = await getCommunicationThread(threadId)
+  return detail.thread
 }
 
 export async function reconcileCommunicationThreadUnread(payload?: {

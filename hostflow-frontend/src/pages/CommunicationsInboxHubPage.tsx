@@ -4,9 +4,10 @@ import clsx from 'clsx'
 import { IconBell, IconRefresh } from '@tabler/icons-react'
 import {
   createCommunicationCommandAuditBatch,
+  executeWorkspaceCommand,
   getCommunicationsSettings,
   listCommunicationCommandAudit,
-  markCommunicationThreadRead,
+  mergeThreadFromContext,
   patchCommunicationThread,
   patchCommunicationsSettings,
   type CommunicationCommandAudit,
@@ -495,11 +496,16 @@ export default function CommunicationsInboxHubPage() {
           for (const action of Array.isArray(command.actions) ? command.actions : []) {
             const type = String(action?.type || '')
             if (type === 'mark_read') {
-              current = await markCommunicationThreadRead(current.id, { mark_thread: true })
+              const result = await executeWorkspaceCommand(current.id, 'MarkThreadRead')
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'archive' || type === 'unarchive') {
-              current = await patchCommunicationThread(current.id, { is_archived: type === 'archive' })
+              const result = await executeWorkspaceCommand(
+                current.id,
+                type === 'archive' ? 'CloseThread' : 'ReopenThread',
+              )
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'priority_high' || type === 'priority_normal') {
@@ -659,12 +665,25 @@ export default function CommunicationsInboxHubPage() {
       let failed = 0
       for (const snap of lastBulkUndo.snapshots) {
         try {
-          const row = await patchCommunicationThread(snap.id, {
+          // Workspace SoT for archive/read; remaining fields still via deprecated PATCH until dedicated Commands exist.
+          let row: CommunicationThread = {
+            id: snap.id,
             status: snap.status,
             is_archived: snap.is_archived,
             priority: snap.priority,
             tags_json: snap.tags_json,
             unread_count: snap.unread_count,
+          } as CommunicationThread
+          const archiveCmd = snap.is_archived ? 'CloseThread' : 'ReopenThread'
+          const archiveResult = await executeWorkspaceCommand(snap.id, archiveCmd)
+          row = mergeThreadFromContext(row, archiveResult.context)
+          const readCmd = snap.unread_count > 0 ? 'MarkThreadUnread' : 'MarkThreadRead'
+          const readResult = await executeWorkspaceCommand(snap.id, readCmd)
+          row = mergeThreadFromContext(row, readResult.context)
+          row = await patchCommunicationThread(snap.id, {
+            status: snap.status,
+            priority: snap.priority,
+            tags_json: snap.tags_json,
           })
           updated.set(String(row.id), row)
           ok += 1

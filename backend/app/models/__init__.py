@@ -210,6 +210,9 @@ CommunicationInboundUnresolved = _load_model_module(
 CommunicationThreadNextAction = _load_model_module(
     "communication_thread_next_action"
 ).CommunicationThreadNextAction  # type: ignore[attr-defined]
+CommunicationThreadSlaEvent = _load_model_module(
+    "communication_thread_sla_event"
+).CommunicationThreadSlaEvent  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -368,6 +371,7 @@ __all__ = [
     "CommunicationThreadEntityLink",
     "CommunicationInboundUnresolved",
     "CommunicationThreadNextAction",
+    "CommunicationThreadSlaEvent",
     "DocumentPolicy",
     "Stage",
     "MagicLink",

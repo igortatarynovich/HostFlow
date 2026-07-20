@@ -1,7 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconExternalLink, IconListCheck, IconShield } from '@tabler/icons-react'
-import { patchCommunicationThread, type CommunicationThread } from '../../api/communications'
+import {
+  executeWorkspaceCommand,
+  type CommunicationThread,
+} from '../../api/communications'
 import { createReminder } from '../../api/client'
 import { listTenantManagers } from '../../api/users'
 import type { ManagerOption } from '../../api/types'
@@ -66,7 +69,7 @@ export default function CommunicationsInboxControlPanel({
 }: Props) {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
-  const { busyAction, handleMarkRead, handleAutoAssign, load } = model
+  const { busyAction, handleMarkRead, handleAutoAssign, load, applyCommandResult } = model
   const unlinked = isCommunicationThreadUnlinked(thread)
   const cid = String(thread.linked_candidate_id || '').trim()
   const compId = String(thread.linked_company_id || '').trim()
@@ -131,8 +134,14 @@ export default function CommunicationsInboxControlPanel({
     setAssigneeOk(false)
     setAssigneeSaveError(null)
     try {
-      await patchCommunicationThread(thread.id, { assignee_id: assigneeDraft || null })
-      await load()
+      const draft = String(assigneeDraft || '').trim()
+      const result = draft
+        ? await executeWorkspaceCommand(thread.id, thread.assignee_id ? 'ReassignThread' : 'AssignThread', {
+            assignee_id: draft,
+            reason: 'manual',
+          })
+        : await executeWorkspaceCommand(thread.id, 'UnassignThread', { reason: 'manual' })
+      applyCommandResult?.(result)
       setAssigneeSaveError(null)
       setAssigneeOk(true)
       await onAfterThreadPatch?.()
@@ -147,12 +156,15 @@ export default function CommunicationsInboxControlPanel({
     }
   }
 
-  const applyThreadFolderPatch = async (payload: Record<string, unknown>, exitCenter: boolean) => {
+  const applyThreadFolderCommand = async (
+    command: 'CloseThread' | 'ReopenThread',
+    exitCenter: boolean,
+  ) => {
     setFolderBusy(true)
     setFolderError(null)
     try {
-      await patchCommunicationThread(thread.id, payload)
-      await load()
+      const result = await executeWorkspaceCommand(thread.id, command)
+      applyCommandResult?.(result)
       await onAfterThreadPatch?.()
       if (exitCenter) onAfterArchiveOrDelete?.()
     } catch (err: unknown) {
@@ -428,7 +440,7 @@ export default function CommunicationsInboxControlPanel({
                   className="btn-secondary btn-sm w-full disabled:opacity-50"
                   disabled={folderBusy}
                   onClick={() =>
-                    void applyThreadFolderPatch({ is_archived: true, status: 'archived' }, Boolean(onAfterArchiveOrDelete))
+                    void applyThreadFolderCommand('CloseThread', Boolean(onAfterArchiveOrDelete))
                   }
                 >
                   {folderBusy
@@ -440,7 +452,7 @@ export default function CommunicationsInboxControlPanel({
                   className="btn-danger btn-sm w-full disabled:opacity-50"
                   disabled={folderBusy}
                   onClick={() =>
-                    void applyThreadFolderPatch({ is_archived: true, status: 'deleted' }, Boolean(onAfterArchiveOrDelete))
+                    void applyThreadFolderCommand('CloseThread', Boolean(onAfterArchiveOrDelete))
                   }
                 >
                   {folderBusy
@@ -454,7 +466,7 @@ export default function CommunicationsInboxControlPanel({
                 type="button"
                 className="btn-secondary btn-sm w-full disabled:opacity-50"
                 disabled={folderBusy}
-                onClick={() => void applyThreadFolderPatch({ is_archived: false, status: 'open' }, false)}
+                onClick={() => void applyThreadFolderCommand('ReopenThread', false)}
               >
                 {folderBusy
                   ? t('common.loading')

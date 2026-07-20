@@ -21,9 +21,13 @@ from backend.app.communications.workspace_commands import (
     WorkspaceCommandError,
     assign_thread,
     cancel_next_action,
+    close_thread,
     complete_next_action,
     mark_thread_read,
     mark_thread_unread,
+    pause_sla,
+    reopen_thread,
+    resume_sla,
     set_next_action,
     unassign_thread,
 )
@@ -306,3 +310,92 @@ async def command_cancel_next_action(
     except WorkspaceCommandError as exc:
         raise _http_command_error(exc) from exc
     return result.to_dict()
+
+
+class ResumeSlaBody(BaseModel):
+    target_due_at: datetime | None = None
+
+
+@router.post("/threads/{thread_id}/commands/PauseSLA")
+async def command_pause_sla(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    return (
+        await pause_sla(
+            db, tenant_id=tenant_id, thread=thread, actor_user_id=actor
+        )
+    ).to_dict()
+
+
+@router.post("/threads/{thread_id}/commands/ResumeSLA")
+async def command_resume_sla(
+    thread_id: str,
+    body: ResumeSlaBody | None = None,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    return (
+        await resume_sla(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor,
+            target_due_at=body.target_due_at if body else None,
+        )
+    ).to_dict()
+
+
+@router.post("/threads/{thread_id}/commands/CloseThread")
+async def command_close_thread(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    return (
+        await close_thread(
+            db, tenant_id=tenant_id, thread=thread, actor_user_id=actor
+        )
+    ).to_dict()
+
+
+@router.post("/threads/{thread_id}/commands/ReopenThread")
+async def command_reopen_thread(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    db, tenant_id, thread, actor = await _load_thread_for_command(
+        thread_id=thread_id,
+        db_tenant=db_tenant,
+        current_user=current_user,
+        own_company_id=own_company_id,
+    )
+    return (
+        await reopen_thread(
+            db, tenant_id=tenant_id, thread=thread, actor_user_id=actor
+        )
+    ).to_dict()

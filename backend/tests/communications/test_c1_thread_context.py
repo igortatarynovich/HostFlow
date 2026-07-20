@@ -40,6 +40,7 @@ REQUIRED_WORK = {
     "is_archived",
     "active_queues",
     "sla_due_at",
+    "sla",
     "next_action",
 }
 REQUIRED_CAPS = {

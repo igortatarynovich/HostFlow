@@ -20,6 +20,10 @@ from backend.app.models.communication import (
     CommunicationMessage,
     CommunicationThread,
 )
+from backend.app.communications.sla_clock import (
+    append_sla_event,
+    project_thread_sla,
+)
 from backend.app.models.communication_thread_next_action import (
     NEXT_ACTION_SOURCE_AUTOMATION,
     NEXT_ACTION_SOURCE_MANUAL,
@@ -27,6 +31,12 @@ from backend.app.models.communication_thread_next_action import (
     NEXT_ACTION_STATUS_CANCELLED,
     NEXT_ACTION_STATUS_COMPLETED,
     CommunicationThreadNextAction,
+)
+from backend.app.models.communication_thread_sla_event import (
+    SLA_EVENT_PAUSE,
+    SLA_EVENT_RESOLVE,
+    SLA_EVENT_RESUME,
+    SLA_EVENT_START,
 )
 
 AssignmentReason = Literal[
@@ -56,6 +66,10 @@ WorkspaceCommandName = Literal[
     "SetNextAction",
     "CompleteNextAction",
     "CancelNextAction",
+    "PauseSLA",
+    "ResumeSLA",
+    "CloseThread",
+    "ReopenThread",
 ]
 
 NEXT_ACTION_SOURCES: frozenset[str] = frozenset(
@@ -593,6 +607,288 @@ async def cancel_next_action(
     )
 
 
+async def pause_sla(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+) -> WorkspaceCommandResult:
+    clock = await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
+    if clock.status == "none" and thread.sla_due_at is not None:
+        # Bootstrap start from legacy column so Pause has a clock to freeze.
+        await append_sla_event(
+            db,
+            tenant_id=tenant_id,
+            thread_id=str(thread.id),
+            event_type=SLA_EVENT_START,
+            actor_user_id=actor_user_id,
+            payload={"target_due_at": thread.sla_due_at.isoformat(), "source": "legacy_due"},
+        )
+        clock = await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
+    if clock.paused or clock.status in {"none", "resolved"}:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="PauseSLA",
+            applied=False,
+            audit_id=None,
+        )
+    now = _now()
+    frozen_due = clock.target_due_at or (
+        thread.sla_due_at.isoformat() if thread.sla_due_at else None
+    )
+    await append_sla_event(
+        db,
+        tenant_id=tenant_id,
+        thread_id=str(thread.id),
+        event_type=SLA_EVENT_PAUSE,
+        actor_user_id=actor_user_id,
+        at=now,
+        payload={"frozen_target_due_at": frozen_due},
+    )
+    # Keep scheduler quiet while paused (projection still knows frozen due).
+    thread.sla_due_at = None
+    thread.updated_at = now
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="PauseSLA",
+        actions=[{"field": "sla", "op": "pause", "frozen_target_due_at": frozen_due}],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="PauseSLA",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def resume_sla(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+    target_due_at: datetime | None = None,
+) -> WorkspaceCommandResult:
+    from backend.app.communications.sla_clock import list_sla_events
+
+    clock = await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
+    if not clock.paused:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="ResumeSLA",
+            applied=False,
+            audit_id=None,
+        )
+    now = _now()
+    due = target_due_at
+    if due is None:
+        evs = await list_sla_events(db, tenant_id=tenant_id, thread_id=str(thread.id))
+        frozen = None
+        for ev in reversed(evs):
+            if str(ev.event_type) == SLA_EVENT_PAUSE:
+                frozen = (ev.payload or {}).get("frozen_target_due_at")
+                break
+        if frozen:
+            try:
+                due = datetime.fromisoformat(str(frozen).replace("Z", "+00:00"))
+            except Exception:
+                due = None
+        elif clock.target_due_at:
+            try:
+                due = datetime.fromisoformat(clock.target_due_at.replace("Z", "+00:00"))
+            except Exception:
+                due = None
+
+    await append_sla_event(
+        db,
+        tenant_id=tenant_id,
+        thread_id=str(thread.id),
+        event_type=SLA_EVENT_RESUME,
+        actor_user_id=actor_user_id,
+        at=now,
+        payload={"target_due_at": due.isoformat() if due else None},
+    )
+    thread.sla_due_at = due
+    thread.updated_at = now
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="ResumeSLA",
+        actions=[
+            {
+                "field": "sla",
+                "op": "resume",
+                "target_due_at": due.isoformat() if due else None,
+            }
+        ],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="ResumeSLA",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def close_thread(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+    cancel_active_next_action: bool = True,
+) -> WorkspaceCommandResult:
+    already = bool(thread.is_archived) or str(thread.status or "").lower() in {
+        "closed",
+        "archived",
+        "resolved",
+        "done",
+    }
+    if already:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="CloseThread",
+            applied=False,
+            audit_id=None,
+        )
+    now = _now()
+    actions: list[dict[str, Any]] = []
+    if cancel_active_next_action:
+        active = await _get_active_next_action(
+            db, tenant_id=tenant_id, thread_id=str(thread.id)
+        )
+        if active is not None:
+            active.status = NEXT_ACTION_STATUS_CANCELLED
+            active.completed_at = now
+            active.completed_by = actor_user_id
+            active.updated_at = now
+            actions.append(
+                {
+                    "field": "next_action",
+                    "op": "cancel_on_close",
+                    "id": str(active.id),
+                }
+            )
+    clock = await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
+    if clock.status not in {"none", "resolved"}:
+        await append_sla_event(
+            db,
+            tenant_id=tenant_id,
+            thread_id=str(thread.id),
+            event_type=SLA_EVENT_RESOLVE,
+            actor_user_id=actor_user_id,
+            at=now,
+            payload={"reason": "thread_closed"},
+        )
+        actions.append({"field": "sla", "op": "resolve_on_close"})
+    prev_status = thread.status
+    thread.is_archived = True
+    thread.status = "closed"
+    thread.sla_due_at = None
+    thread.updated_at = now
+    actions.append(
+        {
+            "field": "status",
+            "from": prev_status,
+            "to": "closed",
+            "is_archived": True,
+        }
+    )
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="CloseThread",
+        actions=actions,
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="CloseThread",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
+async def reopen_thread(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    actor_user_id: str | None,
+) -> WorkspaceCommandResult:
+    closed = bool(thread.is_archived) or str(thread.status or "").lower() in {
+        "closed",
+        "archived",
+        "resolved",
+        "done",
+        "deleted",
+    }
+    if not closed:
+        return await _finish(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=actor_user_id,
+            command="ReopenThread",
+            applied=False,
+            audit_id=None,
+        )
+    now = _now()
+    prev_status = thread.status
+    thread.is_archived = False
+    thread.status = "open"
+    thread.updated_at = now
+    audit_id = await _write_audit(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command_id="ReopenThread",
+        actions=[
+            {
+                "field": "status",
+                "from": prev_status,
+                "to": "open",
+                "is_archived": False,
+            }
+        ],
+    )
+    return await _finish(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=actor_user_id,
+        command="ReopenThread",
+        applied=True,
+        audit_id=audit_id,
+    )
+
+
 __all__ = [
     "ASSIGNMENT_REASONS",
     "AssignmentReason",
@@ -601,9 +897,13 @@ __all__ = [
     "WorkspaceCommandResult",
     "assign_thread",
     "cancel_next_action",
+    "close_thread",
     "complete_next_action",
     "mark_thread_read",
     "mark_thread_unread",
+    "pause_sla",
+    "reopen_thread",
+    "resume_sla",
     "set_next_action",
     "unassign_thread",
 ]

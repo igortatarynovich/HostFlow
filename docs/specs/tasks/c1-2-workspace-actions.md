@@ -280,15 +280,18 @@ Composer **unchanged** (C1.1). No `module == …` branches.
 - [x] `AssignmentReason` on assign/reassign/unassign  
 - [x] Contract test: no queue-mutation in Workspace Command routes  
 - [x] ThreadNextAction entity + Set / Complete / Cancel (+ projection in ThreadContext)  
-- [ ] Pause/Resume SLA + Close/Reopen Commands  
+- [x] Pause/Resume SLA + Close/Reopen Commands  
+- [x] SLA event clock; `breached` derived in ThreadContext.work_state.sla  
+- [x] Legacy PATCH /read marked `deprecated=True`  
+- [x] Workspace ControlPanel + mark-read use Commands + returned ThreadContext  
+- [x] Hub bulk mark_read / archive / unarchive + Topbar dismiss → Commands  
 - [ ] Optimistic concurrency → typed conflict  
-- [ ] SLA event clock; breached derived  
-- [ ] Workspace UI uses Commands only (no field PATCH)  
-- [ ] Legacy PATCH deprecated → internals on Commands → delete  
+- [ ] Hub tags/priority/delete + WorkflowCard meta still on deprecated PATCH  
+- [ ] Delete deprecated PATCH/read after remaining callers migrated  
 - [ ] **Close-out:** no-mixed-path contract test (zero Thread mutations outside Commands)  
 - [ ] Composer unchanged  
 - [ ] No `module == …` branches  
-- [ ] Contract test: modules use public Communication Workspace Command API via adapters 
+- [ ] Contract test: modules use public Communication Workspace Command API via adapters
 
 ## After C1.2 → C1.3 Workspace Experience
 

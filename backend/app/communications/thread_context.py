@@ -40,6 +40,7 @@ from backend.app.communications.thread_queues import (
     QUEUE_DELIVERY_ERRORS,
     QUEUE_NEW_INBOUND,
     QUEUE_REQUIRES_REPLY,
+    QUEUE_SLA_BREACHED,
     QUEUE_UNASSIGNED,
     QUEUE_UNRESOLVED,
     QUEUE_WAITING_FOR_REPLY,
@@ -81,6 +82,7 @@ def _queue_memberships_from_thread(
     actor_user_id: str | None,
     has_delivery_error: bool,
     has_open_unresolved: bool,
+    sla_breached: bool = False,
 ) -> list[str]:
     """In-memory queue projection — no N+1 SQL per queue key."""
     active: list[str] = []
@@ -108,6 +110,8 @@ def _queue_memberships_from_thread(
         active.append(QUEUE_DELIVERY_ERRORS)
     if has_open_unresolved:
         active.append(QUEUE_UNRESOLVED)
+    if sla_breached and not archived:
+        active.append(QUEUE_SLA_BREACHED)
     return active
 
 
@@ -265,6 +269,12 @@ async def build_thread_context(
     ).scalar_one_or_none()
     next_action_proj = active_na.to_projection() if active_na is not None else None
 
+    from backend.app.communications.sla_clock import project_thread_sla
+
+    sla_proj = (
+        await project_thread_sla(db, tenant_id=tenant_id, thread=thread)
+    ).to_dict()
+
     can_compose = bool(allowed_intents) and bool(allowed_channels) and not thread.is_archived
     defaults = {
         "channel": thread_channel or (allowed_channels[0] if allowed_channels else None),
@@ -302,10 +312,12 @@ async def build_thread_context(
                 actor_user_id=actor_user_id,
                 has_delivery_error=has_delivery_error,
                 has_open_unresolved=has_open_unresolved,
+                sla_breached=bool(sla_proj.get("breached")),
             ),
             "sla_due_at": getattr(thread, "sla_due_at", None).isoformat()
             if getattr(thread, "sla_due_at", None) is not None
             else None,
+            "sla": sla_proj,
             "next_action": next_action_proj,
         },
         capabilities={

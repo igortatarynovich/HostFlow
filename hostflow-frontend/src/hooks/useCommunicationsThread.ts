@@ -6,11 +6,12 @@ import {
   dispatchQueuedCommunicationMessages,
   getCommunicationThread,
   getCommunicationsSettings,
+  executeWorkspaceCommand,
   getThreadContext,
-  markCommunicationThreadRead,
   type CommunicationMessage,
   type CommunicationThread,
   type ThreadContext,
+  type WorkspaceCommandResult,
 } from '../api/communications'
 import { draftFromThreadContext, type ThreadComposerDraft } from '../components/communications/ThreadComposer'
 import { recordTtvStepCompleted } from '../api/analytics'
@@ -234,12 +235,30 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     [messages],
   )
 
+  const applyCommandResult = useCallback((result: WorkspaceCommandResult) => {
+    const ctx = result.context
+    setThreadContext(ctx)
+    setThread((prev) =>
+      prev
+        ? {
+            ...prev,
+            assignee_id: ctx.work_state?.assignee_id ?? prev.assignee_id,
+            unread_count: ctx.work_state?.unread_count ?? prev.unread_count,
+            is_archived: ctx.work_state?.is_archived ?? prev.is_archived,
+            status: ctx.identity?.thread?.status || prev.status,
+            subject: ctx.identity?.thread?.subject ?? prev.subject,
+            channel: ctx.identity?.thread?.channel || prev.channel,
+          }
+        : prev,
+    )
+  }, [])
+
   const handleMarkRead = useCallback(async () => {
     if (!threadId) return
     setBusyAction('read')
     try {
-      const updated = await markCommunicationThreadRead(threadId, { mark_thread: true })
-      setThread(updated)
+      const result = await executeWorkspaceCommand(threadId, 'MarkThreadRead')
+      applyCommandResult(result)
       setMessages((prev) =>
         prev.map((m) =>
           m.direction === 'inbound' && !m.read_at
@@ -254,7 +273,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     } finally {
       setBusyAction(null)
     }
-  }, [planLimitModal, t, threadId])
+  }, [applyCommandResult, planLimitModal, t, threadId])
 
   const handleAutoAssign = useCallback(async () => {
     if (!threadId) return
@@ -520,6 +539,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     inferredSignature,
     sortedMessages,
     load,
+    applyCommandResult,
     handleMarkRead,
     handleAutoAssign,
     handleSend,

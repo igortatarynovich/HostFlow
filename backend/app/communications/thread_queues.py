@@ -22,6 +22,7 @@ QUEUE_ASSIGNED_TO_ME = "assigned_to_me"
 QUEUE_UNASSIGNED = "unassigned"
 QUEUE_WAITING_FOR_REPLY = "waiting_for_reply"
 QUEUE_CLOSED = "closed"
+QUEUE_SLA_BREACHED = "sla_breached"
 
 THREAD_QUEUES: frozenset[str] = frozenset(
     {
@@ -33,6 +34,7 @@ THREAD_QUEUES: frozenset[str] = frozenset(
         QUEUE_UNASSIGNED,
         QUEUE_WAITING_FOR_REPLY,
         QUEUE_CLOSED,
+        QUEUE_SLA_BREACHED,
     }
 )
 
@@ -76,6 +78,13 @@ def thread_queue_clause(
         return sa.or_(
             T.is_archived.is_(True),
             sa.func.lower(sa.func.coalesce(T.status, "")).in_(tuple(_CLOSED_STATUSES)),
+        )
+
+    if key == QUEUE_SLA_BREACHED:
+        return sa.and_(
+            T.sla_due_at.is_not(None),
+            T.sla_due_at < sa.func.now(),
+            T.is_archived.is_(False),
         )
 
     if key == QUEUE_REQUIRES_REPLY:

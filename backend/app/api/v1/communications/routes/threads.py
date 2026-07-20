@@ -498,7 +498,12 @@ async def attach_thread_result_link_endpoint(
     return out
 
 
-@router.patch("/threads/{thread_id}", response_model=CommunicationThreadOut)
+@router.patch(
+    "/threads/{thread_id}",
+    response_model=CommunicationThreadOut,
+    deprecated=True,
+    summary="Deprecated: use Workspace Commands (AssignThread, CloseThread, …)",
+)
 async def patch_thread(
     thread_id: str,
     body: CommunicationThreadPatch,
@@ -506,6 +511,11 @@ async def patch_thread(
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationThreadOut:
+    """DEPRECATED (C1.2): prefer POST /threads/{id}/commands/*.
+
+    Kept temporarily for legacy callers; will be removed after FE migration
+    (no-mixed-path close-out gate).
+    """
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
@@ -747,7 +757,12 @@ async def patch_thread(
     return _thread_out(thread, entity_links=entity_links)
 
 
-@router.post("/threads/{thread_id}/read", response_model=CommunicationThreadOut)
+@router.post(
+    "/threads/{thread_id}/read",
+    response_model=CommunicationThreadOut,
+    deprecated=True,
+    summary="Deprecated: use MarkThreadRead Workspace Command",
+)
 async def mark_thread_read(
     thread_id: str,
     body: CommunicationMarkReadRequest,
