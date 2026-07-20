@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NotificationEventOut } from '../api/types/notificationEvent'
+import type { NotificationEventOut } from '../../api/types/notificationEvent'
 import {
   filterNotificationEventsByEventType,
   notificationEventDocumentLabel,
