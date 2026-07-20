@@ -207,11 +207,29 @@ async def main() -> None:
         log("step10_invite_row_count_unchanged", invite_count_before == invite_count_after)
         log("step10_invite_row_count", invite_count_after)
 
+        # Product convert requires SalesInquiry + confirmed Flights ledger + Review stamp.
+        # Lead convert-client is a compatibility facade over convert_sales_inquiry_mapping.
+        from backend.tests.api._sales_convert_readiness import ensure_product_convert_readiness
+
+        async with async_session_maker() as db:
+            si_id = await ensure_product_convert_readiness(db, tenant_id=TENANT, lead_id=lead_id)
+        log("step10b_convert_readiness_sales_inquiry_id", si_id)
+
         conv1 = await client.post(f"/api/v1/leads/{lead_id}/convert-client", headers=headers)
         conv1_body = conv1.json()
         client_id_1 = conv1_body.get("converted_client_id")
         log("step11_convert1_status", conv1.status_code)
         log("step11_convert1_client_id", client_id_1)
+
+        # Replay via canonical Sales entrypoint must yield the same ClientAccount.
+        sales_replay = await client.post(
+            f"/api/v1/sales/inquiries/{lead_id}/convert-client",
+            headers=headers,
+        )
+        sales_body = sales_replay.json()
+        sales_client_id = sales_body.get("outcome_entity_id") or (sales_body.get("client_account_id"))
+        log("step11b_sales_replay_status", sales_replay.status_code)
+        log("step11b_sales_replay_client_id", sales_client_id)
 
         conv2 = await client.post(f"/api/v1/leads/{lead_id}/convert-client", headers=headers)
         conv2_body = conv2.json()
@@ -219,6 +237,10 @@ async def main() -> None:
         log("step12_convert2_status", conv2.status_code)
         log("step12_convert2_client_id", client_id_2)
         log("step12_convert_idempotent", client_id_1 == client_id_2 and client_id_1 is not None)
+        log(
+            "step12_sales_lead_same_client",
+            client_id_1 == sales_client_id and client_id_1 is not None,
+        )
 
         defects: list[str] = []
         if pre_invite.status_code != 404:
@@ -239,6 +261,11 @@ async def main() -> None:
             defects.append("step10: POST hydrate succeeded after submitted (should be skipped in UI; API may 404)")
         if conv1.status_code != 200 or not client_id_1:
             defects.append(f"step11: convert failed {conv1.status_code}")
+        if sales_replay.status_code != 200 or sales_client_id != client_id_1:
+            defects.append(
+                f"step11b: sales replay mismatch status={sales_replay.status_code} "
+                f"sales={sales_client_id} lead={client_id_1}"
+            )
         if client_id_1 != client_id_2:
             defects.append("step12: convert not idempotent")
 

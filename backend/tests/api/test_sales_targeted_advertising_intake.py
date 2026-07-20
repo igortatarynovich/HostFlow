@@ -197,6 +197,13 @@ async def test_meta_lead_questionnaire_invite_submit_convert_client(
         lead_count = await session.scalar(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id))
         assert lead_count is not None and lead_count >= 1
 
+    # Lead convert-client is a compatibility facade over convert_sales_inquiry_mapping
+    # (Review SoT + Flights provenance). Seed readiness before product convert.
+    from backend.tests.api._sales_convert_readiness import ensure_product_convert_readiness
+
+    async with async_session_maker() as session:
+        await ensure_product_convert_readiness(session, tenant_id=tenant_id, lead_id=lead_id)
+
     convert_resp = await client.post(f"/api/v1/leads/{lead_id}/convert-client", headers=manager_headers)
     assert convert_resp.status_code == 200, convert_resp.text
     converted = convert_resp.json()

@@ -62,12 +62,18 @@ Display-only spine: Capability proxy, Review status, Convert availability/result
 
 ---
 
-## 3c. Stage 3 — Sales Pipeline product wiring (current)
+## 3c. Stage 3 — Sales Pipeline product wiring
 
-**Branch:** `fix/sales-pipeline-v1-product-wiring`  
+**Branch:** `fix/sales-pipeline-v1-product-wiring` (merged)  
 **Task:** [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md)  
-**Allowed (slice 1):** product convert → `convert_sales_inquiry_mapping`; apply Review SoT (`match_existing` / `create_new` / explicit `not_required`); mandatory convert audit; idempotent replay.  
-**Forbidden in this slice:** Communication; full Lead demotion UI; deleting Lead `convert-client` HTTP.
+**Slice 1 done:** product convert → `convert_sales_inquiry_mapping`; Review SoT; mandatory convert audit; idempotent replay.
+
+## 3d. Stage 3 — Convert entrypoints (current)
+
+**Branch:** `fix/sales-pipeline-v1-convert-entrypoints`  
+**Task:** [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md)  
+**Allowed (slice 2):** Lead `convert-client` → compatibility wrapper over mapping; FE → `convertSalesInquiryToClient`; dual-entrypoint contract tests; staging/intake readiness for Review+Flights.  
+**Forbidden in this slice:** Communication; entity-profile outcomes; inventing a second convert engine; deleting Lead HTTP route.
 
 ---
 

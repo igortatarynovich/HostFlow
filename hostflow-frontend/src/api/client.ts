@@ -1188,11 +1188,6 @@ export async function sendLeadQuestionnaireInviteEmail(
   return data
 }
 
-export async function convertClientLeadToClient(leadId: string): Promise<Lead> {
-  const { data } = await api.post<Lead>(`/leads/${leadId}/convert-client`);
-  return data;
-}
-
 export type LeadIntakeDecision =
   | 'qualify'
   | 'reject'
