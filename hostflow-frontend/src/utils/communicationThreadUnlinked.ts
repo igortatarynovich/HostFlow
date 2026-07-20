@@ -1,4 +1,5 @@
 import type { CommunicationThread } from '../api/communications'
+import { resolveThreadEntityLinks } from './communicationThreadEntityLinks'
 
 /** Service order UUID stored under thread_meta.uos (UOS context rail). */
 export function uosLinkedServiceOrderId(threadMeta: Record<string, any> | undefined | null): string {
@@ -7,10 +8,8 @@ export function uosLinkedServiceOrderId(threadMeta: Record<string, any> | undefi
   return String((u as Record<string, unknown>).linked_service_order_id || '').trim()
 }
 
-/** Thread has no candidate, client company, or linked service order — first-class "link later" queue. */
+/** Thread has no G13/legacy entity binding — first-class "link later" queue. */
 export function isCommunicationThreadUnlinked(th: CommunicationThread): boolean {
-  if (String(th.linked_candidate_id || '').trim()) return false
-  if (String(th.linked_company_id || '').trim()) return false
-  if (uosLinkedServiceOrderId(th.thread_meta)) return false
+  if (resolveThreadEntityLinks(th).length) return false
   return true
 }

@@ -26,6 +26,7 @@ __all__ = [
     "NotificationSettingsOut",
     "CommunicationThreadOut",
     "CommunicationThreadResultLinkOut",
+    "CommunicationThreadEntityLinkOut",
     "CommunicationThreadResultLinkAttach",
     "CommunicationMessageOut",
     "CommunicationThreadListResponse",
@@ -159,6 +160,14 @@ class CommunicationThreadResultLinkOut(BaseModel):
     provenance_ref: str | None = None
 
 
+class CommunicationThreadEntityLinkOut(BaseModel):
+    link_id: str
+    thread_id: str
+    entity_type: str
+    entity_id: str
+    is_immutable: bool = False
+
+
 class CommunicationThreadOut(BaseModel):
     id: str
     channel: str
@@ -188,6 +197,8 @@ class CommunicationThreadOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     result_link: CommunicationThreadResultLinkOut | None = None
+    # G13 SoT for thread ↔ origin entity (legacy entity_* remain for fallback).
+    entity_links: List[CommunicationThreadEntityLinkOut] = Field(default_factory=list)
 
 
 class CommunicationMessageOut(BaseModel):

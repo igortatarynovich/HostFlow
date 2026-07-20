@@ -19,6 +19,7 @@ from ..schemas import (
     CommunicationAllocationAuditOut,
     CommunicationCommandAuditOut,
     CommunicationMessageOut,
+    CommunicationThreadEntityLinkOut,
     CommunicationThreadOut,
     CommunicationThreadResultLinkOut,
     TimeOffRequestOut,
@@ -32,6 +33,7 @@ __all__ = [
     "_allocation_audit_out",
     "_command_audit_out",
     "_result_link_out",
+    "_entity_links_out",
 ]
 
 
@@ -52,10 +54,30 @@ def _result_link_out(link: object | None) -> CommunicationThreadResultLinkOut | 
     )
 
 
+def _entity_links_out(links: object | None) -> list[CommunicationThreadEntityLinkOut]:
+    if not links:
+        return []
+    out: list[CommunicationThreadEntityLinkOut] = []
+    for link in links:  # type: ignore[assignment]
+        to_dict = getattr(link, "to_dict", None)
+        data = to_dict() if callable(to_dict) else dict(link)  # type: ignore[arg-type]
+        out.append(
+            CommunicationThreadEntityLinkOut(
+                link_id=str(data.get("link_id") or data.get("id") or ""),
+                thread_id=str(data.get("thread_id") or ""),
+                entity_type=str(data.get("entity_type") or ""),
+                entity_id=str(data.get("entity_id") or ""),
+                is_immutable=bool(data.get("is_immutable")),
+            )
+        )
+    return out
+
+
 def _thread_out(
     thread: CommunicationThread,
     *,
     result_link: object | None = None,
+    entity_links: object | None = None,
 ) -> CommunicationThreadOut:
     return CommunicationThreadOut(
         id=str(thread.id),
@@ -87,6 +109,7 @@ def _thread_out(
         created_at=thread.created_at,
         updated_at=thread.updated_at,
         result_link=_result_link_out(result_link),
+        entity_links=_entity_links_out(entity_links),
     )
 
 
