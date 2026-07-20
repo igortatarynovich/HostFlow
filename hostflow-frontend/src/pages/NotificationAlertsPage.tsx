@@ -16,6 +16,7 @@ import { StatusBadge } from '../components/ui/StatusBadge'
 import { useToast } from '../components/Toast'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { buildEntityDeepLink, navigateAppOrModuleLink } from '../platform/entityDeepLinks'
 import {
   filterNotificationEventsByEventType,
   notificationEventDocumentLabel,
@@ -34,8 +35,7 @@ function ownerOpenPath(event: NotificationEventOut): string | null {
   const ownerType = String(event.owner_type || '').toLowerCase()
   const ownerId = String(event.owner_id || '').trim()
   if (!ownerId) return null
-  if (ownerType === 'candidate') return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(ownerId)}`
-  return null
+  return buildEntityDeepLink(ownerType, ownerId)
 }
 
 export default function NotificationAlertsPage() {
@@ -385,7 +385,7 @@ export default function NotificationAlertsPage() {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => navigate(ownerOpenPath(selected)!)}
+                    onClick={() => navigateAppOrModuleLink(ownerOpenPath(selected)!, navigate)}
                   >
                     {t('app.notification_alerts.actions.open_owner')}
                   </button>

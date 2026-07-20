@@ -8,6 +8,8 @@ import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { EntityDeepLink } from '../../platform/EntityDeepLink'
+import { buildEntityDeepLink } from '../../platform/entityDeepLinks'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 
 type LoadState = 'idle' | 'loading' | 'error'
@@ -21,20 +23,10 @@ function isClosedStatus(status?: string | null): boolean {
 function reminderEntityHref(item: ReminderRecord): string | null {
   const entityId = String(item.entity_id || '')
   if (!entityId) return null
-  switch (item.entity_type) {
-    case 'candidate':
-      return `${CRM_APP_PATHS.candidates}/${entityId}`
-    case 'vacancy':
-      return `${CRM_APP_PATHS.vacancies}/${entityId}`
-    case 'lead':
-      return CRM_APP_PATHS.leads
-    case 'company':
-      return `${CRM_APP_PATHS.agencyClients}/${entityId}`
-    case 'communication_thread':
-      return buildInboxThreadPath(entityId)
-    default:
-      return null
+  if (item.entity_type === 'communication_thread') {
+    return buildInboxThreadPath(entityId)
   }
+  return buildEntityDeepLink(String(item.entity_type || ''), entityId)
 }
 
 type ActivitiesPanelProps = {
@@ -214,9 +206,9 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate text-sm font-semibold text-slate-900">{item.title || '—'}</p>
                     {href && (
-                      <Link to={href} className="text-xs font-medium text-brand-700 hover:underline">
+                      <EntityDeepLink href={href} className="text-xs font-medium text-brand-700 hover:underline">
                         {t('app.activities.actions.open')}
-                      </Link>
+                      </EntityDeepLink>
                     )}
                   </div>
                   {item.description && <p className="text-xs text-slate-600 whitespace-pre-wrap">{item.description}</p>}

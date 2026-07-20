@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import type { ReminderRecord } from '../../api/types/notification'
 import { fetchHrTasks, type HrAssigneeScope } from '../../api/hrWorkspace'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { EntityDeepLink } from '../../platform/EntityDeepLink'
+import { buildEntityDeepLink } from '../../platform/entityDeepLinks'
 import { Toolbar } from '../../components/layout'
 import { useI18n } from '../../i18n'
 
@@ -53,17 +55,21 @@ export default function HrTasksPage() {
     const payload = r.payload && typeof r.payload === 'object' ? r.payload : {}
     const wfId = String(payload.workforce_employee_id || '').trim()
     if (wfId) {
-      return `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(wfId)}#hr-verification`
+      return (
+        buildEntityDeepLink('employee', wfId, { hash: 'hr-verification' }) ||
+        `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(wfId)}#hr-verification`
+      )
     }
     const et = String(r.entity_type || '').toLowerCase()
     const id = String(r.entity_id || '').trim()
     if (!id) return null
-    if (et === 'workforce_employee') {
-      return `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-verification`
+    if (et === 'workforce_employee' || et === 'employee' || et === 'hr_employee') {
+      return (
+        buildEntityDeepLink('employee', id, { hash: 'hr-verification' }) ||
+        `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-verification`
+      )
     }
-    if (et === 'candidate') return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(id)}`
-    if (et === 'lead') return `${CRM_APP_PATHS.leads}/${encodeURIComponent(id)}`
-    return null
+    return buildEntityDeepLink(et, id)
   }
 
   const entityLabel = (r: ReminderRecord): string => {
@@ -145,9 +151,9 @@ export default function HrTasksPage() {
                     <td className="text-xs text-slate-600">{r.sla_status || '—'}</td>
                     <td>
                       {href ? (
-                        <Link className="text-sm font-medium text-brand-700 hover:underline" to={href}>
+                        <EntityDeepLink className="text-sm font-medium text-brand-700 hover:underline" href={href}>
                           {t('app.nav.hr.tasks.open_entity', { defaultValue: 'Open' })}
-                        </Link>
+                        </EntityDeepLink>
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}

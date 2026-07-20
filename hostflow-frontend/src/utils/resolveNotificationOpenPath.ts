@@ -1,5 +1,7 @@
 import type { NotificationItem } from '../api/types'
 import { communicationsThreadPath, CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
+import { buildModuleAbsoluteUrl } from '../platform/deployHosts'
+import { buildEntityDeepLink, rewriteBusinessAppPath } from '../platform/entityDeepLinks'
 import { buildInboxThreadPath } from './inboxDeepLinks'
 import { getNotificationUosGroup } from './notificationUos'
 
@@ -29,9 +31,13 @@ function firstString(...vals: unknown[]): string {
   return ''
 }
 
+function entityHref(entityType: string, entityId: string): string | null {
+  return buildEntityDeepLink(entityType, entityId)
+}
+
 /**
  * Target route for a notification row (`null` = hide "Open").
- * Payload text is enough for context; a link is optional when there is no clear target.
+ * Business entities go through Stage 6C resolver (owning module host).
  */
 export function resolveNotificationOpenPath(
   item: NotificationItem,
@@ -45,45 +51,60 @@ export function resolveNotificationOpenPath(
   const threadCh = notificationThreadChannel(item)
 
   const deep = payload.href ?? payload.url ?? payload.deep_link
-  if (typeof deep === 'string' && deep.startsWith('/')) return deep
+  if (typeof deep === 'string' && deep.startsWith('/')) {
+    const rewritten = rewriteBusinessAppPath(deep)
+    if (rewritten) return rewritten
+    // Shell / settings / inbox paths stay as-is
+    if (
+      deep.startsWith('/app/inbox') ||
+      deep.startsWith('/app/tasks') ||
+      deep.startsWith('/app/work') ||
+      deep.startsWith('/app/settings') ||
+      deep.startsWith('/app/overview') ||
+      deep.startsWith('/app/documents')
+    ) {
+      return deep
+    }
+    // Unknown business path — do not open (no shell business fallback)
+    if (deep.startsWith('/app/')) return null
+    return deep
+  }
 
   const entityType = String(item.entity_type || '').toLowerCase()
   const entityId = firstString(item.entity_id)
-  /** Payload `thread_id` or DB `entity_id` when row is tied to a communication thread. */
   const effectiveThreadId =
     threadId || (entityType === 'communication_thread' ? entityId : '')
 
   if (eventType === 'handoff_requested' || eventType === 'handoff_accepted') {
     const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')
-    if (cid) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(cid)}`
+    if (cid) return entityHref('candidate', cid)
     return CRM_APP_PATHS.candidates
   }
 
   if (eventType === 'handoff_rejected' || eventType === 'handoff_returned') {
     const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')
-    if (cid) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(cid)}`
+    if (cid) return entityHref('candidate', cid)
     return CRM_APP_PATHS.candidates
   }
 
   if (eventType === 'lead_stuck_stage') {
     const leadId = firstString(payload.lead_id, entityType === 'lead' ? entityId : '')
-    if (leadId) return `${CRM_APP_PATHS.leads}/${encodeURIComponent(leadId)}`
+    if (leadId) return entityHref('lead', leadId)
     return CRM_APP_DRILLDOWN_HREFS.leadsProcessedStuck
   }
 
   if (eventType === 'lead_no_next_action') {
     const leadId = firstString(payload.lead_id, entityType === 'lead' ? entityId : '')
-    if (leadId) return `${CRM_APP_PATHS.leads}/${encodeURIComponent(leadId)}`
+    if (leadId) return entityHref('lead', leadId)
     return CRM_APP_DRILLDOWN_HREFS.leadsProcessedNoNextAction
   }
 
   if (eventType === 'invoice_overdue') {
     const iid = firstString(payload.invoice_id, entityType === 'invoice' ? entityId : '')
-    if (iid) return `${CRM_APP_PATHS.invoices}/${encodeURIComponent(iid)}`
+    if (iid) return entityHref('invoice', iid)
     return CRM_APP_DRILLDOWN_HREFS.invoicesOverdueUnpaid
   }
 
-  /** Communications SLA / manual escalation — open the thread (entity_id is always set server-side). */
   if (eventType === 'communications_sla_overdue' || eventType === 'communications_thread_escalated') {
     if (effectiveThreadId) {
       if (canInboxDeepLink) {
@@ -96,14 +117,20 @@ export function resolveNotificationOpenPath(
 
   if (eventType === 'lead.needs_routing') {
     const leadId = firstString(payload.lead_id, entityType === 'lead' ? entityId : '')
-    if (leadId) return `${CRM_APP_PATHS.leads}/${encodeURIComponent(leadId)}`
+    if (leadId) return entityHref('lead', leadId)
     return CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting
   }
 
   if (eventType === 'lead.failed') {
     const leadId = firstString(payload.lead_id, entityType === 'lead' ? entityId : '')
-    if (leadId) return `${CRM_APP_PATHS.leads}/${encodeURIComponent(leadId)}`
+    if (leadId) return entityHref('lead', leadId)
     return CRM_APP_DRILLDOWN_HREFS.leadsFailed
+  }
+
+  if (eventType === 'intake.questionnaire.submitted') {
+    const leadId = firstString(payload.lead_id, entityType === 'lead' ? entityId : '')
+    if (leadId) return entityHref('inquiry', leadId)
+    return buildModuleAbsoluteUrl('sales', '/app/sales')
   }
 
   if (eventType === 'lead.import.completed' || eventType === 'lead.import.failed') {
@@ -118,13 +145,16 @@ export function resolveNotificationOpenPath(
     eventType === 'candidate_field_overridden'
   ) {
     const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')
-    if (cid) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(cid)}`
+    if (cid) return entityHref('candidate', cid)
     return CRM_APP_PATHS.candidates
   }
 
   if (eventType === 'document.expiry') {
     const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')
-    if (cid) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(cid)}/documents`
+    if (cid) {
+      const base = entityHref('candidate', cid)
+      return base ? `${base}/documents` : null
+    }
     return CRM_APP_PATHS.documents
   }
 
@@ -145,34 +175,14 @@ export function resolveNotificationOpenPath(
     return CRM_APP_PATHS.tasks
   }
 
-  if (entityType === 'lead' && entityId) {
-    return `${CRM_APP_PATHS.leads}/${encodeURIComponent(entityId)}`
-  }
-  if (entityType === 'candidate' && entityId) {
-    return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(entityId)}`
-  }
-  if (entityType === 'invoice' && entityId) {
-    return `${CRM_APP_PATHS.invoices}/${encodeURIComponent(entityId)}`
-  }
-  if (entityType === 'vacancy' && entityId) {
-    return `${CRM_APP_PATHS.vacancies}/${encodeURIComponent(entityId)}`
-  }
-  if (entityType === 'company' && entityId) {
-    return `${CRM_APP_PATHS.agencyClients}/${encodeURIComponent(entityId)}`
-  }
-  if (entityType === 'communication_thread' && entityId) {
-    if (canInboxDeepLink) {
-      return buildInboxThreadPath(entityId, threadCh ? { channel: threadCh } : undefined)
-    }
-    return communicationsThreadPath(entityId)
-  }
-  if (entityType === 'document' || entityType === 'document_step') {
-    return CRM_APP_PATHS.documents
+  if (entityType && entityId) {
+    const href = entityHref(entityType, entityId)
+    if (href) return href
   }
 
   const leadId = firstString(payload.lead_id)
   if (leadId && eventType.startsWith('lead')) {
-    return `${CRM_APP_PATHS.leads}/${encodeURIComponent(leadId)}`
+    return entityHref('lead', leadId)
   }
 
   return null

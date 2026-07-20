@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { createLeadQuestionnaireInvite, getLead, type LeadQuestionnaireInviteResult } from '../../api/client'
+import {
+  getLead,
+  getLeadQuestionnaireInvite,
+  type LeadQuestionnaireInviteResult,
+} from '../../api/client'
 import type { Lead } from '../../api/types'
 import { useI18n } from '../../i18n'
 import SalesQuestionnairePanel from '../leads/SalesQuestionnairePanel'
@@ -11,103 +15,164 @@ import {
 } from '../../utils/salesQuestionnaire'
 import { submissionHasDisplayableAnswers } from '../../utils/salesQuestionnaireSubmission'
 
-/** POST hydrate is allowed only for in-flight invites; never on page load for not_sent/submitted. */
+/** Hydrate invite only for in-flight invites; never mint on page load. */
 const HYDRATE_INVITE_STATUSES: ReadonlySet<SalesQuestionnaireStatus> = new Set([
   'sent',
   'opened',
   'in_progress',
 ])
 
+const POLL_MS = 12_000
+
 type Props = {
   leadId: string
   onUpdated?: () => void
 }
 
+function leadPollFingerprint(row: Lead): string {
+  const status = readSalesQuestionnaireStatus(row) || ''
+  const submitted = submissionHasDisplayableAnswers(row) ? '1' : '0'
+  return `${status}|${submitted}`
+}
+
 export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: Props) {
   const { t } = useI18n()
+  const onUpdatedRef = useRef(onUpdated)
+  onUpdatedRef.current = onUpdated
+  const tRef = useRef(t)
+  tRef.current = t
+
   const [lead, setLead] = useState<Lead | null>(null)
   const [invite, setInvite] = useState<LeadQuestionnaireInviteResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [inviteLoading, setInviteLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fingerprintRef = useRef<string>('')
+  const hydratedStatusRef = useRef<string>('')
 
-  const loadLead = useCallback(async () => {
-    setLoading(true)
+  const loadLead = useCallback(async (opts?: { silent?: boolean }) => {
     setError(null)
+    if (!opts?.silent) setLoading(true)
     try {
       const row = await getLead(leadId)
       if (row.lead_type !== 'client') {
         setLead(null)
+        fingerprintRef.current = ''
         return
       }
-      setLead(row)
+      const nextFp = leadPollFingerprint(row)
+      const prevFp = fingerprintRef.current
+      const changed = nextFp !== prevFp
+      fingerprintRef.current = nextFp
+      if (changed || !opts?.silent) {
+        setLead(row)
+      }
+      if (opts?.silent && changed && prevFp) {
+        onUpdatedRef.current?.()
+      }
     } catch (err: unknown) {
-      setLead(null)
-      const detail =
-        (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
-        (err as Error)?.message ??
-        t('app.sales_inquiry.questionnaire_load_failed', { defaultValue: 'Nie udało się wczytać ankiety' })
-      setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
+      if (!opts?.silent) {
+        setLead(null)
+        fingerprintRef.current = ''
+        const detail =
+          (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
+          (err as Error)?.message ??
+          tRef.current('app.sales_inquiry.questionnaire_load_failed', {
+            defaultValue: 'Nie udało się wczytać ankiety',
+          })
+        setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
-  }, [leadId, t])
+  }, [leadId])
 
   const hydrateInvite = useCallback(async (row: Lead) => {
     const status = readSalesQuestionnaireStatus(row)
     if (!status || !HYDRATE_INVITE_STATUSES.has(status)) {
       setInvite(null)
+      hydratedStatusRef.current = ''
       return
     }
+    // Avoid repeat GETs for the same in-flight status (poll / parent refresh).
+    if (hydratedStatusRef.current === status) return
     setInviteLoading(true)
     try {
-      const result = await createLeadQuestionnaireInvite(row.id, { mark_sent: false })
+      const result = await getLeadQuestionnaireInvite(row.id)
       setInvite(result)
+      hydratedStatusRef.current = status
     } catch (err: unknown) {
       const httpStatus = (err as { response?: { status?: number } })?.response?.status
       if (httpStatus === 404) {
         setInvite(null)
+        hydratedStatusRef.current = status
         return
       }
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??
-        t('app.sales_inquiry.questionnaire_invite_failed', { defaultValue: 'Nie udało się pobrać linku ankiety' })
+        tRef.current('app.sales_inquiry.questionnaire_invite_failed', {
+          defaultValue: 'Nie udało się pobrać linku ankiety',
+        })
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
     } finally {
       setInviteLoading(false)
     }
-  }, [t])
+  }, [])
 
+  // Initial + leadId change only — never re-bind to unstable parent callbacks.
   useEffect(() => {
+    fingerprintRef.current = ''
+    hydratedStatusRef.current = ''
     void loadLead()
   }, [loadLead])
 
-  useEffect(() => {
-    if (!lead) return
-    void hydrateInvite(lead)
-  }, [lead, hydrateInvite])
+  const questionnaireStatus = lead ? readSalesQuestionnaireStatus(lead) : null
 
-  const hasAnswers = useMemo(() => submissionHasDisplayableAnswers(lead || ({ id: leadId } as Lead)), [lead, leadId])
+  useEffect(() => {
+    if (!lead || !questionnaireStatus) return
+    void hydrateInvite(lead)
+  }, [lead, questionnaireStatus, hydrateInvite])
+
+  /** One poller while waiting — do not reset on every lead object refresh. */
+  useEffect(() => {
+    if (!questionnaireStatus || !HYDRATE_INVITE_STATUSES.has(questionnaireStatus)) return
+    const timer = window.setInterval(() => {
+      void loadLead({ silent: true })
+    }, POLL_MS)
+    return () => window.clearInterval(timer)
+  }, [leadId, questionnaireStatus, loadLead])
+
+  const hasAnswers = useMemo(
+    () => submissionHasDisplayableAnswers(lead || ({ id: leadId } as Lead)),
+    [lead, leadId],
+  )
   const status = useMemo(() => readSalesQuestionnaireStatus(lead || {}), [lead])
 
   const handleLeadUpdated = useCallback(
     (updated: Lead, nextInvite?: LeadQuestionnaireInviteResult | null) => {
+      fingerprintRef.current = leadPollFingerprint(updated)
       setLead(updated)
       if (nextInvite) {
         setInvite(nextInvite)
+        const st = readSalesQuestionnaireStatus(updated)
+        hydratedStatusRef.current = st || ''
       } else {
-        const status = readSalesQuestionnaireStatus(updated)
-        if (status && HYDRATE_INVITE_STATUSES.has(status)) {
-          void hydrateInvite(updated)
+        const nextStatus = readSalesQuestionnaireStatus(updated)
+        hydratedStatusRef.current = ''
+        if (nextStatus && HYDRATE_INVITE_STATUSES.has(nextStatus)) {
+          void getLeadQuestionnaireInvite(updated.id).then((result) => {
+            setInvite(result)
+            hydratedStatusRef.current = nextStatus
+          })
         } else {
           setInvite(null)
         }
       }
       setError(null)
-      onUpdated?.()
+      onUpdatedRef.current?.()
     },
-    [hydrateInvite, onUpdated],
+    [],
   )
 
   const handleRetry = useCallback(() => {

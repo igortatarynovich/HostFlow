@@ -65,7 +65,10 @@ export function useEmailInboundSync(opts: {
     pollInFlightRef.current = true
     setPollBusy(true)
     try {
-      await runCommunicationEmailPollWorker({ limit_per_account: 50 })
+      await runCommunicationEmailPollWorker({
+        limit_per_account: 50,
+        pages_per_folder: 10,
+      })
       if (!mountedRef.current) return
       setLastPollAt(nowIso())
       setPollErrors([])

@@ -51,10 +51,12 @@ export default function ClientInquiryWorkPage() {
   const [patching, setPatching] = useState(false)
   const [lostStagePrompt, setLostStagePrompt] = useState(false)
 
-  const loadLead = useCallback(async () => {
+  const loadLead = useCallback(async (opts?: { silent?: boolean }) => {
     if (!leadId) return
-    setLoading(true)
-    setNotFound(false)
+    if (!opts?.silent) {
+      setLoading(true)
+      setNotFound(false)
+    }
     try {
       const row = await getLead(leadId)
       if (row.lead_type !== 'client' || row.lead_target_type !== 'client_lead') {
@@ -70,16 +72,34 @@ export default function ClientInquiryWorkPage() {
       }
       setLead(row)
     } catch {
-      setNotFound(true)
-      setLead(null)
+      if (!opts?.silent) {
+        setNotFound(true)
+        setLead(null)
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [channelId, leadId])
 
   useEffect(() => {
     void loadLead()
   }, [loadLead])
+
+  /** Live-refresh when waiting for questionnaire answers. */
+  useEffect(() => {
+    if (!lead) return
+    const qStatus = String(lead.normalized?.sales_questionnaire_status || '')
+    const waiting =
+      lead.stage === 'waiting_for_response' ||
+      qStatus === 'sent' ||
+      qStatus === 'opened' ||
+      qStatus === 'in_progress'
+    if (!waiting) return
+    const timer = window.setInterval(() => {
+      void loadLead({ silent: true })
+    }, 8000)
+    return () => window.clearInterval(timer)
+  }, [lead, loadLead])
 
   const handleStageChange = useCallback(
     async (stage: string, extra?: { lost_reason_code?: string; lost_reason_note?: string }) => {

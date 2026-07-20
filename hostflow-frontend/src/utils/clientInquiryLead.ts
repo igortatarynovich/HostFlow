@@ -45,6 +45,7 @@ export function inquiryCompanyName(lead: Lead): string {
   return (
     text(company.name) ||
     text(normalized.company_name) ||
+    text(normalized.company_name_hint) ||
     text(payloadCompany.name) ||
     text(lead.company_name) ||
     'Компания'
@@ -167,7 +168,8 @@ export function salesInquiryWorkflowStep(lead: Lead): number {
   if (lead.converted_client_id) return 4
   const stage = (lead.stage || '').trim().toLowerCase()
   if (stage === 'qualified') return 3
-  if (stage === 'waiting_for_response' || stage === 'questionnaire_submitted') return 3
+  if (stage === 'questionnaire_submitted') return 1
+  if (stage === 'waiting_for_response') return 2
   if (stage === 'contacted') return 2
   return 1
 }

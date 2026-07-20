@@ -17,6 +17,8 @@ export type ApplicationProcessResult = {
   application: Application
   candidate_id?: string | null
   message?: string | null
+  lead_status?: string | null
+  is_repeat_application?: boolean
 }
 
 export async function listSalesInquiries(opts?: { limit?: number }): Promise<ApplicationListResponse> {
@@ -44,12 +46,9 @@ export async function convertSalesInquiryToClient(applicationId: string): Promis
   return data
 }
 
-
-export type SalesInquiryDuplicateMatchReason = 'phone' | 'email' | 'phone_and_email'
-
 export type SalesInquiryDuplicateHint = {
   application: Application
-  match_reason: SalesInquiryDuplicateMatchReason
+  match_reason: 'phone' | 'email' | 'phone_and_email'
 }
 
 export type SalesInquiryDuplicateListResponse = {

@@ -862,7 +862,7 @@
         "do_procesowania": "Procesowani",
         "vacancies": "Oferty pracy",
         "documents": "Dokumenty",
-        "hr_workspace": "HR",
+        "hr_workspace": "Pracownicy",
         "hr_employees": "HR · Pracownicy",
         "orders": "Zamówienia",
         "services": "Usługi i zamówienia",
@@ -1677,7 +1677,14 @@
       "task_created": "Zadanie utworzone.",
       "task_open_tasks": "Otwórz Zadania",
       "task_error_due": "Wybierz prawidłowy termin.",
-      "task_error_create": "Nie udało się utworzyć zadania."
+      "task_error_create": "Nie udało się utworzyć zadania.",
+      "link_entities_action": "Powiąż",
+      "link_entities_hide": "Ukryj powiązanie",
+      "task_create_action": "Utwórz zadanie",
+      "task_form_hide": "Ukryj formularz zadania",
+      "workflow_section": "Workflow i SLA",
+      "more_actions": "Więcej działań",
+      "unlinked_hint_action": "Bez powiązania — użyj «Powiąż», aby dodać inquiry, klienta lub zamówienie."
     },
     "communications_inbox_hub": {
       "title": "Skrzynka",
@@ -1840,7 +1847,12 @@
         "communications_workspace": "Obszar roboczy komunikacji",
         "more": "Więcej",
         "operations": "Operacje",
-        "system": "System"
+        "system": "System",
+        "section_communications": "Komunikacja",
+        "section_recruitment": "Rekrutacja",
+        "section_sales": "Sprzedaż",
+        "section_hr": "HR / Kadry",
+        "section_services": "Usługi"
       },
       "actions": {
         "logout": "Wyloguj",
@@ -2973,17 +2985,19 @@
       "chrome": {
         "automations": "Automatyzacje",
         "billing": "Rozliczenia",
-        "crm_setup": "Konfiguracja CRM",
+        "crm_setup": "Rekrutacja",
         "integrations": "Integracje",
         "overview": "Przegląd",
         "personal": "Osobiste",
         "security": "Audyt i bezpieczeństwo",
-        "subtitle": "Te same obszary co strona główna Ustawień: workspace, CRM, zespół, automatyzacje, integracje, rozliczenia, profil.",
+        "subtitle": "Te same strefy co na stronie ustawień: workspace, rekrutacja, sprzedaż, zespół, automatyzacje, integracje, billing, profil.",
         "team": "Zespół",
         "title": "Ustawienia",
         "workspace": "Obszar roboczy",
         "wayfinding_title": "Obszary pracy w CRM",
-        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów, zadań i strony głównej ustawień"
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów, zadań i strony głównej ustawień",
+        "recruitment_setup": "Rekrutacja",
+        "sales_setup": "Sprzedaż"
       },
       "email": {
         "title": "Tytuł"
@@ -11391,8 +11405,8 @@
           "label": "Rozliczenia"
         },
         "crm_setup": {
-          "description": "Lejki, statusy, profile i pola potrzebne do pracy CRM.",
-          "label": "Konfiguracja CRM"
+          "label": "Ustawienia rekrutacji",
+          "description": "Pipeline, bramki hiring, handoff, profile kandydatów i wymagania dokumentów."
         },
         "integrations": {
           "description": "Przyjmowanie leadów, SMTP i administracja komunikacji — najpierw hub, potem dedykowany ekran.",
@@ -11409,6 +11423,14 @@
         "workspace": {
           "description": "Profil firmy, tożsamość workspace i zakres dostępu na wysokim poziomie.",
           "label": "Przestrzeń robocza"
+        },
+        "recruitment_setup": {
+          "label": "Ustawienia rekrutacji",
+          "description": "Pipeline, bramki hiring, handoff, profile kandydatów i wymagania dokumentów."
+        },
+        "sales_setup": {
+          "label": "Ustawienia sprzedaży",
+          "description": "Formularze zapytań, szablony handlowe i sales intake — nie reguły faktur i podatków."
         }
       }
     },
@@ -11913,6 +11935,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (skrzynka przychodząca)",
+        "subtitle": "Połączenie Gmail z Communications inbox. SMTP powyżej — tylko dla wychodzących powiadomień CRM.",
+        "default_label": "Skrzynka Gmail",
+        "account": "Skrzynka",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Pozostaw puste, aby zachować zapisany sekret",
+        "client_secret_required": "Wpisz Google Client Secret, potem Save mailbox",
+        "client_id_required": "Podaj OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Skrzynka zapisana",
+        "save_failed": "Nie udało się zapisać skrzynki",
+        "secret_saved": "Client secret zapisany",
+        "secret_missing": "Client secret jeszcze nie zapisany",
+        "start_failed": "Nie udało się rozpocząć OAuth",
+        "complete_failed": "Nie udało się zakończyć OAuth",
+        "complete_ok": "Gmail połączony",
+        "code_required": "Brak kodu autoryzacji",
+        "state_required": "Brak OAuth state — najpierw Connect email",
+        "refresh_ok": "Token odświeżony",
+        "refresh_failed": "Nie udało się odświeżyć tokenu",
+        "refresh_token": "Odśwież token",
+        "no_refresh_token": "Brak refresh token",
+        "flow_hint": "1) Wklej Client ID + Secret z Google Cloud → Save mailbox. 2) Connect email → zaloguj się. 3) OAuth complete."
       }
     },
     "ttv": {

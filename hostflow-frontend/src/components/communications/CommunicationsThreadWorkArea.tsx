@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import type { CommunicationThread } from '../../api/communications'
@@ -5,7 +6,6 @@ import type { useCommunicationsThread } from '../../hooks/useCommunicationsThrea
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
-import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 import { NextActionBadge } from '../candidate/NextActionBadge'
 import { useThreadNextAction } from './useThreadNextAction'
@@ -23,6 +23,36 @@ export function formatThreadDateTime(value?: string | null): string {
   }).format(new Date(ts))
 }
 
+/** Split visible body from quoted reply tails (collapsed by default). */
+export function splitMessageBodyQuote(text: string): { main: string; quote: string | null } {
+  const raw = String(text || '')
+  if (!raw.trim()) return { main: '', quote: null }
+  const lines = raw.split(/\r?\n/)
+  let cut = -1
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const trimmed = line.trim()
+    if (
+      /^>/.test(trimmed) ||
+      /^on .+ wrote:$/i.test(trimmed) ||
+      /^am .+ schrieb/i.test(trimmed) ||
+      /^w dniu .+ napisa/i.test(trimmed) ||
+      /^-{2,}\s*original message\s*-{2,}$/i.test(trimmed) ||
+      (/^from:\s.+/i.test(trimmed) &&
+        i > 0 &&
+        lines.slice(Math.max(0, i - 2), i).some((l) => !l.trim()))
+    ) {
+      cut = i
+      break
+    }
+  }
+  if (cut <= 0) return { main: raw, quote: null }
+  const main = lines.slice(0, cut).join('\n').trimEnd()
+  const quote = lines.slice(cut).join('\n').trim()
+  if (!main) return { main: raw, quote: null }
+  return { main, quote: quote || null }
+}
+
 type ThreadModel = ReturnType<typeof useCommunicationsThread>
 
 type Props = {
@@ -32,8 +62,144 @@ type Props = {
   layout: 'page' | 'inboxCenter'
 }
 
+function MessageBubble({
+  msg,
+  t,
+  dispatchingMessageId,
+  onDispatchOne,
+}: {
+  msg: ThreadModel['sortedMessages'][number]
+  t: (key: string, vars?: Record<string, unknown>) => string
+  dispatchingMessageId: string | null
+  onDispatchOne: (id: string) => void
+}) {
+  const [showQuote, setShowQuote] = useState(false)
+  const isOutbound = msg.direction === 'outbound'
+  const isInbound = msg.direction === 'inbound'
+  const isNote = msg.is_internal_note || msg.message_type === 'note' || msg.direction === 'system'
+  const bodyText = String(msg.body_text || '').trim()
+  const { main, quote } = useMemo(() => splitMessageBodyQuote(bodyText), [bodyText])
+  const sender = msg.sender_label || msg.sender_address || msg.sender_id || '—'
+
+  return (
+    <div
+      className={clsx(
+        'flex w-full',
+        isNote ? 'justify-center' : isOutbound ? 'justify-end' : 'justify-start',
+      )}
+    >
+      <article
+        className={clsx(
+          'max-w-[min(42rem,92%)] rounded-2xl px-4 py-3 shadow-sm',
+          isNote && 'border border-violet-200 bg-violet-50 text-violet-950',
+          !isNote && isOutbound && 'bg-brand-600 text-white',
+          !isNote && isInbound && 'border border-slate-200 bg-white text-slate-900',
+          !isNote && !isOutbound && !isInbound && 'border border-slate-200 bg-slate-50 text-slate-800',
+        )}
+      >
+        <header
+          className={clsx(
+            'mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[11px]',
+            isOutbound && !isNote ? 'text-brand-100' : 'text-slate-500',
+          )}
+        >
+          <span className="truncate font-medium">{sender}</span>
+          <span className="shrink-0 tabular-nums">{formatThreadDateTime(msg.created_at || msg.sent_at)}</span>
+        </header>
+        {msg.subject ? (
+          <div className={clsx('mb-1 text-sm font-semibold', isOutbound && !isNote ? 'text-white' : 'text-slate-900')}>
+            {msg.subject}
+          </div>
+        ) : null}
+        {main ? (
+          <div
+            className={clsx(
+              'whitespace-pre-wrap break-words text-[15px] leading-relaxed',
+              isOutbound && !isNote ? 'text-white' : 'text-slate-800',
+            )}
+          >
+            {main}
+          </div>
+        ) : null}
+        {quote ? (
+          <div className="mt-2">
+            <button
+              type="button"
+              className={clsx(
+                'text-[11px] font-medium underline-offset-2 hover:underline',
+                isOutbound && !isNote ? 'text-brand-100' : 'text-slate-500',
+              )}
+              onClick={() => setShowQuote((v) => !v)}
+            >
+              {showQuote
+                ? t('app.communications.thread.hide_quote', { defaultValue: 'Hide quoted text' })
+                : t('app.communications.thread.show_quote', { defaultValue: 'Show quoted text' })}
+            </button>
+            {showQuote ? (
+              <div
+                className={clsx(
+                  'mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words border-l-2 pl-3 text-xs leading-relaxed opacity-80',
+                  isOutbound && !isNote ? 'border-brand-300 text-brand-50' : 'border-slate-300 text-slate-600',
+                )}
+              >
+                {quote}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <footer
+          className={clsx(
+            'mt-2 flex flex-wrap items-center gap-2 text-[11px]',
+            isOutbound && !isNote ? 'text-brand-100/90' : 'text-slate-500',
+          )}
+        >
+          <span>
+            {isNote
+              ? t('app.communications.thread.note')
+              : isInbound
+                ? t('app.communications.thread.inbound', { defaultValue: 'Received' })
+                : t('app.communications.thread.outbound', { defaultValue: 'Sent' })}
+          </span>
+          {msg.delivery_status ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{msg.delivery_status}</span>
+            </>
+          ) : null}
+          {msg.read_at ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                {t('app.communications.actions.read_at')}: {formatThreadDateTime(msg.read_at)}
+              </span>
+            </>
+          ) : null}
+        </footer>
+        {msg.direction === 'outbound' && !msg.is_internal_note && msg.delivery_status === 'queued' ? (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => void onDispatchOne(msg.id)}
+              disabled={dispatchingMessageId === msg.id}
+              className={clsx(
+                'rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-50',
+                isOutbound ? 'bg-white/15 text-white hover:bg-white/25' : 'btn-secondary btn-xs',
+              )}
+            >
+              {dispatchingMessageId === msg.id
+                ? t('common.loading')
+                : t('app.communications.thread.dispatch_now')}
+            </button>
+          </div>
+        ) : null}
+      </article>
+    </div>
+  )
+}
+
 export default function CommunicationsThreadWorkArea({ thread, model, layout }: Props) {
   const { t } = useI18n()
+  const [composeAdvancedOpen, setComposeAdvancedOpen] = useState(false)
   const {
     threadError,
     threadListPath,
@@ -72,22 +238,29 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   } = model
 
   const threadLoadErrorBanner = threadError
+  const btn = 'btn-secondary btn-sm'
 
-  const btn = layout === 'inboxCenter' ? 'btn-secondary btn-sm' : 'btn-secondary'
-
-  // G-8 stage 2.3: per-thread "what to do next" badge. We compose a
-  // fingerprint over every field the backend ladder reads
-  // (`compute_thread_next_action` in `services/next_action.py`), so any
-  // in-place mutation that flips one of these surfaces a fresh DTO
-  // without an explicit `dispatchEvent('thread-updated')` call.
-  // `is_archived` and `status` cover the terminal branches; the SLA / unread
-  // / inbound-vs-outbound trio drives the active branches.
   const threadNextActionFingerprint = `${thread.status ?? ''}|${thread.is_archived ? 1 : 0}|${thread.unread_count ?? 0}|${thread.sla_due_at ?? ''}|${thread.last_inbound_at ?? ''}|${thread.last_outbound_at ?? ''}`
   const {
     data: threadNextAction,
     loading: threadNextActionLoading,
     error: threadNextActionError,
   } = useThreadNextAction(thread.id, threadNextActionFingerprint)
+
+  const participants = useMemo(() => {
+    const raw = thread.participants_json
+    if (!raw || typeof raw !== 'object') return ''
+    const senders = Array.isArray((raw as { senders?: unknown }).senders)
+      ? ((raw as { senders: unknown[] }).senders as unknown[]).map((x) => String(x || '').trim()).filter(Boolean)
+      : []
+    const recipients = Array.isArray((raw as { recipients?: unknown }).recipients)
+      ? ((raw as { recipients: unknown[] }).recipients as unknown[])
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)
+      : []
+    const parts = [...new Set([...senders, ...recipients])]
+    return parts.slice(0, 4).join(', ') + (parts.length > 4 ? '…' : '')
+  }, [thread.participants_json])
 
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
@@ -113,9 +286,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               }}
               disabled={busyAction === 'assign'}
             >
-              {busyAction === 'assign'
-                ? t('common.loading')
-                : t('app.communications.queue.auto_assign')}
+              {busyAction === 'assign' ? t('common.loading') : t('app.communications.queue.auto_assign')}
             </button>
             <button
               type="button"
@@ -126,9 +297,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               }}
               disabled={busyAction === 'read' || (thread.unread_count ?? 0) <= 0}
             >
-              {busyAction === 'read'
-                ? t('common.loading')
-                : t('app.communications.actions.mark_thread_read')}
+              {busyAction === 'read' ? t('common.loading') : t('app.communications.actions.mark_thread_read')}
             </button>
           </div>
         )}
@@ -152,9 +321,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               }}
               disabled={dispatchingQueued}
             >
-              {dispatchingQueued
-                ? t('common.loading')
-                : t('app.communications.thread.dispatch_queued')}
+              {dispatchingQueued ? t('common.loading') : t('app.communications.thread.dispatch_queued')}
             </button>
           </div>
         )}
@@ -163,116 +330,36 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   )
 
   const timelineSection = (
-    <section className={clsx('card p-4', layout === 'inboxCenter' && 'min-h-0 flex flex-1 flex-col')}>
-      <h2 className="mb-3 shrink-0 text-sm font-semibold text-slate-900">
-        {t('app.communications.thread.timeline')}
-      </h2>
-      <div
-        className={clsx(
-          'space-y-3 overflow-auto pr-1',
-          layout === 'page' && 'max-h-[70vh]',
-          layout === 'inboxCenter' && 'min-h-0 flex-1 max-h-[min(50vh,28rem)] xl:max-h-[calc(100vh-14rem)]',
-        )}
-      >
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-2">
         {sortedMessages.length === 0 && (
-          <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-200 px-3 py-10 text-center text-sm text-slate-500">
             {t('app.communications.states.empty')}
           </div>
         )}
-        {sortedMessages.map((msg) => {
-          const isOutbound = msg.direction === 'outbound'
-          const isInbound = msg.direction === 'inbound'
-          const isNote = msg.is_internal_note || msg.message_type === 'note' || msg.direction === 'system'
-          return (
-            <div
-              key={msg.id}
-              className={clsx(
-                'rounded-xl border px-3 py-2',
-                isNote
-                  ? 'border-violet-200 bg-violet-50'
-                  : isOutbound
-                    ? 'border-brand-200 bg-brand-50'
-                    : isInbound
-                      ? 'border-slate-200 bg-white'
-                      : 'border-slate-200 bg-slate-50',
-              )}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs text-slate-600">
-                  <span className="font-medium">{msg.sender_label || msg.sender_address || msg.sender_id || '—'}</span>
-                  {' '}→{' '}
-                  <span>{msg.recipient_label || msg.recipient_address || msg.recipient_id || '—'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={clsx(
-                      'rounded-md px-2 py-0.5 text-[11px]',
-                      isInbound ? 'bg-amber-100 text-amber-800' : isOutbound ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700',
-                    )}
-                  >
-                    {isNote ? t('app.communications.thread.note') : msg.direction}
-                  </span>
-                  <span className="text-[11px] text-slate-500">{formatThreadDateTime(msg.created_at)}</span>
-                </div>
-              </div>
-              {msg.subject && <div className="mt-1 text-sm font-medium text-slate-900">{msg.subject}</div>}
-              {msg.body_text && (
-                <div className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{msg.body_text}</div>
-              )}
-              <div className="mt-1 text-[11px] text-slate-500">
-                {t('app.communications.labels.status')}: {msg.delivery_status}
-                {msg.read_at && (
-                  <>
-                    {' '}
-                    · {t('app.communications.actions.read_at')}:{' '}
-                    {formatThreadDateTime(msg.read_at)}
-                  </>
-                )}
-              </div>
-              {msg.direction === 'outbound' && !msg.is_internal_note && msg.delivery_status === 'queued' && (
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleDispatchOne(msg.id)}
-                    disabled={dispatchingMessageId === msg.id}
-                    className="btn-secondary btn-xs disabled:opacity-50"
-                  >
-                    {dispatchingMessageId === msg.id
-                      ? t('common.loading')
-                      : t('app.communications.thread.dispatch_now')}
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {sortedMessages.map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            msg={msg}
+            t={t}
+            dispatchingMessageId={dispatchingMessageId}
+            onDispatchOne={handleDispatchOne}
+          />
+        ))}
       </div>
     </section>
   )
 
   const composeSection = (
-    <div className="card p-4">
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">
-        {t('app.communications.thread.compose')}
-      </h2>
+    <div className="shrink-0 border-t border-slate-200 bg-white pt-3">
       {threadUnlinked && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-950">
           {String(thread.channel || '').toLowerCase() === 'email'
             ? t('app.communications.email.mandatory_link.composer_banner')
             : t('app.communications_messages.mandatory_link.composer_banner')}
         </div>
       )}
-      <form className="space-y-3" onSubmit={handleSend}>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={internalNote} onChange={(e) => setInternalNote(e.target.checked)} />
-          {t('app.communications.thread.internal_note')}
-        </label>
-        {!internalNote && (
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={sendImmediately} onChange={(e) => setSendImmediately(e.target.checked)} />
-            {t('app.communications.thread.send_immediately')}
-          </label>
-        )}
+      <form className="space-y-2" onSubmit={handleSend}>
         {thread.channel === 'email' && !internalNote && (
           <input
             value={draftSubject}
@@ -281,122 +368,144 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             placeholder={t('app.communications.thread.subject')}
           />
         )}
-        {!internalNote && (
-          <input
-            value={recipientAddress}
-            onChange={(e) => setRecipientAddress(e.target.value)}
-            className="w-full input"
-            placeholder={t('app.communications.thread.recipient')}
-          />
-        )}
-        {thread.channel === 'email' && !internalNote && templates.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <select className="input" value={selectedTemplateId} onChange={(e) => setSelectedTemplateId(e.target.value)}>
-              {templates.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                const tpl = templates.find((x) => x.id === selectedTemplateId)
-                if (!tpl) return
-                const body = String(tpl.body || '').trim()
-                if (!body) return
-                setDraftText((prev) => {
-                  const base = String(prev || '')
-                  if (!base.trim()) return body
-                  return `${base.trimEnd()}\n\n${body}`
-                })
-              }}
-            >
-              {t('common.actions.insert')}
-            </button>
-          </div>
-        )}
-        {thread.channel === 'email' && !internalNote && inferredSignature && (
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={applySignature} onChange={(e) => setApplySignature(e.target.checked)} />
-            {t('app.communications.email.signature.apply')}
-          </label>
-        )}
         <textarea
-          rows={layout === 'inboxCenter' ? 5 : 8}
+          rows={3}
           value={draftText}
           onChange={(e) => setDraftText(e.target.value)}
-          className="w-full textarea"
+          className="w-full resize-y textarea min-h-[4.5rem] max-h-40"
           placeholder={t('app.communications.thread.message')}
         />
-        <button
-          type="submit"
-          disabled={sending || !draftText.trim()}
-          className="w-full btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {sending ? t('common.loading') : t('app.communications.thread.send')}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {thread.channel === 'email' && !internalNote && templates.length > 0 && (
+            <>
+              <select
+                className="input max-w-[14rem] text-sm"
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+              >
+                {templates.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  const tpl = templates.find((x) => x.id === selectedTemplateId)
+                  if (!tpl) return
+                  const body = String(tpl.body || '').trim()
+                  if (!body) return
+                  setDraftText((prev) => {
+                    const base = String(prev || '')
+                    if (!base.trim()) return body
+                    return `${base.trimEnd()}\n\n${body}`
+                  })
+                }}
+              >
+                {t('common.actions.insert')}
+              </button>
+            </>
+          )}
+          {thread.channel === 'email' && !internalNote && inferredSignature && (
+            <label className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+              <input type="checkbox" checked={applySignature} onChange={(e) => setApplySignature(e.target.checked)} />
+              {t('app.communications.email.signature.apply')}
+            </label>
+          )}
+          <button
+            type="button"
+            className="text-xs font-medium text-slate-500 hover:text-slate-800"
+            onClick={() => setComposeAdvancedOpen((v) => !v)}
+          >
+            {composeAdvancedOpen
+              ? t('app.communications.thread.compose_fewer', { defaultValue: 'Fewer options' })
+              : t('app.communications.thread.compose_more', { defaultValue: 'More options' })}
+          </button>
+          <div className="ml-auto">
+            <button
+              type="submit"
+              disabled={sending || !draftText.trim()}
+              className="btn-primary btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? t('common.loading') : t('app.communications.thread.send')}
+            </button>
+          </div>
+        </div>
+        {composeAdvancedOpen && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
+            <label className="inline-flex items-center gap-1.5 text-xs text-slate-700">
+              <input type="checkbox" checked={internalNote} onChange={(e) => setInternalNote(e.target.checked)} />
+              {t('app.communications.thread.internal_note')}
+            </label>
+            {!internalNote && (
+              <label className="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={sendImmediately}
+                  onChange={(e) => setSendImmediately(e.target.checked)}
+                />
+                {t('app.communications.thread.send_immediately')}
+              </label>
+            )}
+            {!internalNote && (
+              <input
+                value={recipientAddress}
+                onChange={(e) => setRecipientAddress(e.target.value)}
+                className="input max-w-xs text-sm"
+                placeholder={t('app.communications.thread.recipient')}
+              />
+            )}
+          </div>
+        )}
       </form>
     </div>
   )
 
-  const metaCard = (
-    <div className="card p-4">
-      <h3 className="text-sm font-semibold text-slate-900">
-        {t('app.communications.thread.meta')}
-      </h3>
-      <div className="mt-3 space-y-1 text-xs text-slate-600">
-        <div>
-          {t('app.communications.labels.channel')}: {thread.channel}
+  const headerBlock = (
+    <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-slate-200 pb-3">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-base font-semibold text-slate-900">
+          {thread.subject || thread.last_message_preview || `${String(thread.channel || '').toUpperCase()} thread`}
         </div>
-        <div>
-          {t('app.communications.labels.status')}: {thread.status}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+          <span className="font-medium uppercase tracking-wide text-slate-600">
+            {String(thread.channel || '').toUpperCase()}
+          </span>
+          <span aria-hidden>·</span>
+          <span>{thread.status || '—'}</span>
+          {participants ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="truncate" title={participants}>
+                {participants}
+              </span>
+            </>
+          ) : null}
+          {thread.unread_count ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                {thread.unread_count} {t('app.communications.labels.unread_lower')}
+              </span>
+            </>
+          ) : null}
+          <NextActionBadge
+            dto={threadNextAction}
+            loading={threadNextActionLoading}
+            error={threadNextActionError}
+          />
         </div>
-        <div>
-          {t('app.communications.queue.assignee')}: {thread.assignee_id || '—'}
-        </div>
-        <div>
-          {t('app.communications.labels.unread')}: {thread.unread_count}
-        </div>
-        <div>
-          {t('app.communications.labels.entity')}: {thread.entity_type || '—'} / {thread.entity_id || '—'}
-        </div>
-        <div>Last message: {formatThreadDateTime(thread.last_message_at)}</div>
-        <div>Updated: {formatThreadDateTime(thread.updated_at)}</div>
       </div>
+      {actionBar}
     </div>
   )
 
   if (layout === 'inboxCenter') {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200 pb-2">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-slate-900">
-              {thread.subject || thread.last_message_preview || `${String(thread.channel || '').toUpperCase()} thread`}
-            </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
-              <span>{String(thread.channel || '').toUpperCase()}</span>
-              <span>·</span>
-              <span>{thread.status || '—'}</span>
-              {thread.unread_count ? (
-                <>
-                  <span>·</span>
-                  <span>
-                    {thread.unread_count} {t('app.communications.labels.unread_lower')}
-                  </span>
-                </>
-              ) : null}
-              <NextActionBadge
-                dto={threadNextAction}
-                loading={threadNextActionLoading}
-                error={threadNextActionError}
-              />
-            </div>
-          </div>
-          {actionBar}
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {headerBlock}
         {threadLoadErrorBanner && (
           <ErrorRecoveryBanner
             info={threadLoadErrorBanner}
@@ -406,16 +515,14 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             compact
           />
         )}
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-          {timelineSection}
-          {composeSection}
-        </div>
+        {timelineSection}
+        {composeSection}
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex flex-wrap gap-3 text-sm">
@@ -431,9 +538,6 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
             <span>
-              {t('app.communications.labels.thread')}: <span className="font-mono">{thread.id}</span>
-            </span>
-            <span>
               {t('app.communications.labels.channel')}: {String(thread.channel || '').toUpperCase()}
             </span>
             <span>
@@ -441,9 +545,6 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             </span>
             <span>
               {t('app.communications.labels.status')}: {thread.status}
-            </span>
-            <span>
-              {t('app.communications.labels.unread')}: {thread.unread_count ?? 0}
             </span>
             <NextActionBadge
               dto={threadNextAction}
@@ -463,12 +564,9 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           compact
         />
       )}
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+      <div className="flex min-h-[70vh] flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 p-4">
         {timelineSection}
-        <section className="space-y-4">
-          {composeSection}
-          {metaCard}
-        </section>
+        {composeSection}
       </div>
     </div>
   )

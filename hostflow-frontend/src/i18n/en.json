@@ -880,7 +880,7 @@
         "do_procesowania": "Processed",
         "vacancies": "Vacancies",
         "documents": "Documents",
-        "hr_workspace": "HR workspace",
+        "hr_workspace": "Employees",
         "hr_employees": "HR · Employees",
         "hr_inbox": "HR Inbox",
         "orders": "Orders",
@@ -1750,7 +1750,14 @@
       "task_created": "Task created.",
       "task_open_tasks": "Open Tasks",
       "task_error_due": "Choose a valid due date.",
-      "task_error_create": "Could not create task."
+      "task_error_create": "Could not create task.",
+      "link_entities_action": "Link entities",
+      "link_entities_hide": "Hide link picker",
+      "task_create_action": "Create task",
+      "task_form_hide": "Hide task form",
+      "workflow_section": "Workflow & SLA",
+      "more_actions": "More actions",
+      "unlinked_hint_action": "Not linked — use Link to attach an inquiry, client, or order."
     },
     "communications_inbox_hub": {
       "title": "Inbox",
@@ -1913,7 +1920,12 @@
         "communications_workspace": "Communications workspace",
         "more": "More",
         "operations": "Operations",
-        "system": "System"
+        "system": "System",
+        "section_communications": "Communications",
+        "section_recruitment": "Recruitment",
+        "section_sales": "Sales",
+        "section_hr": "HR",
+        "section_services": "Services"
       },
       "actions": {
         "logout": "Sign out",
@@ -3046,17 +3058,19 @@
       "chrome": {
         "automations": "Automations",
         "billing": "Billing",
-        "crm_setup": "CRM setup",
+        "crm_setup": "Recruitment",
         "integrations": "Integrations",
         "overview": "Overview",
         "personal": "Personal",
         "security": "Audit & security",
-        "subtitle": "Same areas as Settings home: workspace, CRM setup, team, automations, integrations, billing, profile.",
+        "subtitle": "Same areas as Settings home: workspace, Recruitment, Sales, team, automations, integrations, billing, profile.",
         "team": "Team",
         "title": "Settings",
         "workspace": "Workspace",
         "wayfinding_title": "CRM work areas",
-        "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, records, tasks, and settings home"
+        "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, records, tasks, and settings home",
+        "recruitment_setup": "Recruitment",
+        "sales_setup": "Sales"
       },
       "email": {
         "title": "Title"
@@ -11391,8 +11405,8 @@
           "label": "Billing"
         },
         "crm_setup": {
-          "description": "Funnels, statuses, profiles and fields needed for CRM operation.",
-          "label": "CRM setup"
+          "label": "Recruitment Setup",
+          "description": "Pipeline, hiring gates, handoff, candidate profiles and document requirements."
         },
         "integrations": {
           "description": "Lead ingest, SMTP, and communications admin—start from the hub, then open a dedicated screen.",
@@ -11409,6 +11423,14 @@
         "workspace": {
           "description": "Company profile, workspace identity and high-level access scope.",
           "label": "Workspace"
+        },
+        "recruitment_setup": {
+          "label": "Recruitment Setup",
+          "description": "Pipeline, hiring gates, handoff, candidate profiles and document requirements."
+        },
+        "sales_setup": {
+          "label": "Sales Setup",
+          "description": "Client inquiry forms, commercial templates, and sales intake — not invoice/tax rules."
         }
       }
     },
@@ -11969,6 +11991,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (inbound inbox)",
+        "subtitle": "Connect Gmail for the Communications inbox. SMTP above is only for outbound CRM notifications.",
+        "default_label": "Gmail inbox",
+        "account": "Mailbox",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Leave blank to keep the saved secret",
+        "client_secret_required": "Enter the Google Client Secret, then Save mailbox",
+        "client_id_required": "Enter the OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Mailbox saved",
+        "save_failed": "Could not save mailbox",
+        "secret_saved": "Client secret saved",
+        "secret_missing": "Client secret not saved yet",
+        "start_failed": "Could not start OAuth",
+        "complete_failed": "Could not complete OAuth",
+        "complete_ok": "Gmail connected",
+        "code_required": "No authorization code",
+        "state_required": "No OAuth state — click Connect email first",
+        "refresh_ok": "Token refreshed",
+        "refresh_failed": "Could not refresh token",
+        "refresh_token": "Refresh token",
+        "no_refresh_token": "Refresh token missing",
+        "flow_hint": "1) Paste Client ID + Secret from Google Cloud → Save mailbox. 2) Connect email → sign in. 3) OAuth complete."
       }
     },
     "ttv": {

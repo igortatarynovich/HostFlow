@@ -1,4 +1,5 @@
 import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
+import { buildEntityDeepLink } from '../platform/entityDeepLinks'
 import type { PlatformHandoff } from '../api/platformCompletion'
 import { createLaunchSearch } from './createLaunchSearch'
 import { persistLaunchSearch } from './launchSearchSession'
@@ -44,5 +45,8 @@ export async function executePlatformHandoff(handoff: PlatformHandoff): Promise<
 }
 
 export function clientDetailPath(clientId: string): string {
-  return `${CRM_APP_PATHS.agencyClients}/${encodeURIComponent(clientId)}`
+  return (
+    buildEntityDeepLink('client_account', clientId) ||
+    `${CRM_APP_PATHS.agencyClients}/${encodeURIComponent(clientId)}`
+  )
 }

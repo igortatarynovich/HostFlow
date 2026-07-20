@@ -791,7 +791,11 @@ export default function CommunicationsInboxHubPage() {
           </div>
         )}
 
-        {!commSetup.loading && commSetup.isComplete && effectiveChannel === 'email' && serverIncomingEnabled === false && hasEmail && (
+        {!commSetup.loading &&
+          (commSetup.isComplete || commSetup.state.emailOAuthConnected) &&
+          effectiveChannel === 'email' &&
+          serverIncomingEnabled === false &&
+          hasEmail && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">
               {t('app.communications.email.incoming_disabled_title')}

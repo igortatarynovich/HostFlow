@@ -6,6 +6,8 @@ import { listReminders } from '../../api/client'
 import type { ReminderRecord } from '../../api/types'
 import { listCommunicationPlannerEvents, type CommunicationPlannerEvent } from '../../api/communications'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { EntityDeepLink } from '../../platform/EntityDeepLink'
+import { buildEntityDeepLink } from '../../platform/entityDeepLinks'
 import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
 
@@ -115,9 +117,13 @@ type PreviewRow = {
 function reminderActionHref(r: ReminderRecord): string {
   const entityType = String(r.entity_type || '').trim().toLowerCase()
   const entityId = String(r.entity_id || '').trim()
-  if (entityType === 'candidate' && entityId) return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(entityId)}?focus=tasks`
-  if (entityType === 'lead' && entityId) return `${CRM_APP_PATHS.leads}/${encodeURIComponent(entityId)}?focus=tasks`
-  if (entityType === 'planner_event' && entityId) return `${CRM_APP_PATHS.calendar}?event_id=${encodeURIComponent(entityId)}`
+  if (entityType && entityId) {
+    const deep = buildEntityDeepLink(entityType, entityId, { query: { focus: 'tasks' } })
+    if (deep) return deep
+  }
+  if (entityType === 'planner_event' && entityId) {
+    return `${CRM_APP_PATHS.calendar}?event_id=${encodeURIComponent(entityId)}`
+  }
   return `${CRM_APP_PATHS.tasks}?t_id=${encodeURIComponent(String(r.id))}`
 }
 
@@ -388,8 +394,8 @@ function TaskRow({
   const tone = BUCKET_TONE[row.bucket]
   return (
     <li>
-      <Link
-        to={row.href}
+      <EntityDeepLink
+        href={row.href}
         className="group flex items-stretch gap-0 transition hover:bg-slate-50/90"
       >
         <div className={`w-1 shrink-0 ${TONE_BAR[tone]}`} aria-hidden />
@@ -415,7 +421,7 @@ function TaskRow({
             />
           </span>
         </div>
-      </Link>
+      </EntityDeepLink>
     </li>
   )
 }

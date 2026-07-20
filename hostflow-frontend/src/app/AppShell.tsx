@@ -28,6 +28,7 @@ import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 import { CRM_APP_PATHS } from './crmAppPaths'
 import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
+import { DeployHostBoundary } from '../platform/DeployHostBoundary'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -248,6 +249,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   }
 
   return (
+    <DeployHostBoundary>
     <CurrentTenantProvider value={currentTenantId}>
       <TenantInfoProvider tenant={tenant}>
         <TeamOverviewNavProvider tenantId={currentTenantId}>
@@ -343,5 +345,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
         </TeamOverviewNavProvider>
       </TenantInfoProvider>
     </CurrentTenantProvider>
+    </DeployHostBoundary>
   )
 }

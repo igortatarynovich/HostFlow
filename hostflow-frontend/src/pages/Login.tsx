@@ -15,6 +15,7 @@ import {
 } from '../utils/friendlyError'
 import { consumeLoginNotice } from '../store/auth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
+import { isAllowedHandoffNext } from '../platform/deployHosts'
 
 export default function Login(){
   const { login } = useAuth()
@@ -47,6 +48,16 @@ export default function Login(){
     setLoading(true)
     try{
       await login(email, password)
+      const nextRaw = (searchParams.get('next') || '').trim()
+      if (nextRaw && isAllowedHandoffNext(nextRaw)) {
+        // Stage 6B: shared cookie Domain=.hostflow.cc — no token in URL/hash.
+        if (/^https?:\/\//i.test(nextRaw)) {
+          window.location.replace(nextRaw)
+          return
+        }
+        nav(nextRaw.startsWith('/') ? nextRaw : '/', { replace: true })
+        return
+      }
       nav('/', { replace: true })
     }catch(err:any){
       if(err?.response?.status === 401){

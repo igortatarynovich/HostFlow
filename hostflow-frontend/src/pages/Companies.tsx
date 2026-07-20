@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, getOnboardingStatus, getOwnCompany, patchOwnCompany } from '../api/client'
+import { ClientAccountBusinessTimeline } from '../components/business-timeline/ClientAccountBusinessTimeline'
 import { recordTtvStepCompleted } from '../api/analytics'
 import type { Company, CompanyReadiness } from '../api/types'
 import { listAdminUsers } from '../api/users'
@@ -2518,42 +2519,12 @@ export default function Companies(){
                 title={t('app.companies.detail.workspace.activity.title')}
                 description={t('app.companies.detail.workspace.activity.subtitle')}
               >
-                <div className="space-y-4 text-sm text-slate-600">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {t('app.companies.detail.workspace.activity.created')}
-                      </p>
-                      <p className="mt-1">{fmtDateTime(currentAny?.created_at as string | undefined)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {t('app.companies.detail.workspace.activity.updated')}
-                      </p>
-                      <p className="mt-1">{fmtDateTime(currentAny?.updated_at as string | undefined)}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      className="btn-secondary btn-sm"
-                      to={`${CRM_APP_PATHS.invoices}?company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
-                    >
-                      {t('app.companies.detail.workspace.activity.link_invoices')}
-                    </Link>
-                    <Link
-                      className="btn-secondary btn-sm"
-                      to={servicesWorkspacePath('orders', { companyId: String(currentAny?.id ?? '') })}
-                    >
-                      {t('app.companies.detail.workspace.activity.link_services')}
-                    </Link>
-                    <Link
-                      className="btn-secondary btn-sm"
-                      to={`${CRM_APP_PATHS.vacancies}?company=${encodeURIComponent(String(currentAny?.id ?? ''))}&page=1`}
-                    >
-                      {t('app.companies.detail.workspace.activity.link_vacancies')}
-                    </Link>
-                  </div>
-                </div>
+                <ClientAccountBusinessTimeline
+                  clientAccountId={String((currentAny as { client_account_id?: string } | null)?.client_account_id || '')}
+                  createdAt={currentAny?.created_at as string | undefined}
+                  updatedAt={currentAny?.updated_at as string | undefined}
+                  companyId={String(currentAny?.id ?? '')}
+                />
               </SectionCard>
             )}
           </>

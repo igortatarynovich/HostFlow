@@ -45,7 +45,6 @@ import { getTenantModules } from '../../api/tenants'
 import type { TenantModuleSettings } from '../../api/types'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
-import { resolveNavPlanFromTeamOverview, shouldShowFinanceNavSection } from '../../nav/financeNavVisibility'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import {
@@ -56,15 +55,18 @@ import {
   SIDEBAR_AGENCY_INBOX_ORDER,
   SIDEBAR_AGENCY_INTEGRATIONS_ORDER,
   SIDEBAR_AGENCY_ORGANIZATION_ORDER,
-  SIDEBAR_AGENCY_PIPELINE_ORDER,
   SIDEBAR_AGENCY_PROCESSING_ORDER,
   SIDEBAR_AGENCY_PROFILE_ORDER,
+  SIDEBAR_AGENCY_FINANCE_ORDER,
+  SIDEBAR_AGENCY_HR_ORDER,
+  SIDEBAR_AGENCY_RECRUITMENT_ORDER,
+  SIDEBAR_AGENCY_SALES_ORDER,
+  SIDEBAR_AGENCY_SERVICES_ORDER,
   SIDEBAR_AGENCY_SETTINGS_HUB_ORDER,
   SIDEBAR_AGENCY_TASKS_ORDER,
   SIDEBAR_AGENCY_TEAM_ORDER,
   SIDEBAR_AGENCY_WORK_HUB_ORDER,
   SIDEBAR_CLIENT_FLAT_ORDER,
-  financeSidebarOrder,
 } from '../../nav/sidebarRailBuckets'
 import { SidebarOwnCompanySection } from './SidebarOwnCompanySection'
 
@@ -193,20 +195,8 @@ export function Sidebar({
     }
   }, [tenant?.id])
 
-  const resolvedNavPlan = useMemo(
-    () => resolveNavPlanFromTeamOverview(canLoadTeamOverviewCtx, teamOverview),
-    [canLoadTeamOverviewCtx, teamOverview],
-  )
-
-  const showFinanceSidebarSection = useMemo(
-    () =>
-      shouldShowFinanceNavSection({
-        isClientTenant,
-        businessType,
-        resolvedNavPlan,
-      }),
-    [businessType, isClientTenant, resolvedNavPlan],
-  )
+  void businessType
+  void canLoadTeamOverviewCtx
 
   const isSoloWorkspace = useMemo(() => {
     const membersCount = Array.isArray(teamOverview?.members) ? teamOverview!.members.length : null
@@ -224,9 +214,11 @@ export function Sidebar({
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
       'recruitment-searches': 'vacancies',
+      'recruitment-inbox': 'leads',
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
       'hr-workspace': 'hr',
+      sales: 'companies',
       clients: 'companies',
       vacancies: 'vacancies',
       documents: 'documents',
@@ -309,16 +301,19 @@ export function Sidebar({
     return moduleFiltered.filter((item) => allowed.has(item.key))
   }, [can, canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  /** §2.13 ТЗ: дашборд → Работа → Входящие → воронка сущностей → задачи → процессинг → команда → финансы → документы → автоматизации / интеграции → аналитика. */
+  /** ADR-023 Stage 1: Communications → Recruitment → HR → Sales → Services → Finance → … */
   const {
     dashboardNavItems,
     workHubNavItems,
     inboxNavItems,
-    pipelineNavItems,
+    recruitmentNavItems,
+    hrNavItems,
+    salesNavItems,
+    servicesNavItems,
+    financeNavItems,
     tasksNavItems,
     processingNavItems,
     teamNavItems,
-    financeNavItems,
     documentsNavItems,
     automationsNavItems,
     integrationsNavItems,
@@ -342,11 +337,14 @@ export function Sidebar({
         dashboardNavItems: [] as NavItem[],
         workHubNavItems: [] as NavItem[],
         inboxNavItems: [] as NavItem[],
-        pipelineNavItems: [] as NavItem[],
+        recruitmentNavItems: [] as NavItem[],
+        hrNavItems: [] as NavItem[],
+        salesNavItems: [] as NavItem[],
+        servicesNavItems: [] as NavItem[],
+        financeNavItems: [] as NavItem[],
         tasksNavItems: [] as NavItem[],
         processingNavItems: [] as NavItem[],
         teamNavItems: [] as NavItem[],
-        financeNavItems: [] as NavItem[],
         documentsNavItems: [] as NavItem[],
         automationsNavItems: [] as NavItem[],
         integrationsNavItems: [] as NavItem[],
@@ -362,11 +360,14 @@ export function Sidebar({
     const dashboardNavItems = pickOrdered([...SIDEBAR_AGENCY_DASHBOARD_ORDER])
     const workHubNavItems = pickOrdered([...SIDEBAR_AGENCY_WORK_HUB_ORDER])
     const inboxNavItems = pickOrdered([...SIDEBAR_AGENCY_INBOX_ORDER])
-    const pipelineNavItems = pickOrdered([...SIDEBAR_AGENCY_PIPELINE_ORDER])
+    const recruitmentNavItems = pickOrdered([...SIDEBAR_AGENCY_RECRUITMENT_ORDER])
+    const hrNavItems = pickOrdered([...SIDEBAR_AGENCY_HR_ORDER])
+    const salesNavItems = pickOrdered([...SIDEBAR_AGENCY_SALES_ORDER])
+    const servicesNavItems = pickOrdered([...SIDEBAR_AGENCY_SERVICES_ORDER])
+    const financeNavItems = pickOrdered([...SIDEBAR_AGENCY_FINANCE_ORDER])
     const tasksNavItems = pickOrdered([...SIDEBAR_AGENCY_TASKS_ORDER])
     const processingNavItems = pickOrdered([...SIDEBAR_AGENCY_PROCESSING_ORDER])
     const teamNavItems = pickOrdered([...SIDEBAR_AGENCY_TEAM_ORDER])
-    const financeNavItems = pickOrdered([...financeSidebarOrder(showFinanceSidebarSection)])
     const documentsNavItems = pickOrdered([...SIDEBAR_AGENCY_DOCUMENTS_ORDER])
     const automationsNavItems = pickOrdered([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER])
     const integrationsNavItems = pickOrdered([...SIDEBAR_AGENCY_INTEGRATIONS_ORDER])
@@ -379,11 +380,14 @@ export function Sidebar({
       dashboardNavItems,
       workHubNavItems,
       inboxNavItems,
-      pipelineNavItems,
+      recruitmentNavItems,
+      hrNavItems,
+      salesNavItems,
+      servicesNavItems,
+      financeNavItems,
       tasksNavItems,
       processingNavItems,
       teamNavItems,
-      financeNavItems,
       documentsNavItems,
       automationsNavItems,
       integrationsNavItems,
@@ -394,7 +398,7 @@ export function Sidebar({
       profileNavItems,
       sidebarBucketed: true,
     }
-  }, [isClientTenant, showFinanceSidebarSection, visibleItems])
+  }, [isClientTenant, visibleItems])
 
   const automationsRailActive = useMemo(() => {
     const path = location.pathname
@@ -472,6 +476,14 @@ export function Sidebar({
   }
 
   const renderPrimaryNavItem = (item: NavItem) => {
+    const itemPath = String(item.path || '')
+    const crossHost = /^https?:\/\//i.test(itemPath)
+    const navClass = (active: boolean) =>
+      clsx(
+        'block rounded-lg px-3 py-3 text-sm font-medium transition',
+        active ? 'bg-white text-brand-900 shadow-sm' : 'text-white hover:bg-white/15 hover:text-white',
+      )
+
     if (item.key === 'inbox') {
       const ItemIcon = ITEM_ICONS.inbox || DEFAULT_ICON
       const showMessagesChild = canUseCommunicationsFeature('messages')
@@ -482,14 +494,7 @@ export function Sidebar({
             to={item.path!}
             title={getItemLabel(item)}
             onClick={handleNavigate}
-            className={() =>
-              clsx(
-                'block rounded-lg px-3 py-3 text-sm font-medium transition',
-                inboxNavActive
-                  ? 'bg-white text-brand-900 shadow-sm'
-                  : 'text-white hover:bg-white/15 hover:text-white',
-              )
-            }
+            className={() => navClass(inboxNavActive)}
           >
             <span className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-2">
@@ -543,32 +548,42 @@ export function Sidebar({
         </div>
       )
     }
+
+    const label = item.key === 'clients' ? clientsNavLabel : getItemLabel(item)
+    const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
+    const inner = (
+      <span className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-2">
+          <ItemIcon size={16} stroke={1.8} />
+          <span>{label}</span>
+        </span>
+      </span>
+    )
+
+    // Foreign modules are absolute https://sales.hostflow.cc/... — must be <a>, not React Router.
+    if (crossHost) {
+      return (
+        <a
+          key={item.key}
+          href={itemPath}
+          title={getItemLabel(item)}
+          onClick={handleNavigate}
+          className={navClass(false)}
+        >
+          {inner}
+        </a>
+      )
+    }
+
     return (
       <NavLink
         key={item.key}
         to={item.path!}
         title={getItemLabel(item)}
         onClick={handleNavigate}
-        className={({ isActive }) =>
-          clsx(
-            'block rounded-lg px-3 py-3 text-sm font-medium transition',
-            navItemActive(item, isActive)
-              ? 'bg-white text-brand-900 shadow-sm'
-              : 'text-white hover:bg-white/15 hover:text-white',
-          )
-        }
+        className={({ isActive }) => navClass(navItemActive(item, isActive))}
       >
-        {(() => {
-          const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
-          return (
-            <span className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-2">
-                <ItemIcon size={16} stroke={1.8} />
-                <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
-              </span>
-            </span>
-          )
-        })()}
+        {inner}
       </NavLink>
     )
   }
@@ -624,19 +639,63 @@ export function Sidebar({
                 {inboxNavItems.length > 0 && (
                   <div className="mb-3">
                     <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                      {t('app.shell.sidebar.section_inbox')}
+                      {t('app.shell.sidebar.section_communications')}
                     </div>
                     <div className="space-y-1">{inboxNavItems.map(renderPrimaryNavItem)}</div>
                   </div>
                 )}
-                {pipelineNavItems.length > 0 && (
+                {recruitmentNavItems.length > 0 && (
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
                       <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                        {t('app.shell.sidebar.section_pipeline')}
+                        {t('app.shell.sidebar.section_recruitment')}
                       </div>
-                      <div className="space-y-1">{pipelineNavItems.map(renderPrimaryNavItem)}</div>
+                      <div className="space-y-1">{recruitmentNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {hrNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_hr')}
+                      </div>
+                      <div className="space-y-1">{hrNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {salesNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_sales')}
+                      </div>
+                      <div className="space-y-1">{salesNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {servicesNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_services')}
+                      </div>
+                      <div className="space-y-1">{servicesNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {financeNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_finance')}
+                      </div>
+                      <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
                     </div>
                   </>
                 )}
@@ -670,17 +729,6 @@ export function Sidebar({
                         {t('app.shell.sidebar.section_team')}
                       </div>
                       <div className="space-y-1">{teamNavItems.map(renderPrimaryNavItem)}</div>
-                    </div>
-                  </>
-                )}
-                {financeNavItems.length > 0 && (
-                  <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
-                    <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                        {t('app.shell.sidebar.section_finance')}
-                      </div>
-                      <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
                     </div>
                   </>
                 )}

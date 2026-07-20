@@ -159,11 +159,61 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   const refreshApplication = useCallback(
     async (id: string) => {
       const updated = await config.getApplication(id)
-      setAllApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
-      setSelectedApplication((prev) => (prev?.id === updated.id ? updated : prev))
+      const sameBusyState = (a: Application) => {
+        const prevStatus = String(a.status || '')
+        const nextStatus = String(updated.status || '')
+        const prevQ = String(a.extensions?.questionnaire_status || '')
+        const nextQ = String(updated.extensions?.questionnaire_status || '')
+        const prevOutcome = String(a.outcome_entity_id || '')
+        const nextOutcome = String(updated.outcome_entity_id || '')
+        return prevStatus === nextStatus && prevQ === nextQ && prevOutcome === nextOutcome
+      }
+      setAllApplications((prev) => {
+        const idx = prev.findIndex((a) => a.id === updated.id)
+        if (idx < 0) return prev
+        if (sameBusyState(prev[idx])) return prev
+        const next = prev.slice()
+        next[idx] = updated
+        return next
+      })
+      setSelectedApplication((prev) => {
+        if (!prev || prev.id !== updated.id) return prev
+        if (sameBusyState(prev)) return prev
+        return updated
+      })
     },
     [config],
   )
+
+  const onDetailRefresh = useCallback(() => {
+    if (selectedId) void refreshApplication(selectedId)
+  }, [refreshApplication, selectedId])
+
+  const onDetailClose = useCallback(() => {
+    navigate(config.homePath)
+  }, [config.homePath, navigate])
+
+  /** Live-refresh open inquiry while waiting for questionnaire answers. */
+  useEffect(() => {
+    if (!selectedId || !selectedApplication) return
+    const qStatus = String(selectedApplication.extensions?.questionnaire_status || '')
+    const waiting =
+      selectedApplication.status === 'waiting' ||
+      qStatus === 'sent' ||
+      qStatus === 'opened' ||
+      qStatus === 'in_progress'
+    if (!waiting) return
+    const timer = window.setInterval(() => {
+      void refreshApplication(selectedId)
+    }, 12_000)
+    return () => window.clearInterval(timer)
+  }, [
+    refreshApplication,
+    selectedId,
+    selectedApplication?.id,
+    selectedApplication?.status,
+    selectedApplication?.extensions?.questionnaire_status,
+  ])
 
   const startCallSession = async () => {
     let queue = newToContact
@@ -387,8 +437,8 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                 <div className="flex min-h-0 flex-1 flex-col">
                   {config.renderDetail({
                     application: selectedApplication,
-                    onRefresh: () => void refreshApplication(selectedApplication.id),
-                    onClose: () => navigate(config.homePath),
+                    onRefresh: onDetailRefresh,
+                    onClose: onDetailClose,
                   })}
                 </div>
               )}

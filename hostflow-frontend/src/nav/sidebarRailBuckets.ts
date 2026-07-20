@@ -1,6 +1,10 @@
 /**
  * Primary App shell sidebar rail placement (agency bucketed + client flat).
  * Consumed by `Sidebar.tsx`; `sidebarNavIntegrity` tests fail on drift.
+ *
+ * Canon: ADR-023 Stage 1 — Module Surface Separation.
+ * Domain ownership ≠ nav convenience: Employee → HR; Invoice → Finance.
+ * Do not reintroduce a mixed Pipeline / CRM / Leads bucket.
  */
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from './appShellNav'
 
@@ -18,18 +22,38 @@ export const SIDEBAR_CLIENT_FLAT_ORDER = [
 
 export const SIDEBAR_AGENCY_DASHBOARD_ORDER = ['overview'] as const
 export const SIDEBAR_AGENCY_WORK_HUB_ORDER = ['work-hub'] as const
+/** Horizontal Communications — not nested under Recruitment or Sales. */
 export const SIDEBAR_AGENCY_INBOX_ORDER = ['inbox'] as const
-export const SIDEBAR_AGENCY_PIPELINE_ORDER = [
+
+/** Recruitment owns Applications / Candidates / Searches — not Employees (ADR-023 §2.2). */
+export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
   'recruitment-searches',
   'recruitment-inbox',
   'candidates',
-  'hr-workspace',
-  'sales',
-  'clients',
 ] as const
+
+/** HR / Workforce owns Employee Workspace after handoff. */
+export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
+
+/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model. */
+export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const
+
+/** Services owns catalog + service order lifecycle. */
+export const SIDEBAR_AGENCY_SERVICES_ORDER = ['service-orders', 'services'] as const
+
+/** Finance owns Invoice (and later Payments / receivables). */
+export const SIDEBAR_AGENCY_FINANCE_ORDER = ['invoices'] as const
+
+/** @deprecated Prefer module-specific orders (ADR-023 amended). */
+export const SIDEBAR_AGENCY_PIPELINE_ORDER = [
+  ...SIDEBAR_AGENCY_RECRUITMENT_ORDER,
+  ...SIDEBAR_AGENCY_SALES_ORDER,
+] as const
+
 export const SIDEBAR_AGENCY_TASKS_ORDER = ['tasks', 'notification-alerts', 'calendar'] as const
 export const SIDEBAR_AGENCY_PROCESSING_ORDER = [] as const
 export const SIDEBAR_AGENCY_TEAM_ORDER = ['team-availability', 'my-availability', 'time-off'] as const
+/** Document Hub — platform horizontal (ADR-009). */
 export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const
 export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations'] as const
 export const SIDEBAR_AGENCY_INTEGRATIONS_ORDER = ['settings-integrations'] as const
@@ -38,10 +62,9 @@ export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = ['my-company'] as const
 export const SIDEBAR_AGENCY_SETTINGS_HUB_ORDER = ['settings'] as const
 export const SIDEBAR_AGENCY_PROFILE_ORDER = ['profile'] as const
 
-export function financeSidebarOrder(showFinanceSection: boolean): readonly string[] {
-  return showFinanceSection
-    ? ['service-orders', 'invoices', 'services']
-    : ['service-orders', 'services', 'invoices']
+/** @deprecated Use SIDEBAR_AGENCY_FINANCE_ORDER / SIDEBAR_AGENCY_SERVICES_ORDER. */
+export function financeSidebarOrder(_showFinanceSection: boolean): readonly string[] {
+  return [...SIDEBAR_AGENCY_FINANCE_ORDER]
 }
 
 /** Deep links opened from Automations / Settings / Integrations hubs — not primary rail rows. */
@@ -80,11 +103,14 @@ const _agencyRailKeyParts: readonly (readonly string[])[] = [
   SIDEBAR_AGENCY_DASHBOARD_ORDER,
   SIDEBAR_AGENCY_WORK_HUB_ORDER,
   SIDEBAR_AGENCY_INBOX_ORDER,
-  SIDEBAR_AGENCY_PIPELINE_ORDER,
+  SIDEBAR_AGENCY_RECRUITMENT_ORDER,
+  SIDEBAR_AGENCY_HR_ORDER,
+  SIDEBAR_AGENCY_SALES_ORDER,
+  SIDEBAR_AGENCY_SERVICES_ORDER,
+  SIDEBAR_AGENCY_FINANCE_ORDER,
   SIDEBAR_AGENCY_TASKS_ORDER,
   SIDEBAR_AGENCY_PROCESSING_ORDER,
   SIDEBAR_AGENCY_TEAM_ORDER,
-  ['service-orders', 'invoices', 'services'],
   SIDEBAR_AGENCY_DOCUMENTS_ORDER,
   SIDEBAR_AGENCY_AUTOMATIONS_ORDER,
   SIDEBAR_AGENCY_INTEGRATIONS_ORDER,
@@ -94,7 +120,7 @@ const _agencyRailKeyParts: readonly (readonly string[])[] = [
   SIDEBAR_AGENCY_PROFILE_ORDER,
 ]
 
-/** Union of keys that may appear on the agency primary rail (finance order does not change membership). */
+/** Union of keys that may appear on the agency primary rail. */
 export const ALL_AGENCY_PRIMARY_RAIL_KEYS: ReadonlySet<string> = new Set(_agencyRailKeyParts.flat())
 
 export function isNavKeyAccountedForInSidebarPlacement(key: string): boolean {

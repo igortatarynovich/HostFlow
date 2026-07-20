@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import type { DocumentPackProjection, ReminderWorkQueueItem } from '../../api/types'
-import type { HrReviewPanel } from '../../api/workforce'
+import type { DocumentPackProjection, ReminderWorkQueueItem } from '../api/types'
+import type { HrReviewPanel } from '../api/workforce'
 import {
   buildEmployeeReadinessSummary,
   buildReadinessFollowUpMessage,

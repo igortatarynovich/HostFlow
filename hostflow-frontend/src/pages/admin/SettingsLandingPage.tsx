@@ -28,7 +28,8 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 
 type SettingsSectionKey =
   | 'workspace'
-  | 'crm_setup'
+  | 'recruitment_setup'
+  | 'sales_setup'
   | 'team'
   | 'automations'
   | 'integrations'
@@ -112,9 +113,17 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.sections.workspace.label', { defaultValue: 'Workspace' }),
         description: t('admin.settings.sections.workspace.description', { defaultValue: 'Company profile, workspace identity and high-level access scope.' }),
       },
-      crm_setup: {
-        label: t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' }),
-        description: t('admin.settings.sections.crm_setup.description', { defaultValue: 'Funnels, statuses, profiles and fields needed for CRM operation.' }),
+      recruitment_setup: {
+        label: t('admin.settings.sections.recruitment_setup.label', { defaultValue: 'Recruitment Setup' }),
+        description: t('admin.settings.sections.recruitment_setup.description', {
+          defaultValue: 'Vacancies pipeline, hiring gates, handoff, candidate profiles and document requirements.',
+        }),
+      },
+      sales_setup: {
+        label: t('admin.settings.sections.sales_setup.label', { defaultValue: 'Sales Setup' }),
+        description: t('admin.settings.sections.sales_setup.description', {
+          defaultValue: 'Client inquiry forms, sales templates, and commercial intake settings.',
+        }),
       },
       team: {
         label: t('admin.settings.sections.team.label', { defaultValue: 'Team' }),
@@ -140,7 +149,16 @@ export default function SettingsLandingPage() {
     [t],
   )
 
-  const sectionOrder: SettingsSectionKey[] = ['workspace', 'crm_setup', 'team', 'automations', 'integrations', 'billing', 'personal']
+  const sectionOrder: SettingsSectionKey[] = [
+    'workspace',
+    'recruitment_setup',
+    'sales_setup',
+    'team',
+    'automations',
+    'integrations',
+    'billing',
+    'personal',
+  ]
 
   const allCards: CardDef[] = useMemo(
     () => [
@@ -228,7 +246,7 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.documents.description'),
         target: CRM_APP_PATHS.settingsDocs,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['documents'],
       },
       {
@@ -237,16 +255,18 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.merge_templates.description'),
         target: CRM_APP_PATHS.settingsMergeTemplates,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['documents'],
       },
       {
         key: 'funnels',
         label: t('admin.settings.cards.funnels.label', { defaultValue: 'Funnels' }),
-        description: t('admin.settings.cards.funnels.description', { defaultValue: 'Candidate and lead stages.' }),
+        description: t('admin.settings.cards.funnels.description', {
+          defaultValue: 'Candidate pipeline stages for Recruitment.',
+        }),
         target: CRM_APP_PATHS.settingsFunnels,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['candidates'],
       },
       {
@@ -255,7 +275,7 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.hiring_gates.description'),
         target: CRM_APP_PATHS.settingsHiringPipelineGates,
         roles: ['administrator', 'supervisor', 'recruiter', 'compliance_officer', 'hr_officer', 'viewer'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['candidates'],
       },
       {
@@ -266,7 +286,7 @@ export default function SettingsLandingPage() {
         }),
         target: CRM_APP_PATHS.settingsTransferPolicy,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['candidates'],
       },
       {
@@ -275,7 +295,7 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.risk_intel.description'),
         target: CRM_APP_PATHS.settingsRiskIntel,
         roles: ['administrator', 'supervisor', 'client_manager'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['candidates'],
       },
       {
@@ -284,7 +304,7 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.candidate_profiles.description'),
         target: CRM_APP_PATHS.settingsCandidateProfiles,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['candidates'],
       },
       {
@@ -293,16 +313,18 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.custom_fields.description'),
         target: CRM_APP_PATHS.settingsCustomFields,
         roles: ['administrator'],
-        section: 'crm_setup',
+        section: 'recruitment_setup',
         requiresModules: ['candidates'],
       },
       {
         key: 'message_templates',
         label: t('admin.settings.cards.message_templates.label', { defaultValue: 'Message templates' }),
-        description: t('admin.settings.cards.message_templates.description', { defaultValue: 'Shared templates for lead operational emails and RODO notices.' }),
+        description: t('admin.settings.cards.message_templates.description', {
+          defaultValue: 'Sales and operational email templates for client inquiries.',
+        }),
         target: CRM_APP_PATHS.settingsMessageTemplates,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'sales_setup',
       },
       {
         key: 'lead_forms',
@@ -310,7 +332,7 @@ export default function SettingsLandingPage() {
         description: t('admin.settings.cards.lead_forms.description'),
         target: CRM_APP_PATHS.settingsLeadForms,
         roles: ['administrator', 'supervisor'],
-        section: 'crm_setup',
+        section: 'sales_setup',
         requiresModules: ['leads'],
       },
       {

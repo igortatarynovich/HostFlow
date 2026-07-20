@@ -49,7 +49,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         label: t('app.client_inquiry.service_order.open_client', { defaultValue: 'Открыть карточку клиента' }),
         href: clientHref,
       },
-      requiredContext: ['workflow', 'summary'],
+      requiredContext: ['workflow', 'contacts', 'summary', 'relations', 'history'],
       terminal: false,
       variant: 'success',
     }
@@ -64,7 +64,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
           : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
       why: undefined,
       primaryAction: null,
-      requiredContext: ['workflow'],
+      requiredContext: ['workflow', 'contacts', 'relations', 'history'],
       terminal: true,
       outcome: {
         title:
@@ -73,6 +73,72 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
             : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
         variant: 'terminal',
       },
+    }
+  }
+
+  if (application.status === 'waiting') {
+    return {
+      stateId: 'sales.awaiting_questionnaire',
+      currentState: t('app.sales_inquiry.step.waiting_title', { defaultValue: 'Ожидаем ответ' }),
+      why: t('app.sales_inquiry.step.waiting_body', {
+        defaultValue: 'Анкета отправлена. Ждём, пока клиент заполнит и отправит ответы.',
+      }),
+      primaryAction: null,
+      secondaryActions: [
+        {
+          id: 'close',
+          label: t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' }),
+          onClick: () => void onStage('lost'),
+          variant: 'danger',
+          disabled,
+        },
+      ],
+      contactActions,
+      requiredContext: ['workflow', 'contacts', 'summary', 'relations', 'history'],
+      variant: 'blocker',
+    }
+  }
+
+  if (application.status === 'questionnaire_submitted') {
+    return {
+      stateId: 'sales.contact_after_questionnaire',
+      currentState: t('app.sales_inquiry.step.contact_title', { defaultValue: 'Связаться с клиентом' }),
+      why: t('app.sales_inquiry.step.questionnaire_filled_why', {
+        defaultValue: 'Клиент заполнил анкету.',
+      }),
+      primaryAction: contactPhone
+        ? {
+            id: 'contacted',
+            label: 'Позвонил',
+            onClick: () => void onStage('contacted'),
+            disabled,
+          }
+        : {
+            id: 'convert',
+            label: converting ? 'Создаём…' : 'Создать клиента',
+            onClick: () => void onConvert(),
+            disabled,
+          },
+      secondaryActions: [
+        {
+          id: 'interested_later',
+          label: t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' }),
+          onClick: () => void onStage('qualified'),
+          disabled,
+        },
+        {
+          id: 'close',
+          label: t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' }),
+          onClick: () => void onStage('lost'),
+          variant: 'danger',
+          disabled,
+        },
+      ],
+      contactActions,
+      requiredContext: ['workflow', 'contacts', 'summary', 'relations', 'history'],
+      afterActionHint: contactPhone
+        ? t('app.sales_inquiry.after_call_hint', { defaultValue: 'После звонка отметьте «Позвонил».' })
+        : undefined,
     }
   }
 
@@ -105,7 +171,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         },
       ],
       contactActions,
-      requiredContext: ['workflow', 'summary'],
+      requiredContext: ['workflow', 'contacts', 'summary', 'relations', 'history'],
       variant: 'default',
     }
   }
@@ -139,7 +205,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         },
       ],
       contactActions,
-      requiredContext: ['workflow', 'summary'],
+      requiredContext: ['workflow', 'contacts', 'summary', 'relations', 'history'],
     }
   }
 
@@ -167,7 +233,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       },
     ],
     contactActions,
-    requiredContext: ['workflow', 'summary'],
+    requiredContext: ['workflow', 'contacts', 'summary', 'relations', 'history'],
     afterActionHint: contactPhone
       ? t('app.sales_inquiry.after_call_hint', { defaultValue: 'После звонка отметьте «Позвонил».' })
       : undefined,

@@ -168,7 +168,7 @@ export default function RiskIntelSettingsPage() {
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' })}
+        kicker={t('admin.settings.sections.recruitment_setup.label', { defaultValue: 'Recruitment Setup' })}
         title={t('admin.risk_intel.settings.title', { defaultValue: 'Risk intelligence (v1)' })}
         subtitle={t('admin.risk_intel.settings.blurb', {
           defaultValue:

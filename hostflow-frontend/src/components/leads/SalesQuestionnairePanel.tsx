@@ -18,6 +18,7 @@ import {
   previewLeadQuestionnaireInviteEmail,
   sendLeadQuestionnaireInviteEmail,
   type LeadQuestionnaireFormOption,
+  type LeadQuestionnaireInviteResult,
 } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
@@ -32,7 +33,11 @@ import {
 
 type Props = {
   lead: Lead
-  onLeadUpdated: (lead: Lead) => void
+  invite?: LeadQuestionnaireInviteResult | null
+  inviteLoading?: boolean
+  hasAnswers?: boolean
+  onLeadUpdated: (lead: Lead, invite?: LeadQuestionnaireInviteResult | null) => void
+  onError?: (message: string | null) => void
 }
 
 function text(value: unknown): string {
@@ -59,7 +64,12 @@ function detailCode(err: unknown): string | null {
   return null
 }
 
-export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) {
+export default function SalesQuestionnairePanel({
+  lead,
+  invite = null,
+  inviteLoading = false,
+  onLeadUpdated,
+}: Props) {
   const { t, locale } = useI18n()
   const { notify } = useToast()
   const [busy, setBusy] = useState(false)
@@ -116,15 +126,24 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
       setApplyUrl(null)
       return
     }
+    // Wait for parent hydrate before issuing our own GET (avoids duplicate invite calls).
+    if (inviteLoading) return
+    // Parent already hydrated invite — reuse apply_url, skip duplicate GET.
+    if (invite?.apply_url) {
+      setApplyUrl(absoluteApplyUrl(invite.apply_url))
+      if (invite.lead_form_id) setSelectedFormId(invite.lead_form_id)
+      if (invite.form_locale) setSelectedLocale(String(invite.form_locale))
+      return
+    }
     void getLeadQuestionnaireInvite(lead.id)
-      .then((invite) => {
-        if (cancelled || !invite?.apply_url) return
-        setApplyUrl(absoluteApplyUrl(invite.apply_url))
-        if (invite.lead_form_id) {
-          setSelectedFormId(invite.lead_form_id)
+      .then((row) => {
+        if (cancelled || !row?.apply_url) return
+        setApplyUrl(absoluteApplyUrl(row.apply_url))
+        if (row.lead_form_id) {
+          setSelectedFormId(row.lead_form_id)
         }
-        if (invite.form_locale) {
-          setSelectedLocale(String(invite.form_locale))
+        if (row.form_locale) {
+          setSelectedLocale(String(row.form_locale))
         }
       })
       .catch(() => {
@@ -133,7 +152,14 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
     return () => {
       cancelled = true
     }
-  }, [lead.id, questionnaireStatus])
+  }, [
+    lead.id,
+    questionnaireStatus,
+    inviteLoading,
+    invite?.apply_url,
+    invite?.lead_form_id,
+    invite?.form_locale,
+  ])
 
   useEffect(() => {
     if (!emailOpen) return
@@ -241,35 +267,44 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
     t,
   ])
 
-  const ensureLink = useCallback(async () => {
-    if (applyUrl) return applyUrl
-    setBusy(true)
-    try {
-      const result = await createLeadQuestionnaireInvite(lead.id, {
-        mark_sent: true,
-        lead_form_id: selectedFormId || undefined,
-        form_locale: selectedLocale || undefined,
-      })
-      const url = absoluteApplyUrl(result.apply_url)
-      setApplyUrl(url)
-      await refreshLead()
-      return url
-    } catch (err: unknown) {
-      notify({
-        title: detailMessage(
-          err,
-          t('app.sales_questionnaire.send_failed', { defaultValue: 'Could not create questionnaire link' }),
-        ),
-        variant: 'error',
-      })
-      return null
-    } finally {
-      setBusy(false)
-    }
-  }, [applyUrl, lead.id, notify, refreshLead, selectedFormId, selectedLocale, t])
+  const ensureLink = useCallback(
+    async (opts?: { channel?: 'whatsapp' | 'link'; forceNew?: boolean }) => {
+      const channel = opts?.channel || 'link'
+      // WhatsApp always hits the API so timeline gets a channel event even if a link already exists.
+      if (applyUrl && !opts?.forceNew && channel !== 'whatsapp') return applyUrl
+      setBusy(true)
+      try {
+        const mintNew = Boolean(opts?.forceNew || forceNewInvite || answered)
+        const result = await createLeadQuestionnaireInvite(lead.id, {
+          mark_sent: true,
+          lead_form_id: selectedFormId || undefined,
+          form_locale: selectedLocale || undefined,
+          sent_channel: channel,
+          force_new: mintNew,
+        })
+        const url = absoluteApplyUrl(result.apply_url)
+        setApplyUrl(url)
+        setForceNewInvite(false)
+        await refreshLead()
+        return url
+      } catch (err: unknown) {
+        notify({
+          title: detailMessage(
+            err,
+            t('app.sales_questionnaire.send_failed', { defaultValue: 'Could not create questionnaire link' }),
+          ),
+          variant: 'error',
+        })
+        return null
+      } finally {
+        setBusy(false)
+      }
+    },
+    [answered, applyUrl, forceNewInvite, lead.id, notify, refreshLead, selectedFormId, selectedLocale, t],
+  )
 
   const copyLink = useCallback(async () => {
-    const url = await ensureLink()
+    const url = await ensureLink({ channel: 'link' })
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
@@ -283,13 +318,13 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
   }, [ensureLink, notify, t])
 
   const openForm = useCallback(async () => {
-    const url = await ensureLink()
+    const url = await ensureLink({ channel: 'link' })
     if (!url) return
     window.open(url, '_blank', 'noopener,noreferrer')
   }, [ensureLink])
 
   const openWhatsApp = useCallback(async () => {
-    const url = await ensureLink()
+    const url = await ensureLink({ channel: 'whatsapp' })
     if (!url) return
     const message = t('app.sales_questionnaire.whatsapp_message', {
       defaultValue: 'Hello! Please complete this short questionnaire: {{url}}',

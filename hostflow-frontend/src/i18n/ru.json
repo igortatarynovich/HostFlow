@@ -862,7 +862,7 @@
         "do_procesowania": "Процессинг",
         "vacancies": "Вакансии",
         "documents": "Документы",
-        "hr_workspace": "HR",
+        "hr_workspace": "Сотрудники",
         "hr_employees": "HR · Сотрудники",
         "orders": "Заказы",
         "services": "Доп. услуги / заказы",
@@ -1679,7 +1679,14 @@
       "task_created": "Задача создана.",
       "task_open_tasks": "Открыть задачи",
       "task_error_due": "Укажите корректную дату и время.",
-      "task_error_create": "Не удалось создать задачу."
+      "task_error_create": "Не удалось создать задачу.",
+      "link_entities_action": "Привязать",
+      "link_entities_hide": "Скрыть привязку",
+      "task_create_action": "Создать задачу",
+      "task_form_hide": "Скрыть форму задачи",
+      "workflow_section": "Workflow и SLA",
+      "more_actions": "Ещё действия",
+      "unlinked_hint_action": "Без привязки — нажмите «Привязать», чтобы связать с обращением, клиентом или заказом."
     },
     "communications_inbox_hub": {
       "title": "Входящие",
@@ -1842,7 +1849,12 @@
         "communications_workspace": "Рабочее пространство для связи",
         "more": "Подробнее",
         "operations": "Операции",
-        "system": "Система"
+        "system": "Система",
+        "section_communications": "Коммуникации",
+        "section_recruitment": "Рекрутинг",
+        "section_sales": "Продажи",
+        "section_hr": "HR / Кадры",
+        "section_services": "Услуги"
       },
       "actions": {
         "logout": "Выйти",
@@ -2975,17 +2987,19 @@
       "chrome": {
         "automations": "Автоматизации",
         "billing": "Биллинг",
-        "crm_setup": "Настройка CRM",
+        "crm_setup": "Рекрутинг",
         "integrations": "Интеграции",
         "overview": "Обзор",
         "personal": "Персональные",
         "security": "Аудит и безопасность",
-        "subtitle": "Те же зоны, что на главной настроек: воркспейс, CRM, команда, автоматизации, интеграции, биллинг, профиль.",
+        "subtitle": "Те же зоны, что на главной настроек: воркспейс, рекрутинг, продажи, команда, автоматизации, интеграции, биллинг, профиль.",
         "team": "Команда",
         "title": "Настройки",
         "workspace": "Рабочая область",
         "wayfinding_title": "Рабочие области CRM",
-        "wayfinding_nav_label": "Переход к дашборду, центру работы, inbox, записям, задачам и главной настроек"
+        "wayfinding_nav_label": "Переход к дашборду, центру работы, inbox, записям, задачам и главной настроек",
+        "recruitment_setup": "Рекрутинг",
+        "sales_setup": "Продажи"
       },
       "email": {
         "title": "Название"
@@ -11393,8 +11407,8 @@
           "label": "Биллинг"
         },
         "crm_setup": {
-          "description": "Воронки, статусы, профили и поля, необходимые для работы CRM.",
-          "label": "Настройка CRM"
+          "label": "Настройка рекрутинга",
+          "description": "Воронка, hiring gates, handoff, профили кандидатов и требования к документам."
         },
         "integrations": {
           "description": "Приём лидов, SMTP и админка коммуникаций — сначала хаб, затем отдельный экран.",
@@ -11411,6 +11425,14 @@
         "workspace": {
           "description": "Профиль компании, идентичность воркспейса и общий контур доступа.",
           "label": "Рабочее пространство"
+        },
+        "recruitment_setup": {
+          "label": "Настройка рекрутинга",
+          "description": "Воронка, hiring gates, handoff, профили кандидатов и требования к документам."
+        },
+        "sales_setup": {
+          "label": "Настройка продаж",
+          "description": "Анкеты обращений, коммерческие шаблоны и sales intake — не правила счетов и налогов."
         }
       }
     },
@@ -11915,6 +11937,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (входящая почта)",
+        "subtitle": "Подключение Gmail для Communications inbox. SMTP выше — только для исходящих уведомлений CRM.",
+        "default_label": "Gmail inbox",
+        "account": "Почтовый аккаунт",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Оставьте пустым, чтобы сохранить уже записанный секрет",
+        "client_secret_required": "Введите Google Client Secret и нажмите Save mailbox",
+        "client_id_required": "Укажите OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Mailbox сохранён",
+        "save_failed": "Не удалось сохранить mailbox",
+        "secret_saved": "Client secret сохранён",
+        "secret_missing": "Client secret ещё не сохранён",
+        "start_failed": "Не удалось начать OAuth",
+        "complete_failed": "Не удалось завершить OAuth",
+        "complete_ok": "Gmail подключён",
+        "code_required": "Нет кода авторизации",
+        "state_required": "Нет OAuth state — сначала нажмите «Подключить Gmail»",
+        "refresh_ok": "Токен обновлён",
+        "refresh_failed": "Не удалось обновить токен",
+        "refresh_token": "Обновить токен",
+        "no_refresh_token": "Refresh token отсутствует",
+        "flow_hint": "1) Вставьте Client ID и Secret из Google Cloud → Save mailbox. 2) Connect email → войдите. 3) OAuth complete."
       }
     },
     "ttv": {

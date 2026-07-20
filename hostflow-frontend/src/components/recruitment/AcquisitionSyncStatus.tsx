@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
-import type { AcquisitionSnapshot } from '../../api/searchAcquisition'
+import type { AcquisitionSnapshot } from '../api/searchAcquisition'
 import { useI18n, type LocaleCode } from '../../i18n'
 
 function dateFnsLocale(code: LocaleCode) {

@@ -1,10 +1,11 @@
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
-/** Tabs in `SettingsChrome` — aligned with `SettingsLandingPage` sections (§2.17.14 SSOT). */
+/** Tabs in `SettingsChrome` — aligned with `SettingsLandingPage` sections (ADR-023). */
 export type SettingsChromeTabKey =
   | 'overview'
   | 'workspace'
-  | 'crm_setup'
+  | 'recruitment_setup'
+  | 'sales_setup'
   | 'team'
   | 'automations'
   | 'integrations'
@@ -21,16 +22,17 @@ const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] 
   { prefix: CRM_APP_PATHS.settingsTenants, tab: 'workspace' },
   { prefix: CRM_APP_PATHS.settingsLegal, tab: 'workspace' },
   { prefix: CRM_APP_PATHS.settingsTenantLinks, tab: 'workspace' },
-  { prefix: CRM_APP_PATHS.settingsTtvReport, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsMessageTemplates, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsLeadForms, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsCustomFields, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsCandidateProfiles, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsDocs, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsRiskIntel, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsHiringPipelineGates, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsTransferPolicy, tab: 'crm_setup' },
-  { prefix: CRM_APP_PATHS.settingsFunnels, tab: 'crm_setup' },
+  { prefix: CRM_APP_PATHS.settingsTtvReport, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsCustomFields, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsCandidateProfiles, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsDocs, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsMergeTemplates, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsRiskIntel, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsHiringPipelineGates, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsTransferPolicy, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsFunnels, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsMessageTemplates, tab: 'sales_setup' },
+  { prefix: CRM_APP_PATHS.settingsLeadForms, tab: 'sales_setup' },
   { prefix: CRM_APP_PATHS.settingsRuleset, tab: 'automations' },
   { prefix: CRM_APP_PATHS.settingsCommunicationsMessengers, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsCommunicationsQueue, tab: 'automations' },
@@ -65,6 +67,7 @@ export function settingsChromeActiveTab(pathname: string, search: string): Setti
     }
   }
 
+  void search
   return 'overview'
 }
 
@@ -74,8 +77,10 @@ export function settingsChromeTabHref(tab: SettingsChromeTabKey): string {
       return CRM_APP_PATHS.settings
     case 'workspace':
       return CRM_APP_PATHS.myCompany
-    case 'crm_setup':
+    case 'recruitment_setup':
       return CRM_APP_PATHS.settingsFunnels
+    case 'sales_setup':
+      return CRM_APP_PATHS.settingsLeadForms
     case 'team':
       return CRM_APP_PATHS.settingsUsers
     case 'automations':

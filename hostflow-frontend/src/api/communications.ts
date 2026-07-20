@@ -207,6 +207,12 @@ export type CommunicationThread = {
   direction_hint?: string | null
   entity_type?: string | null
   entity_id?: string | null
+  entity_links?: Array<{
+    id?: string
+    entity_type: string
+    entity_id: string
+    is_immutable?: boolean
+  }>
   linked_company_id?: string | null
   linked_candidate_id?: string | null
   owner_id?: string | null
@@ -246,6 +252,9 @@ export type CommunicationMessage = {
   body_html?: string | null
   attachments_json: any[]
   payload: Record<string, any>
+  /** G19 Message Context — object this message is about (not Thread ownership). */
+  context_entity_type?: string | null
+  context_entity_id?: string | null
   external_message_ref?: string | null
   delivery_status: string
   error_message?: string | null
@@ -848,14 +857,72 @@ export async function patchCommunicationThread(threadId: string, payload: Record
   return data as CommunicationThread
 }
 
+export type CommunicationThreadRematchItem = {
+  thread_id: string
+  confidence: string
+  auto_linked: boolean
+  skipped?: boolean
+  skip_reason?: string | null
+  counterparty_email?: string | null
+  reasons?: string[]
+  hits?: Array<{ entity_type: string; entity_id: string; reason?: string }>
+}
+
+export type CommunicationThreadRematchResponse = {
+  processed: number
+  linked: number
+  ambiguous: number
+  none: number
+  skipped: number
+  dry_run: boolean
+  items: CommunicationThreadRematchItem[]
+}
+
+/** Controlled G15 rematch for historically unlinked email threads (default dry_run). */
+export async function rematchUnlinkedCommunicationThreads(opts?: {
+  threadIds?: string[]
+  limit?: number
+  dryRun?: boolean
+}): Promise<CommunicationThreadRematchResponse> {
+  const { data } = await api.post('/communications/threads/rematch-unlinked', {
+    thread_ids: opts?.threadIds,
+    limit: opts?.limit ?? 100,
+    dry_run: opts?.dryRun ?? true,
+  })
+  return data as CommunicationThreadRematchResponse
+}
+
 export async function listCommunicationMessages(
   threadId: string,
-  opts?: { limit?: number; offset?: number }
+  opts?: {
+    limit?: number
+    offset?: number
+    context_entity_type?: string
+    context_entity_id?: string
+  }
 ): Promise<CommunicationMessageListResponse> {
   const params: Record<string, any> = {}
   if (opts?.limit != null) params.limit = opts.limit
   if (opts?.offset != null) params.offset = opts.offset
+  if (opts?.context_entity_type) params.context_entity_type = opts.context_entity_type
+  if (opts?.context_entity_id) params.context_entity_id = opts.context_entity_id
   const { data } = await api.get(`/communications/threads/${threadId}/messages`, { params })
+  return data as CommunicationMessageListResponse
+}
+
+export async function listCommunicationMessagesByContext(opts: {
+  context_entity_type: string
+  context_entity_id: string
+  limit?: number
+  offset?: number
+}): Promise<CommunicationMessageListResponse> {
+  const params: Record<string, any> = {
+    context_entity_type: opts.context_entity_type,
+    context_entity_id: opts.context_entity_id,
+  }
+  if (opts.limit != null) params.limit = opts.limit
+  if (opts.offset != null) params.offset = opts.offset
+  const { data } = await api.get(`/communications/messages`, { params })
   return data as CommunicationMessageListResponse
 }
 
@@ -864,6 +931,18 @@ export async function createCommunicationMessage(
   payload: Record<string, any>
 ): Promise<CommunicationMessage> {
   const { data } = await api.post(`/communications/threads/${threadId}/messages`, payload)
+  return data as CommunicationMessage
+}
+
+export async function patchCommunicationMessageContext(
+  messageId: string,
+  payload: {
+    context_entity_type?: string | null
+    context_entity_id?: string | null
+    clear?: boolean
+  }
+): Promise<CommunicationMessage> {
+  const { data } = await api.patch(`/communications/messages/${messageId}/context`, payload)
   return data as CommunicationMessage
 }
 
@@ -906,43 +985,6 @@ export async function reconcileCommunicationThreadUnread(payload?: {
   return data as { processed: number; updated: number; total_unread: number }
 }
 
-
-export type CommunicationThreadRematchItem = {
-  thread_id: string
-  confidence: string
-  auto_linked: boolean
-  skipped?: boolean
-  skip_reason?: string | null
-  counterparty_email?: string | null
-  reasons?: string[]
-  hits?: Array<{ entity_type: string; entity_id: string; reason?: string }>
-}
-
-export type CommunicationThreadRematchResponse = {
-  processed: number
-  linked: number
-  ambiguous: number
-  none: number
-  skipped: number
-  dry_run: boolean
-  items: CommunicationThreadRematchItem[]
-  unavailable_reason?: string | null
-}
-
-/** Controlled G15 rematch for historically unlinked email threads (default dry_run). */
-export async function rematchUnlinkedCommunicationThreads(opts?: {
-  threadIds?: string[]
-  limit?: number
-  dryRun?: boolean
-}): Promise<CommunicationThreadRematchResponse> {
-  const { data } = await api.post('/communications/threads/rematch-unlinked', {
-    thread_ids: opts?.threadIds,
-    limit: opts?.limit ?? 100,
-    dry_run: opts?.dryRun ?? true,
-  })
-  return data as CommunicationThreadRematchResponse
-}
-
 export async function autoAssignCommunicationThread(
   threadId: string
 ): Promise<{ assigned: boolean; thread: CommunicationThread; reason?: string | null; strategy?: string | null; assignee_id?: string | null; candidates?: Array<Record<string, any>> }> {
@@ -970,6 +1012,7 @@ export async function patchCommunicationAccount(
     inbox_address: string | null
     is_active: boolean
     settings_json: Record<string, any>
+    /** Top-level Google/Microsoft client secret (encrypted server-side). */
     oauth_client_secret: string
   }>
 ): Promise<CommunicationChannelAccount> {
@@ -1326,6 +1369,8 @@ export async function runCommunicationEmailDispatchWorker(payload?: {
 export async function runCommunicationEmailPollWorker(payload?: {
   only_account_id?: string
   limit_per_account?: number
+  pages_per_folder?: number
+  reset_cursors?: boolean
 }): Promise<{
   polled_accounts: number
   supported_accounts: number

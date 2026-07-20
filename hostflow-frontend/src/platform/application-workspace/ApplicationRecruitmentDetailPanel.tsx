@@ -115,10 +115,38 @@ export function ApplicationRecruitmentDetailPanel({
   const createCandidate = useCallback(() => {
     void run(async () => {
       const result = await processRecruitmentApplication(application.id)
-      notify({ title: 'Кандидат создан', variant: 'success' })
-      if (result.candidate_id) {
+      const leadStatus = String(result.lead_status || '').toLowerCase()
+      const isRepeat = Boolean(result.is_repeat_application) || leadStatus === 'duplicated'
+      if (result.candidate_id && isRepeat) {
+        const newCycle = Boolean(result.application?.extensions?.new_candidate_cycle)
+        notify({
+          title: 'Повторное обращение',
+          description: newCycle
+            ? 'Создан новый кандидат. В карточке есть справка о прошлом обращении и чем оно закончилось.'
+            : 'Отклик привязан к существующему открытому кандидату. История этапов сохранена.',
+          variant: 'success',
+        })
         navigate(candidateDetailPath(String(result.candidate_id)))
+        return
       }
+      if (result.candidate_id) {
+        notify({ title: 'Кандидат создан', variant: 'success' })
+        navigate(candidateDetailPath(String(result.candidate_id)))
+        return
+      }
+      if (leadStatus === 'needs_routing') {
+        notify({
+          title: 'Кандидат не создан',
+          description: result.message || 'Нужно завершить маршрутизацию или подтвердить подбор.',
+          variant: 'warning',
+        })
+        return
+      }
+      notify({
+        title: 'Кандидат не создан',
+        description: result.message || 'Обработка завершилась без создания кандидата.',
+        variant: 'warning',
+      })
     })
   }, [application.id, navigate, notify, run])
 

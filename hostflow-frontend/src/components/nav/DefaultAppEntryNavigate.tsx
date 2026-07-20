@@ -5,6 +5,8 @@ import {
   resolveRecruitmentWorkspaceEntryHref,
   resolveRecruitmentWorkspaceEntrySegment,
 } from '../../utils/recruitmentWorkspaceEntry'
+import { crmAppRouteSegment } from '../../app/crmAppPaths'
+import { isShellDeployHost, moduleHomePath, resolveDeployHost } from '../../platform/deployHosts'
 
 type DefaultAppEntryNavigateProps = {
   mode: 'href' | 'segment'
@@ -14,9 +16,20 @@ type DefaultAppEntryNavigateProps = {
 export function DefaultAppEntryNavigate({ mode, canOpenTasks }: DefaultAppEntryNavigateProps) {
   const { t } = useI18n()
   const [target, setTarget] = useState<string | null>(null)
+  const deployHost = resolveDeployHost()
 
   useEffect(() => {
     let cancelled = false
+
+    if (!isShellDeployHost(deployHost)) {
+      const home = moduleHomePath(deployHost)
+      const next = mode === 'segment' ? crmAppRouteSegment(home) || home.replace(/^\/app\/?/, '') : home
+      if (!cancelled) setTarget(next)
+      return () => {
+        cancelled = true
+      }
+    }
+
     const resolve = mode === 'href' ? resolveRecruitmentWorkspaceEntryHref : resolveRecruitmentWorkspaceEntrySegment
     void resolve(canOpenTasks).then((next) => {
       if (!cancelled) setTarget(next)
@@ -24,7 +37,7 @@ export function DefaultAppEntryNavigate({ mode, canOpenTasks }: DefaultAppEntryN
     return () => {
       cancelled = true
     }
-  }, [canOpenTasks, mode])
+  }, [canOpenTasks, mode, deployHost])
 
   if (!target) {
     return (

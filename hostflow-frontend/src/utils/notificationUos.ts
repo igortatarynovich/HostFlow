@@ -45,6 +45,7 @@ export function getNotificationAttentionTier(item: NotificationItem): Notificati
   const et = String(item.event_type || '').toLowerCase()
   if (et === 'reminder_overdue') return 'high'
   if (et === 'handoff_requested') return 'high'
+  if (et === 'intake.questionnaire.submitted') return 'high'
   /** Ops may need to fix routing (default company / vacancy). */
   if (et === 'intake_client_lead_skipped_no_company') return 'high'
   return 'normal'

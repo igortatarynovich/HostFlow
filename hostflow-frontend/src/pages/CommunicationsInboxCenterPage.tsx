@@ -183,18 +183,18 @@ export default function CommunicationsInboxCenterPage() {
             'hidden min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white xl:flex',
           )}
         >
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
             {effectiveChannel === 'email' && hasEmail && (
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => void fetchInboundNow()}
                   disabled={pollBusy}
-                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                   title={t('app.communications.email.sync.title')}
                   aria-label={t('app.communications.email.sync.title')}
                 >
-                  <IconRefresh size={18} stroke={1.75} className={pollBusy ? 'animate-spin' : ''} />
+                  <IconRefresh size={16} stroke={1.75} className={pollBusy ? 'animate-spin' : ''} />
                 </button>
               </div>
             )}
@@ -257,12 +257,12 @@ export default function CommunicationsInboxCenterPage() {
           </div>
         </aside>
 
-        <main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50">
+        <main className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
           {threadLoading && (
-            <p className="text-sm text-slate-500">{t('common.loading')}</p>
+            <p className="p-4 text-sm text-slate-500">{t('common.loading')}</p>
           )}
           {threadMissingBannerInfo && (
-            <div className="space-y-3">
+            <div className="space-y-3 p-4">
               <ErrorRecoveryBanner
                 info={threadMissingBannerInfo}
                 onRetry={() => void load()}
@@ -277,7 +277,7 @@ export default function CommunicationsInboxCenterPage() {
             </div>
           )}
           {!threadLoading && thread && (
-            <div className="card flex min-h-0 flex-1 flex-col p-4">
+            <div className="flex min-h-0 flex-1 flex-col p-4">
               <CommunicationsThreadWorkArea thread={thread} model={model} layout="inboxCenter" />
             </div>
           )}

@@ -102,7 +102,7 @@ export default function HiringPipelineGatesSettingsPage() {
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' })}
+        kicker={t('admin.settings.sections.recruitment_setup.label', { defaultValue: 'Recruitment Setup' })}
         title={t('admin.hiring_gates.title', { defaultValue: 'Hiring pipeline gates' })}
         subtitle={t('admin.hiring_gates.blurb', {
           defaultValue:

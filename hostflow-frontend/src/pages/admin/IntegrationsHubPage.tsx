@@ -16,6 +16,7 @@ import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { listMetaLeadCredentials } from '../../api/metaLeads'
+import { listCommunicationAccounts } from '../../api/communications'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { MESSENGER_CHANNELS, type MessengerChannel } from './communicationsMessengerChannels'
@@ -30,6 +31,8 @@ type ConnectionTile = {
   commFeatureAny?: CommunicationsFeatureKey[]
   /** Show Meta connected / not connected badge */
   showMetaStatus?: boolean
+  /** Show Email (Gmail OAuth) connected badge */
+  showEmailStatus?: boolean
 }
 
 const MESSENGER_INTEGRATION_ICONS: Record<MessengerChannel, TablerIcon> = {
@@ -57,6 +60,7 @@ export default function IntegrationsHubPage() {
   const redirectToMeta = sp.has('tab')
 
   const [metaCredCount, setMetaCredCount] = useState<number | null>(null)
+  const [emailOAuthConnected, setEmailOAuthConnected] = useState<boolean | null>(null)
   useEffect(() => {
     let cancelled = false
     if (!can('admin.metaLeads')) {
@@ -69,6 +73,35 @@ export default function IntegrationsHubPage() {
       })
       .catch(() => {
         if (!cancelled) setMetaCredCount(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [can])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!can('admin.users')) {
+      setEmailOAuthConnected(null)
+      return
+    }
+    listCommunicationAccounts({ channel: 'email' })
+      .then((res) => {
+        if (cancelled) return
+        const items = Array.isArray(res?.items) ? res.items : []
+        const connected = items.some((row) => {
+          if (!row?.is_active) return false
+          const oauth = row.settings_json?.oauth && typeof row.settings_json.oauth === 'object' ? row.settings_json.oauth : {}
+          return (
+            String(oauth.oauth_status || '').toLowerCase() === 'connected' ||
+            oauth.has_refresh_token === true ||
+            oauth.has_access_token === true
+          )
+        })
+        setEmailOAuthConnected(connected)
+      })
+      .catch(() => {
+        if (!cancelled) setEmailOAuthConnected(null)
       })
     return () => {
       cancelled = true
@@ -102,6 +135,7 @@ export default function IntegrationsHubPage() {
         to: CRM_APP_PATHS.settingsEmail,
         Icon: IconMail,
         permission: 'admin.users',
+        showEmailStatus: true,
       },
       ...messengerTiles,
       {
@@ -157,6 +191,13 @@ export default function IntegrationsHubPage() {
           {visibleConnections.map((tile) => {
             const metaActive = tile.showMetaStatus && metaCredCount !== null && metaCredCount > 0
             const metaUnknown = tile.showMetaStatus && metaCredCount === null && can('admin.metaLeads')
+            const emailActive = tile.showEmailStatus && emailOAuthConnected === true
+            const emailUnknown = tile.showEmailStatus && emailOAuthConnected === null && can('admin.users')
+            const showStatus = Boolean(
+              (tile.showMetaStatus && can('admin.metaLeads')) || (tile.showEmailStatus && can('admin.users')),
+            )
+            const statusActive = tile.showMetaStatus ? metaActive : emailActive
+            const statusUnknown = tile.showMetaStatus ? metaUnknown : emailUnknown
             return (
               <li key={tile.key}>
                 <Link
@@ -175,17 +216,21 @@ export default function IntegrationsHubPage() {
                         {t(tile.titleKey as any)}
                       </span>
                     </div>
-                    {tile.showMetaStatus && can('admin.metaLeads') ? (
+                    {showStatus ? (
                       <span
                         className={[
                           'shrink-0 rounded-full px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                          metaActive ? 'bg-emerald-100 text-emerald-800' : metaUnknown ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-800',
+                          statusActive
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : statusUnknown
+                              ? 'bg-slate-100 text-slate-600'
+                              : 'bg-amber-50 text-amber-800',
                         ].join(' ')}
                         title={t('admin.integrations_hub.status_hint')}
                       >
-                        {metaActive
+                        {statusActive
                           ? t('admin.integrations_hub.status_active')
-                          : metaUnknown
+                          : statusUnknown
                             ? t('admin.integrations_hub.status_unknown')
                             : t('admin.integrations_hub.status_setup')}
                       </span>

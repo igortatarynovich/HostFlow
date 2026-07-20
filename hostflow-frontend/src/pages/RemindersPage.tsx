@@ -36,6 +36,7 @@ import ReminderExplainabilityPopover from '../components/explainability/Reminder
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { buildEntityDeepLink, navigateAppOrModuleLink } from '../platform/entityDeepLinks'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
@@ -252,20 +253,10 @@ function toLocalInputValue(date: Date | null): string {
 function reminderEntityHref(item: ReminderRecord): string | null {
   const entityId = String(item.entity_id || '')
   if (!entityId) return null
-  switch (item.entity_type) {
-    case 'candidate':
-      return `${CRM_APP_PATHS.candidates}/${entityId}`
-    case 'vacancy':
-      return `${CRM_APP_PATHS.vacancies}/${entityId}`
-    case 'lead':
-      return entityId ? `${CRM_APP_PATHS.leads}/${entityId}` : CRM_APP_PATHS.leads
-    case 'company':
-      return `${CRM_APP_PATHS.agencyClients}/${entityId}`
-    case 'communication_thread':
-      return buildInboxThreadPath(entityId)
-    default:
-      return null
+  if (item.entity_type === 'communication_thread') {
+    return buildInboxThreadPath(entityId)
   }
+  return buildEntityDeepLink(String(item.entity_type || ''), entityId)
 }
 
 function pickPayloadString(payload: Record<string, unknown> | null | undefined, keys: string[]): string | null {
@@ -2278,7 +2269,7 @@ export default function RemindersPage() {
                           <button
                             type="button"
                             className="btn-secondary btn-xs"
-                            onClick={() => navigate(href)}
+                            onClick={() => navigateAppOrModuleLink(href, navigate)}
                           >
                             {t('app.reminders.actions.open_notification')}
                           </button>

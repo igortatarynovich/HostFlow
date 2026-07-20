@@ -45,12 +45,26 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       : undefined
 
   if (candidateHref) {
+    const isRepeat = Boolean(application.extensions?.is_repeat_application) || application.tags?.includes('повторное обращение')
+    const newCycle = Boolean(application.extensions?.new_candidate_cycle)
     return {
-      stateId: 'recruitment.candidate_created',
-      currentState: t('app.recruitment_inquiry.outcome_title', { defaultValue: 'Кандидат создан' }),
-      why: t('app.recruitment_inquiry.outcome_body', {
-        defaultValue: 'Отклик обработан. Продолжите в карточке кандидата.',
-      }),
+      stateId: isRepeat ? 'recruitment.repeat_application' : 'recruitment.candidate_created',
+      currentState: isRepeat
+        ? t('app.recruitment_inquiry.repeat_title', { defaultValue: 'Повторное обращение' })
+        : t('app.recruitment_inquiry.outcome_title', { defaultValue: 'Кандидат создан' }),
+      why: isRepeat
+        ? newCycle
+          ? t('app.recruitment_inquiry.repeat_new_cycle_body', {
+              defaultValue:
+                'Создан новый кандидат по этому отклику. В карточке сохранена справка о прошлом обращении и причине отказа — продолжите работу с новой заявкой.',
+            })
+          : t('app.recruitment_inquiry.repeat_body', {
+              defaultValue:
+                'Отклик привязан к существующему открытому кандидату. История этапов и причин сохранена — продолжите работу в карточке.',
+            })
+        : t('app.recruitment_inquiry.outcome_body', {
+            defaultValue: 'Отклик обработан. Продолжите в карточке кандидата.',
+          }),
       primaryAction: {
         id: 'open_candidate',
         label: t('app.candidates.detail.open_full_profile', { defaultValue: 'Открыть полную карточку' }),

@@ -46,7 +46,7 @@ export default function TransferPolicySettingsPage() {
       <SettingsSubpageHeader
         className="max-w-4xl"
         backLabel={t('admin.settings.subpage.back_all')}
-        kicker={t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' })}
+        kicker={t('admin.settings.sections.recruitment_setup.label', { defaultValue: 'Recruitment Setup' })}
         title={t('admin.transfer_policy.title', { defaultValue: 'Transfer Policy' })}
         subtitle={t('admin.transfer_policy.blurb', {
           defaultValue:

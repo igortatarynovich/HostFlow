@@ -2,6 +2,7 @@ import { api, docsApi, listReminders } from './client'
 import { listCommunicationThreads } from './communications'
 import type { Candidate, Company, Document } from './types'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { buildEntityDeepLink, resolveEntityDeepLink } from '../platform/entityDeepLinks'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const P = CRM_APP_PATHS
@@ -197,7 +198,7 @@ async function fetchLegacyCoreAndSupplementary(
         id: item.id,
         title,
         subtitle: item.stage || item.email || undefined,
-        link: `${P.candidates}/${item.id}`,
+        link: buildEntityDeepLink('candidate', item.id) || `${P.candidates}/${item.id}`,
       })
     })
   }
@@ -210,7 +211,7 @@ async function fetchLegacyCoreAndSupplementary(
         id: item.id,
         title: item.name || item.legal_name || 'Company',
         subtitle: item.city || item.country_code || undefined,
-        link: `${P.agencyClients}/${item.id}`,
+        link: buildEntityDeepLink('client_account', item.id) || `${P.agencyClients}/${item.id}`,
       })
     })
   }
@@ -224,7 +225,7 @@ async function fetchLegacyCoreAndSupplementary(
         id: item.id,
         title: item.title || 'Vacancy',
         subtitle,
-        link: `${P.vacancies}/${item.id}`,
+        link: buildEntityDeepLink('vacancy', item.id) || `${P.vacancies}/${item.id}`,
       })
     })
   }
@@ -263,12 +264,33 @@ async function fetchSupplementaryOnly(
     asArray<Document>(documents.value.data).forEach((doc) => {
       if (!doc?.id) return
       const ownerId = doc.candidate_id || doc.owner_id
+      let docLink = P.documents
+      if (ownerId) {
+        const resolved = resolveEntityDeepLink('candidate', String(ownerId))
+        if (resolved) {
+          const path = resolved.path.split('?')[0].replace(/\/$/, '')
+          const qs = resolved.path.includes('?') ? `?${resolved.path.split('?')[1]}` : ''
+          docLink = `${path}/documents${qs}`
+          // Prefer absolute when cross-host (resolved.href already has origin/query).
+          if (/^https?:\/\//i.test(resolved.href)) {
+            try {
+              const u = new URL(resolved.href)
+              u.pathname = `${u.pathname.replace(/\/$/, '')}/documents`
+              docLink = u.toString()
+            } catch {
+              docLink = `${resolved.href.replace(/\/$/, '')}/documents`
+            }
+          }
+        } else {
+          docLink = P.documents
+        }
+      }
       results.push({
         type: 'document',
         id: doc.id,
         title: doc.title || doc.custom_name || doc.doc_type || 'Document',
         subtitle: doc.status ? `Status: ${doc.status}` : undefined,
-        link: ownerId ? `${P.candidates}/${ownerId}/documents` : P.documents,
+        link: docLink,
       })
     })
   }
@@ -334,7 +356,7 @@ async function fetchSupplementaryOnly(
         id: inv.id,
         title: inv.invoice_number || 'Invoice',
         subtitle: [inv.status, money].filter(Boolean).join(' · ') || undefined,
-        link: `${P.invoices}/${inv.id}`,
+        link: buildEntityDeepLink('invoice', inv.id) || `${P.invoices}/${inv.id}`,
       })
     })
   }
@@ -355,7 +377,9 @@ async function fetchSupplementaryOnly(
         id: sid,
         title: shortId,
         subtitle: [row.status, money].filter(Boolean).join(' · ') || undefined,
-        link: `${P.orders}?order_id=${encodeURIComponent(sid)}`,
+        link:
+          buildEntityDeepLink('service_order', sid) ||
+          `${P.orders}?order_id=${encodeURIComponent(sid)}`,
       })
     })
   }

@@ -25,6 +25,14 @@ if (hash.startsWith('#/')) {
   }
 }
 
+// Stage 6B: strip legacy `#hf_auth=` fragments if any old links remain.
+{
+  const raw = (window.location.hash || '').replace(/^#/, '')
+  if (raw.startsWith('hf_auth=')) {
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>

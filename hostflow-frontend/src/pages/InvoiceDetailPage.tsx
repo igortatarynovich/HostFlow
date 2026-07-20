@@ -4,15 +4,15 @@ import {
   cancelInvoice,
   createPayment,
   createReminder,
-  getInvoiceActivity,
   getInvoiceCorrectionChain,
   getInvoice,
   getInvoicePdf,
+  getInvoiceTimeline,
   listReminders,
   sendInvoice,
   updateInvoice,
 } from '../api/client'
-import type { Invoice, InvoiceActivity, InvoiceStatus, ReminderRecord } from '../api/types'
+import type { Invoice, InvoiceStatus, ReminderRecord } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { Modal } from '../components/Modal'
@@ -22,6 +22,11 @@ import { PageShell, PageShellHeader } from '../components/layout'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
+import {
+  BusinessTimelinePanel,
+  mapTimelineApiItems,
+  type BusinessTimelineItem,
+} from '../components/business-timeline/BusinessTimelinePanel'
 
 const currencyFormatter = new Intl.NumberFormat('pl-PL', {
   style: 'currency',
@@ -81,47 +86,15 @@ function statusBadgeClass(status: InvoiceStatus): string {
   return classes[status] || 'bg-slate-100 text-slate-700'
 }
 
-type TimelineItem = {
-  key: string
-  ts: string
-  title: string
-  detail?: string | null
-  tone?: 'default' | 'success' | 'warning'
-}
-
-function invoiceActionMeta(action: string, t: ReturnType<typeof useI18n>['t']): Pick<TimelineItem, 'title' | 'tone'> {
-  switch (action) {
-    case 'invoice.created':
-      return { title: t('app.invoices.timeline.created', { defaultValue: 'Invoice created' }), tone: 'default' }
-    case 'invoice.issued':
-      return { title: t('app.invoices.timeline.issued', { defaultValue: 'Invoice issued' }), tone: 'default' }
-    case 'invoice.sent':
-      return { title: t('app.invoices.timeline.sent', { defaultValue: 'Invoice sent' }), tone: 'default' }
-    case 'invoice.send_failed':
-      return { title: t('app.invoices.timeline.send_failed', { defaultValue: 'Invoice delivery failed' }), tone: 'warning' }
-    case 'invoice.payment_recorded':
-      return { title: t('app.invoices.timeline.paid', { defaultValue: 'Payment recorded' }), tone: 'success' }
-    case 'invoice.reminder_created':
-      return { title: t('app.invoices.timeline.reminder', { defaultValue: 'Follow-up reminder' }), tone: 'default' }
-    case 'invoice.reminder_completed':
-      return { title: t('app.invoices.timeline.reminder_completed', { defaultValue: 'Reminder completed' }), tone: 'success' }
-    case 'invoice.cancelled':
-      return { title: t('app.invoices.timeline.cancelled', { defaultValue: 'Invoice cancelled' }), tone: 'warning' }
-    case 'invoice.status_changed':
-      return { title: t('app.invoices.timeline.status', { defaultValue: 'Status updated' }), tone: 'default' }
-    default:
-      return { title: action, tone: 'default' }
-  }
-}
-
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
-  const [activities, setActivities] = useState<InvoiceActivity[]>([])
+  const [businessTimeline, setBusinessTimeline] = useState<BusinessTimelineItem[]>([])
+  const [primaryThreadId, setPrimaryThreadId] = useState<string | null>(null)
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -146,13 +119,19 @@ export default function InvoiceDetailPage() {
     setError(null)
     Promise.all([
       getInvoice(id),
-      getInvoiceActivity(id, { limit: 100 }),
+      getInvoiceTimeline(id),
       listReminders({ entityType: 'invoice', entityId: id, status: ['new', 'pending', 'sent', 'overdue', 'done'] }),
     ])
-      .then(([invoiceData, activityData, reminderData]) => {
+      .then(([invoiceData, timelineData, reminderData]) => {
         if (cancelled) return
         setInvoice(invoiceData as Invoice)
-        setActivities(Array.isArray(activityData) ? (activityData as InvoiceActivity[]) : [])
+        const rows = Array.isArray((timelineData as { items?: unknown[] })?.items)
+          ? ((timelineData as { items: Array<Record<string, unknown>> }).items)
+          : []
+        setBusinessTimeline(mapTimelineApiItems(rows, locale))
+        setPrimaryThreadId(
+          String((timelineData as { primary_thread_id?: string })?.primary_thread_id || '') || null,
+        )
         setReminders(Array.isArray((reminderData as any)?.items) ? (reminderData as any).items : [])
       })
       .catch((err: any) => {
@@ -167,49 +146,7 @@ export default function InvoiceDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, planLimitModal, reloadKey, t])
-
-  const timelineItems = useMemo(() => {
-    if (!invoice) return []
-    const items: TimelineItem[] = activities.map((activity) => {
-      const meta = invoiceActionMeta(activity.action, t)
-      const nextStatus = activity.payload?.next_status
-      const detail =
-        activity.action === 'invoice.payment_recorded'
-          ? `${formatAmount(Number(activity.payload?.amount || 0))} • ${String(activity.payload?.method || '-')}`
-          : activity.action === 'invoice.reminder_created'
-            ? `${String(activity.payload?.title || '-')} • due ${formatDateTime(activity.payload?.due_at || null)}`
-            : activity.action === 'invoice.reminder_completed'
-              ? `${String(activity.payload?.title || '-')} • ${formatDateTime(activity.payload?.completed_at || null)}`
-          : activity.action === 'invoice.sent'
-            ? [
-                String(activity.payload?.recipient_email || invoice.billing_details?.email || '-'),
-                String(activity.payload?.subject || '').trim(),
-                String(activity.payload?.delivery_status || 'sent'),
-              ]
-                .filter(Boolean)
-                .join(' • ')
-            : activity.action === 'invoice.send_failed'
-              ? [
-                  String(activity.payload?.recipient_email || invoice.billing_details?.email || '-'),
-                  String(activity.payload?.subject || '').trim(),
-                  String(activity.payload?.reason || 'failed'),
-                ]
-                  .filter(Boolean)
-                  .join(' • ')
-              : nextStatus
-              ? `${String(activity.payload?.previous_status || '-')} → ${String(nextStatus)}`
-              : String(activity.payload?.source || activity.payload?.invoice_number || '').trim() || null
-      return {
-        key: `activity:${activity.id}`,
-        ts: activity.created_at,
-        title: meta.title,
-        detail,
-        tone: meta.tone,
-      }
-    })
-    return items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-  }, [activities, invoice, t])
+  }, [id, planLimitModal, reloadKey, t, locale])
 
   const outstandingAmount = useMemo(() => {
     if (!invoice) return 0
@@ -274,13 +211,17 @@ export default function InvoiceDetailPage() {
 
   const refreshInvoice = async () => {
     if (!id) return
-    const [invoiceData, activityData, reminderData] = await Promise.all([
+    const [invoiceData, timelineData, reminderData] = await Promise.all([
       getInvoice(id),
-      getInvoiceActivity(id, { limit: 100 }),
+      getInvoiceTimeline(id),
       listReminders({ entityType: 'invoice', entityId: id, status: ['new', 'pending', 'sent', 'overdue', 'done'] }),
     ])
     setInvoice(invoiceData as Invoice)
-    setActivities(Array.isArray(activityData) ? (activityData as InvoiceActivity[]) : [])
+    const rows = Array.isArray((timelineData as { items?: unknown[] })?.items)
+      ? ((timelineData as { items: Array<Record<string, unknown>> }).items)
+      : []
+    setBusinessTimeline(mapTimelineApiItems(rows, locale))
+    setPrimaryThreadId(String((timelineData as { primary_thread_id?: string })?.primary_thread_id || '') || null)
     setReminders(Array.isArray((reminderData as any)?.items) ? (reminderData as any).items : [])
   }
 
@@ -666,27 +607,12 @@ export default function InvoiceDetailPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {timelineItems.map((item) => (
-              <div key={item.key} className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div
-                      className={`text-sm font-semibold ${
-                        item.tone === 'success'
-                          ? 'text-emerald-700'
-                          : item.tone === 'warning'
-                            ? 'text-amber-700'
-                            : 'text-slate-900'
-                      }`}
-                    >
-                      {item.title}
-                    </div>
-                    {item.detail && <div className="mt-1 text-sm text-slate-600">{item.detail}</div>}
-                  </div>
-                  <div className="text-xs text-slate-500">{formatDateTime(item.ts)}</div>
-                </div>
-              </div>
-            ))}
+            <BusinessTimelinePanel
+              items={businessTimeline}
+              primaryThreadId={primaryThreadId}
+              testId="invoice-business-timeline"
+              emptyLabel={t('app.invoices.timeline.empty', { defaultValue: 'No business events yet.' })}
+            />
           </div>
         </section>
 

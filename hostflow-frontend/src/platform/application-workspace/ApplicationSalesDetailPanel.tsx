@@ -1,6 +1,15 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Application } from '../../api/types/application'
+import { getLeadTimeline } from '../../api/client'
+import { listCommunicationThreads } from '../../api/communications'
+import {
+  BusinessTimelinePanel,
+  mapTimelineApiItems,
+  type BusinessTimelineItem,
+} from '../../components/business-timeline/BusinessTimelinePanel'
 import { useI18n } from '../../i18n'
 import { clientDetailPath } from '../../services/platformHandoff'
+import SalesInquiryCommunicationSection from '../../components/sales/SalesInquiryCommunicationSection'
 import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesInquiryPossibleDuplicatesSection'
 import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
 import { ContextRail } from '../context-rail'
@@ -38,7 +47,7 @@ export function ApplicationSalesDetailPanel({
   onConvert,
   onQuestionnaireUpdated,
 }: ApplicationSalesDetailPanelProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const companyName = application.title
   const statusKey = application.status === 'rejected' ? 'completed' : application.status
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
@@ -46,6 +55,47 @@ export function ApplicationSalesDetailPanel({
   const clientHref = convertedId ? clientDetailPath(convertedId) : undefined
   const subtitle = application.subtitle || 'B2B заявка'
   const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Открыть полную карточку' })
+  const [timeline, setTimeline] = useState<BusinessTimelineItem[]>([])
+  const [primaryThreadId, setPrimaryThreadId] = useState<string | null>(null)
+  const onQuestionnaireUpdatedRef = useRef(onQuestionnaireUpdated)
+  onQuestionnaireUpdatedRef.current = onQuestionnaireUpdated
+
+  const loadTimeline = useCallback(async () => {
+    try {
+      const data = await getLeadTimeline(application.id)
+      const items = Array.isArray((data as { items?: unknown[] })?.items)
+        ? ((data as { items: Array<Record<string, unknown>> }).items)
+        : []
+      const threadFromApi = String((data as { primary_thread_id?: string })?.primary_thread_id || '').trim()
+      setPrimaryThreadId(threadFromApi || null)
+      setTimeline(mapTimelineApiItems(items, locale))
+      if (!threadFromApi) {
+        try {
+          const threads = await listCommunicationThreads({
+            limit: 20,
+            entityType: 'lead',
+            entityId: application.id,
+          })
+          const first = Array.isArray(threads.items) ? threads.items[0] : null
+          if (first?.id) setPrimaryThreadId(String(first.id))
+        } catch {
+          /* optional */
+        }
+      }
+    } catch {
+      setTimeline([])
+      setPrimaryThreadId(null)
+    }
+  }, [application.id, locale])
+
+  useEffect(() => {
+    void loadTimeline()
+  }, [loadTimeline])
+
+  const handleQuestionnaireUpdated = useCallback(() => {
+    void loadTimeline()
+    onQuestionnaireUpdatedRef.current?.()
+  }, [loadTimeline])
 
   const decision = resolveSalesApplicationDecision({
     application,
@@ -112,25 +162,51 @@ export function ApplicationSalesDetailPanel({
           </ol>
         ),
         contacts: (
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
-              {applicationInitial(application)}
-            </span>
-            <p className="text-sm text-slate-600">{application.contact.name || 'Контакт'}</p>
+          <div>
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
+                {applicationInitial(application)}
+              </span>
+              <div className="min-w-0 text-sm text-slate-600">
+                <p className="font-medium text-slate-800">{application.contact.name || 'Контакт'}</p>
+                {application.contact.phone ? (
+                  <p className="mt-0.5 text-xs text-slate-500">{application.contact.phone}</p>
+                ) : null}
+                {application.contact.email ? (
+                  <p className="mt-0.5 truncate text-xs text-slate-500">{application.contact.email}</p>
+                ) : null}
+              </div>
+            </div>
+            <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
           </div>
         ),
         summary: (
-          <div className="space-y-4">
-            <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
-            <SalesInquiryQuestionnaireSection
-              leadId={application.id}
-              onUpdated={onQuestionnaireUpdated}
-            />
-          </div>
+          <SalesInquiryQuestionnaireSection
+            leadId={application.id}
+            onUpdated={handleQuestionnaireUpdated}
+          />
+        ),
+        relations: (
+          <SalesInquiryCommunicationSection
+            leadId={application.id}
+            preferredThreadId={primaryThreadId}
+          />
+        ),
+        history: (
+          <BusinessTimelinePanel
+            items={timeline}
+            primaryThreadId={primaryThreadId}
+            testId="sales-inquiry-timeline"
+            emptyLabel={t('app.sales_inquiry.timeline_empty', {
+              defaultValue: 'Пока нет бизнес-событий по этой заявке.',
+            })}
+          />
         ),
       }}
       contextTitles={{
         summary: t('app.sales_inquiry.questionnaire_title', { defaultValue: 'Ankieta klienta' }),
+        relations: t('app.sales_inquiry.comms.title', { defaultValue: 'Переписка' }),
+        history: t('app.sales_inquiry.timeline_title', { defaultValue: 'История' }),
       }}
     />
   )

@@ -22,6 +22,7 @@ import {
   notificationThreadId,
   resolveNotificationOpenPath,
 } from '../../utils/resolveNotificationOpenPath'
+import { navigateAppOrModuleLink, buildEntityDeepLink } from '../../platform/entityDeepLinks'
 import {
   listCommunicationThreads,
   markCommunicationThreadRead,
@@ -403,8 +404,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     let timeout: number
 
     const fetchCount = async () => {
-      // Prevent parallel polls when commPollKey / visibility remounts the effect
-      // while the previous GET /notifications is still in flight.
+      // Prevent parallel polls when remounts overlap a slow GET /notifications.
       if (notifPollInFlightRef.current) {
         if (!cancelled) {
           timeout = window.setTimeout(fetchCount, 5_000)
@@ -479,7 +479,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, canUseCommunicationsFeature, commPollKey, notify])
+  }, [can, canUseCommunicationsFeature, commPollKey, notify, t])
 
   useEffect(() => {
     setBellAttentionCount(
@@ -585,7 +585,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const navigateToResult = (result: GlobalSearchResult) => {
     setSearchOpen(false)
     setSearchQuery('')
-    navigate(result.link)
+    navigateAppOrModuleLink(result.link, navigate)
   }
 
   const toggleNotifications = () => {
@@ -604,6 +604,15 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     } catch {
       // ignore
     }
+  }
+
+  const openNotification = async (item: NotificationItem, openPath: string) => {
+    const id = String(item.id || '')
+    setNotifOpen(false)
+    if (id && !item.is_read) {
+      void dismissNotif(id)
+    }
+    navigateAppOrModuleLink(openPath, navigate)
   }
 
   const dismissNotifGroup = async (ids: string[]) => {
@@ -852,7 +861,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                       className="text-xs font-semibold text-brand-700 hover:text-brand-800"
                                       onClick={() => {
                                         setNotifOpen(false)
-                                        navigate(openPath)
+                                        navigateAppOrModuleLink(openPath, navigate)
                                       }}
                                     >
                                       {t('app.topbar.notifications.open')}
@@ -915,7 +924,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                       className="text-xs font-semibold text-brand-700 hover:text-brand-800"
                                       onClick={() => {
                                         setNotifOpen(false)
-                                        navigate(openPath)
+                                        if (ids.length > 0) void dismissNotifGroup(ids)
+                                        navigateAppOrModuleLink(openPath, navigate)
                                       }}
                                     >
                                       {t('app.topbar.notifications.open')}
@@ -986,8 +996,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                     type="button"
                                     className="text-xs font-semibold text-brand-700 hover:text-brand-800"
                                     onClick={() => {
-                                      setNotifOpen(false)
-                                      navigate(openPath)
+                                      void openNotification(item, openPath)
                                     }}
                                   >
                                     {t('app.topbar.notifications.open')}
@@ -1185,7 +1194,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                         className="btn-primary"
                         onClick={() => {
                           void ackAndClear()
-                          navigate(`${CRM_APP_PATHS.candidates}/${encodeURIComponent(entityId)}`)
+                          navigateAppOrModuleLink(
+                            buildEntityDeepLink('candidate', entityId) ||
+                              `${CRM_APP_PATHS.candidates}/${encodeURIComponent(entityId)}`,
+                            navigate,
+                          )
                         }}
                       >
                         {t('app.notifications.reminder_popup.open_candidate', { defaultValue: 'Open candidate' })}

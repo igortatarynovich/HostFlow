@@ -37,7 +37,14 @@ export default function SalesQuestionnaireAnswersView({ lead }: Props) {
     return () => {
       cancelled = true
     }
-  }, [lead, locale, t, historyIndex])
+    // lead object identity changes on poll; reload only when submission-relevant identity changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fingerprint via lead.id + status + history
+  }, [
+    lead.id,
+    String(lead.normalized?.sales_questionnaire_status || ''),
+    historyIndex,
+    locale,
+  ])
 
   if (loading) {
     return <p className="text-sm text-slate-500">{t('common.loading')}</p>

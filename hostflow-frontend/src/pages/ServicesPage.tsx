@@ -28,7 +28,12 @@ import type {
 import { useAdditionalServiceCatalog, useServiceOrder, useServiceOrderSummary, useServiceOrders } from '../hooks/useAdditionalServices'
 import { usePermissions } from '../hooks/usePermissions'
 import { searchCandidates } from '../api/candidates'
-import { api, listCompanies } from '../api/client'
+import { api, listCompanies, getServiceOrderTimeline } from '../api/client'
+import {
+  BusinessTimelinePanel,
+  mapTimelineApiItems,
+  type BusinessTimelineItem,
+} from '../components/business-timeline/BusinessTimelinePanel'
 import { getVacancy, listVacancies } from '../api/vacancies'
 import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type ServicesAnalyticsOverview } from '../api/analytics'
 import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
@@ -3212,6 +3217,8 @@ function OrderDetail({
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [invoiceActionLoading, setInvoiceActionLoading] = useState<string | null>(null)
+  const [orderTimeline, setOrderTimeline] = useState<BusinessTimelineItem[]>([])
+  const [orderThreadId, setOrderThreadId] = useState<string | null>(null)
   const blockingIds = new Set(summary?.blocking_items.map((item) => item.id) ?? [])
   const missingDocs = summary?.missing_documents ?? {}
   const orderStatusLabels = useMemo(() => {
@@ -3221,6 +3228,29 @@ function OrderDetail({
     })
     return map
   }, [t])
+
+  useEffect(() => {
+    let mounted = true
+    getServiceOrderTimeline(order.id)
+      .then((data) => {
+        if (!mounted) return
+        const rows = Array.isArray((data as { items?: unknown[] })?.items)
+          ? ((data as { items: Array<Record<string, unknown>> }).items)
+          : []
+        setOrderTimeline(mapTimelineApiItems(rows, locale))
+        setOrderThreadId(String((data as { primary_thread_id?: string })?.primary_thread_id || '') || null)
+      })
+      .catch(() => {
+        if (mounted) {
+          setOrderTimeline([])
+          setOrderThreadId(null)
+        }
+      })
+    return () => {
+      mounted = false
+    }
+  }, [order.id, order.status, locale])
+
   const scheduleStatusLabels = useMemo(() => {
     const map: Record<string, string> = {}
     SCHEDULE_STATUSES.forEach((status) => {
@@ -3309,6 +3339,16 @@ function OrderDetail({
         </div>
       </div>
       {invoiceError && <div className="text-sm text-rose-600">{invoiceError}</div>}
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <BusinessTimelinePanel
+          items={orderTimeline}
+          primaryThreadId={orderThreadId}
+          testId="service-order-timeline"
+          title={t('app.services.orders.detail.timeline', { defaultValue: 'История заказа' })}
+          emptyLabel={t('app.business_timeline.empty', { defaultValue: 'Пока нет бизнес-событий.' })}
+        />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-3 text-xs text-slate-700">
         <span className="max-w-full rounded-full border border-brand-200 bg-white px-3 py-1 font-semibold text-brand-900">
