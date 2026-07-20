@@ -13,24 +13,28 @@
 
 **`CommunicationThread`** — conversations, not individual messages, drive the workspace.
 
-## Architectural rule (locked)
+## Architectural rules (locked)
 
 > **Thread is the work object. Message is an event inside the Thread.**
+
+> **Workspace changes Thread only through Commands. Workspace never mutates projections directly.**
 
 Consequences (do not invert):
 
 | Concern | Belongs to |
 |---------|------------|
 | List rows | Thread |
-| Unread | Thread |
-| Ownership / assignee | Thread |
-| SLA | Thread |
-| Next action | Thread |
-| Working queues / filters | Thread |
+| Unread | Thread (via MarkThreadRead/Unread commands) |
+| Ownership / assignee | Thread (via Assign/Reassign/Unassign + AssignmentReason) |
+| SLA | Event clock on Thread; `breached` derived |
+| Next action | **ThreadNextAction** platform entity (projected into ThreadContext) |
+| Working queues | **Projections only** — no MoveThreadToQueue |
 | Entity links (G13) | Thread |
 | Timeline | Chronology of events *on* the Thread (not a first-class list entity) |
+| Mutations | Typed Workspace Commands only — not field PATCH |
 
-Composer and allowed intents/channels come from the Communication Platform — UI does not invent them.
+Composer and allowed intents/channels come from the Communication Platform — UI does not invent them.  
+Commands detail: [C1.2 Workspace Actions](c1-2-workspace-actions.md).
 
 ### ThreadContext (Workspace read model — not a SoT)
 
@@ -54,9 +58,11 @@ Composer is dumb: show what ThreadContext allows. Backend re-validates intent+ch
 | Layer | Role |
 |-------|------|
 | **Thread** | Canonical work object (SoT for work state) |
+| **Commands** | Sole mutation path (Workspace + later Automation/Campaigns) |
+| **Projections** | Queues, counters, SLA breached — never written by UI |
 | **ThreadContext** | Workspace read model (Composer input; no persistence) |
 | **Composer** | Universal UI driven by ThreadContext + user input |
-| **Communication Platform** | Authority for capabilities, intents, and policy |
+| **Communication Platform** | Authority for capabilities, intents, policy, and commands |
 
 Maturity: Communication **Workspace** stage — see [platform-capability-maturity.md](../architecture/platform-capability-maturity.md).
 
