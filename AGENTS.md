@@ -105,7 +105,10 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
-This is **not** Epic C complete. **Active:** C1 Inbox Workspace → then C2 → then Epic C done → Governance Review → Stage 3.
+This is **not** Epic C complete.
+
+**Active close-out:** C1 Inbox Workspace → C2 → [Epic C Complete Gate](docs/specs/gates/epic-c-complete-gate.md) → Governance → Stage 3 / Meta → Forms → Entity Workspace → Documents → Billing → AI.  
+**Epic C — complete** only after the Epic C Complete Gate PASS.
 
 **Locked:** finish Epic C (Communication) → Platform Governance Review → Acquisition/Stage 3 → Forms Platform → Entity Workspace → Documents → Billing → AI.  
 Do **not** open Stage 3 product slices while Communication Phase A is active unless the roadmap is explicitly amended.

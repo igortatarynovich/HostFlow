@@ -3,9 +3,9 @@
 **Status:** C0.0–C0.3 ✅ — **Communication Platform Foundation complete** (not Epic C complete)  
 **Parents:** [Foundation](../architecture/communication-platform-foundation.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md)
 
-> Platform integrity slices C0.0–C0.3 are done.  
-> Next product slice is **[C1 Communication Inbox Workspace](c1-communication-inbox-workspace.md)**; Epic C closes only after **C2**.  
-> This epic is **not** Stage 3 Sales.
+> Platform integrity slices C0.0–C0.3 are done (**Foundation complete**).  
+> Next: **[C1](c1-communication-inbox-workspace.md)** → C2 → **[Epic C Complete Gate](../gates/epic-c-complete-gate.md)** → Governance.  
+> **Epic C — complete** only after the gate. This epic is **not** Stage 3 Sales.
 
 ## Why before Stage 3 slice 3
 
