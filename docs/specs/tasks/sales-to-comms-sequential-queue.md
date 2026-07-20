@@ -48,16 +48,19 @@
 
 ---
 
-## 3. Stage 1 — Capability UI (next)
+## 3. Stage 1 — Capability UI ✅
 
-**Branch:** `feat/sales-capability-ui`  
-**Allowed:** thin read of existing model (Capability, Review, Convert availability/result, Traceability).  
-**Forbidden in this slice:**
+**Branch:** `feat/sales-capability-ui` (merged PR #96)  
+Display-only spine: Capability proxy, Review status, Convert availability/result, Traceability.
 
-- new matching / review engine  
-- manual ClientAccount create  
-- Communication changes  
-- Pipeline rewrite  
+---
+
+## 3b. Stage 2 — Manual ClientAccount creation (current)
+
+**Branch:** `feat/manual-client-account-creation`  
+**Task:** [stage-2-manual-client-account-creation.md](stage-2-manual-client-account-creation.md)  
+**Allowed:** backend `create_client_account_manually` + POST rewire; Origins §5–§6 contract.  
+**Forbidden in this slice:** manual-create UI; Pipeline wiring; Communication; import/API origins; universal duplicate review engine.
 
 ---
 

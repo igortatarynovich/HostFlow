@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Optional
-from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +20,7 @@ async def create_client_account_service(
     tenant_id: str,
     data: ClientAccountCreate,
 ) -> ClientAccount:
+    """Non-canonical pre-origins helper (INV-CAO-07). Prefer create_client_account_manually."""
     account = ClientAccount(
         id=crud.new_client_account_id(),
         tenant_id=tenant_id,
@@ -29,12 +29,10 @@ async def create_client_account_service(
         status=data.status,
         owner_user_id=str(data.owner_user_id) if data.owner_user_id else None,
         primary_company_id=data.primary_company_id,
-        source_lead_id=data.source_lead_id,
+        source_lead_id=None,
     )
     if data.primary_company_id:
         await _assert_company_tenant(db, tenant_id=tenant_id, company_id=data.primary_company_id)
-    if data.source_lead_id:
-        await _assert_lead_tenant(db, tenant_id=tenant_id, lead_id=data.source_lead_id)
     db.add(account)
     await db.flush()
     return account
@@ -83,15 +81,6 @@ async def _assert_company_tenant(db: AsyncSession, *, tenant_id: str, company_id
     )
     if row.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Company not found in tenant")
-
-
-async def _assert_lead_tenant(db: AsyncSession, *, tenant_id: str, lead_id: str) -> None:
-    from backend.app.models import Lead
-    from sqlalchemy import select
-
-    row = await db.execute(select(Lead.id).where(Lead.id == lead_id, Lead.tenant_id == tenant_id))
-    if row.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lead not found in tenant")
 
 
 def to_client_account_out(account: ClientAccount) -> ClientAccountOut:

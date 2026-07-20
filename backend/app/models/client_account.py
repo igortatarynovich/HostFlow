@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import DateTime, Index, String, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
+
+JSONType = SQLiteJSON().with_variant(JSONB, "postgresql")
 
 
 def now_utc() -> datetime:
@@ -44,6 +48,13 @@ class ClientAccount(Base):
     source_lead_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         nullable=True,
+    )
+    # Origins v1 — truthful creation origin (nullable for pre-origins rows).
+    origin_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    creation_ref: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    creation_origin_v1: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONType, nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
