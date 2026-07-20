@@ -83,41 +83,44 @@ request_questionnaire → TemplateResolver + LinkResolver → CommunicationComma
 
 ---
 
-## Slice C0.1b — Intent Policy & Snapshot Hardening (**current**)
+## Slice C0.1b — Intent Policy & Snapshot Hardening ✅
 
 **Task:** [c0-1b-intent-policy-snapshot-hardening.md](c0-1b-intent-policy-snapshot-hardening.md)  
-**Branch:** `fix/communication-c0-intent-policy-hardening`  
-**Worktree:** `/tmp/hf-c0-1b-intent-policy`  
+**PR:** [#101](https://github.com/igortatarynovich/HostFlow/pull/101) — **merged** (`7bc13d57`)
 
-Mandatory: typed `IntentPolicyResult`, unified Intent registry, full immutable snapshot, entity × intent × channel matrix, legacy writer migration map, ban bypass send-paths, contract test that production callers use `CommunicationSender`. **Not** a new module email sender.
-
-### Acceptance / DoD (vertical)
-
-- Email / message started from a supported entity appears on that entity’s history immediately (before provider reply).  
-- Contract scenarios: send from `candidate`, `application`, `sales_inquiry`, `client_account`, `lead`; re-send reuses origin thread; every new thread has G13 origin; cannot send with known origin without G13.
+Mandatory delivered: typed `IntentPolicyResult`, unified Intent registry, full immutable snapshot, entity × intent × channel matrix, legacy writer migration map, ban bypass send-paths, contract test that production callers use `CommunicationSender`.
 
 ---
 
-## Slice C0.2 — Inbound resolver and threading
+## Slice C0.2 — Inbound resolver and threading (**current**)
 
-**Branch (proposed):** `fix/communication-c0-inbound-resolver`
+**Task:** [c0-2-inbound-resolver.md](c0-2-inbound-resolver.md)  
+**Branch:** `fix/communication-c0-inbound-resolver`  
+**Worktree:** `/tmp/hf-c0-2-inbound-resolver`
+
+### Main contract
+
+Every inbound message is deterministically linked to a thread/entity **or** enters an explicit unresolved queue. No lost inbound.
 
 ### Scope
 
-Unified resolution chain:
+Provider normalization · reply/thread resolution · entity resolution · inbound `CommunicationMessage` · G13 · unresolved queue · provider-message-id idempotency · audit/correlation.  
+**Not** Inbox redesign (C1) or delivery diagnostics (C0.3).
+
+### Resolution preference
 
 1. `In-Reply-To` / `References` → existing thread  
 2. Provider conversation / message identifiers  
 3. Exact email/phone among linked persons  
 4. Active inquiry or application for that contact  
 5. Client / candidate  
-6. Only then create unlinked thread + unresolved queue  
+6. Only then: unlinked thread + unresolved queue  
 
 Resolution reasons (audit): `reply_headers` | `provider_thread` | `known_participant` | `entity_contact` | `manual` | `unresolved`.
 
 ### Acceptance
 
-A reply to an email sent from HostFlow lands in the **same** thread and surfaces on the **same** entity.
+A reply to an email sent from HostFlow lands in the **same** thread and surfaces on the **same** entity; unknowns are queued, never dropped.
 
 ---
 
