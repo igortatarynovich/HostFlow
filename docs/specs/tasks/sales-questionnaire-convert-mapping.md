@@ -63,6 +63,6 @@ Convert does **not**: decide, evaluate Capability, match, dispatch, create revie
 - missing / unconfirmed Flights reference  
 - immutable mapping after convert  
 
-## Next slice after merge
+## Next after merge
 
-**Review implementation** (SalesInquiry-owned review signal) — not Traceability UI, not Capability UI.
+**Traceability implementation** (no UI).
