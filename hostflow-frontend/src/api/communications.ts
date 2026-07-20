@@ -812,6 +812,99 @@ export async function listCommunicationMessageTemplates(
   return { items, total: Number((data as any)?.total || items.length) }
 }
 
+/** C1 platform working queues — Thread is the work object. */
+export type CommunicationThreadQueue =
+  | 'requires_reply'
+  | 'new_inbound'
+  | 'delivery_errors'
+  | 'unresolved'
+  | 'assigned_to_me'
+  | 'unassigned'
+  | 'waiting_for_reply'
+  | 'closed'
+
+export type ThreadCapabilities = {
+  thread_id: string
+  origin: { entity_type: string; entity_id: string }
+  allowed_intents: string[]
+  allowed_channels: string[]
+  bulk_allowed: boolean
+  denial_reasons: Record<string, string>
+  source: string
+}
+
+/**
+ * C1.1 Workspace read model (not a domain SoT).
+ * Four blocks assembled from Thread / G13 / queues / capabilities / diagnostics / draft.
+ */
+export type ThreadContext = {
+  identity: {
+    thread: {
+      id: string
+      channel: string
+      status: string
+      subject?: string | null
+    }
+    linked_entities: Array<Record<string, unknown>>
+    participants: Array<Record<string, unknown>>
+    origin?: { entity_type: string; entity_id: string } | null
+  }
+  work_state: {
+    assignee_id?: string | null
+    owner_id?: string | null
+    unread_count: number
+    is_archived: boolean
+    active_queues: string[]
+    sla_due_at?: string | null
+    next_action?: Record<string, unknown> | null
+  }
+  capabilities: {
+    allowed_intents: string[]
+    allowed_channels: string[]
+    bulk_allowed: boolean
+    defaults: {
+      channel?: string | null
+      intent?: string | null
+      recipient_address?: string | null
+      subject?: string | null
+      send_immediately?: boolean
+      internal_note_allowed?: boolean
+    }
+    policy_denials: Record<string, string>
+  }
+  workspace: {
+    draft: Record<string, unknown>
+    delivery_summary?: {
+      message_id?: string
+      status?: string
+      reason_code?: string | null
+      retryable?: boolean | null
+      next_retry_at?: string | null
+      safe_message?: string | null
+    } | null
+    timeline_cursor?: { hint_messages_limit?: number; message_scan_limit?: number }
+    ui_hints?: {
+      can_compose?: boolean
+      compose_blocked_reason?: string | null
+    }
+  }
+  source: string
+  /** Schema/revision of the read model (not optimistic locking). */
+  context_version: number
+  /** UTC ISO timestamp when this snapshot was assembled. */
+  generated_at: string
+}
+
+export type DeliveryDiagnostics = {
+  message_id: string
+  delivery_id?: string | null
+  status: string
+  last_attempt?: Record<string, unknown>
+  next_retry_at?: string | null
+  provider_reference?: string | null
+  timeline?: Array<Record<string, unknown>>
+}
+
 export async function listCommunicationThreads(opts?: {
   limit?: number
   offset?: number
@@ -822,6 +915,8 @@ export async function listCommunicationThreads(opts?: {
   entityId?: string
   includeArchived?: boolean
   q?: string
+  /** C1 working queue (server-side Thread filter). */
+  queue?: CommunicationThreadQueue | string
   signal?: AbortSignal
 }): Promise<CommunicationThreadListResponse> {
   const params: Record<string, any> = {}
@@ -834,8 +929,24 @@ export async function listCommunicationThreads(opts?: {
   if (opts?.entityId) params.entity_id = opts.entityId
   if (opts?.includeArchived) params.include_archived = true
   if (opts?.q) params.q = opts.q
+  if (opts?.queue) params.queue = opts.queue
   const { data } = await api.get('/communications/threads', { params, signal: opts?.signal })
   return data as CommunicationThreadListResponse
+}
+
+export async function getThreadContext(threadId: string): Promise<ThreadContext> {
+  const { data } = await api.get(`/communications/threads/${threadId}/context`)
+  return data as ThreadContext
+}
+
+export async function getThreadCapabilities(threadId: string): Promise<ThreadCapabilities> {
+  const { data } = await api.get(`/communications/threads/${threadId}/capabilities`)
+  return data as ThreadCapabilities
+}
+
+export async function getMessageDeliveryDiagnostics(messageId: string): Promise<DeliveryDiagnostics> {
+  const { data } = await api.get(`/communications/messages/${messageId}/delivery-diagnostics`)
+  return data as DeliveryDiagnostics
 }
 
 export async function getCommunicationThread(

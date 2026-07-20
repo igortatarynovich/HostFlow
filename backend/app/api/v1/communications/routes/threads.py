@@ -136,6 +136,13 @@ async def list_threads(
     entity_id: str | None = Query(None),
     include_archived: bool = Query(False),
     q: str | None = Query(None),
+    queue: str | None = Query(
+        None,
+        description=(
+            "C1 working queue: requires_reply | new_inbound | delivery_errors | "
+            "unresolved | assigned_to_me | unassigned | waiting_for_reply | closed"
+        ),
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
@@ -173,7 +180,31 @@ async def list_threads(
         )
     elif entity_id:
         filters.append(CommunicationThread.entity_id == entity_id)
-    if not include_archived:
+
+    queue_key = str(queue or "").strip().lower() or None
+    if queue_key:
+        from backend.app.communications.thread_queues import (
+            QUEUE_CLOSED,
+            normalize_thread_queue,
+            thread_queue_clause,
+        )
+
+        try:
+            normalize_thread_queue(queue_key)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        actor = str(getattr(current_user, "sub", "") or "").strip() or None
+        filters.append(
+            thread_queue_clause(
+                queue_key,
+                tenant_id=tenant_id,
+                actor_user_id=actor,
+            )
+        )
+        # Closed queue may include archived; other queues stay non-archived unless asked.
+        if queue_key != QUEUE_CLOSED and not include_archived:
+            filters.append(CommunicationThread.is_archived.is_(False))
+    elif not include_archived:
         filters.append(CommunicationThread.is_archived.is_(False))
     if q:
         like = f"%{q.strip().lower()}%"
@@ -332,6 +363,79 @@ async def get_thread(
         thread=_thread_out(thread, result_link=result_link, entity_links=entity_links),
         messages=[_message_out(m) for m in msgs],
     )
+
+
+@router.get("/threads/{thread_id}/context")
+async def get_thread_context(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    """C1: ThreadContext — sole Workspace/Composer input from the platform."""
+    from backend.app.communications.thread_context import build_thread_context
+
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
+    assert_comm_feature_access(
+        tenant=tenant,
+        current_user=current_user,
+        tenant_id=tenant_id,
+        feature=_feature_for_channel(thread.channel),  # type: ignore[arg-type]
+    )
+    ctx = await build_thread_context(
+        db,
+        tenant_id=tenant_id,
+        thread=thread,
+        actor_user_id=str(getattr(current_user, "sub", "") or "") or None,
+    )
+    return ctx.to_dict()
+
+
+@router.get("/threads/{thread_id}/capabilities")
+async def get_thread_capabilities(
+    thread_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict:
+    """Compat slice of ThreadContext (prefer GET …/context for Composer)."""
+    from backend.app.communications.thread_context import build_thread_context
+
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
+    assert_comm_feature_access(
+        tenant=tenant,
+        current_user=current_user,
+        tenant_id=tenant_id,
+        feature=_feature_for_channel(thread.channel),  # type: ignore[arg-type]
+    )
+    full = (
+        await build_thread_context(
+            db,
+            tenant_id=tenant_id,
+            thread=thread,
+            actor_user_id=str(getattr(current_user, "sub", "") or "") or None,
+        )
+    ).to_dict()
+    caps = full.get("capabilities") or {}
+    identity = full.get("identity") or {}
+    thread_proj = identity.get("thread") or {}
+    return {
+        "thread_id": thread_proj.get("id") or thread_id,
+        "origin": identity.get("origin"),
+        "allowed_intents": caps.get("allowed_intents") or [],
+        "allowed_channels": caps.get("allowed_channels") or [],
+        "bulk_allowed": bool(caps.get("bulk_allowed")),
+        "denial_reasons": caps.get("policy_denials") or {},
+        "source": full.get("source") or "communication.thread_context.v1",
+    }
 
 
 @router.post(

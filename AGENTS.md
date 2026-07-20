@@ -101,6 +101,9 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 
 [`docs/specs/architecture/platform-completion-roadmap.md`](docs/specs/architecture/platform-completion-roadmap.md)
 
+Platform maturity (Foundation / Workspace / Automation / Complete):  
+[`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
+
 Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md).
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  

@@ -8,7 +8,10 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
-import InboxUnifiedThreadList, { type InboxHubFilter } from '../components/communications/InboxUnifiedThreadList'
+import InboxUnifiedThreadList, {
+  inboxHubFilterToQueue,
+  type InboxHubFilter,
+} from '../components/communications/InboxUnifiedThreadList'
 import InboxEmailFolderRail from '../components/communications/InboxEmailFolderRail'
 import CommunicationsThreadWorkArea from '../components/communications/CommunicationsThreadWorkArea'
 import CommunicationsInboxControlPanel from '../components/communications/CommunicationsInboxControlPanel'
@@ -78,6 +81,7 @@ export default function CommunicationsInboxCenterPage() {
         hasEmail,
         hasMessages,
         q: listQuery.q,
+        queue: inboxHubFilterToQueue(hubFilter),
       })
       setThreads(items)
     } catch (err: unknown) {
@@ -88,7 +92,7 @@ export default function CommunicationsInboxCenterPage() {
     } finally {
       setListLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, planLimitModal, t])
+  }, [effectiveChannel, hasEmail, hasMessages, hubFilter, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void loadList()

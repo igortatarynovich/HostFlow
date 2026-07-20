@@ -6,10 +6,13 @@ import {
   dispatchQueuedCommunicationMessages,
   getCommunicationThread,
   getCommunicationsSettings,
+  getThreadContext,
   markCommunicationThreadRead,
   type CommunicationMessage,
   type CommunicationThread,
+  type ThreadContext,
 } from '../api/communications'
+import { draftFromThreadContext, type ThreadComposerDraft } from '../components/communications/ThreadComposer'
 import { recordTtvStepCompleted } from '../api/analytics'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
@@ -48,6 +51,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
   const { me } = useAuth()
   const planLimitModal = usePlanLimitModal()
   const [thread, setThread] = useState<CommunicationThread | null>(null)
+  const [threadContext, setThreadContext] = useState<ThreadContext | null>(null)
   const [messages, setMessages] = useState<CommunicationMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [threadError, setThreadError] = useState<FriendlyErrorInfo | null>(null)
@@ -58,15 +62,58 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
   const [openActionMenu, setOpenActionMenu] = useState<null | 'workflow' | 'delivery'>(null)
   const workflowMenuRef = useRef<HTMLDivElement | null>(null)
   const deliveryMenuRef = useRef<HTMLDivElement | null>(null)
-  const [draftText, setDraftText] = useState('')
-  const [draftSubject, setDraftSubject] = useState('')
-  const [recipientAddress, setRecipientAddress] = useState('')
-  const [internalNote, setInternalNote] = useState(false)
-  const [sendImmediately, setSendImmediately] = useState(true)
+  const [composerDraft, setComposerDraft] = useState<ThreadComposerDraft>({
+    text: '',
+    subject: '',
+    recipientAddress: '',
+    intent: '',
+    channel: '',
+    internalNote: false,
+    sendImmediately: true,
+    applySignature: true,
+  })
   const [templates, setTemplates] = useState<Array<{ id: string; label: string; body: string }>>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
-  const [applySignature, setApplySignature] = useState(true)
   const firstEmailTtvSentRef = useRef(false)
+  const seededContextForThreadRef = useRef<string | null>(null)
+
+  const patchComposerDraft = useCallback((patch: Partial<ThreadComposerDraft>) => {
+    setComposerDraft((prev) => ({ ...prev, ...patch }))
+  }, [])
+
+  // Compat aliases for existing work-area / control-panel consumers.
+  const draftText = composerDraft.text
+  const setDraftText = useCallback(
+    (value: string | ((prev: string) => string)) => {
+      setComposerDraft((prev) => ({
+        ...prev,
+        text: typeof value === 'function' ? value(prev.text) : value,
+      }))
+    },
+    [],
+  )
+  const draftSubject = composerDraft.subject
+  const setDraftSubject = useCallback((value: string) => patchComposerDraft({ subject: value }), [patchComposerDraft])
+  const recipientAddress = composerDraft.recipientAddress
+  const setRecipientAddress = useCallback(
+    (value: string) => patchComposerDraft({ recipientAddress: value }),
+    [patchComposerDraft],
+  )
+  const internalNote = composerDraft.internalNote
+  const setInternalNote = useCallback(
+    (value: boolean) => patchComposerDraft({ internalNote: value }),
+    [patchComposerDraft],
+  )
+  const sendImmediately = composerDraft.sendImmediately
+  const setSendImmediately = useCallback(
+    (value: boolean) => patchComposerDraft({ sendImmediately: value }),
+    [patchComposerDraft],
+  )
+  const applySignature = composerDraft.applySignature
+  const setApplySignature = useCallback(
+    (value: boolean) => patchComposerDraft({ applySignature: value }),
+    [patchComposerDraft],
+  )
 
   const threadListPath = useMemo(() => {
     if (opts?.backListPathOverride) return opts.backListPathOverride
@@ -107,34 +154,55 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     if (!threadId) {
       setLoading(false)
       setThread(null)
+      setThreadContext(null)
       setMessages([])
+      seededContextForThreadRef.current = null
       return
     }
     setLoading(true)
     setThreadError(null)
     try {
-      const [data, cfg] = await Promise.all([
-        getCommunicationThread(threadId, { messagesLimit: 200 }),
-        getCommunicationsSettings().catch(() => null),
-      ])
+      // Critical path: thread + timeline first so the page paints quickly.
+      const data = await getCommunicationThread(threadId, { messagesLimit: 50 })
       setThread(data.thread)
       setMessages(Array.isArray(data.messages) ? data.messages : [])
-      if (!draftSubject) setDraftSubject(data.thread.subject || '')
-      const tplItems = Array.isArray((cfg as any)?.messageTemplates?.items) ? (cfg as any).messageTemplates.items : []
-      const nextTemplates = tplItems
-        .filter((x: any) => x && x.enabled && (x.target === 'email' || x.target === 'both'))
-        .map((x: any) => ({ id: String(x.id || ''), label: String(x.label || ''), body: String(x.body || '') }))
-        .filter((x: any) => x.id && x.label)
-      setTemplates(nextTemplates)
-      if (!selectedTemplateId && nextTemplates.length) setSelectedTemplateId(nextTemplates[0].id)
+      setLoading(false)
+
+      // Secondary: Workspace read model + templates (non-blocking for timeline).
+      void getThreadContext(threadId)
+        .then((ctx) => {
+          setThreadContext(ctx)
+          if (seededContextForThreadRef.current !== threadId) {
+            setComposerDraft(draftFromThreadContext(ctx))
+            seededContextForThreadRef.current = threadId
+          }
+        })
+        .catch(() => setThreadContext(null))
+
+      void getCommunicationsSettings()
+        .then((cfg) => {
+          const tplItems = Array.isArray((cfg as any)?.messageTemplates?.items)
+            ? (cfg as any).messageTemplates.items
+            : []
+          const nextTemplates = tplItems
+            .filter((x: any) => x && x.enabled && (x.target === 'email' || x.target === 'both'))
+            .map((x: any) => ({
+              id: String(x.id || ''),
+              label: String(x.label || ''),
+              body: String(x.body || ''),
+            }))
+            .filter((x: any) => x.id && x.label)
+          setTemplates(nextTemplates)
+          setSelectedTemplateId((prev) => prev || (nextTemplates[0]?.id ?? ''))
+        })
+        .catch(() => undefined)
     } catch (err: any) {
       if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.load'))) {
         setThreadError(getFriendlyErrorInfo(err, t('app.communications.errors.load'), t))
       }
-    } finally {
       setLoading(false)
     }
-  }, [draftSubject, planLimitModal, selectedTemplateId, t, threadId])
+  }, [planLimitModal, t, threadId])
 
   useEffect(() => {
     void load()
@@ -219,26 +287,53 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     async (e: FormEvent) => {
       e.preventDefault()
       if (!threadId || !thread) return
-      if (!draftText.trim()) return
+      if (!composerDraft.text.trim()) return
+      const hints = threadContext?.workspace?.ui_hints
+      if (threadContext && hints && hints.can_compose === false) return
+      const channel = String(
+        composerDraft.channel ||
+          threadContext?.capabilities?.defaults?.channel ||
+          thread.channel ||
+          '',
+      ).toLowerCase()
+      const allowedChannels = threadContext?.capabilities?.allowed_channels || []
+      if (threadContext && allowedChannels.length > 0 && !allowedChannels.includes(channel)) return
+      const allowedIntents = threadContext?.capabilities?.allowed_intents || []
+      if (
+        threadContext &&
+        !composerDraft.internalNote &&
+        allowedIntents.length > 0 &&
+        composerDraft.intent &&
+        !allowedIntents.includes(composerDraft.intent)
+      ) {
+        return
+      }
       setSending(true)
       try {
-        const baseText = draftText.trim()
+        const baseText = composerDraft.text.trim()
         const bodyText =
-          !internalNote && String(thread.channel || '').toLowerCase() === 'email' && applySignature
+          !composerDraft.internalNote && channel === 'email' && composerDraft.applySignature
             ? appendSignature(baseText)
             : baseText
         const msg = await createCommunicationMessage(threadId, {
-          direction: internalNote ? 'system' : 'outbound',
-          message_type: internalNote ? 'note' : thread.channel === 'email' ? 'email' : 'text',
-          subject: thread.channel === 'email' && !internalNote ? draftSubject.trim() || undefined : undefined,
+          direction: composerDraft.internalNote ? 'system' : 'outbound',
+          message_type: composerDraft.internalNote ? 'note' : channel === 'email' ? 'email' : 'text',
+          subject:
+            channel === 'email' && !composerDraft.internalNote
+              ? composerDraft.subject.trim() || undefined
+              : undefined,
           body_text: bodyText,
-          sender_type: internalNote ? 'user' : 'user',
-          recipient_address: !internalNote ? recipientAddress.trim() || undefined : undefined,
-          delivery_status: internalNote ? 'sent' : 'queued',
-          is_internal_note: internalNote,
+          sender_type: 'user',
+          recipient_address: !composerDraft.internalNote
+            ? composerDraft.recipientAddress.trim() || undefined
+            : undefined,
+          delivery_status: composerDraft.internalNote ? 'sent' : 'queued',
+          is_internal_note: composerDraft.internalNote,
+          // Selection only — backend re-applies policy (authority).
+          intent: composerDraft.internalNote ? undefined : composerDraft.intent || undefined,
         })
         let finalMsg = msg
-        if (!internalNote && sendImmediately) {
+        if (!composerDraft.internalNote && composerDraft.sendImmediately) {
           try {
             const dispatched = await dispatchCommunicationMessage(msg.id, { mark_delivered: true })
             finalMsg = dispatched.message
@@ -255,7 +350,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
               )
             } else {
               setThreadError(null)
-              if (!firstEmailTtvSentRef.current && String(thread.channel || '').toLowerCase() === 'email') {
+              if (!firstEmailTtvSentRef.current && channel === 'email') {
                 firstEmailTtvSentRef.current = true
                 void recordTtvStepCompleted({
                   event: 'ttv_step',
@@ -287,11 +382,14 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
                 last_message_at: finalMsg.created_at,
                 last_outbound_at: finalMsg.created_at,
                 last_message_preview: finalMsg.body_text || finalMsg.subject || prev.last_message_preview,
-                subject: thread.channel === 'email' && draftSubject.trim() ? draftSubject.trim() : prev.subject,
+                subject:
+                  channel === 'email' && composerDraft.subject.trim()
+                    ? composerDraft.subject.trim()
+                    : prev.subject,
               }
             : prev,
         )
-        setDraftText('')
+        patchComposerDraft({ text: '' })
       } catch (err: any) {
         const emailCh = String(thread?.channel || '').toLowerCase() === 'email'
         if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.send'))) {
@@ -308,15 +406,12 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     },
     [
       appendSignature,
-      applySignature,
-      draftSubject,
-      draftText,
-      internalNote,
+      composerDraft,
+      patchComposerDraft,
       planLimitModal,
-      recipientAddress,
-      sendImmediately,
       t,
       thread,
+      threadContext,
       threadId,
       threadListPath,
     ],
@@ -391,6 +486,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
 
   return {
     thread,
+    threadContext,
     messages,
     loading,
     threadError,
@@ -402,6 +498,8 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     setOpenActionMenu,
     workflowMenuRef,
     deliveryMenuRef,
+    composerDraft,
+    patchComposerDraft,
     draftText,
     setDraftText,
     draftSubject,
