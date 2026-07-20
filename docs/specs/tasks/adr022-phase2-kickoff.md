@@ -1,14 +1,15 @@
 # ADR-022 Phase 2 — kickoff (Product B on current architecture)
 
-**Status:** SLICE 3 IN PROGRESS (Review) — Traceability next after merge  
+**Status:** SLICE 4 IN PROGRESS (Traceability) — Phase 2 domain complete after merge; Capability UI last  
 **Date:** 2026-07-20  
-**Trusted base:** `integration/release-product-a-b` @ `f75c1b9d` (and successors via fast-forward only)  
+**Trusted base:** `integration/release-product-a-b` @ `fb36f674` (and successors via fast-forward only)  
 **Supersedes naming:** not “ADR022 audit” — audit is **done** ([`adr022-product-b-local-commits-audit.md`](adr022-product-b-local-commits-audit.md))  
 **Normative parents:** ADR-022 · ADR-021 · Flights R3.5 · INV-16 · INV-17 · [`repository-operational-canon.md`](../../governance/repository-operational-canon.md)
 
 **Canonical Flow Spec (slice 1):** [`../workflows/adr022-phase2-sales-only-capability-flow.md`](../workflows/adr022-phase2-sales-only-capability-flow.md)  
 **Convert mapping (slice 2):** [`sales-questionnaire-convert-mapping.md`](sales-questionnaire-convert-mapping.md)  
-**Ambiguous match review (slice 3):** [`sales-ambiguous-match-review.md`](sales-ambiguous-match-review.md)
+**Ambiguous match review (slice 3):** [`sales-ambiguous-match-review.md`](sales-ambiguous-match-review.md)  
+**Traceability (slice 4):** [`sales-inquiry-traceability.md`](sales-inquiry-traceability.md)
 
 ---
 
@@ -46,13 +47,15 @@ Historical commits on `feat/adr022-intake-policy-phase1-backend` are a **require
 |-------|-------------|---------|--------|
 | 1 | `docs/f3-b-10-sales-capability-flow` | Flow Spec | **Done** |
 | 2 | `feat/sales-questionnaire-convert-mapping` | Convert mapping | **Done** |
-| 3 | `feat/sales-ambiguous-match-review` | SalesInquiry-owned review | **CURRENT** → [`sales-ambiguous-match-review.md`](sales-ambiguous-match-review.md) |
-| 4 | `feat/sales-inquiry-traceability` | Traceability lineage (**no UI**) | **NEXT after review** |
-| 5 | `feat/sales-capability-create-card` | Sales-only create + post-save card (UI last) | pending |
+| 3 | `feat/sales-ambiguous-match-review` | SalesInquiry-owned review | **Done** |
+| 4 | `feat/sales-inquiry-traceability` | Immutable lineage (**no UI**) | **CURRENT** → [`sales-inquiry-traceability.md`](sales-inquiry-traceability.md) |
+| 5 | `feat/sales-capability-create-card` | Sales-only create + post-save card (UI last) | pending — after Phase 2 domain seal |
 
 Stop after each PR for ownership / INV-16 review.
 
 **Linear order:** Docs → Convert → Review → Traceability → Capability UI.
+
+After slice 4 merge: **Sales Phase 2 domain is logically complete** — pause for revision before Capability UI / next CRM stage.
 
 ---
 
