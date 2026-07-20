@@ -68,11 +68,53 @@ C2 (Automation / Campaigns / Templates) **must reuse the same Commands** — not
 | `CloseThread` | Terminal / archived |
 | `ReopenThread` | Leave closed |
 
-Each command:
+### Command response contract
 
-- is audited (actor, time, before → after, reason where applicable);
-- supports optimistic concurrency → typed conflict on stale write;
-- returns (or triggers) a refreshed ThreadContext with new `context_version` / `generated_at`.
+Every successful Command **returns a fresh ThreadContext** — not bare `200 OK`.
+
+```text
+Command
+  → mutate Thread / related entities
+  → rebuild projections
+  → return ThreadContext { context_version, generated_at, … }
+```
+
+Workspace must not need a second “reload state” GET for the happy path.  
+Same contract for UI, later WebSocket apply, and mobile clients.
+
+### Idempotency
+
+Commands are **idempotent** where a no-op is well-defined:
+
+| Command | Idempotent behaviour |
+|---------|----------------------|
+| `MarkThreadRead` | Already read → no state change, still return current ThreadContext |
+| `MarkThreadUnread` | Already unread → no-op + current context |
+| `AssignThread` to same user | No new assignment audit event; return current context |
+| `CompleteNextAction` | Already completed → no-op |
+| `CancelNextAction` | Already cancelled → no-op |
+| `CloseThread` / `ReopenThread` | Already in target state → safe no-op |
+
+Audits record **real transitions** only. No-ops do not invent history noise.
+
+Also:
+
+- optimistic concurrency → typed conflict on stale write (when a version/etag is supplied and mismatches);
+- every mutating transition is audited (actor, time, before → after, reason where applicable).
+
+---
+
+## Thread invariants (must not break in follow-up PRs)
+
+| Domain | Invariant |
+|--------|-----------|
+| **Ownership** | Exactly one current owner/assignee (or none). Assignment **history** is stored separately (audit / assignment log). |
+| **Next Action** | At most one **active** action per Thread. Completed/cancelled actions are immutable. |
+| **SLA** | Computed from events. Never edited manually as a boolean SoT. |
+| **Queues** | Projection only. Never an object of write. |
+| **Unread** | Thread-level state via commands — **not** a sum of unread Messages. |
+
+Contract tests should lock these invariants as they land in code.
 
 ---
 
@@ -207,18 +249,34 @@ Composer **unchanged** (C1.1). No `module == …` branches.
 - [ ] All Workspace actions are typed Commands from the table above  
 - [ ] No `PATCH /threads/{id}` (or field-level PATCH) used by Workspace UI  
 - [ ] No `MoveThreadToQueue` (or equivalent) API exists  
-- [ ] Every command is audited  
+- [ ] Every successful Command response body includes ThreadContext (`context_version`, `generated_at`)  
+- [ ] Idempotent no-ops documented above; no spurious audit on no-op  
+- [ ] Real transitions are audited  
 - [ ] Stale write → typed conflict  
 - [ ] Queue membership is projection-only (not a second SoT)  
 - [ ] Next Action persisted as platform entity; ThreadContext projects active one  
 - [ ] SLA breach is derived; no stored `sla_breached` SoT flag  
 - [ ] `AssignmentReason` recorded on assign/reassign  
-- [ ] After command, ThreadContext has fresh `context_version` / `generated_at`  
+- [ ] Thread invariants covered by contract tests  
 - [ ] Composer unchanged  
 - [ ] No `module == …` branches  
 - [ ] Contract test: modules use public Communication Workspace Command API via adapters  
 - [ ] Contract test: no queue-mutation routes; no generic Thread PATCH for Workspace fields  
 
-## After C1.2
+## After C1.2 → C1.3 Workspace Experience
 
-Full Workspace UX + C1 close-out → **C2** (same Commands) → [Epic C Complete Gate](../gates/epic-c-complete-gate.md).
+Model of Thread + Commands stays frozen. Product UX assembles on top:
+
+See [C1.3 Workspace Experience](c1-3-workspace-experience.md):
+
+- unified Thread card  
+- working queues  
+- quick actions (Commands)  
+- Composer (C1.1)  
+- diagnostics strip  
+- next action panel  
+- SLA indicators  
+- keyboard shortcuts  
+- realtime updates (apply Command-returned / pushed ThreadContext)
+
+Then **close C1** → **C2** (Templates, Automations & Campaigns on the **same Commands**) → [Epic C Complete Gate](../gates/epic-c-complete-gate.md).
