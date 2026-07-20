@@ -43,17 +43,17 @@ Continuing Sales product flow on unbound / mis-linked threads makes every later 
 
 ### GAP audit (required before writing code)
 
-Short, evidence-based inventory — no product code until this lands in the slice notes:
+**Done:** [c0-1-outbound-linkage-gap-audit.md](c0-1-outbound-linkage-gap-audit.md) @ `2569b3ea`.
 
-| # | Question |
-|---|----------|
-| 1 | All outbound send entrypoints (HTTP, services, workflows, questionnaire invite, etc.) |
-| 2 | Where thread is created or resolved |
-| 3 | Where `communication_thread_entity_links` are written |
-| 4 | Which callers pass entity context (`entity_type` / `entity_id` / origin) |
-| 5 | Where UI reads legacy `entity_type` / `entity_id` instead of G13 links |
-| 6 | Transactional boundaries between message, thread, link, and outbox |
-| 7 | Existing send idempotency (re-send must not duplicate links) |
+| # | Question | Result |
+|---|----------|--------|
+| 1 | All outbound send entrypoints | **GAP** — none write G13 |
+| 2 | Where thread is created or resolved | **PARTIAL** |
+| 3 | Where `communication_thread_entity_links` are written | **GAP** — migration only |
+| 4 | Which callers pass entity context | **PARTIAL** — legacy/C1 only |
+| 5 | Where UI reads legacy vs G13 | **GAP** — legacy only |
+| 6 | Transactional boundaries | **GAP** — no G13 in txn |
+| 7 | Send idempotency | **PARTIAL** — C1 yes; G13 unused |
 
 ### Scope (implementation, after audit)
 
